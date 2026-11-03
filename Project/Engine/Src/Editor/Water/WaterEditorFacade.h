@@ -3,7 +3,7 @@
 #include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Graphics/Render/RenderingTechnique/Lighting/WaterCausticsTechnique.h"
-#include "Graphics/Water/FFTOceanManager.h"
+#include "Graphics/Water/FFT/FFTOceanManager.h"
 
 namespace CoreEngine { class WaterSystem; }
 

@@ -11,7 +11,7 @@
 #include "Graphics/Water/RayTracing/WaterSeaMapRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterReflectionRayTracingManager.h"
-#include "Graphics/Water/FFTOceanManager.h"
+#include "Graphics/Water/FFT/FFTOceanManager.h"
 #include "Graphics/Water/Foam/WaterFoamSystem.h"
 #include "Graphics/Water/Query/WaterHeightQueryManager.h"
 #include "Graphics/Water/Query/WaterQuery.h"

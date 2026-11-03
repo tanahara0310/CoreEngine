@@ -4,7 +4,7 @@
 #include <cmath>
 
 #include "Graphics/Render/RenderDomainContext.h"
-#include "Graphics/Water/FFTOceanManager.h"
+#include "Graphics/Water/FFT/FFTOceanManager.h"
 #include "Graphics/Water/Surface/WaterRenderResources.h"
 #include "Graphics/Water/Surface/WaterSurfaceComponent.h"
 #include "Graphics/Water/WaterSurfaceData.h"
@@ -71,7 +71,7 @@ namespace CoreEngine
     {
         // 波群エンベロープの位相（今の時刻までに波のエネルギーが群速度で進んだ分）
         if (const FFTOceanManager* fftOcean = domain.GetFFTOceanManager()) {
-            waterPlane.SetWaveGroupPhase(fftOcean->ComputeWaveGroupPhase(time_));
+            waterPlane.SetWaveGroupPhase(fftOcean->GetSpectrum().ComputeWaveGroupPhase(time_));
         }
     }
 
@@ -95,7 +95,7 @@ namespace CoreEngine
         if (!fftOcean) {
             return 0.0f;
         }
-        const FFTOceanManager::WaveSummary summary = fftOcean->GetWaveSummary();
+        const FFTOceanSpectrum::WaveSummary summary = fftOcean->GetSpectrum().GetWaveSummary();
         return std::sqrt(summary.windSeaHeight * summary.windSeaHeight + summary.swellHeight * summary.swellHeight);
     }
 
@@ -108,11 +108,12 @@ namespace CoreEngine
         binding.resources.fftDisplacementSRV = fftOcean->GetDisplacementSRVHandle();
         binding.resources.fftNormalSRV = fftOcean->GetNormalSRVHandle();
         binding.resources.fftJacobianSRV = fftOcean->GetJacobianSRVHandle();
-        static_assert(FFTOceanManager::kCascadeCount == 3, "fftCascadeMeanSquareSlope のカスケード数と一致させる");
-        for (uint32_t c = 0; c < FFTOceanManager::kCascadeCount; ++c) {
-            binding.fftCascadeMeanSquareSlope[c] = fftOcean->GetCascadeMeanSquareSlope(c);
+        const FFTOceanSpectrum& spectrum = fftOcean->GetSpectrum();
+        static_assert(FFTOceanSpectrum::kCascadeCount == 3, "fftCascadeMeanSquareSlope のカスケード数と一致させる");
+        for (uint32_t c = 0; c < FFTOceanSpectrum::kCascadeCount; ++c) {
+            binding.fftCascadeMeanSquareSlope[c] = spectrum.GetCascadeMeanSquareSlope(c);
         }
-        binding.fineWaveMeanSquareSlope = fftOcean->GetFineWaveMeanSquareSlope();
+        binding.fineWaveMeanSquareSlope = spectrum.GetFineWaveMeanSquareSlope();
     }
 
     WaterFFTOceanInput FFTOceanWaveModel::BuildInput(RenderDomainContext& domain) const
@@ -126,12 +127,13 @@ namespace CoreEngine
         input.normalSRV = fftOcean->GetNormalSRVHandle();
         input.resolution = fftOcean->GetSettings().resolution;
         input.enabled = 1;
-        static_assert(FFTOceanManager::kCascadeCount == 3, "cascadeMeanSquareSlope のカスケード数と一致させる");
-        for (uint32_t c = 0; c < FFTOceanManager::kCascadeCount; ++c) {
-            input.cascadeMeanSquareSlope[c] = fftOcean->GetCascadeMeanSquareSlope(c);
+        const FFTOceanSpectrum& spectrum = fftOcean->GetSpectrum();
+        static_assert(FFTOceanSpectrum::kCascadeCount == 3, "cascadeMeanSquareSlope のカスケード数と一致させる");
+        for (uint32_t c = 0; c < FFTOceanSpectrum::kCascadeCount; ++c) {
+            input.cascadeMeanSquareSlope[c] = spectrum.GetCascadeMeanSquareSlope(c);
         }
-        input.fineWaveMeanSquareSlope = fftOcean->GetFineWaveMeanSquareSlope();
-        const std::array<float, 3> waveGroupPhase = fftOcean->ComputeWaveGroupPhase(time_);
+        input.fineWaveMeanSquareSlope = spectrum.GetFineWaveMeanSquareSlope();
+        const std::array<float, 3> waveGroupPhase = spectrum.ComputeWaveGroupPhase(time_);
         for (size_t i = 0; i < waveGroupPhase.size(); ++i) {
             input.waveGroupPhase[i] = waveGroupPhase[i];
         }

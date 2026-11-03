@@ -129,7 +129,7 @@ struct WaterFrameConstants {
 	// ---- 見えない細かい波のラフネス換算 ----
 	// FFT カスケードごとの平均二乗傾斜（x・z の傾きの二乗和の平均。FFTOceanManager が求める）
 	float fftCascadeMeanSquareSlope[3] = { 0.0f, 0.0f, 0.0f };
-	// カスケードより細かい波の平均二乗傾斜（FFTOceanManager::GetFineWaveMeanSquareSlope）
+	// カスケードより細かい波の平均二乗傾斜（FFTOceanSpectrum::GetFineWaveMeanSquareSlope）
 	float fineWaveMeanSquareSlope = 0.0f;
 	// ---- 海底の高さ（カメラの周りの範囲を RT で真上から測ったもの。gWaterSeabedHeight）----
 	float seabedOriginXZ[2] = { 0.0f, 0.0f }; // 範囲の XZ の最小の角 [m]
@@ -137,7 +137,7 @@ struct WaterFrameConstants {
 	int seabedEnabled = 0;                     // 1 = 範囲の中の岸の泡の水深を海底の高さから求める
 	// ---- 岸の泡（WaterShoreFoamPass が進めたもの。gWaterShoreFoam・範囲は海底の高さと同じ）----
 	int shoreFoamEnabled = 0;                  // 1 = 範囲の中の岸の泡を gWaterShoreFoam から読む
-	// 波群エンベロープの位相のずれ [rad]（FFTOceanManager::ComputeWaveGroupPhase）
+	// 波群エンベロープの位相のずれ [rad]（FFTOceanSpectrum::ComputeWaveGroupPhase）
 	float waveGroupPhase[3] = { 0.0f, 0.0f, 0.0f };
 	// 白波の泡が風下へ流れた距離 [m]（WaterFoamSystem::ComputeFoamDriftOffset）
 	float foamDriftOffsetXZ[2] = { 0.0f, 0.0f };

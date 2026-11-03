@@ -2,7 +2,7 @@
 #include "WaterFoamModule.h"
 
 #include "Graphics/Render/RenderDomainContext.h"
-#include "Graphics/Water/FFTOceanManager.h"
+#include "Graphics/Water/FFT/FFTOceanManager.h"
 #include "Graphics/Water/Foam/WaterFoamSystem.h"
 #include "Graphics/Water/Surface/WaterRenderResources.h"
 #include "Graphics/Water/Surface/WaterSurfaceComponent.h"

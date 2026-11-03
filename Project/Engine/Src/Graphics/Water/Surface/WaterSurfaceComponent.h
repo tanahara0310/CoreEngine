@@ -213,7 +213,7 @@ namespace CoreEngine
             bool enabled, float bias, float gain, float opacity,
             const Vector3& cascadeWeights, float decaySeconds);
 
-        /// @brief 波群エンベロープの位相のずれ [rad] を設定する（FFTOceanManager::ComputeWaveGroupPhase）
+        /// @brief 波群エンベロープの位相のずれ [rad] を設定する（FFTOceanSpectrum::ComputeWaveGroupPhase）
         void SetWaveGroupPhase(const std::array<float, 3>& phase);
 
         /// @brief 白波の泡の動きを設定する

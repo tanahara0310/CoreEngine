@@ -3,7 +3,7 @@
 
 #include "Graphics/RHI/Debug/GpuStageScope.h"
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Graphics/Water/FFTOceanManager.h"
+#include "Graphics/Water/FFT/FFTOceanManager.h"
 #include "Graphics/Water/Foam/WaterFoamSystem.h"
 #include "Utility/Logger/Logger.h"
 
@@ -56,7 +56,7 @@ namespace CoreEngine
                 cmdList,
                 context.fftOceanManager->GetJacobianSRVHandle(),
                 context.dxCommon->Frame().FrameIndex(),
-                context.fftOceanManager->ComputeWaveGroupPhase(context.fftOceanSimulationTime));
+                context.fftOceanManager->GetSpectrum().ComputeWaveGroupPhase(context.fftOceanSimulationTime));
         }
     }
 }

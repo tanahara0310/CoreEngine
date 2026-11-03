@@ -2,7 +2,7 @@
 #include "WaterShoreFoamPass.h"
 
 #include "Graphics/Render/RenderGraph.h"
-#include "Graphics/Water/FFTOceanManager.h"
+#include "Graphics/Water/FFT/FFTOceanManager.h"
 #include "Graphics/Water/Foam/WaterFoamSystem.h"
 #include "Graphics/Water/RayTracing/WaterSeabedRayTracingManager.h"
 #include "Graphics/Water/WaterSurfaceData.h"
@@ -52,7 +52,7 @@ namespace CoreEngine
         input.timeSeconds = context.fftOceanSimulationTime;
         input.spectrumRevision = fftOcean->GetSpectrumRevision();
         input.frameNumber = context.frameNumber;
-        const std::array<float, 3> waveGroupPhase = fftOcean->ComputeWaveGroupPhase(context.fftOceanSimulationTime);
+        const std::array<float, 3> waveGroupPhase = fftOcean->GetSpectrum().ComputeWaveGroupPhase(context.fftOceanSimulationTime);
         for (size_t i = 0; i < waveGroupPhase.size(); ++i) {
             input.waveGroupPhase[i] = waveGroupPhase[i];
         }

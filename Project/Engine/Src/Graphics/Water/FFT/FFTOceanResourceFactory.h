@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Graphics/Water/FFTOceanGpuResources.h"
+#include "Graphics/Water/FFT/FFTOceanGpuResources.h"
 
 #include <cstdint>
 #include <wrl.h>

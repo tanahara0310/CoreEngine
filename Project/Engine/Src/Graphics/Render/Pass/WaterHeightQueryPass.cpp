@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "WaterHeightQueryPass.h"
 
-#include "Graphics/Water/FFTOceanManager.h"
+#include "Graphics/Water/FFT/FFTOceanManager.h"
 #include "Graphics/Water/Query/WaterHeightQueryManager.h"
 
 namespace CoreEngine

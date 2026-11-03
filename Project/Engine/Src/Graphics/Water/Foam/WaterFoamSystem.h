@@ -5,7 +5,7 @@
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Graphics/Shader/ICustomShaderProvider.h"
-#include "Graphics/Water/FFTOceanGpuResources.h"
+#include "Graphics/Water/FFT/FFTOceanGpuResources.h"
 #include "Graphics/Water/WaterFoamDefaults.h"
 
 #include <array>
@@ -92,7 +92,7 @@ namespace CoreEngine
         ///          白波の被覆率の平均が目標になるようにしきい値を合わせ直す。
         ///          測定の記録は kStatisticsFrameInterval フレームに 1 回。DispatchWhitecap の後に呼ぶ
         /// @param frameIndex     フレームの枠の番号（FrameSync::FrameIndex）
-        /// @param waveGroupPhase 波群エンベロープの位相のずれ [rad]（FFTOceanManager::ComputeWaveGroupPhase）
+        /// @param waveGroupPhase 波群エンベロープの位相のずれ [rad]（FFTOceanSpectrum::ComputeWaveGroupPhase）
         void DispatchWhitecapStatistics(
             ID3D12GraphicsCommandList* cmdList,
             D3D12_GPU_DESCRIPTOR_HANDLE jacobianSRV,

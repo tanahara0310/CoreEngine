@@ -2,7 +2,7 @@
 
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
 #include "Graphics/RHI/Descriptor/DescriptorHandle.h"
-#include "Graphics/Water/FFTOceanGpuResources.h"
+#include "Graphics/Water/FFT/FFTOceanGpuResources.h"
 
 #include <cstdint>
 

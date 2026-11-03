@@ -1,11 +1,13 @@
 #include "pch.h"
 #include "FFTOceanDebugProbe.h"
 
+#include <algorithm>
+#include <cmath>
+
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
-#include "Graphics/Water/FFTOceanManagerLogHelper.h"
-#include "Graphics/Water/FFTOceanReadbackHelper.h"
-#include "Graphics/Water/FFTOceanSpectrumDebugHelper.h"
+#include "Graphics/Water/FFT/FFTOceanReadbackHelper.h"
 #include "Utility/CVar/CVar.h"
+#include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
 {
@@ -19,6 +21,47 @@ namespace CoreEngine
             "FFT海面のデバッグ計測（120F毎のサマリ/リードバック統計）" };
 
         constexpr uint32_t kLogIntervalFrames = 120;
+
+        /// @brief 複素数（デバッグ表示用）
+        struct ComplexValue {
+            float real = 0.0f;
+            float imag = 0.0f;
+        };
+
+        /// @brief H0/H0* と角周波数から時刻 t のスペクトル値を評価する
+        ComplexValue EvaluateSpectrumSample(
+            const float* h0,
+            const float* h0Minus,
+            float angularFrequency,
+            float directionalWeight,
+            float timeSeconds,
+            float amplitudeScale,
+            uint32_t activeComponentCount)
+        {
+            ComplexValue value{};
+            if (!h0 || !h0Minus) {
+                return value;
+            }
+
+            const float angularPhase = angularFrequency * timeSeconds;
+            const float cosPhase = std::cos(angularPhase);
+            const float sinPhase = std::sin(angularPhase);
+
+            // h0Minus 側は共役回転 e^{-iωt} を掛ける: 実部 = x·cos + y·sin
+            // （FFTOceanTimeEvolution.CS.hlsl の negativeRotation と一致させること）
+            value.real =
+                (h0[0] * cosPhase - h0[1] * sinPhase)
+                + (h0Minus[0] * cosPhase + h0Minus[1] * sinPhase);
+            value.imag =
+                (h0[0] * sinPhase + h0[1] * cosPhase)
+                + (-h0Minus[0] * sinPhase + h0Minus[1] * cosPhase);
+
+            const float bandLimit = (std::max)(static_cast<float>(activeComponentCount) / 64.0f, 1.0f / 64.0f);
+            const float bandFade = (std::clamp)((bandLimit - directionalWeight) * 16.0f + 1.0f, 0.0f, 1.0f);
+            value.real *= bandFade * amplitudeScale;
+            value.imag *= bandFade * amplitudeScale;
+            return value;
+        }
     }
 
     bool FFTOceanDebugProbe::IsEnabled()
@@ -108,7 +151,10 @@ namespace CoreEngine
         const float loggedDelta = timeSeconds - previousLoggedTime_;
         previousLoggedTime_ = timeSeconds;
 
-        FFTOceanManagerLogHelper::LogDispatchSummary(
+        Logger::GetInstance().Infof(
+            LogCategory::Graphics,
+            LogSubCategory::Pipeline,
+            "FFTOceanManager: dispatch time={:.3f} delta={:.3f} cb.time={:.3f} amp={:.3f} windSpeed={:.3f} choppiness={:.3f} components={}",
             timeSeconds,
             loggedDelta,
             timeSeconds,
@@ -124,8 +170,8 @@ namespace CoreEngine
             const uint32_t probeY = resolution / 2;
             const uint32_t probeIndex = probeY * resolution + probeX;
             const SpectrumSample& probeSample = samples[probeIndex];
-            const FFTOceanSpectrumDebugHelper::ComplexValue probeHeight =
-                FFTOceanSpectrumDebugHelper::EvaluateSpectrumSample(
+            const ComplexValue probeHeight =
+                EvaluateSpectrumSample(
                     probeSample.h0,
                     probeSample.h0Minus,
                     probeSample.angularFrequency,
@@ -134,14 +180,17 @@ namespace CoreEngine
                     amplitudeScale,
                     activeComponentCount);
 
-            FFTOceanManagerLogHelper::LogProbeSpectrum(
+            Logger::GetInstance().Infof(
+                LogCategory::Graphics,
+                LogSubCategory::Pipeline,
+                "FFTOceanManager: probeSpectrum index={} k=({:.4f}, {:.4f}) omega={:.4f} height=({:.6f}, {:.6f}) |h|={:.6f} dirWeight={:.4f}",
                 probeIndex,
                 probeSample.waveVector[0],
                 probeSample.waveVector[1],
                 probeSample.angularFrequency,
                 probeHeight.real,
                 probeHeight.imag,
-                FFTOceanSpectrumDebugHelper::ComputeMagnitude(probeHeight),
+                std::sqrt(probeHeight.real * probeHeight.real + probeHeight.imag * probeHeight.imag),
                 probeSample.directionalWeight);
         }
     }
@@ -209,8 +258,14 @@ namespace CoreEngine
             return;
         }
 
-        FFTOceanManagerLogHelper::LogIFFTCompleted(
-            finalSpectrumAIndex, finalSpectrumBIndex, resolution, log2Resolution);
+        Logger::GetInstance().Infof(
+            LogCategory::Graphics,
+            LogSubCategory::Pipeline,
+            "FFTOceanManager: IFFT completed. finalSpectrumAIndex={} finalSpectrumBIndex={} resolution={} log2Resolution={}",
+            finalSpectrumAIndex,
+            finalSpectrumBIndex,
+            resolution,
+            log2Resolution);
 
         if (!EnsureTarget(ifftA_, spectrumA.Get(), "ifftA")
             || !EnsureTarget(ifftB_, spectrumB.Get(), "ifftB")) {

@@ -391,8 +391,8 @@
     <ClCompile Include="Engine\Src\Graphics\Render\RenderingTechnique\Lighting\WaterCausticsTechnique.cpp">
       <Filter>Engine\Src\Graphics\Render\RenderingTechnique\Lighting</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanDebugProbe.cpp">
-      <Filter>Engine\Src\Graphics\Water</Filter>
+    <ClCompile Include="Engine\Src\Graphics\Water\FFT\FFTOceanDebugProbe.cpp">
+      <Filter>Engine\Src\Graphics\Water\FFT</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\WaterCVars.cpp">
       <Filter>Engine\Src\Graphics\Water</Filter>
@@ -412,29 +412,26 @@
     <ClCompile Include="Engine\Src\Graphics\Water\Query\WaterQuery.cpp">
       <Filter>Engine\Src\Graphics\Water\Query</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanDispatchHelper.cpp">
-      <Filter>Engine\Src\Graphics\Water</Filter>
+    <ClCompile Include="Engine\Src\Graphics\Water\FFT\FFTOceanDispatchHelper.cpp">
+      <Filter>Engine\Src\Graphics\Water\FFT</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanManager.cpp">
-      <Filter>Engine\Src\Graphics\Water</Filter>
+    <ClCompile Include="Engine\Src\Graphics\Water\FFT\FFTOceanManager.cpp">
+      <Filter>Engine\Src\Graphics\Water\FFT</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\Foam\WaterFoamSystem.cpp">
       <Filter>Engine\Src\Graphics\Water\Foam</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanManagerLogHelper.cpp">
-      <Filter>Engine\Src\Graphics\Water</Filter>
+    <ClCompile Include="Engine\Src\Graphics\Water\FFT\FFTOceanReadbackHelper.cpp">
+      <Filter>Engine\Src\Graphics\Water\FFT</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanReadbackHelper.cpp">
-      <Filter>Engine\Src\Graphics\Water</Filter>
+    <ClCompile Include="Engine\Src\Graphics\Water\FFT\FFTOceanResourceFactory.cpp">
+      <Filter>Engine\Src\Graphics\Water\FFT</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanResourceFactory.cpp">
-      <Filter>Engine\Src\Graphics\Water</Filter>
+    <ClCompile Include="Engine\Src\Graphics\Water\FFT\FFTOceanSpectrumBuilder.cpp">
+      <Filter>Engine\Src\Graphics\Water\FFT</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanSpectrumBuilder.cpp">
-      <Filter>Engine\Src\Graphics\Water</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanSpectrumDebugHelper.cpp">
-      <Filter>Engine\Src\Graphics\Water</Filter>
+    <ClCompile Include="Engine\Src\Graphics\Water\FFT\FFTOceanSpectrum.cpp">
+      <Filter>Engine\Src\Graphics\Water\FFT</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\Wave\FFTOceanWaveModel.cpp">
       <Filter>Engine\Src\Graphics\Water\Wave</Filter>
@@ -3135,8 +3132,8 @@
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\GodRayPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanDebugProbe.h">
-      <Filter>Engine\Src\Graphics\Water</Filter>
+    <ClInclude Include="Engine\Src\Graphics\Water\FFT\FFTOceanDebugProbe.h">
+      <Filter>Engine\Src\Graphics\Water\FFT</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\WaterCVars.h">
       <Filter>Engine\Src\Graphics\Water</Filter>
@@ -3156,32 +3153,29 @@
     <ClInclude Include="Engine\Src\Graphics\Water\Query\WaterQuery.h">
       <Filter>Engine\Src\Graphics\Water\Query</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanDispatchHelper.h">
-      <Filter>Engine\Src\Graphics\Water</Filter>
+    <ClInclude Include="Engine\Src\Graphics\Water\FFT\FFTOceanDispatchHelper.h">
+      <Filter>Engine\Src\Graphics\Water\FFT</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanGpuResources.h">
-      <Filter>Engine\Src\Graphics\Water</Filter>
+    <ClInclude Include="Engine\Src\Graphics\Water\FFT\FFTOceanGpuResources.h">
+      <Filter>Engine\Src\Graphics\Water\FFT</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanManager.h">
-      <Filter>Engine\Src\Graphics\Water</Filter>
+    <ClInclude Include="Engine\Src\Graphics\Water\FFT\FFTOceanManager.h">
+      <Filter>Engine\Src\Graphics\Water\FFT</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\Foam\WaterFoamSystem.h">
       <Filter>Engine\Src\Graphics\Water\Foam</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanManagerLogHelper.h">
-      <Filter>Engine\Src\Graphics\Water</Filter>
+    <ClInclude Include="Engine\Src\Graphics\Water\FFT\FFTOceanReadbackHelper.h">
+      <Filter>Engine\Src\Graphics\Water\FFT</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanReadbackHelper.h">
-      <Filter>Engine\Src\Graphics\Water</Filter>
+    <ClInclude Include="Engine\Src\Graphics\Water\FFT\FFTOceanResourceFactory.h">
+      <Filter>Engine\Src\Graphics\Water\FFT</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanResourceFactory.h">
-      <Filter>Engine\Src\Graphics\Water</Filter>
+    <ClInclude Include="Engine\Src\Graphics\Water\FFT\FFTOceanSpectrumBuilder.h">
+      <Filter>Engine\Src\Graphics\Water\FFT</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanSpectrumBuilder.h">
-      <Filter>Engine\Src\Graphics\Water</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanSpectrumDebugHelper.h">
-      <Filter>Engine\Src\Graphics\Water</Filter>
+    <ClInclude Include="Engine\Src\Graphics\Water\FFT\FFTOceanSpectrum.h">
+      <Filter>Engine\Src\Graphics\Water\FFT</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\WaterFoamDefaults.h">
       <Filter>Engine\Src\Graphics\Water</Filter>
@@ -4738,6 +4732,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\Water">
       <UniqueIdentifier>{79C2596E-AEE7-4E3F-AAC7-C231E50A7DFA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Water\FFT">
+      <UniqueIdentifier>{CDFB9EBC-53FD-4BA8-9653-78769A2599EB}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Water\Foam">
       <UniqueIdentifier>{DB866FDF-576A-4499-AD88-3D9DBE5E2D06}</UniqueIdentifier>

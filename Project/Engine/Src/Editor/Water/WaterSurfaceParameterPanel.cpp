@@ -368,7 +368,7 @@ void WaterSurfaceParameterPanel::DrawWaveSummaryRows(WaterEditorFacade& editorFa
 		InfoRow("出来上がる波", "FFT の海を準備中");
 		return;
 	}
-	const FFTOceanManager::WaveSummary summary = manager->GetWaveSummary();
+	const FFTOceanSpectrum::WaveSummary summary = manager->GetSpectrum().GetWaveSummary();
 	InfoRow("風波の大きさ", std::format("波長 {:.1f} m・高さ {:.2f} m", summary.windSeaWavelength, summary.windSeaHeight));
 	InfoRow("うねりの大きさ", summary.swellHeight > 0.0f
 		? std::format("波長 {:.0f} m・高さ {:.2f} m", summary.swellWavelength, summary.swellHeight)

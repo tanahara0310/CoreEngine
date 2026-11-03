@@ -34,9 +34,9 @@ namespace CoreEngine
         uint32_t enabled = 0;
         /// @brief カスケードごとの平均二乗傾斜（x・z の傾きの二乗和の平均）
         float cascadeMeanSquareSlope[3] = { 0.0f, 0.0f, 0.0f };
-        /// @brief カスケードより細かい波の平均二乗傾斜（FFTOceanManager::GetFineWaveMeanSquareSlope）
+        /// @brief カスケードより細かい波の平均二乗傾斜（FFTOceanSpectrum::GetFineWaveMeanSquareSlope）
         float fineWaveMeanSquareSlope = 0.0f;
-        /// @brief 波群エンベロープの位相のずれ [rad]（FFTOceanManager::ComputeWaveGroupPhase）
+        /// @brief 波群エンベロープの位相のずれ [rad]（FFTOceanSpectrum::ComputeWaveGroupPhase）
         float waveGroupPhase[3] = { 0.0f, 0.0f, 0.0f };
     };
 
