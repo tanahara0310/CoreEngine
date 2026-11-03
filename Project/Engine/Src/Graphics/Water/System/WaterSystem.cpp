@@ -140,19 +140,13 @@ namespace CoreEngine
             }
         }
 
-        // 印の付いた水面、無ければ今の主の水、それも無ければ最初の水面を主の水にする
-        WaterSurfaceComponent* const current = waterPlane_.Get();
+        // 印の付いた水面、無ければ最初の水面を主の水にする
+        const auto marked = std::find_if(waterPlaneScratch_.begin(), waterPlaneScratch_.end(),
+            [](const WaterSurfaceComponent* waterPlane) { return waterPlane->IsPrimary(); });
         WaterSurfaceComponent* primary = nullptr;
-        for (WaterSurfaceComponent* const waterPlane : waterPlaneScratch_) {
-            if (waterPlane->IsPrimary()) {
-                primary = waterPlane;
-                break;
-            }
-        }
-        if (!primary && std::find(waterPlaneScratch_.begin(), waterPlaneScratch_.end(), current) != waterPlaneScratch_.end()) {
-            primary = current;
-        }
-        if (!primary && !waterPlaneScratch_.empty()) {
+        if (marked != waterPlaneScratch_.end()) {
+            primary = *marked;
+        } else if (!waterPlaneScratch_.empty()) {
             primary = waterPlaneScratch_.front();
         }
         waterPlane_.Set(primary);
