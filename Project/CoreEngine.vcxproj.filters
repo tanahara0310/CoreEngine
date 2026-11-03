@@ -346,6 +346,9 @@
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\FFTOceanPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\WaterHeightQueryPass.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\ASBuildPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
@@ -399,6 +402,15 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\WaterSettingsMigration.cpp">
       <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\Query\WaterHeightQueryManager.cpp">
+      <Filter>Engine\Src\Graphics\Water\Query</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\Query\WaterProbeComponent.cpp">
+      <Filter>Engine\Src\Graphics\Water\Query</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\Query\WaterQuery.cpp">
+      <Filter>Engine\Src\Graphics\Water\Query</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanDispatchHelper.cpp">
       <Filter>Engine\Src\Graphics\Water</Filter>
@@ -512,6 +524,9 @@
       <Filter>Engine\Src\Physics</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Physics\RigidbodyComponent.cpp">
+      <Filter>Engine\Src\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Physics\BuoyancyComponent.cpp">
       <Filter>Engine\Src\Physics</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Physics\PhysicsMaterialComponent.cpp">
@@ -2361,6 +2376,9 @@
     <ClInclude Include="Engine\Src\Physics\RigidbodyComponent.h">
       <Filter>Engine\Src\Physics</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Physics\BuoyancyComponent.h">
+      <Filter>Engine\Src\Physics</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Physics\PhysicsMaterialComponent.h">
       <Filter>Engine\Src\Physics</Filter>
     </ClInclude>
@@ -2808,6 +2826,9 @@
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\FFTOceanPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\WaterHeightQueryPass.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Culling\HiZOcclusionSystem.h">
       <Filter>Engine\Src\Graphics\Render\Culling</Filter>
     </ClInclude>
@@ -3125,6 +3146,15 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\WaterSettingsMigration.h">
       <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\Query\WaterHeightQueryManager.h">
+      <Filter>Engine\Src\Graphics\Water\Query</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\Query\WaterProbeComponent.h">
+      <Filter>Engine\Src\Graphics\Water\Query</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\Query\WaterQuery.h">
+      <Filter>Engine\Src\Graphics\Water\Query</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanDispatchHelper.h">
       <Filter>Engine\Src\Graphics\Water</Filter>
@@ -4705,6 +4735,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\Water\Foam">
       <UniqueIdentifier>{DB866FDF-576A-4499-AD88-3D9DBE5E2D06}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Water\Query">
+      <UniqueIdentifier>{1BCFCA42-8D6D-469B-881E-97D6446F1842}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Water\RayTracing">
       <UniqueIdentifier>{01A8FFFF-937C-46E3-98EF-476A65F5EEAC}</UniqueIdentifier>

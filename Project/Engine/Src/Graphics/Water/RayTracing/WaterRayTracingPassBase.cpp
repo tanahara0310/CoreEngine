@@ -14,6 +14,7 @@
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Graphics/RootSignature/ShaderBinder.h"
+#include "Graphics/Water/FFTOceanManager.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
@@ -281,7 +282,7 @@ namespace CoreEngine
     // 供給元の水面データを、シェーダー側 cbuffer のレイアウトへ詰め替える
     WaterRayTracingPassBase::WaterSurfaceConstants WaterRayTracingPassBase::BuildSurfaceConstants(
         const WaterSurfaceData& surfaceData,
-        const FFTOceanInput& fftOceanInput) const
+        const FFTOceanInput& fftOceanInput)
     {
         WaterSurfaceConstants surfaceConstants{};
         surfaceConstants.waterHeight = surfaceData.waterHeight;
@@ -319,6 +320,31 @@ namespace CoreEngine
         surfaceConstants.seaMapDepthOffset = seaMap.depthOffset;
         surfaceConstants.seaMapInvWaveHeight = seaMap.invWaveHeight;
         return surfaceConstants;
+    }
+
+    WaterRayTracingPassBase::FFTOceanInput WaterRayTracingPassBase::MakeFFTOceanInput(
+        const FFTOceanManager* fftOceanManager, float simulationTime, uint32_t simulationType)
+    {
+        // Gerstner の波面では enabled=0 のままにして、シェーダー側を解析評価へ倒す
+        FFTOceanInput input{};
+        if (!fftOceanManager || !fftOceanManager->IsInitialized()
+            || simulationType != kWaterSurfaceModelTypeFFTOcean) {
+            return input;
+        }
+        input.displacementSRV = fftOceanManager->GetDisplacementSRVHandle();
+        input.normalSRV = fftOceanManager->GetNormalSRVHandle();
+        input.resolution = fftOceanManager->GetSettings().resolution;
+        input.enabled = 1;
+        static_assert(FFTOceanManager::kCascadeCount == 3, "cascadeMeanSquareSlope のカスケード数と一致させる");
+        for (uint32_t c = 0; c < FFTOceanManager::kCascadeCount; ++c) {
+            input.cascadeMeanSquareSlope[c] = fftOceanManager->GetCascadeMeanSquareSlope(c);
+        }
+        input.fineWaveMeanSquareSlope = fftOceanManager->GetFineWaveMeanSquareSlope();
+        const std::array<float, 3> waveGroupPhase = fftOceanManager->ComputeWaveGroupPhase(simulationTime);
+        for (size_t i = 0; i < waveGroupPhase.size(); ++i) {
+            input.waveGroupPhase[i] = waveGroupPhase[i];
+        }
+        return input;
     }
 
     // 供給元から水面状態を取り出して記録中のフレームの UploadRing に置き、内容と場所を返す

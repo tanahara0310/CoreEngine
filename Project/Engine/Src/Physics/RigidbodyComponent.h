@@ -130,6 +130,9 @@ public:
 
     float GetMass() const { return mass_; }
 
+    /// @brief 重力を受けるか
+    bool UsesGravity() const { return useGravity_; }
+
     /// @brief 質量を設定する（下限 kMinimumMass で丸める）
     void SetMass(float mass);
 

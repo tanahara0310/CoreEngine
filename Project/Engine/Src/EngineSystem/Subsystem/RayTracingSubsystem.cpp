@@ -657,29 +657,9 @@ namespace CoreEngine
         outDispatchContext.width = static_cast<UINT>(dx->GetClientWidth());
         outDispatchContext.height = static_cast<UINT>(dx->GetClientHeight());
 
-        // FFT Ocean 経路のときだけ波面テクスチャを接続する。
-        // Gerstner 経路では enabled=0 のままにして、シェーダー側を解析評価へ倒す。
-        if (context.fftOceanManager
-            && context.fftOceanManager->IsInitialized()
-            && surfaceData.simulationType == kWaterSurfaceModelTypeFFTOcean) {
-            const FFTOceanManager::Settings& fftSettings = context.fftOceanManager->GetSettings();
-            outDispatchContext.fftOceanInput.displacementSRV = context.fftOceanManager->GetDisplacementSRVHandle();
-            outDispatchContext.fftOceanInput.normalSRV = context.fftOceanManager->GetNormalSRVHandle();
-            outDispatchContext.fftOceanInput.resolution = fftSettings.resolution;
-            outDispatchContext.fftOceanInput.enabled = 1;
-            static_assert(FFTOceanManager::kCascadeCount == 3, "cascadeMeanSquareSlope のカスケード数と一致させる");
-            for (uint32_t c = 0; c < FFTOceanManager::kCascadeCount; ++c) {
-                outDispatchContext.fftOceanInput.cascadeMeanSquareSlope[c] =
-                    context.fftOceanManager->GetCascadeMeanSquareSlope(c);
-            }
-            outDispatchContext.fftOceanInput.fineWaveMeanSquareSlope =
-                context.fftOceanManager->GetFineWaveMeanSquareSlope();
-            const std::array<float, 3> waveGroupPhase =
-                context.fftOceanManager->ComputeWaveGroupPhase(context.fftOceanSimulationTime);
-            for (size_t i = 0; i < waveGroupPhase.size(); ++i) {
-                outDispatchContext.fftOceanInput.waveGroupPhase[i] = waveGroupPhase[i];
-            }
-        }
+        // FFT Ocean 経路のときだけ波面テクスチャを接続する
+        outDispatchContext.fftOceanInput = WaterRayTracingPassBase::MakeFFTOceanInput(
+            context.fftOceanManager, context.fftOceanSimulationTime, surfaceData.simulationType);
 
         return true;
     }

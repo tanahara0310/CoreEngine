@@ -20,6 +20,7 @@
 #include "Graphics/Render/Pass/RTWaterRefractionPass.h"
 #include "Graphics/Render/Pass/RTWaterReflectionPass.h"
 #include "Graphics/Render/Pass/FFTOceanPass.h"
+#include "Graphics/Render/Pass/WaterHeightQueryPass.h"
 #include "Graphics/Render/Pass/AtmosphereLUTPass.h"
 #include "Graphics/Render/Pass/AerialPerspectivePass.h"
 #include "Graphics/Render/Pass/CloudShadowMapPass.h"
@@ -59,6 +60,11 @@ namespace CoreEngine
         // どれもこの結果を読むので、その前に置く（コストの分類は水面）
         pipeline.AddPass(
             std::make_unique<FFTOceanPass>(), RenderPassPhase::FrameSetup, 40,
+            GpuTimingCategory::Water);
+
+        // フレーム前処理: ゲームが聞いた点の水面の高さを、FFT 波面の計算後に評価する
+        pipeline.AddPass(
+            std::make_unique<WaterHeightQueryPass>(), RenderPassPhase::FrameSetup, 45,
             GpuTimingCategory::Water);
 
         // G-Buffer 蓄積（不透明 Model / SkinnedModel の描画）

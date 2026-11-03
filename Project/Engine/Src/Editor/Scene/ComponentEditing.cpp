@@ -166,9 +166,9 @@ namespace CoreEngine::ComponentEditing
             static const std::vector<Category> categories = {
                 { "基本", { "Transform", "Camera" } },
                 { "描画", { "MeshRenderer", "Material", "SpriteRenderer", "SpriteAnimator", "Text3DRenderer", "Animator", "SkeletonSocket" } },
-                { "環境", { "Light", "SkyBox", "VolumetricCloud", "HeightFog", "PostProcess", "WaterSurface" } },
+                { "環境", { "Light", "SkyBox", "VolumetricCloud", "HeightFog", "PostProcess", "WaterSurface", "WaterProbe" } },
                 { "エフェクト", { "ParticleSystem", "GpuParticleSystem" } },
-                { "物理", { "Collider", "Rigidbody", "CharacterController", "PhysicsMaterial" } },
+                { "物理", { "Collider", "Rigidbody", "CharacterController", "PhysicsMaterial", "Buoyancy" } },
                 { "UI", { "RectTransform", "UIImage", "UIText", "UIButton", "UISlider", "UIToggle" } },
                 { "音", { "AudioSource", "AudioListener" } },
             };

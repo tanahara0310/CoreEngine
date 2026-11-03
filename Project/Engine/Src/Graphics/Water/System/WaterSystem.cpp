@@ -8,6 +8,7 @@
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Render/Model/VertexAnimation.h"
 #include "Graphics/Render/RenderDomainContext.h"
+#include "Graphics/Water/Query/WaterHeightQueryManager.h"
 #include "Graphics/Water/Surface/WaterRenderResources.h"
 #include "Graphics/Water/Surface/WaterSurfaceComponent.h"
 #include "Graphics/Water/System/WaterFrameContext.h"
@@ -128,6 +129,12 @@ namespace CoreEngine
             wave_.Advance(Time::DeltaTime(), waterPlane);
             if (waterPlane) {
                 waterPlane->SetSimulationTime(wave_.GetActiveTime(*waterPlane));
+            }
+
+            // GPU が済んだ水面の高さの問い合わせを、オブジェクトの更新より前に受け取る
+            RenderDomainContext* const domain = ctx.engine ? ctx.engine->GetRenderDomainContext() : nullptr;
+            if (WaterHeightQueryManager* const query = domain ? domain->GetWaterHeightQueryManager() : nullptr) {
+                query->CollectResults();
             }
             break;
         }

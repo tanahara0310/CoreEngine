@@ -23,6 +23,8 @@ namespace CoreEngine
     class WaterSeaMapRayTracingManager;
     class FFTOceanManager;
     class WaterFoamSystem;
+    class WaterHeightQueryManager;
+    class WaterQuery;
     class AtmosphereManager;
     class VolumetricCloudManager;
     class FogManager;
@@ -46,7 +48,7 @@ namespace CoreEngine
         void Initialize(GraphicsCore* dxCommon, int32_t width, int32_t height,
             ShaderProgramCache* shaderProgramCache);
 
-        /// @brief 水面の描画に使うマネージャ（水面のレイトレ 4 つ・FFT の海・泡）を、まだなら作る
+        /// @brief 水面の描画に使うマネージャ（水面のレイトレ 4 つ・FFT の海・泡・高さの問い合わせ）を、まだなら作る
         /// @details 水面のあるシーン（WaterSystem の初期化）が呼ぶ。作るまでは各 Get が nullptr を返す。
         ///          一度作ったら Shutdown まで持つ。
         void EnsureWaterInitialized();
@@ -94,6 +96,9 @@ namespace CoreEngine
         WaterSeaMapRayTracingManager* GetWaterSeaMapRayTracingManager() { return rtWaterSeaMapManager_.get(); }
         FFTOceanManager* GetFFTOceanManager() { return fftOceanManager_.get(); }
         WaterFoamSystem* GetWaterFoamSystem() { return waterFoamSystem_.get(); }
+        /// @brief 水面の高さを聞く点の集まり（いつでもある。水面のマネージャを作るまでは結果が届かない）
+        WaterQuery* GetWaterQuery() { return waterQuery_.get(); }
+        WaterHeightQueryManager* GetWaterHeightQueryManager() { return waterHeightQueryManager_.get(); }
         AtmosphereManager* GetAtmosphereManager() { return atmosphereManager_.get(); }
         VolumetricCloudManager* GetVolumetricCloudManager() { return volumetricCloudManager_.get(); }
         FogManager* GetFogManager() { return fogManager_.get(); }
@@ -127,6 +132,8 @@ namespace CoreEngine
         std::unique_ptr<WaterSeaMapRayTracingManager> rtWaterSeaMapManager_;
         std::unique_ptr<FFTOceanManager> fftOceanManager_;
         std::unique_ptr<WaterFoamSystem> waterFoamSystem_;
+        std::unique_ptr<WaterQuery> waterQuery_;
+        std::unique_ptr<WaterHeightQueryManager> waterHeightQueryManager_;
         std::unique_ptr<AtmosphereManager> atmosphereManager_;
         std::unique_ptr<VolumetricCloudManager> volumetricCloudManager_;
         std::unique_ptr<FogManager> fogManager_;
