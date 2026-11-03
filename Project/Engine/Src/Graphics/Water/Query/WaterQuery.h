@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <span>
 #include <vector>
@@ -18,13 +19,15 @@ namespace CoreEngine
     };
 
     /// @brief 水面の高さを聞く点の集まり
-    /// @details 点の位置は毎フレーム GPU で描かれる水面と同じ式で評価し（WaterHeightQueryManager）、
+    /// @details 点の位置は毎フレーム、シーンの水面ごとに GPU で描かれる水面と同じ式で評価し（WaterHeightQueryManager）、
     ///          結果は 1〜2 フレーム遅れで届く。結果を引くときは、評価した位置から今の位置まで水面の傾きで延ばす。
     ///          ロックは持たない（ゲームの更新と描画の記録と同じスレッドから使う）。
     class WaterQuery {
     public:
         /// @brief 同時に持てる点の数（WaterHeightQuery.CS.hlsl の kWaterHeightQueryMaxPoints と同じ値）
         static constexpr uint32_t kMaxPoints = 1024;
+        /// @brief 点ごとに評価する水面の数の上限（主の水とほかの水）
+        static constexpr uint32_t kMaxSurfaces = 8;
         /// @brief 点の番号が無いことを表す値
         static constexpr uint32_t kInvalidPoint = UINT32_MAX;
         /// @brief 評価した位置から傾きで延ばす距離の上限 [m]
@@ -60,7 +63,8 @@ namespace CoreEngine
         void SetPosition(uint32_t point, const Vector3& worldPosition);
 
         /// @brief worldPosition の真上・真下の水面を返す
-        /// @details 点に最後に届いた結果を、評価した位置から worldPosition まで水面の傾きで延ばす
+        /// @details 点に最後に届いた結果を、評価した位置から worldPosition まで水面の傾きで延ばす。
+        ///          水面が重なる所では、高さが worldPosition に最も近い水面を返す
         WaterSample Sample(uint32_t point, const Vector3& worldPosition) const;
 
         // ===== 描画側（WaterHeightQueryManager）=====
@@ -72,7 +76,8 @@ namespace CoreEngine
         void Snapshot(std::vector<Submitted>& out) const;
 
         /// @brief GPU の結果を点へ書く（控えの世代が今の点と同じものだけ）
-        void ApplyResults(std::span<const Submitted> submitted, std::span<const GpuResult> results);
+        /// @param results 水面ごとに点の番号の順で並べた結果（submitted.size() 個ずつ surfaceCount 組）
+        void ApplyResults(std::span<const Submitted> submitted, std::span<const GpuResult> results, uint32_t surfaceCount);
 
         /// @brief 全部の点の結果を捨てる（水面の無いフレーム）
         void ClearResults();
@@ -83,9 +88,9 @@ namespace CoreEngine
             uint32_t generation = 0;
             float x = 0.0f;
             float z = 0.0f;
-            bool hasResult = false;
             Submitted evaluatedAt{}; ///< 結果を評価した位置
-            GpuResult result{};
+            uint32_t resultCount = 0; ///< 届いた結果の数（水面の数。0 なら結果なし）
+            std::array<GpuResult, kMaxSurfaces> results{};
         };
 
         std::vector<Point> points_;

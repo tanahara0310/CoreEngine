@@ -4,6 +4,7 @@
 #include <wrl.h>
 #include <array>
 #include <cstdint>
+#include <span>
 #include <vector>
 
 #include "Graphics/RHI/Command/FrameSync.h"
@@ -26,8 +27,9 @@ namespace CoreEngine
     struct WaterSurfaceData;
 
     /// @brief WaterQuery の点の水面の高さを GPU で評価し、読み戻す
-    /// @details 毎フレーム、点を定数バッファへ積んで WaterHeightQuery.CS.hlsl で評価し、
-    ///          フレームの枠ごとの読み戻し用バッファへ写す。GPU が済んだ枠から順に WaterQuery へ結果を返す。
+    /// @details 毎フレーム、点を定数バッファへ積んで水面ごとに WaterHeightQuery.CS.hlsl で評価し、
+    ///          フレームの枠ごとの読み戻し用バッファの、水面ごとの場所へ写す。
+    ///          GPU が済んだ枠から順に WaterQuery へ結果を返す。
     class WaterHeightQueryManager {
     public:
         /// @brief 傾きを差分で求める間隔 [m]
@@ -45,13 +47,15 @@ namespace CoreEngine
         /// @brief GPU が済んだ枠の結果を WaterQuery へ返す（何度呼んでもよい）
         void CollectResults();
 
-        /// @brief 今の点を評価する（FFT の波面を計算した後に呼ぶ）
-        /// @param surfaceData このフレームの水面の状態（水面が無ければ nullptr）
-        /// @param fftOceanInput FFT の海の波面テクスチャ。displacementSRV は Gerstner の波面でも有効な SRV を渡す
+        /// @brief 今の点を、範囲のある水面ごとに評価する（FFT の波面を計算した後に呼ぶ）
+        /// @param primarySurface 主の水の状態（水面が無ければ nullptr）
+        /// @param otherSurfaces ほかの水の水面の状態
+        /// @param fallbackDisplacementSRV FFT の海で描いていない水面の、変位テクスチャのスロットに差す SRV
         void Dispatch(
             ID3D12GraphicsCommandList* cmdList,
-            const WaterSurfaceData* surfaceData,
-            const WaterRayTracingPassBase::FFTOceanInput& fftOceanInput);
+            const WaterSurfaceData* primarySurface,
+            std::span<const WaterSurfaceData> otherSurfaces,
+            D3D12_GPU_DESCRIPTOR_HANDLE fallbackDisplacementSRV);
 
     private:
         /// @brief 計算シェーダーの定数（WaterHeightQuery.CS.hlsl の WaterHeightQueryConstants）
@@ -75,6 +79,8 @@ namespace CoreEngine
             /// @brief 記録したときの枠のフェンス値（この値から変われば、そのフレームを GPU へ投げた）
             uint64_t fenceBeforeSubmit = 0;
             std::vector<WaterQuery::Submitted> submitted;
+            /// @brief 評価した水面の数（読み戻しには submitted.size() 個ずつ並ぶ）
+            uint32_t surfaceCount = 0;
         };
 
         bool CreatePipeline();
@@ -100,5 +106,9 @@ namespace CoreEngine
         std::array<PendingFrame, kMaxFramesInFlight> pendingFrames_{};
         /// @brief 読み戻した結果の写し
         std::vector<WaterQuery::GpuResult> resultScratch_;
+        /// @brief このフレームに評価する水面（毎フレーム使い回す）
+        std::vector<const WaterSurfaceData*> surfaceScratch_;
+        /// @brief 水面の数が上限を超えたことを知らせたか
+        bool warnedSurfaceLimit_ = false;
     };
 }

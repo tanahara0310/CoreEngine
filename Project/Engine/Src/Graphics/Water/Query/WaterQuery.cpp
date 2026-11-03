@@ -31,7 +31,7 @@ namespace CoreEngine
         ++slot.generation;
         slot.x = worldPosition.x;
         slot.z = worldPosition.z;
-        slot.hasResult = false;
+        slot.resultCount = 0;
         return point;
     }
 
@@ -42,7 +42,7 @@ namespace CoreEngine
         }
         Point& slot = points_[point];
         slot.active = false;
-        slot.hasResult = false;
+        slot.resultCount = 0;
         freePoints_.push_back(point);
     }
 
@@ -62,7 +62,7 @@ namespace CoreEngine
             return sample;
         }
         const Point& slot = points_[point];
-        if (!slot.active || !slot.hasResult || (slot.result.flags & kGpuResultInWater) == 0) {
+        if (!slot.active) {
             return sample;
         }
 
@@ -76,9 +76,23 @@ namespace CoreEngine
             deltaZ *= scale;
         }
 
-        sample.inWater = true;
-        sample.surfaceHeight = slot.result.height + slot.result.slopeX * deltaX + slot.result.slopeZ * deltaZ;
-        sample.normal = Normalize(Vector3{ -slot.result.slopeX, 1.0f, -slot.result.slopeZ });
+        // 範囲の中にある水面のうち、高さが worldPosition に最も近いものを返す
+        float nearestGap = 0.0f;
+        for (uint32_t i = 0; i < slot.resultCount; ++i) {
+            const GpuResult& result = slot.results[i];
+            if ((result.flags & kGpuResultInWater) == 0) {
+                continue;
+            }
+            const float height = result.height + result.slopeX * deltaX + result.slopeZ * deltaZ;
+            const float gap = std::abs(height - worldPosition.y);
+            if (sample.inWater && gap >= nearestGap) {
+                continue;
+            }
+            sample.inWater = true;
+            sample.surfaceHeight = height;
+            sample.normal = Normalize(Vector3{ -result.slopeX, 1.0f, -result.slopeZ });
+            nearestGap = gap;
+        }
         return sample;
     }
 
@@ -92,24 +106,32 @@ namespace CoreEngine
         }
     }
 
-    void WaterQuery::ApplyResults(std::span<const Submitted> submitted, std::span<const GpuResult> results)
+    void WaterQuery::ApplyResults(
+        std::span<const Submitted> submitted, std::span<const GpuResult> results, uint32_t surfaceCount)
     {
-        const size_t count = (std::min)({ submitted.size(), results.size(), points_.size() });
+        const size_t stride = submitted.size();
+        surfaceCount = (std::min)(surfaceCount, kMaxSurfaces);
+        if (stride == 0 || results.size() < stride * surfaceCount) {
+            return;
+        }
+        const size_t count = (std::min)(stride, points_.size());
         for (size_t i = 0; i < count; ++i) {
             Point& slot = points_[i];
             if (!slot.active || submitted[i].generation != slot.generation) {
                 continue;
             }
-            slot.hasResult = true;
             slot.evaluatedAt = submitted[i];
-            slot.result = results[i];
+            slot.resultCount = surfaceCount;
+            for (uint32_t surface = 0; surface < surfaceCount; ++surface) {
+                slot.results[surface] = results[surface * stride + i];
+            }
         }
     }
 
     void WaterQuery::ClearResults()
     {
         for (Point& slot : points_) {
-            slot.hasResult = false;
+            slot.resultCount = 0;
         }
     }
 

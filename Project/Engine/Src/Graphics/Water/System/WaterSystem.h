@@ -94,9 +94,13 @@ namespace CoreEngine
         /// @brief 主の水とほかの水の水面を out へ並べる（主の水が先頭）
         void GatherWaterPlanes(std::vector<WaterSurfaceComponent*>& out) const;
 
-        /// @brief ほかの水の水面へ、潮・見た目と水質・Gerstner の波・シーンの色と空の結線を渡す
+        /// @brief ほかの水の水面へ、潮・見た目と水質・Gerstner の波・シーンの色と空の結線を渡し、
+        ///        水面の状態を secondarySurfaceStates_ へ作る
         void UpdateSecondaryWaterPlanes(
-            SceneContext& ctx, RenderDomainContext& domain, const LightManager* lightManager) const;
+            SceneContext& ctx, RenderDomainContext& domain, const LightManager* lightManager);
+
+        /// @brief 水面の波・潮・範囲・格子の分割数を out へ書く（主の水とほかの水で共通の部分）
+        void CaptureSurface(RenderDomainContext& domain, const WaterSurfaceComponent& waterPlane, WaterSurfaceData& out) const;
 
         /// @brief 生成直後の水面マテリアル既定値を設定する
         void ConfigureDefaultMaterial() const;
@@ -131,8 +135,11 @@ namespace CoreEngine
         /// @brief このフレームの設定（水面の WaterProfile・シーンの風・プロジェクトの品質の設定から作る）
         WaterSettings settings_{};
 
-        /// @brief このフレームの水面の状態（描画側へ渡す実体）
+        /// @brief このフレームの主の水の状態（描画側へ渡す実体）
         WaterSurfaceData snapshot_{};
+
+        /// @brief このフレームのほかの水の水面の状態（水面の高さの問い合わせへ渡す実体）
+        std::vector<WaterSurfaceData> secondarySurfaceStates_;
 
         WaterWaveModule wave_{};
         WaterTideModule tide_{};
