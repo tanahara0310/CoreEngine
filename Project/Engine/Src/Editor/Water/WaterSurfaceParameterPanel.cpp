@@ -3,7 +3,7 @@
 
 #ifdef CORE_EDITOR
 
-#include "Graphics/Water/Foam/WaterFoamSystem.h"
+#include "Graphics/Water/Foam/WaterWhitecapFoam.h"
 #include "Graphics/Water/System/WaterSystem.h"
 #include "Graphics/Water/Surface/WaterSurfaceComponent.h"
 #include "Graphics/Water/WaterCVars.h"
@@ -536,9 +536,9 @@ bool WaterSurfaceParameterPanel::DrawFoamSection(const Target& target, WaterSyst
 	bool changed = target.Rows({ "foamEnabled" });
 	ImGui::BeginDisabled(!target.water.GetProfile().foamEnabled);
 	changed = target.Rows({ "foamWhitecapScale" }) || changed;
-	if (const WaterFoamSystem* foam = runtimeController ? runtimeController->GetWaterFoamSystem() : nullptr) {
+	if (const WaterWhitecapFoam* foam = runtimeController ? runtimeController->GetWaterWhitecapFoam() : nullptr) {
 		InfoRow("白波の割合", std::format("目標 {:.2f}% ／ 実測 {:.2f}%",
-			foam->GetTargetWhitecapCoverage() * 100.0f, foam->GetMeasuredWhitecapCoverage() * 100.0f));
+			foam->GetTargetCoverage() * 100.0f, foam->GetMeasuredCoverage() * 100.0f));
 	}
 	changed = target.Rows({ "foamOpacity", "foamDecaySeconds", "foamCascadeWeights" }) || changed;
 	ImGui::EndDisabled();

@@ -58,8 +58,8 @@ cbuffer WaterFrameConstants : register(b5)
 
     // ---- 泡（whitecap）。FFTOcean 専用（Gerstner はヤコビアンを持たない）----
     int gFoamEnabled;      // 1 = 泡合成を行う
-    float gFoamBias;       // 砕けるしきい値（合成 detJ がこれ未満で泡。WaterFoamSystem が較正する）
-    float gFoamGain;       // しきい値からの立ち上がり勾配（WaterFoamSystem が較正する）
+    float gFoamBias;       // 砕けるしきい値（合成 detJ がこれ未満で泡。WaterWhitecapFoam が較正する）
+    float gFoamGain;       // しきい値からの立ち上がり勾配（WaterWhitecapFoam が較正する）
     float gFoamOpacity;    // 泡レイヤの不透明度（1.0 の白ベタは禁止・水面下の情報を残す）
     float3 gFoamCascadeWeights; // カスケード別の勾配寄与（無重みは31mカスケードが支配して飽和する）
     // 泡の寿命 τ [s]。PS では未使用（FFTOceanFoamAccumulate.CS が使う）。
@@ -82,9 +82,9 @@ cbuffer WaterFrameConstants : register(b5)
     // 波群エンベロープの位相のずれ [rad]（ComputeFFTWaveGroupEnvelope。FFTWater.VS も読む）
     float3 gWaveGroupPhase;
 
-    // 白波の泡が風下へ流れた距離 [m]（WaterFoamSystem::ComputeFoamDriftOffset）
+    // 白波の泡が風下へ流れた距離 [m]（WaterWhitecapFoam::ComputeDriftOffset）
     float2 gFoamDriftOffsetXZ;
-    // 白波の泡の模様を風の向きに伸ばす軸（風下 × √(1 − 1/伸び率)。WaterFoamSystem::ComputeFoamStretchAxis）
+    // 白波の泡の模様を風の向きに伸ばす軸（風下 × √(1 − 1/伸び率)。WaterWhitecapFoam::ComputeStretchAxis）
     float2 gFoamStretchAxis;
 
     // ---- 水面メッシュの粗い格子（岸の細かい格子の端を粗い格子の形へ寄せるのに使う）----

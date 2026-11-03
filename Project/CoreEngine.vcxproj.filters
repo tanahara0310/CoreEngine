@@ -418,7 +418,10 @@
     <ClCompile Include="Engine\Src\Graphics\Water\FFT\FFTOceanManager.cpp">
       <Filter>Engine\Src\Graphics\Water\FFT</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Water\Foam\WaterFoamSystem.cpp">
+    <ClCompile Include="Engine\Src\Graphics\Water\Foam\WaterShoreFoam.cpp">
+      <Filter>Engine\Src\Graphics\Water\Foam</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\Foam\WaterWhitecapFoam.cpp">
       <Filter>Engine\Src\Graphics\Water\Foam</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\FFT\FFTOceanReadbackHelper.cpp">
@@ -3162,7 +3165,10 @@
     <ClInclude Include="Engine\Src\Graphics\Water\FFT\FFTOceanManager.h">
       <Filter>Engine\Src\Graphics\Water\FFT</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Water\Foam\WaterFoamSystem.h">
+    <ClInclude Include="Engine\Src\Graphics\Water\Foam\WaterShoreFoam.h">
+      <Filter>Engine\Src\Graphics\Water\Foam</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\Foam\WaterWhitecapFoam.h">
       <Filter>Engine\Src\Graphics\Water\Foam</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\FFT\FFTOceanReadbackHelper.h">

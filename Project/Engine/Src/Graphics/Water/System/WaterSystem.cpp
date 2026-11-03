@@ -207,9 +207,9 @@ namespace CoreEngine
         }
     }
 
-    const WaterFoamSystem* WaterSystem::GetWaterFoamSystem() const
+    const WaterWhitecapFoam* WaterSystem::GetWaterWhitecapFoam() const
     {
-        return publishTarget_ ? publishTarget_->GetWaterFoamSystem() : nullptr;
+        return publishTarget_ ? publishTarget_->GetWaterWhitecapFoam() : nullptr;
     }
 
     WaterSurfaceComponent* WaterSystem::GetWaterPlane() const

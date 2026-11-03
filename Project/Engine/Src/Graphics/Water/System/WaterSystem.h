@@ -21,7 +21,7 @@ namespace CoreEngine
 {
     class RenderDomainContext;
     class WaterEditorPanel;
-    class WaterFoamSystem;
+    class WaterWhitecapFoam;
     class WaterSurfaceComponent;
     struct WaterFrameBinding;
     struct WaterFrameContext;
@@ -66,8 +66,8 @@ namespace CoreEngine
         /// @brief 管理中の水面オブジェクトを返す（未生成か、消えていれば nullptr）
         WaterSurfaceComponent* GetWaterPlane() const;
 
-        /// @brief 泡の時間変化を進めるシステムを返す（描画側に無ければ nullptr）
-        const WaterFoamSystem* GetWaterFoamSystem() const;
+        /// @brief 沖の白波の泡を返す（描画側に無ければ nullptr）
+        const WaterWhitecapFoam* GetWaterWhitecapFoam() const;
 
         /// @brief 現在の水面高さ（ワールド Y。潮位を含む）を返す
         float GetWaterHeight() const;

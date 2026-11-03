@@ -22,7 +22,8 @@ namespace CoreEngine
     class WaterSeabedRayTracingManager;
     class WaterSeaMapRayTracingManager;
     class FFTOceanManager;
-    class WaterFoamSystem;
+    class WaterShoreFoam;
+    class WaterWhitecapFoam;
     class WaterHeightQueryManager;
     class WaterQuery;
     class AtmosphereManager;
@@ -95,7 +96,8 @@ namespace CoreEngine
         WaterSeabedRayTracingManager* GetWaterSeabedRayTracingManager() { return rtWaterSeabedManager_.get(); }
         WaterSeaMapRayTracingManager* GetWaterSeaMapRayTracingManager() { return rtWaterSeaMapManager_.get(); }
         FFTOceanManager* GetFFTOceanManager() { return fftOceanManager_.get(); }
-        WaterFoamSystem* GetWaterFoamSystem() { return waterFoamSystem_.get(); }
+        WaterWhitecapFoam* GetWaterWhitecapFoam() { return waterWhitecapFoam_.get(); }
+        WaterShoreFoam* GetWaterShoreFoam() { return waterShoreFoam_.get(); }
         /// @brief 水面の高さを聞く点の集まり（いつでもある。水面のマネージャを作るまでは結果が届かない）
         WaterQuery* GetWaterQuery() { return waterQuery_.get(); }
         WaterHeightQueryManager* GetWaterHeightQueryManager() { return waterHeightQueryManager_.get(); }
@@ -131,7 +133,8 @@ namespace CoreEngine
         std::unique_ptr<WaterSeabedRayTracingManager> rtWaterSeabedManager_;
         std::unique_ptr<WaterSeaMapRayTracingManager> rtWaterSeaMapManager_;
         std::unique_ptr<FFTOceanManager> fftOceanManager_;
-        std::unique_ptr<WaterFoamSystem> waterFoamSystem_;
+        std::unique_ptr<WaterWhitecapFoam> waterWhitecapFoam_;
+        std::unique_ptr<WaterShoreFoam> waterShoreFoam_;
         std::unique_ptr<WaterQuery> waterQuery_;
         std::unique_ptr<WaterHeightQueryManager> waterHeightQueryManager_;
         std::unique_ptr<AtmosphereManager> atmosphereManager_;

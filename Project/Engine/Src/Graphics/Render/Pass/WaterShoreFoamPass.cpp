@@ -3,16 +3,16 @@
 
 #include "Graphics/Render/RenderGraph.h"
 #include "Graphics/Water/FFT/FFTOceanManager.h"
-#include "Graphics/Water/Foam/WaterFoamSystem.h"
+#include "Graphics/Water/Foam/WaterShoreFoam.h"
 #include "Graphics/Water/RayTracing/WaterSeabedRayTracingManager.h"
 #include "Graphics/Water/WaterSurfaceData.h"
 
 namespace CoreEngine
 {
-    static_assert(WaterFoamSystem::kShoreResolution * WaterFoamSystem::kShoreTexelSize
+    static_assert(WaterShoreFoam::kResolution * WaterShoreFoam::kTexelSize
             == WaterSeabedRayTracingManager::kResolution * WaterSeabedRayTracingManager::kTexelSize,
         "岸の泡の格子は海底の高さと同じ範囲を覆う");
-    static_assert(WaterSeabedRayTracingManager::kWindowSnapMeters == WaterFoamSystem::kShoreTexelSize,
+    static_assert(WaterSeabedRayTracingManager::kWindowSnapMeters == WaterShoreFoam::kTexelSize,
         "範囲の角は岸の泡の格子に揃う");
 
     void WaterShoreFoamPass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
@@ -26,10 +26,10 @@ namespace CoreEngine
         if (!context.waterSurfaceState || context.waterSurfaceState->regionValid == 0 || !context.cmdList) {
             return;
         }
-        auto* foam = context.waterFoamSystem;
+        auto* foam = context.waterShoreFoam;
         auto* seabed = context.rtWaterSeabedManager;
         auto* fftOcean = context.fftOceanManager;
-        if (!foam || !foam->IsShoreActive() || !seabed || !seabed->IsInitialized()
+        if (!foam || !foam->IsActive() || !seabed || !seabed->IsInitialized()
             || !fftOcean || !fftOcean->IsInitialized()) {
             return;
         }
@@ -41,7 +41,7 @@ namespace CoreEngine
             return;
         }
 
-        WaterFoamSystem::ShoreInput input{};
+        WaterShoreFoam::Input input{};
         input.seabedHeightSRV = seabedSRV;
         input.seabedResolution = WaterSeabedRayTracingManager::kResolution;
         input.windowOriginXZ[0] = window.originX;
@@ -56,13 +56,13 @@ namespace CoreEngine
         for (size_t i = 0; i < waveGroupPhase.size(); ++i) {
             input.waveGroupPhase[i] = waveGroupPhase[i];
         }
-        foam->DispatchShore(context.cmdList, input);
+        foam->Dispatch(context.cmdList, input);
 
         if (context.frameBlackboard) {
             context.frameBlackboard->SetResource(
                 FrameBlackboard::WaterShoreFoam,
-                foam->GetLatestShoreSRVHandle(),
-                &foam->GetLatestShoreResource());
+                foam->GetLatestSRVHandle(),
+                &foam->GetLatestResource());
         }
     }
 }

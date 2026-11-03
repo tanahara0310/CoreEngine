@@ -110,11 +110,11 @@ struct WaterFrameConstants {
 	// 1 = 水面の日向率テクスチャ（RT 反射パスの 2 枚目の出力）をメインライトの項へ掛ける
 	int sunVisibilityEnabled = 0;
 	// ---- 泡（whitecap）。FFTOcean 専用（Gerstner はヤコビアンを持たないため無効）----
-	// 既定値は WaterFoamDefaults が唯一の情報源。CVar / WaterFoamSystem::Settings / WhitecapConstants と
+	// 既定値は WaterFoamDefaults が唯一の情報源。CVar / WaterWhitecapFoam::Settings / FoamConstants と
 	// 同じ定数を参照するので、片側だけ直して割れることが構造上ない。
 	// 各パラメータの意味と較正根拠は WaterFoamDefaults.h を参照。
 	int foamEnabled = CoreEngine::WaterFoamDefaults::kEnabled ? 1 : 0;
-	// 砕けるしきい値と立ち上がりの傾き（WaterFoamSystem が白波の被覆率から較正した値）
+	// 砕けるしきい値と立ち上がりの傾き（WaterWhitecapFoam が白波の被覆率から較正した値）
 	float foamBias = CoreEngine::WaterFoamDefaults::kBias;
 	float foamGain = CoreEngine::WaterFoamDefaults::kGain;
 	float foamOpacity = CoreEngine::WaterFoamDefaults::kOpacity;
@@ -124,7 +124,7 @@ struct WaterFrameConstants {
 		CoreEngine::WaterFoamDefaults::kCascadeWeights[2],
 	};
 	// 泡の寿命 τ [s]。PS 未使用だが実行時の値の単一情報源としてここに持ち、
-	// WaterSystem が毎フレーム WaterFoamSystem::SetSettings へ渡す
+	// WaterSystem が毎フレーム WaterWhitecapFoam::SetSettings へ渡す
 	float foamDecaySeconds = CoreEngine::WaterFoamDefaults::kDecaySeconds;
 	// ---- 見えない細かい波のラフネス換算 ----
 	// FFT カスケードごとの平均二乗傾斜（x・z の傾きの二乗和の平均。FFTOceanManager が求める）
@@ -139,9 +139,9 @@ struct WaterFrameConstants {
 	int shoreFoamEnabled = 0;                  // 1 = 範囲の中の岸の泡を gWaterShoreFoam から読む
 	// 波群エンベロープの位相のずれ [rad]（FFTOceanSpectrum::ComputeWaveGroupPhase）
 	float waveGroupPhase[3] = { 0.0f, 0.0f, 0.0f };
-	// 白波の泡が風下へ流れた距離 [m]（WaterFoamSystem::ComputeFoamDriftOffset）
+	// 白波の泡が風下へ流れた距離 [m]（WaterWhitecapFoam::ComputeDriftOffset）
 	float foamDriftOffsetXZ[2] = { 0.0f, 0.0f };
-	// 白波の泡の模様を風の向きに伸ばす軸（WaterFoamSystem::ComputeFoamStretchAxis）
+	// 白波の泡の模様を風の向きに伸ばす軸（WaterWhitecapFoam::ComputeStretchAxis）
 	float foamStretchAxis[2] = { 0.0f, 0.0f };
 	// ---- 水面メッシュの粗い格子（岸の細かい格子の端を粗い格子の形へ寄せるのに使う）----
 	float meshGridOriginXZ[2] = { 0.0f, 0.0f }; // 粗い格子の XZ の最小の角 [m]

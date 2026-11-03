@@ -5,7 +5,7 @@
 
 #include "Camera/Camera.h"
 #include "Graphics/Render/RenderDomainContext.h"
-#include "Graphics/Water/Foam/WaterFoamSystem.h"
+#include "Graphics/Water/Foam/WaterShoreFoam.h"
 #include "Graphics/Water/RayTracing/WaterSeabedRayTracingManager.h"
 #include "Graphics/Water/Surface/WaterRenderResources.h"
 #include "Graphics/Water/Surface/WaterSurfaceComponent.h"
@@ -46,8 +46,8 @@ namespace CoreEngine
             && frame.settings.shoreFineMeshEnabled;
 
         // 岸の泡。同じフレームの WaterShoreFoamPass が同じ範囲で書く
-        if (const WaterFoamSystem* foam = frame.domain.GetWaterFoamSystem(); foam && foam->IsShoreActive()) {
-            window_.shoreFoamSRV = foam->GetShoreSRVHandle();
+        if (const WaterShoreFoam* foam = frame.domain.GetWaterShoreFoam(); foam && foam->IsActive()) {
+            window_.shoreFoamSRV = foam->GetSRVHandle();
         }
     }
 

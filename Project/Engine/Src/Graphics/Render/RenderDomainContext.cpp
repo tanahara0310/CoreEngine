@@ -12,7 +12,8 @@
 #include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterReflectionRayTracingManager.h"
 #include "Graphics/Water/FFT/FFTOceanManager.h"
-#include "Graphics/Water/Foam/WaterFoamSystem.h"
+#include "Graphics/Water/Foam/WaterShoreFoam.h"
+#include "Graphics/Water/Foam/WaterWhitecapFoam.h"
 #include "Graphics/Water/Query/WaterHeightQueryManager.h"
 #include "Graphics/Water/Query/WaterQuery.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
@@ -163,11 +164,17 @@ namespace CoreEngine
                 "RenderDomainContext: FFTOceanManager 初期化完了\n");
         }
 
-        waterFoamSystem_ = std::make_unique<WaterFoamSystem>();
-        if (fftOceanManager_->IsInitialized()
-            && waterFoamSystem_->Initialize(dxCommon, descriptorAllocator, fftOceanManager_->GetSettings().resolution)) {
-            Logger::GetInstance().Infof(LogCategory::Graphics,
-                "RenderDomainContext: WaterFoamSystem 初期化完了\n");
+        waterWhitecapFoam_ = std::make_unique<WaterWhitecapFoam>();
+        waterShoreFoam_ = std::make_unique<WaterShoreFoam>();
+        if (fftOceanManager_->IsInitialized()) {
+            if (waterWhitecapFoam_->Initialize(dxCommon, descriptorAllocator, fftOceanManager_->GetSettings().resolution)) {
+                Logger::GetInstance().Infof(LogCategory::Graphics,
+                    "RenderDomainContext: WaterWhitecapFoam 初期化完了\n");
+            }
+            if (waterShoreFoam_->Initialize(dxCommon, descriptorAllocator)) {
+                Logger::GetInstance().Infof(LogCategory::Graphics,
+                    "RenderDomainContext: WaterShoreFoam 初期化完了\n");
+            }
         }
 
         waterHeightQueryManager_ = std::make_unique<WaterHeightQueryManager>();
@@ -215,7 +222,8 @@ namespace CoreEngine
         rtWaterRefractionManager_.reset();
         rtShadowManager_.reset();
         waterHeightQueryManager_.reset();
-        waterFoamSystem_.reset();
+        waterShoreFoam_.reset();
+        waterWhitecapFoam_.reset();
         fftOceanManager_.reset();
         vertexAnimationDeformer_.reset();
         accelerationStructureManager_.reset();
@@ -258,7 +266,8 @@ namespace CoreEngine
         context.rtWaterSeabedManager = rtWaterSeabedManager_.get();
         context.rtWaterSeaMapManager = rtWaterSeaMapManager_.get();
         context.fftOceanManager = fftOceanManager_.get();
-        context.waterFoamSystem = waterFoamSystem_.get();
+        context.waterWhitecapFoam = waterWhitecapFoam_.get();
+        context.waterShoreFoam = waterShoreFoam_.get();
         context.waterHeightQueryManager = waterHeightQueryManager_.get();
         context.atmosphereManager = atmosphereManager_.get();
         context.volumetricCloudManager = volumetricCloudManager_.get();

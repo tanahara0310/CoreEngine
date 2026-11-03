@@ -339,7 +339,8 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Graphics\Water\Query\WaterQuery.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\FFT\FFTOceanDispatchHelper.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\FFT\FFTOceanManager.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Water\Foam\WaterFoamSystem.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\Foam\WaterShoreFoam.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\Foam\WaterWhitecapFoam.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\FFT\FFTOceanReadbackHelper.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\FFT\FFTOceanResourceFactory.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\FFT\FFTOceanSpectrumBuilder.cpp" />
@@ -1793,7 +1794,8 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\Water\FFT\FFTOceanDispatchHelper.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFT\FFTOceanGpuResources.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFT\FFTOceanManager.h" />
-    <ClInclude Include="Engine\Src\Graphics\Water\Foam\WaterFoamSystem.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\Foam\WaterShoreFoam.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\Foam\WaterWhitecapFoam.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFT\FFTOceanReadbackHelper.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFT\FFTOceanResourceFactory.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFT\FFTOceanSpectrumBuilder.h" />
