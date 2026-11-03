@@ -315,6 +315,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\GodRayPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\FrameBlackboard.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\FFTOceanPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\WaterHeightQueryPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\ASBuildPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTShadowPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterCausticsPass.cpp" />
@@ -333,6 +334,9 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Graphics\Water\WaterCVars.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\WaterProfile.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\WaterSettingsMigration.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\Query\WaterHeightQueryManager.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\Query\WaterProbeComponent.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\Query\WaterQuery.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanDispatchHelper.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\FFTOceanManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Foam\WaterFoamSystem.cpp" />
@@ -374,6 +378,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Collision\CollisionWorld.cpp" />
     <ClCompile Include="Engine\Src\Physics\PhysicsWorld.cpp" />
     <ClCompile Include="Engine\Src\Physics\RigidbodyComponent.cpp" />
+    <ClCompile Include="Engine\Src\Physics\BuoyancyComponent.cpp" />
     <ClCompile Include="Engine\Src\Physics\PhysicsMaterialComponent.cpp" />
     <ClCompile Include="Engine\Src\Physics\CharacterControllerComponent.cpp" />
     <ClCompile Include="Engine\Src\Physics\ContactSolver.cpp" />
@@ -1526,6 +1531,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Physics\PhysicsKey.h" />
     <ClInclude Include="Engine\Src\Physics\PhysicsWorld.h" />
     <ClInclude Include="Engine\Src\Physics\RigidbodyComponent.h" />
+    <ClInclude Include="Engine\Src\Physics\BuoyancyComponent.h" />
     <ClInclude Include="Engine\Src\Physics\PhysicsMaterialComponent.h" />
     <ClInclude Include="Engine\Src\Physics\CharacterControllerComponent.h" />
     <ClInclude Include="Engine\Src\Physics\ContactSolver.h" />
@@ -1675,6 +1681,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\BackBufferPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\DeferredLightingPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\FFTOceanPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\WaterHeightQueryPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Culling\HiZOcclusionSystem.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Culling\ModelVisibility.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\RenderOptimizationSettings.h" />
@@ -1781,6 +1788,9 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\Water\WaterCVars.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\WaterProfile.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\WaterSettingsMigration.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\Query\WaterHeightQueryManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\Query\WaterProbeComponent.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\Query\WaterQuery.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanDispatchHelper.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanGpuResources.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFTOceanManager.h" />

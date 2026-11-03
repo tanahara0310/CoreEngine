@@ -13,6 +13,8 @@
 #include "Graphics/Water/RayTracing/WaterReflectionRayTracingManager.h"
 #include "Graphics/Water/FFTOceanManager.h"
 #include "Graphics/Water/Foam/WaterFoamSystem.h"
+#include "Graphics/Water/Query/WaterHeightQueryManager.h"
+#include "Graphics/Water/Query/WaterQuery.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Cloud/VolumetricCloudManager.h"
 #include "Graphics/Fog/FogManager.h"
@@ -22,7 +24,10 @@
 
 namespace CoreEngine
 {
-    RenderDomainContext::RenderDomainContext() = default;
+    RenderDomainContext::RenderDomainContext()
+        : waterQuery_(std::make_unique<WaterQuery>())
+    {
+    }
 
     RenderDomainContext::~RenderDomainContext()
     {
@@ -164,6 +169,12 @@ namespace CoreEngine
             Logger::GetInstance().Infof(LogCategory::Graphics,
                 "RenderDomainContext: WaterFoamSystem 初期化完了\n");
         }
+
+        waterHeightQueryManager_ = std::make_unique<WaterHeightQueryManager>();
+        if (waterHeightQueryManager_->Initialize(dxCommon, descriptorAllocator, shaderProgramCache, waterQuery_.get())) {
+            Logger::GetInstance().Infof(LogCategory::Graphics,
+                "RenderDomainContext: WaterHeightQueryManager 初期化完了\n");
+        }
     }
 
     void RenderDomainContext::WaitForRayTracingPipelines()
@@ -203,6 +214,7 @@ namespace CoreEngine
         rtWaterReflectionManager_.reset();
         rtWaterRefractionManager_.reset();
         rtShadowManager_.reset();
+        waterHeightQueryManager_.reset();
         waterFoamSystem_.reset();
         fftOceanManager_.reset();
         vertexAnimationDeformer_.reset();
@@ -247,6 +259,7 @@ namespace CoreEngine
         context.rtWaterSeaMapManager = rtWaterSeaMapManager_.get();
         context.fftOceanManager = fftOceanManager_.get();
         context.waterFoamSystem = waterFoamSystem_.get();
+        context.waterHeightQueryManager = waterHeightQueryManager_.get();
         context.atmosphereManager = atmosphereManager_.get();
         context.volumetricCloudManager = volumetricCloudManager_.get();
         context.fogManager = fogManager_.get();

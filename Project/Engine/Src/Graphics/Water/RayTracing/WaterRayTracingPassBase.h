@@ -16,6 +16,8 @@
 
 namespace CoreEngine
 {
+    class FFTOceanManager;
+
     /// @brief DXR 水面パス共通のビュー識別子
     enum class RTWaterViewID : uint32_t {
         GameView = 0,
@@ -69,6 +71,79 @@ namespace CoreEngine
 
         /// @brief 直近ディスパッチ時の有効波数（診断ログ用）
         uint32_t GetLastActiveWaveCount() const { return lastActiveWaveCount_; }
+
+        /// @brief b1 の水面サーフェス定数（RTWaterSurfaceCommon.hlsli の cbuffer WaterSurfaceData）
+        struct alignas(16) WaterSurfaceConstants {
+            float waterHeight = 0.0f;
+            uint32_t activeWaveCount = 0;
+            float time = 0.0f;
+            uint32_t simulationType = kWaterSurfaceModelTypeGerstner;
+            WaterWaveParam waves[kMaxWaterSurfaceWaveCount]{};
+            // ---- Phase 3 で b0 の 3 重定義から b1 へ一本化した FFT 有効情報 ----
+            // HLSL 側 RTWaterSurfaceCommon.hlsli の cbuffer WaterSurfaceData と一致必須。
+            uint32_t fftOceanEnabled = 0;
+            uint32_t fftOceanResolution = 0;
+            // 水面メッシュの分割数（coverage 判定のメッシュ同一基準化に使う。
+            // 以前はシェーダー側の kWaterMeshSubdivisions=256 ハードコードで、
+            // シーン側の変更で静かに壊れる構造だった）
+            float meshSubdivisions = 256.0f;
+            uint32_t regionValid = 0;                     ///< 0 = 水面メッシュの範囲が分からない
+            // FFT カスケードごとの平均二乗傾斜（x・z の傾きの二乗和の平均）
+            float cascadeMeanSquareSlope[3] = { 0.0f, 0.0f, 0.0f };
+            float fineWaveMeanSquareSlope = 0.0f;         ///< カスケードより細かい波の平均二乗傾斜
+            float regionCenterXZ[2] = { 0.0f, 0.0f };     ///< 水面メッシュのワールド XZ 範囲の中心
+            float regionHalfExtentXZ[2] = { 0.0f, 0.0f }; ///< 水面メッシュのワールド XZ 範囲の半分の大きさ
+            float waveGroupPhase[3] = { 0.0f, 0.0f, 0.0f };   ///< 波群エンベロープの位相のずれ [rad]
+            float pad2 = 0.0f;
+            // ---- 岸の細かい格子（WaterSurfaceData の同名の値）----
+            uint32_t shoreMeshEnabled = 0;
+            float shoreMeshSize = 0.0f;
+            float shoreMeshOriginXZ[2] = { 0.0f, 0.0f };
+            float shoreMeshCellSize = 0.0f;
+            float shoreMeshBlendWidth = 0.0f;
+            float pad3[2] = { 0.0f, 0.0f };
+            // ---- 海の範囲マップ（WaterSeaMapBinding の同名の値）----
+            float seaMapOriginXZ[2] = { 0.0f, 0.0f };
+            float seaMapTexelsPerMeter = 0.0f;
+            uint32_t seaMapSrvIndex = 0;
+            uint32_t seaMapResolution[2] = { 0, 0 };
+            float seaMapDepthOffset = 0.0f;
+            float seaMapInvWaveHeight = 0.0f;
+        };
+
+        static_assert(sizeof(WaterSurfaceConstants) == 16 + 32 * kMaxWaterSurfaceWaveCount + 128,
+            "WaterSurfaceConstants layout mismatch with RTWaterSurfaceCommon.hlsli cbuffer");
+
+        static constexpr Cb::Field kWaterSurfaceConstantsFields[] = {
+            CB_FIELD(WaterSurfaceConstants, waterHeight), CB_FIELD(WaterSurfaceConstants, activeWaveCount),
+            CB_FIELD(WaterSurfaceConstants, time), CB_FIELD(WaterSurfaceConstants, simulationType),
+            CB_FIELD(WaterSurfaceConstants, waves), CB_FIELD(WaterSurfaceConstants, fftOceanEnabled),
+            CB_FIELD(WaterSurfaceConstants, fftOceanResolution), CB_FIELD(WaterSurfaceConstants, meshSubdivisions),
+            CB_FIELD(WaterSurfaceConstants, regionValid), CB_FIELD(WaterSurfaceConstants, cascadeMeanSquareSlope),
+            CB_FIELD(WaterSurfaceConstants, fineWaveMeanSquareSlope), CB_FIELD(WaterSurfaceConstants, regionCenterXZ),
+            CB_FIELD(WaterSurfaceConstants, regionHalfExtentXZ), CB_FIELD(WaterSurfaceConstants, waveGroupPhase),
+            CB_FIELD(WaterSurfaceConstants, pad2), CB_FIELD(WaterSurfaceConstants, shoreMeshEnabled),
+            CB_FIELD(WaterSurfaceConstants, shoreMeshSize), CB_FIELD(WaterSurfaceConstants, shoreMeshOriginXZ),
+            CB_FIELD(WaterSurfaceConstants, shoreMeshCellSize), CB_FIELD(WaterSurfaceConstants, shoreMeshBlendWidth),
+            CB_FIELD(WaterSurfaceConstants, pad3), CB_FIELD(WaterSurfaceConstants, seaMapOriginXZ),
+            CB_FIELD(WaterSurfaceConstants, seaMapTexelsPerMeter), CB_FIELD(WaterSurfaceConstants, seaMapSrvIndex),
+            CB_FIELD(WaterSurfaceConstants, seaMapResolution), CB_FIELD(WaterSurfaceConstants, seaMapDepthOffset),
+            CB_FIELD(WaterSurfaceConstants, seaMapInvWaveHeight),
+        };
+        CB_VERIFY_LAYOUT(WaterSurfaceConstants, kWaterSurfaceConstantsFields);
+        CB_BIND_HLSL(WaterSurfaceConstants, kWaterSurfaceConstantsFields, "WaterSurfaceData");
+
+        /// @brief b1 の水面サーフェス定数を組み立てる
+        /// @details 水面の高さを聞く計算シェーダー（WaterHeightQueryManager）も同じ b1 を読む
+        static WaterSurfaceConstants BuildSurfaceConstants(
+            const WaterSurfaceData& surfaceData,
+            const FFTOceanInput& fftOceanInput);
+
+        /// @brief FFT の海の波面テクスチャ入力を組み立てる（FFT の波面でないときは enabled = 0）
+        /// @param simulationTime FFT の海の時刻 [s]（波群エンベロープの位相に使う）
+        /// @param simulationType 水面の波の方式（WaterSurfaceData::simulationType）
+        static FFTOceanInput MakeFFTOceanInput(
+            const FFTOceanManager* fftOceanManager, float simulationTime, uint32_t simulationType);
 
     protected:
         /// @brief パイプライン 1 本分の構成（差分はこれだけ。残りは全パス同型）
@@ -132,66 +207,6 @@ namespace CoreEngine
             const RTWaterSecondaryOutput& secondaryOutput = {},
             D3D12_GPU_VIRTUAL_ADDRESS extraConstantBuffer = 0);
 
-        struct alignas(16) WaterSurfaceConstants {
-            float waterHeight = 0.0f;
-            uint32_t activeWaveCount = 0;
-            float time = 0.0f;
-            uint32_t simulationType = kWaterSurfaceModelTypeGerstner;
-            WaterWaveParam waves[kMaxWaterSurfaceWaveCount]{};
-            // ---- Phase 3 で b0 の 3 重定義から b1 へ一本化した FFT 有効情報 ----
-            // HLSL 側 RTWaterSurfaceCommon.hlsli の cbuffer WaterSurfaceData と一致必須。
-            uint32_t fftOceanEnabled = 0;
-            uint32_t fftOceanResolution = 0;
-            // 水面メッシュの分割数（coverage 判定のメッシュ同一基準化に使う。
-            // 以前はシェーダー側の kWaterMeshSubdivisions=256 ハードコードで、
-            // シーン側の変更で静かに壊れる構造だった）
-            float meshSubdivisions = 256.0f;
-            uint32_t regionValid = 0;                     ///< 0 = 水面メッシュの範囲が分からない
-            // FFT カスケードごとの平均二乗傾斜（x・z の傾きの二乗和の平均）
-            float cascadeMeanSquareSlope[3] = { 0.0f, 0.0f, 0.0f };
-            float fineWaveMeanSquareSlope = 0.0f;         ///< カスケードより細かい波の平均二乗傾斜
-            float regionCenterXZ[2] = { 0.0f, 0.0f };     ///< 水面メッシュのワールド XZ 範囲の中心
-            float regionHalfExtentXZ[2] = { 0.0f, 0.0f }; ///< 水面メッシュのワールド XZ 範囲の半分の大きさ
-            float waveGroupPhase[3] = { 0.0f, 0.0f, 0.0f };   ///< 波群エンベロープの位相のずれ [rad]
-            float pad2 = 0.0f;
-            // ---- 岸の細かい格子（WaterSurfaceData の同名の値）----
-            uint32_t shoreMeshEnabled = 0;
-            float shoreMeshSize = 0.0f;
-            float shoreMeshOriginXZ[2] = { 0.0f, 0.0f };
-            float shoreMeshCellSize = 0.0f;
-            float shoreMeshBlendWidth = 0.0f;
-            float pad3[2] = { 0.0f, 0.0f };
-            // ---- 海の範囲マップ（WaterSeaMapBinding の同名の値）----
-            float seaMapOriginXZ[2] = { 0.0f, 0.0f };
-            float seaMapTexelsPerMeter = 0.0f;
-            uint32_t seaMapSrvIndex = 0;
-            uint32_t seaMapResolution[2] = { 0, 0 };
-            float seaMapDepthOffset = 0.0f;
-            float seaMapInvWaveHeight = 0.0f;
-        };
-
-        static_assert(sizeof(WaterSurfaceConstants) == 16 + 32 * kMaxWaterSurfaceWaveCount + 128,
-            "WaterSurfaceConstants layout mismatch with RTWaterSurfaceCommon.hlsli cbuffer");
-
-        static constexpr Cb::Field kWaterSurfaceConstantsFields[] = {
-            CB_FIELD(WaterSurfaceConstants, waterHeight), CB_FIELD(WaterSurfaceConstants, activeWaveCount),
-            CB_FIELD(WaterSurfaceConstants, time), CB_FIELD(WaterSurfaceConstants, simulationType),
-            CB_FIELD(WaterSurfaceConstants, waves), CB_FIELD(WaterSurfaceConstants, fftOceanEnabled),
-            CB_FIELD(WaterSurfaceConstants, fftOceanResolution), CB_FIELD(WaterSurfaceConstants, meshSubdivisions),
-            CB_FIELD(WaterSurfaceConstants, regionValid), CB_FIELD(WaterSurfaceConstants, cascadeMeanSquareSlope),
-            CB_FIELD(WaterSurfaceConstants, fineWaveMeanSquareSlope), CB_FIELD(WaterSurfaceConstants, regionCenterXZ),
-            CB_FIELD(WaterSurfaceConstants, regionHalfExtentXZ), CB_FIELD(WaterSurfaceConstants, waveGroupPhase),
-            CB_FIELD(WaterSurfaceConstants, pad2), CB_FIELD(WaterSurfaceConstants, shoreMeshEnabled),
-            CB_FIELD(WaterSurfaceConstants, shoreMeshSize), CB_FIELD(WaterSurfaceConstants, shoreMeshOriginXZ),
-            CB_FIELD(WaterSurfaceConstants, shoreMeshCellSize), CB_FIELD(WaterSurfaceConstants, shoreMeshBlendWidth),
-            CB_FIELD(WaterSurfaceConstants, pad3), CB_FIELD(WaterSurfaceConstants, seaMapOriginXZ),
-            CB_FIELD(WaterSurfaceConstants, seaMapTexelsPerMeter), CB_FIELD(WaterSurfaceConstants, seaMapSrvIndex),
-            CB_FIELD(WaterSurfaceConstants, seaMapResolution), CB_FIELD(WaterSurfaceConstants, seaMapDepthOffset),
-            CB_FIELD(WaterSurfaceConstants, seaMapInvWaveHeight),
-        };
-        CB_VERIFY_LAYOUT(WaterSurfaceConstants, kWaterSurfaceConstantsFields);
-        CB_BIND_HLSL(WaterSurfaceConstants, kWaterSurfaceConstantsFields, "WaterSurfaceData");
-
         /// @brief ディスパッチ前の共通処理（RayTracingPassBase::BeginDispatchBase の水面版）
         bool BeginDispatch(
             ID3D12GraphicsCommandList* cmdList,
@@ -226,10 +241,6 @@ namespace CoreEngine
         D3D12_GPU_VIRTUAL_ADDRESS UploadHitShadingConstants(const WaterHitShadingInput& input) const;
 
     private:
-        WaterSurfaceConstants BuildSurfaceConstants(
-            const WaterSurfaceData& surfaceData,
-            const FFTOceanInput& fftOceanInput) const;
-
         // InitializeFromDesc で受けた構成のうち、ディスパッチ時にも要るもの
         const char* outputUavName_ = nullptr;
         const char* constantsName_ = nullptr;

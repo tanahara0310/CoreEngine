@@ -438,6 +438,7 @@ class GameObject {
 	CoreEngine::Animator@ get_animator() property;
 	CoreEngine::AudioListener@ get_audioListener() property;
 	CoreEngine::AudioSource@ get_audioSource() property;
+	CoreEngine::Buoyancy@ get_buoyancy() property;
 	CoreEngine::Camera@ get_camera() property;
 	CoreEngine::CharacterController@ get_characterController() property;
 	CoreEngine::GpuParticleSystem@ get_gpuParticleSystem() property;
@@ -455,6 +456,7 @@ class GameObject {
 	CoreEngine::Text3DRenderer@ get_text3DRenderer() property;
 	CoreEngine::UISlider@ get_uiSlider() property;
 	CoreEngine::UIToggle@ get_uiToggle() property;
+	CoreEngine::WaterProbe@ get_waterProbe() property;
 	CoreEngine::WaterSurface@ get_waterSurface() property;
 }
 class Transform {
@@ -805,6 +807,22 @@ class AudioSource {
 	void UnPause();
 	void PlayOneShot();
 	void FadeOut(float);
+}
+class Buoyancy {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	CoreEngine::GameObject@ get_gameObject() const property;
+	float get_waterDensity() const property;
+	void set_waterDensity(float) property;
+	float get_volume() const property;
+	void set_volume(float) property;
+	float get_waterDrag() const property;
+	void set_waterDrag(float) property;
+	float get_waterAngularDrag() const property;
+	void set_waterAngularDrag(float) property;
+	float get_submergedRatio() const property;
+	bool get_inWater() const property;
 }
 class Camera {
 	bool get_exists() const property;
@@ -1202,6 +1220,17 @@ class UIToggle {
 	void set_pressedColor(const CoreEngine::Vector4&in) property;
 	CoreEngine::Vector4 get_disabledColor() const property;
 	void set_disabledColor(const CoreEngine::Vector4&in) property;
+}
+class WaterProbe {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	CoreEngine::GameObject@ get_gameObject() const property;
+	bool get_inWater() const property;
+	bool get_underwater() const property;
+	float get_surfaceHeight() const property;
+	float get_depth() const property;
+	CoreEngine::Vector3 get_surfaceNormal() const property;
 }
 class WaterSurface {
 	bool get_exists() const property;

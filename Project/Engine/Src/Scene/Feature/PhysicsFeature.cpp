@@ -6,6 +6,7 @@
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/GameObjectManager.h"
+#include "Physics/BuoyancyComponent.h"
 #include "Physics/CharacterControllerComponent.h"
 #include "Physics/RigidbodyComponent.h"
 #include "Script/ScriptComponent.h"
@@ -185,11 +186,16 @@ namespace CoreEngine
 
         world_.SetCollisionWorld(collisionWorld);
 
-        // スクリプトの FixedUpdate は物理のステップごとに回す（力の積み方がフレームレートに依らない）
+        // スクリプトの FixedUpdate と浮力は物理のステップごとに回す（力の積み方がフレームレートに依らない）
         GameObjectManager* const manager = ctx.gameObjectManager;
-        world_.SetPreStepCallback([manager](float) {
+        world_.SetPreStepCallback([this, manager](float deltaTime) {
             manager->ForEachComponent<ScriptComponent>(
                 [](ScriptComponent& script) { script.FixedUpdate(); });
+            const Vector3 gravity = world_.GetGravity();
+            manager->ForEachComponent<BuoyancyComponent>(
+                [deltaTime, &gravity](BuoyancyComponent& buoyancy) {
+                    buoyancy.ApplyForces(PhysicsKey{}, deltaTime, gravity);
+                });
             });
     }
 
