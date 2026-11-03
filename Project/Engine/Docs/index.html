@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.55.0">
+<meta name="engine-version" content="0.55.1">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -10075,6 +10075,16 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-55-1">v0.55.1 <span class="dim">（2026-11-03）</span></h3>
+  <p>水面のシェーダの中身を整理した版です。見た目・動き・シーンの書き方・CVar・スクリプトは変わりません。</p>
+  <ul>
+    <li><strong>波の高さの求め方を 1 つに</strong>：FFT の海の頂点・岸の泡・寄せ波が、同じ関数（<span class="path">Water/Common/WaveSurface.hlsli</span>）で波の高さを求めます。</li>
+    <li><strong>水の物理定数を 1 か所に</strong>：水の正面の反射率・波が砕ける波高と水深の比・屈折率の下限を <span class="path">Water/Common/WaterPhysics.hlsli</span> に、C++ の既定値の屈折率と反射率を <span class="path">Graphics/Water/WaterPhysics.h</span> にまとめました。影の中にも直接光を 3 割残す処理も <span class="path">Include/Lighting/ShadowLightFloor.hlsli</span> の 1 つにしました。</li>
+    <li><strong>水面のピクセルシェーダを工程ごとに</strong>：<span class="path">Water.PS.hlsl</span> は、法線 → 水柱 → 泡 → 透過 → 反射 → 合成の関数を順に呼ぶだけになりました。それぞれの hlsli が使うものを自分で include するので、include の順番の決まりはなくなりました。デバッグ表示（<span class="path">Water.Debug.hlsli</span>）も同じです。</li>
+    <li><strong>レイトレーシングの映り込みと屈折</strong>：切り抜きの材質を通り抜けて撃ち直す処理・画面への投影・影のレイを、<span class="path">Water/RayTracing/RTWaterTrace.hlsli</span> の 1 つにまとめました。</li>
+    <li><strong>読まれない値を外した</strong>：レイトレーシングの映り込み・屈折・コースティクスの定数バッファから、シェーダが読んでいない水の高さ・デバッグの値・詰め物を外しました。</li>
+  </ul>
 
   <h3 id="changelog-v0-55-0">v0.55.0 <span class="dim">（2026-11-03）</span></h3>
   <p>ゲームから水面の高さを調べられるようにし、物を水に浮かべるコンポーネントを足した版です。どちらも描かれている波と同じ高さを使うので、FFT の海でも Gerstner の波でも、見えている水面の上に浮かびます。今あるシーンの見た目は変わりません。</p>
