@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 
 #include "GameObject/Component/Core/ObjectRef.h"
 #include "Graphics/Water/System/WaterAppearanceModule.h"
@@ -19,6 +20,7 @@
 
 namespace CoreEngine
 {
+    class LightManager;
     class RenderDomainContext;
     class WaterEditorPanel;
     class WaterWhitecapFoam;
@@ -27,8 +29,11 @@ namespace CoreEngine
     struct WaterFrameContext;
 
     /// @brief 水面一式（水面オブジェクト・波・潮・岸・映り込みなどの結線）を持つ Feature
-    /// @details 毎フレーム、時刻 → 潮 → 設定 → 水面の状態（スナップショット）→ 描画側への受け渡しの順に、
-    ///          各モジュールを呼ぶ。描画側が読む水面の状態はこのクラスが持つスナップショット 1 つだけ。
+    /// @details シーンの水面のうち 1 枚を主の水（「主の水にする」の付いた水面。無ければ今の主の水か最初の水面）にする。
+    ///          主の水は毎フレーム、時刻 → 潮 → 設定 → 水面の状態（スナップショット）→ 描画側への受け渡しの順に
+    ///          各モジュールを呼び、描画側が読む水面の状態はこのスナップショット。
+    ///          ほかの水面は、潮・見た目と水質・Gerstner の波・シーンの色と空の結線だけを渡す
+    ///          （FFT の海・泡・岸・海の範囲・RT・濡れ跡は主の水だけ）。
     ///          結線を PostLogic で行うのは、大気散乱（EnvironmentFeature）の更新後でないと
     ///          LUT と SH の準備完了が確定しないため。
     class WaterSystem : public ISceneFeature {
@@ -63,7 +68,7 @@ namespace CoreEngine
         bool RunsWhileStopped() const override { return true; }
         void Finalize(SceneContext& ctx) override;
 
-        /// @brief 管理中の水面オブジェクトを返す（未生成か、消えていれば nullptr）
+        /// @brief 主の水の水面を返す（未生成か、消えていれば nullptr）
         WaterSurfaceComponent* GetWaterPlane() const;
 
         /// @brief 沖の白波の泡を返す（描画側に無ければ nullptr）
@@ -79,9 +84,19 @@ namespace CoreEngine
         /// @brief 水面オブジェクトをシーンから採用、無ければ生成する
         void AcquireWaterPlane(SceneContext& ctx);
 
-        /// @brief 保存データで置かれた水面があれば、そちらへ乗り換える
+        /// @brief 保存データで置かれた水面があれば、この Feature が作った水面を消してそちらを使う
         /// @note 保存データのオブジェクトは AcquireWaterPlane の時点ではまだ生まれていない。
         void AdoptSceneWaterPlane(SceneContext& ctx);
+
+        /// @brief シーンの水面を集め、主の水とほかの水に分ける
+        void CollectWaterPlanes(SceneContext& ctx);
+
+        /// @brief 主の水とほかの水の水面を out へ並べる（主の水が先頭）
+        void GatherWaterPlanes(std::vector<WaterSurfaceComponent*>& out) const;
+
+        /// @brief ほかの水の水面へ、潮・見た目と水質・Gerstner の波・シーンの色と空の結線を渡す
+        void UpdateSecondaryWaterPlanes(
+            SceneContext& ctx, RenderDomainContext& domain, const LightManager* lightManager) const;
 
         /// @brief 生成直後の水面マテリアル既定値を設定する
         void ConfigureDefaultMaterial() const;
@@ -101,8 +116,14 @@ namespace CoreEngine
 
         Config config_{};
 
-        /// @brief 水面描画本体（所有権は GameObjectManager。使うたびに ID から引き直す）
+        /// @brief 主の水の水面（所有権は GameObjectManager。使うたびに ID から引き直す）
         ObjectRef<WaterSurfaceComponent> waterPlane_;
+
+        /// @brief ほかの水の水面（池・プール・川。毎フレーム集め直す）
+        std::vector<ObjectRef<WaterSurfaceComponent>> secondaryWaterPlanes_;
+
+        /// @brief 集めた水面の置き場（毎フレーム使い回す）
+        std::vector<WaterSurfaceComponent*> waterPlaneScratch_;
 
         /// @brief この Feature が水面を作ったか（シーンが自前の水面を置いていたら引っ込める）
         bool ownsWaterPlane_ = false;

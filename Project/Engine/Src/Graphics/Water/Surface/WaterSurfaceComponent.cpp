@@ -241,6 +241,7 @@ namespace CoreEngine
         // 以前は 5 個の setter がそれぞれ「自分の担当フラグ」を立てており、
         // 「SRV は繋がっているのにフラグが前フレームのまま」という食い違いが起きうる形だった。
         frameCB_.reflectionEnabled = renderResources_.HasReflectionTexture() ? 1 : 0;
+        frameCB_.rtRefractionEnabled = renderResources_.HasRefractionColor() ? 1 : 0;
         frameCB_.aerialPerspectiveEnabled =
             (binding.aerialPerspectiveEnabled && renderResources_.HasAtmosphere()) ? 1 : 0;
         frameCB_.skyAmbientEnabled =

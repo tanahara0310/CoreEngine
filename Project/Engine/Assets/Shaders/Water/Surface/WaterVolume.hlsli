@@ -102,7 +102,7 @@ float3 ComputeWaterVolumetricColor(
 ///          連続ブレンドした色なので、光路長が有効ならそのまま使う（IsRTColorValid では切り替えない）
 float3 ResolveWaterTransmissionColor(uint2 pixelCoord, float2 screenUV)
 {
-    float4 rtRefraction = gRTWaterRefractionColor.Load(int3(pixelCoord, 0));
+    float4 rtRefraction = SampleRTWaterRefraction(pixelCoord);
     if (IsRTPathValid(rtRefraction.a) > 0.5f) {
         return rtRefraction.rgb;
     }

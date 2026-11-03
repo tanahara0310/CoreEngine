@@ -85,7 +85,7 @@ namespace CoreEngine
 
             // ---- 風波 ----
             REFLECT_PROPERTY(profile_.fftEnabled, "FFT の海で描く",
-                p.tooltip = "切ると Gerstner の波で描く（Gerstner の波は保存しない）")
+                p.tooltip = "切ると Gerstner の波で描く（Gerstner の波は保存しない）。主の水だけで効き、ほかの水面は Gerstner の波で描く")
             REFLECT_PROPERTY(profile_.fetchKm, "吹送距離 [km]", p.range = Range(1.0f, 2000.0f),
                 p.tooltip = "風が海の上を吹いてきた距離。シーンの風速と合わせて波の長さと高さが決まる。"
                             "短いと若く尖った波、長いと育ちきった波")
@@ -113,7 +113,7 @@ namespace CoreEngine
 
             // ---- 泡 ----
             REFLECT_PROPERTY(profile_.foamEnabled, "泡を出す",
-                p.tooltip = "白波と岸の泡を出す（FFT の海だけ）")
+                p.tooltip = "白波と岸の泡を出す（主の水の FFT の海だけ）")
             REFLECT_PROPERTY(profile_.foamWhitecapScale, "白波の量", p.range = Range(0.0f, 4.0f),
                 p.tooltip = "白波の割合の倍率（1 = 風速からの観測式 W = 3.84e-6·U^3.41）")
             REFLECT_PROPERTY(profile_.foamOpacity, "泡の不透明度", p.range = Range(0.0f, 1.0f))

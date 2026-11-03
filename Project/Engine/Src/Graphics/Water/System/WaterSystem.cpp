@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "WaterSystem.h"
 
+#include <algorithm>
+
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/GameObjectManager.h"
 #include "Graphics/Light/LightManager.h"
@@ -101,22 +103,102 @@ namespace CoreEngine
             return;
         }
 
-        WaterSurfaceComponent* sceneWaterPlane = nullptr;
+        bool hasSceneWaterPlane = false;
         ctx.gameObjectManager->ForEachComponent<WaterSurfaceComponent>(
             [&](WaterSurfaceComponent& component) {
                 if (&component != ownWaterPlane) {
-                    sceneWaterPlane = &component;
+                    hasSceneWaterPlane = true;
                 }
             });
-        if (!sceneWaterPlane) {
+        if (!hasSceneWaterPlane) {
             return;
         }
 
         if (GameObject* const owner = ownWaterPlane->GetOwner()) {
             owner->Destroy();
         }
-        waterPlane_.Set(sceneWaterPlane);
+        waterPlane_.Reset();
         ownsWaterPlane_ = false;
+        CollectWaterPlanes(ctx);
+    }
+
+    void WaterSystem::CollectWaterPlanes(SceneContext& ctx)
+    {
+        secondaryWaterPlanes_.clear();
+        if (!ctx.gameObjectManager) {
+            return;
+        }
+
+        // 止めている水面も数える（止めても主の水は入れ替わらない）
+        waterPlaneScratch_.clear();
+        for (const std::unique_ptr<GameObject>& object : ctx.gameObjectManager->GetAllObjects()) {
+            if (!object || object->IsMarkedForDestroy()) {
+                continue;
+            }
+            if (WaterSurfaceComponent* const waterPlane = object->GetComponent<WaterSurfaceComponent>()) {
+                waterPlaneScratch_.push_back(waterPlane);
+            }
+        }
+
+        // 印の付いた水面、無ければ今の主の水、それも無ければ最初の水面を主の水にする
+        WaterSurfaceComponent* const current = waterPlane_.Get();
+        WaterSurfaceComponent* primary = nullptr;
+        for (WaterSurfaceComponent* const waterPlane : waterPlaneScratch_) {
+            if (waterPlane->IsPrimary()) {
+                primary = waterPlane;
+                break;
+            }
+        }
+        if (!primary && std::find(waterPlaneScratch_.begin(), waterPlaneScratch_.end(), current) != waterPlaneScratch_.end()) {
+            primary = current;
+        }
+        if (!primary && !waterPlaneScratch_.empty()) {
+            primary = waterPlaneScratch_.front();
+        }
+        waterPlane_.Set(primary);
+
+        for (WaterSurfaceComponent* const waterPlane : waterPlaneScratch_) {
+            if (waterPlane != primary) {
+                secondaryWaterPlanes_.emplace_back(waterPlane);
+            }
+        }
+    }
+
+    void WaterSystem::GatherWaterPlanes(std::vector<WaterSurfaceComponent*>& out) const
+    {
+        out.clear();
+        if (WaterSurfaceComponent* const waterPlane = waterPlane_.Get()) {
+            out.push_back(waterPlane);
+        }
+        for (const ObjectRef<WaterSurfaceComponent>& secondary : secondaryWaterPlanes_) {
+            if (WaterSurfaceComponent* const waterPlane = secondary.Get()) {
+                out.push_back(waterPlane);
+            }
+        }
+    }
+
+    void WaterSystem::UpdateSecondaryWaterPlanes(
+        SceneContext& ctx, RenderDomainContext& domain, const LightManager* lightManager) const
+    {
+        for (const ObjectRef<WaterSurfaceComponent>& secondary : secondaryWaterPlanes_) {
+            WaterSurfaceComponent* const waterPlane = secondary.Get();
+            if (!waterPlane || !IsWaterActive(*waterPlane)) {
+                continue;
+            }
+
+            const WaterSettings settings = BuildWaterSettings(waterPlane->GetProfile());
+            tide_.Update(lightManager, *waterPlane);
+
+            const WaterFrameContext frame{ ctx, domain, *waterPlane, settings };
+            wave_.ApplyToSecondary(frame);
+            appearance_.ApplySettings(frame);
+            foam_.ApplyWithoutFoam(frame);
+
+            WaterFrameBinding binding{};
+            appearance_.Bind(frame, binding);
+            wave_.Bind(domain, binding);
+            waterPlane->ApplyFrameBinding(binding);
+        }
     }
 
     void WaterSystem::Update(SceneContext& ctx, SceneUpdatePhase phase)
@@ -125,9 +207,9 @@ namespace CoreEngine
         case SceneUpdatePhase::PreObjectUpdate:
         {
             // 波の時刻を進め、描いているモデルの時刻を水面へ渡す
-            WaterSurfaceComponent* const waterPlane = waterPlane_.Get();
-            wave_.Advance(Time::DeltaTime(), waterPlane);
-            if (waterPlane) {
+            GatherWaterPlanes(waterPlaneScratch_);
+            wave_.Advance(Time::DeltaTime(), waterPlaneScratch_);
+            for (WaterSurfaceComponent* const waterPlane : waterPlaneScratch_) {
                 waterPlane->SetSimulationTime(wave_.GetDrawnModel(*waterPlane).GetTime());
             }
 
@@ -145,6 +227,7 @@ namespace CoreEngine
                 break;
             }
             publishTarget_ = domain;
+            CollectWaterPlanes(ctx);
 
             const WaterSettings& settings = RefreshSettings();
             WaterSurfaceComponent* const waterPlane = waterPlane_.Get();
@@ -179,6 +262,8 @@ namespace CoreEngine
             const WaterFrameBinding binding = BuildFrameBinding(frame);
             waterPlane->ApplyFrameBinding(binding);
             LogFrameDiagnostics(binding);
+
+            UpdateSecondaryWaterPlanes(ctx, *domain, lightManager);
             break;
         }
         default:
@@ -197,6 +282,8 @@ namespace CoreEngine
 
         // 水面オブジェクトは GameObjectManager が所有しているため参照だけ外す
         waterPlane_.Reset();
+        secondaryWaterPlanes_.clear();
+        waterPlaneScratch_.clear();
         appearance_.Reset();
         VertexAnimationParams::SetSwellDirection(std::nullopt);
 
@@ -231,8 +318,8 @@ namespace CoreEngine
 
         // シーンのコードが既に水面を置いていればそれを採用する（EnvironmentFeature と同じ規約）。
         // 保存データで置いた水面はこの時点ではまだ生まれていないので、PostSceneInitialize で見直す
-        if (auto* existing = ctx.gameObjectManager->FindFirstComponent<WaterSurfaceComponent>()) {
-            waterPlane_.Set(existing);
+        if (ctx.gameObjectManager->FindFirstComponent<WaterSurfaceComponent>()) {
+            CollectWaterPlanes(ctx);
             return;
         }
 

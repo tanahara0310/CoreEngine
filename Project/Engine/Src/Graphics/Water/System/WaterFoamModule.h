@@ -15,6 +15,9 @@ namespace CoreEngine
         /// @param fftOceanTime FFT の海の時刻 [s]
         void ApplySettings(const WaterFrameContext& frame, const WaterWaveCapabilities& waves, float fftOceanTime) const;
 
+        /// @brief 泡を出さない水面（ほかの水）へ、泡を切った値を渡す（白波と岸の泡には触れない）
+        void ApplyWithoutFoam(const WaterFrameContext& frame) const;
+
         /// @brief 溜まった白波の泡の SRV を結線へ書く
         void Bind(RenderDomainContext& domain, WaterFrameBinding& binding) const;
     };

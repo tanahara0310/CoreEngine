@@ -52,7 +52,8 @@ cbuffer WaterFrameConstants : register(b5)
     // 既定 1000 と食い違うと水柱厚さが数十%狂う）。
     float gCameraNearZ;
     float gCameraFarZ;
-    float gCameraClipPad;
+    // 1 = RT 屈折（gRTWaterRefractionColor）を読む。0 の水面はどの画素もヒットなしとして扱う
+    int gRTRefractionEnabled;
     // 1 = 水面の日向率テクスチャ（gWaterSunVisibility）をメインライトの項へ掛ける
     int gSunVisibilityEnabled;
 
