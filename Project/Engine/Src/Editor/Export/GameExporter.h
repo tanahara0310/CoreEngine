@@ -16,6 +16,9 @@ namespace CoreEngine::Editor
         std::filesystem::path releaseExe;  ///< Release でビルドした exe
         std::string releaseBuiltAt;        ///< その exe を作った日時（"2026-09-26 13:25"）
         std::filesystem::path destination; ///< 書き出す先（<プロジェクト>/Build/Windows）
+        std::vector<std::string> scenes;   ///< プロジェクトのシーンの名前（名前の順）
+        std::string initialScene;          ///< 起動シーン（外せない）
+        std::vector<std::string> excludedScenes; ///< 書き出さないシーン（今あって起動シーンでないものだけ）
         std::string error;                 ///< 書き出せない訳（書き出せるなら空）
     };
 
@@ -40,6 +43,10 @@ namespace CoreEngine::Editor
         int cookedShaders = 0;    ///< DXIL へコンパイルしたシェーダの数
         int cookedModels = 0;     ///< .cmesh へ変換したモデルの数
         int convertedJson = 0;    ///< MessagePack へ変換した JSON のファイルの数
+        int excludedScenes = 0;   ///< 書き出さなかったシーンの数
+        int excludedModels = 0;   ///< 外したシーンだけが使うので書き出さなかったモデルの数
+        int excludedTextures = 0; ///< 外したシーンだけが使うので書き出さなかったテクスチャの数
+        int excludedAudio = 0;    ///< 外したシーンだけが使うので書き出さなかった音の数
         std::uintmax_t bytes = 0; ///< 書いた大きさ（バイト）
     };
 
@@ -53,10 +60,16 @@ namespace CoreEngine::Editor
     ///          シェーダは一覧（ShaderManifest）のものを DXIL へコンパイルして同じ場所に書く（元の .hlsl も写す）。
     ///          中身が JSON のファイル（.json・.prefab・.mat・.meta・.physmat・.waterprofile）は MessagePack へ変換して同じ名前で書く。
     ///          変換と写しはスレッドプールで並べて行う。変換できない物があれば全部集めてから、ファイルを写さずに止める。
+    ///          書き出さないシーン（プロジェクト設定の exportExcludedScenes）のフォルダと、そのシーンだけが使う
+    ///          モデル・テクスチャ・音は書き出さない（ExportScope）。
     namespace GameExporter
     {
         /// @brief 何をどこへ写すかを決める
         ExportPlan Plan();
+
+        /// @brief 書き出さないシーンを決めて、プロジェクト設定へ保存する（起動シーンと無いシーンは外さない）
+        /// @return 保存できたら true
+        bool SetExcludedScenes(ExportPlan& plan, std::vector<std::string> scenes);
 
         /// @brief 書き出す（別のスレッドで呼んでよい）
         /// @details 書き出す先の Engine/Assets・Application/Assets・Application/Config・Engine/Cooked・

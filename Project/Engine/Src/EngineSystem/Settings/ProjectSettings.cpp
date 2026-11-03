@@ -23,6 +23,7 @@ namespace CoreEngine
         constexpr const char* kLoadingScreenImagesKey = "loadingScreenImages";
         constexpr const char* kPostEffectsKey = "postEffects";
         constexpr const char* kDefaultTransitionKey = "defaultTransition";
+        constexpr const char* kExportExcludedScenesKey = "exportExcludedScenes";
 
         /// @brief 既定の遷移を読む（無ければ specified が false のまま）
         ProjectTransitionSettings ReadDefaultTransition(const nlohmann::json& root)
@@ -139,6 +140,7 @@ namespace CoreEngine
         loadingScreenImages_.clear();
         postEffects_.clear();
         defaultTransition_ = ProjectTransitionSettings{};
+        exportExcludedScenes_.clear();
 
         // ここはログの初期化より前に走りうるので、無くても壊れていても黙って既定へ倒す
         const nlohmann::json root = JsonManager::ParseFile(ProjectPaths::Resolve(kSettingsPath));
@@ -161,6 +163,7 @@ namespace CoreEngine
         loadingScreenImages_ = ReadStringArray(root, kLoadingScreenImagesKey);
         postEffects_ = ReadPostEffects(root);
         defaultTransition_ = ReadDefaultTransition(root);
+        exportExcludedScenes_ = ReadStringArray(root, kExportExcludedScenesKey);
     }
 
     bool ProjectSettings::SetInitialSceneName(std::string sceneName)
@@ -226,6 +229,15 @@ namespace CoreEngine
         return Save();
     }
 
+    bool ProjectSettings::SetExportExcludedScenes(std::vector<std::string> scenes)
+    {
+        if (exportExcludedScenes_ == scenes) {
+            return true;
+        }
+        exportExcludedScenes_ = std::move(scenes);
+        return Save();
+    }
+
     bool ProjectSettings::Save() const
     {
         const std::filesystem::path path = ProjectPaths::Resolve(kSettingsPath);
@@ -252,6 +264,7 @@ namespace CoreEngine
         WriteStringArray(root, kSplashTipsKey, splashTips_);
         WriteString(root, kLoadingScreenShaderKey, loadingScreenShader_);
         WriteStringArray(root, kLoadingScreenImagesKey, loadingScreenImages_);
+        WriteStringArray(root, kExportExcludedScenesKey, exportExcludedScenes_);
 
         std::ofstream out(path, std::ios::binary);
         if (!out) {
