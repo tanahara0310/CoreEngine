@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.54.0">
+<meta name="engine-version" content="0.55.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -4805,9 +4805,9 @@ kbd {
   </ul>
   <p>決まりと流れは <a href="#team">チームで作る（git）</a> にまとめています。</p>
 </article>
-<article class="page" id="script-physics" data-group="スクリプト" data-title="当たり判定と物理" data-nav="当たり判定と物理" data-keywords="コライダー collider 当たり判定 衝突 ぶつかる トリガー trigger ontriggerenter oncollisionenter レイヤー layer 組み合わせ 剛体 rigidbody 重力 力 addforce addimpulse キャラクタコントローラ charactercontroller simplemove jump 接地 レイキャスト raycast 光線 overlapsphere 範囲 物理">
+<article class="page" id="script-physics" data-group="スクリプト" data-title="当たり判定と物理" data-nav="当たり判定と物理" data-keywords="コライダー collider 当たり判定 衝突 ぶつかる トリガー trigger ontriggerenter oncollisionenter レイヤー layer 組み合わせ 剛体 rigidbody 重力 力 addforce addimpulse キャラクタコントローラ charactercontroller simplemove jump 接地 レイキャスト raycast 光線 overlapsphere 範囲 物理 浮力 buoyancy 浮く 浮かべる 水 水面 waterprobe 水面の高さ 泳ぐ 沈む 船 ボート">
   <h1>当たり判定と物理</h1>
-  <p class="lead">ぶつかったことを知る（当たり判定）、重力や力で動かす（剛体）、歩くキャラクターを動かす（キャラクタコントローラ）、光線や範囲で相手を探す（レイキャスト）の 4 つを説明します。</p>
+  <p class="lead">ぶつかったことを知る（当たり判定）、重力や力で動かす（剛体）、歩くキャラクターを動かす（キャラクタコントローラ）、水に浮かべる（浮力）、光線や範囲で相手を探す（レイキャスト）を説明します。</p>
 
   <h2 id="physics-choose">動かし方を選ぶ</h2>
   <p>当たり判定のあるオブジェクトの動かし方は 3 通りあります。作りたいものに合わせて選びます。</p>
@@ -4971,6 +4971,45 @@ kbd {
   </div>
   <div class="callout warn" data-title="剛体の向きは transform.rotation では変わらない"><p>剛体の付いたオブジェクトは、再生を始めると向きを物理が持つ形に切り替えます。その後は <code>transform.rotation</code> を書き換えても向きは変わりません。回すときは <code>angularVelocity</code> や <code>AddTorque</code> を使います。</p></div>
   <p>物理は決まった間隔（既定 1/60 秒、CVar <code>sys.Physics.FixedStep</code>）で進みます。重力の強さは <code>Physics::gravity</code> で変えられますが、プロジェクトの設定を書き換えるので、再生を止めても元に戻りません（<a href="#api-Physics">Physics</a>）。</p>
+
+  <h2 id="physics-water">水に浮かべる</h2>
+  <p>剛体に浮力（Buoyancy）を足すと、<a href="#api-WaterSurface">水面</a> に浮かび、波に揺られます。浮力は描かれている波と同じ高さを使うので、見えている水面の上に浮かびます。</p>
+  <ol class="steps">
+    <li><strong>剛体を付ける</strong>コライダー（トリガーを外す）と剛体を付けます。浮力は、コライダーの先頭の形（箱・球・カプセル）の大きさから体積を求めます。</li>
+    <li><strong>浮力を付ける</strong><span class="ui">＋ コンポーネント追加</span> ▸ <span class="ui">浮力</span>。</li>
+    <li><strong>質量で浮き方を決める</strong>剛体の <span class="ui">質量</span> ÷ 体積 が <span class="ui">水の密度</span>（海水は 1025 kg/m³）より小さいと浮き、その比の分だけ沈みます。1 m の箱に質量 400 kg なら、4 割ほど沈んで浮きます。</li>
+  </ol>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>やりたいこと</th><th>書き方</th></tr></thead>
+    <tbody>
+      <tr><td>浮きやすく・沈みやすくする</td><td>剛体の <span class="ui">質量</span> を変える</td></tr>
+      <tr><td>形と違う体積で浮かせる（中が空洞の船など）</td><td>浮力の <span class="ui">体積</span>（0 ならコライダーの形から求める）</td></tr>
+      <tr><td>揺れをすぐ止める</td><td>浮力の <span class="ui">水の抵抗</span>・<span class="ui">水の回転の抵抗</span> を上げる</td></tr>
+      <tr><td>真水に浮かべる</td><td>浮力の <span class="ui">水の密度</span> を 1000 にする</td></tr>
+      <tr><td>水に浮いているか知る</td><td><code>owner.buoyancy.inWater</code>・<code>owner.buoyancy.submergedRatio</code>（沈んでいる割合）</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="callout tip" data-title="立方体は傾いて浮くことがあります"><p>平たい箱は面を上にして浮きますが、立方体は水の半分くらいの重さだと、辺を上にして傾いて浮きます（実際の物と同じです）。転ばせたくないときは、剛体の「X 軸で回さない」「Z 軸で回さない」を入れます。</p></div>
+  <p>操作で進める小舟の例は <a href="#g3d-water">3D ゲームの作り方の「水に浮かべる」</a> にあります。</p>
+
+  <h3 id="physics-water-height">水面の高さを調べる</h3>
+  <p>水しぶき・泳ぐ・濡れるなど、ゲームで水面の高さを使うときは、オブジェクトに水面の高さを調べる（WaterProbe。<span class="ui">＋ コンポーネント追加</span> ▸ <span class="ui">水面の高さを調べる</span>）を付けて読みます。オブジェクトの真上か真下にある、描かれている水面の高さ（波と潮を含む）を返します。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>読むもの</th><th>中身</th></tr></thead>
+    <tbody>
+      <tr><td><code>probe.inWater</code></td><td>真上か真下に水面があるか（水面の範囲の外・水面の無いシーンでは false）</td></tr>
+      <tr><td><code>probe.underwater</code></td><td>オブジェクトの位置が水面より下か</td></tr>
+      <tr><td><code>probe.surfaceHeight</code></td><td>水面の高さ（ワールドの Y）</td></tr>
+      <tr><td><code>probe.depth</code></td><td>水面からの深さ（m）。水面より上ならマイナス</td></tr>
+      <tr><td><code>probe.surfaceNormal</code></td><td>水面の向き（長さ 1）</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="callout note" data-title="高さは 1〜2 フレーム遅れて届きます"><p>水面の高さは GPU で、水面を描くのと同じ式で求め、1〜2 フレーム後に受け取ります。その間にオブジェクトが動いた分は、水面の傾きで補います。付けた直後の数フレームは <code>inWater</code> が false です。同時に調べられる点はシーン全体で 1024 個までです（浮力は 1 つで 8 個使います）。</p></div>
+  <p>波を含まない水の高さ（潮を足した基準の高さ）だけでよいときは、水面の <code>waterLevel</code> を読みます（<a href="#api-WaterSurface">水面</a>）。</p>
 
   <h2 id="physics-character">キャラクタコントローラで歩かせる</h2>
   <p>プレイヤーのように歩いて跳ぶキャラクターには、キャラクタコントローラを使います。坂を上り、小さな段差を越え、壁に沿って滑り、押されて倒れることはありません。</p>
@@ -8230,7 +8269,7 @@ kbd {
   </div>
 </article>
 
-<article class="page" id="guide-3d" data-group="ゲームの作り方" data-title="3D ゲームの作り方" data-nav="3D ゲーム" data-keywords="3D 作り方 アクション 三人称 TPS FPS モデル gltf obj fbx マテリアル ライト 太陽 昼 夜 カメラ 追従 回転 キャラクタコントローラ 歩く 剛体 投げる 当たり判定 クリック 光線 レイキャスト アニメーション 爆発 パーティクル サンプルコード">
+<article class="page" id="guide-3d" data-group="ゲームの作り方" data-title="3D ゲームの作り方" data-nav="3D ゲーム" data-keywords="3D 作り方 浮力 浮かべる 船 ボート ブイ 水面の高さ アクション 三人称 TPS FPS モデル gltf obj fbx マテリアル ライト 太陽 昼 夜 カメラ 追従 回転 キャラクタコントローラ 歩く 剛体 投げる 当たり判定 クリック 光線 レイキャスト アニメーション 爆発 パーティクル サンプルコード">
   <h1>3D ゲームの作り方</h1>
   <p class="lead">3D のゲームは、モデルを置き、ライトで照らし、透視投影のカメラで映して、スクリプトで動かします。このページでは、3D のゲームで使うものを機能ごとに、サンプルコードで説明します。当たり判定・プレハブ・UI・音は 2D と同じ部品です。</p>
 
@@ -8244,6 +8283,7 @@ kbd {
       <tr><td>照らす・空</td><td><a href="#api-Light">ライト</a>・<a href="#api-SkyBox">空と大気散乱</a></td><td><a href="#g3d-light">光と空</a></td></tr>
       <tr><td>キャラクターを歩かせる</td><td><a href="#api-CharacterController">キャラクタコントローラ</a></td><td><a href="#g3d-move">動かす</a></td></tr>
       <tr><td>転がる・飛ぶ物</td><td><a href="#api-Rigidbody">剛体</a></td><td><a href="#g3d-move-rigidbody">剛体で動かす</a></td></tr>
+      <tr><td>水に浮かべる・水の中か調べる</td><td><a href="#api-Buoyancy">浮力</a>・<a href="#api-WaterProbe">水面の高さを調べる</a></td><td><a href="#g3d-water">水に浮かべる</a></td></tr>
       <tr><td>カメラで追いかける</td><td>カメラのトランスフォーム</td><td><a href="#g3d-camera">カメラ</a></td></tr>
       <tr><td>当たり判定・クリックした物</td><td><a href="#api-Collider">コライダー</a>・<a href="#api-Physics">Physics</a>・<code>ScreenPointToRay</code></td><td><a href="#g3d-collision">当たり判定</a></td></tr>
       <tr><td>人の動き（歩く・走る）</td><td><a href="#api-Animator">アニメーション</a></td><td><a href="#g3d-anim">アニメーション</a></td></tr>
@@ -8481,6 +8521,105 @@ kbd {
     }
   </script>
   <p>跳ね方と滑り方は <a href="#api-PhysicsMaterial">物理マテリアル</a>（反発係数・摩擦係数）で決めます。押し続ける力（<code>AddForce</code>）は <code>FixedUpdate</code> で加えます（<a href="#physics-rigidbody">剛体で動かす</a>）。</p>
+
+  <h3 id="g3d-water">水に浮かべる（小舟・ブイ）</h3>
+  <p><a href="#api-WaterSurface">水面</a> のあるシーンでは、剛体に <a href="#api-Buoyancy">浮力</a> を足すと浮かび、波に揺られます。次は、平たい箱（例：幅 1.2・高さ 0.4・長さ 2.4 m、質量 300 kg）にコライダー・剛体・浮力を付けて、操作で進める小舟です。</p>
+  <script type="text/x-code" data-lang="as" data-file="Boat3D.as">
+    using namespace CoreEngine;
+
+    // 水に浮かべた平たい箱を、操作で前へ押して向きを変える小舟
+    // 付けるもの：コライダー（箱・トリガーを外す）・剛体・浮力
+    class Boat3D : ScriptComponent
+    {
+        [Range(0.0f, 3000.0f)] [Tooltip("前へ押す力（N）")]
+        float thrust = 600.0f;
+
+        [Range(0.0f, 2000.0f)] [Tooltip("向きを変える力（N・m）")]
+        float turn = 300.0f;
+
+        private Rigidbody@ body_;
+        private Buoyancy@ buoyancy_;
+
+        void Start()
+        {
+            @body_ = owner.rigidbody;
+            @buoyancy_ = owner.buoyancy;
+        }
+
+        // 押し続ける力は FixedUpdate で加える。水に触れていないときは進まない
+        void FixedUpdate()
+        {
+            if (!buoyancy_.inWater) {
+                return;
+            }
+            const Vector2 input = Input::GetAxis2D(InputAction::MoveLeft, InputAction::MoveRight,
+                                                   InputAction::MoveBack, InputAction::MoveForward);
+            const float yaw = owner.transform.rotation.y;
+            const Vector3 forward(sin(yaw), 0.0f, cos(yaw));
+            body_.AddForce(forward * (input.y * thrust));
+            body_.AddTorque(Vector3(0.0f, input.x * turn, 0.0f));
+        }
+    }
+  </script>
+  <p>物理で動かすまでもない飾り（ブイ・浮き）は、<a href="#api-WaterProbe">水面の高さを調べる</a> を付けて、毎フレーム水面の高さへ置きます。</p>
+  <script type="text/x-code" data-lang="as" data-file="WaveRider.as">
+    using namespace CoreEngine;
+
+    // 物理を使わずに、波の高さへ置き続ける（ブイ・浮き・水面の飾り）
+    // 付けるもの：水面の高さを調べる
+    class WaveRider : ScriptComponent
+    {
+        [Range(-2.0f, 2.0f)] [Tooltip("水面からの高さ（m）。マイナスで沈める")]
+        float offset = 0.0f;
+
+        private WaterProbe@ probe_;
+
+        void Start()
+        {
+            @probe_ = owner.waterProbe;
+        }
+
+        void Update()
+        {
+            // 水面の範囲の外では高さが決まらないので動かさない
+            if (!probe_.inWater) {
+                return;
+            }
+            Vector3 position = owner.transform.position;
+            position.y = probe_.surfaceHeight + offset;
+            owner.transform.position = position;
+        }
+    }
+  </script>
+  <p>プレイヤーが水に入った瞬間を知るには、水面の高さを調べるを付けて、<code>underwater</code> が変わったときを見ます。</p>
+  <script type="text/x-code" data-lang="as" data-file="SwimCheck.as">
+    using namespace CoreEngine;
+
+    // 水に入った瞬間と出た瞬間を知らせる（水しぶき・泳ぎへの切り替えに）
+    // 付けるもの：水面の高さを調べる（調べる位置はオブジェクトの位置）
+    class SwimCheck : ScriptComponent
+    {
+        private WaterProbe@ probe_;
+        private bool wasUnderwater_ = false;
+
+        void Start()
+        {
+            @probe_ = owner.waterProbe;
+        }
+
+        void Update()
+        {
+            const bool underwater = probe_.underwater;
+            if (underwater && !wasUnderwater_) {
+                Log("水に入った（深さ " + probe_.depth + " m）");
+            } else if (!underwater && wasUnderwater_) {
+                Log("水から出た");
+            }
+            wasUnderwater_ = underwater;
+        }
+    }
+  </script>
+  <p>浮き方の決め方と、水面の高さが届くまでの遅れは <a href="#physics-water">水に浮かべる</a> にあります。</p>
 
   <h2 id="g3d-camera">カメラ</h2>
   <p>カメラを動かすときは、カメラのオブジェクト（MainCamera）のトランスフォームを書き換えます。<code>Scene::GetGameCamera()</code> へ書いた位置は、毎フレームこのトランスフォームで上書きされます。次は、右ドラッグで相手の周りを回り、ホイールで近づく三人称のカメラです。</p>
@@ -9937,6 +10076,14 @@ python Tools/OkinawaBeach/bake_araha_walk.py
 
   <h2 id="changelog-history">更新履歴</h2>
 
+  <h3 id="changelog-v0-55-0">v0.55.0 <span class="dim">（2026-11-03）</span></h3>
+  <p>ゲームから水面の高さを調べられるようにし、物を水に浮かべるコンポーネントを足した版です。どちらも描かれている波と同じ高さを使うので、FFT の海でも Gerstner の波でも、見えている水面の上に浮かびます。今あるシーンの見た目は変わりません。</p>
+  <ul>
+    <li><strong>水面の高さを調べる</strong>（WaterProbe）：付けたオブジェクトの真上か真下にある水面の高さ・水面からの深さ・水面の向きを返します。波・潮・浅瀬で弱まった波を含みます。スクリプトからは <code>owner.waterProbe.surfaceHeight</code> のように読みます（<a href="#api-WaterProbe">水面の高さを調べる</a>）。</li>
+    <li><strong>浮力</strong>（Buoyancy）：剛体に足すと、沈んだ体積の分だけ浮き、水の中では動きと回転が遅くなります。形を 8 つの塊に分けて塊ごとに水面を調べるので、波に合わせて傾きます（<a href="#api-Buoyancy">浮力</a>・<a href="#physics-water">水に浮かべる</a>）。</li>
+    <li><strong>高さの求め方</strong>：調べる点を GPU で、水面を描くのと同じ式で評価し、1〜2 フレーム後に受け取ります。その間に動いた分は水面の傾きで補います。同時に調べられる点はシーン全体で 1024 個までです（浮力は 1 つで 8 個使います）。</li>
+  </ul>
+
   <h3 id="changelog-v0-54-0">v0.54.0 <span class="dim">（2026-11-03）</span></h3>
   <p>水の性質（波・水の色・反射と屈折・泡）を、プロジェクトの CVar から水面コンポーネントの値へ移した版です。シーンごとに違う海を作れ、同じ値を水面プロファイル（<span class="path">.waterprofile</span>）にして、ほかのシーンの水面からも指せます。風はシーンの設定 <code>r.Wind.*</code> になり、海の波と植物の揺れが同じ風で動きます。取り込んだ後も見た目は変わりません。</p>
   <ul>
@@ -10728,12 +10875,14 @@ class Rotator : ScriptComponent
           { n: "rigidbody", s: "Rigidbody@ rigidbody", t: "ro", d: "<a href=\"#api-Rigidbody\">Rigidbody</a>（剛体）" },
           { n: "characterController", s: "CharacterController@ characterController", t: "ro", d: "<a href=\"#api-CharacterController\">CharacterController</a>" },
           { n: "physicsMaterial", s: "PhysicsMaterial@ physicsMaterial", t: "ro", d: "<a href=\"#api-PhysicsMaterial\">PhysicsMaterial</a>（反発・摩擦）" },
+          { n: "buoyancy", s: "Buoyancy@ buoyancy", t: "ro", d: "<a href=\"#api-Buoyancy\">Buoyancy</a>（浮力）" },
           { n: "animator", s: "Animator@ animator", t: "ro", d: "<a href=\"#api-Animator\">Animator</a>（モデルのアニメーション）" },
           { n: "audioSource", s: "AudioSource@ audioSource", t: "ro", d: "<a href=\"#api-AudioSource\">AudioSource</a>（音を鳴らす）" },
           { n: "audioListener", s: "AudioListener@ audioListener", t: "ro", d: "<a href=\"#api-AudioListener\">AudioListener</a>（音を聞く位置）" },
           { n: "particleSystem", s: "ParticleSystem@ particleSystem", t: "ro", d: "<a href=\"#api-ParticleSystem\">ParticleSystem</a>" },
           { n: "gpuParticleSystem", s: "GpuParticleSystem@ gpuParticleSystem", t: "ro", d: "<a href=\"#api-GpuParticleSystem\">GpuParticleSystem</a>" },
           { n: "waterSurface", s: "WaterSurface@ waterSurface", t: "ro", d: "<a href=\"#api-WaterSurface\">WaterSurface</a>（水面）" },
+          { n: "waterProbe", s: "WaterProbe@ waterProbe", t: "ro", d: "<a href=\"#api-WaterProbe\">WaterProbe</a>（水面の高さを調べる）" },
           { n: "rectTransform", s: "RectTransform@ rectTransform", t: "ro", d: "<a href=\"#api-RectTransform\">RectTransform</a>（UI の配置）" },
           { n: "uiText", s: "UIText@ uiText", t: "ro", d: "<a href=\"#api-UIText\">UIText</a>（UI の文字）" },
           { n: "uiImage", s: "UIImage@ uiImage", t: "ro", d: "<a href=\"#api-UIImage\">UIImage</a>（UI の画像）" },
@@ -15526,8 +15675,42 @@ void LateUpdate()   // 追いかける相手が動いた後に動かす
         ]
       }
     ],
-    notes: "<ul><li>水面を使うシーンは、<span class=\"path\">_scene.json</span> に <code>\"features\": [\"WaterRender\"]</code> を書き足す必要があります（エディタに追加の画面はありません。サンプル TestBed の WaterTestScene を参照）。</li><li>水の性質（波・水の色・反射と屈折・泡）は水面 1 枚ごとの値で、シーンの水面のファイルに保存されます。風（<code>r.Wind.Speed</code>・<code>r.Wind.Direction</code>）はシーンの CVar で <span class=\"path\">_environment.json</span> に、描画の品質と負荷（細かい格子・海の範囲マップ・濡れ跡・コースティクスの作り方・屈折のずれの上限）はプロジェクトの CVar（<code>r.Water.*</code>。<span class=\"path\">Config/EngineSettings/CVars.json</span>）に保存されます。エディタでは水面のインスペクタに、この 3 つがセクションごとに並びます（プロジェクトとシーンの値は見出しに書いてあります）。「波」の「海況」でシーンの風速と吹送距離・うねりをまとめて入れられ、いまの値で出来上がる風波とうねりの波長と高さも出ます。いちばん下のボタンで <code>r.Water.*</code> を既定値へ戻せます。</li><li>「プロファイルとして保存」を押すと、今の水の性質を <span class=\"path\">Assets/Water/</span> に <span class=\"path\">.waterprofile</span> として書き、それを指します。ほかのシーンの水面からも同じプロファイルを指せます。プロファイルを指した水面には、シーンを開いたときと指し直したときにプロファイルの値が入ります（物理マテリアルの <span class=\"path\">.physmat</span> と同じ）。インスペクタで変えた値は、「プロファイルへ書き込む」を押すまでプロファイルへは残りません。</li><li>「FFT の海で描く」を切ると Gerstner の波で描きます。Gerstner の波は保存せず、開き直すと既定の 16 本に戻ります。</li><li>FFT の海の映り込みは、シーンの風速（<code>r.Wind.Speed</code>）が強いほど縦に伸びてぼけ、遠くの水面ほど空が映ります。FFT が表せない短い波の傾きを風速から求めて足しているためです。鏡のように映したいときは風速を下げます。</li><li>コースティクスの「作り方」をスクリーンスペースにしたときの強さなどの値は、Gerstner の波のときだけ効きます。レイトレーシングの明るさは、光と水の吸収から決まります。</li><li>FFT の海でレイトレーシングが使えるときは、ゲームのカメラの周り 256m 四方（海底の高さを測る範囲）を 0.5m 間隔の細かい格子で描き、その外を「分割数」の格子で描きます。範囲はカメラと一緒に 0.5m 単位で動きます。CVar <code>r.Water.Shore.FineMesh</code> で切れます。</li><li>FFT の海の波の形（頂点の高さと横のずれ）には、その格子の間隔で表せる波だけを入れます。細かい格子は 3 つのカスケードの波を全部（短い波まで）、粗い格子は 60m より長い波だけです。形に入らない短い波は、陰影（法線）で描きます。細かい格子を使わないとき（レイトレーシングが無い・<code>r.Water.Shore.FineMesh</code> を切った）は、カメラの近くも 60m より長い波だけの形になります。</li><li>レイトレーシングが使えるときは、水面の範囲全体の水深と水面の上にある物までの高さを測った地図（海の範囲マップ）で波の形を弱めます。陸や建物の下では波が出ず、浅瀬では水深に応じて低くなり、桟橋の下では桟橋に届かない高さまでになります。水面の範囲の端に触れている水と、いちばん大きな水のかたまりを海とし、それ以外の囲まれた水（プールや池）は波立ちません。測るのは止まっている物だけで、物を置く・動かすと、落ち着いてから測り直します。CVar <code>r.Water.SeaMap.Enabled</code> で切れ、<code>r.Water.SeaMap.Resolution</code>（地図の長い辺のテクセル数）で細かさを変えられます。</li><li>「潮の高さ」を 0 より大きくすると、大気の月と太陽の高さから潮位を求め、水面をトランスフォームの高さから上下させます（トランスフォームの値は変えません）。月の効きを 1、太陽を 0.46 として足し合わせ、どちらも真上か真下で満潮、地平線で干潮です。月が無いシーンは太陽だけで求め、どちらも無ければ潮は動きません。水面の描画・映り込み・屈折・コースティクス・水中の霧と明るさ・岸の泡・海の範囲マップは、どれも潮位を足した高さを使います。</li><li>月と太陽が真上まで来ないと、満潮は「潮の高さ」まで上がりません。シーンの機能 <code>TimeOfDay</code> は緯度（<code>r.TimeOfDay.LatitudeDeg</code>。既定 35 度）が高いほど南中が低く、35 度では満潮が「潮の高さ」の 0.34 倍、干潮が −1 倍です。</li><li><code>TimeOfDay</code> の月は月齢の分だけ太陽から遅れて動くので、新月と満月の頃は大潮、上弦と下弦の頃は小潮になります（小潮の干満差は大潮の約 37%）。満潮の時刻は毎日約 49 分ずつ遅れます（満月の日は 0 時と 12 時）。潮の速さは空の時間の速さ（<code>r.TimeOfDay.DayLengthSeconds</code>）で決まります。<code>TimeOfDay</code> の無いシーンや時間を進めないシーンでは、潮位は一定です。</li><li>スクリプトで水の高さを使う（浮かぶ・泳ぐ・濡れる）ときは、トランスフォームの高さでなく <code>waterLevel</code> を読みます。潮を自分で動かしたいときは <code>SetTideHeight</code> で指定します。</li><li>海の範囲マップの水深は、潮位を除いた高さで測ってから潮位の分を足します。満潮で水に沈んだ低い陸にも、その深さに応じて波が出ます。</li><li>水面が下がると（潮・<code>SetTideHeight</code>・トランスフォームを下げる）、それまで水に浸かっていた面が暗く、つやのある見た目で残り、時間とともに乾きます（濡れ跡）。水から出た時刻をワールドの高さごとに覚えて、その時刻からの時間で乾かすので、カメラを動かしても消えません。乾く速さは <code>r.Water.Wetness.DrySeconds</code>（濡れ具合が 1/e になるまでのゲームの時間。既定 60 秒）で決まり、<code>r.Water.Wetness.Enabled</code> で切れます。インスペクタの「濡れ跡」にも並びます。今の水面より 0.5 m 下までの面も、波打ち際として濡れて見えます。スキンメッシュと水面の範囲の外は濡らしません。</li></ul>",
+    notes: "<ul><li>水面を使うシーンは、<span class=\"path\">_scene.json</span> に <code>\"features\": [\"WaterRender\"]</code> を書き足す必要があります（エディタに追加の画面はありません。サンプル TestBed の WaterTestScene を参照）。</li><li>水の性質（波・水の色・反射と屈折・泡）は水面 1 枚ごとの値で、シーンの水面のファイルに保存されます。風（<code>r.Wind.Speed</code>・<code>r.Wind.Direction</code>）はシーンの CVar で <span class=\"path\">_environment.json</span> に、描画の品質と負荷（細かい格子・海の範囲マップ・濡れ跡・コースティクスの作り方・屈折のずれの上限）はプロジェクトの CVar（<code>r.Water.*</code>。<span class=\"path\">Config/EngineSettings/CVars.json</span>）に保存されます。エディタでは水面のインスペクタに、この 3 つがセクションごとに並びます（プロジェクトとシーンの値は見出しに書いてあります）。「波」の「海況」でシーンの風速と吹送距離・うねりをまとめて入れられ、いまの値で出来上がる風波とうねりの波長と高さも出ます。いちばん下のボタンで <code>r.Water.*</code> を既定値へ戻せます。</li><li>「プロファイルとして保存」を押すと、今の水の性質を <span class=\"path\">Assets/Water/</span> に <span class=\"path\">.waterprofile</span> として書き、それを指します。ほかのシーンの水面からも同じプロファイルを指せます。プロファイルを指した水面には、シーンを開いたときと指し直したときにプロファイルの値が入ります（物理マテリアルの <span class=\"path\">.physmat</span> と同じ）。インスペクタで変えた値は、「プロファイルへ書き込む」を押すまでプロファイルへは残りません。</li><li>「FFT の海で描く」を切ると Gerstner の波で描きます。Gerstner の波は保存せず、開き直すと既定の 16 本に戻ります。</li><li>FFT の海の映り込みは、シーンの風速（<code>r.Wind.Speed</code>）が強いほど縦に伸びてぼけ、遠くの水面ほど空が映ります。FFT が表せない短い波の傾きを風速から求めて足しているためです。鏡のように映したいときは風速を下げます。</li><li>コースティクスの「作り方」をスクリーンスペースにしたときの強さなどの値は、Gerstner の波のときだけ効きます。レイトレーシングの明るさは、光と水の吸収から決まります。</li><li>FFT の海でレイトレーシングが使えるときは、ゲームのカメラの周り 256m 四方（海底の高さを測る範囲）を 0.5m 間隔の細かい格子で描き、その外を「分割数」の格子で描きます。範囲はカメラと一緒に 0.5m 単位で動きます。CVar <code>r.Water.Shore.FineMesh</code> で切れます。</li><li>FFT の海の波の形（頂点の高さと横のずれ）には、その格子の間隔で表せる波だけを入れます。細かい格子は 3 つのカスケードの波を全部（短い波まで）、粗い格子は 60m より長い波だけです。形に入らない短い波は、陰影（法線）で描きます。細かい格子を使わないとき（レイトレーシングが無い・<code>r.Water.Shore.FineMesh</code> を切った）は、カメラの近くも 60m より長い波だけの形になります。</li><li>レイトレーシングが使えるときは、水面の範囲全体の水深と水面の上にある物までの高さを測った地図（海の範囲マップ）で波の形を弱めます。陸や建物の下では波が出ず、浅瀬では水深に応じて低くなり、桟橋の下では桟橋に届かない高さまでになります。水面の範囲の端に触れている水と、いちばん大きな水のかたまりを海とし、それ以外の囲まれた水（プールや池）は波立ちません。測るのは止まっている物だけで、物を置く・動かすと、落ち着いてから測り直します。CVar <code>r.Water.SeaMap.Enabled</code> で切れ、<code>r.Water.SeaMap.Resolution</code>（地図の長い辺のテクセル数）で細かさを変えられます。</li><li>「潮の高さ」を 0 より大きくすると、大気の月と太陽の高さから潮位を求め、水面をトランスフォームの高さから上下させます（トランスフォームの値は変えません）。月の効きを 1、太陽を 0.46 として足し合わせ、どちらも真上か真下で満潮、地平線で干潮です。月が無いシーンは太陽だけで求め、どちらも無ければ潮は動きません。水面の描画・映り込み・屈折・コースティクス・水中の霧と明るさ・岸の泡・海の範囲マップは、どれも潮位を足した高さを使います。</li><li>月と太陽が真上まで来ないと、満潮は「潮の高さ」まで上がりません。シーンの機能 <code>TimeOfDay</code> は緯度（<code>r.TimeOfDay.LatitudeDeg</code>。既定 35 度）が高いほど南中が低く、35 度では満潮が「潮の高さ」の 0.34 倍、干潮が −1 倍です。</li><li><code>TimeOfDay</code> の月は月齢の分だけ太陽から遅れて動くので、新月と満月の頃は大潮、上弦と下弦の頃は小潮になります（小潮の干満差は大潮の約 37%）。満潮の時刻は毎日約 49 分ずつ遅れます（満月の日は 0 時と 12 時）。潮の速さは空の時間の速さ（<code>r.TimeOfDay.DayLengthSeconds</code>）で決まります。<code>TimeOfDay</code> の無いシーンや時間を進めないシーンでは、潮位は一定です。</li><li>スクリプトで波を含む水面の高さを使う（浮かぶ・泳ぐ・濡れる）ときは、<a href=\"#api-WaterProbe\">水面の高さを調べる</a> を付けて読みます。物を浮かべるだけなら <a href=\"#api-Buoyancy\">浮力</a> を付けます。波を含まない水の高さ（潮を足した基準の高さ）は、トランスフォームの高さでなく <code>waterLevel</code> を読みます。潮を自分で動かしたいときは <code>SetTideHeight</code> で指定します。</li><li>海の範囲マップの水深は、潮位を除いた高さで測ってから潮位の分を足します。満潮で水に沈んだ低い陸にも、その深さに応じて波が出ます。</li><li>水面が下がると（潮・<code>SetTideHeight</code>・トランスフォームを下げる）、それまで水に浸かっていた面が暗く、つやのある見た目で残り、時間とともに乾きます（濡れ跡）。水から出た時刻をワールドの高さごとに覚えて、その時刻からの時間で乾かすので、カメラを動かしても消えません。乾く速さは <code>r.Water.Wetness.DrySeconds</code>（濡れ具合が 1/e になるまでのゲームの時間。既定 60 秒）で決まり、<code>r.Water.Wetness.Enabled</code> で切れます。インスペクタの「濡れ跡」にも並びます。今の水面より 0.5 m 下までの面も、波打ち際として濡れて見えます。スキンメッシュと水面の範囲の外は濡らしません。</li></ul>",
     see: [["file-formats", "_scene.json の書き方"], ["api-SkyBox", "空と大気散乱"]]
+  },
+
+  {
+    id: "WaterProbe", kind: "component", cat: "環境", display: "水面の高さを調べる", type: "WaterProbe",
+    accessor: "owner.waterProbe", title: "水面の高さを調べる（WaterProbe）", brief: "その場所の水面の高さ",
+    keywords: "水面 高さ 波 水の中 水中 深さ 泳ぐ 濡れる 水しぶき 着水 ブイ 浮き waterprobe",
+    summary: "オブジェクトの真上か真下にある水面の高さ・水面からの深さ・水面の向きを調べます。描かれている波と同じ高さで、潮と浅瀬で弱まった波も含みます。",
+    requires: "トランスフォーム、シーンの <a href=\"#api-WaterSurface\">水面</a>",
+    props: [
+      ["水面の範囲の中", "inWater", "bool", "", "読み取り専用。真上か真下に水面があるか。水面の範囲の外・水面の無いシーン・付けた直後は false。"],
+      ["水の中", "underwater", "bool", "", "読み取り専用。オブジェクトの位置が水面より下か。"],
+      ["水面の高さ", "surfaceHeight", "float", "", "読み取り専用。水面のワールドの Y（m）。"],
+      ["水面からの深さ", "depth", "float", "", "読み取り専用。水面の高さ − オブジェクトの Y（m）。水面より上ならマイナス、水面が無ければ 0。"],
+      ["水面の向き", "surfaceNormal", "Vector3", "", "読み取り専用。水面の法線（長さ 1）。水面が無ければ (0, 1, 0)。"]
+    ],
+    notes: "<ul>" +
+      "<li>水面の高さは GPU で、水面を描くのと同じ式（FFT の海・Gerstner の波・潮・海の範囲マップで弱まった波）で求め、1〜2 フレーム後に受け取ります。その間にオブジェクトが動いた分は、水面の傾きで補います。</li>" +
+      "<li>同時に調べられる点は、シーン全体で 1024 個までです（<a href=\"#api-Buoyancy\">浮力</a> は 1 つで 8 個使います）。超えた分は調べず（<code>inWater</code> が false のまま）、ログに警告を出します。</li>" +
+      "<li>波を含まない水の高さ（潮を足した基準の高さ）だけでよいときは、水面の <code>waterLevel</code> を読みます。</li>" +
+      "</ul>",
+    examples: [
+      {
+        title: "例：足が届かない深さを知る",
+        code: `
+void Update()
+{
+    WaterProbe@ probe = owner.waterProbe;
+    if (probe.underwater && probe.depth > 1.5f) {
+        Log("足が届かない深さ");
+    }
+}`
+      }
+    ],
+    see: [["physics-water-height", "水面の高さを調べる"], ["g3d-water", "ブイの例"], ["api-Buoyancy", "浮力"], ["api-WaterSurface", "水面"]]
   },
 
   // =================================================================== 物理
@@ -15639,6 +15822,45 @@ void FixedUpdate()
       }
     ],
     see: [["script-physics", "物理と当たり判定"], ["api-Collider", "コライダー"], ["api-CharacterController", "キャラクタコントローラ"]]
+  },
+
+  {
+    id: "Buoyancy", kind: "component", cat: "物理", display: "浮力", type: "Buoyancy",
+    accessor: "owner.buoyancy", title: "浮力（Buoyancy）", brief: "水に浮かべる",
+    keywords: "浮力 浮く 浮かべる 沈む 水 海 船 ボート 波 揺れる 着水 buoyancy",
+    summary: "剛体を水に浮かべます。沈んだ体積の分だけ上向きの力を加え、水の中では動きと回転を遅くします。形を 8 つの塊に分けて塊ごとに水面の高さを調べるので、波に合わせて傾きます。",
+    requires: "剛体とコライダー（どちらも自動では足しません）、シーンの <a href=\"#api-WaterSurface\">水面</a>",
+    props: [
+      ["水の密度", "waterDensity", "float", "1025", "kg/m³。海水は約 1025、真水は 1000。剛体の質量 ÷ 体積 がこれより小さいと浮く。"],
+      ["体積", "volume", "float", "0", "m³。0 ならコライダーの先頭の形（箱・球・カプセル）とスケールから求める。"],
+      ["水の抵抗", "waterDrag", "float", "1", "1/s。沈んでいる分だけ、水の中を動く速さを落とす。速く動くときの抵抗は、動く向きから見た形の大きさから求めて足す。"],
+      ["水の回転の抵抗", "waterAngularDrag", "float", "1", "1/s。沈んでいる分だけ回転を落とす。"],
+      ["沈んでいる割合", "submergedRatio", "float", "", "読み取り専用。0 = 水の外、1 = 全部が水の中。"],
+      ["水に触れている", "inWater", "bool", "", "読み取り専用。少しでも水に沈んでいるか。"]
+    ],
+    notes: "<ul>" +
+      "<li>動的な剛体だけに効きます（キネマティックと静的には何もしません）。浮力の向きは重力の逆向きで、「重力を受ける」を切った剛体には浮力を加えず、水の抵抗だけを加えます。</li>" +
+      "<li>形を囲む箱を縦・横・高さ 2 つずつの 8 つの塊に分け、塊ごとに水面の高さを調べて、沈んだ分の力をその位置へ加えます。球とカプセルも囲む箱で分けるので、沈み方はおおよそです。</li>" +
+      "<li>水面の高さは <a href=\"#api-WaterProbe\">水面の高さを調べる</a> と同じ仕組みで、1〜2 フレーム遅れて届きます。付けた直後の数フレームと、水面の範囲の外では浮力が掛かりません。</li>" +
+      "<li>浮き方の決め方は <a href=\"#physics-water\">水に浮かべる</a> にあります。</li>" +
+      "</ul>",
+    examples: [
+      {
+        title: "例：着水した瞬間を知る",
+        code: `
+private bool wasInWater_ = false;
+
+void Update()
+{
+    const bool inWater = owner.buoyancy.inWater;
+    if (inWater && !wasInWater_) {
+        Log("着水（沈んでいる割合 " + owner.buoyancy.submergedRatio + "）");
+    }
+    wasInWater_ = inWater;
+}`
+      }
+    ],
+    see: [["physics-water", "水に浮かべる"], ["g3d-water", "小舟の例"], ["api-WaterProbe", "水面の高さを調べる"], ["api-Rigidbody", "剛体"]]
   },
 
   {
@@ -16253,7 +16475,7 @@ class TitleMenu : ScriptComponent
     "ScriptComponent TweenHandle TweenSequence UIText UIImage UIButton PlayParams Sound CameraShakeParams " +
     "GameCamera SaveFile RandomStream Animator AudioListener AudioSource Camera CharacterController " +
     "GpuParticleSystem Light Material MeshRenderer ParticleSystem PhysicsMaterial RectTransform " +
-    "Rigidbody SkyBox SpriteRenderer SpriteAnimator Text3DRenderer UISlider UIToggle WaterSurface EaseType CollisionLayer " +
+    "Rigidbody SkyBox SpriteRenderer SpriteAnimator Text3DRenderer UISlider UIToggle WaterSurface WaterProbe Buoyancy EaseType CollisionLayer " +
     "InputAction Key MouseButton TweenLoop TweenUpdate UIAnchor TextAlignH TextAlignV AudioBus ShakeWaveform " +
     "ShakeSpace ShakeTimeMode TweenCallback TweenProgressCallback TweenFloatSetter TweenVector2Setter " +
     "TweenVector3Setter TweenVector4Setter"
