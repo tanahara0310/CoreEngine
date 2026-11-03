@@ -5,15 +5,13 @@
 // 泡は水そのものの色ではなく、砕波で空気が混入した「白い散乱層」。ほぼ Lambert な
 // 拡散面として扱い、フレネル反射・鏡面はほぼ持たないため、合成時に
 // reflectanceWeight とサングリッターを (1 - 泡被覆) 倍へ抑制する。
-//
-// 【include 位置の契約】Water.PS.hlsl のリソース宣言・WaterFrameConstants(b5)・
-// WaterVolume.hlsli（EvaluateWaterSkyIrradiance）の後で include すること。以下に暗黙依存:
-//   資源    : gLightCounts / gDirectionalLights
-//   cbuffer : gSkyAmbientEnabled / gSkyAmbientScale / gFoamDriftOffsetXZ / gFoamStretchAxis
-//   関数    : EvaluateWaterSkyIrradiance（WaterVolume.hlsli）
 // ============================================================
 #ifndef WATER_FOAM_APPEARANCE_INCLUDED
 #define WATER_FOAM_APPEARANCE_INCLUDED
+
+#include "WaterSurfaceResources.hlsli"
+#include "WaterFoamCoverage.hlsli"
+#include "WaterVolume.hlsli" // EvaluateWaterSkyIrradiance
 
 // アルベドはわずかに青白い（気泡層の多重散乱による短波長優位）。
 static const float3 kFoamAlbedo = float3(0.90f, 0.93f, 0.95f);
@@ -21,14 +19,12 @@ static const float3 kFoamAlbedo = float3(0.90f, 0.93f, 0.95f);
 // ---- 泡の描画方式: dissolve（しきい値カット）----
 // 泡マスクは「被覆率」の滑らかな場として持ち、表示時に高周波の泡パターンへ
 // しきい値カットを掛けて「泡がある/ない」のレース状の形へ変換する。
-// 被覆率をそのまま明度にすると（旧方式）、泡が「ぼかしたノイズテクスチャ」に
-// 見えてしまう — 実際の泡はレースの穴・筋・粒という鋭い微細構造を持つため。
 // dissolve のしきい値の柔らかさ（上側だけ滑らか。下端は硬い＝縁が鋭い）
 static const float kFoamLaceSoftness = 0.18f;
 // 白濁（haze）: 泡レースの穴の間と縁の外側に出る気泡層。パターンで粒状に変調し、
 // 「均一な白いもや」に見えないようにする
 static const float kFoamHazeTint = 0.55f;      // 泡色に対する輝度比（水越しの気泡層）
-static const float kFoamHazeOpacity = 0.35f;   // 最大ブレンド率（旧 0.5 から抑制）
+static const float kFoamHazeOpacity = 0.35f;   // 最大ブレンド率
 static const float kFoamHazePatternMin = 0.25f; // パターン変調の下限（0=完全に粒状）
 // 泡内部の粒状の明度変調（気泡の粒感。周期 ≈ 8cm）
 static const float kFoamGrainScale = 13.0f;
@@ -189,6 +185,61 @@ float3 ComputeFoamColor(float3 normal, float mainLightVisibility)
     }
 
     return kFoamAlbedo * lighting;
+}
+
+/// @brief 水面の 1 点の泡
+struct WaterFoamResult
+{
+    float mask;        ///< 被覆率（白波の泡と岸の泡の大きい方）
+    float surfaceFoam; ///< 水面の上の泡（レース）の割合。反射・グリッター・波頭の透過をこの割合だけ遮る
+    float bubbleHaze;  ///< 水面下の気泡（白濁）の割合。透過してくる光にだけ混ざる
+    float3 color;      ///< 泡の色
+};
+
+/// @brief 白波の泡と岸の泡を重ね、水面の 1 点の泡の割合と色を求める
+/// @param baseWorldXZ         変位前の参照格子座標
+/// @param surfacePosition     水面の点（頂点変位後のワールド座標）
+/// @param fallbackDepth       海底の高さの範囲の外で使う水深（視線の延長で測った鉛直水深）
+/// @param normal              水面の法線
+/// @param mainLightVisibility メインライト（0 番）の日向率（影の中の光を残した値）
+/// @details 白波の泡は FFT の参照格子座標で評価し、模様は泡と一緒に風下へ流す。
+///          岸の泡は水の粒の静止位置で読み、模様もそこで評価する（寄せ・引きと一緒に動く）。
+///          2 つの泡は模様の動きが違うので、別々にレース（lace）と白濁（haze）を作って重ねる。
+WaterFoamResult ResolveWaterFoam(
+    float2 baseWorldXZ, float3 surfacePosition, float fallbackDepth, float3 normal, float mainLightVisibility)
+{
+    const float whitecapFoam = ComputeFoamMask(baseWorldXZ);
+    const ShoreFoamResult shoreFoam = ResolveShoreFoam(surfacePosition, fallbackDepth);
+    const float2 whitecapPatternXZ = ComputeWhitecapPatternXZ(baseWorldXZ);
+    const float2 shorePatternXZ = baseWorldXZ + shoreFoam.patternShift;
+    WaterFoamLayer whitecapLayer = (WaterFoamLayer)0;
+    [branch]
+    if (whitecapFoam > 0.0f)
+    {
+        whitecapLayer = EvaluateFoamLayer(whitecapFoam, whitecapPatternXZ);
+    }
+    WaterFoamLayer shoreLayer = (WaterFoamLayer)0;
+    [branch]
+    if (shoreFoam.coverage > 0.0f)
+    {
+        shoreLayer = EvaluateFoamLayer(shoreFoam.coverage, shorePatternXZ);
+    }
+    const WaterFoamLayer foamLayer = CombineFoamLayers(whitecapLayer, shoreLayer);
+
+    WaterFoamResult result;
+    result.mask = max(whitecapFoam, shoreFoam.coverage);
+    result.surfaceFoam = foamLayer.lace * saturate(gFoamOpacity);
+    result.bubbleHaze = foamLayer.haze * saturate(gFoamOpacity) * kFoamHazeOpacity;
+
+    // 泡の色（Lambert 白 × 太陽直達 + 天空光）。気泡の粒感として明度を高周波ノイズで揺らす
+    result.color = float3(0.0f, 0.0f, 0.0f);
+    if (result.mask > 0.0f)
+    {
+        const float shoreFoamShare = shoreFoam.coverage / max(whitecapFoam + shoreFoam.coverage, 1.0e-4f);
+        const float foamGrain = lerp(FoamGrain(whitecapPatternXZ), FoamGrain(shorePatternXZ), shoreFoamShare);
+        result.color = ComputeFoamColor(normal, mainLightVisibility) * foamGrain;
+    }
+    return result;
 }
 
 #endif // WATER_FOAM_APPEARANCE_INCLUDED

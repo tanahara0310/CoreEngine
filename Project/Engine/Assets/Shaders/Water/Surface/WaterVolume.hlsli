@@ -3,16 +3,11 @@
 // ------------------------------------------------------------
 // 天空光 SH 評価・水中インスキャッタ環境光・Beer-Lambert＋単一散乱の体積色・
 // RT 屈折の透過色解決。水柱厚さ（WaterColumn.hlsli）と対で使う。
-//
-// 【include 位置の契約】Water.PS.hlsl のリソース宣言・WaterFrameConstants(b5) の
-// 後で include すること。以下に暗黙依存する:
-//   資源    : gWaterSkyIrradianceSH / gSceneColor / gLinearClamp / gRTWaterRefractionColor /
-//             gLightCounts / gDirectionalLights
-//   cbuffer : gSkyAmbientEnabled / gSkyAmbientScale
-//   関数    : IsRTPathValid（Common/WaterRefractionEncoding.hlsli）
 // ============================================================
 #ifndef WATER_VOLUME_INCLUDED
 #define WATER_VOLUME_INCLUDED
+
+#include "WaterSurfaceResources.hlsli"
 
 /// @brief SH9 係数から法線方向の空の放射照度/π を評価する
 /// @details DeferredLighting.PS.hlsl の EvaluateSkyIrradiance と同じ評価式。
@@ -77,20 +72,12 @@ float3 ComputeUnderwaterAmbientLight(float mainLightVisibility)
         skyAmbient = EvaluateWaterSkyIrradiance(float3(0.0f, 1.0f, 0.0f));
     }
 
-    // 天空光はブーストせずそのまま使う。
-    // 以前ここに「太陽が低いほど天空光を最大2.5倍へ底上げする」ハックがあったが、
-    // 夜間に水中インスキャッタ（透過側）だけが空の反射（ほぼ黒）より明るくなり、
-    // フレネルの振れに応じて青/黒のうねりスケールのまだらを生む原因になったため撤去。
-    // 水中に入る光と水面に映る空は同じ空なので、両者の明るさは常に整合させる。
+    // 水中に入る光と水面に映る空は同じ空なので、天空光はそのまま足す
     return sunAmbient + skyAmbient;
 }
 
-// ★太陽の下り光路（太陽→海底）の吸収はこのシェーダーの責務ではない★（2026-07-27 撤去）
-// DeferredLighting の水中ライティング置換（RT コースティクス）が、海底ピクセルの
-// 直接光として exp(-σa·実光路長) を含む透過直接光を既に合成している。
-// ここで再度掛けると下り光路が二重計上になるため、以前あった
-// ComputeSunDownwellingTransmittance() は呼び出しごと削除した。
-// 本シェーダーが担当するのは「視線の上り光路」（transmittance）のみ。
+// 太陽から海底までの下り光路の吸収は、DeferredLighting の水中ライティング置換（RT コースティクス）が
+// 海底の画素の直接光に exp(-σa·実光路長) として含めている。ここで掛けるのは視線の上り光路だけ。
 
 /// @brief 水柱を通過した背景色に波長依存の吸収・散乱を適用する
 /// @param refractionColor 水面越しに見える背景（海底・水中物体）の色
@@ -101,9 +88,6 @@ float3 ComputeUnderwaterAmbientLight(float mainLightVisibility)
 /// @details 透過項 + 均質媒質の単一散乱解析解。
 ///          浅瀬では transmittance がまだ緑・青を通すため海底アルベド（白砂）が
 ///          エメラルドに、深瀬では透過が消えて (σs/σt)·L の水固有の青に収束する。
-///          太陽 → 海底の下り光路の減衰は DeferredLighting の水中ライティング置換
-///          （RT コースティクス）が海底色に織り込み済みなので、ここでは掛けない
-///          （掛けると二重計上。上のコメント参照）。
 float3 ComputeWaterVolumetricColor(
     float3 refractionColor, float3 transmittance,
     float3 sigmaS, float3 sigmaT, float3 ambientLight)
@@ -113,31 +97,36 @@ float3 ComputeWaterVolumetricColor(
     return transmitted + inscatter;
 }
 
-// アルファのエンコード規約・IsRTPathValid / IsRTColorValid / DecodeRTOpticalPath は
-// Common/WaterRefractionEncoding.hlsli（RTWaterRefraction.hlsl と共有）が唯一の情報源。
-// 「光路長が有効か」と「色が有効か」を分けているのが要点。色が取れないだけの
-// ピクセルでも光路長は正しいので、水柱厚さの推定を別の量へ切り替えてはいけない
-// （切り替えると境界が透過率の段差＝波打ち際の二重線になる）。
-
+/// @brief 水面越しに見える背景の色（RT 屈折の色。RT 屈折が無い画素はシーンの色）
+/// @details RT 屈折の rgb は、屈折先のシーン色と屈折させない自分の画素のシーン色を
+///          連続ブレンドした色なので、光路長が有効ならそのまま使う（IsRTColorValid では切り替えない）
 float3 ResolveWaterTransmissionColor(uint2 pixelCoord, float2 screenUV)
 {
     float4 rtRefraction = gRTWaterRefractionColor.Load(int3(pixelCoord, 0));
-
-    // ★ここで IsRTColorValid の 2 値で切り替えてはいけない★
-    // RTWaterRefraction.hlsl は「屈折先のシーン色」と「屈折させていない自分の
-    // ピクセルのシーン色（フォールバック）」を depthConfidence × edgeFade で
-    // 連続ブレンドした結果を rgb に書いている。ここで 2 値切替を入れると、
-    // 岸際に帯状に出る色フォールバック領域の縁が色の段差になり、
-    // 波打ち際に沿った細い暗線として見える（光路長で起きたのと同じ事故）。
-    //
-    // ヒットしていないピクセルの rgb もフォールバック色（＝この関数の else と
-    // 同じ値）なので、実質どちらでも同じだが、RT パスが走っていないフレーム
-    // （テクスチャがダミー）のために else 側は残す。
     if (IsRTPathValid(rtRefraction.a) > 0.5f) {
         return rtRefraction.rgb;
     }
 
     return gSceneColor.Sample(gLinearClamp, screenUV).rgb;
+}
+
+/// @brief 水面越しに見える水中の色（背景の色に、視線の上り光路の吸収と散乱を掛けた色）
+/// @param transmittance       exp(-σt·d) 視線の上り光路の波長別透過率
+/// @param mainLightVisibility メインライト（0 番）の日向率（影の中の光を残した値）
+float3 ResolveWaterTransmission(
+    uint2 pixelCoord, float2 screenUV, float3 transmittance,
+    float3 sigmaS, float3 sigmaT, float mainLightVisibility)
+{
+    const float3 refractionColor = ResolveWaterTransmissionColor(pixelCoord, screenUV);
+    const float3 underwaterAmbient = ComputeUnderwaterAmbientLight(mainLightVisibility);
+    return ComputeWaterVolumetricColor(refractionColor, transmittance, sigmaS, sigmaT, underwaterAmbient);
+}
+
+/// @brief 水中の放射輝度が水面から空気へ出るときの倍率（1/n²）
+float WaterRadianceExitScale()
+{
+    const float n = max(gWaterRefractiveIndex, 1.0e-4f);
+    return 1.0f / (n * n);
 }
 
 #endif // WATER_VOLUME_INCLUDED

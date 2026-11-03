@@ -4,6 +4,7 @@
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
+#include "Graphics/Water/WaterPhysics.h"
 #include "Graphics/Water/WaterSurfaceData.h"
 #include <d3d12.h>
 
@@ -21,14 +22,14 @@ namespace CoreEngine
 			float depthAttenuation = 1.5f;
 			float curvatureScale = 1.5f;
 			float surfaceSampleRadius = 0.35f;
-			float refractiveIndex = 1.333f;
+			float refractiveIndex = WaterPhysics::kRefractiveIndex;
 			float receiverNormalStrength = 1.0f;
 			float alignmentPower = 6.0f;
 			float debugDisplayScale = 1.0f;
 			uint32_t debugViewMode = 0;
 			uint32_t debugLogEnabled = 0;
 			float padding[2] = {};
-			float invViewProjMatrix[16] = {}; // WorldPosition ターゲット廃止に伴う深度復元用
+			float invViewProjMatrix[16] = {}; // 深度復元用
 		};
 
 		static constexpr Cb::Field kParamsFields[] = {

@@ -2,7 +2,9 @@
 // 岸の泡の時間変化
 // ============================================================
 
-#include "../Common/FFTOceanCascade.hlsli"
+#include "../Common/WaveSurface.hlsli"
+#include "../Common/WaterPhysics.hlsli"
+#include "../Common/WaterAppearanceConstants.hlsli"
 
 Texture2D<float> gSeabedHeight : register(t0);
 Texture2DArray<float4> gFFTOceanDisplacement : register(t1);
@@ -28,33 +30,17 @@ cbuffer WaterShoreFoamConstants : register(b0)
     float gShoreFoamPad2;
 };
 
-/// @brief 波が砕ける波高と静水深の比（H / h）
-static const float kBreakingIndex = 0.78f;
 /// @brief 砕け始めから泡が満量になるまでの H / h の幅
 static const float kBreakingRamp = 0.39f;
 /// @brief これより浅い静水深では、水があれば遡上として泡にする [m]
 static const float kSwashStillDepth = 0.05f;
 /// @brief 水があるとみなす最小の水深 [m]
 static const float kWetDepth = 0.01f;
-/// @brief 砕けた所の泡の被覆率
-static const float kShoreFoamStrength = 0.9f;
 
 /// @brief 水面の上下（静水面からの高さ）[m]。水面メッシュの頂点と同じ式で、泡の格子の間隔で解像できるカスケードを足す
 float SampleWaveElevation(float2 worldXZ)
 {
-    float height = 0.0f;
-    [unroll]
-    for (int c = 0; c < kFFTCascadeCount; ++c)
-    {
-        const float weight = ComputeFFTGeometryCascadeWeight(c, gTexelSize);
-        if (weight <= 0.0f)
-        {
-            continue;
-        }
-        const float2 cuv = ComputeFFTCascadeUV(worldXZ, c);
-        height += gFFTOceanDisplacement.SampleLevel(gLinearWrap, float3(cuv, (float)c), 0.0f).y * weight;
-    }
-    return height * ComputeFFTWaveGroupEnvelope(worldXZ, gWaveGroupPhase);
+    return SampleFFTVertexElevation(gFFTOceanDisplacement, gLinearWrap, worldXZ, gTexelSize, gWaveGroupPhase);
 }
 
 /// @brief 海底の高さ（ワールド Y）[m]
@@ -70,7 +56,7 @@ float2 SampleSwashDisplacement(float2 restXZ)
 }
 
 /// @brief 今の位置で波が砕けている度合い [0,1]
-/// @details 波高（水面の上がりの 2 倍）が静水深の kBreakingIndex 倍を超えると砕ける。
+/// @details 波高（水面の上がりの 2 倍）が静水深の kWaterBreakingIndex 倍を超えると砕ける。
 ///          静水深がごく浅い所と静水面より上は、水が来ていれば遡上の泡にする
 float ComputeBreaking(float2 worldXZ)
 {
@@ -84,7 +70,7 @@ float ComputeBreaking(float2 worldXZ)
     {
         return 1.0f;
     }
-    return saturate((2.0f * elevation / stillDepth - kBreakingIndex) / kBreakingRamp);
+    return saturate((2.0f * elevation / stillDepth - kWaterBreakingIndex) / kBreakingRamp);
 }
 
 /// @brief 水の粒の静止位置（寄せ・引きでずれる前の位置）ごとに泡を 1 フレーム進める
@@ -114,6 +100,6 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     }
 
     const float decay = exp(-gDeltaSeconds / max(gDecaySeconds, 1.0e-3f));
-    const float foam = max(previous * decay, breaking * kShoreFoamStrength);
+    const float foam = max(previous * decay, breaking * kWaterShoreFoamStrength);
     gShoreFoamOutput[dispatchThreadId.xy] = float4(foam, swash, 0.0f);
 }

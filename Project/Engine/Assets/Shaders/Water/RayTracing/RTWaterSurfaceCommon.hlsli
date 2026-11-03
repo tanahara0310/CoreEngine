@@ -415,7 +415,7 @@ float EvaluateFineWaveMeanSquareSlope()
 // レイペイロードと失敗理由コード（3 シェーダー共通）
 // ============================================================
 
-/// @brief ヒット距離と有無だけを運ぶ共通ペイロード（旧 Caustics/Refraction/ReflectionPayload）
+/// @brief ヒット距離と有無だけを運ぶ共通ペイロード
 struct RTWaterPayload
 {
     float hitT;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Graphics/Water/WaterFoamDefaults.h"
+#include "Graphics/Water/WaterPhysics.h"
 #include "Math/Vector/Vector2.h"
 #include "Math/Vector/Vector3.h"
 #include "Math/Vector/Vector4.h"
@@ -15,14 +16,14 @@ namespace CoreEngine
         Vector4 baseColor{ 0.04f, 0.18f, 0.28f, 0.85f }; ///< 反射が無いときの色（DXR の反射も空のキューブも無いときだけ使う）
         float roughness = 0.03f;                         ///< 粗さ（ハイライトの広がり）
         float fresnelScale = 1.0f;                       ///< 反射の強さの倍率（1 = 物理値）
-        float fresnelF0 = 0.02f;                         ///< 正面入射時の反射率
+        float fresnelF0 = WaterPhysics::kFresnelF0;      ///< 正面入射時の反射率
         bool depthFadeEnabled = true;                    ///< 水柱の厚さで透け方を変える
 
         // ---- 水質 ----
         Vector3 absorption{ 0.45f, 0.09f, 0.06f };   ///< 吸収係数 σa のベース値 [1/m]（RGB）
         Vector3 scattering{ 0.010f, 0.032f, 0.028f }; ///< 散乱係数 σs のベース値 [1/m]（RGB）
         float turbidity = 0.0f;                       ///< 濁り（青の吸収と粒子の散乱を足す）
-        float refractiveIndex = 1.333f;               ///< 空気 1 に対する屈折率
+        float refractiveIndex = WaterPhysics::kRefractiveIndex; ///< 空気 1 に対する屈折率
 
         // ---- 風波（FFT の海。風速と向きはシーンの風）----
         bool fftEnabled = true;       ///< FFT の海で描く（false = Gerstner の波）

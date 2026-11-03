@@ -15,45 +15,34 @@ namespace CoreEngine
             float maxTraceDistance;
             float surfaceBias;
             float intensityScale;
-            // 旧 waterHeight。水面高さは WaterSurfaceData 側（b1）に一本化され未使用。
-            // 削除すると後続 float3 が 16B 境界をまたぎ HLSL とずれるためスロットは残す
-            float padding0;
+            float refractiveIndex;
             float lightDirection[3];
             float screenWidth;
             float screenHeight;
-            // 旧 FFT 有効情報 3 スロット。実体は b1（WaterSurfaceConstants）へ一本化済み。
-            // 後続の float3 の 16B 境界を守るためレイアウトだけ残す
-            uint32_t fftOceanPad1;
-            float fftOceanPad0;
-            uint32_t fftOceanPad2;
-            float refractiveIndex;
             float debugDisplayScale;
             uint32_t debugViewMode;
-            uint32_t lightEnabled; // 旧 padding を転用
-            // ここまでで HLSL 側 r0〜r3 に対応（lightColor/lightIntensity が r4）
+            uint32_t lightEnabled;
             float lightColor[3];
             float lightIntensity;
             // 水面メッシュのワールドXZ範囲（RTWaterCaustics.hlsl の cbuffer 末尾と一致させること）。
             // regionValid == 0 なら範囲制限なし
             float regionCenterXZ[2];
             float regionHalfExtentXZ[2];
-            uint32_t regionValid;
-            // 波長依存の吸収係数 σa [1/m]（RGB）。水面描画の WaterFrameConstants と同値を同期
+            // 波長依存の吸収係数 σa [1/m]（RGB）。水面描画の WaterFrameConstants と同じ値
             float absorptionCoeff[3];
-            Matrix4x4 invViewProj; // WorldPosition ターゲット廃止に伴う深度復元用
+            uint32_t regionValid;
+            Matrix4x4 invViewProj; // 深度復元用
         };
 
         static constexpr Cb::Field kWaterCausticsConstantsFields[] = {
             CB_FIELD(WaterCausticsConstants, maxTraceDistance), CB_FIELD(WaterCausticsConstants, surfaceBias),
-            CB_FIELD(WaterCausticsConstants, intensityScale), CB_FIELD(WaterCausticsConstants, padding0),
+            CB_FIELD(WaterCausticsConstants, intensityScale), CB_FIELD(WaterCausticsConstants, refractiveIndex),
             CB_FIELD(WaterCausticsConstants, lightDirection), CB_FIELD(WaterCausticsConstants, screenWidth),
-            CB_FIELD(WaterCausticsConstants, screenHeight), CB_FIELD(WaterCausticsConstants, fftOceanPad1),
-            CB_FIELD(WaterCausticsConstants, fftOceanPad0), CB_FIELD(WaterCausticsConstants, fftOceanPad2),
-            CB_FIELD(WaterCausticsConstants, refractiveIndex), CB_FIELD(WaterCausticsConstants, debugDisplayScale),
+            CB_FIELD(WaterCausticsConstants, screenHeight), CB_FIELD(WaterCausticsConstants, debugDisplayScale),
             CB_FIELD(WaterCausticsConstants, debugViewMode), CB_FIELD(WaterCausticsConstants, lightEnabled),
             CB_FIELD(WaterCausticsConstants, lightColor), CB_FIELD(WaterCausticsConstants, lightIntensity),
             CB_FIELD(WaterCausticsConstants, regionCenterXZ), CB_FIELD(WaterCausticsConstants, regionHalfExtentXZ),
-            CB_FIELD(WaterCausticsConstants, regionValid), CB_FIELD(WaterCausticsConstants, absorptionCoeff),
+            CB_FIELD(WaterCausticsConstants, absorptionCoeff), CB_FIELD(WaterCausticsConstants, regionValid),
             CB_FIELD(WaterCausticsConstants, invViewProj),
         };
         CB_VERIFY_LAYOUT(WaterCausticsConstants, kWaterCausticsConstantsFields);
@@ -62,7 +51,7 @@ namespace CoreEngine
 
     static_assert(sizeof(WaterWaveParam) == 32,
         "WaterWaveParam size mismatch with HLSL wave struct");
-    static_assert(sizeof(WaterCausticsConstants) == 176,
+    static_assert(sizeof(WaterCausticsConstants) == 160,
         "WaterCausticsConstants size mismatch with HLSL cbuffer");
     // 個別フィールドの境界チェックはフィールド表（下）が全フィールド分やるので不要
 

@@ -2,8 +2,9 @@
 #include "../Include/Lighting/LightStructures.hlsli"
 #include "../Include/Common/DepthReconstruction.hlsli"
 #include "../Common/GerstnerWave.hlsli"
+#include "../Common/WaterPhysics.hlsli"
 
-Texture2D<float> gSceneDepth : register(t0); // WorldPosition ターゲット廃止に伴い深度から復元する
+Texture2D<float> gSceneDepth : register(t0); // ワールド座標は深度から復元する
 Texture2D<float4> gNormalRoughness : register(t1);
 
 cbuffer gMainLight : register(b1)
@@ -30,12 +31,7 @@ cbuffer gWaterSurfaceData : register(b2)
     float3 gSurfaceRegionPadding;
 };
 
-// C++ 側 WaterCausticsTechnique::Params と厳密にレイアウトを一致させること。
-// gPadding0 までの8フィールド(32B)はC++側の
-// intensity/depthAttenuation/curvatureScale/surfaceSampleRadius/refractiveIndex/
-// receiverNormalStrength/alignmentPower/debugDisplayScale に対応（このシェーダーは未使用）。
-// 続く16B（debugViewMode/debugLogEnabled/padding[2]）は本シェーダーで読まないため
-// gUnusedTail で読み飛ばし、その後ろの invViewProjMatrix[16] を gInvViewProj として受け取る。
+// C++ 側 WaterCausticsTechnique::Params と同じ並び
 cbuffer WaterCausticsParams : register(b3)
 {
     float gIntensity;
@@ -45,8 +41,10 @@ cbuffer WaterCausticsParams : register(b3)
     float gRefractiveIndex;
     float gReceiverNormalStrength;
     float gAlignmentPower;
-    float gPadding0;
-    float4 gUnusedTail; // C++側 debugViewMode/debugLogEnabled/padding[2] (16B)
+    float gDebugDisplayScale;
+    uint gDebugViewMode;
+    uint gDebugLogEnabled;
+    float2 gParamsPadding;
     float4x4 gInvViewProj;
 };
 
@@ -117,7 +115,7 @@ float2 TraceRefractedHitXZ(float2 surfaceXZ, float receiverY, out bool valid)
     float3 surfaceOffset = EvaluateWaterOffset(surfaceXZ);
     float3 waterNormal = EvaluateWaterNormal(surfaceXZ);
     float3 incidentDir = normalize(gMainLightDirection);
-    float eta = 1.0f / max(gRefractiveIndex, 1.001f);
+    float eta = 1.0f / max(gRefractiveIndex, kWaterMinRefractiveIndex);
     float3 refractedDir = refract(incidentDir, waterNormal, eta);
 
     valid = false;
@@ -212,7 +210,7 @@ PixelShaderOutput main(PixelShaderInput input)
     proximity *= proximity;
 
     float3 incidentDir = normalize(gMainLightDirection);
-    float eta = 1.0f / max(gRefractiveIndex, 1.001f);
+    float eta = 1.0f / max(gRefractiveIndex, kWaterMinRefractiveIndex);
     float3 refractedDir = normalize(refract(incidentDir, waterNormal, eta));
     float receiverFacing = saturate(dot(receiverNormal, -refractedDir) * max(gReceiverNormalStrength, 0.0f));
     float curvature = 1.0f + saturate(EvaluateCurvature(worldPos.xz) * gCurvatureScale);

@@ -4,6 +4,7 @@
 #include <dxcapi.h>
 #include <wrl.h>
 #include <cstdint>
+#include "Graphics/Water/WaterPhysics.h"
 #include "Math/Vector/Vector3.h"
 #include "Math/Matrix/Matrix4x4.h"
 #include "RayTracingDispatchInfo.h"
@@ -125,7 +126,7 @@ namespace CoreEngine
     struct RayTracingShadowWaterSurface {
         bool  enabled = false;
         float height = 0.0f;                          ///< 平らな水面の高さ
-        float refractiveIndex = 1.333f;               ///< 水の屈折率
+        float refractiveIndex = WaterPhysics::kRefractiveIndex; ///< 水の屈折率
         float regionCenterXZ[2] = { 0.0f, 0.0f };     ///< 水域の中心（XZ）
         float regionHalfExtentXZ[2] = { 0.0f, 0.0f }; ///< 水域の半径（XZ）
     };

@@ -4,6 +4,7 @@
 #include "../Include/Common/DepthReconstruction.hlsli"
 #include "../Include/Common/ColorSpace.hlsli" // Luminance / ACESFilm
 // 水中ライティング置換の関数群（PI / Luminance に依存するため PBR / ColorSpace の後）
+#include "../Include/Lighting/ShadowLightFloor.hlsli"
 #include "../Include/Lighting/UnderwaterLighting.hlsli"
 #include "../Include/Lighting/WetSurface.hlsli"
 #include "../Cloud/Common/CloudShadowCommon.hlsli"
@@ -328,7 +329,7 @@ PixelShaderOutput main(PixelShaderInput input)
             else if (di == 2) shadowFactor = gRTShadowMask2.Load(loadCoord).r;
             else              shadowFactor = gRTShadowMask3.Load(loadCoord).r;
         }
-        shadowFactor = lerp(0.3f, 1.0f, shadowFactor);
+        shadowFactor = ApplyShadowLightFloor(shadowFactor);
 
         // 雲影。RT シャドウとは別に底上げする（雲影は柔らかく、影の中でも空からの
         // 光が回り込むので、ジオメトリの影ほど暗く落とさない）
@@ -469,7 +470,7 @@ PixelShaderOutput main(PixelShaderInput input)
             {
                 if (useRTShadow)
                     skyShadow = gRTShadowMask0.Load(loadCoord).r;
-                skyShadow = lerp(0.3f, 1.0f, skyShadow);
+                skyShadow = ApplyShadowLightFloor(skyShadow);
             }
 
             // 拡散: SH9 放射照度。金属は拡散反射しないため減衰させる
@@ -510,7 +511,7 @@ PixelShaderOutput main(PixelShaderInput input)
                     else if (hli == 2) ambientShadow = gRTShadowMask2.Load(loadCoord).r;
                     else               ambientShadow = gRTShadowMask3.Load(loadCoord).r;
                 }
-                ambientShadow = lerp(0.3f, 1.0f, ambientShadow);
+                ambientShadow = ApplyShadowLightFloor(ambientShadow);
 
                 ambient += CalculateHalfLambertAmbient(N, L, hL.color.rgb, hL.intensity, albedo, metallic, ao) * ambientShadow;
             }

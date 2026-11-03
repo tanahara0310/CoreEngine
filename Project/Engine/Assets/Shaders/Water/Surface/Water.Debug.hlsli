@@ -1,30 +1,35 @@
 // ============================================================
 // 水面デバッグ可視化（Water.PS.hlsl 専用）
 // ------------------------------------------------------------
-// 本体の合成ロジック（main）から診断コードを切り離すためのファイル。
+// 本体の合成（main）が求めた値を WaterDebugContext で受け取り、表示モードごとの色にする。
 // 表示モードの番号は C++ 側 WaterDebugViewMode と
 // kWaterDebugViewModeNames（WaterDebugViewMode.h）に対応させること。
-//
-// 【include 位置の契約】
-// このファイルは Water.PS.hlsl の main() 直前で include すること。
-// 以下のグローバルが宣言済みであることを前提にしている（HLSL ではテクスチャや
-// サンプラを引数で持ち回れないため、ここだけは暗黙依存を許容している）:
-//   cbuffer : gDepthDebugViewMode / gDepthFadeDebugScale / gReflectionEnabled /
-//             gFresnelBaseReflectance / gSkyEnvReflectionEnabled
-//   資源    : gSceneColor / gSkyEnvironmentMap / gReflectionTexture /
-//             gRTWaterRefractionColor / gLinearClamp / gFFTOceanJacobian / gSampler
-//   関数    : ResolveWaterTransmissionColor / SampleRTWaterRefraction /
-//             IsRTColorValid / FresnelSchlick / ComputeFFTCombinedDetJ
-//   定数    : kWaterReflectionMicroRoughness / kRTSuccessRangeMin / gFoamCascadeWeights
-//
-// 計算済みの値はすべて WaterDebugContext で明示的に受け取る（暗黙参照しない）。
 // ============================================================
 #ifndef WATER_DEBUG_INCLUDED
 #define WATER_DEBUG_INCLUDED
 
+#include "WaterSurfaceResources.hlsli"
+#include "WaterColumn.hlsli"     // SampleRTWaterRefraction
+#include "WaterVolume.hlsli"     // ResolveWaterTransmissionColor
+#include "WaterReflection.hlsli" // SampleGlossyReflectionRGBA
+
 // ============================================================
 // デバッグ専用ヘルパー関数（本体からは呼ばれない）
 // ============================================================
+
+/// @brief Schlick 近似による Fresnel 係数を計算する
+/// @param cosTheta  視線と法線のなす角の余弦（saturate 済み推奨）
+/// @param f0        法線入射時の反射率（水面 ≈ 0.02）
+float FresnelSchlick(float cosTheta, float f0)
+{
+    return f0 + (1.0f - f0) * pow(saturate(1.0f - cosTheta), 5.0f);
+}
+
+/// @brief 反射テクスチャを 3×3 のテントでならした rgb
+float3 SampleGlossyReflection(float2 screenUV, float grazing)
+{
+    return SampleGlossyReflectionRGBA(screenUV, grazing).rgb;
+}
 
 float3 VisualizeDepthValue(float value)
 {
@@ -66,9 +71,6 @@ float3 VisualizeRTRefractionReason(float reasonCode)
 
     return float3(0.15f, 0.15f, 0.15f);
 }
-
-// SampleGlossyReflection / SampleGlossyReflectionRGB は本体（Water.PS.hlsl）へ移動した。
-// 可視化モード 19 からも引き続き呼べる（この hlsli は本体の後に include される）。
 
 /// @brief デバッグ表示が参照する、本体の合成過程で求まった値一式
 struct WaterDebugContext
@@ -251,8 +253,7 @@ float3 ResolveWaterDebugColor(WaterDebugContext ctx)
             return float3(1.0f, 0.0f, 1.0f);
         }
         float3 dbgReflectDir = reflect(-ctx.viewDir, float3(0.0f, 1.0f, 0.0f));
-        const float kDbgEnvMipCount = 5.0f;
-        const float kDbgEnvMip = kWaterReflectionMicroRoughness * (kDbgEnvMipCount - 1.0f);
+        const float kDbgEnvMip = kWaterReflectionMicroRoughness * (kWaterSkyEnvMipCount - 1.0f);
         float4 dbgSkyEnv = gSkyEnvironmentMap.SampleLevel(gLinearClamp, dbgReflectDir, kDbgEnvMip);
         float dbgCloudOpacity = saturate(1.0f - dbgSkyEnv.a);
 

@@ -3186,6 +3186,9 @@
     <ClInclude Include="Engine\Src\Graphics\Water\WaterFoamDefaults.h">
       <Filter>Engine\Src\Graphics\Water</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\WaterPhysics.h">
+      <Filter>Engine\Src\Graphics\Water</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\Simulation\FFTOceanSurfaceSimulator.h">
       <Filter>Engine\Src\Graphics\Water\Simulation</Filter>
     </ClInclude>

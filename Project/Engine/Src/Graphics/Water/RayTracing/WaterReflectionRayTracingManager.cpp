@@ -27,9 +27,8 @@ namespace CoreEngine
             Matrix4x4 viewProjection;
             Matrix4x4 invViewProjection;
             float cameraPosition[3];
-            float waterHeight;
-            float sunDirection[3];            // メインライトの向き（光源→シーン・正規化済み）
             float surfaceBias;
+            float sunDirection[3];            // メインライトの向き（光源→シーン・正規化済み）
             float maxRayDistance;
             // 1 = 空キューブマップが有効。RT パス側が「トレースしたレイの向き」で空を解決するのに使う
             float skyEnvReflectionEnabled;
@@ -37,22 +36,19 @@ namespace CoreEngine
             float screenHeight;
             float maxReflectionOffsetPixels;
             uint32_t sunShadowEnabled;        // 1 なら水面の点から光源へ影のレイを撃つ
-            float debugDisplayScale;
-            uint32_t debugViewMode;
+            float pad[3];
         };
 
         static constexpr Cb::Field kWaterReflectionConstantsFields[] = {
             CB_FIELD(WaterReflectionConstants, viewProjection),
             CB_FIELD(WaterReflectionConstants, invViewProjection),
-            CB_FIELD(WaterReflectionConstants, cameraPosition), CB_FIELD(WaterReflectionConstants, waterHeight),
-            CB_FIELD(WaterReflectionConstants, sunDirection), CB_FIELD(WaterReflectionConstants, surfaceBias),
-            CB_FIELD(WaterReflectionConstants, maxRayDistance),
+            CB_FIELD(WaterReflectionConstants, cameraPosition), CB_FIELD(WaterReflectionConstants, surfaceBias),
+            CB_FIELD(WaterReflectionConstants, sunDirection), CB_FIELD(WaterReflectionConstants, maxRayDistance),
             CB_FIELD(WaterReflectionConstants, skyEnvReflectionEnabled),
             CB_FIELD(WaterReflectionConstants, screenWidth), CB_FIELD(WaterReflectionConstants, screenHeight),
             CB_FIELD(WaterReflectionConstants, maxReflectionOffsetPixels),
             CB_FIELD(WaterReflectionConstants, sunShadowEnabled),
-            CB_FIELD(WaterReflectionConstants, debugDisplayScale),
-            CB_FIELD(WaterReflectionConstants, debugViewMode),
+            CB_FIELD(WaterReflectionConstants, pad),
         };
         CB_VERIFY_LAYOUT(WaterReflectionConstants, kWaterReflectionConstantsFields);
         CB_BIND_HLSL(WaterReflectionConstants, kWaterReflectionConstantsFields, "WaterReflectionConstants");
@@ -411,7 +407,6 @@ namespace CoreEngine
         constants.cameraPosition[0] = cameraPosition.x;
         constants.cameraPosition[1] = cameraPosition.y;
         constants.cameraPosition[2] = cameraPosition.z;
-        constants.waterHeight = surfaceData.waterHeight;
         constants.sunDirection[0] = sunShadow.direction.x;
         constants.sunDirection[1] = sunShadow.direction.y;
         constants.sunDirection[2] = sunShadow.direction.z;
@@ -425,8 +420,6 @@ namespace CoreEngine
         constants.screenHeight = static_cast<float>(height);
         constants.maxReflectionOffsetPixels = settings_.maxReflectionOffsetPixels;
         constants.sunShadowEnabled = sunShadow.enabled ? 1u : 0u;
-        constants.debugDisplayScale = settings_.debugDisplayScale;
-        constants.debugViewMode = settings_.debugViewMode;
 
         const D3D12_GPU_DESCRIPTOR_HANDLE fftDisplacementSRV =
             (fftOceanInput.displacementSRV.ptr != 0) ? fftOceanInput.displacementSRV : sceneColorSRV;

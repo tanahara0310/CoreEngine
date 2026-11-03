@@ -7,28 +7,19 @@
 // 【飽和対策 3 点セットの一角】瞬時マスクはカスケード重み付き合成 detJ
 // （ComputeFFTCombinedDetJ）を必ず通すこと。波群エンベロープは蓄積項のみに掛ける
 // （瞬時項は合成 detJ 内で適用済み＝二重適用禁止）。
-//
-// 【include 位置の契約】Water.PS.hlsl のリソース宣言・WaterFrameConstants(b5) の後で
-// include すること。以下に暗黙依存:
-//   資源    : gFFTOceanJacobian / gFFTOceanFoam / gSampler / gWaterSeabedHeight /
-//             gWaterShoreFoam / gLinearClamp
-//   cbuffer : gFoamEnabled / gFoamBias / gFoamGain / gFoamCascadeWeights /
-//             gUseFFTOceanNormalMap / gWaveGroupPhase / gFoamDriftOffsetXZ /
-//             gSeabedEnabled / gSeabedOriginXZ / gSeabedInvSize / gShoreFoamEnabled
-//   関数    : ComputeFFTCombinedDetJ（Common/FFTOceanCascade.hlsli）
 // ============================================================
 #ifndef WATER_FOAM_COVERAGE_INCLUDED
 #define WATER_FOAM_COVERAGE_INCLUDED
 
+#include "WaterSurfaceResources.hlsli"
 #include "../Common/WaterWhitecapCoverage.hlsli"
+#include "../Common/WaterAppearanceConstants.hlsli"
 
 // ---- 岸際泡（shore foam）----
 // 範囲の外で泡帯が消える水深 [m]（水面の点の真下の鉛直水深）
 static const float kShoreFoamDepthMeters = 0.6f;
 // 汀線エッジ（この水深以浅）は被覆率満量＝ほぼ連続した白いシートになる
 static const float kShoreFoamEdgeMeters = 0.15f;
-// 外側の泡帯の最大被覆率。dissolve が形状を作るため 1 未満でもレース状に割れる
-static const float kShoreFoamStrength = 0.9f;
 // 海底の高さの範囲の端で、視線の延長で測った水深へ移す幅（範囲の一辺に対する割合）
 static const float kSeabedWindowEdgeFade = 0.1f;
 
@@ -57,6 +48,22 @@ float ComputeFoamMask(float2 worldXZ)
     return saturate(max(instant, accumulated));
 }
 
+/// @brief 海底の高さの範囲の中での位置と、範囲の端からの近さ
+/// @param uv 範囲の中での位置 [0,1]
+/// @return 範囲の端の kSeabedWindowEdgeFade の幅で 0 から 1 へ上がる値（範囲の外は 0）
+float ComputeSeabedWindowInside(float2 worldXZ, out float2 uv)
+{
+    uv = (worldXZ - gSeabedOriginXZ) * gSeabedInvSize;
+    const float2 edgeDistance = min(uv, 1.0f - uv);
+    return saturate(min(edgeDistance.x, edgeDistance.y) / kSeabedWindowEdgeFade);
+}
+
+/// @brief 汀線エッジ（水深 kShoreFoamEdgeMeters より浅い所）の被覆率 [0,1]
+float ComputeShoreFoamEdge(float verticalDepth)
+{
+    return 1.0f - smoothstep(0.0f, kShoreFoamEdgeMeters, verticalDepth);
+}
+
 /// @brief 岸の泡に使う、水面の点の真下の鉛直水深 [m] を返す
 /// @param surfacePosition 水面の点（頂点変位後のワールド座標）
 /// @param fallbackDepth   海底の高さの範囲の外で使う水深（視線の延長で測った鉛直水深）
@@ -69,9 +76,8 @@ float ResolveShoreFoamDepth(float3 surfacePosition, float fallbackDepth)
     {
         return fallbackDepth;
     }
-    const float2 uv = (surfacePosition.xz - gSeabedOriginXZ) * gSeabedInvSize;
-    const float2 edgeDistance = min(uv, 1.0f - uv);
-    const float inside = saturate(min(edgeDistance.x, edgeDistance.y) / kSeabedWindowEdgeFade);
+    float2 uv;
+    const float inside = ComputeSeabedWindowInside(surfacePosition.xz, uv);
     if (inside <= 0.0f)
     {
         return fallbackDepth;
@@ -94,9 +100,9 @@ float ComputeShoreFoamMask(float verticalDepth)
     // 外側の泡帯: 水深 0 → kShoreFoamDepthMeters の連続フェード
     const float band = 1.0f - smoothstep(0.0f, kShoreFoamDepthMeters, verticalDepth);
     // 汀線エッジ: ごく浅い所は満量（レースの穴が埋まり白いシートになる）
-    const float edge = 1.0f - smoothstep(0.0f, kShoreFoamEdgeMeters, verticalDepth);
+    const float edge = ComputeShoreFoamEdge(verticalDepth);
 
-    return max(band * kShoreFoamStrength, edge);
+    return max(band * kWaterShoreFoamStrength, edge);
 }
 
 /// @brief 岸の泡の被覆率と、模様を評価する位置へのずれ
@@ -136,9 +142,8 @@ ShoreFoamResult ResolveShoreFoam(float3 surfacePosition, float fallbackDepth)
         return result;
     }
 
-    const float2 uv = (surfacePosition.xz - gSeabedOriginXZ) * gSeabedInvSize;
-    const float2 edgeDistance = min(uv, 1.0f - uv);
-    const float inside = saturate(min(edgeDistance.x, edgeDistance.y) / kSeabedWindowEdgeFade);
+    float2 uv;
+    const float inside = ComputeSeabedWindowInside(surfacePosition.xz, uv);
     if (inside <= 0.0f)
     {
         result.coverage = depthOnly;
@@ -152,7 +157,7 @@ ShoreFoamResult ResolveShoreFoam(float3 surfacePosition, float fallbackDepth)
         restXZ = surfacePosition.xz - SampleShoreFoamState(restXZ).yz;
     }
     const float simulated = SampleShoreFoamState(restXZ).x;
-    const float edge = 1.0f - smoothstep(0.0f, kShoreFoamEdgeMeters, verticalDepth);
+    const float edge = ComputeShoreFoamEdge(verticalDepth);
 
     result.coverage = lerp(depthOnly, max(simulated, edge), inside);
     result.patternShift = (restXZ - surfacePosition.xz) * inside;

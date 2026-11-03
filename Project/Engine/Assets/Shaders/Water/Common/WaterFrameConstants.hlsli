@@ -12,7 +12,7 @@
 #ifndef WATER_FRAME_CONSTANTS_INCLUDED
 #define WATER_FRAME_CONSTANTS_INCLUDED
 
-// WaterPlaneObject::BindCustomResources() が b5 にバインドする。
+// WaterShaderResourceBinder が b5 にバインドする。
 // C++ 側の対応構造体: WaterFrameConstants（WaterSurfaceTypes.h）
 cbuffer WaterFrameConstants : register(b5)
 {

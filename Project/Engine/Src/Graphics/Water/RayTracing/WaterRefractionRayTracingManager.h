@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <memory>
 
+#include "Graphics/Water/WaterPhysics.h"
 #include "Graphics/Water/WaterSurfaceData.h"
 #include "Math/Matrix/Matrix4x4.h"
 #include "Math/Vector/Vector3.h"
@@ -21,7 +22,7 @@ namespace CoreEngine
     /// @brief RT 屈折の設定
     struct WaterRefractionRayTracingSettings {
         float maxRayDistance = 500.0f;
-        float waterRefractiveIndex = 1.333f;
+        float waterRefractiveIndex = WaterPhysics::kRefractiveIndex;
         float surfaceBias = 0.02f;
         // 屈折ヒット点のスクリーン再投影ずれ量の上限（ピクセル）。
         // 0 = 無制限（RT で求めた正確な位置をそのまま使う。既定）。

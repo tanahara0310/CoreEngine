@@ -15,9 +15,8 @@ namespace CoreEngine
     namespace {
         struct WaterRefractionConstants {
             Matrix4x4 viewProjection;
-            Matrix4x4 invViewProjection; // WorldPosition ターゲット廃止に伴う深度復元用
+            Matrix4x4 invViewProjection; // 深度復元用
             float cameraPosition[3];
-            float waterHeight;
             float surfaceBias;
             float maxRayDistance;
             float refractionEta;
@@ -27,32 +26,30 @@ namespace CoreEngine
             float debugDisplayScale;
             uint32_t debugViewMode;
             // 水中の点を照らす値（DeferredLighting の水中ライティング・RT コースティクスと同じ値）
+            float causticsIntensityScale;
             float underwaterAbsorption[3];
             uint32_t underwaterLightingEnabled;
-            float causticsIntensityScale;
-            float pad[3];
         };
 
         static constexpr Cb::Field kWaterRefractionConstantsFields[] = {
             CB_FIELD(WaterRefractionConstants, viewProjection),
             CB_FIELD(WaterRefractionConstants, invViewProjection),
-            CB_FIELD(WaterRefractionConstants, cameraPosition), CB_FIELD(WaterRefractionConstants, waterHeight),
-            CB_FIELD(WaterRefractionConstants, surfaceBias), CB_FIELD(WaterRefractionConstants, maxRayDistance),
+            CB_FIELD(WaterRefractionConstants, cameraPosition), CB_FIELD(WaterRefractionConstants, surfaceBias),
+            CB_FIELD(WaterRefractionConstants, maxRayDistance),
             CB_FIELD(WaterRefractionConstants, refractionEta),
             CB_FIELD(WaterRefractionConstants, screenWidth), CB_FIELD(WaterRefractionConstants, screenHeight),
             CB_FIELD(WaterRefractionConstants, maxRefractionOffsetPixels),
             CB_FIELD(WaterRefractionConstants, debugDisplayScale),
             CB_FIELD(WaterRefractionConstants, debugViewMode),
+            CB_FIELD(WaterRefractionConstants, causticsIntensityScale),
             CB_FIELD(WaterRefractionConstants, underwaterAbsorption),
             CB_FIELD(WaterRefractionConstants, underwaterLightingEnabled),
-            CB_FIELD(WaterRefractionConstants, causticsIntensityScale),
-            CB_FIELD(WaterRefractionConstants, pad),
         };
         CB_VERIFY_LAYOUT(WaterRefractionConstants, kWaterRefractionConstantsFields);
         CB_BIND_HLSL(WaterRefractionConstants, kWaterRefractionConstantsFields, "WaterRefractionConstants");
     }
 
-    static_assert(sizeof(WaterRefractionConstants) == 208,
+    static_assert(sizeof(WaterRefractionConstants) == 192,
         "WaterRefractionConstants size mismatch with HLSL cbuffer");
     static_assert(sizeof(WaterWaveParam) == 32,
         "WaterWaveParam size mismatch with HLSL wave struct");
@@ -131,7 +128,6 @@ namespace CoreEngine
         constants.cameraPosition[0] = cameraPosition.x;
         constants.cameraPosition[1] = cameraPosition.y;
         constants.cameraPosition[2] = cameraPosition.z;
-        constants.waterHeight = surfaceData.waterHeight;
         constants.surfaceBias = settings_.surfaceBias;
         constants.maxRayDistance = settings_.maxRayDistance;
         constants.refractionEta = 1.0f / (std::max)(settings_.waterRefractiveIndex, 1.0e-4f);
