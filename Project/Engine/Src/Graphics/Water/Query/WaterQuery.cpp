@@ -51,8 +51,17 @@ namespace CoreEngine
         if (point >= points_.size() || !points_[point].active) {
             return;
         }
-        points_[point].x = worldPosition.x;
-        points_[point].z = worldPosition.z;
+        Point& slot = points_[point];
+
+        // 置き直した点は、前の位置の結果を捨てる（届く前の結果も世代を変えて捨てる）
+        const float deltaX = worldPosition.x - slot.x;
+        const float deltaZ = worldPosition.z - slot.z;
+        if (deltaX * deltaX + deltaZ * deltaZ > kRelocateMeters * kRelocateMeters) {
+            ++slot.generation;
+            slot.resultCount = 0;
+        }
+        slot.x = worldPosition.x;
+        slot.z = worldPosition.z;
     }
 
     WaterSample WaterQuery::Sample(uint32_t point, const Vector3& worldPosition) const
@@ -76,22 +85,16 @@ namespace CoreEngine
             deltaZ *= scale;
         }
 
-        // 範囲の中にある水面のうち、高さが worldPosition に最も近いものを返す
-        float nearestGap = 0.0f;
+        // 結果は範囲の狭い水面から並ぶので、範囲の中にある最初の水面を返す
         for (uint32_t i = 0; i < slot.resultCount; ++i) {
             const GpuResult& result = slot.results[i];
             if ((result.flags & kGpuResultInWater) == 0) {
                 continue;
             }
-            const float height = result.height + result.slopeX * deltaX + result.slopeZ * deltaZ;
-            const float gap = std::abs(height - worldPosition.y);
-            if (sample.inWater && gap >= nearestGap) {
-                continue;
-            }
             sample.inWater = true;
-            sample.surfaceHeight = height;
+            sample.surfaceHeight = result.height + result.slopeX * deltaX + result.slopeZ * deltaZ;
             sample.normal = Normalize(Vector3{ -result.slopeX, 1.0f, -result.slopeZ });
-            nearestGap = gap;
+            break;
         }
         return sample;
     }

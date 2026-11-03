@@ -32,6 +32,8 @@ namespace CoreEngine
         static constexpr uint32_t kInvalidPoint = UINT32_MAX;
         /// @brief 評価した位置から傾きで延ばす距離の上限 [m]
         static constexpr float kMaxExtrapolationMeters = 2.0f;
+        /// @brief 1 回の SetPosition でこれより大きく動いた点は置き直したとみなし、前の位置の結果を捨てる [m]
+        static constexpr float kRelocateMeters = 10.0f;
 
         /// @brief GPU が点 1 つに書く結果（WaterHeightQuery.CS.hlsl の出力と同じ並び）
         struct GpuResult {
@@ -59,12 +61,12 @@ namespace CoreEngine
         /// @brief 点を外す
         void RemovePoint(uint32_t point);
 
-        /// @brief 点の位置を変える（次の評価から使う）
+        /// @brief 点の位置を変える（次の評価から使う。kRelocateMeters より大きく動いたら前の位置の結果を捨てる）
         void SetPosition(uint32_t point, const Vector3& worldPosition);
 
         /// @brief worldPosition の真上・真下の水面を返す
         /// @details 点に最後に届いた結果を、評価した位置から worldPosition まで水面の傾きで延ばす。
-        ///          水面が重なる所では、高さが worldPosition に最も近い水面を返す
+        ///          水面が重なる所では、範囲の狭い水面（池・プール）を返す
         WaterSample Sample(uint32_t point, const Vector3& worldPosition) const;
 
         // ===== 描画側（WaterHeightQueryManager）=====
@@ -76,7 +78,7 @@ namespace CoreEngine
         void Snapshot(std::vector<Submitted>& out) const;
 
         /// @brief GPU の結果を点へ書く（控えの世代が今の点と同じものだけ）
-        /// @param results 水面ごとに点の番号の順で並べた結果（submitted.size() 個ずつ surfaceCount 組）
+        /// @param results 水面ごと（範囲の狭い水面から）に点の番号の順で並べた結果（submitted.size() 個ずつ surfaceCount 組）
         void ApplyResults(std::span<const Submitted> submitted, std::span<const GpuResult> results, uint32_t surfaceCount);
 
         /// @brief 全部の点の結果を捨てる（水面の無いフレーム）

@@ -47,7 +47,7 @@ namespace CoreEngine
         /// @brief GPU が済んだ枠の結果を WaterQuery へ返す（何度呼んでもよい）
         void CollectResults();
 
-        /// @brief 今の点を、範囲のある水面ごとに評価する（FFT の波面を計算した後に呼ぶ）
+        /// @brief 今の点を、範囲のある水面ごとに、範囲の狭い水面から順に評価する（FFT の波面を計算した後に呼ぶ）
         /// @param primarySurface 主の水の状態（水面が無ければ nullptr）
         /// @param otherSurfaces ほかの水の水面の状態
         /// @param fallbackDisplacementSRV FFT の海で描いていない水面の、変位テクスチャのスロットに差す SRV

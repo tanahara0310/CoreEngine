@@ -37,6 +37,12 @@ namespace CoreEngine
         constexpr UINT64 kResultBytes = sizeof(WaterQuery::GpuResult) * WaterQuery::kMaxPoints;
         constexpr UINT64 kReadbackBytes = kResultBytes * WaterQuery::kMaxSurfaces;
         constexpr uint32_t kThreadGroupSize = 64;
+
+        /// @brief 水面の範囲の XZ の面積の 1/4（半分の幅の積。並べる順にだけ使う）
+        float RegionQuarterArea(const WaterSurfaceData& surface)
+        {
+            return surface.regionHalfExtentXZ[0] * surface.regionHalfExtentXZ[1];
+        }
     }
 
     bool WaterHeightQueryManager::Initialize(
@@ -227,6 +233,10 @@ namespace CoreEngine
             }
             surfaceScratch_.resize(WaterQuery::kMaxSurfaces);
         }
+
+        // 水面が重なる所で範囲の狭い水面を選べるよう、狭い水面から並べる
+        std::stable_sort(surfaceScratch_.begin(), surfaceScratch_.end(),
+            [](const WaterSurfaceData* a, const WaterSurfaceData* b) { return RegionQuarterArea(*a) < RegionQuarterArea(*b); });
 
         const uint32_t pointCount = query_->GetPointCount();
         if (pointCount == 0) {
