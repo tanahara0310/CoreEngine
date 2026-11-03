@@ -106,7 +106,8 @@ struct WaterFrameConstants {
 	// RT屈折の実測光路長との差が波打ち際の段差（白線の二重）として見えていた。
 	float cameraNearZ = 0.1f;
 	float cameraFarZ = 1000.0f;
-	float cameraClipPad = 0.0f;
+	// 1 = RT 屈折の結果を読む（RT 屈折の SRV を差した水面だけ）
+	int rtRefractionEnabled = 0;
 	// 1 = 水面の日向率テクスチャ（RT 反射パスの 2 枚目の出力）をメインライトの項へ掛ける
 	int sunVisibilityEnabled = 0;
 	// ---- 泡（whitecap）。FFTOcean 専用（Gerstner はヤコビアンを持たないため無効）----
@@ -177,7 +178,7 @@ static constexpr Cb::Field kWaterFrameConstantsFields[] = {
     CB_FIELD(WaterFrameConstants, depthDebugViewMode), CB_FIELD(WaterFrameConstants, useFFTOceanNormalMap),
     CB_FIELD(WaterFrameConstants, aerialPerspectiveEnabled),
     CB_FIELD(WaterFrameConstants, skyEnvReflectionEnabled), CB_FIELD(WaterFrameConstants, cameraNearZ),
-    CB_FIELD(WaterFrameConstants, cameraFarZ), CB_FIELD(WaterFrameConstants, cameraClipPad),
+    CB_FIELD(WaterFrameConstants, cameraFarZ), CB_FIELD(WaterFrameConstants, rtRefractionEnabled),
     CB_FIELD(WaterFrameConstants, sunVisibilityEnabled), CB_FIELD(WaterFrameConstants, foamEnabled),
     CB_FIELD(WaterFrameConstants, foamBias), CB_FIELD(WaterFrameConstants, foamGain),
     CB_FIELD(WaterFrameConstants, foamOpacity), CB_FIELD(WaterFrameConstants, foamCascadeWeights),

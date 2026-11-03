@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "WaterSystem.h"
 
+#include <algorithm>
+
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/GameObjectManager.h"
 #include "Graphics/Light/LightManager.h"
@@ -101,22 +103,99 @@ namespace CoreEngine
             return;
         }
 
-        WaterSurfaceComponent* sceneWaterPlane = nullptr;
+        bool hasSceneWaterPlane = false;
         ctx.gameObjectManager->ForEachComponent<WaterSurfaceComponent>(
             [&](WaterSurfaceComponent& component) {
                 if (&component != ownWaterPlane) {
-                    sceneWaterPlane = &component;
+                    hasSceneWaterPlane = true;
                 }
             });
-        if (!sceneWaterPlane) {
+        if (!hasSceneWaterPlane) {
             return;
         }
 
         if (GameObject* const owner = ownWaterPlane->GetOwner()) {
             owner->Destroy();
         }
-        waterPlane_.Set(sceneWaterPlane);
+        waterPlane_.Reset();
         ownsWaterPlane_ = false;
+        CollectWaterPlanes(ctx);
+    }
+
+    void WaterSystem::CollectWaterPlanes(SceneContext& ctx)
+    {
+        secondaryWaterPlanes_.clear();
+        if (!ctx.gameObjectManager) {
+            return;
+        }
+
+        // 止めている水面も数える（止めても主の水は入れ替わらない）
+        waterPlaneScratch_.clear();
+        for (const std::unique_ptr<GameObject>& object : ctx.gameObjectManager->GetAllObjects()) {
+            if (!object || object->IsMarkedForDestroy()) {
+                continue;
+            }
+            if (WaterSurfaceComponent* const waterPlane = object->GetComponent<WaterSurfaceComponent>()) {
+                waterPlaneScratch_.push_back(waterPlane);
+            }
+        }
+
+        // 印の付いた水面、無ければ最初の水面を主の水にする
+        const auto marked = std::find_if(waterPlaneScratch_.begin(), waterPlaneScratch_.end(),
+            [](const WaterSurfaceComponent* waterPlane) { return waterPlane->IsPrimary(); });
+        WaterSurfaceComponent* primary = nullptr;
+        if (marked != waterPlaneScratch_.end()) {
+            primary = *marked;
+        } else if (!waterPlaneScratch_.empty()) {
+            primary = waterPlaneScratch_.front();
+        }
+        waterPlane_.Set(primary);
+
+        for (WaterSurfaceComponent* const waterPlane : waterPlaneScratch_) {
+            if (waterPlane != primary) {
+                secondaryWaterPlanes_.emplace_back(waterPlane);
+            }
+        }
+    }
+
+    void WaterSystem::GatherWaterPlanes(std::vector<WaterSurfaceComponent*>& out) const
+    {
+        out.clear();
+        if (WaterSurfaceComponent* const waterPlane = waterPlane_.Get()) {
+            out.push_back(waterPlane);
+        }
+        for (const ObjectRef<WaterSurfaceComponent>& secondary : secondaryWaterPlanes_) {
+            if (WaterSurfaceComponent* const waterPlane = secondary.Get()) {
+                out.push_back(waterPlane);
+            }
+        }
+    }
+
+    void WaterSystem::UpdateSecondaryWaterPlanes(
+        SceneContext& ctx, RenderDomainContext& domain, const LightManager* lightManager)
+    {
+        secondarySurfaceStates_.clear();
+        for (const ObjectRef<WaterSurfaceComponent>& secondary : secondaryWaterPlanes_) {
+            WaterSurfaceComponent* const waterPlane = secondary.Get();
+            if (!waterPlane || !IsWaterActive(*waterPlane)) {
+                continue;
+            }
+
+            const WaterSettings settings = BuildWaterSettings(waterPlane->GetProfile());
+            tide_.Update(lightManager, *waterPlane);
+
+            const WaterFrameContext frame{ ctx, domain, *waterPlane, settings };
+            wave_.ApplyToSecondary(frame);
+            appearance_.ApplySettings(frame);
+            foam_.ApplyWithoutFoam(frame);
+
+            WaterFrameBinding binding{};
+            appearance_.Bind(frame, binding);
+            wave_.Bind(domain, binding);
+            waterPlane->ApplyFrameBinding(binding);
+
+            CaptureSurface(domain, *waterPlane, secondarySurfaceStates_.emplace_back());
+        }
     }
 
     void WaterSystem::Update(SceneContext& ctx, SceneUpdatePhase phase)
@@ -125,9 +204,9 @@ namespace CoreEngine
         case SceneUpdatePhase::PreObjectUpdate:
         {
             // 波の時刻を進め、描いているモデルの時刻を水面へ渡す
-            WaterSurfaceComponent* const waterPlane = waterPlane_.Get();
-            wave_.Advance(Time::DeltaTime(), waterPlane);
-            if (waterPlane) {
+            GatherWaterPlanes(waterPlaneScratch_);
+            wave_.Advance(Time::DeltaTime(), waterPlaneScratch_);
+            for (WaterSurfaceComponent* const waterPlane : waterPlaneScratch_) {
                 waterPlane->SetSimulationTime(wave_.GetDrawnModel(*waterPlane).GetTime());
             }
 
@@ -145,13 +224,15 @@ namespace CoreEngine
                 break;
             }
             publishTarget_ = domain;
+            CollectWaterPlanes(ctx);
 
             const WaterSettings& settings = RefreshSettings();
             WaterSurfaceComponent* const waterPlane = waterPlane_.Get();
             if (!waterPlane) {
                 VertexAnimationParams::SetSwellDirection(std::nullopt);
                 CaptureSnapshot(*domain, settings, Time::DeltaTime());
-                domain->PublishWaterFrame(nullptr, wave_.GetFFTOceanTime());
+                secondarySurfaceStates_.clear();
+                domain->PublishWaterFrame(nullptr, {}, wave_.GetFFTOceanTime());
                 break;
             }
 
@@ -173,12 +254,14 @@ namespace CoreEngine
             shore_.UpdateWindow(frame, waveCapabilities);
 
             CaptureSnapshot(*domain, settings, Time::DeltaTime());
-            domain->PublishWaterFrame(&snapshot_, wave_.GetFFTOceanTime());
 
             // 大気散乱の更新後なので、LUT・SH・キューブマップの準備完了はこの時点で確定している
             const WaterFrameBinding binding = BuildFrameBinding(frame);
             waterPlane->ApplyFrameBinding(binding);
             LogFrameDiagnostics(binding);
+
+            UpdateSecondaryWaterPlanes(ctx, *domain, lightManager);
+            domain->PublishWaterFrame(&snapshot_, secondarySurfaceStates_, wave_.GetFFTOceanTime());
             break;
         }
         default:
@@ -197,12 +280,15 @@ namespace CoreEngine
 
         // 水面オブジェクトは GameObjectManager が所有しているため参照だけ外す
         waterPlane_.Reset();
+        secondaryWaterPlanes_.clear();
+        waterPlaneScratch_.clear();
+        secondarySurfaceStates_.clear();
         appearance_.Reset();
         VertexAnimationParams::SetSwellDirection(std::nullopt);
 
         // snapshot_ はこの Feature の持ち物なので、受け渡しを取り消さないと次のシーンの描画が消えた実体を読む
         if (publishTarget_) {
-            publishTarget_->PublishWaterFrame(nullptr, 0.0f);
+            publishTarget_->PublishWaterFrame(nullptr, {}, 0.0f);
             publishTarget_ = nullptr;
         }
     }
@@ -231,8 +317,8 @@ namespace CoreEngine
 
         // シーンのコードが既に水面を置いていればそれを採用する（EnvironmentFeature と同じ規約）。
         // 保存データで置いた水面はこの時点ではまだ生まれていないので、PostSceneInitialize で見直す
-        if (auto* existing = ctx.gameObjectManager->FindFirstComponent<WaterSurfaceComponent>()) {
-            waterPlane_.Set(existing);
+        if (ctx.gameObjectManager->FindFirstComponent<WaterSurfaceComponent>()) {
+            CollectWaterPlanes(ctx);
             return;
         }
 
@@ -294,23 +380,7 @@ namespace CoreEngine
 
         // 水面が無効なフレームは regionValid=0 の「水なし」にする（RT コースティクスと水中の光を止める）
         if (IsWaterActive(*waterPlane)) {
-            wave_.Capture(domain, *waterPlane, snapshot_);
-            snapshot_.tideHeight = waterPlane->GetTideHeight();
-
-            // 水面メッシュのワールド XZ 範囲（コースティクスを水域の外へ漏らさない受光マスク）。
-            // メッシュはローカル ±size/2 の正方形で、回転は扱わない
-            const float localSize = waterPlane->GetSize();
-            if (localSize > 1.0e-4f) {
-                const auto& transform = waterPlane->GetTransform();
-                snapshot_.regionCenterXZ[0] = transform.GetTranslate().x;
-                snapshot_.regionCenterXZ[1] = transform.GetTranslate().z;
-                snapshot_.regionHalfExtentXZ[0] = 0.5f * localSize * transform.GetScale().x;
-                snapshot_.regionHalfExtentXZ[1] = 0.5f * localSize * transform.GetScale().z;
-                snapshot_.regionValid = 1;
-            }
-            // 被覆の判定をメッシュと同じ基準にするための頂点の分割数
-            snapshot_.meshSubdivisions = static_cast<float>(waterPlane->GetResolution());
-
+            CaptureSurface(domain, *waterPlane, snapshot_);
             seaMap_.Capture(domain, settings, wave_.GetDrawnModel(*waterPlane), snapshot_);
             wetness_.Capture(settings, deltaSeconds, snapshot_);
         } else {
@@ -319,6 +389,27 @@ namespace CoreEngine
 
         // レイトレの水面も、ラスタと同じ岸の細かい格子で描く
         shore_.Capture(*waterPlane, snapshot_);
+    }
+
+    void WaterSystem::CaptureSurface(
+        RenderDomainContext& domain, const WaterSurfaceComponent& waterPlane, WaterSurfaceData& out) const
+    {
+        wave_.Capture(domain, waterPlane, out);
+        out.tideHeight = waterPlane.GetTideHeight();
+
+        // 水面メッシュのワールド XZ 範囲（コースティクスを水域の外へ漏らさない受光マスク）。
+        // メッシュはローカル ±size/2 の正方形で、回転は扱わない
+        const float localSize = waterPlane.GetSize();
+        if (localSize > 1.0e-4f) {
+            const auto& transform = waterPlane.GetTransform();
+            out.regionCenterXZ[0] = transform.GetTranslate().x;
+            out.regionCenterXZ[1] = transform.GetTranslate().z;
+            out.regionHalfExtentXZ[0] = 0.5f * localSize * transform.GetScale().x;
+            out.regionHalfExtentXZ[1] = 0.5f * localSize * transform.GetScale().z;
+            out.regionValid = 1;
+        }
+        // 被覆の判定をメッシュと同じ基準にするための頂点の分割数
+        out.meshSubdivisions = static_cast<float>(waterPlane.GetResolution());
     }
 
     WaterFrameBinding WaterSystem::BuildFrameBinding(const WaterFrameContext& frame) const

@@ -104,11 +104,6 @@ static const float kAnalyticColumnBlendEndMeters = 4.0f;
 // 使う光路長。σt が最小クラス（青 ≈ 0.02/m）でも exp(-σt·d) ≈ 0 になる十分な深さ。
 static const float kInfiniteWaterColumnMeters = 1.0e4f;
 
-float4 SampleRTWaterRefraction(uint2 pixelCoord)
-{
-    return gRTWaterRefractionColor.Load(int3(pixelCoord, 0));
-}
-
 /// @brief 水柱厚さの解決結果（デバッグ表示が参照する中間量も含む）
 struct WaterColumnResult
 {

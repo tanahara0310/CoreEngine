@@ -20,14 +20,12 @@ namespace CoreEngine
         lastDispatchFrame_ = context.frameNumber;
 
         // Gerstner の波面のときも、変位テクスチャのスロットには FFT の変位を差す
-        WaterRayTracingPassBase::FFTOceanInput fftOceanInput{};
-        if (context.waterSurfaceState) {
-            fftOceanInput = context.waterSurfaceState->fftOcean;
-        }
-        if (fftOceanInput.displacementSRV.ptr == 0 && context.fftOceanManager && context.fftOceanManager->IsInitialized()) {
-            fftOceanInput.displacementSRV = context.fftOceanManager->GetDisplacementSRVHandle();
+        D3D12_GPU_DESCRIPTOR_HANDLE fallbackDisplacementSRV{};
+        if (context.fftOceanManager && context.fftOceanManager->IsInitialized()) {
+            fallbackDisplacementSRV = context.fftOceanManager->GetDisplacementSRVHandle();
         }
 
-        manager->Dispatch(context.cmdList, context.waterSurfaceState, fftOceanInput);
+        manager->Dispatch(
+            context.cmdList, context.waterSurfaceState, context.otherWaterSurfaceStates, fallbackDisplacementSRV);
     }
 }

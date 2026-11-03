@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.55.2">
+<meta name="engine-version" content="0.56.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -4995,7 +4995,7 @@ kbd {
   <p>操作で進める小舟の例は <a href="#g3d-water">3D ゲームの作り方の「水に浮かべる」</a> にあります。</p>
 
   <h3 id="physics-water-height">水面の高さを調べる</h3>
-  <p>水しぶき・泳ぐ・濡れるなど、ゲームで水面の高さを使うときは、オブジェクトに水面の高さを調べる（WaterProbe。<span class="ui">＋ コンポーネント追加</span> ▸ <span class="ui">水面の高さを調べる</span>）を付けて読みます。オブジェクトの真上か真下にある、描かれている水面の高さ（波と潮を含む）を返します。</p>
+  <p>水しぶき・泳ぐ・濡れるなど、ゲームで水面の高さを使うときは、オブジェクトに水面の高さを調べる（WaterProbe。<span class="ui">＋ コンポーネント追加</span> ▸ <span class="ui">水面の高さを調べる</span>）を付けて読みます。オブジェクトの真上か真下にある、描かれている水面の高さ（波と潮を含む）を返します。海の中に池やプールを置いたように水面が重なる所では、範囲の狭い方の水面（池やプール）を返します。</p>
   <div class="table-wrap">
   <table>
     <thead><tr><th>読むもの</th><th>中身</th></tr></thead>
@@ -5008,7 +5008,7 @@ kbd {
     </tbody>
   </table>
   </div>
-  <div class="callout note" data-title="高さは 1〜2 フレーム遅れて届きます"><p>水面の高さは GPU で、水面を描くのと同じ式で求め、1〜2 フレーム後に受け取ります。その間にオブジェクトが動いた分は、水面の傾きで補います。付けた直後の数フレームは <code>inWater</code> が false です。同時に調べられる点はシーン全体で 1024 個までです（浮力は 1 つで 8 個使います）。</p></div>
+  <div class="callout note" data-title="高さは 1〜2 フレーム遅れて届きます"><p>水面の高さは GPU で、水面を描くのと同じ式で求め、1〜2 フレーム後に受け取ります。その間にオブジェクトが動いた分は、水面の傾きで補います。付けた直後の数フレームと、1 フレームで 10 m より大きく動かした（置き直した）直後は <code>inWater</code> が false です。同時に調べられる点はシーン全体で 1024 個までです（浮力は 1 つで 8 個使います）。</p></div>
   <p>波を含まない水の高さ（潮を足した基準の高さ）だけでよいときは、水面の <code>waterLevel</code> を読みます（<a href="#api-WaterSurface">水面</a>）。</p>
 
   <h2 id="physics-character">キャラクタコントローラで歩かせる</h2>
@@ -8284,6 +8284,7 @@ kbd {
       <tr><td>キャラクターを歩かせる</td><td><a href="#api-CharacterController">キャラクタコントローラ</a></td><td><a href="#g3d-move">動かす</a></td></tr>
       <tr><td>転がる・飛ぶ物</td><td><a href="#api-Rigidbody">剛体</a></td><td><a href="#g3d-move-rigidbody">剛体で動かす</a></td></tr>
       <tr><td>水に浮かべる・水の中か調べる</td><td><a href="#api-Buoyancy">浮力</a>・<a href="#api-WaterProbe">水面の高さを調べる</a></td><td><a href="#g3d-water">水に浮かべる</a></td></tr>
+      <tr><td>池やプールを足す</td><td><a href="#api-WaterSurface">水面</a>（2 枚目から）</td><td><a href="#g3d-water-pool">池やプールを足す</a></td></tr>
       <tr><td>カメラで追いかける</td><td>カメラのトランスフォーム</td><td><a href="#g3d-camera">カメラ</a></td></tr>
       <tr><td>当たり判定・クリックした物</td><td><a href="#api-Collider">コライダー</a>・<a href="#api-Physics">Physics</a>・<code>ScreenPointToRay</code></td><td><a href="#g3d-collision">当たり判定</a></td></tr>
       <tr><td>人の動き（歩く・走る）</td><td><a href="#api-Animator">アニメーション</a></td><td><a href="#g3d-anim">アニメーション</a></td></tr>
@@ -8620,6 +8621,51 @@ kbd {
     }
   </script>
   <p>浮き方の決め方と、水面の高さが届くまでの遅れは <a href="#physics-water">水に浮かべる</a> にあります。</p>
+
+  <h3 id="g3d-water-pool">池やプールを足す（2 枚目の水面）</h3>
+  <p>水面はシーンに何枚でも置けます。海のほかに池やプールを置くときは、空のオブジェクトに <a href="#api-WaterSurface">水面</a> を足し、トランスフォームで高さと広さを決めます。2 枚目からの水面は、その水面の見た目と水質で、Gerstner の波（「高さの倍率」で静められる。0 で波なし）・空の映り込み・水越しの景色の屈折で描きます。浮力と水面の高さを調べるは、どの水面でも効きます。</p>
+  <ol class="steps">
+    <li><strong>水面を足す</strong><span class="ui">GameObject</span> ▸ 空のオブジェクトを作り、<span class="ui">＋ コンポーネント追加</span> ▸ <span class="ui">水面</span>。<span class="ui">一辺の長さ</span> とトランスフォームの拡大率で広さを、トランスフォームの Y で水の高さを決めます。</li>
+    <li><strong>静かな水にする</strong><span class="ui">FFT の海で描く</span> を切り、<span class="ui">高さの倍率</span> を 0.1〜0.3 くらいにします。プールなら <span class="ui">吸収</span> を小さく、<span class="ui">散乱</span> の緑と青を大きくすると水色になります。</li>
+    <li><strong>主の水を決める</strong>FFT の海・泡・岸の波・レイトレーシングの映り込みと屈折・濡れ跡・水中の霧は、主の水（<span class="ui">主の水にする</span> を入れた水面。どれにも入れていなければシーンで最初の水面）だけに付きます。ふつうは海を主の水にします。</li>
+  </ol>
+  <p>プールに潜る場面で水中の霧をプールで描きたいときは、カメラがプールの上か中にいる間だけプールを主の水にします。その間、海は Gerstner の波で描かれます。</p>
+  <script type="text/x-code" data-lang="as" data-file="PoolPrimarySwitcher.as">
+    using namespace CoreEngine;
+
+    // カメラがプールの上か中にいる間だけ、プールを主の水にする（水中の霧・映り込み・泡をプールで描く）
+    // 付けるもの：なし（カメラのオブジェクトに付ける）
+    class PoolPrimarySwitcher : ScriptComponent
+    {
+        [Tooltip("プールの水面のオブジェクトの名前")]
+        string poolName = "Pool";
+
+        private GameObject@ pool_;
+
+        void Start()
+        {
+            @pool_ = owner.FindObject(poolName);
+        }
+
+        void Update()
+        {
+            if (pool_ is null) {
+                return;
+            }
+            // 水面は一辺 size の正方形をトランスフォームの拡大率で広げたもの（回転は扱わない）
+            const Vector3 center = pool_.transform.position;
+            const Vector3 scale = pool_.transform.scale;
+            const float halfX = 0.5f * pool_.waterSurface.size * scale.x;
+            const float halfZ = 0.5f * pool_.waterSurface.size * scale.z;
+            const Vector3 eye = owner.transform.position;
+            const bool inside = abs(eye.x - center.x) <= halfX && abs(eye.z - center.z) <= halfZ;
+            if (pool_.waterSurface.primary != inside) {
+                pool_.waterSurface.primary = inside;
+            }
+        }
+    }
+  </script>
+  <p>主の水から外すと、どの水面にも印が無ければシーンで最初の水面（ふつうは海）が主の水に戻ります。</p>
 
   <h2 id="g3d-camera">カメラ</h2>
   <p>カメラを動かすときは、カメラのオブジェクト（MainCamera）のトランスフォームを書き換えます。<code>Scene::GetGameCamera()</code> へ書いた位置は、毎フレームこのトランスフォームで上書きされます。次は、右ドラッグで相手の周りを回り、ホイールで近づく三人称のカメラです。</p>
@@ -10075,6 +10121,16 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-56-0">v0.56.0 <span class="dim">（2026-11-03）</span></h3>
+  <p>シーンに水面を何枚でも置けるようにした版です。海のほかに池やプールを置くと、それぞれの見た目と水質で描かれ、浮力と水面の高さを調べるもその水面で効きます。水面が 1 枚のシーンの見た目は変わりません。</p>
+  <ul>
+    <li><strong>主の水</strong>：水面の値「主の水にする」を足しました。FFT の海・白波と岸の泡・岸の細かい格子・海の範囲マップ・レイトレーシングの映り込みと屈折・コースティクス・濡れ跡・水中の霧と明るさは、主の水だけに付きます。どの水面にも入れていなければ、シーンで最初の水面が主の水です（<a href="#api-WaterSurface">水面</a>）。</li>
+    <li><strong>ほかの水面</strong>：主の水でない水面は、その水面の見た目・水質・潮の値で、Gerstner の波・空のキューブの映り込み・水越しの景色の屈折と水深による色で描きます。「FFT の海で描く」を入れていても Gerstner の波です（<a href="#g3d-water-pool">池やプールを足す</a>）。</li>
+    <li><strong>Gerstner の波の高さの倍率</strong>：水面の値「高さの倍率」が、Gerstner の波の 16 本の高さにも掛かるようにしました（0 で波なし）。今までは FFT の海だけに効いていました。今ある水面の倍率が 1 以外で Gerstner の波を描いているときは、波の高さが変わります。</li>
+    <li><strong>水面の高さを調べる・浮力</strong>：調べる点をシーンの水面ごとに評価し（8 枚まで）、水面が重なる所では範囲の狭い方の水面（池やプール）を返します（<a href="#physics-water-height">水面の高さを調べる</a>）。1 フレームで 10 m より大きく動かした点は、前の位置の結果を捨てて新しい位置の結果を待ちます。</li>
+    <li><strong>空の映り込み</strong>：レイトレーシングの映り込みの無い水面は、空のキューブ（空と雲）を映し、太陽のきらめきを足すようにしました。今までは「反射が無いときの色」を光で照らした色でした。</li>
+  </ul>
 
   <h3 id="changelog-v0-55-2">v0.55.2 <span class="dim">（2026-11-03）</span></h3>
   <p>水面の波と泡の処理の中身を整理した版です。見た目・動き・シーンの書き方・CVar・スクリプトは変わりません。</p>
@@ -15650,11 +15706,12 @@ void LateUpdate()   // 追いかける相手が動いた後に動かす
     id: "WaterSurface", kind: "component", cat: "環境", display: "水面", type: "WaterSurface",
     accessor: "owner.waterSurface", title: "水面（WaterSurface）", brief: "波立つ水面",
     keywords: "水 水面 海 波 fft 潮 満潮 干潮 満ち引き 潮位 水位 濡れ 濡れ跡 濡れた砂 乾く",
-    summary: "波の立つ水面を描きます。穏やかな波（Gerstner 波）と、外洋のうねり（FFT の海）を選べます。大気の月と太陽の高さで満ち引きさせることもできます。",
+    summary: "波の立つ水面を描きます。穏やかな波（Gerstner 波）と、外洋のうねり（FFT の海）を選べます。大気の月と太陽の高さで満ち引きさせることもできます。シーンに何枚でも置けます（海と池・プール）。",
     requires: "トランスフォーム・メッシュ描画（自動で足します）、シーンの機能 <code>WaterRender</code>",
     props: [
       ["一辺の長さ", "size", "float", "50", "水面の大きさ（m）。シーンを読み込むときに効きます。"],
       ["分割数", "resolution", "int", "64", "水面全体を覆う格子の細かさ。シーンを読み込むときに効きます。カメラの周りは別の細かい格子で描きます（下の注意）。"],
+      ["主の水にする", "primary", "bool", "false", "FFT の海・泡・岸の波・レイトレーシングの映り込みと屈折・濡れ跡・水中の霧を、この水面で描きます。どの水面にも入れていなければ、シーンで最初の水面が主の水です（下の注意）。"],
       ["潮の高さ", "tideAmplitude", "float", "0", "月と太陽が真上か真下に来たとき、水面がトランスフォームの高さより上がる高さ（m）。地平線に来たときは同じだけ下がります。0 で潮なし。"],
       ["プロファイル", "profileAsset", "string", "なし", ".waterprofile ファイル。指定すると、シーンを開いたときと指し直したときに、その値が下の水の性質へ入ります。"],
       ["反射が無いときの色", "baseColor", "Vector4", "(0.04, 0.18, 0.28, 0.85)", "レイトレーシングの映り込みも空のキューブも無いときだけ使う色（w は使いません）。"],
@@ -15666,9 +15723,9 @@ void LateUpdate()   // 追いかける相手が動いた後に動かす
       ["散乱", "scattering", "Vector3", "(0.010, 0.032, 0.028)", "散乱係数（1/m。RGB）。深いところの水の色を決めます。"],
       ["濁り", "turbidity", "float", "0", "青の吸収と粒子の散乱を足します（緑に濁る）。"],
       ["屈折率", "refractiveIndex", "float", "1.333", "空気 1 に対する屈折率。水面の透過・屈折・コースティクス・水中の影に効きます。"],
-      ["FFT の海で描く", "fftEnabled", "bool", "true", "切ると Gerstner の波で描きます（下の注意）。"],
+      ["FFT の海で描く", "fftEnabled", "bool", "true", "切ると Gerstner の波で描きます。主の水だけで効き、ほかの水面はいつも Gerstner の波で描きます（下の注意）。"],
       ["吹送距離", "fetchKm", "float", "200", "風が海の上を吹いてきた距離（km）。シーンの風速と合わせて、波の長さと高さが決まります。短いと若く尖った波、長いと育ちきった波。"],
-      ["高さの倍率", "amplitudeScale", "float", "1", "風速と吹送距離から求めた波高に掛ける倍率。"],
+      ["高さの倍率", "amplitudeScale", "float", "1", "FFT の海では風速と吹送距離から求めた波高に、Gerstner の波では 16 本の波の高さに掛ける倍率（0 で波なし）。"],
       ["波頭の尖り", "choppiness", "float", "1.8", "水平に寄せる強さ。"],
       ["短い波の量", "componentCount", "int", "48", "スペクトルの成分の数（1〜64。多いほど短い波まで入る）。"],
       ["うねりを重ねる", "swellEnabled", "bool", "true", "遠くの嵐から届いた長い周期の波を重ねます（その場の風とは別に決まる）。"],
@@ -15677,7 +15734,7 @@ void LateUpdate()   // 追いかける相手が動いた後に動かす
       ["うねりの進む向き", "swellDirection", "Vector2", "(0.342, -0.940)", "XZ の向き（長さ 1）。インスペクタでは +X から +Z へ回した角度で直します。"],
       ["うねりの周期のばらつき", "swellRelativeWidth", "float", "0.06", "周波数の帯域幅（ピークに対する比）。小さいほど周期がそろいます。"],
       ["うねりの向きのそろい方", "swellSpread", "float", "24", "大きいほど一方向にそろいます。"],
-      ["泡を出す", "foamEnabled", "bool", "true", "白波と岸の泡を出します（FFT の海だけ）。"],
+      ["泡を出す", "foamEnabled", "bool", "true", "白波と岸の泡を出します（主の水の FFT の海だけ）。"],
       ["白波の量", "foamWhitecapScale", "float", "1", "白波の割合の倍率（1 = 風速からの観測式）。"],
       ["泡の不透明度", "foamOpacity", "float", "0.9", "泡の不透明度。"],
       ["泡が消えるまでの時間", "foamDecaySeconds", "float", "3", "泡が e<sup>-1</sup> まで減る時間（秒）。"],
@@ -15693,7 +15750,7 @@ void LateUpdate()   // 追いかける相手が動いた後に動かす
         ]
       }
     ],
-    notes: "<ul><li>水面を使うシーンは、<span class=\"path\">_scene.json</span> に <code>\"features\": [\"WaterRender\"]</code> を書き足す必要があります（エディタに追加の画面はありません。サンプル TestBed の WaterTestScene を参照）。</li><li>水の性質（波・水の色・反射と屈折・泡）は水面 1 枚ごとの値で、シーンの水面のファイルに保存されます。風（<code>r.Wind.Speed</code>・<code>r.Wind.Direction</code>）はシーンの CVar で <span class=\"path\">_environment.json</span> に、描画の品質と負荷（細かい格子・海の範囲マップ・濡れ跡・コースティクスの作り方・屈折のずれの上限）はプロジェクトの CVar（<code>r.Water.*</code>。<span class=\"path\">Config/EngineSettings/CVars.json</span>）に保存されます。エディタでは水面のインスペクタに、この 3 つがセクションごとに並びます（プロジェクトとシーンの値は見出しに書いてあります）。「波」の「海況」でシーンの風速と吹送距離・うねりをまとめて入れられ、いまの値で出来上がる風波とうねりの波長と高さも出ます。いちばん下のボタンで <code>r.Water.*</code> を既定値へ戻せます。</li><li>「プロファイルとして保存」を押すと、今の水の性質を <span class=\"path\">Assets/Water/</span> に <span class=\"path\">.waterprofile</span> として書き、それを指します。ほかのシーンの水面からも同じプロファイルを指せます。プロファイルを指した水面には、シーンを開いたときと指し直したときにプロファイルの値が入ります（物理マテリアルの <span class=\"path\">.physmat</span> と同じ）。インスペクタで変えた値は、「プロファイルへ書き込む」を押すまでプロファイルへは残りません。</li><li>「FFT の海で描く」を切ると Gerstner の波で描きます。Gerstner の波は保存せず、開き直すと既定の 16 本に戻ります。</li><li>FFT の海の映り込みは、シーンの風速（<code>r.Wind.Speed</code>）が強いほど縦に伸びてぼけ、遠くの水面ほど空が映ります。FFT が表せない短い波の傾きを風速から求めて足しているためです。鏡のように映したいときは風速を下げます。</li><li>コースティクスの「作り方」をスクリーンスペースにしたときの強さなどの値は、Gerstner の波のときだけ効きます。レイトレーシングの明るさは、光と水の吸収から決まります。</li><li>FFT の海でレイトレーシングが使えるときは、ゲームのカメラの周り 256m 四方（海底の高さを測る範囲）を 0.5m 間隔の細かい格子で描き、その外を「分割数」の格子で描きます。範囲はカメラと一緒に 0.5m 単位で動きます。CVar <code>r.Water.Shore.FineMesh</code> で切れます。</li><li>FFT の海の波の形（頂点の高さと横のずれ）には、その格子の間隔で表せる波だけを入れます。細かい格子は 3 つのカスケードの波を全部（短い波まで）、粗い格子は 60m より長い波だけです。形に入らない短い波は、陰影（法線）で描きます。細かい格子を使わないとき（レイトレーシングが無い・<code>r.Water.Shore.FineMesh</code> を切った）は、カメラの近くも 60m より長い波だけの形になります。</li><li>レイトレーシングが使えるときは、水面の範囲全体の水深と水面の上にある物までの高さを測った地図（海の範囲マップ）で波の形を弱めます。陸や建物の下では波が出ず、浅瀬では水深に応じて低くなり、桟橋の下では桟橋に届かない高さまでになります。水面の範囲の端に触れている水と、いちばん大きな水のかたまりを海とし、それ以外の囲まれた水（プールや池）は波立ちません。測るのは止まっている物だけで、物を置く・動かすと、落ち着いてから測り直します。CVar <code>r.Water.SeaMap.Enabled</code> で切れ、<code>r.Water.SeaMap.Resolution</code>（地図の長い辺のテクセル数）で細かさを変えられます。</li><li>「潮の高さ」を 0 より大きくすると、大気の月と太陽の高さから潮位を求め、水面をトランスフォームの高さから上下させます（トランスフォームの値は変えません）。月の効きを 1、太陽を 0.46 として足し合わせ、どちらも真上か真下で満潮、地平線で干潮です。月が無いシーンは太陽だけで求め、どちらも無ければ潮は動きません。水面の描画・映り込み・屈折・コースティクス・水中の霧と明るさ・岸の泡・海の範囲マップは、どれも潮位を足した高さを使います。</li><li>月と太陽が真上まで来ないと、満潮は「潮の高さ」まで上がりません。シーンの機能 <code>TimeOfDay</code> は緯度（<code>r.TimeOfDay.LatitudeDeg</code>。既定 35 度）が高いほど南中が低く、35 度では満潮が「潮の高さ」の 0.34 倍、干潮が −1 倍です。</li><li><code>TimeOfDay</code> の月は月齢の分だけ太陽から遅れて動くので、新月と満月の頃は大潮、上弦と下弦の頃は小潮になります（小潮の干満差は大潮の約 37%）。満潮の時刻は毎日約 49 分ずつ遅れます（満月の日は 0 時と 12 時）。潮の速さは空の時間の速さ（<code>r.TimeOfDay.DayLengthSeconds</code>）で決まります。<code>TimeOfDay</code> の無いシーンや時間を進めないシーンでは、潮位は一定です。</li><li>スクリプトで波を含む水面の高さを使う（浮かぶ・泳ぐ・濡れる）ときは、<a href=\"#api-WaterProbe\">水面の高さを調べる</a> を付けて読みます。物を浮かべるだけなら <a href=\"#api-Buoyancy\">浮力</a> を付けます。波を含まない水の高さ（潮を足した基準の高さ）は、トランスフォームの高さでなく <code>waterLevel</code> を読みます。潮を自分で動かしたいときは <code>SetTideHeight</code> で指定します。</li><li>海の範囲マップの水深は、潮位を除いた高さで測ってから潮位の分を足します。満潮で水に沈んだ低い陸にも、その深さに応じて波が出ます。</li><li>水面が下がると（潮・<code>SetTideHeight</code>・トランスフォームを下げる）、それまで水に浸かっていた面が暗く、つやのある見た目で残り、時間とともに乾きます（濡れ跡）。水から出た時刻をワールドの高さごとに覚えて、その時刻からの時間で乾かすので、カメラを動かしても消えません。乾く速さは <code>r.Water.Wetness.DrySeconds</code>（濡れ具合が 1/e になるまでのゲームの時間。既定 60 秒）で決まり、<code>r.Water.Wetness.Enabled</code> で切れます。インスペクタの「濡れ跡」にも並びます。今の水面より 0.5 m 下までの面も、波打ち際として濡れて見えます。スキンメッシュと水面の範囲の外は濡らしません。</li></ul>",
+    notes: "<ul><li>水面を使うシーンは、<span class=\"path\">_scene.json</span> に <code>\"features\": [\"WaterRender\"]</code> を書き足す必要があります（エディタに追加の画面はありません。サンプル TestBed の WaterTestScene を参照）。</li><li>水面はシーンに何枚でも置けます。そのうち 1 枚が主の水（「主の水にする」を入れた水面。どれにも入れていなければシーンで最初の水面）で、FFT の海・白波と岸の泡・岸の細かい格子・海の範囲マップ・レイトレーシングの映り込みと屈折・コースティクス・濡れ跡・水中の霧と明るさは、主の水だけに付きます。ほかの水面（池・プール・川）は、それぞれの見た目と水質と潮で、その水面の Gerstner の波（既定の 16 本に「高さの倍率」を掛けたもの）・空のキューブの映り込み・水越しの景色の屈折と水深による色で描きます。<a href=\"#api-WaterProbe\">水面の高さを調べる</a> と <a href=\"#api-Buoyancy\">浮力</a> は、どの水面でも効きます（水面が重なる所では、範囲の狭い方の水面）。使い方は <a href=\"#g3d-water-pool\">池やプールを足す</a> にあります。</li><li>水の性質（波・水の色・反射と屈折・泡）は水面 1 枚ごとの値で、シーンの水面のファイルに保存されます。風（<code>r.Wind.Speed</code>・<code>r.Wind.Direction</code>）はシーンの CVar で <span class=\"path\">_environment.json</span> に、描画の品質と負荷（細かい格子・海の範囲マップ・濡れ跡・コースティクスの作り方・屈折のずれの上限）はプロジェクトの CVar（<code>r.Water.*</code>。<span class=\"path\">Config/EngineSettings/CVars.json</span>）に保存されます。エディタでは水面のインスペクタに、この 3 つがセクションごとに並びます（プロジェクトとシーンの値は見出しに書いてあります）。「波」の「海況」でシーンの風速と吹送距離・うねりをまとめて入れられ、いまの値で出来上がる風波とうねりの波長と高さも出ます。いちばん下のボタンで <code>r.Water.*</code> を既定値へ戻せます。</li><li>「プロファイルとして保存」を押すと、今の水の性質を <span class=\"path\">Assets/Water/</span> に <span class=\"path\">.waterprofile</span> として書き、それを指します。ほかのシーンの水面からも同じプロファイルを指せます。プロファイルを指した水面には、シーンを開いたときと指し直したときにプロファイルの値が入ります（物理マテリアルの <span class=\"path\">.physmat</span> と同じ）。インスペクタで変えた値は、「プロファイルへ書き込む」を押すまでプロファイルへは残りません。</li><li>「FFT の海で描く」を切ると Gerstner の波で描きます。Gerstner の波は保存せず、開き直すと既定の 16 本に戻ります。</li><li>FFT の海の映り込みは、シーンの風速（<code>r.Wind.Speed</code>）が強いほど縦に伸びてぼけ、遠くの水面ほど空が映ります。FFT が表せない短い波の傾きを風速から求めて足しているためです。鏡のように映したいときは風速を下げます。</li><li>コースティクスの「作り方」をスクリーンスペースにしたときの強さなどの値は、Gerstner の波のときだけ効きます。レイトレーシングの明るさは、光と水の吸収から決まります。</li><li>FFT の海でレイトレーシングが使えるときは、ゲームのカメラの周り 256m 四方（海底の高さを測る範囲）を 0.5m 間隔の細かい格子で描き、その外を「分割数」の格子で描きます。範囲はカメラと一緒に 0.5m 単位で動きます。CVar <code>r.Water.Shore.FineMesh</code> で切れます。</li><li>FFT の海の波の形（頂点の高さと横のずれ）には、その格子の間隔で表せる波だけを入れます。細かい格子は 3 つのカスケードの波を全部（短い波まで）、粗い格子は 60m より長い波だけです。形に入らない短い波は、陰影（法線）で描きます。細かい格子を使わないとき（レイトレーシングが無い・<code>r.Water.Shore.FineMesh</code> を切った）は、カメラの近くも 60m より長い波だけの形になります。</li><li>レイトレーシングが使えるときは、水面の範囲全体の水深と水面の上にある物までの高さを測った地図（海の範囲マップ）で波の形を弱めます。陸や建物の下では波が出ず、浅瀬では水深に応じて低くなり、桟橋の下では桟橋に届かない高さまでになります。水面の範囲の端に触れている水と、いちばん大きな水のかたまりを海とし、それ以外の囲まれた水（プールや池）は波立ちません。測るのは止まっている物だけで、物を置く・動かすと、落ち着いてから測り直します。CVar <code>r.Water.SeaMap.Enabled</code> で切れ、<code>r.Water.SeaMap.Resolution</code>（地図の長い辺のテクセル数）で細かさを変えられます。</li><li>「潮の高さ」を 0 より大きくすると、大気の月と太陽の高さから潮位を求め、水面をトランスフォームの高さから上下させます（トランスフォームの値は変えません）。月の効きを 1、太陽を 0.46 として足し合わせ、どちらも真上か真下で満潮、地平線で干潮です。月が無いシーンは太陽だけで求め、どちらも無ければ潮は動きません。水面の描画・映り込み・屈折・コースティクス・水中の霧と明るさ・岸の泡・海の範囲マップは、どれも潮位を足した高さを使います。</li><li>月と太陽が真上まで来ないと、満潮は「潮の高さ」まで上がりません。シーンの機能 <code>TimeOfDay</code> は緯度（<code>r.TimeOfDay.LatitudeDeg</code>。既定 35 度）が高いほど南中が低く、35 度では満潮が「潮の高さ」の 0.34 倍、干潮が −1 倍です。</li><li><code>TimeOfDay</code> の月は月齢の分だけ太陽から遅れて動くので、新月と満月の頃は大潮、上弦と下弦の頃は小潮になります（小潮の干満差は大潮の約 37%）。満潮の時刻は毎日約 49 分ずつ遅れます（満月の日は 0 時と 12 時）。潮の速さは空の時間の速さ（<code>r.TimeOfDay.DayLengthSeconds</code>）で決まります。<code>TimeOfDay</code> の無いシーンや時間を進めないシーンでは、潮位は一定です。</li><li>スクリプトで波を含む水面の高さを使う（浮かぶ・泳ぐ・濡れる）ときは、<a href=\"#api-WaterProbe\">水面の高さを調べる</a> を付けて読みます。物を浮かべるだけなら <a href=\"#api-Buoyancy\">浮力</a> を付けます。波を含まない水の高さ（潮を足した基準の高さ）は、トランスフォームの高さでなく <code>waterLevel</code> を読みます。潮を自分で動かしたいときは <code>SetTideHeight</code> で指定します。</li><li>海の範囲マップの水深は、潮位を除いた高さで測ってから潮位の分を足します。満潮で水に沈んだ低い陸にも、その深さに応じて波が出ます。</li><li>水面が下がると（潮・<code>SetTideHeight</code>・トランスフォームを下げる）、それまで水に浸かっていた面が暗く、つやのある見た目で残り、時間とともに乾きます（濡れ跡）。水から出た時刻をワールドの高さごとに覚えて、その時刻からの時間で乾かすので、カメラを動かしても消えません。乾く速さは <code>r.Water.Wetness.DrySeconds</code>（濡れ具合が 1/e になるまでのゲームの時間。既定 60 秒）で決まり、<code>r.Water.Wetness.Enabled</code> で切れます。インスペクタの「濡れ跡」にも並びます。今の水面より 0.5 m 下までの面も、波打ち際として濡れて見えます。スキンメッシュと水面の範囲の外は濡らしません。</li></ul>",
     see: [["file-formats", "_scene.json の書き方"], ["api-SkyBox", "空と大気散乱"]]
   },
 

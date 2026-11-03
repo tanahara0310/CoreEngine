@@ -9,7 +9,6 @@
 #define WATER_DEBUG_INCLUDED
 
 #include "WaterSurfaceResources.hlsli"
-#include "WaterColumn.hlsli"     // SampleRTWaterRefraction
 #include "WaterVolume.hlsli"     // ResolveWaterTransmissionColor
 #include "WaterReflection.hlsli" // SampleGlossyReflectionRGBA
 

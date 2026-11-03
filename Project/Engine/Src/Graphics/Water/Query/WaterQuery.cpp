@@ -31,7 +31,7 @@ namespace CoreEngine
         ++slot.generation;
         slot.x = worldPosition.x;
         slot.z = worldPosition.z;
-        slot.hasResult = false;
+        slot.resultCount = 0;
         return point;
     }
 
@@ -42,7 +42,7 @@ namespace CoreEngine
         }
         Point& slot = points_[point];
         slot.active = false;
-        slot.hasResult = false;
+        slot.resultCount = 0;
         freePoints_.push_back(point);
     }
 
@@ -51,8 +51,17 @@ namespace CoreEngine
         if (point >= points_.size() || !points_[point].active) {
             return;
         }
-        points_[point].x = worldPosition.x;
-        points_[point].z = worldPosition.z;
+        Point& slot = points_[point];
+
+        // 置き直した点は、前の位置の結果を捨てる（届く前の結果も世代を変えて捨てる）
+        const float deltaX = worldPosition.x - slot.x;
+        const float deltaZ = worldPosition.z - slot.z;
+        if (deltaX * deltaX + deltaZ * deltaZ > kRelocateMeters * kRelocateMeters) {
+            ++slot.generation;
+            slot.resultCount = 0;
+        }
+        slot.x = worldPosition.x;
+        slot.z = worldPosition.z;
     }
 
     WaterSample WaterQuery::Sample(uint32_t point, const Vector3& worldPosition) const
@@ -62,7 +71,7 @@ namespace CoreEngine
             return sample;
         }
         const Point& slot = points_[point];
-        if (!slot.active || !slot.hasResult || (slot.result.flags & kGpuResultInWater) == 0) {
+        if (!slot.active) {
             return sample;
         }
 
@@ -76,9 +85,17 @@ namespace CoreEngine
             deltaZ *= scale;
         }
 
-        sample.inWater = true;
-        sample.surfaceHeight = slot.result.height + slot.result.slopeX * deltaX + slot.result.slopeZ * deltaZ;
-        sample.normal = Normalize(Vector3{ -slot.result.slopeX, 1.0f, -slot.result.slopeZ });
+        // 結果は範囲の狭い水面から並ぶので、範囲の中にある最初の水面を返す
+        for (uint32_t i = 0; i < slot.resultCount; ++i) {
+            const GpuResult& result = slot.results[i];
+            if ((result.flags & kGpuResultInWater) == 0) {
+                continue;
+            }
+            sample.inWater = true;
+            sample.surfaceHeight = result.height + result.slopeX * deltaX + result.slopeZ * deltaZ;
+            sample.normal = Normalize(Vector3{ -result.slopeX, 1.0f, -result.slopeZ });
+            break;
+        }
         return sample;
     }
 
@@ -92,24 +109,32 @@ namespace CoreEngine
         }
     }
 
-    void WaterQuery::ApplyResults(std::span<const Submitted> submitted, std::span<const GpuResult> results)
+    void WaterQuery::ApplyResults(
+        std::span<const Submitted> submitted, std::span<const GpuResult> results, uint32_t surfaceCount)
     {
-        const size_t count = (std::min)({ submitted.size(), results.size(), points_.size() });
+        const size_t stride = submitted.size();
+        surfaceCount = (std::min)(surfaceCount, kMaxSurfaces);
+        if (stride == 0 || results.size() < stride * surfaceCount) {
+            return;
+        }
+        const size_t count = (std::min)(stride, points_.size());
         for (size_t i = 0; i < count; ++i) {
             Point& slot = points_[i];
             if (!slot.active || submitted[i].generation != slot.generation) {
                 continue;
             }
-            slot.hasResult = true;
             slot.evaluatedAt = submitted[i];
-            slot.result = results[i];
+            slot.resultCount = surfaceCount;
+            for (uint32_t surface = 0; surface < surfaceCount; ++surface) {
+                slot.results[surface] = results[surface * stride + i];
+            }
         }
     }
 
     void WaterQuery::ClearResults()
     {
         for (Point& slot : points_) {
-            slot.hasResult = false;
+            slot.resultCount = 0;
         }
     }
 

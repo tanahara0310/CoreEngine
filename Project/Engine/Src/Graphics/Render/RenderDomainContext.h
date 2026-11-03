@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <span>
 
 #include "Graphics/RHI/IResizable.h"
 
@@ -108,12 +109,15 @@ namespace CoreEngine
         // ===== 水の 1 フレームの状態 =====
 
         /// @brief このフレームの水面の状態と FFT の海の時刻を渡す（WaterSystem が毎フレーム呼ぶ）
-        /// @param snapshot 水面の状態（水面が無ければ nullptr）。所有者は WaterSystem
+        /// @param snapshot 主の水の状態（水面が無ければ nullptr）。所有者は WaterSystem
+        /// @param otherSurfaces ほかの水の水面の状態。所有者は WaterSystem
         /// @param fftOceanTime FFT の海の時刻 [s]（水面の表示や波の方式の切り替えと関係なく進む）
-        /// @warning WaterSystem の Finalize で必ず nullptr へ戻す
-        void PublishWaterFrame(const WaterSurfaceData* snapshot, float fftOceanTime)
+        /// @warning WaterSystem の Finalize で必ず nullptr と空へ戻す
+        void PublishWaterFrame(
+            const WaterSurfaceData* snapshot, std::span<const WaterSurfaceData> otherSurfaces, float fftOceanTime)
         {
             waterSurfaceState_ = snapshot;
+            otherWaterSurfaceStates_ = otherSurfaces;
             fftOceanSimulationTime_ = fftOceanTime;
         }
 
@@ -141,8 +145,10 @@ namespace CoreEngine
         std::unique_ptr<VolumetricCloudManager> volumetricCloudManager_;
         std::unique_ptr<FogManager> fogManager_;
 
-        /// @brief WaterSystem が渡した水面の状態（非所有）
+        /// @brief WaterSystem が渡した主の水の状態（非所有）
         const WaterSurfaceData* waterSurfaceState_ = nullptr;
+        /// @brief WaterSystem が渡したほかの水の水面の状態（非所有）
+        std::span<const WaterSurfaceData> otherWaterSurfaceStates_{};
         /// @brief FFT の海の時刻 [s]
         float fftOceanSimulationTime_ = 0.0f;
     };

@@ -67,52 +67,62 @@ float4 SampleGlossyReflectionRGBA(float2 screenUV, float grazing)
     return float4(colorSum / weightSum, kRTSuccessRangeMin + 0.5f * centerConfidence);
 }
 
+/// @brief 反射色が映り込みの像（RT 反射か空キューブマップ）か
+/// @details 偽のときの反射色はフォワード PBR の色（太陽のスペキュラ入り）
+bool UsesReflectionImage()
+{
+    return gReflectionEnabled != 0 || gSkyEnvReflectionEnabled != 0;
+}
+
 /// @brief 水面の反射色を求める
 /// @param cosTheta     視線と面法線のなす角の余弦
 /// @param viewDir      水面 → カメラ
 /// @param normal       面法線
 /// @param reflectionMeanSquareSlope 面法線に入っていない傾きの平均二乗傾斜（空キューブマップのミップ選択に使う）
-/// @param forwardColor フォワード PBR の色（反射が無効なフレームの反射色）
+/// @param forwardColor フォワード PBR の色（RT 反射も空キューブマップも無いときの反射色）
 /// @details RT 反射の alpha は反射色の信頼度（(0.5, 1] が成功、0.5 未満が失敗）。
 ///          空キューブマップとは信頼度で連続にブレンドする。
-///          空は RT パスがトレースしたレイの向きで解決しているので、ここで空を引くのは
+///          空は RT パスがトレースしたレイの向きで解決しているので、RT 反射のある水面でここで空を引くのは
 ///          空キューブマップが RT パスへ渡っていないフレームの保険（そのときも波の法線で引く）。
+///          RT 反射の無い水面は、空キューブマップを波の法線で引いた色を映す。
 float3 ResolveWaterReflection(
     float2 screenUV, float cosTheta, float3 viewDir, float3 normal,
     float reflectionMeanSquareSlope, float3 forwardColor)
 {
+    if (!UsesReflectionImage())
+    {
+        return forwardColor;
+    }
+
     float3 reflectColor = forwardColor;
+    if (gSkyEnvReflectionEnabled != 0)
+    {
+        const float envMip = AddSlopeVarianceToRoughness(
+            kWaterReflectionMicroRoughness, reflectionMeanSquareSlope) * (kWaterSkyEnvMipCount - 1.0f);
+        float3 envReflectDir = reflect(-viewDir, normal);
+        envReflectDir.y = max(abs(envReflectDir.y), 0.01f);
+        reflectColor = gSkyEnvironmentMap.SampleLevel(gLinearClamp, envReflectDir, envMip).rgb;
+    }
+
     if (gReflectionEnabled)
     {
         const float4 rtReflection =
             SampleGlossyReflectionRGBA(screenUV, saturate(1.0f - cosTheta));
         const float rtConfidence = saturate((rtReflection.a - 0.5f) * 2.0f);
+        reflectColor = lerp(reflectColor, rtReflection.rgb, rtConfidence);
+    }
 
-        float3 fallbackReflectColor = reflectColor;
-        if (gSkyEnvReflectionEnabled != 0)
-        {
-            const float envMip = AddSlopeVarianceToRoughness(
-                kWaterReflectionMicroRoughness, reflectionMeanSquareSlope) * (kWaterSkyEnvMipCount - 1.0f);
-            float3 envReflectDir = reflect(-viewDir, normal);
-            envReflectDir.y = max(abs(envReflectDir.y), 0.01f);
-            fallbackReflectColor =
-                gSkyEnvironmentMap.SampleLevel(gLinearClamp, envReflectDir, envMip).rgb;
-        }
-
-        reflectColor = lerp(fallbackReflectColor, rtReflection.rgb, rtConfidence);
-
-        // ---- 反射の輝度圧縮 ----
-        // 膝を超えた輝度だけショルダー圧縮する（色相保持）
-        const float kReflectionCompressKnee = 2.0f;
-        const float kReflectionCompressMax = 6.0f;
-        float reflLuma = Luminance(reflectColor);
-        if (reflLuma > kReflectionCompressKnee)
-        {
-            float excessLuma = reflLuma - kReflectionCompressKnee;
-            float compressedLuma = kReflectionCompressKnee
-                + excessLuma / (1.0f + excessLuma / kReflectionCompressMax);
-            reflectColor *= compressedLuma / max(reflLuma, 1.0e-5f);
-        }
+    // ---- 反射の輝度圧縮 ----
+    // 膝を超えた輝度だけショルダー圧縮する（色相保持）
+    const float kReflectionCompressKnee = 2.0f;
+    const float kReflectionCompressMax = 6.0f;
+    float reflLuma = Luminance(reflectColor);
+    if (reflLuma > kReflectionCompressKnee)
+    {
+        float excessLuma = reflLuma - kReflectionCompressKnee;
+        float compressedLuma = kReflectionCompressKnee
+            + excessLuma / (1.0f + excessLuma / kReflectionCompressMax);
+        reflectColor *= compressedLuma / max(reflLuma, 1.0e-5f);
     }
     return reflectColor;
 }

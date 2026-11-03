@@ -275,6 +275,7 @@ namespace CoreEngine
 
         // 水面の状態は WaterSystem が PublishWaterFrame で渡す
         context.waterSurfaceState = waterSurfaceState_;
+        context.otherWaterSurfaceStates = otherWaterSurfaceStates_;
         context.fftOceanSimulationTime = fftOceanSimulationTime_;
     }
 

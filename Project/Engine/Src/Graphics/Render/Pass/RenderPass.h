@@ -1,4 +1,5 @@
 #pragma once
+#include <span>
 #include <string>
 #include <d3d12.h>
 
@@ -89,7 +90,8 @@ namespace CoreEngine
         FrameBlackboard* frameBlackboard = nullptr; ///< フレーム内共有リソースの論理名管理
         ModelManager* modelManager = nullptr; ///< モデル資産管理（BLAS 遅延ビルド用）
         GpuTimestampProfiler* gpuProfiler = nullptr; ///< パス別 GPU/CPU タイミング計測（nullptr の場合は計測しない）
-        const WaterSurfaceData* waterSurfaceState = nullptr; ///< 現在フレームの水面状態（水面不在なら nullptr）
+        const WaterSurfaceData* waterSurfaceState = nullptr; ///< 現在フレームの主の水の状態（水面不在なら nullptr）
+        std::span<const WaterSurfaceData> otherWaterSurfaceStates{}; ///< ほかの水の水面の状態（水面の高さの問い合わせが読む）
         float fftOceanSimulationTime = 0.0f; ///< FFT Ocean のシミュレーション時刻（水面の表示状態と独立）
         RenderViewSettings viewSettings{}; ///< 現在の View 種別と有効化するパス群設定
         uint64_t frameNumber = 0; ///< フレーム通し番号（フレーム内 1 回実行パスのガードに使う）

@@ -86,4 +86,14 @@ struct WaterPSInput
 #include "../Common/WaterFrameConstants.hlsli"
 #include "../Common/WaterShoreMesh.hlsli"
 
+/// @brief 画素の RT 屈折の結果（RT 屈折を読まない水面は、どの画素もヒットなしのアルファ 0）
+float4 SampleRTWaterRefraction(uint2 pixelCoord)
+{
+    if (gRTRefractionEnabled == 0)
+    {
+        return float4(0.0f, 0.0f, 0.0f, 0.0f);
+    }
+    return gRTWaterRefractionColor.Load(int3(pixelCoord, 0));
+}
+
 #endif // WATER_SURFACE_RESOURCES_INCLUDED

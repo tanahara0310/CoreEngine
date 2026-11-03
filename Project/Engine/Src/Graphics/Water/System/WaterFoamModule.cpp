@@ -60,6 +60,14 @@ namespace CoreEngine
         waterPlane.SetFoamMotion(whitecap->ComputeDriftOffset(fftOceanTime), whitecap->ComputeStretchAxis());
     }
 
+    void WaterFoamModule::ApplyWithoutFoam(const WaterFrameContext& frame) const
+    {
+        const WaterFoamSettings& settings = frame.settings.foam;
+        frame.waterPlane.SetFoamParameters(
+            false, WaterFoamDefaults::kBias, WaterFoamDefaults::kGain,
+            settings.opacity, settings.cascadeWeights, settings.decaySeconds);
+    }
+
     void WaterFoamModule::Bind(RenderDomainContext& domain, WaterFrameBinding& binding) const
     {
         if (!domain.GetFFTOceanManager()) {

@@ -2,6 +2,7 @@
 
 #include <array>
 #include <memory>
+#include <span>
 
 #include "Graphics/Water/Wave/WaterWaveModel.h"
 
@@ -21,7 +22,8 @@ namespace CoreEngine
         ~WaterWaveModule();
 
         /// @brief すべてのモデルの時刻を進める
-        void Advance(float deltaSeconds, const WaterSurfaceComponent* waterPlane);
+        /// @param waterPlanes シーンの水面（Gerstner の波はどれかの水面が描いているときだけ進む）
+        void Advance(float deltaSeconds, std::span<WaterSurfaceComponent* const> waterPlanes);
 
         /// @brief 水面が描いているモデル
         const WaterWaveModel& GetDrawnModel(const WaterSurfaceComponent& waterPlane) const;
@@ -34,6 +36,9 @@ namespace CoreEngine
 
         /// @brief 水面が描くモデルを設定に合わせ、すべてのモデルへ設定を渡して水面の定数へ波の値を書く
         void ApplySettings(const WaterFrameContext& frame);
+
+        /// @brief ほかの水の水面を Gerstner の波で描く（その水面の設定はモデルへ渡さない）
+        void ApplyToSecondary(const WaterFrameContext& frame) const;
 
         /// @brief 描いているモデルの水面の高さ・時刻・波を snapshot へ書く（snapshot の他の値は消える）
         void Capture(RenderDomainContext& domain, const WaterSurfaceComponent& waterPlane, WaterSurfaceData& snapshot) const;
