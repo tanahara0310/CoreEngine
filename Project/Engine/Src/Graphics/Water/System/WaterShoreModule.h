@@ -8,12 +8,14 @@ namespace CoreEngine
     struct WaterFrameBinding;
     struct WaterFrameContext;
     struct WaterSurfaceData;
+    struct WaterWaveCapabilities;
 
     /// @brief カメラの周りの海底の高さの範囲と、その範囲を描く岸の細かい格子を受け持つ
     class WaterShoreModule {
     public:
         /// @brief ゲームのカメラの真下を中心に、海底の高さを測る範囲を決める（同じフレームの RTWaterSeabedPass が測る）
-        void UpdateWindow(const WaterFrameContext& frame);
+        /// @param waves 水面が描いている波のモデルの機能（岸の細かい格子を使えるか）
+        void UpdateWindow(const WaterFrameContext& frame, const WaterWaveCapabilities& waves);
 
         /// @brief 岸の細かい格子の範囲を snapshot へ書く
         void Capture(const WaterSurfaceComponent& waterPlane, WaterSurfaceData& snapshot) const;

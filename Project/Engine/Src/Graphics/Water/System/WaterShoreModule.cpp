@@ -5,13 +5,14 @@
 
 #include "Camera/Camera.h"
 #include "Graphics/Render/RenderDomainContext.h"
-#include "Graphics/Water/Foam/WaterFoamSystem.h"
+#include "Graphics/Water/Foam/WaterShoreFoam.h"
 #include "Graphics/Water/RayTracing/WaterSeabedRayTracingManager.h"
 #include "Graphics/Water/Surface/WaterRenderResources.h"
 #include "Graphics/Water/Surface/WaterSurfaceComponent.h"
 #include "Graphics/Water/Surface/WaterSurfaceMeshGenerator.h"
 #include "Graphics/Water/System/WaterFrameContext.h"
 #include "Graphics/Water/System/WaterSettings.h"
+#include "Graphics/Water/Wave/WaterWaveModel.h"
 #include "Scene/Feature/ISceneFeature.h"
 
 namespace CoreEngine
@@ -20,7 +21,7 @@ namespace CoreEngine
             == WaterSurfaceMeshGenerator::kShoreSubdivisions * WaterSeabedRayTracingManager::kWindowSnapMeters,
         "岸の細かい格子の 1 マスは、海底の範囲の角を揃える格子の幅と同じ");
 
-    void WaterShoreModule::UpdateWindow(const WaterFrameContext& frame)
+    void WaterShoreModule::UpdateWindow(const WaterFrameContext& frame, const WaterWaveCapabilities& waves)
     {
         window_ = {};
         WaterSeabedRayTracingManager* const seabed = frame.domain.GetWaterSeabedRayTracingManager();
@@ -41,12 +42,12 @@ namespace CoreEngine
         window_.size = window.size;
         window_.seabedSRV = seabed->GetSeabedSRVHandle(WaterSeabedRayTracingManager::ViewID::GameView);
         window_.shoreMeshEnabled = window_.seabedSRV.ptr != 0
-            && frame.waterPlane.IsUsingFFTOcean()
+            && waves.shoreMesh
             && frame.settings.shoreFineMeshEnabled;
 
         // 岸の泡。同じフレームの WaterShoreFoamPass が同じ範囲で書く
-        if (const WaterFoamSystem* foam = frame.domain.GetWaterFoamSystem(); foam && foam->IsShoreActive()) {
-            window_.shoreFoamSRV = foam->GetShoreSRVHandle();
+        if (const WaterShoreFoam* foam = frame.domain.GetWaterShoreFoam(); foam && foam->IsActive()) {
+            window_.shoreFoamSRV = foam->GetSRVHandle();
         }
     }
 

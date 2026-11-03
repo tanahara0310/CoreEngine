@@ -26,7 +26,7 @@ Texture2DArray<float> gFoamPrev : register(t1);
 RWTexture2DArray<float> gFoamOutput : register(u0);
 SamplerState gLinearWrap : register(s0);
 
-// C++ 側 WaterFoamSystem::WhitecapConstants とレイアウト一致必須
+// C++ 側 WaterWhitecapFoam::FoamConstants とレイアウト一致必須
 cbuffer FFTOceanFoamConstants : register(b0)
 {
     uint gResolution;

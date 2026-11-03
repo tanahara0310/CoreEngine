@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.55.1">
+<meta name="engine-version" content="0.55.2">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -10075,6 +10075,14 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-55-2">v0.55.2 <span class="dim">（2026-11-03）</span></h3>
+  <p>水面の波と泡の処理の中身を整理した版です。見た目・動き・シーンの書き方・CVar・スクリプトは変わりません。</p>
+  <ul>
+    <li><strong>波のモデルを部品に</strong>：Gerstner の波と FFT の海を、同じ形の部品（<span class="path">Graphics/Water/Wave/</span> の WaterWaveModel）にしました。時刻の進め方・水面の状態の書き出し・有義波高・GPU への結線をそれぞれが受け持ち、水面の処理から「FFT かどうか」の分かれ道がなくなりました。どちらで描くかは、今までどおり水面の値「FFT の海で描く」で決まります。</li>
+    <li><strong>FFT の海を 1 つのフォルダに</strong>：FFT の海のファイルを <span class="path">Graphics/Water/FFT/</span> にまとめ、波のスペクトルの生成と統計（波の大きさ・波群の位相・平均二乗傾斜。CPU で求める）を FFTOceanSpectrum に、GPU のシミュレーションを FFTOceanManager に分けました。C++ から波の統計を読むときは <code>FFTOceanManager::GetSpectrum()</code> を通します。ログとデバッグ計測だけの補助のファイル 2 組は、使う側へ取り込みました。</li>
+    <li><strong>泡を 2 つに</strong>：沖の白波（WaterWhitecapFoam。FFT の格子の上に溜める泡と、白波の割合に合わせたしきい値の較正）と、岸の泡（WaterShoreFoam。カメラの周りの範囲の泡と寄せ・引き）を別のクラスにしました。</li>
+  </ul>
 
   <h3 id="changelog-v0-55-1">v0.55.1 <span class="dim">（2026-11-03）</span></h3>
   <p>水面のシェーダの中身を整理した版です。見た目・動き・シーンの書き方・CVar・スクリプトは変わりません。</p>

@@ -213,16 +213,16 @@ namespace CoreEngine
             bool enabled, float bias, float gain, float opacity,
             const Vector3& cascadeWeights, float decaySeconds);
 
-        /// @brief 波群エンベロープの位相のずれ [rad] を設定する（FFTOceanManager::ComputeWaveGroupPhase）
+        /// @brief 波群エンベロープの位相のずれ [rad] を設定する（FFTOceanSpectrum::ComputeWaveGroupPhase）
         void SetWaveGroupPhase(const std::array<float, 3>& phase);
 
         /// @brief 白波の泡の動きを設定する
-        /// @param driftOffsetXZ 泡が風下へ流れた距離 [m]（WaterFoamSystem::ComputeFoamDriftOffset）
-        /// @param stretchAxis   模様を風の向きに伸ばす軸（WaterFoamSystem::ComputeFoamStretchAxis）
+        /// @param driftOffsetXZ 泡が風下へ流れた距離 [m]（WaterWhitecapFoam::ComputeDriftOffset）
+        /// @param stretchAxis   模様を風の向きに伸ばす軸（WaterWhitecapFoam::ComputeStretchAxis）
         void SetFoamMotion(const std::array<float, 2>& driftOffsetXZ, const std::array<float, 2>& stretchAxis);
 
-        /// @brief FFT Ocean 描画経路を切り替える（WaterSystem が `r.Water.FFT.Enabled` に合わせて呼ぶ）
-        void SetUseFFTOcean(bool useFFTOcean);
+        /// @brief 描く波のモデルを切り替える（シェーダーを作り直す）
+        void SetWaveModel(WaterWaveModelType waveModel);
 
         // ===== 水の性質 =====
 
@@ -313,8 +313,8 @@ namespace CoreEngine
         /// @brief 現在接続されている描画リソース一式を返す（診断用）
         const WaterRenderResources& GetRenderResources() const { return renderResources_; }
 
-        /// @brief FFT Ocean 描画経路を使用中か返す
-        bool IsUsingFFTOcean() const { return useFFTOcean_; }
+        /// @brief 描いている波のモデル
+        WaterWaveModelType GetWaveModel() const { return waveModel_; }
 
         /// @brief FFT Ocean 用 SRV が有効か返す
         bool HasFFTOceanTextureSRVs() const {
@@ -328,7 +328,7 @@ namespace CoreEngine
         /// @brief 水面の平面メッシュの生成器を作る
         std::unique_ptr<IPrimitiveMeshGenerator> CreateMeshGenerator() const;
 
-        /// @brief 現在の useFFTOcean 状態に合わせてカスタム PSO を再構築する
+        /// @brief 今の波のモデルに合わせてカスタム PSO を再構築する
         void RebuildWaterShaderPipeline();
 
         /// @brief フレーム定数バッファを GPU へ転送する
@@ -339,7 +339,7 @@ namespace CoreEngine
 
         float    size_;
         uint32_t resolution_;
-        bool useFFTOcean_ = WaterProfile{}.fftEnabled;
+        WaterWaveModelType waveModel_ = WaterProfile{}.WaveModel();
 
         AssetRef<WaterProfileAsset> profileAsset_; ///< 値を読み込むプロファイル（何も指さなければ自分の値）
         WaterProfile profile_{};                   ///< 水の性質

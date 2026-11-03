@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "WaterHeightQueryPass.h"
 
-#include "Graphics/Water/FFTOceanManager.h"
+#include "Graphics/Water/FFT/FFTOceanManager.h"
 #include "Graphics/Water/Query/WaterHeightQueryManager.h"
 
 namespace CoreEngine
@@ -22,8 +22,7 @@ namespace CoreEngine
         // Gerstner の波面のときも、変位テクスチャのスロットには FFT の変位を差す
         WaterRayTracingPassBase::FFTOceanInput fftOceanInput{};
         if (context.waterSurfaceState) {
-            fftOceanInput = WaterRayTracingPassBase::MakeFFTOceanInput(
-                context.fftOceanManager, context.fftOceanSimulationTime, context.waterSurfaceState->simulationType);
+            fftOceanInput = context.waterSurfaceState->fftOcean;
         }
         if (fftOceanInput.displacementSRV.ptr == 0 && context.fftOceanManager && context.fftOceanManager->IsInitialized()) {
             fftOceanInput.displacementSRV = context.fftOceanManager->GetDisplacementSRVHandle();

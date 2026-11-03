@@ -3,7 +3,7 @@
 // ============================================================
 // 泡（whitecap）パラメータの既定値 —— 唯一の情報源
 // ------------------------------------------------------------
-// 泡の値は CVar → WaterFrameConstants → WaterFoamSystem::Settings → WhitecapConstants と
+// 泡の値は CVar → WaterFrameConstants → WaterWhitecapFoam::Settings → FoamConstants と
 // 4 段で運ばれる。各段が自前の初期値を持つと片側だけ直して割れるため、
 // リテラルはここへ集約し、全段がこの定数を参照する。
 // 依存ゼロのリーフヘッダーにしてあるのは、シミュレーション層から
@@ -18,10 +18,10 @@ namespace CoreEngine
         inline constexpr bool kEnabled = true;
 
         /// @brief 砕けるしきい値の初期値。合成ヤコビアン detJ がこれを下回ると泡が立つ
-        /// @details WaterFoamSystem が白波の被覆率から較正するまで使う
+        /// @details WaterWhitecapFoam が白波の被覆率から較正するまで使う
         inline constexpr float kBias = 0.85f;
 
-        /// @brief しきい値からの立ち上がり勾配の初期値（WaterFoamSystem が較正するまで使う）
+        /// @brief しきい値からの立ち上がり勾配の初期値（WaterWhitecapFoam が較正するまで使う）
         inline constexpr float kGain = 4.0f;
 
         /// @brief 白波の被覆率の目標に掛ける倍率（1.0 = Monahan の観測式 W = 3.84e-6·U^3.41）

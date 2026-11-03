@@ -38,7 +38,8 @@ namespace CoreEngine
     class WaterRefractionRayTracingManager;
     class WaterReflectionRayTracingManager;
     class FFTOceanManager;
-    class WaterFoamSystem;
+    class WaterShoreFoam;
+    class WaterWhitecapFoam;
     class WaterHeightQueryManager;
     class AtmosphereManager;
     class VolumetricCloudManager;
@@ -73,7 +74,8 @@ namespace CoreEngine
         WaterSeabedRayTracingManager* rtWaterSeabedManager = nullptr; ///< DXR 海底の高さ（カメラの周りの範囲）
         WaterSeaMapRayTracingManager* rtWaterSeaMapManager = nullptr; ///< DXR 海の範囲マップ（水面の範囲全体の水深と陸）
         FFTOceanManager* fftOceanManager = nullptr; ///< FFT Ocean 波面生成マネージャー
-        WaterFoamSystem* waterFoamSystem = nullptr; ///< 泡の時間変化（白波の蓄積）
+        WaterWhitecapFoam* waterWhitecapFoam = nullptr; ///< 沖の白波の泡（FFT の参照格子の上の蓄積）
+        WaterShoreFoam* waterShoreFoam = nullptr; ///< 岸の泡（カメラの周りの範囲）
         WaterHeightQueryManager* waterHeightQueryManager = nullptr; ///< 水面の高さの問い合わせ（GPU で評価して読み戻す）
         AtmosphereManager* atmosphereManager = nullptr; ///< 大気散乱管理（LUT生成・太陽情報）
         VolumetricCloudManager* volumetricCloudManager = nullptr; ///< ボリューメトリック雲管理（ノイズ生成・雲合成）

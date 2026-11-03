@@ -28,7 +28,6 @@
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
 #include "Graphics/Render/Pass/RenderPass.h"
-#include "Graphics/Water/FFTOceanManager.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/GameObjectManager.h"
 #include "Particle/ParticleSystemComponent.h"
@@ -657,9 +656,8 @@ namespace CoreEngine
         outDispatchContext.width = static_cast<UINT>(dx->GetClientWidth());
         outDispatchContext.height = static_cast<UINT>(dx->GetClientHeight());
 
-        // FFT Ocean 経路のときだけ波面テクスチャを接続する
-        outDispatchContext.fftOceanInput = WaterRayTracingPassBase::MakeFFTOceanInput(
-            context.fftOceanManager, context.fftOceanSimulationTime, surfaceData.simulationType);
+        // FFT の海で描いているときだけ波面テクスチャを接続する（それ以外は enabled = 0）
+        outDispatchContext.fftOceanInput = surfaceData.fftOcean;
 
         return true;
     }

@@ -24,7 +24,7 @@ namespace CoreEngine
         surface.refractiveIndex = profile.refractiveIndex;
 
         WaterWaveSettings& waves = settings.waves;
-        waves.fftEnabled = profile.fftEnabled;
+        waves.model = profile.WaveModel();
         waves.amplitudeScale = profile.amplitudeScale;
         waves.windDirection = WindCVars::Direction.Get();
         waves.windSpeed = WindCVars::Speed.Get();

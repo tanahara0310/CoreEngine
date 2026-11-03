@@ -2,7 +2,7 @@
 
 #include "Graphics/RHI/Resource/GpuResource.h"
 
-#include "Graphics/Water/FFTOceanSpectrumBuilder.h"
+#include "Graphics/Water/FFT/FFTOceanSpectrumBuilder.h"
 
 #include <cstdint>
 #include <d3d12.h>

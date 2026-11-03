@@ -5,7 +5,7 @@
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Graphics/Shader/ICustomShaderProvider.h"
-#include "Graphics/Water/FFTOceanGpuResources.h"
+#include "Graphics/Water/FFT/FFTOceanGpuResources.h"
 #include "Graphics/Water/WaterFoamDefaults.h"
 
 #include <array>
@@ -19,33 +19,11 @@ namespace CoreEngine
     class GraphicsCore;
     class DescriptorAllocator;
 
-    /// @brief 泡の時間変化を GPU で進めるシステム
-    /// @details 白波の泡は FFT の参照格子の上で、岸の泡はカメラの周りの範囲で水の粒の静止位置ごとに進める
-    class WaterFoamSystem
+    /// @brief 沖の白波の泡を GPU で進める（FFT の参照格子の上の蓄積と、被覆率に合わせたしきい値の較正）
+    class WaterWhitecapFoam
     {
     public:
-        /// @brief 岸の泡の格子の一辺のテクセル数
-        static constexpr uint32_t kShoreResolution = 512;
-        /// @brief 岸の泡の格子の 1 テクセルの幅 [m]
-        static constexpr float kShoreTexelSize = 0.5f;
-        /// @brief 寄せ・引きに使う、ならした海底の高さの一辺のテクセル数
-        static constexpr uint32_t kSmoothSeabedResolution = 64;
-
-        /// @brief 岸の泡を進めるのに使う、同じフレームの入力
-        struct ShoreInput {
-            D3D12_GPU_DESCRIPTOR_HANDLE seabedHeightSRV{}; ///< 海底の高さ（RTWaterSeabedPass の出力）
-            uint32_t seabedResolution = 0;                 ///< 海底の高さの一辺のテクセル数
-            float windowOriginXZ[2] = { 0.0f, 0.0f };      ///< 範囲の XZ の最小の角 [m]（海底の高さと同じ範囲）
-            float windowSize = 0.0f;                       ///< 範囲の一辺 [m]
-            D3D12_GPU_DESCRIPTOR_HANDLE fftDisplacementSRV{}; ///< FFT の変位（カスケードの配列）
-            float waterRestHeight = 0.0f;                  ///< 静水面の高さ [m]
-            float timeSeconds = 0.0f;                      ///< FFT のシミュレーション時刻 [s]
-            uint32_t spectrumRevision = 0;                 ///< FFT のスペクトルの版。変わったフレームは泡を捨てる
-            uint64_t frameNumber = 0;                      ///< 同じフレームで 2 回進めないための番号
-            float waveGroupPhase[3] = { 0.0f, 0.0f, 0.0f }; ///< 波群エンベロープの位相のずれ [rad]
-        };
-
-        /// @brief 泡の設定（WaterSystem が毎フレーム渡す）
+        /// @brief 白波の設定（WaterSystem が毎フレーム渡す）
         struct Settings {
             bool enabled = WaterFoamDefaults::kEnabled;
             /// @brief 海面から 10 m の高さの風速 [m/s]。白波の被覆率の目標を決める
@@ -76,67 +54,48 @@ namespace CoreEngine
         /// @param jacobianSRV      FFT のヤコビアン（カスケードの配列）
         /// @param timeSeconds      FFT のシミュレーション時刻 [s]
         /// @param spectrumRevision FFT のスペクトルの版。変わったフレームは蓄積を捨てる
-        void DispatchWhitecap(
+        void Dispatch(
             ID3D12GraphicsCommandList* cmdList,
             D3D12_GPU_DESCRIPTOR_HANDLE jacobianSRV,
             float timeSeconds,
             uint32_t spectrumRevision);
 
         /// @brief 白波の泡の SRV（直近に書き終わった側。今フレームの書き込み先ではない方）
-        D3D12_GPU_DESCRIPTOR_HANDLE GetWhitecapSRVHandle() const {
-            return whitecap_[(whitecapFrameIndex_ + 1u) & 1u].srv.gpuHandle;
+        D3D12_GPU_DESCRIPTOR_HANDLE GetSRVHandle() const {
+            return foam_[(frameIndex_ + 1u) & 1u].srv.gpuHandle;
         }
 
         /// @brief 沖の白波の統計（合成ヤコビアンのヒストグラムと白波の被覆率の平均）を測る
         /// @details 同じフレームの枠で前に記録した測定（GPU の処理が済んだもの）を読み、
         ///          白波の被覆率の平均が目標になるようにしきい値を合わせ直す。
-        ///          測定の記録は kStatisticsFrameInterval フレームに 1 回。DispatchWhitecap の後に呼ぶ
+        ///          測定の記録は kStatisticsFrameInterval フレームに 1 回。Dispatch の後に呼ぶ
         /// @param frameIndex     フレームの枠の番号（FrameSync::FrameIndex）
-        /// @param waveGroupPhase 波群エンベロープの位相のずれ [rad]（FFTOceanManager::ComputeWaveGroupPhase）
-        void DispatchWhitecapStatistics(
+        /// @param waveGroupPhase 波群エンベロープの位相のずれ [rad]（FFTOceanSpectrum::ComputeWaveGroupPhase）
+        void DispatchStatistics(
             ID3D12GraphicsCommandList* cmdList,
             D3D12_GPU_DESCRIPTOR_HANDLE jacobianSRV,
             uint32_t frameIndex,
             const std::array<float, 3>& waveGroupPhase);
 
         /// @brief 最後に読み戻した、沖の白波の被覆率の平均
-        float GetMeasuredWhitecapCoverage() const { return measuredWhitecapCoverage_; }
+        float GetMeasuredCoverage() const { return measuredCoverage_; }
 
         /// @brief 白波の被覆率の目標（Monahan の観測式 W = 3.84e-6·U^3.41 に倍率を掛けたもの）
-        float GetTargetWhitecapCoverage() const;
+        float GetTargetCoverage() const;
 
         /// @brief 白波の泡が風下へ流れた距離（ワールド XZ）[m]
         /// @param timeSeconds FFT のシミュレーション時刻 [s]
-        std::array<float, 2> ComputeFoamDriftOffset(float timeSeconds) const;
+        std::array<float, 2> ComputeDriftOffset(float timeSeconds) const;
 
         /// @brief 白波の泡の模様を風の向きに伸ばす軸（風下の向き × √(1 − 1/伸び率)）
         /// @details 模様の座標 p を p − a·(a·p) にすると、風の向きの成分だけが 1/伸び率 倍になる
-        std::array<float, 2> ComputeFoamStretchAxis() const;
+        std::array<float, 2> ComputeStretchAxis() const;
 
         /// @brief 較正した砕けるしきい値（合成ヤコビアンがこれを下回ると砕ける）
-        float GetWhitecapBias() const { return whitecapBias_; }
+        float GetBias() const { return bias_; }
 
         /// @brief 較正した、しきい値からの立ち上がりの傾き
-        float GetWhitecapGain() const { return whitecapGain_; }
-
-        /// @brief 岸の泡を 1 フレーム進める（海底の高さを測った後・水面の合成の前に呼ぶ）
-        void DispatchShore(ID3D12GraphicsCommandList* cmdList, const ShoreInput& input);
-
-        /// @brief 岸の泡を進めているか（初期化済みで泡が有効）
-        bool IsShoreActive() const { return isInitialized_ && settings_.enabled; }
-
-        /// @brief 岸の泡の SRV（今フレームに書く側。(被覆率, 寄せ・引きのずれ x, z, 0)）
-        D3D12_GPU_DESCRIPTOR_HANDLE GetShoreSRVHandle() const {
-            return shore_[shoreFrameIndex_ & 1u].srv.gpuHandle;
-        }
-
-        /// @brief 岸の泡の、直近に書いた側の SRV
-        D3D12_GPU_DESCRIPTOR_HANDLE GetLatestShoreSRVHandle() const {
-            return shore_[(shoreFrameIndex_ + 1u) & 1u].srv.gpuHandle;
-        }
-
-        /// @brief 岸の泡の、直近に書いた側のテクスチャ（ステート追跡つき）
-        GpuResource& GetLatestShoreResource() { return shore_[(shoreFrameIndex_ + 1u) & 1u]; }
+        float GetGain() const { return gain_; }
 
     private:
         static constexpr uint32_t kCascadeCount = 3;
@@ -149,7 +108,7 @@ namespace CoreEngine
         static constexpr float kMaxFoamStretch = 3.0f;
 
         /// @brief 白波の蓄積パスの定数（FFTOceanFoamAccumulate.CS.hlsl の FFTOceanFoamConstants）
-        struct WhitecapConstants {
+        struct FoamConstants {
             uint32_t resolution = 0;
             float deltaSeconds = 0.0f;
             float foamBias = WaterFoamDefaults::kBias;
@@ -165,56 +124,15 @@ namespace CoreEngine
             float padding = 0.0f;
         };
 
-        static constexpr Cb::Field kWhitecapConstantsFields[] = {
-            CB_FIELD(WhitecapConstants, resolution), CB_FIELD(WhitecapConstants, deltaSeconds),
-            CB_FIELD(WhitecapConstants, foamBias), CB_FIELD(WhitecapConstants, foamGain),
-            CB_FIELD(WhitecapConstants, cascadeWeights), CB_FIELD(WhitecapConstants, decaySeconds),
-            CB_FIELD(WhitecapConstants, resetFoam), CB_FIELD(WhitecapConstants, driftOffsetXZ),
-            CB_FIELD(WhitecapConstants, padding),
+        static constexpr Cb::Field kFoamConstantsFields[] = {
+            CB_FIELD(FoamConstants, resolution), CB_FIELD(FoamConstants, deltaSeconds),
+            CB_FIELD(FoamConstants, foamBias), CB_FIELD(FoamConstants, foamGain),
+            CB_FIELD(FoamConstants, cascadeWeights), CB_FIELD(FoamConstants, decaySeconds),
+            CB_FIELD(FoamConstants, resetFoam), CB_FIELD(FoamConstants, driftOffsetXZ),
+            CB_FIELD(FoamConstants, padding),
         };
-        CB_VERIFY_LAYOUT(WhitecapConstants, kWhitecapConstantsFields);
-        CB_BIND_HLSL(WhitecapConstants, kWhitecapConstantsFields, "FFTOceanFoamConstants");
-
-        /// @brief 岸の泡のパスの定数（WaterShoreFoam.CS.hlsl の WaterShoreFoamConstants）
-        struct ShoreConstants {
-            float windowOriginXZ[2] = { 0.0f, 0.0f };
-            float prevWindowOriginXZ[2] = { 0.0f, 0.0f };
-            float windowSize = 0.0f;
-            float texelSize = kShoreTexelSize;
-            uint32_t resolution = kShoreResolution;
-            float waterRestHeight = 0.0f;
-            float deltaSeconds = 0.0f;
-            float decaySeconds = WaterFoamDefaults::kDecaySeconds;
-            uint32_t resetFoam = 0;
-            float padding = 0.0f;
-            float waveGroupPhase[3] = { 0.0f, 0.0f, 0.0f };
-            float padding2 = 0.0f;
-        };
-
-        static constexpr Cb::Field kShoreConstantsFields[] = {
-            CB_FIELD(ShoreConstants, windowOriginXZ), CB_FIELD(ShoreConstants, prevWindowOriginXZ),
-            CB_FIELD(ShoreConstants, windowSize), CB_FIELD(ShoreConstants, texelSize),
-            CB_FIELD(ShoreConstants, resolution), CB_FIELD(ShoreConstants, waterRestHeight),
-            CB_FIELD(ShoreConstants, deltaSeconds), CB_FIELD(ShoreConstants, decaySeconds),
-            CB_FIELD(ShoreConstants, resetFoam), CB_FIELD(ShoreConstants, padding),
-            CB_FIELD(ShoreConstants, waveGroupPhase), CB_FIELD(ShoreConstants, padding2),
-        };
-        CB_VERIFY_LAYOUT(ShoreConstants, kShoreConstantsFields);
-        CB_BIND_HLSL(ShoreConstants, kShoreConstantsFields, "WaterShoreFoamConstants");
-
-        /// @brief 海底の高さをならすパスの定数（WaterShoreSeabedSmooth.CS.hlsl の WaterShoreSeabedSmoothConstants）
-        struct SmoothSeabedConstants {
-            uint32_t outputResolution = kSmoothSeabedResolution;
-            uint32_t inputResolution = 0;
-            float padding[2] = {};
-        };
-
-        static constexpr Cb::Field kSmoothSeabedConstantsFields[] = {
-            CB_FIELD(SmoothSeabedConstants, outputResolution), CB_FIELD(SmoothSeabedConstants, inputResolution),
-            CB_FIELD(SmoothSeabedConstants, padding),
-        };
-        CB_VERIFY_LAYOUT(SmoothSeabedConstants, kSmoothSeabedConstantsFields);
-        CB_BIND_HLSL(SmoothSeabedConstants, kSmoothSeabedConstantsFields, "WaterShoreSeabedSmoothConstants");
+        CB_VERIFY_LAYOUT(FoamConstants, kFoamConstantsFields);
+        CB_BIND_HLSL(FoamConstants, kFoamConstantsFields, "FFTOceanFoamConstants");
 
         // ---- 沖の白波の統計 ----
         /// @brief 標本の格子の一辺の数
@@ -234,7 +152,7 @@ namespace CoreEngine
         /// @brief 測った被覆率をログへ出す間隔（読み戻しの回数）
         static constexpr uint32_t kStatisticsLogInterval = 150;
 
-        // ---- 白波のしきい値の較正 ----
+        // ---- しきい値の較正 ----
         /// @brief Monahan の観測式 W = kMonahanCoefficient·U^kMonahanExponent
         static constexpr float kMonahanCoefficient = 3.84e-6f;
         static constexpr float kMonahanExponent = 3.41f;
@@ -295,59 +213,26 @@ namespace CoreEngine
         CB_VERIFY_LAYOUT(StatisticsConstants, kStatisticsConstantsFields);
         CB_BIND_HLSL(StatisticsConstants, kStatisticsConstantsFields, "WaterWhitecapStatisticsConstants");
 
+        /// @brief 白波の蓄積パスの計算シェーダー
+        struct FoamShaderProvider final : ICustomShaderProvider {
+            std::wstring GetComputeShaderPath() const override { return L"FFTOceanFoamAccumulate.CS.hlsl"; }
+        };
+
         /// @brief 白波の統計のパスの計算シェーダー
         struct StatisticsShaderProvider final : ICustomShaderProvider {
             std::wstring GetComputeShaderPath() const override { return L"WaterWhitecapStatistics.CS.hlsl"; }
         };
 
-        /// @brief 白波の蓄積パスの計算シェーダー
-        struct WhitecapShaderProvider final : ICustomShaderProvider {
-            std::wstring GetComputeShaderPath() const override { return L"FFTOceanFoamAccumulate.CS.hlsl"; }
-        };
-
-        /// @brief 寄せ・引きのずれのパスの定数（WaterShoreSwash.CS.hlsl の WaterShoreSwashConstants）
-        struct SwashConstants {
-            float windowOriginXZ[2] = { 0.0f, 0.0f };
-            float windowSize = 0.0f;
-            uint32_t resolution = kSmoothSeabedResolution;
-            float waterRestHeight = 0.0f;
-            float waveGroupPhase[3] = { 0.0f, 0.0f, 0.0f };
-        };
-
-        static constexpr Cb::Field kSwashConstantsFields[] = {
-            CB_FIELD(SwashConstants, windowOriginXZ), CB_FIELD(SwashConstants, windowSize),
-            CB_FIELD(SwashConstants, resolution), CB_FIELD(SwashConstants, waterRestHeight),
-            CB_FIELD(SwashConstants, waveGroupPhase),
-        };
-        CB_VERIFY_LAYOUT(SwashConstants, kSwashConstantsFields);
-        CB_BIND_HLSL(SwashConstants, kSwashConstantsFields, "WaterShoreSwashConstants");
-
-        /// @brief 寄せ・引きのずれのパスの計算シェーダー
-        struct SwashShaderProvider final : ICustomShaderProvider {
-            std::wstring GetComputeShaderPath() const override { return L"WaterShoreSwash.CS.hlsl"; }
-        };
-
-        /// @brief 岸の泡のパスの計算シェーダー
-        struct ShoreShaderProvider final : ICustomShaderProvider {
-            std::wstring GetComputeShaderPath() const override { return L"WaterShoreFoam.CS.hlsl"; }
-        };
-
-        /// @brief 海底の高さをならすパスの計算シェーダー
-        struct SmoothSeabedShaderProvider final : ICustomShaderProvider {
-            std::wstring GetComputeShaderPath() const override { return L"WaterShoreSeabedSmooth.CS.hlsl"; }
-        };
-
         bool CreatePipelines();
-        bool CreateWhitecapResources();
-        bool CreateShoreResources();
+        bool CreateFoamResources();
         bool CreateStatisticsResources();
-        /// @brief 白波の蓄積と較正をやり直す（波面か白波の目標が変わったとき）
-        void RequestWhitecapReset();
-        /// @brief フレームの枠に記録してあった白波の統計を読む
+        /// @brief 蓄積と較正をやり直す（波面か白波の目標が変わったとき）
+        void RequestReset();
+        /// @brief フレームの枠に記録してあった統計を読む
         /// @return やり直した後に記録した統計を読めたか
-        bool ReadWhitecapStatistics(uint32_t frameIndex);
+        bool ReadStatistics(uint32_t frameIndex);
         /// @brief 読み戻した統計から、白波の被覆率の平均が目標になるしきい値を求め直す
-        void UpdateWhitecapCalibration();
+        void UpdateCalibration();
         /// @brief 合成ヤコビアンのヒストグラムで、小さい方から数えた割合が fraction になる detJ
         float FindHistogramQuantile(float fraction) const;
 
@@ -357,17 +242,17 @@ namespace CoreEngine
         Settings settings_{};
 
         // ---- 白波（FFT の参照格子の上の蓄積）----
-        CustomShaderPipeline whitecapPipeline_{};
-        WhitecapShaderProvider whitecapShaderProvider_{};
+        CustomShaderPipeline foamPipeline_{};
+        FoamShaderProvider foamShaderProvider_{};
         uint32_t fftResolution_ = 0;
-        /// @brief 書き込み先は whitecapFrameIndex_ & 1。SRV / UAV とも全カスケードを 1 ビューで見せる
-        FFTOceanPingPong whitecap_{};
-        uint32_t whitecapFrameIndex_ = 0;
-        bool whitecapResetPending_ = true;
-        float whitecapPreviousTimeSeconds_ = 0.0f;
-        uint32_t whitecapSpectrumRevision_ = 0;
-        /// @brief このフレームで白波の泡が風下へ流れた距離 [m]（DispatchWhitecap が求める）
-        std::array<float, 2> whitecapDriftOffset_{};
+        /// @brief 書き込み先は frameIndex_ & 1。SRV / UAV とも全カスケードを 1 ビューで見せる
+        FFTOceanPingPong foam_{};
+        uint32_t frameIndex_ = 0;
+        bool resetPending_ = true;
+        float previousTimeSeconds_ = 0.0f;
+        uint32_t spectrumRevision_ = 0;
+        /// @brief このフレームで白波の泡が風下へ流れた距離 [m]（Dispatch が求める）
+        std::array<float, 2> driftOffset_{};
 
         // ---- 沖の白波の統計（フレームの枠ごとに読み戻す）----
         CustomShaderPipeline statisticsPipeline_{};
@@ -381,43 +266,21 @@ namespace CoreEngine
         /// @brief 枠ごとの、記録したときの calibrationEpoch_
         std::array<uint32_t, kMaxFramesInFlight> statisticsEpoch_{};
         /// @brief 最後に読み戻した合成ヤコビアンのヒストグラム
-        std::vector<uint32_t> whitecapHistogram_;
-        float measuredWhitecapCoverage_ = 0.0f;
+        std::vector<uint32_t> histogram_;
+        float measuredCoverage_ = 0.0f;
         uint32_t statisticsFrameCounter_ = 0;
         uint32_t statisticsLogCounter_ = 0;
 
-        // ---- 白波のしきい値の較正 ----
-        float whitecapBias_ = WaterFoamDefaults::kBias;
-        float whitecapGain_ = WaterFoamDefaults::kGain;
+        // ---- しきい値の較正 ----
+        float bias_ = WaterFoamDefaults::kBias;
+        float gain_ = WaterFoamDefaults::kGain;
         /// @brief 砕ける点の割合 ÷ 目標の被覆率 の log（測った被覆率から学ぶ）
         float logBreakingRatio_ = 0.0f;
         /// @brief やり直した後に一度しきい値を求めたか（最初の 1 回はならさずに合わせる）
-        bool whitecapCalibrated_ = false;
-        /// @brief 白波の蓄積と較正をやり直した回数（やり直す前に記録した統計は使わない）
+        bool calibrated_ = false;
+        /// @brief 蓄積と較正をやり直した回数（やり直す前に記録した統計は使わない）
         uint32_t calibrationEpoch_ = 0;
         /// @brief 前にしきい値を求めてから白波が進んだシミュレーション時間 [s]
-        float whitecapElapsedSeconds_ = 0.0f;
-
-        // ---- 岸の泡（カメラの周りの範囲。水の粒の静止位置ごと）----
-        CustomShaderPipeline shorePipeline_{};
-        ShoreShaderProvider shoreShaderProvider_{};
-        /// @brief 書き込み先は shoreFrameIndex_ & 1
-        FFTOceanPingPong shore_{};
-        uint32_t shoreFrameIndex_ = 0;
-        bool shoreResetPending_ = true;
-        float shorePreviousTimeSeconds_ = 0.0f;
-        uint32_t shoreSpectrumRevision_ = 0;
-        float shorePrevWindowOriginXZ_[2] = { 0.0f, 0.0f };
-        uint64_t shoreLastFrameNumber_ = UINT64_MAX;
-
-        // ---- ならした海底の高さ（寄せ・引きの勾配と水深を測る）----
-        CustomShaderPipeline smoothSeabedPipeline_{};
-        SmoothSeabedShaderProvider smoothSeabedShaderProvider_{};
-        FFTOceanGpuTexture smoothSeabed_{};
-
-        // ---- 寄せ・引きのずれ（ならした海底と同じ粗い格子）----
-        CustomShaderPipeline swashPipeline_{};
-        SwashShaderProvider swashShaderProvider_{};
-        FFTOceanGpuTexture swash_{};
+        float elapsedSeconds_ = 0.0f;
     };
 }

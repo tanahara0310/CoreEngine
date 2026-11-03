@@ -1,12 +1,13 @@
 #pragma once
 
 #include "Graphics/Water/Surface/WaterSurfaceTypes.h"
+#include "Graphics/Water/Wave/WaterWaveModelType.h"
+
+#include <d3d12.h>
 
 namespace CoreEngine
 {
     static constexpr uint32_t kMaxWaterSurfaceWaveCount = kMaxWaterWaveCount;
-    static constexpr uint32_t kWaterSurfaceModelTypeGerstner = 0;
-    static constexpr uint32_t kWaterSurfaceModelTypeFFTOcean = 1;
 
     // 波 1 本分のパラメータは WaveParams（WaterSurfaceTypes.h）に一本化した。
     // 以前はここに同一レイアウト 32B の WaterWaveParam が重複定義されていた。
@@ -22,6 +23,21 @@ namespace CoreEngine
         float texelsPerMeter = 0.0f;        ///< 1 m あたりのテクセル数
         float depthOffset = 0.0f;           ///< 今の水面の高さ − 測ったときの水面の高さ [m]
         float invWaveHeight = 0.0f;         ///< 波の高さ（有義波高）の逆数 [1/m]
+    };
+
+    /// @brief FFT の海の波面のテクスチャと傾きの大きさ（FFTOceanWaveModel が書く）
+    /// @details FFT の海で描いていないときは enabled = 0 のまま
+    struct WaterFFTOceanInput {
+        D3D12_GPU_DESCRIPTOR_HANDLE displacementSRV{};
+        D3D12_GPU_DESCRIPTOR_HANDLE normalSRV{};
+        uint32_t resolution = 0;
+        uint32_t enabled = 0;
+        /// @brief カスケードごとの平均二乗傾斜（x・z の傾きの二乗和の平均）
+        float cascadeMeanSquareSlope[3] = { 0.0f, 0.0f, 0.0f };
+        /// @brief カスケードより細かい波の平均二乗傾斜（FFTOceanSpectrum::GetFineWaveMeanSquareSlope）
+        float fineWaveMeanSquareSlope = 0.0f;
+        /// @brief 波群エンベロープの位相のずれ [rad]（FFTOceanSpectrum::ComputeWaveGroupPhase）
+        float waveGroupPhase[3] = { 0.0f, 0.0f, 0.0f };
     };
 
     /// @brief 濡れ跡の表の標本数（WetSurface.hlsli の kWetSurfaceSampleCount と同じ）
@@ -43,8 +59,11 @@ namespace CoreEngine
         float tideHeight = 0.0f; ///< waterHeight のうち、潮でトランスフォームの高さから上下させた分 [m]
         uint32_t activeWaveCount = 0;
         float time = 0.0f;
-        uint32_t simulationType = kWaterSurfaceModelTypeGerstner;
+        uint32_t simulationType = static_cast<uint32_t>(WaterWaveModelType::Gerstner); ///< 描いている波のモデル
         WaveParams waves[kMaxWaterSurfaceWaveCount]{};
+
+        // FFT の海の波面のテクスチャ（RT と水面の高さの問い合わせが読む）
+        WaterFFTOceanInput fftOcean{};
 
         // 水面メッシュのワールドXZ範囲（AABB）。コースティクスは解析的な無限水面として
         // 評価されるため、この矩形で受光側をマスクしないと「水面高さより低い場所すべて」
