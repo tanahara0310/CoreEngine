@@ -40,6 +40,9 @@
     <ClCompile Include="Engine\Src\Editor\Export\GameExporter.cpp">
       <Filter>Engine\Src\Editor\Export</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Export\ExportScope.cpp">
+      <Filter>Engine\Src\Editor\Export</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Export\TextureCooker.cpp">
       <Filter>Engine\Src\Editor\Export</Filter>
     </ClCompile>
@@ -2023,6 +2026,9 @@
       <Filter>Engine\Src\Editor\Export</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Export\GameExporter.h">
+      <Filter>Engine\Src\Editor\Export</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Export\ExportScope.h">
       <Filter>Engine\Src\Editor\Export</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Export\TextureCooker.h">

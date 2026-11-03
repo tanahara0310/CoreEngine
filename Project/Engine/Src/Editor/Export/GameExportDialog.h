@@ -6,6 +6,8 @@
 
 #include <future>
 #include <memory>
+#include <set>
+#include <string>
 
 namespace CoreEngine::Editor
 {
@@ -26,6 +28,7 @@ namespace CoreEngine::Editor
         enum class State { Closed, Ready, Exporting, Done };
 
         void DrawReady();
+        void DrawScenes();
         void DrawExporting();
         void DrawDone();
 
@@ -35,6 +38,8 @@ namespace CoreEngine::Editor
         State state_ = State::Closed;
         bool requestOpen_ = false;
         bool sceneDirty_ = false;
+        bool settingsSaveFailed_ = false;
+        std::set<std::string> scriptStrings_; ///< スクリプトに書いてある文字列（外したシーンの名前が出てくるかを見る）
         ExportPlan plan_;
         std::unique_ptr<ExportProgress> progress_;
         std::future<ExportResult> task_;

@@ -213,6 +213,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Editor\Script\ScriptEditorExtensions.cpp" />
     <ClCompile Include="Engine\Src\Editor\Export\GameExportDialog.cpp" />
     <ClCompile Include="Engine\Src\Editor\Export\GameExporter.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Export\ExportScope.cpp" />
     <ClCompile Include="Engine\Src\Editor\Export\TextureCooker.cpp" />
     <ClCompile Include="Engine\Src\Editor\Export\ShaderCooker.cpp" />
     <ClCompile Include="Engine\Src\Editor\Launcher\ProjectBrowser.cpp" />
@@ -1414,6 +1415,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Editor\Script\ScriptEditorExtensions.h" />
     <ClInclude Include="Engine\Src\Editor\Export\GameExportDialog.h" />
     <ClInclude Include="Engine\Src\Editor\Export\GameExporter.h" />
+    <ClInclude Include="Engine\Src\Editor\Export\ExportScope.h" />
     <ClInclude Include="Engine\Src\Editor\Export\TextureCooker.h" />
     <ClInclude Include="Engine\Src\Editor\Export\ShaderCooker.h" />
     <ClInclude Include="Engine\Src\Editor\Launcher\ProjectBrowser.h" />

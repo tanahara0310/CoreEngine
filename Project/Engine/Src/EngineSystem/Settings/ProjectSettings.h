@@ -87,6 +87,12 @@ namespace CoreEngine
         /// @brief 引数なしの Scene::ChangeScene が使う遷移
         const ProjectTransitionSettings& GetDefaultTransition() const { return defaultTransition_; }
 
+        /// @brief ゲームの書き出しに入れないシーンの名前
+        const std::vector<std::string>& GetExportExcludedScenes() const { return exportExcludedScenes_; }
+
+        /// @brief ゲームの書き出しに入れないシーンを決めて保存する
+        bool SetExportExcludedScenes(std::vector<std::string> scenes);
+
         /// @brief ファイルへ書き出す（ファイルにある他の項目は残す）
         bool Save() const;
 
@@ -109,5 +115,6 @@ namespace CoreEngine
         std::vector<std::string> loadingScreenImages_;
         std::vector<ProjectPostEffectSettings> postEffects_;
         ProjectTransitionSettings defaultTransition_;
+        std::vector<std::string> exportExcludedScenes_;
     };
 }

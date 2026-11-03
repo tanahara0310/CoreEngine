@@ -3,6 +3,7 @@
 
 #ifdef CORE_EDITOR
 
+#include "Editor/Export/ExportScope.h"
 #include "Editor/ImGui/EditorTheme.h"
 
 #include <imgui.h>
@@ -54,6 +55,8 @@ namespace CoreEngine::Editor
             return;
         }
         plan_ = GameExporter::Plan();
+        scriptStrings_ = ExportScope::CollectScriptStrings();
+        settingsSaveFailed_ = false;
         sceneDirty_ = sceneDirty;
         result_ = {};
         state_ = State::Ready;
@@ -114,13 +117,16 @@ namespace CoreEngine::Editor
             Row("Release の exe", plan_.error.empty()
                 ? ToUtf8(plan_.releaseExe) + "（ビルド " + plan_.releaseBuiltAt + "）"
                 : std::string("－"));
-            Row("写すもの", "Release のフォルダの exe と Binaries（DLL）\nEngine\\Assets・Application\\Assets・Application\\Config");
+            Row("写すもの", "Release のフォルダの exe と Binaries（DLL）\nEngine\\Assets・Application\\Assets・Application\\Config\n"
+                "（外したシーンと、そのシーンだけが使うモデル・テクスチャ・音は除きます）");
             Row("変換するもの", "画像のテクスチャ（PNG・JPG など）は写さず、DDS に変換して\nEngine\\Cooked・Application\\Cooked に書きます\n"
                 "モデル（glTF・OBJ など）も写さず、.cmesh に変換して同じ場所に書きます\n"
                 "シーン・プレハブ・マテリアル・設定などの JSON は、MessagePack（バイナリ）にして同じ名前で書きます\n"
                 "シェーダは、エディタやゲームで一度でもコンパイルしたものを DXIL にして同じ場所に書きます");
             ImGui::EndTable();
         }
+        ImGui::Spacing();
+        DrawScenes();
         ImGui::Spacing();
 
         ImGui::PushTextWrapPos(0.0f);
@@ -156,6 +162,52 @@ namespace CoreEngine::Editor
         }
         ImGui::PopStyleColor(3);
         ImGui::EndDisabled();
+    }
+
+    void GameExportDialog::DrawScenes()
+    {
+        ImGui::TextUnformatted("書き出すシーン");
+        if (plan_.scenes.empty()) {
+            ImGui::TextColored(Theme::kTextMute, "%s", "保存したシーンがありません");
+            return;
+        }
+        const ImGuiTableFlags flags = ImGuiTableFlags_SizingStretchSame;
+        if (ImGui::BeginTable("##Scenes", 2, flags)) {
+            for (const std::string& scene : plan_.scenes) {
+                ImGui::TableNextColumn();
+                const bool initial = scene == plan_.initialScene;
+                bool included = std::ranges::find(plan_.excludedScenes, scene) == plan_.excludedScenes.end();
+                const std::string label = initial ? scene + "（起動シーン）" : scene;
+                ImGui::BeginDisabled(initial);
+                if (ImGui::Checkbox(label.c_str(), &included)) {
+                    std::vector<std::string> excluded = plan_.excludedScenes;
+                    if (included) {
+                        std::erase(excluded, scene);
+                    } else {
+                        excluded.push_back(scene);
+                    }
+                    settingsSaveFailed_ = !GameExporter::SetExcludedScenes(plan_, std::move(excluded));
+                }
+                ImGui::EndDisabled();
+            }
+            ImGui::EndTable();
+        }
+
+        ImGui::PushTextWrapPos(0.0f);
+        ImGui::TextColored(Theme::kTextMute, "%s",
+            "外したシーンと、そのシーンだけが使うモデル・テクスチャ・音は書き出しません。"
+            "どのシーンも使わないアセットは、スクリプトが組み立てたパスで読むかもしれないので書き出します。");
+        for (const std::string& scene : plan_.excludedScenes) {
+            if (scriptStrings_.contains(scene)) {
+                ImGui::TextColored(Theme::kWarn, "%s", std::format(
+                    "スクリプトに \"{}\" と書いてあります。Scene::ChangeScene で開くシーンなら、書き出すシーンに入れてください。",
+                    scene).c_str());
+            }
+        }
+        if (settingsSaveFailed_) {
+            ImGui::TextColored(Theme::kError, "%s", "プロジェクト設定（Project.json）を保存できませんでした");
+        }
+        ImGui::PopTextWrapPos();
     }
 
     void GameExportDialog::DrawExporting()
@@ -201,6 +253,11 @@ namespace CoreEngine::Editor
                     ".cmesh に変換したモデル {} 個・コンパイルしたシェーダ {} 本・MessagePack にした JSON {} 個）",
                     result_.fileCount, megabytes, result_.cookedTextures, result_.mergedTextures, result_.cookedModels,
                     result_.cookedShaders, result_.convertedJson).c_str());
+            if (result_.excludedScenes > 0) {
+                ImGui::TextUnformatted(std::format("書き出さなかったもの: シーン {} 個と、そのシーンだけが使うモデル {} 個・"
+                    "テクスチャ {} 枚・音 {} 個", result_.excludedScenes, result_.excludedModels,
+                    result_.excludedTextures, result_.excludedAudio).c_str());
+            }
             if (result_.cookedShaders == 0) {
                 ImGui::TextColored(Theme::kWarn, "%s",
                     "シェーダの一覧が空なので、シェーダは遊ぶ人の PC でコンパイルされます。"

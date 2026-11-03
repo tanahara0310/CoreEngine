@@ -3,14 +3,17 @@
 
 #ifdef CORE_EDITOR
 
+#include "Editor/Export/ExportScope.h"
 #include "Editor/Export/MeshCooker.h"
 #include "Editor/Export/ShaderCooker.h"
 #include "Editor/Export/TextureCooker.h"
 #include "EngineSystem/EngineVersion.h"
+#include "EngineSystem/Settings/ProjectSettings.h"
 #include "EngineSystem/Startup/SplashScreen.h"
 #include "Graphics/Texture/Cook/CookedTexture.h"
 #include "Graphics/Model/Import/MeshImporter.h"
 #include "Graphics/Texture/Import/TextureImporter.h"
+#include "Scene/SceneSaveSystem.h"
 #include "Threading/ThreadBudget.h"
 #include "Threading/ThreadPool.h"
 #include "Utility/JsonManager/JsonManager.h"
@@ -286,6 +289,14 @@ namespace CoreEngine::Editor
     {
         ExportPlan plan;
         plan.destination = ProjectPaths::ProjectRoot() / "Build" / "Windows";
+        plan.scenes = SceneSaveSystem::ListSavedScenes();
+        plan.initialScene = ProjectSettings::Get().GetInitialSceneName();
+        for (const std::string& scene : ProjectSettings::Get().GetExportExcludedScenes()) {
+            if (scene != plan.initialScene && std::ranges::find(plan.scenes, scene) != plan.scenes.end() &&
+                std::ranges::find(plan.excludedScenes, scene) == plan.excludedScenes.end()) {
+                plan.excludedScenes.push_back(scene);
+            }
+        }
 
         // Release の exe は、動いている exe の出力先と並んだ Release のフォルダにある
         const std::filesystem::path running = RunningExe();
@@ -302,6 +313,18 @@ namespace CoreEngine::Editor
         }
         plan.releaseBuiltAt = FormatWriteTime(plan.releaseExe);
         return plan;
+    }
+
+    bool GameExporter::SetExcludedScenes(ExportPlan& plan, std::vector<std::string> scenes)
+    {
+        std::erase_if(scenes, [&plan](const std::string& scene) {
+            return scene == plan.initialScene || std::ranges::find(plan.scenes, scene) == plan.scenes.end();
+        });
+        std::ranges::sort(scenes);
+        const auto [first, last] = std::ranges::unique(scenes);
+        scenes.erase(first, last);
+        plan.excludedScenes = scenes;
+        return ProjectSettings::Get().SetExportExcludedScenes(std::move(scenes));
     }
 
     ExportResult GameExporter::Export(const ExportPlan& plan, ExportProgress& progress)
@@ -322,6 +345,27 @@ namespace CoreEngine::Editor
             destination / "Engine" / "Cooked",
             destination / "Application" / "Cooked",
         };
+
+        // 画像は WIC で読むので、書き出しの間は COM のマルチスレッドの区画を保つ（プールのワーカーもこの区画で COM を使う）
+        struct ComScope
+        {
+            HRESULT hr;
+            ~ComScope() { if (SUCCEEDED(hr)) { ::CoUninitialize(); } }
+        } com{ ::CoInitializeEx(nullptr, COINIT_MULTITHREADED) };
+
+        // 変換と写しは一時的なスレッドプールで並べて行う（ほかのプールの枠を借りる）
+        ThreadPoolDesc poolDesc;
+        poolDesc.name = "Export";
+        poolDesc.threadCount = ThreadBudget::GetCapacity();
+        poolDesc.borrowBudget = true;
+        ThreadPool pool(poolDesc);
+
+        // 書き出さないシーンのフォルダと、そのシーンだけが使うアセットを決める
+        const ExportScope scope = ExportScope::Build(plan.excludedScenes, pool);
+        result.excludedScenes = static_cast<int>(plan.excludedScenes.size());
+        result.excludedModels = scope.GetExcludedModelCount();
+        result.excludedTextures = scope.GetExcludedTextureCount();
+        result.excludedAudio = scope.GetExcludedAudioCount();
 
         // 写すファイルを先に集める（Release の exe と Binaries の DLL、各フォルダの中身）。
         // 画像のテクスチャは写さずに DDS へ変換する
@@ -349,7 +393,7 @@ namespace CoreEngine::Editor
                     it.disable_recursion_pending();
                     continue;
                 }
-                if (!it->is_regular_file(ec)) {
+                if (!it->is_regular_file(ec) || !scope.Includes(it->path())) {
                     continue;
                 }
                 if (CookedTexture::IsCookable(it->path())) {
@@ -371,12 +415,13 @@ namespace CoreEngine::Editor
                 items.push_back({ splashImage, splashCopy });
             }
         }
-        const std::vector<std::filesystem::path> meshes = MeshCooker::PlanTargets();
+        std::vector<std::filesystem::path> meshes = MeshCooker::PlanTargets();
         const std::vector<ShaderManifest::Entry> shaders = ShaderCooker::PlanTargets();
 
         // .cmesh にするモデルのファイル（と、それが使う .mtl・外部バッファ）は写さない。
         // 写しは並べて行うので、同じ先へ写すものは 1 つにする
         const std::set<std::wstring> modelFiles = CollectModelFiles(meshes);
+        std::erase_if(meshes, [&scope](const std::filesystem::path& mesh) { return !scope.Includes(mesh); });
         std::set<std::wstring> destinations;
         std::erase_if(items, [&modelFiles, &destinations](const CopyItem& item) {
             return modelFiles.contains(MakeFileKey(item.from)) || !destinations.insert(MakeFileKey(item.to)).second;
@@ -427,20 +472,6 @@ namespace CoreEngine::Editor
                 return result;
             }
         }
-
-        // 画像は WIC で読むので、書き出しの間は COM のマルチスレッドの区画を保つ（プールのワーカーもこの区画で COM を使う）
-        struct ComScope
-        {
-            HRESULT hr;
-            ~ComScope() { if (SUCCEEDED(hr)) { ::CoUninitialize(); } }
-        } com{ ::CoInitializeEx(nullptr, COINIT_MULTITHREADED) };
-
-        // 変換と写しは一時的なスレッドプールで並べて行う（ほかのプールの枠を借りる）
-        ThreadPoolDesc poolDesc;
-        poolDesc.name = "Export";
-        poolDesc.threadCount = ThreadBudget::GetCapacity();
-        poolDesc.borrowBudget = true;
-        ThreadPool pool(poolDesc);
 
         // モデルを先に .cmesh にし、テクスチャの使い道はその .cmesh のマテリアルから決める
         std::vector<ExportJob> meshJobs;
