@@ -20,6 +20,7 @@ namespace CoreEngine { class IPrimitiveMeshGenerator; }
 namespace CoreEngine { class InstanceBatchManager; }
 namespace CoreEngine { class SkinningComputeDispatcher; }
 namespace CoreEngine { class CustomShaderPipelineCache; }
+namespace CoreEngine { class SurfaceMaterialPipelineCache; }
 
 namespace CoreEngine
 {
@@ -60,6 +61,9 @@ public:
     /// @brief カスタムシェーダーパイプラインの共有キャッシュを取得する
     /// @details 同一シェーダー＋同一設定のオブジェクトが複数あっても構築は1回で済む。
     CustomShaderPipelineCache* GetCustomShaderPipelineCache() { return customShaderPipelineCache_.get(); }
+
+    /// @brief 3D モデルのマテリアル（`名前.Surface.hlsl`）のパイプラインの共有キャッシュ（描画依存を設定するまでは nullptr）
+    SurfaceMaterialPipelineCache* GetSurfaceMaterialPipelineCache() { return surfaceMaterialPipelineCache_.get(); }
 
     /// @brief 静的モデルを作成（アニメーションなし）
     /// @param filePath ファイルパス（Assetsフォルダを省略可能）
@@ -141,6 +145,9 @@ private:
 
     // カスタムシェーダーパイプラインの共有キャッシュ（シェーダーパス＋設定がキー）
     std::unique_ptr<CustomShaderPipelineCache> customShaderPipelineCache_;
+
+    // 3D モデルのマテリアルのパイプラインの共有キャッシュ（シェーダーのパスがキー）
+    std::unique_ptr<SurfaceMaterialPipelineCache> surfaceMaterialPipelineCache_;
 
     // デフォルトのベースパス
     const std::string basePath_ = "Application/Assets/";
