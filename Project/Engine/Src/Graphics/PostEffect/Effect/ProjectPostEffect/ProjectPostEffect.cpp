@@ -53,6 +53,20 @@ namespace CoreEngine
         return stage == kStageSceneHDR || stage == kStagePostTonemap || stage == kStageOverlay;
     }
 
+    RootSignatureConfig ProjectPostEffect::MakeRootSignatureConfig()
+    {
+        RootSignatureConfig config;
+        config.SetFlags(D3D12_ROOT_SIGNATURE_FLAG_NONE);
+        config.SetDefaultCBVStrategy(BindingStrategy::RootDescriptor);
+        config.SetDefaultSRVStrategy(BindingStrategy::DescriptorTable);
+        config.SetDefaultUAVStrategy(BindingStrategy::DescriptorTable);
+        config.SetDefaultSamplerStrategy(BindingStrategy::StaticSampler);
+        config.ConfigureSampler("gSampler", SamplerConfig::LinearClamp());
+        config.ConfigureSampler("gPointSampler", PointClamp());
+        config.ConfigureSampler("gWrapSampler", SamplerConfig::Linear());
+        return config;
+    }
+
     bool ProjectPostEffect::IsOverlay() const
     {
         return settings_.stage == kStageOverlay;
@@ -106,16 +120,7 @@ namespace CoreEngine
             return false;
         }
 
-        RootSignatureConfig config;
-        config.SetFlags(D3D12_ROOT_SIGNATURE_FLAG_NONE);
-        config.SetDefaultCBVStrategy(BindingStrategy::RootDescriptor);
-        config.SetDefaultSRVStrategy(BindingStrategy::DescriptorTable);
-        config.SetDefaultUAVStrategy(BindingStrategy::DescriptorTable);
-        config.SetDefaultSamplerStrategy(BindingStrategy::StaticSampler);
-        config.ConfigureSampler("gSampler", SamplerConfig::LinearClamp());
-        config.ConfigureSampler("gPointSampler", PointClamp());
-        config.ConfigureSampler("gWrapSampler", SamplerConfig::Linear());
-
+        const RootSignatureConfig config = MakeRootSignatureConfig();
         auto rootSignature = std::make_unique<RootSignatureManager>();
         const auto result = rootSignature->Build(graphicsCore_->GetDevice(), *reflection, config);
         if (!result.success) {

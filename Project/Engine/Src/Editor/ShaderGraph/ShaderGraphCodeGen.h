@@ -3,6 +3,7 @@
 #ifdef CORE_EDITOR
 
 #include "Editor/ShaderGraph/ShaderGraph.h"
+#include "Editor/ShaderGraph/ShaderGraphNodeLibrary.h"
 
 #include <map>
 #include <string>
@@ -41,6 +42,7 @@ namespace CoreEngine::Editor::ShaderGraph
         std::string sourcePath;  ///< 先頭の行に書くグラフの場所
         int previewNode = 0;     ///< 0 以外なら、このノードの出力を色として出す
         std::string previewPin;  ///< 映す出力ピン（空なら最初の数の出力）
+        IncludeResolver resolveInclude; ///< Custom Function のファイルの include の名前を決める（空ならファイル名）
     };
 
     /// @brief HLSL を作った結果
@@ -50,6 +52,7 @@ namespace CoreEngine::Editor::ShaderGraph
         std::vector<NodeIssue> issues; ///< ノードごとの問題（あっても HLSL は作る）
         std::string fatal;             ///< HLSL を作れなかった訳（空なら作れた）
         std::map<int, std::pair<int, int>> nodeLines; ///< ノード → HLSL の行（1 始まり・最初と最後）
+        std::map<int, std::pair<int, int>> globalLines; ///< ノード → そのノードが関数の外に置いた文の行
     };
 
     /// @brief グラフから HLSL を作る

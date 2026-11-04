@@ -43,6 +43,34 @@ namespace CoreEngine
             return transition;
         }
 
+        /// @brief 設定のファイルを読む（無いか読めなければ空のオブジェクト）
+        nlohmann::json ReadSettingsFile(const std::filesystem::path& path)
+        {
+            if (std::ifstream in(path, std::ios::binary); in) {
+                nlohmann::json existing = nlohmann::json::parse(in, nullptr, /*allow_exceptions=*/false);
+                if (!existing.is_discarded() && existing.is_object()) {
+                    return existing;
+                }
+            }
+            return nlohmann::json::object();
+        }
+
+        /// @brief 設定のファイルを書く（フォルダが無ければ作る）
+        bool WriteSettingsFile(const std::filesystem::path& path, const nlohmann::json& root)
+        {
+            std::error_code ec;
+            std::filesystem::create_directories(path.parent_path(), ec);
+            if (ec) {
+                return false;
+            }
+            std::ofstream out(path, std::ios::binary);
+            if (!out) {
+                return false;
+            }
+            out << root.dump(4) << '\n';
+            return static_cast<bool>(out);
+        }
+
         /// @brief ポストエフェクトの並びを読む（名前かマテリアルの無い要素は飛ばす）
         std::vector<ProjectPostEffectSettings> ReadPostEffects(const nlohmann::json& root)
         {
@@ -238,24 +266,33 @@ namespace CoreEngine
         return Save();
     }
 
+    bool ProjectSettings::AddPostEffect(const ProjectPostEffectSettings& effect)
+    {
+        const std::filesystem::path path = ProjectPaths::Resolve(kSettingsPath);
+        nlohmann::json root = ReadSettingsFile(path);
+        nlohmann::json& list = root[kPostEffectsKey];
+        if (!list.is_array()) {
+            list = nlohmann::json::array();
+        }
+        nlohmann::json entry = nlohmann::json::object();
+        entry["name"] = effect.name;
+        entry["material"] = effect.material;
+        entry["stage"] = effect.stage;
+        entry["enabled"] = effect.enabled;
+        list.push_back(std::move(entry));
+        if (!WriteSettingsFile(path, root)) {
+            return false;
+        }
+        postEffects_.push_back(effect);
+        return true;
+    }
+
     bool ProjectSettings::Save() const
     {
         const std::filesystem::path path = ProjectPaths::Resolve(kSettingsPath);
 
-        std::error_code ec;
-        std::filesystem::create_directories(path.parent_path(), ec);
-        if (ec) {
-            return false;
-        }
-
         // ファイルにある項目は残し、この設定が持つ項目だけを書き換える
-        nlohmann::json root = nlohmann::json::object();
-        if (std::ifstream in(path, std::ios::binary); in) {
-            nlohmann::json existing = nlohmann::json::parse(in, nullptr, /*allow_exceptions=*/false);
-            if (!existing.is_discarded() && existing.is_object()) {
-                root = std::move(existing);
-            }
-        }
+        nlohmann::json root = ReadSettingsFile(path);
         root[kVersionKey] = kVersion;
         root[kInitialSceneKey] = initialSceneName_;
         WriteString(root, kSplashImageKey, splashImage_);
@@ -265,12 +302,6 @@ namespace CoreEngine
         WriteString(root, kLoadingScreenShaderKey, loadingScreenShader_);
         WriteStringArray(root, kLoadingScreenImagesKey, loadingScreenImages_);
         WriteStringArray(root, kExportExcludedScenesKey, exportExcludedScenes_);
-
-        std::ofstream out(path, std::ios::binary);
-        if (!out) {
-            return false;
-        }
-        out << root.dump(4) << '\n';
-        return static_cast<bool>(out);
+        return WriteSettingsFile(path, root);
     }
 }

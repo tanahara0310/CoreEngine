@@ -12,10 +12,15 @@
 #include "Editor/ShaderGraph/ShaderGraphAsset.h"
 #include "Editor/ShaderGraph/ShaderGraphNodeLibrary.h"
 #include "Editor/ShaderGraph/ShaderGraphSelfTest.h"
+#include "EngineSystem/EngineSystem.h"
+#include "EngineSystem/Settings/ProjectSettings.h"
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Graphics/Asset/AssetRef.h"
+#include "Graphics/PostEffect/Effect/PostEffectManager.h"
+#include "Graphics/PostEffect/Effect/ProjectPostEffect/ProjectPostEffect.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/Path/ProjectPaths.h"
 
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -38,6 +43,31 @@ namespace CoreEngine::Editor::ShaderGraph
 
         /// @brief 最後に変えてから検査コンパイルを始めるまでの秒数
         constexpr double kValidateDelay = 0.3;
+
+        /// @brief Custom Function のファイルの日時を見る間（秒）
+        constexpr double kFunctionFileInterval = 1.0;
+
+        /// @brief グラフの欄で、このグラフを使う .mat を探し直す間（秒）
+        constexpr double kGraphMaterialsInterval = 2.0;
+
+        /// @brief Project.json の postEffects の段
+        struct StageChoice
+        {
+            const char* name;
+            const char* label;
+        };
+
+        constexpr StageChoice kStages[] = {
+            { ProjectPostEffect::kStageSceneHDR, "SceneHDR（トーンマップの前）" },
+            { ProjectPostEffect::kStagePostTonemap, "PostTonemap（トーンマップの後・UI の前）" },
+            { ProjectPostEffect::kStageOverlay, "Overlay（UI の後）" },
+        };
+
+        /// @brief Custom Function の入出力に使える種類
+        constexpr ValueType kFunctionPinTypes[] = {
+            ValueType::Float, ValueType::Vector2, ValueType::Vector3, ValueType::Vector4,
+            ValueType::Texture2D, ValueType::SamplerState,
+        };
 
         constexpr float kBlackboardWidth = 220.0f;
         constexpr float kSideWidth = 280.0f;
@@ -202,6 +232,17 @@ namespace CoreEngine::Editor::ShaderGraph
             return std::string(setting.fallback);
         }
 
+        /// @brief ノードの定義の設定を名前で引く（無ければ nullptr）
+        const SettingDesc* FindSetting(const NodeDesc& desc, std::string_view name)
+        {
+            for (const SettingDesc& setting : desc.settings) {
+                if (setting.name == name) {
+                    return &setting;
+                }
+            }
+            return nullptr;
+        }
+
         /// @brief つないでいないときに使うものの説明（ノードに書いた値を使うなら nullptr）
         const char* BindingHint(PinBinding binding)
         {
@@ -209,8 +250,8 @@ namespace CoreEngine::Editor::ShaderGraph
             case PinBinding::UV: return "UV0";
             case PinBinding::MainTexture: return "Main";
             case PinBinding::Sampler: return "既定";
-            case PinBinding::SpriteRGB:
-            case PinBinding::SpriteAlpha: return "既定の色";
+            case PinBinding::DefaultRGB:
+            case PinBinding::DefaultAlpha: return "既定の色";
             default: return nullptr;
             }
         }
@@ -218,6 +259,26 @@ namespace CoreEngine::Editor::ShaderGraph
         std::string GraphText(const Graph& graph)
         {
             return WriteGraph(graph).dump();
+        }
+
+        /// @brief Custom Function が指すファイルと、その更新の日時を並べた文字
+        std::string FunctionFileStamps(const Graph& graph)
+        {
+            std::string stamps;
+            for (const Node& node : graph.nodes) {
+                if (node.type != kCustomFunctionType) {
+                    continue;
+                }
+                const auto type = node.settings.find("Type");
+                const auto file = node.settings.find("File");
+                if (type == node.settings.end() || type->second != "File" || file == node.settings.end() || file->second.empty()) {
+                    continue;
+                }
+                std::error_code ec;
+                const auto time = std::filesystem::last_write_time(ProjectPaths::Resolve(file->second), ec);
+                stamps += file->second + '=' + (ec ? std::string("-") : std::to_string(time.time_since_epoch().count())) + '\n';
+            }
+            return stamps;
         }
 
         /// @brief 欄の名前を左に書き、欄を残りの幅いっぱいにする
@@ -229,13 +290,66 @@ namespace CoreEngine::Editor::ShaderGraph
             ImGui::SetNextItemWidth(-FLT_MIN);
         }
 
+        /// @brief 欄の幅で折り返す薄い字
+        void DimText(const std::string& text)
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, Theme::kTextDim);
+            ImGui::TextWrapped("%s", text.c_str());
+            ImGui::PopStyleColor();
+        }
+
+        /// @brief Custom Function のファイルに選べるシェーダか（Application の .hlsl・.hlsli で、グラフが作ったもの以外）
+        bool IsFunctionFile(const AssetInfo& info, const std::string& path)
+        {
+            const std::string name = Lower(path);
+            const bool source = name.ends_with(".hlsl") || name.ends_with(".hlsli");
+            return source && path.starts_with("Application/") && !IsGeneratedShaderPath(info.fullPath);
+        }
+
+        /// @brief .mat のアセットのパス（マテリアルのライブラリが持つ綴り）
+        std::string MaterialAssetPath(const std::filesystem::path& file)
+        {
+            const std::string text = ToAssetText(file);
+            if (const AssetInfo* const info = FindAssetInfo(text, AssetType::Material)) {
+                return ToAssetPath(*info);
+            }
+            return text;
+        }
+
+        /// @brief 2 つのアセットのパスが同じファイルを指すか
+        bool SameAssetFile(const std::string& left, const std::string& right)
+        {
+            const std::filesystem::path a = ProjectPaths::Resolve(left).lexically_normal();
+            const std::filesystem::path b = ProjectPaths::Resolve(right).lexically_normal();
+            return _wcsicmp(a.c_str(), b.c_str()) == 0;
+        }
+
+        /// @brief postEffects とエンジンのポストエフェクトに無い名前（base・base2・base3…）
+        std::string UniqueEffectName(const std::string& base, const ProjectSettings& settings, const PostEffectManager* manager)
+        {
+            const auto used = [&](const std::string& name) {
+                for (const ProjectPostEffectSettings& effect : settings.GetPostEffects()) {
+                    if (effect.name == name) {
+                        return true;
+                    }
+                }
+                return manager && manager->HasEffect(name);
+            };
+            std::string name = base.empty() ? std::string("PostEffect") : base;
+            for (int suffix = 2; used(name); ++suffix) {
+                name = base + std::to_string(suffix);
+            }
+            return name;
+        }
+
         /// @brief テクスチャのパスの欄（書くか、Project のテクスチャを落とす）
+        /// @param empty 空のときに薄く出す字
         /// @return 変えたら true
-        bool TexturePathField(const char* id, std::string& path)
+        bool TexturePathField(const char* id, std::string& path, const char* empty = "（白）")
         {
             bool changed = false;
             std::string text = path;
-            if (UI::InputStringWithHint(id, "（白）", text, ImGuiInputTextFlags_EnterReturnsTrue)) {
+            if (UI::InputStringWithHint(id, empty, text, ImGuiInputTextFlags_EnterReturnsTrue)) {
                 path = text;
                 changed = true;
             }
@@ -675,8 +789,8 @@ namespace CoreEngine::Editor::ShaderGraph
         UpdateValidation(document);
         if (document.previewRevision > 0) {
             RebuildPreviewValues(document);
-            preview_.Request(ScratchShaderPath(ScratchKey(document) + ".preview"), document.previewRevision,
-                document.previewValues, document.previewTexture);
+            preview_.Request(ScratchShaderPath(ScratchKey(document) + ".preview", document.graph.target),
+                document.graph.target, document.previewRevision, document.previewValues, document.previewTexture);
         }
     }
 
@@ -734,8 +848,8 @@ namespace CoreEngine::Editor::ShaderGraph
         for (const Link& link : document.graph.links) {
             const Node* const from = document.graph.FindNode(link.fromNode);
             const Node* const to = document.graph.FindNode(link.toNode);
-            const NodeDesc* const fromDesc = from ? FindNodeDesc(from->type) : nullptr;
-            const NodeDesc* const toDesc = to ? FindNodeDesc(to->type) : nullptr;
+            const NodeDesc* const fromDesc = from ? FindNodeDesc(*from) : nullptr;
+            const NodeDesc* const toDesc = to ? FindNodeDesc(*to) : nullptr;
             if (!fromDesc || !toDesc) {
                 continue;
             }
@@ -904,12 +1018,13 @@ namespace CoreEngine::Editor::ShaderGraph
 
     void ShaderGraphEditor::DrawNode(Document& document, Node& node)
     {
-        const NodeDesc* const desc = FindNodeDesc(node.type);
+        const NodeDesc* const desc = FindNodeDesc(node);
         const auto resolvedIt = document.resolution.nodes.find(node.id);
         const ResolvedNode* const resolved = resolvedIt != document.resolution.nodes.end() ? &resolvedIt->second : nullptr;
-        const bool hasError = document.errorNodes.contains(node.id);
+        const bool hasError = document.errorNodes.contains(node.id) || (desc && !desc->Supports(document.graph.target));
         const bool isMaster = node.type == kMasterNodeType;
         const bool isProperty = node.type == "Property";
+        const bool isFunction = node.type == kCustomFunctionType;
 
         int pushedColors = 0;
         const auto pushTitle = [&pushedColors](const ImVec4& color) {
@@ -950,8 +1065,15 @@ namespace CoreEngine::Editor::ShaderGraph
             return;
         }
 
-        // 選択肢と文字の設定
+        // 選択肢と文字の設定（Custom Function は Inspector で変える）
+        if (isFunction) {
+            const SettingDesc* const nameSetting = FindSetting(*desc, "Name");
+            ImGui::TextDisabled("%s_float", nameSetting ? SettingValue(node, *nameSetting).c_str() : "");
+        }
         for (const SettingDesc& setting : desc->settings) {
+            if (isFunction) {
+                break;
+            }
             const std::string current = SettingValue(node, setting);
             ImGui::PushID(setting.name.data(), setting.name.data() + setting.name.size());
             if (!setting.choices.empty()) {
@@ -1065,7 +1187,7 @@ namespace CoreEngine::Editor::ShaderGraph
         if (ImNodes::IsLinkDestroyed(&link)) {
             const PinRef pin = DecodePin(link);
             const Node* const node = document.graph.FindNode(pin.node);
-            const NodeDesc* const desc = node ? FindNodeDesc(node->type) : nullptr;
+            const NodeDesc* const desc = node ? FindNodeDesc(*node) : nullptr;
             if (desc && !pin.output && pin.index < desc->inputs.size()) {
                 const std::string_view name = desc->inputs[pin.index].name;
                 std::erase_if(document.graph.links, [&pin, name](const Link& candidate) {
@@ -1102,7 +1224,7 @@ namespace CoreEngine::Editor::ShaderGraph
             && index < resolved->second.outputs.size()) {
             return resolved->second.outputs[index];
         }
-        const NodeDesc* const desc = FindNodeDesc(node.type);
+        const NodeDesc* const desc = FindNodeDesc(node);
         if (!desc || index >= desc->outputs.size()) {
             return ValueType::Float;
         }
@@ -1121,8 +1243,8 @@ namespace CoreEngine::Editor::ShaderGraph
         }
         const Node* const fromNode = document.graph.FindNode(from.node);
         const Node* const toNode = document.graph.FindNode(to.node);
-        const NodeDesc* const fromDesc = fromNode ? FindNodeDesc(fromNode->type) : nullptr;
-        const NodeDesc* const toDesc = toNode ? FindNodeDesc(toNode->type) : nullptr;
+        const NodeDesc* const fromDesc = fromNode ? FindNodeDesc(*fromNode) : nullptr;
+        const NodeDesc* const toDesc = toNode ? FindNodeDesc(*toNode) : nullptr;
         if (!fromDesc || !toDesc || from.index >= fromDesc->outputs.size() || to.index >= toDesc->inputs.size()) {
             return;
         }
@@ -1165,7 +1287,7 @@ namespace CoreEngine::Editor::ShaderGraph
         }
         const PinRef pin = DecodePin(*fromPin);
         const Node* const source = document.graph.FindNode(pin.node);
-        const NodeDesc* const sourceDesc = source ? FindNodeDesc(source->type) : nullptr;
+        const NodeDesc* const sourceDesc = source ? FindNodeDesc(*source) : nullptr;
         if (!sourceDesc) {
             return true;
         }
@@ -1210,7 +1332,7 @@ namespace CoreEngine::Editor::ShaderGraph
                 std::map<std::string, std::map<std::string, std::vector<const NodeDesc*>>> tree;
                 std::vector<std::string> order;
                 for (const NodeDesc& desc : AllNodes()) {
-                    if (!desc.creatable || !Accepts(document, desc, search_.fromPin)) {
+                    if (!desc.creatable || !desc.Supports(document.graph.target) || !Accepts(document, desc, search_.fromPin)) {
                         continue;
                     }
                     const std::string category(desc.category);
@@ -1249,7 +1371,7 @@ namespace CoreEngine::Editor::ShaderGraph
             } else {
                 const NodeDesc* first = nullptr;
                 for (const NodeDesc& desc : AllNodes()) {
-                    if (!desc.creatable || !Accepts(document, desc, search_.fromPin)) {
+                    if (!desc.creatable || !desc.Supports(document.graph.target) || !Accepts(document, desc, search_.fromPin)) {
                         continue;
                     }
                     if (!Contains(desc.title, filter) && !Contains(desc.type, filter) && !Contains(desc.category, filter)) {
@@ -1303,7 +1425,7 @@ namespace CoreEngine::Editor::ShaderGraph
         if (fromPin) {
             const PinRef pin = DecodePin(*fromPin);
             const Node* const source = document.graph.FindNode(pin.node);
-            const NodeDesc* const sourceDesc = source ? FindNodeDesc(source->type) : nullptr;
+            const NodeDesc* const sourceDesc = source ? FindNodeDesc(*source) : nullptr;
             if (sourceDesc && pin.output) {
                 const ValueType sourceType = OutputType(document, *source, pin.index);
                 for (size_t index = 0; index < desc->inputs.size(); ++index) {
@@ -1331,7 +1453,7 @@ namespace CoreEngine::Editor::ShaderGraph
         for (const int link : document.selectedLinks) {
             const PinRef pin = DecodePin(link);
             const Node* const node = document.graph.FindNode(pin.node);
-            const NodeDesc* const desc = node ? FindNodeDesc(node->type) : nullptr;
+            const NodeDesc* const desc = node ? FindNodeDesc(*node) : nullptr;
             if (!desc || pin.output || pin.index >= desc->inputs.size()) {
                 continue;
             }
@@ -1568,12 +1690,271 @@ namespace CoreEngine::Editor::ShaderGraph
             DrawPropertyInspector(document, *property);
             return;
         }
-        UI::Hint("ノードかプロパティを選ぶと、ここで値を変えられます。");
+        DrawGraphInspector(document);
+    }
+
+    void ShaderGraphEditor::DrawGraphInspector(Document& document)
+    {
+        DimText("ノードかプロパティを選ぶと、ここで値を変えられます。");
+        ImGui::SeparatorText("グラフ");
+        Row("目標");
+        ImGui::TextUnformatted(DisplayName(document.graph.target));
+        if (document.graph.target != Target::PostEffect) {
+            return;
+        }
+
+        if (ImGui::GetTime() - document.graphMaterialsTime >= kGraphMaterialsInterval) {
+            document.graphMaterialsTime = ImGui::GetTime();
+            document.graphMaterials = FindGraphMaterials(document.file, document.graph.target);
+        }
+        ImGui::SeparatorText("Project.json の postEffects");
+        if (document.graphMaterials.empty()) {
+            DimText("このグラフのシェーダを使う .mat がありません。Project の右クリック > 作成 > マテリアル で作り、"
+                    "シェーダにこのグラフの .Graph.CS.hlsl を選んでください。");
+            return;
+        }
+
+        ProjectSettings& settings = ProjectSettings::Get();
+        PostEffectManager* const manager = engine_ ? engine_->GetService<PostEffectManager>() : nullptr;
+        Logger& log = Logger::GetInstance();
+        for (const std::filesystem::path& file : document.graphMaterials) {
+            const std::string material = MaterialAssetPath(file);
+            ImGui::PushID(material.c_str());
+            ImGui::TextUnformatted(log.PathToUtf8(file.filename()).c_str());
+            const ProjectPostEffectSettings* entry = nullptr;
+            for (const ProjectPostEffectSettings& effect : settings.GetPostEffects()) {
+                if (SameAssetFile(effect.material, material)) {
+                    entry = &effect;
+                    break;
+                }
+            }
+            if (entry) {
+                DimText(entry->name + "（段 " + entry->stage + "・" + (entry->enabled ? "最初から有効" : "最初は無効") + "）");
+                if (manager && manager->FindProjectEffectByMaterial(material)) {
+                    DimText("画面に掛かっています。値は .mat のインスペクタで変えられます。");
+                } else {
+                    DimText("エンジンを起動し直すと画面に掛かります。");
+                }
+                ImGui::PopID();
+                ImGui::Spacing();
+                continue;
+            }
+
+            DimText("まだ入っていません。");
+            Row("段");
+            const int stage = std::clamp(document.registerStage, 0, static_cast<int>(std::size(kStages)) - 1);
+            if (ImGui::BeginCombo("##stage", kStages[stage].label)) {
+                for (int index = 0; index < static_cast<int>(std::size(kStages)); ++index) {
+                    if (ImGui::Selectable(kStages[index].label, index == stage)) {
+                        document.registerStage = index;
+                    }
+                }
+                ImGui::EndCombo();
+            }
+            if (ImGui::Button("Project.json に足す")) {
+                ProjectPostEffectSettings effect;
+                effect.name = UniqueEffectName(log.PathToUtf8(file.stem()), settings, manager);
+                effect.material = material;
+                effect.stage = kStages[stage].name;
+                effect.enabled = true;
+                if (settings.AddPostEffect(effect)) {
+                    document.notice = "Project.json の postEffects に " + effect.name + " を足しました。"
+                                      "エンジンを起動し直すと画面に掛かります。";
+                    log.Log("シェーダーグラフ「" + document.title + "」: " + document.notice, LogLevel::Info, LogCategory::Shader);
+                } else {
+                    document.notice = "Project.json を書けませんでした。";
+                }
+            }
+            ImGui::PopID();
+            ImGui::Spacing();
+        }
+        DimText("並べ替えと消すのは、Project.json を書き換えてください。");
+    }
+
+    void ShaderGraphEditor::DrawFunctionInspector(Document& document, Node& node)
+    {
+        const auto setting = [&](const char* name, const char* fallback) {
+            const auto found = node.settings.find(name);
+            return found != node.settings.end() ? found->second : std::string(fallback);
+        };
+
+        const std::string type = setting("Type", "String");
+        Row("種類");
+        if (ImGui::BeginCombo("##type", type.c_str())) {
+            for (const char* const choice : { "String", "File" }) {
+                if (ImGui::Selectable(choice, type == choice) && type != choice) {
+                    node.settings["Type"] = choice;
+                    document.pendingLabel = "関数の種類を変える";
+                }
+            }
+            ImGui::EndCombo();
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("String ＝ 中身をここに書く ／ File ＝ .hlsl か .hlsli に書いた関数を呼ぶ");
+        }
+
+        Row("名前");
+        std::string name = setting("Name", "MyFunction");
+        if (UI::InputString("##name", name)) {
+            node.settings["Name"] = name;
+            document.pendingLabel = "関数の名前を変える";
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("呼ぶ関数は「名前_float」です（Unity と同じ）");
+        }
+
+        if (setting("Type", "String") == "File") {
+            std::string file = setting("File", "");
+            Row("ファイル");
+            if (UI::InputStringWithHint("##file", "Application/Assets/…/MyFunction.hlsl", file)) {
+                node.settings["File"] = file;
+                document.pendingLabel = "関数のファイルを変える";
+            }
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextDisabled("Project のシェーダから選ぶ");
+            ImGui::SameLine();
+            if (ImGui::BeginCombo("##pickFile", nullptr, ImGuiComboFlags_NoPreview | ImGuiComboFlags_HeightLarge)) {
+                for (const AssetInfo* info : AssetDatabase::GetInstance().GetAssetsOfType(AssetType::Shader)) {
+                    const std::string path = ToAssetPath(*info);
+                    if (!IsFunctionFile(*info, path)) {
+                        continue;
+                    }
+                    if (ImGui::Selectable(path.c_str(), path == file)) {
+                        node.settings["File"] = path;
+                        document.pendingLabel = "関数のファイルを変える";
+                    }
+                }
+                ImGui::EndCombo();
+            }
+            DimText("ファイルに「void " + name + "_float(入力…, out 出力…)」を書いてください。"
+                    "ファイルを保存すると、自分で作り直します。");
+        } else {
+            ImGui::TextUnformatted("中身");
+            std::string body = setting("Body", "Out = In;");
+            const float height = ImGui::GetTextLineHeight() * 8.0f;
+            if (UI::InputStringMultiline("##body", body, ImVec2(-FLT_MIN, height), ImGuiInputTextFlags_AllowTabInput)) {
+                node.settings["Body"] = body;
+                document.pendingLabel = "関数の中身を変える";
+            }
+            DimText("入力と出力の名前をそのまま変数として使えます。出力にはすべて値を入れてください。");
+        }
+
+        DrawFunctionPins(document, node, true);
+        DrawFunctionPins(document, node, false);
+    }
+
+    void ShaderGraphEditor::DrawFunctionPins(Document& document, Node& node, bool inputs)
+    {
+        const char* const key = inputs ? "Inputs" : "Outputs";
+        const auto found = node.settings.find(key);
+        const std::string text = found != node.settings.end() ? found->second : std::string(inputs ? "Vector3 In" : "Vector3 Out");
+        std::vector<FunctionPin> pins = ParseFunctionPins(text);
+
+        ImGui::PushID(key);
+        ImGui::SeparatorText(inputs ? "入力" : "出力");
+
+        bool changed = false;
+        std::optional<size_t> removed;
+        std::optional<std::pair<std::string, std::string>> renamed;
+        const float typeWidth = 96.0f;
+        for (size_t index = 0; index < pins.size(); ++index) {
+            FunctionPin& pin = pins[index];
+            ImGui::PushID(static_cast<int>(index));
+            ImGui::SetNextItemWidth(typeWidth);
+            if (ImGui::BeginCombo("##type", ToString(pin.type))) {
+                for (const ValueType type : kFunctionPinTypes) {
+                    if (!inputs && !IsNumeric(type)) {
+                        continue;
+                    }
+                    if (ImGui::Selectable(ToString(type), type == pin.type) && type != pin.type) {
+                        pin.type = type;
+                        changed = true;
+                    }
+                }
+                ImGui::EndCombo();
+            }
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(-ImGui::GetFrameHeight() - ImGui::GetStyle().ItemSpacing.x);
+            std::string pinName = pin.name;
+            if (UI::InputString("##name", pinName, ImGuiInputTextFlags_EnterReturnsTrue) && pinName != pin.name) {
+                std::string nameError;
+                bool duplicate = false;
+                for (const FunctionPin& other : pins) {
+                    duplicate = duplicate || (&other != &pin && other.name == pinName);
+                }
+                if (!IsValidIdentifier(pinName, &nameError)) {
+                    document.notice = "名前を変えませんでした: " + nameError;
+                } else if (duplicate) {
+                    document.notice = "名前を変えませんでした: 同じ名前のピンがあります";
+                } else {
+                    renamed = std::make_pair(pin.name, pinName);
+                    pin.name = pinName;
+                    changed = true;
+                }
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Enter で決めます");
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("×", ImVec2(ImGui::GetFrameHeight(), 0.0f))) {
+                removed = index;
+            }
+            ImGui::PopID();
+        }
+
+        if (pins.size() < kMaxFunctionPins && ImGui::Button(inputs ? "入力を足す" : "出力を足す")) {
+            std::string base = inputs ? "In" : "Out";
+            std::string newName = base;
+            for (int suffix = 2;; ++suffix) {
+                bool used = false;
+                for (const FunctionPin& other : pins) {
+                    used = used || other.name == newName;
+                }
+                if (!used) {
+                    break;
+                }
+                newName = base + std::to_string(suffix);
+            }
+            pins.push_back(FunctionPin{ ValueType::Float, newName });
+            changed = true;
+        }
+        ImGui::PopID();
+
+        if (removed) {
+            const std::string pinName = pins[*removed].name;
+            pins.erase(pins.begin() + static_cast<std::ptrdiff_t>(*removed));
+            std::erase_if(document.graph.links, [&](const Link& link) {
+                return inputs ? (link.toNode == node.id && link.toPin == pinName)
+                              : (link.fromNode == node.id && link.fromPin == pinName);
+            });
+            changed = true;
+        }
+        if (renamed) {
+            for (Link& link : document.graph.links) {
+                if (inputs && link.toNode == node.id && link.toPin == renamed->first) {
+                    link.toPin = renamed->second;
+                }
+                if (!inputs && link.fromNode == node.id && link.fromPin == renamed->first) {
+                    link.fromPin = renamed->second;
+                }
+            }
+            if (inputs) {
+                if (const auto value = node.values.find(renamed->first); value != node.values.end()) {
+                    const std::array<float, 4> kept = value->second;
+                    node.values.erase(value);
+                    node.values[renamed->second] = kept;
+                }
+            }
+        }
+        if (changed) {
+            node.settings[key] = FormatFunctionPins(pins);
+            document.pendingLabel = inputs ? "関数の入力を変える" : "関数の出力を変える";
+        }
     }
 
     void ShaderGraphEditor::DrawNodeInspector(Document& document, Node& node)
     {
-        const NodeDesc* const desc = FindNodeDesc(node.type);
+        const NodeDesc* const desc = FindNodeDesc(node);
         if (!desc) {
             ImGui::TextColored(Theme::kError, "知らない種類のノード: %s", node.type.c_str());
             return;
@@ -1613,7 +1994,12 @@ namespace CoreEngine::Editor::ShaderGraph
             }
         }
 
-        for (const SettingDesc& setting : desc->settings) {
+        static const std::vector<SettingDesc> kNoSettings;
+        const bool function = node.type == kCustomFunctionType;
+        if (function) {
+            DrawFunctionInspector(document, node);
+        }
+        for (const SettingDesc& setting : function ? kNoSettings : desc->settings) {
             const std::string current = SettingValue(node, setting);
             const std::string label(setting.label.empty() ? setting.name : setting.label);
             ImGui::PushID(setting.name.data(), setting.name.data() + setting.name.size());
@@ -1806,8 +2192,16 @@ namespace CoreEngine::Editor::ShaderGraph
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("ノードを 1 つ選ぶと、その出力を色として映します。");
         }
-        Row("板の画像");
-        TexturePathField("##previewTexture", document.previewTexture);
+        if (document.graph.target == Target::PostEffect) {
+            Row("画面の画像");
+            TexturePathField("##previewTexture", document.previewTexture, "（uvChecker.png）");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Scene Color と Main Texture が読む、画面の代わりの画像");
+            }
+        } else {
+            Row("板の画像");
+            TexturePathField("##previewTexture", document.previewTexture);
+        }
     }
 
     void ShaderGraphEditor::DrawMessages(Document& document)
@@ -1819,7 +2213,7 @@ namespace CoreEngine::Editor::ShaderGraph
         }
         for (const NodeIssue& issue : document.issues) {
             const Node* const node = document.graph.FindNode(issue.node);
-            const NodeDesc* const desc = node ? FindNodeDesc(node->type) : nullptr;
+            const NodeDesc* const desc = node ? FindNodeDesc(*node) : nullptr;
             const std::string title = desc ? std::string(desc->title) : std::string("ノード");
             const std::string text = title + " (" + std::to_string(issue.node) + "): " + issue.message;
             ImGui::PushID(&issue);
@@ -1870,13 +2264,24 @@ namespace CoreEngine::Editor::ShaderGraph
 
     void ShaderGraphEditor::UpdateValidation(Document& document)
     {
+        // Custom Function のファイルが書き換わったら、同じ HLSL でも検査し直す
+        if (ImGui::GetTime() - document.functionFilesTime >= kFunctionFileInterval) {
+            document.functionFilesTime = ImGui::GetTime();
+            std::string stamps = FunctionFileStamps(document.graph);
+            if (stamps != document.functionFiles) {
+                document.functionFiles = std::move(stamps);
+                document.validatedHlsl.clear();
+            }
+        }
+
         const int previewNode = PreviewNode(document);
-        const std::string key = document.currentText + '\n' + std::to_string(previewNode);
+        const std::string key = document.currentText + '\n' + std::to_string(previewNode) + '\n' + document.functionFiles;
         if (key != document.requestedKey) {
             document.requestedKey = key;
             GenerateOptions options;
             options.sourcePath = ToAssetText(document.file);
             options.previewNode = previewNode;
+            options.resolveInclude = MakeIncludeResolver();
             GenerateResult generated = Generate(document.graph, options);
             document.issues = std::move(generated.issues);
             document.errorNodes.clear();
@@ -1895,6 +2300,9 @@ namespace CoreEngine::Editor::ShaderGraph
             }
             document.pendingHlsl = std::move(generated.hlsl);
             document.pendingLines = std::move(generated.nodeLines);
+            for (const auto& [node, range] : generated.globalLines) {
+                document.pendingLines.emplace(-node, range);
+            }
             document.changeTime = ImGui::GetTime();
             document.validatePending = true;
         }
@@ -1910,19 +2318,21 @@ namespace CoreEngine::Editor::ShaderGraph
             return;
         }
         const std::string key = ScratchKey(document);
-        const CompileCheck check = CheckCompile(*compiler_, document.pendingHlsl, ScratchShaderPath(key + ".check"));
+        const Target target = document.graph.target;
+        const std::filesystem::path scratch = ScratchShaderPath(key + ".check", target);
+        const CompileCheck check = CheckCompile(*compiler_, document.pendingHlsl, scratch, target);
         if (!check.ok) {
             document.error = check.message;
-            for (const int line : FindErrorLines(check.message)) {
+            for (const int line : FindErrorLines(check.message, scratch)) {
                 for (const auto& [node, range] : document.pendingLines) {
                     if (line >= range.first && line <= range.second) {
-                        document.errorNodes.insert(node);
+                        document.errorNodes.insert(node < 0 ? -node : node);
                     }
                 }
             }
             return;
         }
-        if (!WriteFileReplacing(ScratchShaderPath(key + ".preview"), document.pendingHlsl)) {
+        if (!WriteFileReplacing(ScratchShaderPath(key + ".preview", target), document.pendingHlsl)) {
             document.error = "プレビューのシェーダを書けません";
             return;
         }
@@ -2013,7 +2423,6 @@ namespace CoreEngine::Editor::ShaderGraph
             ShaderCompiler compiler;
             compiler.Initialize();
             const std::vector<SelfTestCase> cases = BuildSelfTestCases();
-            const std::filesystem::path scratch = ScratchShaderPath("SelfTest");
             size_t checked = 0;
             size_t failures = 0;
             for (const SelfTestCase& test : cases) {
@@ -2026,7 +2435,8 @@ namespace CoreEngine::Editor::ShaderGraph
                     message = test.generated.issues.front().message;
                 }
                 if (message.empty()) {
-                    const CompileCheck check = CheckCompile(compiler, test.generated.hlsl, scratch);
+                    const CompileCheck check = CheckCompile(compiler, test.generated.hlsl,
+                        ScratchShaderPath("SelfTest", test.target), test.target);
                     message = check.ok ? std::string() : check.message;
                 }
                 if (!message.empty()) {
@@ -2035,7 +2445,9 @@ namespace CoreEngine::Editor::ShaderGraph
                 }
             }
             std::error_code ec;
-            std::filesystem::remove(scratch, ec);
+            for (const Target target : { Target::Sprite, Target::PostEffect }) {
+                std::filesystem::remove(ScratchShaderPath("SelfTest", target), ec);
+            }
             const std::string summary = "シェーダーグラフの全ノード検査: " + std::to_string(checked) + " 件中 "
                 + std::to_string(failures) + " 件が失敗";
             log.Log(checked < cases.size() ? summary + "（途中で止めました）" : summary,

@@ -18,6 +18,7 @@
 #include "Graphics/PostEffect/Effect/ProjectPostEffect/ProjectPostEffect.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/Sprite/SpriteRenderer.h"
+#include "Graphics/Shader/ShaderCompiler.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
 
@@ -27,6 +28,7 @@
 #include <cstring>
 #include <fstream>
 #include <map>
+#include <memory>
 #include <optional>
 #include <sstream>
 #include <string>
@@ -58,6 +60,59 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
                 ? dynamic_cast<SpriteRenderer*>(renderManager->GetRenderer(RenderPassType::Sprite)) : nullptr;
             const ShaderMaterialPipeline* const pipeline = sprites ? sprites->GetMaterialPipeline(material) : nullptr;
             return pipeline ? &pipeline->GetLayout() : nullptr;
+        }
+
+        /// @brief マテリアルのシェーダがコンピュートシェーダ（名前が .CS.hlsl で終わる）か
+        bool IsComputeMaterial(const ShaderMaterial& material)
+        {
+            return !material.GetShaderPath().empty()
+                && ShaderGraph::IsComputeShaderPath(ProjectPaths::Resolve(material.GetShaderPath()));
+        }
+
+        /// @brief まだ画面に掛かっていないコンピュートシェーダを自分でコンパイルして、値の並びを引く（組めなければ nullptr）
+        const MaterialParamLayout* FindComputeLayout(const ShaderMaterial& material)
+        {
+            if (!IsComputeMaterial(material)) {
+                return nullptr;
+            }
+            const std::string& shaderPath = material.GetShaderPath();
+            const std::filesystem::path shader = ProjectPaths::Resolve(shaderPath);
+            std::error_code ec;
+            const std::filesystem::file_time_type writeTime = std::filesystem::last_write_time(shader, ec);
+            if (ec) {
+                return nullptr;
+            }
+
+            struct ComputeLayout
+            {
+                std::filesystem::file_time_type writeTime{};
+                bool built = false;
+                MaterialParamLayout layout;
+            };
+            static std::map<std::filesystem::path, ComputeLayout> cache;
+            if (const auto found = cache.find(shader); found != cache.end() && found->second.writeTime == writeTime) {
+                return found->second.built ? &found->second.layout : nullptr;
+            }
+
+            static std::unique_ptr<ShaderCompiler> compiler;
+            if (!compiler) {
+                compiler = std::make_unique<ShaderCompiler>();
+                compiler->Initialize();
+            }
+            ComputeLayout& entry = cache[shader];
+            entry = ComputeLayout{};
+            entry.writeTime = writeTime;
+            Logger& log = Logger::GetInstance();
+            std::string error;
+            const Microsoft::WRL::ComPtr<IDxcBlob> blob =
+                compiler->CompileForCooking(log.Utf8ToPath(shaderPath).generic_wstring(), L"cs_6_0", L"main", error);
+            if (!blob) {
+                log.Log("マテリアルのシェーダ " + shaderPath + " をコンパイルできません: " + error, LogLevel::Warn, LogCategory::Shader);
+                return nullptr;
+            }
+            ReadMaterialParamLayout(compiler->GetDxcUtils(), blob.Get(), entry.layout, shaderPath);
+            entry.built = true;
+            return &entry.layout;
         }
 
         /// @brief シェーダーグラフが作ったシェーダの、元のグラフとプロパティの印
@@ -315,13 +370,21 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
                 changed = commit = true;
             }
 
-            BeginRow("頂点シェーダ");
-            std::string vertexShader = material.GetVertexShaderPath();
-            if (DrawShaderPicker("##vertexShader", vertexShader, "（標準）")) {
-                material.SetVertexShaderPath(vertexShader);
-                changed = commit = true;
+            if (!IsComputeMaterial(material)) {
+                BeginRow("頂点シェーダ");
+                std::string vertexShader = material.GetVertexShaderPath();
+                if (DrawShaderPicker("##vertexShader", vertexShader, "（標準）")) {
+                    material.SetVertexShaderPath(vertexShader);
+                    changed = commit = true;
+                }
             }
             ImGui::EndTable();
+        }
+
+        const MaterialParamLayout* layout = givenLayout ? givenLayout : FindLayout(material);
+        if (!layout && IsComputeMaterial(material)) {
+            layout = FindComputeLayout(material);
+            InspectorLayout::Hint("ポストエフェクトのシェーダです。Project.json の postEffects に入れると画面に掛かります。");
         }
 
         const GraphShaderInfo* const graph = FindGraphShader(material);
@@ -335,7 +398,7 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
 
         if (material.GetShaderPath().empty()) {
             InspectorLayout::Hint("シェーダを選ぶと、シェーダの値（register(b0) の定数バッファ）の欄が出ます。");
-        } else if (const MaterialParamLayout* const layout = givenLayout ? givenLayout : FindLayout(material)) {
+        } else if (layout) {
             if (!layout->fields.empty() || !layout->textures.empty()) {
                 UI::SectionHeader("値");
             }
