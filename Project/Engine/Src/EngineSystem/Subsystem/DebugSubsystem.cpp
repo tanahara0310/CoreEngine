@@ -41,6 +41,7 @@
 #include "EngineSystem/Settings/ProjectSettings.h"
 #include "Editor/ImGui/EditorTheme.h"
 #include "Editor/Launcher/ProjectThumbnails.h"
+#include "Editor/ShaderGraph/ShaderGraphEditor.h"
 #include "Editor/ImGui/Wrappers/ImGuiInput.h"
 #include "EngineSystem/Startup/SplashScreen.h"
 #include "Utility/Path/ProjectPaths.h"
@@ -661,6 +662,17 @@ namespace CoreEngine
             .draw = [this]() { renderGraphEditorPanel_.Draw(); },
             });
 
+        // シェーダーグラフの窓（Project で .shadergraph を開くと出る）
+        Editor::ShaderGraph::ShaderGraphEditor::Get().Initialize(engine_);
+        AddPanel({
+            .id = Editor::ShaderGraph::ShaderGraphEditor::kPanelId,
+            .placement = Editor::PanelPlacement::Window,
+            .group = Editor::PanelGroup::Rendering,
+            .defaultWidth = 1180.0f,
+            .defaultHeight = 720.0f,
+            .draw = []() { Editor::ShaderGraph::ShaderGraphEditor::Get().Draw(); },
+            });
+
         // レイトレーシング専用デバッグパネル（Debug メニュー > Ray Tracing）
         // 加速構造の統計・RTシャドウのステージ別内訳・中間バッファ・設定をまとめる。
         rayTracingDebugPanel_.Initialize(engine_, &gpuProfiler_);
@@ -751,6 +763,9 @@ namespace CoreEngine
         // パスの有効状態を上書きしたまま終わらないよう、ここで元へ戻す。
         renderGraphEditorPanel_.Finalize();
 
+        // シェーダーグラフの窓の終了処理（imnodes の状態は ImGui より先に解放する）
+        Editor::ShaderGraph::ShaderGraphEditor::Get().Finalize();
+
         // プロファイラーの終了処理（ImGui より先に解放）
         gpuProfiler_.Finalize();
 
@@ -829,6 +844,9 @@ namespace CoreEngine
         gpuProfiler_.NewFrame(frame.frameIndex);
         gpuProfiler_.BeginCpuTimestamp(GpuTimestampSlot::Total);
         gpuProfiler_.BeginGpuTimestamp(GpuTimestampSlot::Total, frame.cmdList);
+
+        // シェーダーグラフの窓が頼んだプレビューを描く
+        Editor::ShaderGraph::ShaderGraphEditor::Get().RecordPreview(frame.cmdList);
     }
 
     void DebugSubsystem::EndRender(const FrameContext& frame)

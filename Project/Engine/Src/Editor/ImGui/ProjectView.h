@@ -66,6 +66,7 @@ namespace CoreEngine
             Audio,
             Material,
             Shader,
+            ShaderGraph,
             Data,
             Other,
         };
@@ -162,6 +163,12 @@ namespace CoreEngine
 
         /// @brief 新しいマテリアルを作る窓を開く
         void OpenNewMaterialDialog();
+
+        /// @brief 新しいシェーダーグラフを今のフォルダへ作る窓
+        void DrawNewShaderGraphDialog();
+
+        /// @brief 新しいシェーダーグラフを作る窓を開く
+        void OpenNewShaderGraphDialog();
 
         /// @brief 項目 1 件の右クリックメニュー（コピー・切り取り・名前の変更・削除）
         void DrawEntryContextMenu(const Entry& entry);
@@ -291,6 +298,11 @@ namespace CoreEngine
         char newMaterialName_[128] = {};
         bool newMaterialWithShader_ = true;  ///< ピクセルシェーダの雛形も作る
         std::string newMaterialError_;
+
+        // 新しいシェーダーグラフを作る窓
+        bool showNewShaderGraphDialog_ = false;
+        char newShaderGraphName_[128] = {};
+        std::string newShaderGraphError_;
 
         // フォルダツリーキャッシュ（毎フレームのファイルシステムスキャンを抑止）
         std::unordered_map<std::string, bool> hasSubdirCache_;

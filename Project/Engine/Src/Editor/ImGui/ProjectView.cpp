@@ -18,6 +18,8 @@
 #include "Editor/Inspector/ShaderMaterialInspector.h"
 #include "Editor/Scene/EditorSceneAccess.h"
 #include "Editor/Scene/SceneDebugEditor.h"
+#include "Editor/ShaderGraph/ShaderGraphAsset.h"
+#include "Editor/ShaderGraph/ShaderGraphEditor.h"
 #include "Graphics/Asset/AssetInfo.h"
 #endif
 #include <algorithm>
@@ -61,6 +63,7 @@ namespace CoreEngine
             case ProjectView::Kind::Audio:    return { "♪", "音",         Theme::kOk };
             case ProjectView::Kind::Material: return { "◍", "マテリアル", Theme::kTextDim };
             case ProjectView::Kind::Shader:   return { "▧", "シェーダ",   Theme::kTextDim };
+            case ProjectView::Kind::ShaderGraph: return { "◆", "シェーダーグラフ", Theme::kAccentHover };
             case ProjectView::Kind::Data:     return { "▤", "データ",     Theme::kTextMute };
             default: break;
             }
@@ -114,10 +117,42 @@ namespace CoreEngine
             if (ext == ".hlsl" || ext == ".hlsli" || ext == ".cso") {
                 return ProjectView::Kind::Shader;
             }
+            if (ext == ".shadergraph") {
+                return ProjectView::Kind::ShaderGraph;
+            }
             if (ext == ".json" || ext == ".csv") {
                 return ProjectView::Kind::Data;
             }
             return ProjectView::Kind::Other;
+        }
+
+        /// @brief シェーダーグラフと、グラフが作ったシェーダを選んだときの欄
+        void DrawShaderGraphFile(const std::filesystem::path& file)
+        {
+            namespace Graph = Editor::ShaderGraph;
+            if (ClassifyKind(file, false) == ProjectView::Kind::ShaderGraph) {
+                UI::Separator();
+                if (ImGui::Button("シェーダーグラフで開く")) {
+                    Graph::ShaderGraphEditor::Get().Open(file);
+                }
+                UI::Hint("ダブルクリックでも開けます。保存すると、隣の 名前.Graph.PS.hlsl を作り直します。");
+                return;
+            }
+            if (!Graph::IsGeneratedShaderPath(file)) {
+                return;
+            }
+            static std::filesystem::path cachedFile;
+            static std::string cachedSource;
+            if (cachedFile != file) {
+                cachedFile = file;
+                cachedSource = Graph::ReadSourceGraph(file);
+            }
+            UI::Separator();
+            ImGui::TextColored(Theme::kWarm, "シェーダーグラフが作ったファイルです");
+            UI::Hint("手で直しても、グラフを保存すると書き戻ります。");
+            if (!cachedSource.empty() && ImGui::Button("元のグラフを開く")) {
+                Graph::ShaderGraphEditor::Get().Open(ProjectPaths::Resolve(cachedSource));
+            }
         }
 
         /// @brief 小文字にした文字列
@@ -198,6 +233,7 @@ namespace CoreEngine
 
         DrawNewScriptDialog();
         DrawNewMaterialDialog();
+        DrawNewShaderGraphDialog();
         DrawRenameDialog();
         DrawDeleteDialog();
         DrawNewFolderDialog();
@@ -448,6 +484,7 @@ namespace CoreEngine
         Editor::PrefabAssetInspector::Draw(selectedPath_);
         Editor::ShaderMaterialInspector::DrawFile(selectedPath_);
         Editor::TextureImportInspector::DrawFile(selectedPath_);
+        DrawShaderGraphFile(selectedPath_);
 
         UI::Separator();
         UI::SectionHeader("アセット情報");
@@ -1146,7 +1183,7 @@ namespace CoreEngine
             return;
         }
         if (showRenameDialog_ || showDeleteDialog_ || showNewScriptDialog_ || showNewFolderDialog_
-            || showNewMaterialDialog_) {
+            || showNewMaterialDialog_ || showNewShaderGraphDialog_) {
             return;
         }
 
@@ -1376,6 +1413,9 @@ namespace CoreEngine
         if (ImGui::MenuItem("マテリアルを作成...")) {
             OpenNewMaterialDialog();
         }
+        if (ImGui::MenuItem("シェーダーグラフを作成...")) {
+            OpenNewShaderGraphDialog();
+        }
         ImGui::Separator();
         if (ImGui::MenuItem("貼り付け", "Ctrl+V", false, !clipboardPaths_.empty())) {
             PasteIntoCurrentFolder();
@@ -1529,9 +1569,71 @@ namespace CoreEngine
         ImGui::EndPopup();
     }
 
+    void ProjectView::OpenNewShaderGraphDialog()
+    {
+        showNewShaderGraphDialog_ = true;
+        newShaderGraphError_.clear();
+        newShaderGraphName_[0] = '\0';
+    }
+
+    void ProjectView::DrawNewShaderGraphDialog()
+    {
+        constexpr const char* kTitle = "新しいシェーダーグラフ";
+        if (showNewShaderGraphDialog_ && !ImGui::IsPopupOpen(kTitle)) {
+            ImGui::OpenPopup(kTitle);
+        }
+
+        ImGui::SetNextWindowSize(ImVec2(480.0f, 0.0f), ImGuiCond_FirstUseEver);
+        if (!ImGui::BeginPopupModal(kTitle, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            return;
+        }
+
+        UI::Hint("今開いているフォルダへ、グラフ（名前.shadergraph）と、グラフが作るシェーダ（名前.Graph.PS.hlsl）、");
+        UI::Hint("それを使うマテリアル（名前.mat）を作ります。スプライトと UI 画像に .mat を付けて使います。");
+        UI::Separator();
+
+        if (ImGui::IsWindowAppearing()) {
+            ImGui::SetKeyboardFocusHere();
+        }
+        const bool enterPressed = UI::InputText("名前", newShaderGraphName_, sizeof(newShaderGraphName_),
+            ImGuiInputTextFlags_EnterReturnsTrue);
+
+        if (!newShaderGraphError_.empty()) {
+            ImGui::TextColored(Theme::kError, "%s", newShaderGraphError_.c_str());
+        }
+
+        UI::Separator();
+        if (ImGui::Button("作成") || enterPressed) {
+            std::filesystem::path created;
+            if (Editor::ShaderGraph::CreateGraph(GetCurrentFolder(), newShaderGraphName_,
+                    Editor::ShaderGraph::Target::Sprite, &created, &newShaderGraphError_)) {
+                showNewShaderGraphDialog_ = false;
+                ImGui::CloseCurrentPopup();
+                NavigateToDirectory(created.parent_path());
+                selection_.assign(1, created);
+                selectedPath_ = created;
+                Editor::ShaderGraph::ShaderGraphEditor::Get().Open(created);
+            }
+        }
+        UI::SameLine();
+        if (ImGui::Button("やめる")) {
+            showNewShaderGraphDialog_ = false;
+            newShaderGraphError_.clear();
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+
     void ProjectView::OpenFile(const std::filesystem::path& filePath)
     {
         if (!std::filesystem::exists(filePath)) {
+            return;
+        }
+
+        // シェーダーグラフはエディタのシェーダーグラフの窓で開く
+        if (ClassifyKind(filePath, false) == Kind::ShaderGraph) {
+            Editor::ShaderGraph::ShaderGraphEditor::Get().Open(filePath);
             return;
         }
 

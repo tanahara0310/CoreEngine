@@ -7,6 +7,7 @@
 #include "Editor/Export/MeshCooker.h"
 #include "Editor/Export/ShaderCooker.h"
 #include "Editor/Export/TextureCooker.h"
+#include "Editor/ShaderGraph/ShaderGraphAsset.h"
 #include "EngineSystem/EngineVersion.h"
 #include "EngineSystem/Settings/ProjectSettings.h"
 #include "EngineSystem/Startup/SplashScreen.h"
@@ -213,6 +214,8 @@ namespace CoreEngine::Editor
                     }
                     if ((CookedTexture::IsCookable(file) && MakeFileKey(file) != keptKey) || IsModelFile(file)) {
                         warnings.push_back("元のファイルが残っています: " + ToUtf8(file.lexically_relative(destination)));
+                    } else if (ShaderGraph::IsGraphFile(file)) {
+                        warnings.push_back("シェーダーグラフが残っています: " + ToUtf8(file.lexically_relative(destination)));
                     } else if (IsJsonData(file) && (!JsonManager::ReadBytes(file, bytes) || !JsonManager::IsBinary(bytes))) {
                         warnings.push_back("テキストの JSON が残っています: " + ToUtf8(file.lexically_relative(destination)));
                     }
@@ -394,6 +397,10 @@ namespace CoreEngine::Editor
                     continue;
                 }
                 if (!it->is_regular_file(ec) || !scope.Includes(it->path())) {
+                    continue;
+                }
+                // シェーダーグラフはエディタだけで読む（ゲームはグラフが作ったシェーダを使う）
+                if (ShaderGraph::IsGraphFile(it->path())) {
                     continue;
                 }
                 if (CookedTexture::IsCookable(it->path())) {

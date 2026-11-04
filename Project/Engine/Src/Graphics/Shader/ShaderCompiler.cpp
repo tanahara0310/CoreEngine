@@ -225,9 +225,13 @@ namespace CoreEngine
         const std::wstring& filePath,
         const std::wstring& profile,
         const std::wstring& entryPoint,
-        std::string& errorMessage)
+        std::string& errorMessage,
+        std::string* warningMessage)
     {
         Logger& log = Logger::GetInstance();
+        if (warningMessage) {
+            warningMessage->clear();
+        }
         const PreparedShaderCompile prepared =
             Prepare(filePath, profile.c_str(), entryPoint.empty() ? nullptr : entryPoint.c_str());
         std::error_code errorCode;
@@ -280,6 +284,13 @@ namespace CoreEngine
         if (!object || object->GetBufferSize() == 0) {
             errorMessage = log.WideToUtf8(prepared.resolvedPath) + " のコンパイル結果を取り出せませんでした";
             return nullptr;
+        }
+        if (warningMessage) {
+            Microsoft::WRL::ComPtr<IDxcBlobUtf8> warnings;
+            result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&warnings), nullptr);
+            if (warnings && warnings->GetStringLength() > 0) {
+                *warningMessage = warnings->GetStringPointer();
+            }
         }
         return object;
     }

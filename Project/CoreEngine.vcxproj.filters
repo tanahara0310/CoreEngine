@@ -508,6 +508,27 @@
     <ClCompile Include="Engine\Src\Editor\Inspector\ShaderMaterialInspector.cpp">
       <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\ShaderGraph\ShaderGraph.cpp">
+      <Filter>Engine\Src\Editor\ShaderGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\ShaderGraph\ShaderGraphAsset.cpp">
+      <Filter>Engine\Src\Editor\ShaderGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\ShaderGraph\ShaderGraphCodeGen.cpp">
+      <Filter>Engine\Src\Editor\ShaderGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\ShaderGraph\ShaderGraphEditor.cpp">
+      <Filter>Engine\Src\Editor\ShaderGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\ShaderGraph\ShaderGraphNodeLibrary.cpp">
+      <Filter>Engine\Src\Editor\ShaderGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\ShaderGraph\ShaderGraphPreview.cpp">
+      <Filter>Engine\Src\Editor\ShaderGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\ShaderGraph\ShaderGraphSelfTest.cpp">
+      <Filter>Engine\Src\Editor\ShaderGraph</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Inspector\TextureImportInspector.cpp">
       <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClCompile>
@@ -2357,6 +2378,27 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Inspector\ShaderMaterialInspector.h">
       <Filter>Engine\Src\Editor\Inspector</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ShaderGraph\ShaderGraph.h">
+      <Filter>Engine\Src\Editor\ShaderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ShaderGraph\ShaderGraphAsset.h">
+      <Filter>Engine\Src\Editor\ShaderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ShaderGraph\ShaderGraphCodeGen.h">
+      <Filter>Engine\Src\Editor\ShaderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ShaderGraph\ShaderGraphEditor.h">
+      <Filter>Engine\Src\Editor\ShaderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ShaderGraph\ShaderGraphNodeLibrary.h">
+      <Filter>Engine\Src\Editor\ShaderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ShaderGraph\ShaderGraphPreview.h">
+      <Filter>Engine\Src\Editor\ShaderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ShaderGraph\ShaderGraphSelfTest.h">
+      <Filter>Engine\Src\Editor\ShaderGraph</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Inspector\TextureImportInspector.h">
       <Filter>Engine\Src\Editor\Inspector</Filter>
@@ -4420,6 +4462,9 @@
     </Filter>
     <Filter Include="Engine\Src\Editor\Script">
       <UniqueIdentifier>{54D003EF-57AE-4DC4-B254-B1380C6F0D2E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Editor\ShaderGraph">
+      <UniqueIdentifier>{06566369-E7CB-4883-B6B1-587D9F9DCDB3}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Editor\Water">
       <UniqueIdentifier>{32FE3850-C2E5-459D-A623-BB1E995134B0}</UniqueIdentifier>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.57.0">
+<meta name="engine-version" content="0.58.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2580,6 +2580,7 @@ kbd {
       <tr><td>Window ▸ Editor</td><td>Camera Editor</td><td>カメラの一覧・追従・キーフレーム・シェイクの調整、エディタ視点の操作設定。</td></tr>
       <tr><td>Window ▸ Analysis</td><td>Profiler ／ Engine Stats ／ Thread Profiler ／ Event Bus ／ Tween</td><td>処理時間、描画の統計、スレッド、イベント、動いている Tween の一覧。</td></tr>
       <tr><td>Window ▸ Rendering</td><td>Render Pass ／ Render Graph ／ Ray Tracing</td><td>描画の中間結果やパスのつながりを調べます（主にエンジンの調整向け）。</td></tr>
+      <tr><td>Window ▸ Rendering</td><td>Shader Graph</td><td>ノードでスプライトと UI 画像のシェーダを作ります。<a href="#shader-graph">詳しく</a></td></tr>
     </tbody>
   </table>
   </div>
@@ -2660,13 +2661,19 @@ kbd {
     <thead><tr><th>サブメニュー</th><th>中身</th></tr></thead>
     <tbody>
       <tr><td><span class="ui">General</span></td><td>Hierarchy・Inspector・Console・Project の表示切り替え</td></tr>
-      <tr><td><span class="ui">Rendering</span></td><td>Render Pass・Render Graph・Ray Tracing</td></tr>
+      <tr><td><span class="ui">Rendering</span></td><td>Render Pass・Render Graph・Ray Tracing・Shader Graph</td></tr>
       <tr><td><span class="ui">Analysis</span></td><td>Engine Stats（パフォーマンス・レンダリング・シーン・リソース・メモリ）・Thread Profiler・Profiler・Event Bus・Tween</td></tr>
       <tr><td><span class="ui">Editor</span></td><td>Project Settings・Key Config・Camera Editor</td></tr>
       <tr><td><span class="ui">Layout</span></td><td>全画面表示（<kbd>Alt</kbd>+<kbd>Enter</kbd>）・エディタUIを隠す（<kbd>F11</kbd>）・ゲーム画面のみのウィンドウ・レイアウトを初期化</td></tr>
     </tbody>
   </table>
   </div>
+
+  <h2 id="menu-tools">Tools</h2>
+  <p><span class="ui">Assets</span> と <span class="ui">Window</span> の間に出ます。スクリプトのエディタの拡張が足す項目（<a href="#editor-ext-window">ウィンドウとメニュー</a>）のほかに、エンジンの確かめ用の項目があります。</p>
+  <ul>
+    <li><span class="ui">テスト<span class="arrow">▸</span>シェーダーグラフの全ノード検査</span>：シェーダーグラフの全部のノードをつないだグラフをコンパイルし、結果を Console に出します（<a href="#sg-notes">シェーダーグラフ</a>）。</li>
+  </ul>
 
   <h2 id="menu-help">Help</h2>
   <ul>
@@ -2944,6 +2951,7 @@ kbd {
       <tr><td>フォルダを作る</td><td>空いている所を右クリック <span class="ui">フォルダを作成...</span></td></tr>
       <tr><td>スクリプトを作る</td><td><span class="ui">＋ 作成</span>、または右クリック <span class="ui">スクリプトを作成...</span>。<a href="#script-first">詳しく</a></td></tr>
       <tr><td>マテリアルを作る</td><td>右クリック <span class="ui">マテリアルを作成...</span>（シェーダの雛形も作れます）。選ぶとインスペクタで値を変えられます。<a href="#script-material">詳しく</a></td></tr>
+      <tr><td>シェーダーグラフを作る</td><td>右クリック <span class="ui">シェーダーグラフを作成...</span>（グラフ・シェーダ・マテリアルを作って開きます）。.shadergraph はダブルクリックで開きます。<a href="#shader-graph">詳しく</a></td></tr>
       <tr><td>名前を変える</td><td><kbd>F2</kbd>、または右クリック <span class="ui">名前を変更</span>（.meta も一緒に変わり、GUID は保たれます）</td></tr>
       <tr><td>コピー・切り取り・貼り付け</td><td><kbd>Ctrl</kbd>+<kbd>C</kbd> ／ <kbd>X</kbd> ／ <kbd>V</kbd>（コピーには新しい GUID が付きます）</td></tr>
       <tr><td>削除</td><td><kbd>Delete</kbd>（ごみ箱へ送るので、エクスプローラのごみ箱から戻せます）</td></tr>
@@ -5612,6 +5620,7 @@ kbd {
     <li>.mat を選ぶと、インスペクタにシェーダと値の欄が出ます。部品の欄の下の <span class="ui">マテリアルの中身</span> からも同じ欄を開けます。</li>
   </ol>
   <p>雛形のシェーダは、テクスチャ × 部品の色に <code>tint</code> を掛け、明るさを <code>speed</code> の速さで揺らします。</p>
+  <p>HLSL を書かずにノードで作るときは、<a href="#shader-graph">シェーダーグラフ</a> を使います。できるのは同じ .mat です。</p>
 
   <h2 id="material-shader">シェーダを書く</h2>
   <p>ピクセルシェーダの入口は <code>main</code> です。先頭で <span class="path">SpriteMaterial.hlsli</span> を読み込みます。値は <code>register(b0)</code> の定数バッファに書きます。</p>
@@ -5730,6 +5739,168 @@ kbd {
     <li>ゲームを書き出すと、.mat が指すシェーダを DXIL（コンパイル済みのシェーダ）にして入れます（<a href="#editor-export">ゲームを書き出す</a>）。</li>
     <li>マテリアルを付けたスプライトも、深度は書きません。前後は描く順番で決まります。</li>
     <li>.mat の中身の書き方は <a href="#format-material">ファイルの形式</a> にあります。</li>
+  </ul>
+</article>
+
+<article class="page" id="shader-graph" data-group="スクリプト" data-title="シェーダーグラフ（ノードでシェーダを作る）" data-nav="シェーダーグラフ" data-keywords="シェーダーグラフ shader graph shadergraph ノード node つなぐ hlsl を書かない ビジュアル ディゾルブ dissolve 溶ける 光る 光の帯 シャイン shine ノイズ noise プロパティ property blackboard プレビュー preview マテリアル mat スプライト ui 画像 graph.ps.hlsl">
+  <h1>シェーダーグラフ（ノードでシェーダを作る）</h1>
+  <p class="lead">ノードを線でつないで、<a href="#api-SpriteRenderer">スプライト描画</a> と <a href="#api-UIImage">UI 画像</a> のピクセルシェーダを作ります。HLSL を書かずに、光る・溶けて消える・模様が流れる、といった見た目を作れます。Unity の Shader Graph に近い作りです。</p>
+
+  <h2 id="sg-overview">仕組み</h2>
+  <p>グラフを保存すると、エディタがグラフから HLSL のシェーダを作り、マテリアル（.mat）がそのシェーダを指します。できあがるのはふつうのマテリアルなので、付け方・スクリプトからの値の変え方・書き出しは <a href="#script-material">マテリアルとシェーダ</a> と同じです。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>ファイル</th><th>中身</th></tr></thead>
+    <tbody>
+      <tr><td><span class="path">名前.shadergraph</span></td><td>グラフ（ノード・線・プロパティ）。エディタだけが読みます。</td></tr>
+      <tr><td><span class="path">名前.Graph.PS.hlsl</span></td><td>グラフから作ったピクセルシェーダ。保存のたびに書き直すので、手で直さないでください。</td></tr>
+      <tr><td><span class="path">名前.mat</span></td><td>上のシェーダを指すマテリアル。スプライト描画と UI 画像の <span class="ui">マテリアル</span> 欄へ付けます。プロパティの値はここに入ります。</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>3 つとも git に入れます。チームのほかの人は、グラフを開かなくても .mat とシェーダでそのまま描けます。</p>
+
+  <h2 id="sg-create">作る・開く</h2>
+  <ol class="steps">
+    <li>Project の一覧の空いている所を右クリックし、<span class="ui">シェーダーグラフを作成...</span> を選びます。</li>
+    <li>名前を入れて <span class="ui">作成</span> を押すと、今のフォルダに上の 3 つのファイルができて、シェーダーグラフの窓が開きます。できたばかりのグラフは、マテリアルを付けていないときと同じ色（テクスチャ × 部品の色）で描きます。</li>
+    <li>できた .mat を、スプライト描画（か UI 画像）の <span class="ui">マテリアル</span> 欄へドラッグします。</li>
+    <li>ノードをつないで <kbd>Ctrl</kbd>+<kbd>S</kbd> で保存すると、シーンのスプライトの見た目が変わります。</li>
+  </ol>
+  <p>あとから開くときは、次のどれかを使います。</p>
+  <ul>
+    <li>Project で .shadergraph をダブルクリックする（インスペクタの <span class="ui">シェーダーグラフで開く</span> でも開きます）。</li>
+    <li>グラフのシェーダを指す .mat を選び、インスペクタの <span class="ui">シェーダーグラフを開く</span> を押す。</li>
+    <li>グラフが作った .Graph.PS.hlsl を選び、インスペクタの <span class="ui">元のグラフを開く</span> を押す。</li>
+    <li><span class="ui">Window<span class="arrow">▸</span>Rendering<span class="arrow">▸</span>Shader Graph</span> で窓を出す（開いていたグラフのタブが並びます）。</li>
+  </ul>
+
+  <h2 id="sg-window">窓の見方</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>場所</th><th>中身</th></tr></thead>
+    <tbody>
+      <tr><td>上のタブ</td><td>開いているグラフ。保存していない変更があると印が付きます。閉じるときに、保存していなければ <span class="ui">保存して閉じる</span> ／ <span class="ui">保存せずに閉じる</span> ／ <span class="ui">やめる</span> を聞きます。</td></tr>
+      <tr><td>左（Blackboard）</td><td>グラフのプロパティ（.mat とスクリプトから変えられる値）の一覧。</td></tr>
+      <tr><td>真ん中（キャンバス）</td><td>ノードと線。右下に全体の縮図が出ます。</td></tr>
+      <tr><td>右上（Main Preview）</td><td>グラフの結果を板に描いた絵。市松模様は透明な所です。</td></tr>
+      <tr><td>右下（Inspector）</td><td>選んだノードの説明・設定・つないでいない入力の値、または選んだプロパティの設定。</td></tr>
+      <tr><td>下</td><td>コンパイルのエラーと、操作のお知らせ。</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2 id="sg-controls">操作</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>操作</th><th>やり方</th></tr></thead>
+    <tbody>
+      <tr><td>ノードを置く</td><td>キャンバスの空いている所を右クリック、またはキャンバスの上で <kbd>Space</kbd>。分類から選ぶか、名前を打って絞り込みます（<kbd>Enter</kbd> で一番上を置く）。</td></tr>
+      <tr><td>つなぐ</td><td>出力のピン（ノードの右）から入力のピン（左）へドラッグします。入力には 1 本だけつながり、つなぎ直すと前の線は外れます。型の合わないピンと、輪になるつなぎ方はつながりません（わけを下に出します）。</td></tr>
+      <tr><td>つなぎながら置く</td><td>ピンからドラッグして何もない所で離すと、そのピンへつなげるノードだけの検索が開きます。選ぶと置いてつなぎます。</td></tr>
+      <tr><td>線を外す</td><td>入力のピンから線をドラッグして離す、または線を選んで <kbd>Delete</kbd>。</td></tr>
+      <tr><td>選ぶ</td><td>クリック、<kbd>Ctrl</kbd>+クリックで追加、空いている所からドラッグで囲む。</td></tr>
+      <tr><td>動かす・見回す</td><td>ノードはドラッグ。キャンバスは中ボタンのドラッグ（<kbd>Alt</kbd>+左ドラッグでも）。<kbd>F</kbd> で全体（選んでいれば選んだもの）を真ん中へ寄せます。</td></tr>
+      <tr><td>消す</td><td><kbd>Delete</kbd> ／ <kbd>Backspace</kbd>、またはノードの右クリック <span class="ui">消す</span>。出口のノード（Fragment）は消せません。</td></tr>
+      <tr><td>複製・コピー・貼り付け</td><td><kbd>Ctrl</kbd>+<kbd>D</kbd> ／ <kbd>Ctrl</kbd>+<kbd>C</kbd> ／ <kbd>Ctrl</kbd>+<kbd>V</kbd>。ほかのグラフへも貼れます（使っているプロパティも一緒に足します）。</td></tr>
+      <tr><td>戻す・やり直す</td><td><kbd>Ctrl</kbd>+<kbd>Z</kbd> ／ <kbd>Ctrl</kbd>+<kbd>Y</kbd>。シーンの操作と同じ履歴に積みます。</td></tr>
+      <tr><td>保存</td><td><kbd>Ctrl</kbd>+<kbd>S</kbd>、または窓の上の <span class="ui">保存</span>。</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3 id="sg-types">ピンの型</h3>
+  <p>ピンの色が型を表します。数 1 つ（Float・水色）、2〜4 成分（Vector 2・緑 ／ Vector 3・黄 ／ Vector 4・桃）、テクスチャ（赤）、サンプラー（灰）です。数の型どうしはつなげて、次のように直します。</p>
+  <ul>
+    <li>数 1 つ → 2〜4 成分：全部の成分へ同じ値を入れる。</li>
+    <li>成分の多い方 → 少ない方：前から必要な数だけ使う（RGBA → RGB なら A を捨てる）。</li>
+    <li>成分の少ない方 → 多い方：足りない成分は 0、4 つ目は 1（RGB → RGBA なら A = 1）。</li>
+  </ul>
+  <p>Add や Lerp などの型が決まっていない入力（Dynamic）は、つないだ値のうち成分の一番多いものに合わせます。何もつながなければ数 1 つです。</p>
+
+  <h2 id="sg-properties">プロパティ</h2>
+  <p>プロパティは、グラフの外（.mat のインスペクタとスクリプト）から変えられる値です。Blackboard の <span class="ui">+</span> で足し、キャンバスへドラッグすると Property ノードになります。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>欄</th><th>意味</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">名前</span></td><td>シェーダと .mat とスクリプトで使う名前。英字か <code>_</code> で始め、英数字と <code>_</code> だけ。ほかのプロパティと同じ名前は使えません。</td></tr>
+      <tr><td><span class="ui">表示名</span></td><td>グラフの中（Blackboard とノードの題名）に出す名前。日本語も使えます。</td></tr>
+      <tr><td><span class="ui">種類</span></td><td>Float ／ Vector 2 ／ Vector 3 ／ Vector 4 ／ Color ／ Texture 2D。</td></tr>
+      <tr><td><span class="ui">既定値</span></td><td>.mat に値が無いときの値。</td></tr>
+      <tr><td><span class="ui">範囲</span></td><td>Float だけ。入れると、既定値の欄と .mat のインスペクタの欄が、範囲の中だけを動くスライダーになります。</td></tr>
+      <tr><td><span class="ui">HDR</span></td><td>Color だけ。1 より大きい色（光って見える色）を入れられます。</td></tr>
+      <tr><td><span class="ui">データとして読む（リニア）</span></td><td>Texture 2D だけ。ノイズや法線など、色でない画像のときに入れます。</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li>保存すると、このグラフのシェーダを指す .mat に、まだ無いプロパティの値を既定値で足します。.mat にある値は変えません（既定値を変えても、今ある .mat の値はそのまま）。</li>
+    <li>.mat のインスペクタでは、Color のプロパティが色の欄に、範囲のある Float がスライダーになります。</li>
+    <li>スクリプトからは、名前で値を変えます（<a href="#material-script">スクリプトから値を変える</a>）。</li>
+  </ul>
+  <script type="text/x-code" data-lang="as" data-file="Application/Assets/Scripts/DissolveOut.as">
+    using namespace CoreEngine;
+
+    class DissolveOut : ScriptComponent
+    {
+        private float t_ = 0.0f;
+
+        void Update()
+        {
+            // このスプライトだけ、2 秒かけて溶かす
+            t_ = Clamp(t_ + Time::DeltaTime() / 2.0f, 0.0f, 1.0f);
+            owner.spriteRenderer.SetMaterialFloat("dissolve", t_);
+        }
+    }
+  </script>
+
+  <h2 id="sg-preview">プレビューとエラー</h2>
+  <ul>
+    <li>Main Preview は、グラフを変えると少し後に描き直します。<span class="ui">板の画像</span> に画像をドラッグすると、その画像を部品のテクスチャとして描きます。</li>
+    <li><span class="ui">選んだノードを映す</span> を入れると、選んだノードの出力を映します。ノードの右クリック <span class="ui">このノードを映す</span> でも同じです。途中の値を見たいところに Preview ノードを挟んでおくこともできます。</li>
+    <li>コンパイルできないグラフは、下にエラーを出し、関係するノードの題名を赤くします。保存はできますが、シェーダは書き換えません（スプライトは前に保存できた見た目のままです）。</li>
+  </ul>
+
+  <h2 id="sg-nodes">ノードの一覧</h2>
+  <p>ノードを選ぶと、Inspector に説明が出ます。出口の Fragment は、<span class="ui">Base Color</span>（RGB）と <span class="ui">Alpha</span> を受け取ります。つないでいない欄は、マテリアルを付けていないときと同じ色になります。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>分類</th><th>ノード</th></tr></thead>
+    <tbody>
+      <tr><td>Input/Basic</td><td>Float ・ Vector 2 ・ Vector 3 ・ Vector 4 ・ Color ・ Time（時間 ／ その sin・cos ／ 前のフレームからの時間 ／ 時間の倍率を掛けない時間）</td></tr>
+      <tr><td>Input/Geometry</td><td>UV（コマ割りと反転を済ませた UV）・ Position（スプライトはワールド座標、UI 画像は画面の px）</td></tr>
+      <tr><td>Input/Sprite</td><td>Sprite Color（テクスチャ × 部品の色）・ Vertex Color（部品の色）・ Main Texture（部品のテクスチャとその大きさ）</td></tr>
+      <tr><td>Input/Texture</td><td>Sample Texture 2D（テクスチャの色を読む。つながなければ部品のテクスチャ）・ Sampler State（線形・繰り返し ／ 最も近い画素・繰り返し ／ 線形・端で止める）</td></tr>
+      <tr><td>Math/Basic</td><td>Add ・ Subtract ・ Multiply ・ Divide ・ Power ・ Square Root</td></tr>
+      <tr><td>Math/Advanced</td><td>Absolute ・ Negate ・ Length ・ Normalize</td></tr>
+      <tr><td>Math/Range</td><td>Clamp ・ Remap ・ Maximum ・ Minimum ・ One Minus ・ Saturate ・ Fraction</td></tr>
+      <tr><td>Math/Round</td><td>Floor ・ Ceiling ・ Round ・ Step</td></tr>
+      <tr><td>Math/Trigonometry</td><td>Sine ・ Cosine</td></tr>
+      <tr><td>Math/Interpolation</td><td>Lerp ・ Inverse Lerp ・ Smoothstep</td></tr>
+      <tr><td>Math/Vector</td><td>Dot Product ・ Distance</td></tr>
+      <tr><td>Channel</td><td>Split（成分に分ける）・ Combine（成分をまとめる）・ Swizzle（成分を並べ替える。<code>xyz</code>・<code>wzyx</code> など）</td></tr>
+      <tr><td>UV</td><td>Tiling And Offset ・ Rotate ・ Polar Coordinates</td></tr>
+      <tr><td>Procedural/Noise</td><td>Simple Noise ・ Gradient Noise ・ Voronoi</td></tr>
+      <tr><td>Procedural/Shape</td><td>Ellipse ・ Rectangle</td></tr>
+      <tr><td>Utility</td><td>Preview（値をそのまま渡す。選ぶと Main Preview にその値を映す）</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2 id="sg-samples">見本</h2>
+  <p><span class="path">Projects/Sample2D</span> の <span class="path">Application/Assets/Materials</span> に 2 つあります。.mat をスプライトの <span class="ui">マテリアル</span> 欄へドラッグすると試せます。</p>
+  <ul>
+    <li><span class="path">ShineGraph</span>：時間で明滅する光をスプライトの絵に足します。同じフォルダの手書きの <span class="path">Shine.PS.hlsl</span> と同じ式をノードで組んだものです（値も同じ <code>shineColor</code>・<code>speed</code>・<code>sharpness</code>・<code>phase</code>）。</li>
+    <li><span class="path">Dissolve</span>：ノイズで絵を溶かして消し、溶ける縁を光らせます。<code>dissolve</code> を 0 から 1 へ動かすと消えていきます（縁の色 <code>edgeColor</code>・縁の太さ <code>edgeWidth</code>・模様の細かさ <code>noiseScale</code>）。</li>
+  </ul>
+
+  <h2 id="sg-notes">書き出しと注意</h2>
+  <ul>
+    <li>ゲームを書き出すと、.shadergraph は入れず、グラフが作ったシェーダを DXIL（コンパイル済みのシェーダ）にして入れます（<a href="#editor-export">ゲームを書き出す</a>）。</li>
+    <li>今作れるのは、スプライト描画と UI 画像のピクセルシェーダだけです。3D のモデル・頂点を動かすシェーダ・HLSL を直接書くノードは、まだありません。</li>
+    <li>グラフが作ったシェーダは、ほかのシェーダから <code>#include</code> できません。</li>
+    <li><span class="ui">Tools<span class="arrow">▸</span>テスト<span class="arrow">▸</span>シェーダーグラフの全ノード検査</span> は、置ける全部のノードを、入力の幅ごとにつないだグラフにしてコンパイルし、結果を Console に出します（エンジンのノードを足したり直したりしたときの確かめ用）。</li>
   </ul>
 </article>
 
@@ -10043,6 +10214,8 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   </table>
   </div>
 
+  <p>シェーダーグラフ（<span class="path">.shadergraph</span>）は、エディタが書く JSON です。手で直さず、シェーダーグラフの窓で直してください。グラフが作ったシェーダ（<span class="path">.Graph.PS.hlsl</span>）の先頭の行に、元のグラフの場所が入っています（<a href="#shader-graph">シェーダーグラフ</a>）。</p>
+
   <h2 id="format-saved">セーブデータ（SaveFile）</h2>
   <p><code>SaveFile("MyGame/Record.json")</code> は <span class="path">Application/Saved/MyGame/Record.json</span> を読み書きします。中身は、<code>Set…</code> で入れた名前と値の JSON です。</p>
   <script type="text/x-code" data-lang="json" data-file="Application/Saved/MyGame/Record.json">
@@ -10132,6 +10305,17 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-58-0">v0.58.0 <span class="dim">（2026-11-04）</span></h3>
+  <p>ノードをつないでスプライトと UI 画像のシェーダを作る、シェーダーグラフを足した版です。グラフを保存すると HLSL のシェーダを作り、マテリアル（.mat）がそれを指すので、描き方・スクリプト・書き出しは今までのマテリアルと同じです（<a href="#shader-graph">シェーダーグラフ</a>）。</p>
+  <ul>
+    <li><strong>シェーダーグラフの窓</strong>：Project の右クリックの <span class="ui">シェーダーグラフを作成...</span> で、グラフ（<span class="path">.shadergraph</span>）・グラフが作るシェーダ（<span class="path">.Graph.PS.hlsl</span>）・それを指す .mat を作って開きます。窓には、プロパティの一覧（Blackboard）・ノードのキャンバス・結果のプレビュー・選んだものの設定・エラーが並び、いくつものグラフをタブで開けます。ノードの検索・つなぎながら置く・コピーと貼り付け・<kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻す、ができます（<a href="#sg-controls">操作</a>）。</li>
+    <li><strong>ノード</strong>：入力（時間・UV・位置・部品の色とテクスチャ・テクスチャを読む）・計算・範囲・補間・成分の分解と組み立て・UV の変形・ノイズ・図形の 53 種類です（<a href="#sg-nodes">ノードの一覧</a>）。</li>
+    <li><strong>保存とマテリアル</strong>：保存すると、コンパイルできたときだけシェーダを書き直し、そのシェーダを指す .mat にまだ無いプロパティの値を既定値で足します。グラフのシェーダを指す .mat のインスペクタに <span class="ui">シェーダーグラフを開く</span> を足し、Color のプロパティを色の欄で、範囲のある Float をスライダーで出すようにしました。</li>
+    <li><strong>書き出し</strong>：ゲームを書き出すとき、<span class="path">.shadergraph</span> は入れず、グラフが作ったシェーダを DXIL にして入れます。</li>
+    <li><strong>見本</strong>：Sample2D の <span class="path">Application/Assets/Materials</span> に、手書きの Shine と同じ光をノードで組んだ <span class="path">ShineGraph</span> と、ノイズで溶けて消える <span class="path">Dissolve</span> を足しました（<a href="#sg-samples">見本</a>）。</li>
+    <li><strong>全ノードの検査</strong>：<span class="ui">Tools<span class="arrow">▸</span>テスト<span class="arrow">▸</span>シェーダーグラフの全ノード検査</span> で、全部のノードを入力の幅ごとにつないだグラフをコンパイルし、結果を Console に出します。</li>
+  </ul>
 
   <h3 id="changelog-v0-57-0">v0.57.0 <span class="dim">（2026-11-04）</span></h3>
   <p>ゲームの書き出しで、書き出すシーンを選べるようにした版です。外したシーンと、そのシーンだけが使うアセットを書き出さないので、テスト用のシーンを持つプロジェクトの書き出しが小さくなります。チェックを外さなければ、今までと同じものを書き出します。</p>

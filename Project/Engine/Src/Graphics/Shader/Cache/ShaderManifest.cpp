@@ -43,6 +43,19 @@ namespace
         }
         return ToManifestPath(path);
     }
+
+    /// @brief 中間ファイルの置き場の中か（エディタが作る一時的なシェーダ）
+    bool IsIntermediateFile(const std::filesystem::path& absolute)
+    {
+        for (const std::filesystem::path& root : { CoreEngine::ProjectPaths::Intermediate(),
+                                                   CoreEngine::ProjectPaths::EngineIntermediate() }) {
+            const std::filesystem::path relative = absolute.lexically_normal().lexically_relative(root.lexically_normal());
+            if (!relative.empty() && *relative.begin() != "..") {
+                return true;
+            }
+        }
+        return false;
+    }
 }
 
 namespace CoreEngine
@@ -71,7 +84,7 @@ namespace CoreEngine
         const wchar_t* profile,
         const wchar_t* entryPoint)
     {
-        if (!enabled_ || resolvedPath.empty()) {
+        if (!enabled_ || resolvedPath.empty() || IsIntermediateFile(resolvedPath)) {
             return;
         }
 
