@@ -6,6 +6,10 @@
 #include <algorithm>
 #include <charconv>
 #include <cmath>
+#include <map>
+#include <memory>
+#include <mutex>
+#include <set>
 
 namespace CoreEngine::Editor::ShaderGraph
 {
@@ -54,6 +58,103 @@ namespace CoreEngine::Editor::ShaderGraph
         std::function<void(EmitArgs&)> Expression(std::string pattern)
         {
             return [pattern = std::move(pattern)](EmitArgs& args) { args.Out(0, Format(pattern, args)); };
+        }
+
+        /// @brief 目標で式を変えるノード
+        std::function<void(EmitArgs&)> PerTarget(std::string sprite, std::string postEffect)
+        {
+            return [sprite = std::move(sprite), postEffect = std::move(postEffect)](EmitArgs& args) {
+                args.Out(0, Format(args.target == Target::PostEffect ? postEffect : sprite, args));
+            };
+        }
+
+        /// @brief Custom Function の呼び出しと関数の文を作る
+        void EmitCustomFunction(EmitArgs& args)
+        {
+            const std::string name = args.Setting("Name");
+            std::string error;
+            if (!IsValidIdentifier(name, &error)) {
+                args.error = "関数の名前: " + error;
+                return;
+            }
+            std::set<std::string_view> names;
+            std::string parameters;
+            const auto addParameter = [&](const PinDesc& pin, bool output) {
+                if (!IsValidIdentifier(pin.name, &error)) {
+                    args.error = "ピン " + std::string(pin.name) + ": " + error;
+                    return false;
+                }
+                if (!names.insert(pin.name).second) {
+                    args.error = "ピンの名前 " + std::string(pin.name) + " が重なっています";
+                    return false;
+                }
+                if (output && !IsNumeric(pin.type)) {
+                    args.error = "出力にはテクスチャとサンプラーを使えません";
+                    return false;
+                }
+                parameters += std::string(parameters.empty() ? "" : ", ") + (output ? "out " : "")
+                    + TypeName(pin.type) + " " + std::string(pin.name);
+                return true;
+            };
+            for (const PinDesc& pin : args.desc.inputs) {
+                if (!addParameter(pin, false)) {
+                    return;
+                }
+            }
+            for (const PinDesc& pin : args.desc.outputs) {
+                if (!addParameter(pin, true)) {
+                    return;
+                }
+            }
+
+            const std::string function = name + "_float";
+            if (args.Setting("Type") == "File") {
+                const std::string file = args.Setting("File");
+                if (file.empty()) {
+                    args.error = "関数のファイルを選んでください";
+                    return;
+                }
+                std::string include;
+                if (args.resolveInclude) {
+                    if (!args.resolveInclude(file, include, error)) {
+                        args.error = error;
+                        return;
+                    }
+                } else {
+                    const size_t slash = file.find_last_of("/\\");
+                    include = slash == std::string::npos ? file : file.substr(slash + 1);
+                }
+                args.globals.push_back({ "include:" + include, "#include \"" + include + "\"\n" });
+            } else {
+                std::string body = args.Setting("Body");
+                std::erase(body, '\r');
+                std::string code = "void " + function + "(" + parameters + ")\n{\n";
+                size_t begin = 0;
+                while (begin <= body.size()) {
+                    const size_t end = (std::min)(body.find('\n', begin), body.size());
+                    const std::string line = body.substr(begin, end - begin);
+                    code += (line.empty() ? "" : "    " + line) + "\n";
+                    begin = end + 1;
+                }
+                code += "}\n";
+                args.globals.push_back({ "function:" + function, code });
+            }
+
+            std::string call = "    " + function + "(";
+            bool first = true;
+            for (const std::string& input : args.in) {
+                call += (first ? "" : ", ") + input;
+                first = false;
+            }
+            for (size_t index = 0; index < args.desc.outputs.size(); ++index) {
+                const std::string variable = "n" + std::to_string(args.node.id) + "_" + std::string(args.desc.outputs[index].name);
+                args.code += "    " + TypeName(args.outType[index]) + " " + variable + " = "
+                    + Literal({ 0.0f, 0.0f, 0.0f, 0.0f }, WidthOf(args.outType[index])) + ";\n";
+                args.outExpr[index] = variable;
+                call += (first ? "" : ", ") + variable;
+                first = false;
+            }
+            args.code += call + ");\n";
         }
 
         /// @brief 幅が 1 のときと 2 以上のときで式を変えるノード
@@ -126,10 +227,11 @@ namespace CoreEngine::Editor::ShaderGraph
                 desc.type = kMasterNodeType;
                 desc.title = "Fragment";
                 desc.category = "";
-                desc.summary = "グラフの出口。つないでいない欄は、マテリアルを付けていないときと同じ色になります。";
+                desc.summary = "グラフの出口。つないでいない欄は、スプライトはマテリアルを付けていないときと同じ色、"
+                               "ポストエフェクトはそのままの画面になります。";
                 desc.inputs = {
-                    Pin("Base Color", V3, {}, PinBinding::SpriteRGB),
-                    Pin("Alpha", F, {}, PinBinding::SpriteAlpha),
+                    Pin("Base Color", V3, {}, PinBinding::DefaultRGB),
+                    Pin("Alpha", F, {}, PinBinding::DefaultAlpha),
                 };
                 desc.creatable = false;
                 nodes.push_back(std::move(desc));
@@ -254,7 +356,8 @@ namespace CoreEngine::Editor::ShaderGraph
                 desc.type = "UV";
                 desc.title = "UV";
                 desc.category = "Input/Geometry";
-                desc.summary = "描いている面の UV（左上が 0,0）。コマ割りと反転を済ませた値。";
+                desc.summary = "描いている面の UV（左上が 0,0）。スプライトはコマ割りと反転を済ませた値、"
+                               "ポストエフェクトは画面の UV（画素の中心）。";
                 desc.outputs = { Pin("Out", V2) };
                 desc.emit = Expression("IN.uv");
                 nodes.push_back(std::move(desc));
@@ -266,6 +369,7 @@ namespace CoreEngine::Editor::ShaderGraph
                 desc.category = "Input/Geometry";
                 desc.summary = "スプライトはワールド座標、UI 画像は画面の px（左上が原点・Y は下向き）。";
                 desc.outputs = { Pin("Out", V3) };
+                desc.targets = TargetBit(Target::Sprite);
                 desc.emit = Expression("IN.positionWS");
                 nodes.push_back(std::move(desc));
             }
@@ -278,6 +382,7 @@ namespace CoreEngine::Editor::ShaderGraph
                 desc.category = "Input/Sprite";
                 desc.summary = "テクスチャ × 部品の色（マテリアルを付けていないときと同じ色）。";
                 desc.outputs = { Pin("RGBA", V4), Pin("RGB", V3), Pin("A", F) };
+                desc.targets = TargetBit(Target::Sprite);
                 desc.emit = [](EmitArgs& args) {
                     args.Out(0, "IN.spriteColor");
                     args.Out(1, "IN.spriteColor.rgb");
@@ -292,6 +397,7 @@ namespace CoreEngine::Editor::ShaderGraph
                 desc.category = "Input/Sprite";
                 desc.summary = "部品の色（インスペクタとスクリプトで決める色。リニアに直した値）。";
                 desc.outputs = { Pin("Out", V4) };
+                desc.targets = TargetBit(Target::Sprite);
                 desc.emit = Expression("IN.vertexColor");
                 nodes.push_back(std::move(desc));
             }
@@ -302,9 +408,62 @@ namespace CoreEngine::Editor::ShaderGraph
                 desc.category = "Input/Sprite";
                 desc.summary = "部品のテクスチャと、その大きさ（px）。";
                 desc.outputs = { Pin("Texture", Tex), Pin("Size", V2) };
+                desc.targets = TargetBit(Target::Sprite);
                 desc.emit = [](EmitArgs& args) {
                     args.Out(0, "gTexture");
                     args.Out(1, "IN.textureSize");
+                };
+                nodes.push_back(std::move(desc));
+            }
+
+            // ===== Input/Scene =====
+            {
+                NodeDesc desc;
+                desc.type = "SceneColor";
+                desc.title = "Scene Color";
+                desc.category = "Input/Scene";
+                desc.summary = "前の段までの画面の色。UV をつながなければ、この画素の色をそのまま読みます。";
+                desc.inputs = { UVPin() };
+                desc.outputs = { Pin("Out", V3) };
+                desc.targets = TargetBit(Target::PostEffect);
+                desc.emit = [](EmitArgs& args) {
+                    args.Out(0, args.connected[0] ? "SampleScreen(" + args.in[0] + ").rgb" : std::string("IN.sceneColor.rgb"));
+                };
+                nodes.push_back(std::move(desc));
+            }
+            {
+                NodeDesc desc;
+                desc.type = "ScreenPosition";
+                desc.title = "Screen Position";
+                desc.category = "Input/Scene";
+                desc.summary = "画面の上の位置。Default は 0〜1（左上が 0）、Center は -1〜1（真ん中が 0）、Pixel は px。";
+                desc.outputs = { Pin("Out", V2) };
+                desc.settings = { SettingDesc{ "Mode", "形", { "Default", "Center", "Pixel" }, "Default" } };
+                desc.targets = TargetBit(Target::PostEffect);
+                desc.emit = [](EmitArgs& args) {
+                    const std::string mode = args.Setting("Mode");
+                    if (mode == "Center") {
+                        args.Out(0, "(IN.uv * 2.0f - 1.0f)");
+                    } else if (mode == "Pixel") {
+                        args.Out(0, "(IN.uv * IN.screenSize)");
+                    } else {
+                        args.Out(0, "IN.uv");
+                    }
+                };
+                nodes.push_back(std::move(desc));
+            }
+            {
+                NodeDesc desc;
+                desc.type = "Screen";
+                desc.title = "Screen";
+                desc.category = "Input/Scene";
+                desc.summary = "画面の大きさ（px）。Texel Size は 1 ÷ 大きさ（隣の画素までの UV の差）。";
+                desc.outputs = { Pin("Width", F), Pin("Height", F), Pin("Texel Size", V2) };
+                desc.targets = TargetBit(Target::PostEffect);
+                desc.emit = [](EmitArgs& args) {
+                    args.Out(0, "IN.screenSize.x");
+                    args.Out(1, "IN.screenSize.y");
+                    args.Out(2, "IN.invScreenSize");
                 };
                 nodes.push_back(std::move(desc));
             }
@@ -315,12 +474,17 @@ namespace CoreEngine::Editor::ShaderGraph
                 desc.type = "SampleTexture2D";
                 desc.title = "Sample Texture 2D";
                 desc.category = "Input/Texture";
-                desc.summary = "テクスチャの色を読む。Texture をつながなければ部品のテクスチャを読みます。";
+                desc.summary = "テクスチャの色を読む。Texture をつながなければ、スプライトは部品のテクスチャ、"
+                               "ポストエフェクトは画面を読みます。ポストエフェクトではミップを使いません。";
                 desc.inputs = { Pin("Texture", Tex, {}, PinBinding::MainTexture), UVPin(),
                                 Pin("Sampler", Smp, {}, PinBinding::Sampler) };
                 desc.outputs = { Pin("RGBA", V4), Pin("R", F), Pin("G", F), Pin("B", F), Pin("A", F) };
                 desc.emit = [](EmitArgs& args) {
-                    if (!args.connected[2] && args.in[0] == "gTexture") {
+                    const bool main = !args.connected[2] && args.in[0] == "gTexture";
+                    if (args.target == Target::PostEffect) {
+                        args.Out(0, main ? "SampleScreen(" + args.in[1] + ")"
+                                         : args.in[0] + ".SampleLevel(" + args.in[2] + ", " + args.in[1] + ", 0.0f)");
+                    } else if (main) {
                         args.Out(0, "SampleSprite(" + args.in[1] + ")");
                     } else {
                         args.Out(0, args.in[0] + ".Sample(" + args.in[2] + ", " + args.in[1] + ")");
@@ -340,16 +504,16 @@ namespace CoreEngine::Editor::ShaderGraph
                 desc.category = "Input/Texture";
                 desc.summary = "テクスチャの読み方（補間と、端の外の扱い）。";
                 desc.outputs = { Pin("Out", Smp) };
-                desc.settings = { SettingDesc{ "Filter", "読み方", { "Linear Repeat", "Point Repeat", "Linear Clamp" }, "Linear Repeat" } };
+                desc.settings = { SettingDesc{ "Filter", "読み方",
+                    { "Linear Repeat", "Point Repeat", "Linear Clamp", "Point Clamp" }, "Linear Repeat" } };
                 desc.emit = [](EmitArgs& args) {
                     const std::string filter = args.Setting("Filter");
-                    if (filter == "Point Repeat") {
-                        args.Out(0, "gPointSampler");
-                    } else if (filter == "Linear Clamp") {
-                        args.Out(0, "gClampSampler");
-                    } else {
-                        args.Out(0, "gSampler");
+                    const std::string name = SamplerName(args.target, filter);
+                    if (name.empty()) {
+                        args.error = filter + " は" + DisplayName(args.target) + "では使えません";
+                        return;
                     }
+                    args.Out(0, name);
                 };
                 nodes.push_back(std::move(desc));
             }
@@ -658,7 +822,7 @@ namespace CoreEngine::Editor::ShaderGraph
                 desc.inputs = { UVPin(), Pin("Width", F, { 0.5f, 0.0f, 0.0f, 0.0f }),
                                 Pin("Height", F, { 0.5f, 0.0f, 0.0f, 0.0f }) };
                 desc.outputs = { Pin("Out", F) };
-                desc.emit = Expression("SG_Ellipse({0}, {1}, {2})");
+                desc.emit = PerTarget("SG_Ellipse({0}, {1}, {2})", "SG_EllipseScreen({0}, {1}, {2})");
                 nodes.push_back(std::move(desc));
             }
             {
@@ -670,15 +834,54 @@ namespace CoreEngine::Editor::ShaderGraph
                 desc.inputs = { UVPin(), Pin("Width", F, { 0.5f, 0.0f, 0.0f, 0.0f }),
                                 Pin("Height", F, { 0.5f, 0.0f, 0.0f, 0.0f }) };
                 desc.outputs = { Pin("Out", F) };
-                desc.emit = Expression("SG_Rectangle({0}, {1}, {2})");
+                desc.emit = PerTarget("SG_Rectangle({0}, {1}, {2})", "SG_RectangleScreen({0}, {1}, {2})");
                 nodes.push_back(std::move(desc));
             }
 
             // ===== Utility =====
             nodes.push_back(Unary("Preview", "Preview", "Utility",
                 "値をそのまま渡す。選ぶと Main Preview にこの値を映せます。", "{0}"));
+            {
+                NodeDesc desc;
+                desc.type = kCustomFunctionType;
+                desc.title = "Custom Function";
+                desc.category = "Utility";
+                desc.summary = "HLSL で書いた関数を呼ぶ。本文を書くか（String）、関数を書いたファイルを指します（File）。"
+                               "呼ぶ関数の名前は「名前_float」です。";
+                desc.inputs = { Pin("In", V3) };
+                desc.outputs = { Pin("Out", V3) };
+                desc.settings = {
+                    SettingDesc{ "Type", "種類", { "String", "File" }, "String" },
+                    SettingDesc{ "Name", "関数の名前", {}, "MyFunction" },
+                    SettingDesc{ "Body", "本文", {}, "Out = In;" },
+                    SettingDesc{ "File", "ファイル", {}, "" },
+                    SettingDesc{ "Inputs", "入力", {}, "Vector3 In" },
+                    SettingDesc{ "Outputs", "出力", {}, "Vector3 Out" },
+                };
+                desc.emit = EmitCustomFunction;
+                nodes.push_back(std::move(desc));
+            }
 
             return nodes;
+        }
+
+        /// @brief Custom Function のピンの並びごとに作った定義（ピンの名前の文字列もここに持つ）
+        struct OwnedNodeDesc
+        {
+            std::vector<std::string> names;
+            NodeDesc desc;
+        };
+
+        /// @brief Custom Function のピン 1 つの定義（テクスチャとサンプラーは、つながなければ既定のもの）
+        PinDesc FunctionPinDesc(std::string_view name, ValueType type)
+        {
+            PinBinding binding = PinBinding::Value;
+            if (type == Tex) {
+                binding = PinBinding::MainTexture;
+            } else if (type == Smp) {
+                binding = PinBinding::Sampler;
+            }
+            return Pin(name, type, {}, binding);
         }
     }
 
@@ -748,6 +951,147 @@ namespace CoreEngine::Editor::ShaderGraph
             }
         }
         return nullptr;
+    }
+
+    const NodeDesc* FindNodeDesc(const Node& node)
+    {
+        const NodeDesc* const base = FindNodeDesc(node.type);
+        if (!base || node.type != kCustomFunctionType) {
+            return base;
+        }
+        const auto setting = [&](std::string_view name) {
+            if (const auto found = node.settings.find(name); found != node.settings.end()) {
+                return found->second;
+            }
+            for (const SettingDesc& desc : base->settings) {
+                if (desc.name == name) {
+                    return std::string(desc.fallback);
+                }
+            }
+            return std::string();
+        };
+        const std::string inputs = setting("Inputs");
+        const std::string outputs = setting("Outputs");
+        const std::string key = inputs + "\n" + outputs;
+
+        static std::mutex mutex;
+        static std::map<std::string, std::unique_ptr<OwnedNodeDesc>> cache;
+        std::scoped_lock lock(mutex);
+        if (const auto found = cache.find(key); found != cache.end()) {
+            return &found->second->desc;
+        }
+        const std::vector<FunctionPin> in = ParseFunctionPins(inputs);
+        const std::vector<FunctionPin> out = ParseFunctionPins(outputs);
+        auto owned = std::make_unique<OwnedNodeDesc>();
+        owned->names.reserve(in.size() + out.size());
+        for (const FunctionPin& pin : in) {
+            owned->names.push_back(pin.name);
+        }
+        for (const FunctionPin& pin : out) {
+            owned->names.push_back(pin.name);
+        }
+        owned->desc = *base;
+        owned->desc.inputs.clear();
+        owned->desc.outputs.clear();
+        for (size_t index = 0; index < in.size(); ++index) {
+            owned->desc.inputs.push_back(FunctionPinDesc(owned->names[index], in[index].type));
+        }
+        for (size_t index = 0; index < out.size(); ++index) {
+            owned->desc.outputs.push_back(FunctionPinDesc(owned->names[in.size() + index], out[index].type));
+        }
+        return &cache.emplace(key, std::move(owned)).first->second->desc;
+    }
+
+    const char* ToString(ValueType type)
+    {
+        switch (type) {
+        case ValueType::Float: return "Float";
+        case ValueType::Vector2: return "Vector2";
+        case ValueType::Vector3: return "Vector3";
+        case ValueType::Vector4: return "Vector4";
+        case ValueType::Dynamic: return "Dynamic";
+        case ValueType::Texture2D: return "Texture2D";
+        case ValueType::SamplerState: return "SamplerState";
+        }
+        return "Float";
+    }
+
+    bool ParseValueType(std::string_view text, ValueType& type)
+    {
+        for (const ValueType candidate : { F, V2, V3, V4, Tex, Smp }) {
+            if (text == ToString(candidate)) {
+                type = candidate;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    std::vector<FunctionPin> ParseFunctionPins(std::string_view text)
+    {
+        const auto trim = [](std::string_view value) {
+            const size_t begin = value.find_first_not_of(" \t\r\n");
+            if (begin == std::string_view::npos) {
+                return std::string_view();
+            }
+            const size_t end = value.find_last_not_of(" \t\r\n");
+            return value.substr(begin, end - begin + 1);
+        };
+        std::vector<FunctionPin> pins;
+        size_t begin = 0;
+        while (begin <= text.size() && pins.size() < kMaxFunctionPins) {
+            const size_t end = (std::min)(text.find(';', begin), text.size());
+            const std::string_view item = trim(text.substr(begin, end - begin));
+            begin = end + 1;
+            const size_t space = item.find_first_of(" \t");
+            if (space == std::string_view::npos) {
+                continue;
+            }
+            FunctionPin pin;
+            if (!ParseValueType(item.substr(0, space), pin.type)) {
+                continue;
+            }
+            pin.name = std::string(trim(item.substr(space + 1)));
+            if (!pin.name.empty()) {
+                pins.push_back(std::move(pin));
+            }
+        }
+        return pins;
+    }
+
+    std::string FormatFunctionPins(const std::vector<FunctionPin>& pins)
+    {
+        std::string text;
+        for (const FunctionPin& pin : pins) {
+            text += std::string(text.empty() ? "" : ";") + ToString(pin.type) + " " + pin.name;
+        }
+        return text;
+    }
+
+    std::string SamplerName(Target target, std::string_view filter)
+    {
+        if (target == Target::PostEffect) {
+            if (filter == "Point Repeat") {
+                return {};
+            }
+            if (filter == "Linear Clamp") {
+                return "gSampler";
+            }
+            if (filter == "Point Clamp") {
+                return "gPointSampler";
+            }
+            return "gWrapSampler";
+        }
+        if (filter == "Point Repeat") {
+            return "gPointSampler";
+        }
+        if (filter == "Linear Clamp") {
+            return "gClampSampler";
+        }
+        if (filter == "Point Clamp") {
+            return {};
+        }
+        return "gSampler";
     }
 
     std::string TypeName(int width)

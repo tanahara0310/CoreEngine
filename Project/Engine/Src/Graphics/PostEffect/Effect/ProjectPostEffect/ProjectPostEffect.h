@@ -3,6 +3,7 @@
 #include "../PostEffectComputeBase.h"
 #include "EngineSystem/Settings/ProjectSettings.h"
 #include "Graphics/Material/ShaderMaterialPipeline.h"
+#include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/RootSignature/RootSlot.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Math/MathCore.h"
@@ -91,6 +92,9 @@ namespace CoreEngine
 
         /// @brief Project.json の `stage` が使える名前か
         static bool IsValidStage(const std::string& stage);
+
+        /// @brief シェーダのルートシグネチャの組み方（サンプラーの名前と中身。シェーダーグラフのプレビューも使う）
+        static RootSignatureConfig MakeRootSignatureConfig();
 
     protected:
         std::wstring GetComputeShaderPath() const override;

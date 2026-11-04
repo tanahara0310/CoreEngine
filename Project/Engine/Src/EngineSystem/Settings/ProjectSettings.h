@@ -84,6 +84,10 @@ namespace CoreEngine
         /// @brief プロジェクトのポストエフェクトの並び（掛ける順）
         const std::vector<ProjectPostEffectSettings>& GetPostEffects() const { return postEffects_; }
 
+        /// @brief ポストエフェクトを並びの最後へ足して保存する（ファイルにある要素はそのまま残す）
+        /// @note 画面に掛かるのはエンジンを起動し直してから（並びは起動したときに組む）
+        bool AddPostEffect(const ProjectPostEffectSettings& effect);
+
         /// @brief 引数なしの Scene::ChangeScene が使う遷移
         const ProjectTransitionSettings& GetDefaultTransition() const { return defaultTransition_; }
 

@@ -48,7 +48,7 @@ namespace CoreEngine::Editor::ShaderGraph
                 visiting_.insert(id);
 
                 ResolvedNode resolved;
-                const NodeDesc* const desc = FindNodeDesc(node->type);
+                const NodeDesc* const desc = FindNodeDesc(*node);
                 if (!desc) {
                     result_.issues.push_back({ id, "知らないノード（" + node->type + "）です" });
                     visiting_.erase(id);
@@ -69,7 +69,8 @@ namespace CoreEngine::Editor::ShaderGraph
                     }
                     Visit(link->fromNode);
                     const auto source = result_.nodes.find(link->fromNode);
-                    const NodeDesc* const sourceDesc = FindNodeDesc(graph_.FindNode(link->fromNode)->type);
+                    const Node* const fromNode = graph_.FindNode(link->fromNode);
+                    const NodeDesc* const sourceDesc = fromNode ? FindNodeDesc(*fromNode) : nullptr;
                     const int output = sourceDesc ? sourceDesc->FindOutput(link->fromPin) : -1;
                     if (source == result_.nodes.end() || output < 0
                         || static_cast<size_t>(output) >= source->second.outputs.size()) {
@@ -123,15 +124,16 @@ namespace CoreEngine::Editor::ShaderGraph
         }
 
         /// @brief つながっていない入力の式
-        std::string UnconnectedInput(const Node& node, const PinDesc& pin, ValueType type)
+        std::string UnconnectedInput(Target target, const Node& node, const PinDesc& pin, ValueType type)
         {
+            const char* const defaultColor = target == Target::PostEffect ? "IN.sceneColor" : "IN.spriteColor";
             switch (pin.binding) {
-            case PinBinding::UV:          return Convert("IN.uv", 2, WidthOf(type));
-            case PinBinding::MainTexture: return "gTexture";
-            case PinBinding::Sampler:     return "gSampler";
-            case PinBinding::SpriteRGB:   return Convert("IN.spriteColor.rgb", 3, WidthOf(type));
-            case PinBinding::SpriteAlpha: return Convert("IN.spriteColor.a", 1, WidthOf(type));
-            case PinBinding::Value:       break;
+            case PinBinding::UV:           return Convert("IN.uv", 2, WidthOf(type));
+            case PinBinding::MainTexture:  return "gTexture";
+            case PinBinding::Sampler:      return SamplerName(target, "Linear Repeat");
+            case PinBinding::DefaultRGB:   return Convert(std::string(defaultColor) + ".rgb", 3, WidthOf(type));
+            case PinBinding::DefaultAlpha: return Convert(std::string(defaultColor) + ".a", 1, WidthOf(type));
+            case PinBinding::Value:        break;
             }
             std::array<float, 4> numbers = pin.fallback;
             if (const auto found = node.values.find(pin.name); found != node.values.end()) {
@@ -210,7 +212,7 @@ namespace CoreEngine::Editor::ShaderGraph
                 return;
             }
             const Node* const node = graph.FindNode(id);
-            const NodeDesc* const desc = node ? FindNodeDesc(node->type) : nullptr;
+            const NodeDesc* const desc = node ? FindNodeDesc(*node) : nullptr;
             if (desc) {
                 for (const PinDesc& pin : desc->inputs) {
                     if (const Link* const link = graph.FindLinkTo(id, pin.name)) {
@@ -231,7 +233,7 @@ namespace CoreEngine::Editor::ShaderGraph
             connected = false;
             if (const Link* const link = graph.FindLinkTo(node.id, pin.name)) {
                 const Node* const source = graph.FindNode(link->fromNode);
-                const NodeDesc* const sourceDesc = source ? FindNodeDesc(source->type) : nullptr;
+                const NodeDesc* const sourceDesc = source ? FindNodeDesc(*source) : nullptr;
                 const int output = sourceDesc ? sourceDesc->FindOutput(link->fromPin) : -1;
                 const auto expression = outputs.find({ link->fromNode, output });
                 const auto sourceResolved = resolution.nodes.find(link->fromNode);
@@ -244,14 +246,15 @@ namespace CoreEngine::Editor::ShaderGraph
                     }
                 }
             }
-            return UnconnectedInput(node, pin, type);
+            return UnconnectedInput(graph.target, node, pin, type);
         };
 
         std::string body;
         std::vector<std::pair<int, std::pair<int, int>>> bodyLines;
+        std::vector<std::pair<int, GlobalCode>> globals; ///< 関数の外に置く文と、置いたノード
         for (const int id : order) {
             const Node* const node = graph.FindNode(id);
-            const NodeDesc* const desc = node ? FindNodeDesc(node->type) : nullptr;
+            const NodeDesc* const desc = node ? FindNodeDesc(*node) : nullptr;
             const auto resolved = resolution.nodes.find(id);
             if (!node || !desc || resolved == resolution.nodes.end() || node->type == kMasterNodeType) {
                 continue;
@@ -259,6 +262,7 @@ namespace CoreEngine::Editor::ShaderGraph
 
             EmitArgs args{ graph, *node, *desc };
             args.target = graph.target;
+            args.resolveInclude = options.resolveInclude;
             args.dynamicWidth = resolved->second.dynamicWidth;
             args.inType = resolved->second.inputs;
             args.outType = resolved->second.outputs;
@@ -268,8 +272,30 @@ namespace CoreEngine::Editor::ShaderGraph
                 args.in.push_back(inputExpression(*node, *desc, resolved->second, index, connected));
                 args.connected.push_back(connected);
             }
-            if (desc->emit) {
+            if (!desc->Supports(graph.target)) {
+                args.error = std::string("このノードは") + DisplayName(graph.target) + "では使えません";
+            } else if (desc->emit) {
                 desc->emit(args);
+            }
+            for (const GlobalCode& global : args.globals) {
+                if (!args.error.empty()) {
+                    break;
+                }
+                const auto same = std::find_if(globals.begin(), globals.end(),
+                    [&](const auto& placed) { return placed.second.key == global.key; });
+                if (same != globals.end() && same->second.code != global.code) {
+                    args.error = "同じ関数（" + global.key.substr(global.key.find(':') + 1)
+                        + "）を、中身の違う別のノードでも作っています";
+                }
+            }
+            if (args.error.empty()) {
+                for (const GlobalCode& global : args.globals) {
+                    const bool placed = std::any_of(globals.begin(), globals.end(),
+                        [&](const auto& item) { return item.second.key == global.key; });
+                    if (!placed) {
+                        globals.push_back({ id, global });
+                    }
+                }
             }
             if (!args.error.empty()) {
                 result.issues.push_back({ id, args.error });
@@ -300,7 +326,7 @@ namespace CoreEngine::Editor::ShaderGraph
             body += "    float alpha = " + alpha + ";\n";
             color = "float4(baseColor, alpha)";
         } else {
-            const NodeDesc* const desc = FindNodeDesc(root->type);
+            const NodeDesc* const desc = FindNodeDesc(*root);
             const ResolvedNode& resolved = resolution.nodes.at(root->id);
             int output = -1;
             if (desc && !options.previewPin.empty()) {
@@ -337,7 +363,8 @@ namespace CoreEngine::Editor::ShaderGraph
             }
             head += "\n";
         }
-        head += "#include \"SpriteMaterial.hlsli\"\n";
+        const bool postEffect = graph.target == Target::PostEffect;
+        head += postEffect ? "#include \"PostEffectMaterial.hlsli\"\n" : "#include \"SpriteMaterial.hlsli\"\n";
         head += "#include \"ShaderGraphLibrary.hlsli\"\n";
 
         std::vector<const Property*> numeric;
@@ -362,7 +389,44 @@ namespace CoreEngine::Editor::ShaderGraph
             }
         }
 
-        head += R"(
+        for (const auto& [id, global] : globals) {
+            head += "\n";
+            const int first = CountLines(head) + 1;
+            head += global.code;
+            result.globalLines[id] = { first, CountLines(head) };
+        }
+
+        if (postEffect) {
+            head += R"(
+struct GraphInput
+{
+    float2 uv;
+    float4 sceneColor;
+    float2 screenSize;
+    float2 invScreenSize;
+    float  time;
+    float  unscaledTime;
+    float  deltaTime;
+};
+
+POST_EFFECT_THREADS
+void main(uint3 id : SV_DispatchThreadID)
+{
+    if (IsOutsideScreen(id.xy)) {
+        return;
+    }
+    GraphInput IN;
+    IN.uv = PostEffectUV(id.xy);
+    IN.sceneColor = LoadScreen(int2(id.xy));
+    IN.screenSize = float2(gPostEffect.screenSize);
+    IN.invScreenSize = gPostEffect.invScreenSize;
+    IN.time = gPostEffect.time;
+    IN.unscaledTime = gPostEffect.unscaledTime;
+    IN.deltaTime = gPostEffect.deltaTime;
+
+)";
+        } else {
+            head += R"(
 struct GraphInput
 {
     float2 uv;
@@ -388,12 +452,17 @@ float4 main(SpriteVertexOutput input) : SV_TARGET0
     IN.deltaTime = gSpriteDraw.deltaTime;
 
 )";
+        }
 
         const int offset = CountLines(head);
         for (const auto& [id, lines] : bodyLines) {
             result.nodeLines[id] = { lines.first + offset, lines.second + offset };
         }
-        result.hlsl = head + body + "    return " + color + ";\n}\n";
+        if (postEffect) {
+            result.hlsl = head + body + "    gOutput[id.xy] = " + color + ";\n}\n";
+        } else {
+            result.hlsl = head + body + "    return " + color + ";\n}\n";
+        }
         return result;
     }
 }

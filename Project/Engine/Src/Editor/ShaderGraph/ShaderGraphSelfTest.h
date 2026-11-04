@@ -13,12 +13,14 @@ namespace CoreEngine::Editor::ShaderGraph
     struct SelfTestCase
     {
         std::string name;
+        Target target = Target::Sprite;
         GenerateResult generated;
     };
 
     /// @brief 全ノードの検査に使うグラフを作って HLSL にする
-    /// @details 置けるノードごとに、Dynamic の入力の幅（つながない・1〜4）と出力ごとに、
-    ///          その出力を映すグラフと出口へつないだグラフを作る。プロパティの種類ごとのグラフと空のグラフも足す。
+    /// @details 目標ごとに、その目標で置けるノードごとに、Dynamic の入力の幅（つながない・1〜4）と出力ごとに、
+    ///          その出力を映すグラフと出口へつないだグラフを作る。プロパティの種類ごとのグラフ・空のグラフ・
+    ///          Custom Function の全部の種類のピンを使うグラフも足す。ポストエフェクトの名前は `Post_` で始める。
     std::vector<SelfTestCase> BuildSelfTestCases();
 }
 

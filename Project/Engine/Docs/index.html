@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.58.0">
+<meta name="engine-version" content="0.59.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2580,7 +2580,7 @@ kbd {
       <tr><td>Window ▸ Editor</td><td>Camera Editor</td><td>カメラの一覧・追従・キーフレーム・シェイクの調整、エディタ視点の操作設定。</td></tr>
       <tr><td>Window ▸ Analysis</td><td>Profiler ／ Engine Stats ／ Thread Profiler ／ Event Bus ／ Tween</td><td>処理時間、描画の統計、スレッド、イベント、動いている Tween の一覧。</td></tr>
       <tr><td>Window ▸ Rendering</td><td>Render Pass ／ Render Graph ／ Ray Tracing</td><td>描画の中間結果やパスのつながりを調べます（主にエンジンの調整向け）。</td></tr>
-      <tr><td>Window ▸ Rendering</td><td>Shader Graph</td><td>ノードでスプライトと UI 画像のシェーダを作ります。<a href="#shader-graph">詳しく</a></td></tr>
+      <tr><td>Window ▸ Rendering</td><td>Shader Graph</td><td>ノードでスプライト・UI 画像・ポストエフェクトのシェーダを作ります。<a href="#shader-graph">詳しく</a></td></tr>
     </tbody>
   </table>
   </div>
@@ -2951,7 +2951,7 @@ kbd {
       <tr><td>フォルダを作る</td><td>空いている所を右クリック <span class="ui">フォルダを作成...</span></td></tr>
       <tr><td>スクリプトを作る</td><td><span class="ui">＋ 作成</span>、または右クリック <span class="ui">スクリプトを作成...</span>。<a href="#script-first">詳しく</a></td></tr>
       <tr><td>マテリアルを作る</td><td>右クリック <span class="ui">マテリアルを作成...</span>（シェーダの雛形も作れます）。選ぶとインスペクタで値を変えられます。<a href="#script-material">詳しく</a></td></tr>
-      <tr><td>シェーダーグラフを作る</td><td>右クリック <span class="ui">シェーダーグラフを作成...</span>（グラフ・シェーダ・マテリアルを作って開きます）。.shadergraph はダブルクリックで開きます。<a href="#shader-graph">詳しく</a></td></tr>
+      <tr><td>シェーダーグラフを作る</td><td>右クリック <span class="ui">シェーダーグラフを作成...</span>（目標を選び、グラフ・シェーダ・マテリアルを作って開きます）。.shadergraph はダブルクリックで開きます。<a href="#shader-graph">詳しく</a></td></tr>
       <tr><td>名前を変える</td><td><kbd>F2</kbd>、または右クリック <span class="ui">名前を変更</span>（.meta も一緒に変わり、GUID は保たれます）</td></tr>
       <tr><td>コピー・切り取り・貼り付け</td><td><kbd>Ctrl</kbd>+<kbd>C</kbd> ／ <kbd>X</kbd> ／ <kbd>V</kbd>（コピーには新しい GUID が付きます）</td></tr>
       <tr><td>削除</td><td><kbd>Delete</kbd>（ごみ箱へ送るので、エクスプローラのごみ箱から戻せます）</td></tr>
@@ -5742,9 +5742,9 @@ kbd {
   </ul>
 </article>
 
-<article class="page" id="shader-graph" data-group="スクリプト" data-title="シェーダーグラフ（ノードでシェーダを作る）" data-nav="シェーダーグラフ" data-keywords="シェーダーグラフ shader graph shadergraph ノード node つなぐ hlsl を書かない ビジュアル ディゾルブ dissolve 溶ける 光る 光の帯 シャイン shine ノイズ noise プロパティ property blackboard プレビュー preview マテリアル mat スプライト ui 画像 graph.ps.hlsl">
+<article class="page" id="shader-graph" data-group="スクリプト" data-title="シェーダーグラフ（ノードでシェーダを作る）" data-nav="シェーダーグラフ" data-keywords="シェーダーグラフ shader graph shadergraph ノード node つなぐ hlsl を書かない ビジュアル ディゾルブ dissolve 溶ける 光る 光の帯 シャイン shine ノイズ noise プロパティ property blackboard プレビュー preview マテリアル mat スプライト ui 画像 graph.ps.hlsl graph.cs.hlsl ポストエフェクト posteffect 画面全体 scene color screen position custom function カスタム関数 関数 _float hlsl を書く">
   <h1>シェーダーグラフ（ノードでシェーダを作る）</h1>
-  <p class="lead">ノードを線でつないで、<a href="#api-SpriteRenderer">スプライト描画</a> と <a href="#api-UIImage">UI 画像</a> のピクセルシェーダを作ります。HLSL を書かずに、光る・溶けて消える・模様が流れる、といった見た目を作れます。Unity の Shader Graph に近い作りです。</p>
+  <p class="lead">ノードを線でつないで、<a href="#api-SpriteRenderer">スプライト描画</a> と <a href="#api-UIImage">UI 画像</a> のピクセルシェーダと、画面全体に掛ける <a href="#script-posteffect">ポストエフェクト</a> のコンピュートシェーダを作ります。HLSL を書かずに、光る・溶けて消える・模様が流れる・画面がゆがむ、といった見た目を作れます。Unity の Shader Graph に近い作りです。</p>
 
   <h2 id="sg-overview">仕組み</h2>
   <p>グラフを保存すると、エディタがグラフから HLSL のシェーダを作り、マテリアル（.mat）がそのシェーダを指します。できあがるのはふつうのマテリアルなので、付け方・スクリプトからの値の変え方・書き出しは <a href="#script-material">マテリアルとシェーダ</a> と同じです。</p>
@@ -5753,25 +5753,38 @@ kbd {
     <thead><tr><th>ファイル</th><th>中身</th></tr></thead>
     <tbody>
       <tr><td><span class="path">名前.shadergraph</span></td><td>グラフ（ノード・線・プロパティ）。エディタだけが読みます。</td></tr>
-      <tr><td><span class="path">名前.Graph.PS.hlsl</span></td><td>グラフから作ったピクセルシェーダ。保存のたびに書き直すので、手で直さないでください。</td></tr>
-      <tr><td><span class="path">名前.mat</span></td><td>上のシェーダを指すマテリアル。スプライト描画と UI 画像の <span class="ui">マテリアル</span> 欄へ付けます。プロパティの値はここに入ります。</td></tr>
+      <tr><td><span class="path">名前.Graph.PS.hlsl</span> ／ <span class="path">名前.Graph.CS.hlsl</span></td><td>グラフから作ったシェーダ。スプライトのグラフはピクセルシェーダ（.PS）、ポストエフェクトのグラフはコンピュートシェーダ（.CS）です。保存のたびに書き直すので、手で直さないでください。</td></tr>
+      <tr><td><span class="path">名前.mat</span></td><td>上のシェーダを指すマテリアル。スプライトのグラフはスプライト描画と UI 画像の <span class="ui">マテリアル</span> 欄へ付け、ポストエフェクトのグラフは Project.json の <code>postEffects</code> に入れます。プロパティの値はここに入ります。</td></tr>
     </tbody>
   </table>
   </div>
   <p>3 つとも git に入れます。チームのほかの人は、グラフを開かなくても .mat とシェーダでそのまま描けます。</p>
 
+  <h3 id="sg-targets">目標（スプライトとポストエフェクト）</h3>
+  <p>グラフは、作るときに選んだ目標のシェーダを作ります。目標は後から変えられません。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>目標</th><th>作るシェーダ</th><th>使い方</th><th>出口の Base Color と Alpha をつながないとき</th></tr></thead>
+    <tbody>
+      <tr><td>スプライト／UI 画像</td><td><span class="path">.Graph.PS.hlsl</span>（ピクセルシェーダ）</td><td>.mat をスプライト描画か UI 画像に付ける</td><td>マテリアルを付けていないときと同じ色（テクスチャ × 部品の色）</td></tr>
+      <tr><td>ポストエフェクト</td><td><span class="path">.Graph.CS.hlsl</span>（コンピュートシェーダ）</td><td>.mat を Project.json の <code>postEffects</code> に入れる（<a href="#sg-posteffect">ポストエフェクトを作る</a>）</td><td>画面の色のまま</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>目標によって置けるノードが違います（<a href="#sg-nodes">ノードの一覧</a>）。置けないノードは検索に出ず、貼り付けたときは題名が赤くなります。</p>
+
   <h2 id="sg-create">作る・開く</h2>
   <ol class="steps">
     <li>Project の一覧の空いている所を右クリックし、<span class="ui">シェーダーグラフを作成...</span> を選びます。</li>
-    <li>名前を入れて <span class="ui">作成</span> を押すと、今のフォルダに上の 3 つのファイルができて、シェーダーグラフの窓が開きます。できたばかりのグラフは、マテリアルを付けていないときと同じ色（テクスチャ × 部品の色）で描きます。</li>
-    <li>できた .mat を、スプライト描画（か UI 画像）の <span class="ui">マテリアル</span> 欄へドラッグします。</li>
+    <li>目標（<span class="ui">スプライト／UI 画像</span> か <span class="ui">ポストエフェクト</span>）を選び、名前を入れて <span class="ui">作成</span> を押すと、今のフォルダに上の 3 つのファイルができて、シェーダーグラフの窓が開きます。できたばかりのグラフは、スプライトならマテリアルを付けていないときと同じ色（テクスチャ × 部品の色）、ポストエフェクトなら画面をそのまま描きます。</li>
+    <li>できた .mat を、スプライト描画（か UI 画像）の <span class="ui">マテリアル</span> 欄へドラッグします。ポストエフェクトは <a href="#sg-posteffect">ポストエフェクトを作る</a> の手順で画面に掛けます。</li>
     <li>ノードをつないで <kbd>Ctrl</kbd>+<kbd>S</kbd> で保存すると、シーンのスプライトの見た目が変わります。</li>
   </ol>
   <p>あとから開くときは、次のどれかを使います。</p>
   <ul>
     <li>Project で .shadergraph をダブルクリックする（インスペクタの <span class="ui">シェーダーグラフで開く</span> でも開きます）。</li>
     <li>グラフのシェーダを指す .mat を選び、インスペクタの <span class="ui">シェーダーグラフを開く</span> を押す。</li>
-    <li>グラフが作った .Graph.PS.hlsl を選び、インスペクタの <span class="ui">元のグラフを開く</span> を押す。</li>
+    <li>グラフが作った .Graph.PS.hlsl（か .Graph.CS.hlsl）を選び、インスペクタの <span class="ui">元のグラフを開く</span> を押す。</li>
     <li><span class="ui">Window<span class="arrow">▸</span>Rendering<span class="arrow">▸</span>Shader Graph</span> で窓を出す（開いていたグラフのタブが並びます）。</li>
   </ul>
 
@@ -5783,8 +5796,8 @@ kbd {
       <tr><td>上のタブ</td><td>開いているグラフ。保存していない変更があると印が付きます。閉じるときに、保存していなければ <span class="ui">保存して閉じる</span> ／ <span class="ui">保存せずに閉じる</span> ／ <span class="ui">やめる</span> を聞きます。</td></tr>
       <tr><td>左（Blackboard）</td><td>グラフのプロパティ（.mat とスクリプトから変えられる値）の一覧。</td></tr>
       <tr><td>真ん中（キャンバス）</td><td>ノードと線。右下に全体の縮図が出ます。</td></tr>
-      <tr><td>右上（Main Preview）</td><td>グラフの結果を板に描いた絵。市松模様は透明な所です。</td></tr>
-      <tr><td>右下（Inspector）</td><td>選んだノードの説明・設定・つないでいない入力の値、または選んだプロパティの設定。</td></tr>
+      <tr><td>右上（Main Preview）</td><td>グラフの結果を板に描いた絵。市松模様は透明な所です。ポストエフェクトは、画面の代わりの画像に掛けた絵です。</td></tr>
+      <tr><td>右下（Inspector）</td><td>選んだノードの説明・設定・つないでいない入力の値、または選んだプロパティの設定。何も選んでいなければ、グラフの目標と、ポストエフェクトの Project.json への登録。</td></tr>
       <tr><td>下</td><td>コンパイルのエラーと、操作のお知らせ。</td></tr>
     </tbody>
   </table>
@@ -5857,21 +5870,22 @@ kbd {
 
   <h2 id="sg-preview">プレビューとエラー</h2>
   <ul>
-    <li>Main Preview は、グラフを変えると少し後に描き直します。<span class="ui">板の画像</span> に画像をドラッグすると、その画像を部品のテクスチャとして描きます。</li>
+    <li>Main Preview は、グラフを変えると少し後に描き直します。<span class="ui">板の画像</span> に画像をドラッグすると、その画像を部品のテクスチャとして描きます。ポストエフェクトでは <span class="ui">画面の画像</span> の画像（空なら <span class="path">uvChecker.png</span>）を画面の代わりにして描きます。</li>
     <li><span class="ui">選んだノードを映す</span> を入れると、選んだノードの出力を映します。ノードの右クリック <span class="ui">このノードを映す</span> でも同じです。途中の値を見たいところに Preview ノードを挟んでおくこともできます。</li>
     <li>コンパイルできないグラフは、下にエラーを出し、関係するノードの題名を赤くします。保存はできますが、シェーダは書き換えません（スプライトは前に保存できた見た目のままです）。</li>
   </ul>
 
   <h2 id="sg-nodes">ノードの一覧</h2>
-  <p>ノードを選ぶと、Inspector に説明が出ます。出口の Fragment は、<span class="ui">Base Color</span>（RGB）と <span class="ui">Alpha</span> を受け取ります。つないでいない欄は、マテリアルを付けていないときと同じ色になります。</p>
+  <p>ノードを選ぶと、Inspector に説明が出ます。出口の Fragment は、<span class="ui">Base Color</span>（RGB）と <span class="ui">Alpha</span> を受け取ります。つないでいない欄は、スプライトならマテリアルを付けていないときと同じ色、ポストエフェクトなら画面の色になります。<strong>（スプライト）</strong>・<strong>（ポストエフェクト）</strong> と書いたノードは、その目標のグラフにだけ置けます。</p>
   <div class="table-wrap">
   <table>
     <thead><tr><th>分類</th><th>ノード</th></tr></thead>
     <tbody>
       <tr><td>Input/Basic</td><td>Float ・ Vector 2 ・ Vector 3 ・ Vector 4 ・ Color ・ Time（時間 ／ その sin・cos ／ 前のフレームからの時間 ／ 時間の倍率を掛けない時間）</td></tr>
-      <tr><td>Input/Geometry</td><td>UV（コマ割りと反転を済ませた UV）・ Position（スプライトはワールド座標、UI 画像は画面の px）</td></tr>
-      <tr><td>Input/Sprite</td><td>Sprite Color（テクスチャ × 部品の色）・ Vertex Color（部品の色）・ Main Texture（部品のテクスチャとその大きさ）</td></tr>
-      <tr><td>Input/Texture</td><td>Sample Texture 2D（テクスチャの色を読む。つながなければ部品のテクスチャ）・ Sampler State（線形・繰り返し ／ 最も近い画素・繰り返し ／ 線形・端で止める）</td></tr>
+      <tr><td>Input/Geometry</td><td>UV（スプライトはコマ割りと反転を済ませた UV、ポストエフェクトは画面の左上 0・右下 1）・ Position（スプライトだけ。スプライトはワールド座標、UI 画像は画面の px）</td></tr>
+      <tr><td>Input/Sprite <strong>（スプライト）</strong></td><td>Sprite Color（テクスチャ × 部品の色）・ Vertex Color（部品の色）・ Main Texture（部品のテクスチャとその大きさ）</td></tr>
+      <tr><td>Input/Scene <strong>（ポストエフェクト）</strong></td><td>Scene Color（画面の色。UV をつなぐと、その場所の画面の色を読む）・ Screen Position（Default ＝ 0〜1 ／ Center ＝ 真ん中が 0 で −1〜1 ／ Pixel ＝ 画素の位置）・ Screen（画面の幅・高さ・1 画素の大きさ）</td></tr>
+      <tr><td>Input/Texture</td><td>Sample Texture 2D（テクスチャの色を読む。つながなければ、スプライトは部品のテクスチャ、ポストエフェクトは画面）・ Sampler State（下の表）</td></tr>
       <tr><td>Math/Basic</td><td>Add ・ Subtract ・ Multiply ・ Divide ・ Power ・ Square Root</td></tr>
       <tr><td>Math/Advanced</td><td>Absolute ・ Negate ・ Length ・ Normalize</td></tr>
       <tr><td>Math/Range</td><td>Clamp ・ Remap ・ Maximum ・ Minimum ・ One Minus ・ Saturate ・ Fraction</td></tr>
@@ -5883,10 +5897,71 @@ kbd {
       <tr><td>UV</td><td>Tiling And Offset ・ Rotate ・ Polar Coordinates</td></tr>
       <tr><td>Procedural/Noise</td><td>Simple Noise ・ Gradient Noise ・ Voronoi</td></tr>
       <tr><td>Procedural/Shape</td><td>Ellipse ・ Rectangle</td></tr>
-      <tr><td>Utility</td><td>Preview（値をそのまま渡す。選ぶと Main Preview にその値を映す）</td></tr>
+      <tr><td>Utility</td><td>Preview（値をそのまま渡す。選ぶと Main Preview にその値を映す）・ Custom Function（HLSL で書いた関数を呼ぶ。<a href="#sg-custom-function">Custom Function</a>）</td></tr>
     </tbody>
   </table>
   </div>
+  <p>Sampler State の読み方は 4 つあり、目標によって使えるものが違います。使えないものを選ぶと、ノードにエラーが出ます。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>読み方</th><th>スプライト</th><th>ポストエフェクト</th></tr></thead>
+    <tbody>
+      <tr><td>Linear Repeat（線形・繰り返し）</td><td>○（つながないときの既定）</td><td>○</td></tr>
+      <tr><td>Point Repeat（最も近い画素・繰り返し）</td><td>○</td><td>×</td></tr>
+      <tr><td>Linear Clamp（線形・端で止める）</td><td>○</td><td>○</td></tr>
+      <tr><td>Point Clamp（最も近い画素・端で止める）</td><td>×</td><td>○</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2 id="sg-posteffect">ポストエフェクトを作る</h2>
+  <p>ポストエフェクトのグラフは、画面の画素ごとに色を決めます。画面の色は Scene Color で読み、UV をずらして読めば画面をゆがめられます。でき方は手書きの <a href="#script-posteffect">プロジェクトのポストエフェクト</a> と同じで、グラフが作るのは <span class="path">PostEffectMaterial.hlsli</span> を使うコンピュートシェーダです。</p>
+  <ol class="steps">
+    <li>Project の右クリック <span class="ui">シェーダーグラフを作成...</span> で <span class="ui">ポストエフェクト</span> を選んで作ります。</li>
+    <li>ノードをつなぎ、Main Preview で見た目を確かめて <kbd>Ctrl</kbd>+<kbd>S</kbd> で保存します。</li>
+    <li>キャンバスの空いている所をクリックして選ぶのをやめると、Inspector にグラフの欄が出ます。このグラフのシェーダを使う .mat ごとに、差し込む段（<code>SceneHDR</code> ／ <code>PostTonemap</code> ／ <code>Overlay</code>）を選んで <span class="ui">Project.json に足す</span> を押します。名前は .mat の名前（重なれば後ろに数字）になります。</li>
+    <li>エンジンを起動し直すと、画面に掛かります（並びは起動したときに組むためです）。一度入れた後は、グラフを保存するたびにそのまま掛け直します。</li>
+  </ol>
+  <ul>
+    <li>値は、.mat のインスペクタで変えられます（Project.json に入れる前でも、欄は出ます）。スクリプトからは <code>PostEffect::GetMaterial</code> で変えます（<a href="#script-posteffect">プロジェクトのポストエフェクト</a>）。</li>
+    <li>並べ替えと消すのは、Project.json の <code>postEffects</code> を書き換えてください。</li>
+    <li>コンピュートシェーダには画素どうしの差分が無いので、テクスチャはいつもいちばん細かい画像（ミップ 0）を読みます。</li>
+  </ul>
+
+  <h2 id="sg-custom-function">Custom Function（HLSL を書く）</h2>
+  <p>ノードで組みにくい式は、Custom Function に HLSL の関数を書いて呼びます。Inspector で次を決めます。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>欄</th><th>意味</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">種類</span></td><td><code>String</code> ＝ 関数の中身をここに書く ／ <code>File</code> ＝ <span class="path">.hlsl</span> か <span class="path">.hlsli</span> のファイルに書いた関数を呼ぶ</td></tr>
+      <tr><td><span class="ui">関数の名前</span></td><td>呼ぶのは <code>関数の名前_float</code> です（Unity と同じ）。英字か <code>_</code> で始め、英数字と <code>_</code> だけ。ピンの名前ではありません。</td></tr>
+      <tr><td><span class="ui">入力</span> ／ <span class="ui">出力</span></td><td>ピンの種類と名前を、それぞれ 16 個まで。<span class="ui">入力を足す</span> ／ <span class="ui">出力を足す</span> で行を足し、名前を書き換えて Enter を押すか、ほかをクリックすると決まります。入力は Float・Vector 2〜4・Texture 2D・Sampler State、出力は数（Float・Vector 2〜4）だけです。名前を変えると、つないだ線もそのまま付いていきます。</td></tr>
+      <tr><td><span class="ui">中身</span>（String）</td><td>関数の <code>{ }</code> の中。入力と出力の名前をそのまま変数として使い、出力には全部値を入れます。</td></tr>
+      <tr><td><span class="ui">ファイル</span>（File）</td><td><span class="path">Application/…</span> のファイル。一覧から選べます。ファイルを保存すると、グラフを自分で検査し直します。</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>String の中身は、グラフが <code>void 名前_float(入力…, out 出力…)</code> の関数にします。同じ名前の Custom Function を何個置いても、中身が同じなら関数は 1 つです（中身が違うとエラーです）。</p>
+  <script type="text/x-code" data-lang="text" data-file="Custom Function の中身（入力 Vector2 UV・Float Amount ／ 出力 Vector2 Out）">
+    // 真ん中から外へ、UV を樽のようにゆがめる
+    float2 center = UV - 0.5f;
+    float r2 = dot(center, center);
+    Out = 0.5f + center * (1.0f + Amount * r2);
+  </script>
+  <p>File のときは、ファイルに同じ形の関数を書きます。ファイルは名前だけで <code>#include</code> するので、<strong>同じ名前のシェーダのファイルがほかのフォルダにあるとエラー</strong>になります。</p>
+  <script type="text/x-code" data-lang="text" data-file="Application/Assets/Shaders/Vignette.hlsl">
+    // 画面の縁を暗くする
+    void Vignette_float(float3 Color, float2 UV, float Strength, out float3 Out)
+    {
+        float2 d = UV - 0.5f;
+        Out = Color * saturate(1.0f - dot(d, d) * Strength);
+    }
+  </script>
+  <ul>
+    <li>関数の中でコンパイルのエラーがあると、その Custom Function の題名が赤くなり、下にエラーを出します。</li>
+    <li>スプライトのグラフでは <code>Sample</code>、ポストエフェクトのグラフでは <code>SampleLevel</code>（ミップを指す読み方）を使います。</li>
+  </ul>
 
   <h2 id="sg-samples">見本</h2>
   <p><span class="path">Projects/Sample2D</span> の <span class="path">Application/Assets/Materials</span> に 2 つあります。.mat をスプライトの <span class="ui">マテリアル</span> 欄へドラッグすると試せます。</p>
@@ -5898,7 +5973,8 @@ kbd {
   <h2 id="sg-notes">書き出しと注意</h2>
   <ul>
     <li>ゲームを書き出すと、.shadergraph は入れず、グラフが作ったシェーダを DXIL（コンパイル済みのシェーダ）にして入れます（<a href="#editor-export">ゲームを書き出す</a>）。</li>
-    <li>今作れるのは、スプライト描画と UI 画像のピクセルシェーダだけです。3D のモデル・頂点を動かすシェーダ・HLSL を直接書くノードは、まだありません。</li>
+    <li>ポストエフェクトのグラフが作った <span class="path">.Graph.CS.hlsl</span> は、Project.json に入れていなくても、コンピュートシェーダとして書き出します。</li>
+    <li>今作れるのは、スプライト描画と UI 画像のピクセルシェーダと、ポストエフェクトのコンピュートシェーダです。3D のモデル・頂点を動かすシェーダ・画面の深さ（Scene Depth）を読むノードは、まだありません。</li>
     <li>グラフが作ったシェーダは、ほかのシェーダから <code>#include</code> できません。</li>
     <li><span class="ui">Tools<span class="arrow">▸</span>テスト<span class="arrow">▸</span>シェーダーグラフの全ノード検査</span> は、置ける全部のノードを、入力の幅ごとにつないだグラフにしてコンパイルし、結果を Console に出します（エンジンのノードを足したり直したりしたときの確かめ用）。</li>
   </ul>
@@ -5906,7 +5982,7 @@ kbd {
 
 <article class="page" id="script-posteffect" data-group="スクリプト" data-title="プロジェクトのポストエフェクト" data-nav="自分のポストエフェクト" data-keywords="ポストエフェクト posteffect 画面全体 フルスクリーン 自作 独自 コンピュートシェーダ compute cs hlsl project.json posteffects 段 stage scenehdr posttonemap overlay 走査線 ネオン グロー フラッシュ 遷移 setenabled getmaterial postEffectmaterial.hlsli">
   <h1>プロジェクトのポストエフェクト</h1>
-  <p class="lead">画面全体にかける効果を、自分で書いたコンピュートシェーダで足します。シェーダと値は <a href="#script-material">マテリアル（.mat）</a> に持たせ、<span class="path">Project.json</span> の <code>postEffects</code> に掛ける順に並べます。</p>
+  <p class="lead">画面全体にかける効果を、自分で書いたコンピュートシェーダで足します。シェーダと値は <a href="#script-material">マテリアル（.mat）</a> に持たせ、<span class="path">Project.json</span> の <code>postEffects</code> に掛ける順に並べます。HLSL を書かずにノードで作るときは、<a href="#sg-posteffect">シェーダーグラフ</a> を使います。</p>
 
   <h2 id="pe-overview">仕組み</h2>
   <ul>
@@ -10214,7 +10290,7 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   </table>
   </div>
 
-  <p>シェーダーグラフ（<span class="path">.shadergraph</span>）は、エディタが書く JSON です。手で直さず、シェーダーグラフの窓で直してください。グラフが作ったシェーダ（<span class="path">.Graph.PS.hlsl</span>）の先頭の行に、元のグラフの場所が入っています（<a href="#shader-graph">シェーダーグラフ</a>）。</p>
+  <p>シェーダーグラフ（<span class="path">.shadergraph</span>）は、エディタが書く JSON です。手で直さず、シェーダーグラフの窓で直してください。グラフが作ったシェーダ（<span class="path">.Graph.PS.hlsl</span> ／ <span class="path">.Graph.CS.hlsl</span>）の先頭の行に、元のグラフの場所が入っています（<a href="#shader-graph">シェーダーグラフ</a>）。</p>
 
   <h2 id="format-saved">セーブデータ（SaveFile）</h2>
   <p><code>SaveFile("MyGame/Record.json")</code> は <span class="path">Application/Saved/MyGame/Record.json</span> を読み書きします。中身は、<code>Set…</code> で入れた名前と値の JSON です。</p>
@@ -10305,6 +10381,17 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-59-0">v0.59.0 <span class="dim">（2026-11-04）</span></h3>
+  <p>シェーダーグラフで、画面全体に掛けるポストエフェクトを作れるようにし、HLSL の関数を呼ぶ Custom Function を足した版です。スプライトのグラフが作るシェーダは、前の版と同じです（<a href="#shader-graph">シェーダーグラフ</a>）。</p>
+  <ul>
+    <li><strong>ポストエフェクトのグラフ</strong>：<span class="ui">シェーダーグラフを作成...</span> で目標を選べるようにしました。ポストエフェクトのグラフは、<span class="path">PostEffectMaterial.hlsli</span> を使うコンピュートシェーダ（<span class="path">.Graph.CS.hlsl</span>）を作ります。Main Preview は、画面の代わりの画像に掛けた絵を出します（<a href="#sg-targets">目標</a>）。</li>
+    <li><strong>Project.json への登録</strong>：グラフの Inspector（何も選んでいないとき）に、このグラフを使う .mat を、段を選んで Project.json の <code>postEffects</code> に足すボタンを足しました。足した後はエンジンを起動し直すと掛かります（<a href="#sg-posteffect">ポストエフェクトを作る</a>）。</li>
+    <li><strong>画面のノード</strong>：Scene Color（画面の色・UV の場所の画面の色）・Screen Position・Screen を足しました。ポストエフェクトのグラフでだけ使えます。部品の色やテクスチャのノードは、スプライトのグラフでだけ使えます。</li>
+    <li><strong>Custom Function</strong>：中身を書くか、<span class="path">.hlsl</span> ／ <span class="path">.hlsli</span> のファイルの関数を呼ぶノードです。入力と出力のピンを Inspector で決めます（<a href="#sg-custom-function">Custom Function</a>）。</li>
+    <li><strong>Sampler State</strong>：読み方に Point Clamp を足しました。目標に無い読み方を選ぶと、ノードにエラーを出します。</li>
+    <li><strong>.mat のインスペクタと書き出し</strong>：<span class="path">.CS.hlsl</span> のシェーダを指す .mat は、Project.json に入れる前でも値の欄を出し、頂点シェーダの欄を出さないようにしました。ゲームの書き出しでも、<span class="path">.CS.hlsl</span> はコンピュートシェーダとしてコンパイルします。</li>
+  </ul>
 
   <h3 id="changelog-v0-58-0">v0.58.0 <span class="dim">（2026-11-04）</span></h3>
   <p>ノードをつないでスプライトと UI 画像のシェーダを作る、シェーダーグラフを足した版です。グラフを保存すると HLSL のシェーダを作り、マテリアル（.mat）がそれを指すので、描き方・スクリプト・書き出しは今までのマテリアルと同じです（<a href="#shader-graph">シェーダーグラフ</a>）。</p>

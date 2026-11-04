@@ -126,4 +126,25 @@ float SG_Rectangle(float2 uv, float width, float height)
     return saturate(min(d.x, d.y));
 }
 
+#ifdef POST_EFFECT_MATERIAL_HLSLI
+
+/// @brief SG_Ellipse のポストエフェクト版（縁の幅は画面の UV のままのときの 1 画素）
+float SG_EllipseScreen(float2 uv, float width, float height)
+{
+    float2 size = max(float2(width, height), 1e-5f);
+    float d = length((uv * 2.0f - 1.0f) / size);
+    float2 step = 2.0f * gPostEffect.invScreenSize / size;
+    return saturate((1.0f - d) / max(max(step.x, step.y), 1e-5f));
+}
+
+/// @brief SG_Rectangle のポストエフェクト版（縁の幅は画面の UV のままのときの 1 画素）
+float SG_RectangleScreen(float2 uv, float width, float height)
+{
+    float2 d = abs(uv * 2.0f - 1.0f) - float2(width, height);
+    d = 1.0f - d / max(2.0f * gPostEffect.invScreenSize, 1e-5f);
+    return saturate(min(d.x, d.y));
+}
+
+#endif // POST_EFFECT_MATERIAL_HLSLI
+
 #endif // SHADER_GRAPH_LIBRARY_HLSLI
