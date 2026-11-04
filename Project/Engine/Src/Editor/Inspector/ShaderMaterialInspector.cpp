@@ -14,6 +14,8 @@
 #include "Graphics/Material/ShaderMaterial.h"
 #include "Graphics/Material/ShaderMaterialLibrary.h"
 #include "Graphics/Material/ShaderMaterialPipeline.h"
+#include "Graphics/Material/SurfaceMaterialPipeline.h"
+#include "Graphics/Model/ModelManager.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/PostEffect/Effect/ProjectPostEffect/ProjectPostEffect.h"
 #include "Graphics/Render/RenderManager.h"
@@ -45,6 +47,13 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
         /// @brief 雛形のシェーダに合わせた値の初め
         constexpr const char* kTemplateValues = R"({ "tint": [1.0, 1.0, 1.0, 1.0], "speed": 2.0 })";
 
+        /// @brief 3D モデルのマテリアルのシェーダの雛形
+        constexpr const char* kSurfaceShaderTemplate = "Engine/Templates/Shaders/ModelSurface.Surface.hlsl.txt";
+
+        /// @brief 3D モデルの雛形のシェーダに合わせた値の初め
+        constexpr const char* kSurfaceTemplateValues =
+            R"({ "tint": [1.0, 1.0, 1.0, 1.0], "rimPower": 3.0, "rimColor": [0.3, 0.6, 1.0] })";
+
         /// @brief マテリアルのシェーダから値の並びを引く（組めなければ nullptr）
         /// @details プロジェクトのポストエフェクトのマテリアルなら、そのコンピュートシェーダの並びを使う
         const MaterialParamLayout* FindLayout(const ShaderMaterial& material)
@@ -54,6 +63,12 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
                 if (const ProjectPostEffect* const effect = postEffects->FindProjectEffectByMaterial(material.GetAssetPath())) {
                     return &effect->GetLayout();
                 }
+            }
+            if (IsSurfaceShaderPath(material.GetShaderPath())) {
+                ModelManager* const models = engine ? engine->GetService<ModelManager>() : nullptr;
+                SurfaceMaterialPipelineCache* const cache = models ? models->GetSurfaceMaterialPipelineCache() : nullptr;
+                SurfaceMaterialPipeline* const pipeline = cache ? cache->Get(material.GetShaderPath()) : nullptr;
+                return pipeline ? &pipeline->GetLayout() : nullptr;
             }
             RenderManager* const renderManager = engine ? engine->GetService<RenderManager>() : nullptr;
             auto* const sprites = renderManager
@@ -453,7 +468,7 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
         return true;
     }
 
-    bool Create(const std::filesystem::path& folder, const std::string& name, bool withShader,
+    bool Create(const std::filesystem::path& folder, const std::string& name, MaterialTarget target, bool withShader,
         std::filesystem::path* created, std::string* error)
     {
         const auto fail = [error](std::string message) {
@@ -471,7 +486,10 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
         std::filesystem::create_directories(base, ignored);
 
         const std::filesystem::path materialPath = base / Logger::GetInstance().Utf8ToPath(name + ".mat");
-        const std::filesystem::path shaderPath = base / Logger::GetInstance().Utf8ToPath(name + ".PS.hlsl");
+        const bool forModel = target == MaterialTarget::Model;
+        const std::filesystem::path shaderPath =
+            base / Logger::GetInstance().Utf8ToPath(name + (forModel ? ".Surface.hlsl" : ".PS.hlsl"));
+        const char* const shaderTemplate = forModel ? kSurfaceShaderTemplate : kShaderTemplate;
         if (std::filesystem::exists(materialPath)) {
             return fail("同じ名前のマテリアルがあります。");
         }
@@ -484,16 +502,16 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
         root["values"] = json::object();
         root["textures"] = json::object();
         if (withShader) {
-            const std::string shaderText = ReadText(ProjectPaths::Resolve(kShaderTemplate));
+            const std::string shaderText = ReadText(ProjectPaths::Resolve(shaderTemplate));
             if (shaderText.empty()) {
-                return fail(std::string("シェーダの雛形が見つかりません（") + kShaderTemplate + "）。");
+                return fail(std::string("シェーダの雛形が見つかりません（") + shaderTemplate + "）。");
             }
             if (!WriteText(shaderPath, shaderText)) {
                 return fail("シェーダを書けません。");
             }
             AssetDatabase::GetInstance().ImportAsset(shaderPath);
             root["shader"] = AssetPathToJson(Logger::GetInstance().PathToUtf8(ProjectPaths::MakeRelative(shaderPath)));
-            root["values"] = json::parse(kTemplateValues);
+            root["values"] = json::parse(forModel ? kSurfaceTemplateValues : kTemplateValues);
         }
         if (!WriteText(materialPath, root.dump(4) + "\n")) {
             return fail("マテリアルを書けません。");

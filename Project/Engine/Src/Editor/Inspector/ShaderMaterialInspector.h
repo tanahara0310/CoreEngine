@@ -26,14 +26,18 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
     /// @return マテリアルとして描いたら true（.mat でなければ何も描かずに false）
     bool DrawFile(const std::filesystem::path& file);
 
+    /// @brief マテリアルを付ける先
+    enum class MaterialTarget { Sprite, Model };
+
     /// @brief 新しいマテリアルを作る（シェーダも作るなら雛形から書く）
     /// @param folder 置き先のフォルダ
     /// @param name ファイル名（拡張子なし）
-    /// @param withShader ピクセルシェーダの雛形も作るか
+    /// @param target スプライト・UI 画像（`名前.PS.hlsl`）か 3D モデル（`名前.Surface.hlsl`）か
+    /// @param withShader シェーダの雛形も作るか
     /// @param created 作った .mat の場所
     /// @param error 作れなかった訳
     /// @return 作れたら true
-    bool Create(const std::filesystem::path& folder, const std::string& name, bool withShader,
+    bool Create(const std::filesystem::path& folder, const std::string& name, MaterialTarget target, bool withShader,
         std::filesystem::path* created, std::string* error);
 }
 

@@ -8,6 +8,7 @@
 #include "Graphics/Asset/AssetRef.h"
 #include "Graphics/Material/ShaderMaterial.h"
 #include "Graphics/Material/ShaderMaterialPipeline.h"
+#include "Graphics/Material/SurfaceMaterialPipeline.h"
 #include "Graphics/Shader/Cook/CookedShader.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Utility/Logger/Logger.h"
@@ -45,7 +46,8 @@ namespace CoreEngine::Editor
     std::vector<ShaderManifest::Entry> ShaderCooker::PlanTargets()
     {
         // 一度も描いていないマテリアルのシェーダも入れる（.mat が指すピクセルシェーダと頂点シェーダ。
-        // プロジェクトのポストエフェクトのマテリアルと、名前が .CS.hlsl で終わるシェーダはコンピュートシェーダ）
+        // プロジェクトのポストエフェクトのマテリアルと、名前が .CS.hlsl で終わるシェーダはコンピュートシェーダ。
+        // 名前が .Surface.hlsl で終わるシェーダは 3D モデルの全部の入口と、描けないときのシェーダ）
         const std::vector<ShaderManifest::Entry> recorded = ShaderManifest::GetInstance().Collect();
         std::set<ShaderManifest::Entry> targets(recorded.begin(), recorded.end());
         Logger& log = Logger::GetInstance();
@@ -54,6 +56,13 @@ namespace CoreEngine::Editor
             const AssetInfo* const info = FindAssetInfo(effect.material, AssetType::Material);
             postEffectMaterials.insert(info ? ToAssetPath(*info) : effect.material);
         }
+        const auto addSurfaceShader = [&targets, &log](const std::string& shaderPath) {
+            for (const SurfaceMaterialStage& stage : kSurfaceMaterialStages) {
+                targets.insert({ log.Utf8ToPath(shaderPath).generic_wstring(), L"ps_6_0", stage.entryPoint });
+                targets.insert({ log.Utf8ToPath(stage.vertexShader).generic_wstring(), L"vs_6_0", L"main" });
+            }
+        };
+        bool hasSurfaceMaterial = false;
         for (const AssetInfo* info : AssetDatabase::GetInstance().GetAssetsOfType(AssetType::Material)) {
             std::string shaderPath;
             std::string vertexShaderPath;
@@ -66,11 +75,19 @@ namespace CoreEngine::Editor
                 targets.insert({ log.Utf8ToPath(shaderPath).generic_wstring(), L"cs_6_0", L"main" });
                 continue;
             }
+            if (IsSurfaceShaderPath(shaderPath)) {
+                addSurfaceShader(shaderPath);
+                hasSurfaceMaterial = true;
+                continue;
+            }
             if (vertexShaderPath.empty()) {
                 vertexShaderPath = kStandardMaterialVertexShader;
             }
             targets.insert({ log.Utf8ToPath(shaderPath).generic_wstring(), L"ps_6_0", L"main" });
             targets.insert({ log.Utf8ToPath(vertexShaderPath).generic_wstring(), L"vs_6_0", L"main" });
+        }
+        if (hasSurfaceMaterial) {
+            addSurfaceShader(kErrorSurfaceShader);
         }
         return std::vector<ShaderManifest::Entry>(targets.begin(), targets.end());
     }

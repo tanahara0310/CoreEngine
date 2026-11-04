@@ -1533,15 +1533,25 @@ namespace CoreEngine
             return;
         }
 
-        UI::Hint("今開いているフォルダへ、スプライトと UI 画像に付けるマテリアル（.mat）を作ります。");
+        UI::Hint("今開いているフォルダへ、マテリアル（.mat）を作ります。付ける先は後から変えられません。");
         UI::Separator();
+
+        if (ImGui::RadioButton("スプライト／UI 画像", !newMaterialForModel_)) {
+            newMaterialForModel_ = false;
+        }
+        UI::SameLine();
+        if (ImGui::RadioButton("3D モデル", newMaterialForModel_)) {
+            newMaterialForModel_ = true;
+        }
 
         if (ImGui::IsWindowAppearing()) {
             ImGui::SetKeyboardFocusHere();
         }
         const bool enterPressed = UI::InputText("名前", newMaterialName_, sizeof(newMaterialName_),
             ImGuiInputTextFlags_EnterReturnsTrue);
-        ImGui::Checkbox("ピクセルシェーダの雛形も作る（名前.PS.hlsl）", &newMaterialWithShader_);
+        ImGui::Checkbox(newMaterialForModel_ ? "シェーダの雛形も作る（名前.Surface.hlsl）"
+                                             : "ピクセルシェーダの雛形も作る（名前.PS.hlsl）",
+            &newMaterialWithShader_);
 
         if (!newMaterialError_.empty()) {
             ImGui::TextColored(Theme::kError, "%s", newMaterialError_.c_str());
@@ -1550,8 +1560,10 @@ namespace CoreEngine
         UI::Separator();
         if (ImGui::Button("作成") || enterPressed) {
             std::filesystem::path created;
+            const auto target = newMaterialForModel_ ? Editor::ShaderMaterialInspector::MaterialTarget::Model
+                                                     : Editor::ShaderMaterialInspector::MaterialTarget::Sprite;
             if (Editor::ShaderMaterialInspector::Create(GetCurrentFolder(), newMaterialName_,
-                    newMaterialWithShader_, &created, &newMaterialError_)) {
+                    target, newMaterialWithShader_, &created, &newMaterialError_)) {
                 showNewMaterialDialog_ = false;
                 ImGui::CloseCurrentPopup();
                 NavigateToDirectory(created.parent_path());

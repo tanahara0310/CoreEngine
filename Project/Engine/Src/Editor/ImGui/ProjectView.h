@@ -296,7 +296,8 @@ namespace CoreEngine
         // 新しいマテリアルを作る窓
         bool showNewMaterialDialog_ = false;
         char newMaterialName_[128] = {};
-        bool newMaterialWithShader_ = true;  ///< ピクセルシェーダの雛形も作る
+        bool newMaterialWithShader_ = true;  ///< シェーダの雛形も作る
+        bool newMaterialForModel_ = false;   ///< 3D モデルに付けるマテリアルを作る
         std::string newMaterialError_;
 
         // 新しいシェーダーグラフを作る窓
