@@ -271,7 +271,7 @@ namespace CoreEngine::Editor::ShaderGraph
         material["shader"] = AssetPathToJson(ToAssetText(shaderFile));
         material["values"] = json::object();
         material["textures"] = json::object();
-        if (!WriteFileReplacing(materialFile, material.dump(4) + "\n")) {
+        if (!WriteFileReplacing(materialFile, JsonManager::ToFileText(material))) {
             return fail("マテリアルを書けません。");
         }
         AssetDatabase::GetInstance().ImportAsset(materialFile);

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.58.0">
+<meta name="engine-version" content="0.58.1">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -10188,7 +10188,7 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   </div>
 
   <h2 id="format-material">マテリアル（.mat）</h2>
-  <p>スプライト描画と UI 画像に付けるマテリアルです（<a href="#script-material">マテリアルとシェーダ</a>）。インスペクタで編集すると書き直されます。</p>
+  <p>スプライト描画と UI 画像に付けるマテリアルです（<a href="#script-material">マテリアルとシェーダ</a>）。インスペクタで編集すると書き直されます。数は、シーンの JSON と同じく float として最も短い桁で書きます（<code>0.45</code> は <code>0.45</code> のまま）。</p>
   <script type="text/x-code" data-lang="json" data-file="Application/Assets/Materials/Glow.mat">
     {
         "shader": { "guid": "…", "path": "Application/Assets/Materials/Glow.PS.hlsl" },
@@ -10305,6 +10305,12 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-58-1">v0.58.1 <span class="dim">（2026-11-04）</span></h3>
+  <p>マテリアルを保存すると、数が長い桁で書かれていた不具合を直した版です。</p>
+  <ul>
+    <li><strong>マテリアルの数の桁</strong>：インスペクタでマテリアル（<span class="path">.mat</span>）を保存すると（シェーダーグラフの保存で値を足したときも）、<code>0.45</code> が <code>0.44999998807907104</code> のような長い桁で書かれ、git の差分が読みにくくなっていました。シーンの JSON と同じく、float として最も短い桁で書くようにしました（<a href="#format-material">マテリアル（.mat）</a>）。読み込む値は変わりません。</li>
+  </ul>
 
   <h3 id="changelog-v0-58-0">v0.58.0 <span class="dim">（2026-11-04）</span></h3>
   <p>ノードをつないでスプライトと UI 画像のシェーダを作る、シェーダーグラフを足した版です。グラフを保存すると HLSL のシェーダを作り、マテリアル（.mat）がそれを指すので、描き方・スクリプト・書き出しは今までのマテリアルと同じです（<a href="#shader-graph">シェーダーグラフ</a>）。</p>
