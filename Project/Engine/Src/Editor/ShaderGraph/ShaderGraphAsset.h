@@ -22,11 +22,20 @@ namespace CoreEngine::Editor::ShaderGraph
     /// @brief グラフのファイルか（.meta を含む）
     bool IsGraphFile(const std::filesystem::path& path);
 
-    /// @brief グラフが作るシェーダのパス（グラフの隣の `名前.Graph.PS.hlsl`）
-    std::filesystem::path GeneratedShaderPath(const std::filesystem::path& graphFile);
+    /// @brief グラフが作るシェーダのパス（グラフの隣の `名前.Graph.PS.hlsl`。ポストエフェクトは `名前.Graph.CS.hlsl`）
+    std::filesystem::path GeneratedShaderPath(const std::filesystem::path& graphFile, Target target);
 
     /// @brief シェーダーグラフが作ったシェーダのパスか
     bool IsGeneratedShaderPath(const std::filesystem::path& path);
+
+    /// @brief コンピュートシェーダの名前か（`名前.CS.hlsl`。プロジェクトのポストエフェクトの決まり）
+    bool IsComputeShaderPath(const std::filesystem::path& path);
+
+    /// @brief 目標のシェーダのプロファイル（ps_6_0 ／ cs_6_0）
+    const wchar_t* ShaderProfile(Target target);
+
+    /// @brief Custom Function のファイルを、ファイル名だけの include にする（同じ名前のシェーダが 2 つあれば失敗）
+    IncludeResolver MakeIncludeResolver();
 
     /// @brief フルパスを `Application/Assets/…` の綴りにする
     std::string ToAssetText(const std::filesystem::path& fullPath);
@@ -48,13 +57,14 @@ namespace CoreEngine::Editor::ShaderGraph
 
     /// @brief HLSL を一時ファイルに書いてコンパイルできるか確かめる（警告も失敗として扱う）
     /// @param scratchFile 書く一時ファイル（中間フォルダの中）
-    CompileCheck CheckCompile(ShaderCompiler& compiler, const std::string& hlsl, const std::filesystem::path& scratchFile);
+    CompileCheck CheckCompile(ShaderCompiler& compiler, const std::string& hlsl, const std::filesystem::path& scratchFile,
+        Target target);
 
-    /// @brief 検査コンパイルの一時ファイルの置き場
-    std::filesystem::path ScratchShaderPath(const std::string& key);
+    /// @brief 検査コンパイルの一時ファイルの置き場（`key.PS.hlsl` ／ `key.CS.hlsl`）
+    std::filesystem::path ScratchShaderPath(const std::string& key, Target target);
 
-    /// @brief エラーの文から、HLSL の行番号を拾う（拾えなければ空）
-    std::vector<int> FindErrorLines(const std::string& message);
+    /// @brief エラーの文から、そのファイルの行番号を拾う（拾えなければ空）
+    std::vector<int> FindErrorLines(const std::string& message, const std::filesystem::path& file);
 
     /// @brief 保存の結果
     struct SaveResult
@@ -74,6 +84,9 @@ namespace CoreEngine::Editor::ShaderGraph
     /// @return 作れたら true
     bool CreateGraph(const std::filesystem::path& folder, const std::string& name, Target target,
         std::filesystem::path* created, std::string* error);
+
+    /// @brief グラフのシェーダを指す .mat のフルパス（パスの順）
+    std::vector<std::filesystem::path> FindGraphMaterials(const std::filesystem::path& graphFile, Target target);
 
     /// @brief グラフのシェーダを指す .mat に、足りないプロパティの既定値を足す
     /// @return 書き換えた .mat の数

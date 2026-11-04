@@ -97,6 +97,9 @@ public:
     /// @brief プロジェクトのポストエフェクトを名前で引く（無ければ nullptr）
     ProjectPostEffect* FindProjectEffect(const std::string& name) const;
 
+    /// @brief その名前のエフェクト（エンジンのものとプロジェクトのもの）があるか
+    bool HasEffect(const std::string& name) const { return effects_.contains(name); }
+
     /// @brief マテリアルのパスでプロジェクトのポストエフェクトを引く（無ければ nullptr）
     const ProjectPostEffect* FindProjectEffectByMaterial(const std::string& materialPath) const;
 

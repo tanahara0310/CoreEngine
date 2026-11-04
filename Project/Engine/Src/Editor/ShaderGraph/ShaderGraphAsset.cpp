@@ -23,8 +23,9 @@ namespace CoreEngine::Editor::ShaderGraph
 {
     namespace
     {
-        /// @brief 生成したシェーダの名前の印
+        /// @brief 生成したシェーダの名前の印（スプライト・ポストエフェクト）
         constexpr const wchar_t* kGeneratedSuffix = L".Graph.PS.hlsl";
+        constexpr const wchar_t* kGeneratedComputeSuffix = L".Graph.CS.hlsl";
 
         std::wstring Lower(std::wstring text)
         {
@@ -80,14 +81,58 @@ namespace CoreEngine::Editor::ShaderGraph
         return EndsWith(name, L".shadergraph") || EndsWith(name, L".shadergraph.meta");
     }
 
-    std::filesystem::path GeneratedShaderPath(const std::filesystem::path& graphFile)
+    std::filesystem::path GeneratedShaderPath(const std::filesystem::path& graphFile, Target target)
     {
-        return graphFile.parent_path() / (graphFile.stem().wstring() + kGeneratedSuffix);
+        const wchar_t* const suffix = target == Target::PostEffect ? kGeneratedComputeSuffix : kGeneratedSuffix;
+        return graphFile.parent_path() / (graphFile.stem().wstring() + suffix);
     }
 
     bool IsGeneratedShaderPath(const std::filesystem::path& path)
     {
-        return EndsWith(Lower(path.filename().wstring()), Lower(kGeneratedSuffix));
+        const std::wstring name = Lower(path.filename().wstring());
+        return EndsWith(name, Lower(kGeneratedSuffix)) || EndsWith(name, Lower(kGeneratedComputeSuffix));
+    }
+
+    bool IsComputeShaderPath(const std::filesystem::path& path)
+    {
+        return EndsWith(Lower(path.filename().wstring()), L".cs.hlsl");
+    }
+
+    const wchar_t* ShaderProfile(Target target)
+    {
+        return target == Target::PostEffect ? L"cs_6_0" : L"ps_6_0";
+    }
+
+    IncludeResolver MakeIncludeResolver()
+    {
+        return [](const std::string& file, std::string& includeName, std::string& error) {
+            Logger& log = Logger::GetInstance();
+            const std::filesystem::path path = log.Utf8ToPath(file);
+            const std::wstring name = Lower(path.filename().wstring());
+            if (!EndsWith(name, L".hlsl") && !EndsWith(name, L".hlsli")) {
+                error = "関数のファイルは .hlsl か .hlsli にしてください";
+                return false;
+            }
+            const std::filesystem::path full = ProjectPaths::Resolve(file);
+            std::error_code ec;
+            if (!std::filesystem::exists(full, ec)) {
+                error = "関数のファイル " + file + " がありません";
+                return false;
+            }
+            int same = 0;
+            for (const AssetInfo* info : AssetDatabase::GetInstance().GetAssetsOfType(AssetType::Shader)) {
+                if (Lower(info->fullPath.filename().wstring()) == name) {
+                    ++same;
+                }
+            }
+            if (same > 1) {
+                error = "同じ名前のシェーダのファイル（" + log.PathToUtf8(path.filename())
+                    + "）がほかのフォルダにもあります。名前を変えてください";
+                return false;
+            }
+            includeName = log.PathToUtf8(path.filename());
+            return true;
+        };
     }
 
     std::string ToAssetText(const std::filesystem::path& fullPath)
@@ -139,12 +184,14 @@ namespace CoreEngine::Editor::ShaderGraph
         return true;
     }
 
-    std::filesystem::path ScratchShaderPath(const std::string& key)
+    std::filesystem::path ScratchShaderPath(const std::string& key, Target target)
     {
-        return ProjectPaths::Intermediate("ShaderGraph") / Logger::GetInstance().Utf8ToPath(key + ".PS.hlsl");
+        const char* const suffix = target == Target::PostEffect ? ".CS.hlsl" : ".PS.hlsl";
+        return ProjectPaths::Intermediate("ShaderGraph") / Logger::GetInstance().Utf8ToPath(key + suffix);
     }
 
-    CompileCheck CheckCompile(ShaderCompiler& compiler, const std::string& hlsl, const std::filesystem::path& scratchFile)
+    CompileCheck CheckCompile(ShaderCompiler& compiler, const std::string& hlsl, const std::filesystem::path& scratchFile,
+        Target target)
     {
         CompileCheck check;
         if (!WriteFileReplacing(scratchFile, hlsl)) {
@@ -153,7 +200,7 @@ namespace CoreEngine::Editor::ShaderGraph
         }
         std::string error;
         std::string warning;
-        const auto blob = compiler.CompileForCooking(scratchFile.wstring(), L"ps_6_0", L"main", error, &warning);
+        const auto blob = compiler.CompileForCooking(scratchFile.wstring(), ShaderProfile(target), L"main", error, &warning);
         if (!blob) {
             check.message = error;
             return check;
@@ -166,10 +213,10 @@ namespace CoreEngine::Editor::ShaderGraph
         return check;
     }
 
-    std::vector<int> FindErrorLines(const std::string& message)
+    std::vector<int> FindErrorLines(const std::string& message, const std::filesystem::path& file)
     {
         std::vector<int> lines;
-        const std::string marker = ".PS.hlsl:";
+        const std::string marker = Logger::GetInstance().PathToUtf8(file.filename()) + ":";
         size_t position = 0;
         while ((position = message.find(marker, position)) != std::string::npos) {
             position += marker.size();
@@ -198,17 +245,18 @@ namespace CoreEngine::Editor::ShaderGraph
 
         GenerateOptions options;
         options.sourcePath = ToAssetText(graphFile);
+        options.resolveInclude = MakeIncludeResolver();
         result.generated = Generate(graph, options);
         if (!result.generated.fatal.empty()) {
             result.error = result.generated.fatal;
             return result;
         }
 
-        const std::filesystem::path shaderFile = GeneratedShaderPath(graphFile);
+        const std::filesystem::path shaderFile = GeneratedShaderPath(graphFile, graph.target);
         if (ReadText(shaderFile) != result.generated.hlsl) {
             const std::string key = AssetDatabase::GetInstance().GetGUID(graphFile);
             const CompileCheck check = CheckCompile(compiler, result.generated.hlsl,
-                ScratchShaderPath((key.empty() ? std::string("graph") : key) + ".save"));
+                ScratchShaderPath((key.empty() ? std::string("graph") : key) + ".save", graph.target), graph.target);
             if (!check.ok) {
                 result.error = check.message;
                 return result;
@@ -239,7 +287,7 @@ namespace CoreEngine::Editor::ShaderGraph
         Logger& log = Logger::GetInstance();
         const std::filesystem::path base = folder.is_absolute() ? folder : ProjectPaths::Resolve(log.PathToUtf8(folder));
         const std::filesystem::path graphFile = base / log.Utf8ToPath(name + kGraphExtension);
-        const std::filesystem::path shaderFile = GeneratedShaderPath(graphFile);
+        const std::filesystem::path shaderFile = GeneratedShaderPath(graphFile, target);
         const std::filesystem::path materialFile = base / log.Utf8ToPath(name + ".mat");
         if (std::filesystem::exists(graphFile)) {
             return fail("同じ名前のグラフがあります。");
@@ -282,20 +330,29 @@ namespace CoreEngine::Editor::ShaderGraph
         return true;
     }
 
-    int SyncMaterials(const std::filesystem::path& graphFile, const Graph& graph)
+    std::vector<std::filesystem::path> FindGraphMaterials(const std::filesystem::path& graphFile, Target target)
     {
-        const std::string shaderText = ToAssetText(GeneratedShaderPath(graphFile));
-        int updated = 0;
+        const std::string shaderText = ToAssetText(GeneratedShaderPath(graphFile, target));
+        std::vector<std::filesystem::path> materials;
         for (const AssetInfo* info : AssetDatabase::GetInstance().GetAssetsOfType(AssetType::Material)) {
             if (info->fullPath.extension() != ".mat") {
                 continue;
             }
             std::string shader;
             std::string vertexShader;
-            if (!ShaderMaterial::ReadShaderPaths(info->fullPath, shader, vertexShader) || shader != shaderText) {
-                continue;
+            if (ShaderMaterial::ReadShaderPaths(info->fullPath, shader, vertexShader) && shader == shaderText) {
+                materials.push_back(info->fullPath);
             }
-            const std::shared_ptr<ShaderMaterial> material = ShaderMaterialLibrary::GetInstance().Get(ToAssetText(info->fullPath));
+        }
+        std::sort(materials.begin(), materials.end());
+        return materials;
+    }
+
+    int SyncMaterials(const std::filesystem::path& graphFile, const Graph& graph)
+    {
+        int updated = 0;
+        for (const std::filesystem::path& file : FindGraphMaterials(graphFile, graph.target)) {
+            const std::shared_ptr<ShaderMaterial> material = ShaderMaterialLibrary::GetInstance().Get(ToAssetText(file));
             if (!material) {
                 continue;
             }

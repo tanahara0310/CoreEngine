@@ -22,17 +22,18 @@ namespace CoreEngine::Editor::ShaderGraph
         void Add(std::vector<SelfTestCase>& cases, const Graph& graph, const std::string& name, int previewNode,
             std::string_view previewPin)
         {
+            const std::string fullName = (graph.target == Target::PostEffect ? "Post_" : "") + name;
             GenerateOptions options;
-            options.sourcePath = "SelfTest/" + name + ".shadergraph";
+            options.sourcePath = "SelfTest/" + fullName + ".shadergraph";
             options.previewNode = previewNode;
             options.previewPin = std::string(previewPin);
-            cases.push_back(SelfTestCase{ name, Generate(graph, options) });
+            cases.push_back(SelfTestCase{ fullName, graph.target, Generate(graph, options) });
         }
 
         /// @brief 試すノードを 1 つ置き、Dynamic の入力へ幅 width の定数をつなぐ（0 ならつながない）
-        Graph MakeNodeGraph(const NodeDesc& desc, int width)
+        Graph MakeNodeGraph(Target target, const NodeDesc& desc, int width)
         {
-            Graph graph = MakeEmptyGraph(Target::Sprite);
+            Graph graph = MakeEmptyGraph(target);
             Node node;
             node.id = kTestNode;
             node.type = std::string(desc.type);
@@ -62,20 +63,20 @@ namespace CoreEngine::Editor::ShaderGraph
         }
     }
 
-    std::vector<SelfTestCase> BuildSelfTestCases()
+    /// @brief 目標 1 つ分の検査のグラフを足す
+    static void AddTargetCases(std::vector<SelfTestCase>& cases, Target target)
     {
-        std::vector<SelfTestCase> cases;
-        Add(cases, MakeEmptyGraph(Target::Sprite), "Empty", 0, "");
+        Add(cases, MakeEmptyGraph(target), "Empty", 0, "");
 
         for (const NodeDesc& desc : AllNodes()) {
-            if (!desc.creatable) {
+            if (!desc.creatable || !desc.Supports(target)) {
                 continue;
             }
             const bool hasDynamic = std::any_of(desc.inputs.begin(), desc.inputs.end(),
                 [](const PinDesc& pin) { return pin.type == ValueType::Dynamic; });
             const int maxWidth = hasDynamic ? 4 : 0;
             for (int width = 0; width <= maxWidth; ++width) {
-                const Graph base = MakeNodeGraph(desc, width);
+                const Graph base = MakeNodeGraph(target, desc, width);
                 for (size_t output = 0; output < desc.outputs.size(); ++output) {
                     const PinDesc& pin = desc.outputs[output];
                     const std::string name = std::string(desc.type) + "_w" + std::to_string(width) + "_o" + std::to_string(output);
@@ -104,7 +105,7 @@ namespace CoreEngine::Editor::ShaderGraph
         // プロパティの種類ごと（1 つずつと、全種類を足し合わせたもの）
         constexpr PropertyType kTypes[] = { PropertyType::Float, PropertyType::Vector2, PropertyType::Vector3,
             PropertyType::Vector4, PropertyType::Color, PropertyType::Texture2D };
-        Graph all = MakeEmptyGraph(Target::Sprite);
+        Graph all = MakeEmptyGraph(target);
         int nextId = 2;
         int sum = 0;
         for (const PropertyType type : kTypes) {
@@ -114,7 +115,7 @@ namespace CoreEngine::Editor::ShaderGraph
             property.type = type;
             all.properties.push_back(property);
 
-            Graph single = MakeEmptyGraph(Target::Sprite);
+            Graph single = MakeEmptyGraph(target);
             single.properties.push_back(property);
             Node node;
             node.id = kTestNode;
@@ -166,6 +167,31 @@ namespace CoreEngine::Editor::ShaderGraph
         }
         Connect(all, sum, "Out", 1, "Base Color");
         Add(cases, all, "Property_All", 0, "");
+
+        // Custom Function（全部の種類のピン・同じ関数を 2 つのノードで使う）
+        Graph function = MakeEmptyGraph(target);
+        for (const int id : { kTestNode, kTestNode + 1 }) {
+            Node node;
+            node.id = id;
+            node.type = std::string(kCustomFunctionType);
+            node.settings["Name"] = "SelfTestFunction";
+            node.settings["Inputs"] = "Float a;Vector2 b;Vector3 c;Vector4 d;Texture2D t;SamplerState s";
+            node.settings["Outputs"] = "Float x;Vector2 y;Vector3 z;Vector4 w";
+            node.settings["Body"] = "x = a;\ny = b;\n\nz = c + t.SampleLevel(s, b, 0.0f).rgb;\nw = d;";
+            function.nodes.push_back(node);
+        }
+        Connect(function, kTestNode, "z", kTestNode + 1, "c");
+        Connect(function, kTestNode + 1, "z", 1, "Base Color");
+        Connect(function, kTestNode, "x", 1, "Alpha");
+        Add(cases, function, "CustomFunction_All", 0, "");
+    }
+
+    std::vector<SelfTestCase> BuildSelfTestCases()
+    {
+        std::vector<SelfTestCase> cases;
+        for (const Target target : { Target::Sprite, Target::PostEffect }) {
+            AddTargetCases(cases, target);
+        }
         return cases;
     }
 }

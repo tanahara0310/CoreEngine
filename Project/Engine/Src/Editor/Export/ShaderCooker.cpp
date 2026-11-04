@@ -12,6 +12,7 @@
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Utility/Logger/Logger.h"
 
+#include <cctype>
 #include <format>
 #include <fstream>
 #include <memory>
@@ -23,12 +24,28 @@ namespace CoreEngine::Editor
     {
         /// @brief Windows で扱えるパスの長さの上限（終端の文字を除く）
         constexpr size_t kMaxPathLength = 259;
+
+        /// @brief 名前が .CS.hlsl で終わるか（大文字と小文字は区別しない）
+        bool IsComputeShaderName(const std::string& path)
+        {
+            constexpr std::string_view kSuffix = ".cs.hlsl";
+            if (path.size() < kSuffix.size()) {
+                return false;
+            }
+            for (size_t index = 0; index < kSuffix.size(); ++index) {
+                const char c = path[path.size() - kSuffix.size() + index];
+                if (std::tolower(static_cast<unsigned char>(c)) != kSuffix[index]) {
+                    return false;
+                }
+            }
+            return true;
+        }
     }
 
     std::vector<ShaderManifest::Entry> ShaderCooker::PlanTargets()
     {
         // 一度も描いていないマテリアルのシェーダも入れる（.mat が指すピクセルシェーダと頂点シェーダ。
-        // プロジェクトのポストエフェクトのマテリアルはコンピュートシェーダ）
+        // プロジェクトのポストエフェクトのマテリアルと、名前が .CS.hlsl で終わるシェーダはコンピュートシェーダ）
         const std::vector<ShaderManifest::Entry> recorded = ShaderManifest::GetInstance().Collect();
         std::set<ShaderManifest::Entry> targets(recorded.begin(), recorded.end());
         Logger& log = Logger::GetInstance();
@@ -45,7 +62,7 @@ namespace CoreEngine::Editor
                 || shaderPath.empty()) {
                 continue;
             }
-            if (postEffectMaterials.contains(ToAssetPath(*info))) {
+            if (postEffectMaterials.contains(ToAssetPath(*info)) || IsComputeShaderName(shaderPath)) {
                 targets.insert({ log.Utf8ToPath(shaderPath).generic_wstring(), L"cs_6_0", L"main" });
                 continue;
             }

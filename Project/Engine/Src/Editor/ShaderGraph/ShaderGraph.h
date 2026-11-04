@@ -34,8 +34,15 @@ namespace CoreEngine::Editor::ShaderGraph
     /// @brief グラフの出口の種類
     enum class Target : uint8_t
     {
-        Sprite, ///< スプライトと UI 画像
+        Sprite,     ///< スプライトと UI 画像（ピクセルシェーダ）
+        PostEffect, ///< プロジェクトのポストエフェクト（コンピュートシェーダ）
     };
+
+    /// @brief 出口の種類の名前（ファイルに書く綴り）
+    const char* ToString(Target target);
+
+    /// @brief 出口の種類の表示名
+    const char* DisplayName(Target target);
 
     /// @brief Blackboard のプロパティの種類
     enum class PropertyType : uint8_t
@@ -140,6 +147,10 @@ namespace CoreEngine::Editor::ShaderGraph
 
     /// @brief グラフを JSON にする
     json WriteGraph(const Graph& graph);
+
+    /// @brief シェーダの名前（プロパティ・関数・関数の引数）として使えるか
+    /// @param error 使えない訳
+    bool IsValidIdentifier(std::string_view name, std::string* error);
 
     /// @brief プロパティの名前として使えるか
     /// @param error 使えない訳

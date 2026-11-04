@@ -15,13 +15,35 @@ namespace CoreEngine::Editor::ShaderGraph
     /// @brief つながっていない入力が使うもの
     enum class PinBinding : uint8_t
     {
-        Value,       ///< ノードに書いた値
-        UV,          ///< 描いている面の UV
-        MainTexture, ///< 部品のテクスチャ（`gTexture`）
-        Sampler,     ///< 線形・繰り返しのサンプラー
-        SpriteRGB,   ///< マテリアルなしと同じ色の RGB
-        SpriteAlpha, ///< マテリアルなしと同じ色の A
+        Value,        ///< ノードに書いた値
+        UV,           ///< 描いている面の UV（ポストエフェクトは画面の UV）
+        MainTexture,  ///< 部品のテクスチャ（ポストエフェクトは画面。どちらも `gTexture`）
+        Sampler,      ///< 線形・繰り返しのサンプラー
+        DefaultRGB,   ///< 既定の色の RGB（スプライトはマテリアルなしと同じ色・ポストエフェクトはそのままの画面）
+        DefaultAlpha, ///< 既定の色の A
     };
+
+    /// @brief 目標ごとの印（`NodeDesc::targets` に重ねる）
+    constexpr uint8_t TargetBit(Target target)
+    {
+        return static_cast<uint8_t>(1u << static_cast<uint8_t>(target));
+    }
+
+    /// @brief 全部の目標
+    inline constexpr uint8_t kAllTargets = TargetBit(Target::Sprite) | TargetBit(Target::PostEffect);
+
+    /// @brief Custom Function のノードの種類
+    inline constexpr std::string_view kCustomFunctionType = "CustomFunction";
+
+    /// @brief Custom Function のピン 1 つ（`型 名前`）
+    struct FunctionPin
+    {
+        ValueType type = ValueType::Float;
+        std::string name;
+    };
+
+    /// @brief Custom Function の入力・出力の数の上限（それぞれ）
+    inline constexpr size_t kMaxFunctionPins = 16;
 
     /// @brief ピン 1 つの定義
     struct PinDesc
@@ -43,6 +65,17 @@ namespace CoreEngine::Editor::ShaderGraph
 
     struct NodeDesc;
 
+    /// @brief 関数の外（main の前）に置く文 1 つ
+    struct GlobalCode
+    {
+        std::string key;  ///< 同じ key の文は 1 回だけ置く（中身が違えばエラー）
+        std::string code;
+    };
+
+    /// @brief Custom Function のファイル（`Application/Assets/…`）を include の名前へ直す
+    /// @return 直せなければ false（error に訳）
+    using IncludeResolver = std::function<bool(const std::string& file, std::string& includeName, std::string& error)>;
+
     /// @brief ノードの HLSL を作るときに渡すもの
     struct EmitArgs
     {
@@ -61,6 +94,9 @@ namespace CoreEngine::Editor::ShaderGraph
 
         std::string code;  ///< 足す文
         std::string error; ///< 作れなかった訳（空なら作れた）
+
+        std::vector<GlobalCode> globals; ///< 関数の外に置く文
+        IncludeResolver resolveInclude;  ///< Custom Function のファイルの include の名前を決める（空ならファイル名）
 
         /// @brief 出力の変数の名前
         std::string VariableName(size_t output) const;
@@ -83,6 +119,10 @@ namespace CoreEngine::Editor::ShaderGraph
         std::vector<PinDesc> outputs;
         std::vector<SettingDesc> settings;
         bool creatable = true; ///< 検索から置けるか（出口は置けない）
+        uint8_t targets = kAllTargets; ///< 使える目標（`TargetBit` を重ねたもの）
+
+        /// @brief この目標で使えるか
+        bool Supports(Target target) const { return (targets & TargetBit(target)) != 0; }
 
         /// @brief HLSL を作る
         std::function<void(EmitArgs&)> emit;
@@ -101,7 +141,26 @@ namespace CoreEngine::Editor::ShaderGraph
     const std::vector<NodeDesc>& AllNodes();
 
     /// @brief 種類の名前からノードの定義を引く（無ければ nullptr）
+    /// @note Custom Function は既定のピンの定義を返す。置いたノードには `FindNodeDesc(const Node&)` を使う
     const NodeDesc* FindNodeDesc(std::string_view type);
+
+    /// @brief 置いたノードの定義を引く（Custom Function はノードの設定のピンで作った定義。無ければ nullptr）
+    const NodeDesc* FindNodeDesc(const Node& node);
+
+    /// @brief ピンの種類の名前（Custom Function の設定に書く綴り）
+    const char* ToString(ValueType type);
+
+    /// @brief ピンの種類の名前を読む（Float・Vector2〜4・Texture2D・SamplerState）
+    bool ParseValueType(std::string_view text, ValueType& type);
+
+    /// @brief Custom Function のピンの並び（`型 名前;型 名前`）を読む（読めない項目は飛ばす）
+    std::vector<FunctionPin> ParseFunctionPins(std::string_view text);
+
+    /// @brief Custom Function のピンの並びを設定の文字にする
+    std::string FormatFunctionPins(const std::vector<FunctionPin>& pins);
+
+    /// @brief Sampler State の選択肢（Linear Repeat など）を目標のサンプラーの名前へ直す（その目標に無ければ空）
+    std::string SamplerName(Target target, std::string_view filter);
 
     /// @brief 幅から HLSL の型名（float〜float4）
     std::string TypeName(int width);

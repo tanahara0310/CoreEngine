@@ -23,21 +23,17 @@ namespace CoreEngine::Editor::ShaderGraph
             "SamplerState", "ConstantBuffer", "main", "IN", "input", "output",
             "gMaterial", "gTexture", "gSampler", "gPointSampler", "gClampSampler", "gWrapSampler",
             "gSpriteDraw", "gSpriteTransform", "gOutput", "gPostEffect", "baseColor", "alpha",
+            "id", "GraphInput", "GraphProperties", "SpriteUV", "SampleSprite", "SpriteColor", "SpriteDefaultColor",
+            "IsOutsideScreen", "PostEffectUV", "LoadScreen", "SampleScreen",
         };
-
-        const char* ToString(Target target)
-        {
-            switch (target) {
-            case Target::Sprite: return "Sprite";
-            }
-            return "Sprite";
-        }
 
         bool ParseTarget(const std::string& text, Target& target)
         {
-            if (text == "Sprite") {
-                target = Target::Sprite;
-                return true;
+            for (const Target candidate : { Target::Sprite, Target::PostEffect }) {
+                if (text == ToString(candidate)) {
+                    target = candidate;
+                    return true;
+                }
             }
             return false;
         }
@@ -82,6 +78,24 @@ namespace CoreEngine::Editor::ShaderGraph
             }
             return array;
         }
+    }
+
+    const char* ToString(Target target)
+    {
+        switch (target) {
+        case Target::Sprite: return "Sprite";
+        case Target::PostEffect: return "PostEffect";
+        }
+        return "Sprite";
+    }
+
+    const char* DisplayName(Target target)
+    {
+        switch (target) {
+        case Target::Sprite: return "スプライト／UI 画像";
+        case Target::PostEffect: return "ポストエフェクト";
+        }
+        return "スプライト／UI 画像";
     }
 
     const char* ToString(PropertyType type)
@@ -410,6 +424,11 @@ namespace CoreEngine::Editor::ShaderGraph
     }
 
     bool IsValidPropertyName(std::string_view name, std::string* error)
+    {
+        return IsValidIdentifier(name, error);
+    }
+
+    bool IsValidIdentifier(std::string_view name, std::string* error)
     {
         const auto fail = [error](std::string message) {
             if (error) {
