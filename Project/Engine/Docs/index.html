@@ -5935,10 +5935,10 @@ kbd {
     <thead><tr><th>欄</th><th>意味</th></tr></thead>
     <tbody>
       <tr><td><span class="ui">種類</span></td><td><code>String</code> ＝ 関数の中身をここに書く ／ <code>File</code> ＝ <span class="path">.hlsl</span> か <span class="path">.hlsli</span> のファイルに書いた関数を呼ぶ</td></tr>
-      <tr><td><span class="ui">名前</span></td><td>関数の名前。呼ぶのは <code>名前_float</code> です（Unity と同じ）。英字か <code>_</code> で始め、英数字と <code>_</code> だけ。</td></tr>
+      <tr><td><span class="ui">関数の名前</span></td><td>呼ぶのは <code>関数の名前_float</code> です（Unity と同じ）。英字か <code>_</code> で始め、英数字と <code>_</code> だけ。ピンの名前ではありません。</td></tr>
+      <tr><td><span class="ui">入力</span> ／ <span class="ui">出力</span></td><td>ピンの種類と名前を、それぞれ 16 個まで。<span class="ui">入力を足す</span> ／ <span class="ui">出力を足す</span> で行を足し、名前を書き換えて Enter を押すか、ほかをクリックすると決まります。入力は Float・Vector 2〜4・Texture 2D・Sampler State、出力は数（Float・Vector 2〜4）だけです。名前を変えると、つないだ線もそのまま付いていきます。</td></tr>
       <tr><td><span class="ui">中身</span>（String）</td><td>関数の <code>{ }</code> の中。入力と出力の名前をそのまま変数として使い、出力には全部値を入れます。</td></tr>
       <tr><td><span class="ui">ファイル</span>（File）</td><td><span class="path">Application/…</span> のファイル。一覧から選べます。ファイルを保存すると、グラフを自分で検査し直します。</td></tr>
-      <tr><td><span class="ui">入力</span> ／ <span class="ui">出力</span></td><td>ピンの種類と名前を、それぞれ 16 個まで。入力は Float・Vector 2〜4・Texture 2D・Sampler State、出力は数（Float・Vector 2〜4）だけです。名前を変えると、つないだ線もそのまま付いていきます。</td></tr>
     </tbody>
   </table>
   </div>

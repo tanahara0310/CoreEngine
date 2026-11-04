@@ -1793,19 +1793,23 @@ namespace CoreEngine::Editor::ShaderGraph
             ImGui::SetTooltip("String ＝ 中身をここに書く ／ File ＝ .hlsl か .hlsli に書いた関数を呼ぶ");
         }
 
-        Row("名前");
+        Row("関数の名前");
         std::string name = setting("Name", "MyFunction");
         if (UI::InputString("##name", name)) {
             node.settings["Name"] = name;
             document.pendingLabel = "関数の名前を変える";
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("呼ぶ関数は「名前_float」です（Unity と同じ）");
+            ImGui::SetTooltip("呼ぶ関数は「関数の名前_float」です（Unity と同じ）。ピンの名前は下の入力と出力で決めます");
         }
 
+        DrawFunctionPins(document, node, true);
+        DrawFunctionPins(document, node, false);
+
         if (setting("Type", "String") == "File") {
+            ImGui::SeparatorText("ファイル");
             std::string file = setting("File", "");
-            Row("ファイル");
+            ImGui::SetNextItemWidth(-FLT_MIN);
             if (UI::InputStringWithHint("##file", "Application/Assets/…/MyFunction.hlsl", file)) {
                 node.settings["File"] = file;
                 document.pendingLabel = "関数のファイルを変える";
@@ -1829,7 +1833,7 @@ namespace CoreEngine::Editor::ShaderGraph
             DimText("ファイルに「void " + name + "_float(入力…, out 出力…)」を書いてください。"
                     "ファイルを保存すると、自分で作り直します。");
         } else {
-            ImGui::TextUnformatted("中身");
+            ImGui::SeparatorText("中身");
             std::string body = setting("Body", "Out = In;");
             const float height = ImGui::GetTextLineHeight() * 8.0f;
             if (UI::InputStringMultiline("##body", body, ImVec2(-FLT_MIN, height), ImGuiInputTextFlags_AllowTabInput)) {
@@ -1838,9 +1842,6 @@ namespace CoreEngine::Editor::ShaderGraph
             }
             DimText("入力と出力の名前をそのまま変数として使えます。出力にはすべて値を入れてください。");
         }
-
-        DrawFunctionPins(document, node, true);
-        DrawFunctionPins(document, node, false);
     }
 
     void ShaderGraphEditor::DrawFunctionPins(Document& document, Node& node, bool inputs)
@@ -1876,7 +1877,9 @@ namespace CoreEngine::Editor::ShaderGraph
             ImGui::SameLine();
             ImGui::SetNextItemWidth(-ImGui::GetFrameHeight() - ImGui::GetStyle().ItemSpacing.x);
             std::string pinName = pin.name;
-            if (UI::InputString("##name", pinName, ImGuiInputTextFlags_EnterReturnsTrue) && pinName != pin.name) {
+            const bool entered = UI::InputString("##name", pinName, ImGuiInputTextFlags_EnterReturnsTrue);
+            const bool committed = entered || ImGui::IsItemDeactivatedAfterEdit();
+            if (committed && pinName != pin.name) {
                 std::string nameError;
                 bool duplicate = false;
                 for (const FunctionPin& other : pins) {
@@ -1893,7 +1896,7 @@ namespace CoreEngine::Editor::ShaderGraph
                 }
             }
             if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("Enter で決めます");
+                ImGui::SetTooltip("Enter を押すか、ほかをクリックすると決まります");
             }
             ImGui::SameLine();
             if (ImGui::Button("×", ImVec2(ImGui::GetFrameHeight(), 0.0f))) {
@@ -2064,7 +2067,9 @@ namespace CoreEngine::Editor::ShaderGraph
 
         Row("名前");
         std::string name = property.name;
-        if (UI::InputString("##name", name, ImGuiInputTextFlags_EnterReturnsTrue) && name != property.name) {
+        const bool entered = UI::InputString("##name", name, ImGuiInputTextFlags_EnterReturnsTrue);
+        const bool committed = entered || ImGui::IsItemDeactivatedAfterEdit();
+        if (committed && name != property.name) {
             std::string error;
             if (!IsValidPropertyName(name, &error)) {
                 document.notice = "名前を変えませんでした: " + error;
@@ -2078,7 +2083,7 @@ namespace CoreEngine::Editor::ShaderGraph
             }
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("シェーダの変数と .mat のキーに使う名前（Enter で決めます）");
+            ImGui::SetTooltip("シェーダの変数と .mat のキーに使う名前（Enter を押すか、ほかをクリックすると決まります）");
         }
 
         Row("表示名");
