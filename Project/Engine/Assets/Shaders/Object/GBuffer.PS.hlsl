@@ -1,78 +1,19 @@
-#include "Object3d.hlsli"
-#include "../Include/Object/ObjectMaterial.hlsli"
-
-// ハイブリッドレンダリングの GBuffer 書き込み専用シェーダー。
-// 不透明モデル（BlendMode::None）の全てのメッシュがこのパスを通る。
+// 不透明モデル（BlendMode::None）の GBuffer 書き込み。材質は ModelSurface.hlsli の既定の値のまま
 // ライティングは DeferredLighting.PS.hlsl で行う。
-// マテリアル定義とサンプリングヘルパーは ObjectMaterial.hlsli と共有する。
+
+#define MODEL_SURFACE_CUSTOM_ENTRY_POINTS
+#include "ModelSurface.hlsli"
 
 // 1 = 動く物（スキンメッシュ）。GBufferSkinning.PS.hlsl が 1 にして include する
 #ifndef GBUFFER_MOVING_OBJECT
 #define GBUFFER_MOVING_OBJECT 0
 #endif
 
-struct GBufferOutput
+void Surface(SurfaceInput IN, inout SurfaceOutput OUT)
 {
-    float4 albedoAO : SV_TARGET0; ///< rgb=アルベド, a=AO
-    float4 normalRoughness : SV_TARGET1; ///< rgb=ワールド法線(エンコード済み), a=ラフネス（0=アンリット）
-    float4 emissiveMetallic : SV_TARGET2; ///< rgb=エミッシブ, a=メタリック
-    float4 motionVector : SV_TARGET3; ///< rg=モーションベクター（NDC空間の2Dオフセット）, b=水面フラグ（0）, a=動く物（1）
-};
+}
 
 GBufferOutput main(VertexShaderOutput input)
 {
-    GBufferOutput output;
-
-    float4 transformedUV = mul(float4(input.texcoord, 0.0f, 1.0f), gMaterial.uvTransform);
-    float2 uv = transformedUV.xy;
-    float4 textureColor = gTexture.Sample(gSampler, uv);
-    float finalAlpha = gMaterial.color.a * textureColor.a;
-
-    // アルファカット（ディザリング or 通常テスト）— Forward パスと共通判定
-    if (ShouldDiscardByAlpha(finalAlpha, input.position.xy))
-    {
-        discard;
-    }
-
-    float3 albedo = saturate((gMaterial.color * textureColor).rgb);
-
-    // ===== モーションベクター計算 =====
-    // NDC空間（-1〜1）での現フレームと前フレームの位置差分を格納する。
-    // TAA・SSAO テンポラル・RTShadow が前フレームの画素を逆算して再投影するために使う。
-    float2 ndcCurrent = input.clipPosCurrent.xy / input.clipPosCurrent.w;
-    float2 ndcPrev = input.clipPosPrev.xy / input.clipPosPrev.w;
-    output.motionVector = float4(ndcCurrent - ndcPrev, 0.0f, (float)GBUFFER_MOVING_OBJECT);
-
-    // ===== アンリットマテリアル処理 =====
-    // enableLighting=0 の場合、DeferredLighting パスに roughness=0 のセンチネル値を書き込む。
-    // emissiveMetallic.rgb にアンリットカラーを格納し、DeferredLighting 側で検出して PBR をスキップする。
-    if (gMaterial.enableLighting == 0)
-    {
-        output.albedoAO = float4(0.0f, 0.0f, 0.0f, 1.0f);
-        output.normalRoughness = float4(0.5f, 0.5f, 1.0f, 0.0f); // roughness=0 = アンリットセンチネル
-        output.emissiveMetallic = float4(albedo, 0.0f); // rgb にアンリットカラーを格納
-        return output;
-    }
-
-    // ===== PBR パス（常にここに到達） =====
-    float3 worldNormal = GetNormalFromMap(input.normal, input.tangent, input.bitangent, uv);
-    float3 encodedNormal = worldNormal * 0.5f + 0.5f;
-
-    float metallic = 0.0f;
-    float roughness = 1.0f;
-    float ao = 1.0f;
-    GetPBRParameters(uv, metallic, roughness, ao);
-
-    metallic = saturate(metallic);
-    roughness = saturate(max(roughness, 0.01f));
-    ao = saturate(ao);
-
-    // エミッシブ（DeferredLighting が最終カラーに加算する）
-    float3 emissive = GetEmissive(uv);
-
-    output.albedoAO = float4(albedo, ao);
-    output.normalRoughness = float4(encodedNormal, roughness);
-    output.emissiveMetallic = float4(emissive, metallic);
-
-    return output;
+    return SurfaceGBuffer(input, (float)GBUFFER_MOVING_OBJECT);
 }
