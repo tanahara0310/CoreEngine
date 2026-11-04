@@ -138,7 +138,7 @@ namespace CoreEngine
 
     /// @brief マテリアルのシェーダの組み合わせごとにパイプラインを 1 つずつ持つ
     /// @details シェーダのファイルが変わったら（`ShaderMaterialLibrary` の番号が進んだら）組み直す。
-    ///          組み直しに失敗したら前のパイプラインを使い続ける。
+    ///          組み直しに失敗したら、次に組み直せるまで nullptr を返す。
     ///          組み直した古いパイプラインは、描画中のフレームが使っているかもしれないので捨てずに持つ。
     class ShaderMaterialPipelineCache
     {

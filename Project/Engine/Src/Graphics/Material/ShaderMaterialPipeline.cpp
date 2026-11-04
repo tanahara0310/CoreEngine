@@ -303,14 +303,14 @@ namespace CoreEngine
         entry.shaderRevision = revision;
 
         auto pipeline = std::make_unique<ShaderMaterialPipeline>();
-        if (!pipeline->Build(device, compiler, reflectionBuilder,
-                material.GetShaderPath(), material.GetVertexShaderPath(), target_)) {
-            return entry.pipeline.get();
-        }
+        const bool built = pipeline->Build(device, compiler, reflectionBuilder,
+            material.GetShaderPath(), material.GetVertexShaderPath(), target_);
         if (entry.pipeline) {
             retired_.push_back(std::move(entry.pipeline));
         }
-        entry.pipeline = std::move(pipeline);
+        if (built) {
+            entry.pipeline = std::move(pipeline);
+        }
         return entry.pipeline.get();
     }
 }

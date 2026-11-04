@@ -5840,7 +5840,7 @@ kbd {
 
   <h2 id="material3d-notes">描けないときと注意</h2>
   <ul>
-    <li>シェーダをコンパイルできないとき、.mat を読めないとき、.mat が <span class="path">.Surface.hlsl</span> でないシェーダを指しているときは、そのモデルをマゼンタで描き、コンソールに訳を出します。描けていたシェーダを直している途中でコンパイルできなくなったときは、前の見た目のまま描きます。</li>
+    <li>シェーダをコンパイルできないとき、.mat を読めないとき、.mat が <span class="path">.Surface.hlsl</span> でないシェーダを指しているときは、そのモデルをマゼンタで描き、コンソールに訳を出します。描けていたシェーダを書き換えてコンパイルできなくなったときも、直して保存するまでマゼンタで描きます。</li>
     <li><span class="path">.Surface.hlsl</span> のシェーダは、スプライト描画と UI 画像には付けられません。</li>
     <li>水面のように C++ のシェーダを持つメッシュ描画では、マテリアルの欄を使いません。</li>
     <li>水面の映り込み・屈折と、レイトレーシングの影は、<code>Surface()</code> の結果を使いません（モデルの形・テクスチャ・マテリアルの値で決まります）。</li>
@@ -10496,7 +10496,7 @@ python Tools/OkinawaBeach/bake_araha_walk.py
     <li><strong>スクリプト</strong>：メッシュ描画に <code>material</code> と、1 つのモデルだけ値を変える <code>SetMaterialFloat</code>・<code>SetMaterialInt</code>・<code>SetMaterialVector</code>・<code>SetMaterialTexture</code>・<code>ClearMaterialOverrides</code>・<code>GetMaterialFloat</code>・<code>GetMaterialVector</code> を足しました。</li>
     <li><strong>マテリアルを作成</strong>：<span class="ui">マテリアルを作成...</span> で付ける先（スプライト／UI 画像か 3D モデル）を選べるようにしました。3D モデルを選ぶと、縁を光らせる雛形 <span class="path">名前.Surface.hlsl</span> を作ります。</li>
     <li><strong>Project からのドラッグ</strong>：Project の項目は、押して離したときに選ぶようにしました。ドラッグして Inspector の欄へ落とすあいだ、Inspector が落とした項目に切り替わりません。</li>
-    <li><strong>描けないとき</strong>：3D モデルのマテリアルのシェーダをコンパイルできないときは、エディタを止めずにモデルをマゼンタで描き、コンソールに訳を出します。スプライトと UI 画像のマテリアルのシェーダも、コンパイルできないときに止まらないようにしました。</li>
+    <li><strong>描けないとき</strong>：3D モデルのマテリアルのシェーダをコンパイルできないときは、エディタを止めずにモデルをマゼンタで描き、コンソールに訳を出します。前に描けていたシェーダを書き換えてコンパイルできなくなったときも、直して保存するまでマゼンタです。スプライトと UI 画像のマテリアルのシェーダも、コンパイルできないときに止まらず、前の見た目のままでなくマゼンタで描くようにしました。</li>
     <li><strong>書き出し</strong>：ゲームを書き出すとき、<span class="path">.Surface.hlsl</span> の 3 つの入口を DXIL にして入れます。</li>
   </ul>
 

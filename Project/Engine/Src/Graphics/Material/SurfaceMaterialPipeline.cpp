@@ -195,13 +195,12 @@ namespace CoreEngine
 
         auto pipeline = std::make_unique<SurfaceMaterialPipeline>(device_, *compiler_, *reflectionBuilder_, shaderPath);
         const bool built = pipeline->Build() && (!entry.pipeline || pipeline->BuildVariantsUsedBy(*entry.pipeline));
-        if (!built) {
-            return entry.pipeline.get();
-        }
         if (entry.pipeline) {
             retired_.push_back(std::move(entry.pipeline));
         }
-        entry.pipeline = std::move(pipeline);
+        if (built) {
+            entry.pipeline = std::move(pipeline);
+        }
         return entry.pipeline.get();
     }
 }
