@@ -12,6 +12,9 @@
 
 namespace CoreEngine
 {
+    /// @brief 3D モデル用のマテリアルのシェーダ（`名前.Surface.hlsl`）か
+    bool IsSurfaceShaderPath(std::string_view path);
+
     /// @brief マテリアルの値 1 つ（1〜4 個の数。配列は要素ごとに `名前[番号]` で持つ）
     using MaterialNumbers = std::vector<float>;
 

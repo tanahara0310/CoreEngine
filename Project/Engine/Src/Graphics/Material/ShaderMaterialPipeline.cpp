@@ -134,7 +134,8 @@ namespace CoreEngine
         }
     }
 
-    void ReadMaterialParamLayout(IDxcUtils* utils, IDxcBlob* blob, MaterialParamLayout& layout, const std::string& shaderName)
+    void ReadMaterialParamLayout(IDxcUtils* utils, IDxcBlob* blob, MaterialParamLayout& layout, const std::string& shaderName,
+        const MaterialParamRegisters& registers)
     {
         if (!utils || !blob) {
             return;
@@ -156,9 +157,10 @@ namespace CoreEngine
             if (FAILED(reflection->GetResourceBindingDesc(index, &bind)) || !bind.Name) {
                 continue;
             }
-            if (bind.Type == D3D_SIT_CBUFFER && bind.BindPoint == 0 && bind.Space == 0 && layout.size == 0) {
+            if (bind.Type == D3D_SIT_CBUFFER && bind.BindPoint == registers.params && bind.Space == 0 && layout.size == 0) {
                 ReadConstantBuffer(reflection.Get(), bind.Name, layout, shaderName);
-            } else if (bind.Type == D3D_SIT_TEXTURE && std::string_view(bind.Name) != kMainTextureName) {
+            } else if (bind.Type == D3D_SIT_TEXTURE && std::string_view(bind.Name) != kMainTextureName
+                       && bind.Space == 0 && bind.BindPoint >= registers.firstTexture) {
                 if (std::find(layout.textures.begin(), layout.textures.end(), bind.Name) == layout.textures.end()) {
                     layout.textures.emplace_back(bind.Name);
                 }
@@ -202,13 +204,20 @@ namespace CoreEngine
         Logger& log = Logger::GetInstance();
         const std::string vertexPath = vertexShaderPath.empty() ? std::string(kStandardMaterialVertexShader) : vertexShaderPath;
 
+        if (IsSurfaceShaderPath(pixelShaderPath)) {
+            log.Logf(LogLevel::Warn, LogCategory::Shader,
+                "{} は 3D モデル用のシェーダです。スプライトと UI 画像には使えません", pixelShaderPath);
+            return false;
+        }
+        std::string error;
         const Microsoft::WRL::ComPtr<IDxcBlob> vertexBlob =
-            compiler.CompileShader(log.Utf8ToPath(vertexPath).wstring(), L"vs_6_0");
-        const Microsoft::WRL::ComPtr<IDxcBlob> pixelBlob =
-            compiler.CompileShader(log.Utf8ToPath(pixelShaderPath).wstring(), L"ps_6_0");
+            compiler.CompileShader(log.Utf8ToPath(vertexPath).wstring(), L"vs_6_0", L"main", &error);
+        const Microsoft::WRL::ComPtr<IDxcBlob> pixelBlob = vertexBlob
+            ? compiler.CompileShader(log.Utf8ToPath(pixelShaderPath).wstring(), L"ps_6_0", L"main", &error)
+            : nullptr;
         if (!vertexBlob || !pixelBlob) {
-            log.Logf(LogLevel::Error, LogCategory::Shader, "マテリアルのシェーダ {} をコンパイルできません",
-                vertexBlob ? pixelShaderPath : vertexPath);
+            log.Logf(LogLevel::Error, LogCategory::Shader, "マテリアルのシェーダ {} をコンパイルできません: {}",
+                vertexBlob ? pixelShaderPath : vertexPath, error);
             return false;
         }
 
