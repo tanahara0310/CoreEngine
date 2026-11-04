@@ -5759,10 +5759,10 @@ kbd {
   <ol class="steps">
     <li>Project の一覧の空いている所を右クリックし、<span class="ui">マテリアルを作成...</span> を選びます。</li>
     <li>付ける先で <span class="ui">3D モデル</span> を選び、名前を入れて <span class="ui">作成</span> を押すと、今のフォルダに <span class="path">名前.mat</span> と、シェーダの雛形 <span class="path">名前.Surface.hlsl</span> ができます。</li>
-    <li>できた .mat を、メッシュ描画の <span class="ui">マテリアル</span> 欄へドラッグします。</li>
+    <li>できた .mat を、メッシュ描画の <span class="ui">マテリアル</span> 欄へドラッグします（その下の <span class="ui">マテリアル</span> コンポーネントは PBR の値の欄で、.mat は受け取りません）。</li>
     <li>.mat を選ぶか、メッシュ描画の欄の下の <span class="ui">マテリアルの中身</span> を開くと、値の欄が出ます。</li>
   </ol>
-  <p>雛形のシェーダは、モデルの色に <code>tint</code> を掛け、カメラから見て縁になる所を <code>rimColor</code> で光らせます。</p>
+  <p>雛形のシェーダは、モデルの色に <code>tint</code> を掛け、カメラから見て縁になる所を <code>rimColor</code> で光らせます。作ったときは <code>tint</code> が白、<code>rimColor</code> が黒なので、付けても見た目は変わりません。<code>rimColor</code> を上げると縁が光ります。</p>
 
   <h2 id="material3d-shader">シェーダを書く</h2>
   <p>先頭で <span class="path">ModelSurface.hlsli</span> を読み込み、<code>Surface()</code> を 1 つ書きます。値は <code>register(b10)</code> の定数バッファ、テクスチャは <code>register(t11)</code>〜<code>register(t17)</code> に書きます。下の例は、モデルの上を光の帯が下から上へ流れます。</p>
@@ -10494,7 +10494,7 @@ python Tools/OkinawaBeach/bake_araha_walk.py
     <li><strong>メッシュ描画のマテリアル</strong>：メッシュ描画に <span class="ui">マテリアル</span> 欄を足しました。名前が <span class="path">.Surface.hlsl</span> で終わるシェーダを指す .mat を付けると、全部のサブメッシュをそのシェーダで描きます。不透明は GBuffer、ブレンドありは前方描画で、骨の入ったモデルにも付けられます。</li>
     <li><strong>ModelSurface.hlsli</strong>：<code>Surface(SurfaceInput IN, inout SurfaceOutput OUT)</code> を書くための読み込みファイルです。<code>OUT</code> にはモデルのテクスチャとマテリアルの値で決めた材質が入っています。値は <code>register(b10)</code>、テクスチャは <code>register(t11)</code>〜<code>register(t17)</code> に書きます。エンジンのモデルのシェーダも、このファイルで書き直しました（見た目は同じです）。</li>
     <li><strong>スクリプト</strong>：メッシュ描画に <code>material</code> と、1 つのモデルだけ値を変える <code>SetMaterialFloat</code>・<code>SetMaterialInt</code>・<code>SetMaterialVector</code>・<code>SetMaterialTexture</code>・<code>ClearMaterialOverrides</code>・<code>GetMaterialFloat</code>・<code>GetMaterialVector</code> を足しました。</li>
-    <li><strong>マテリアルを作成</strong>：<span class="ui">マテリアルを作成...</span> で付ける先（スプライト／UI 画像か 3D モデル）を選べるようにしました。3D モデルを選ぶと、縁を光らせる雛形 <span class="path">名前.Surface.hlsl</span> を作ります。</li>
+    <li><strong>マテリアルを作成</strong>：<span class="ui">マテリアルを作成...</span> で付ける先（スプライト／UI 画像か 3D モデル）を選べるようにしました。3D モデルを選ぶと、雛形 <span class="path">名前.Surface.hlsl</span> を作ります。作ったときは見た目を変えず、<code>rimColor</code> を上げると縁が光ります。</li>
     <li><strong>Project からのドラッグ</strong>：Project の項目は、押して離したときに選ぶようにしました。ドラッグして Inspector の欄へ落とすあいだ、Inspector が落とした項目に切り替わりません。</li>
     <li><strong>描けないとき</strong>：3D モデルのマテリアルのシェーダをコンパイルできないときは、エディタを止めずにモデルをマゼンタで描き、コンソールに訳を出します。前に描けていたシェーダを書き換えてコンパイルできなくなったときも、直して保存するまでマゼンタです。スプライトと UI 画像のマテリアルのシェーダも、コンパイルできないときに止まらず、前の見た目のままでなくマゼンタで描くようにしました。</li>
     <li><strong>書き出し</strong>：ゲームを書き出すとき、<span class="path">.Surface.hlsl</span> の 3 つの入口を DXIL にして入れます。</li>

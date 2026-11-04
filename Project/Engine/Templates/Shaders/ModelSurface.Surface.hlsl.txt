@@ -5,7 +5,7 @@ struct Params
 {
     float4 tint;     // モデルの色に掛ける色
     float  rimPower; // 縁の光の鋭さ（大きいほど縁だけが光る）
-    float3 rimColor; // 縁の光の色
+    float3 rimColor; // 縁の光の色（黒なら光らない）
 };
 ConstantBuffer<Params> gParams : register(b10);
 

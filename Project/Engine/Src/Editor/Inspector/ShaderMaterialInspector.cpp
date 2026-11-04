@@ -52,7 +52,7 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
 
         /// @brief 3D モデルの雛形のシェーダに合わせた値の初め
         constexpr const char* kSurfaceTemplateValues =
-            R"({ "tint": [1.0, 1.0, 1.0, 1.0], "rimPower": 3.0, "rimColor": [0.3, 0.6, 1.0] })";
+            R"({ "tint": [1.0, 1.0, 1.0, 1.0], "rimPower": 3.0, "rimColor": [0.0, 0.0, 0.0] })";
 
         /// @brief マテリアルのシェーダから値の並びを引く（組めなければ nullptr）
         /// @details プロジェクトのポストエフェクトのマテリアルなら、そのコンピュートシェーダの並びを使う
