@@ -60,12 +60,12 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
             return pipeline ? &pipeline->GetLayout() : nullptr;
         }
 
-        /// @brief シェーダーグラフが作ったシェーダの、色のプロパティの名前
+        /// @brief シェーダーグラフが作ったシェーダの、元のグラフとプロパティの印
         struct GraphShaderInfo
         {
             std::filesystem::file_time_type writeTime{};
-            std::string sourceGraph;         ///< 元のグラフ（`Application/Assets/…`）
-            std::vector<std::string> colors; ///< Color のプロパティの名前
+            std::string sourceGraph; ///< 元のグラフ（`Application/Assets/…`）
+            std::vector<ShaderGraph::PropertyHint> properties;
         };
 
         /// @brief マテリアルのシェーダがシェーダーグラフの生成物なら、その中身を引く（違えば nullptr）
@@ -88,9 +88,20 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
             if (info.writeTime != writeTime || info.sourceGraph.empty()) {
                 info.writeTime = writeTime;
                 info.sourceGraph = ShaderGraph::ReadSourceGraph(shader);
-                info.colors = ShaderGraph::ReadColorProperties(shader);
+                info.properties = ShaderGraph::ReadPropertyHints(shader);
             }
             return info.sourceGraph.empty() ? nullptr : &info;
+        }
+
+        /// @brief シェーダーグラフのプロパティの印を名前で引く（無ければ nullptr）
+        const ShaderGraph::PropertyHint* FindPropertyHint(const GraphShaderInfo* graph, const std::string& name)
+        {
+            if (!graph) {
+                return nullptr;
+            }
+            const auto found = std::find_if(graph->properties.begin(), graph->properties.end(),
+                [&name](const ShaderGraph::PropertyHint& hint) { return hint.name == name; });
+            return found != graph->properties.end() ? &*found : nullptr;
         }
 
         /// @brief 色として出す項目か
@@ -101,7 +112,8 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
                 return false;
             }
             if (graph) {
-                return std::find(graph->colors.begin(), graph->colors.end(), field.name) != graph->colors.end();
+                const ShaderGraph::PropertyHint* const hint = FindPropertyHint(graph, field.name);
+                return hint && hint->color;
             }
             std::string lower = field.name;
             std::transform(lower.begin(), lower.end(), lower.begin(),
@@ -109,10 +121,22 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
             return lower.find("color") != std::string::npos;
         }
 
+        /// @brief 範囲のスライダーで出す項目なら、その印（シェーダーグラフの範囲のある数 1 つ）
+        const ShaderGraph::PropertyHint* FindRangeHint(const MaterialParamField& field, const GraphShaderInfo* graph)
+        {
+            if (field.kind != MaterialParamField::Kind::Float || field.components != 1 || field.elements != 0) {
+                return nullptr;
+            }
+            const ShaderGraph::PropertyHint* const hint = FindPropertyHint(graph, field.name);
+            return hint && hint->hasRange ? hint : nullptr;
+        }
+
         /// @brief 値 1 つ（配列なら要素 1 つ）の欄
+        /// @param range 範囲のスライダーで出すときの印（nullptr なら数の欄）
         /// @param commit 編集を終えたら true にする
         /// @return 値を変えたら true
-        bool DrawValue(ShaderMaterial& material, const MaterialParamField& field, const std::string& key, bool color, bool& commit)
+        bool DrawValue(ShaderMaterial& material, const MaterialParamField& field, const std::string& key, bool color,
+            const ShaderGraph::PropertyHint* range, bool& commit)
         {
             std::array<float, 4> numbers = { 0.0f, 0.0f, 0.0f, 0.0f };
             if (const MaterialNumbers* const current = material.FindNumbers(key)) {
@@ -129,6 +153,10 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
                 const ImGuiColorEditFlags flags = ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR;
                 changed = (count >= 4) ? ImGui::ColorEdit4("##value", numbers.data(), flags)
                                        : ImGui::ColorEdit3("##value", numbers.data(), flags);
+                commit |= ImGui::IsItemDeactivatedAfterEdit();
+            } else if (range) {
+                changed = ImGui::SliderFloat("##value", numbers.data(), range->rangeMin, range->rangeMax, "%.3f",
+                    ImGuiSliderFlags_AlwaysClamp);
                 commit |= ImGui::IsItemDeactivatedAfterEdit();
             } else if (field.kind == MaterialParamField::Kind::Float) {
                 changed = ImGui::DragScalarN("##value", ImGuiDataType_Float, numbers.data(), count, 0.01f,
@@ -318,13 +346,13 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
                     const bool color = IsColorField(field, graph);
                     if (field.elements == 0) {
                         BeginRow(field.name.c_str());
-                        changed |= DrawValue(material, field, field.name, color, commit);
+                        changed |= DrawValue(material, field, field.name, color, FindRangeHint(field, graph), commit);
                         continue;
                     }
                     for (uint32_t index = 0; index < field.elements; ++index) {
                         const std::string key = field.name + "[" + std::to_string(index) + "]";
                         BeginRow(key.c_str());
-                        changed |= DrawValue(material, field, key, color, commit);
+                        changed |= DrawValue(material, field, key, color, nullptr, commit);
                     }
                 }
                 for (const std::string& name : layout->textures) {

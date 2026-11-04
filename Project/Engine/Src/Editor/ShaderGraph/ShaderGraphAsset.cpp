@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <charconv>
 #include <cwctype>
 #include <fstream>
 #include <sstream>
@@ -63,6 +64,13 @@ namespace CoreEngine::Editor::ShaderGraph
                 lines.push_back(line);
             }
             return lines;
+        }
+
+        /// @brief 数の文字列を読む（後ろの f は読まない）
+        bool ParseFloat(const std::string& text, float& value)
+        {
+            const char* const begin = text.data();
+            return std::from_chars(begin, begin + text.size(), value).ec == std::errc();
         }
     }
 
@@ -328,22 +336,34 @@ namespace CoreEngine::Editor::ShaderGraph
         return source;
     }
 
-    std::vector<std::string> ReadColorProperties(const std::filesystem::path& shaderFile)
+    std::vector<PropertyHint> ReadPropertyHints(const std::filesystem::path& shaderFile)
     {
-        std::vector<std::string> names;
+        std::vector<PropertyHint> hints;
         for (const std::string& line : ReadHeaderComments(shaderFile)) {
             if (!line.starts_with(kPropertyLinePrefix)) {
                 continue;
             }
             std::istringstream words(line.substr(std::string(kPropertyLinePrefix).size()));
-            std::string name;
+            PropertyHint hint;
             std::string type;
-            words >> name >> type;
-            if (type == "Color") {
-                names.push_back(name);
+            words >> hint.name >> type;
+            hint.color = type == "Color";
+            std::string word;
+            while (words >> word) {
+                if (word != "range") {
+                    continue;
+                }
+                std::string low;
+                std::string high;
+                words >> low >> high;
+                hint.hasRange = ParseFloat(low, hint.rangeMin) && ParseFloat(high, hint.rangeMax)
+                    && hint.rangeMin < hint.rangeMax;
+            }
+            if (!hint.name.empty()) {
+                hints.push_back(std::move(hint));
             }
         }
-        return names;
+        return hints;
     }
 }
 

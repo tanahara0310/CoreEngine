@@ -5828,7 +5828,7 @@ kbd {
       <tr><td><span class="ui">表示名</span></td><td>グラフの中（Blackboard とノードの題名）に出す名前。日本語も使えます。</td></tr>
       <tr><td><span class="ui">種類</span></td><td>Float ／ Vector 2 ／ Vector 3 ／ Vector 4 ／ Color ／ Texture 2D。</td></tr>
       <tr><td><span class="ui">既定値</span></td><td>.mat に値が無いときの値。</td></tr>
-      <tr><td><span class="ui">範囲</span></td><td>Float だけ。入れると既定値の欄がスライダーになります。</td></tr>
+      <tr><td><span class="ui">範囲</span></td><td>Float だけ。入れると、既定値の欄と .mat のインスペクタの欄が、範囲の中だけを動くスライダーになります。</td></tr>
       <tr><td><span class="ui">HDR</span></td><td>Color だけ。1 より大きい色（光って見える色）を入れられます。</td></tr>
       <tr><td><span class="ui">データとして読む（リニア）</span></td><td>Texture 2D だけ。ノイズや法線など、色でない画像のときに入れます。</td></tr>
     </tbody>
@@ -5836,7 +5836,7 @@ kbd {
   </div>
   <ul>
     <li>保存すると、このグラフのシェーダを指す .mat に、まだ無いプロパティの値を既定値で足します。.mat にある値は変えません（既定値を変えても、今ある .mat の値はそのまま）。</li>
-    <li>.mat のインスペクタでは、Color のプロパティが色の欄になります。</li>
+    <li>.mat のインスペクタでは、Color のプロパティが色の欄に、範囲のある Float がスライダーになります。</li>
     <li>スクリプトからは、名前で値を変えます（<a href="#material-script">スクリプトから値を変える</a>）。</li>
   </ul>
   <script type="text/x-code" data-lang="as" data-file="Application/Assets/Scripts/DissolveOut.as">
@@ -10311,7 +10311,7 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <ul>
     <li><strong>シェーダーグラフの窓</strong>：Project の右クリックの <span class="ui">シェーダーグラフを作成...</span> で、グラフ（<span class="path">.shadergraph</span>）・グラフが作るシェーダ（<span class="path">.Graph.PS.hlsl</span>）・それを指す .mat を作って開きます。窓には、プロパティの一覧（Blackboard）・ノードのキャンバス・結果のプレビュー・選んだものの設定・エラーが並び、いくつものグラフをタブで開けます。ノードの検索・つなぎながら置く・コピーと貼り付け・<kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻す、ができます（<a href="#sg-controls">操作</a>）。</li>
     <li><strong>ノード</strong>：入力（時間・UV・位置・部品の色とテクスチャ・テクスチャを読む）・計算・範囲・補間・成分の分解と組み立て・UV の変形・ノイズ・図形の 53 種類です（<a href="#sg-nodes">ノードの一覧</a>）。</li>
-    <li><strong>保存とマテリアル</strong>：保存すると、コンパイルできたときだけシェーダを書き直し、そのシェーダを指す .mat にまだ無いプロパティの値を既定値で足します。グラフのシェーダを指す .mat のインスペクタに <span class="ui">シェーダーグラフを開く</span> を足し、Color のプロパティを色の欄で出すようにしました。</li>
+    <li><strong>保存とマテリアル</strong>：保存すると、コンパイルできたときだけシェーダを書き直し、そのシェーダを指す .mat にまだ無いプロパティの値を既定値で足します。グラフのシェーダを指す .mat のインスペクタに <span class="ui">シェーダーグラフを開く</span> を足し、Color のプロパティを色の欄で、範囲のある Float をスライダーで出すようにしました。</li>
     <li><strong>書き出し</strong>：ゲームを書き出すとき、<span class="path">.shadergraph</span> は入れず、グラフが作ったシェーダを DXIL にして入れます。</li>
     <li><strong>見本</strong>：Sample2D の <span class="path">Application/Assets/Materials</span> に、手書きの Shine と同じ光をノードで組んだ <span class="path">ShineGraph</span> と、ノイズで溶けて消える <span class="path">Dissolve</span> を足しました（<a href="#sg-samples">見本</a>）。</li>
     <li><strong>全ノードの検査</strong>：<span class="ui">Tools<span class="arrow">▸</span>テスト<span class="arrow">▸</span>シェーダーグラフの全ノード検査</span> で、全部のノードを入力の幅ごとにつないだグラフをコンパイルし、結果を Console に出します。</li>

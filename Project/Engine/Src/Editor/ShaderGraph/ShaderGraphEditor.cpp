@@ -1719,7 +1719,8 @@ namespace CoreEngine::Editor::ShaderGraph
         switch (property.type) {
         case PropertyType::Float:
             if (property.hasRange) {
-                changed |= ImGui::SliderFloat("##value", &property.value[0], property.rangeMin, property.rangeMax);
+                changed |= ImGui::SliderFloat("##value", &property.value[0], property.rangeMin, property.rangeMax, "%.3f",
+                    ImGuiSliderFlags_AlwaysClamp);
             } else {
                 changed |= ImGui::DragFloat("##value", &property.value[0], 0.01f);
             }

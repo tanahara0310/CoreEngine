@@ -82,8 +82,18 @@ namespace CoreEngine::Editor::ShaderGraph
     /// @brief 生成したシェーダの先頭から、元のグラフの綴りを読む（生成物でなければ空）
     std::string ReadSourceGraph(const std::filesystem::path& shaderFile);
 
-    /// @brief 生成したシェーダの先頭から、色のプロパティの名前を読む
-    std::vector<std::string> ReadColorProperties(const std::filesystem::path& shaderFile);
+    /// @brief 生成したシェーダの先頭に書いたプロパティの印（インスペクタの欄の出し方）
+    struct PropertyHint
+    {
+        std::string name;
+        bool color = false; ///< Color のプロパティ
+        bool hasRange = false;
+        float rangeMin = 0.0f;
+        float rangeMax = 1.0f;
+    };
+
+    /// @brief 生成したシェーダの先頭から、プロパティの印を読む
+    std::vector<PropertyHint> ReadPropertyHints(const std::filesystem::path& shaderFile);
 }
 
 #endif // CORE_EDITOR
