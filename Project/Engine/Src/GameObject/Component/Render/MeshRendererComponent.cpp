@@ -8,6 +8,8 @@
 #include "GameObject/GameObject.h"
 #include "Graphics/Asset/AssetInfo.h"
 #include "Graphics/Material/MaterialInstance.h"
+#include "Graphics/Material/ShaderMaterialLibrary.h"
+#include "Graphics/Material/SurfaceMaterialPipeline.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Model/ModelResource.h"
@@ -45,6 +47,16 @@ REFLECT_DEFINE_BEGIN(CoreEngine::MeshRendererComponent, "メッシュ描画")
     REFLECT_ACCESSOR("texture", "テクスチャ", GetTextureAsset, SetTextureAsset,
         p.assetType = ::CoreEngine::AssetType::Texture)
     REFLECT_ENUM_ACCESSOR("blendMode", "ブレンド", GetBlendMode, SetBlendMode, kBlendModeNames)
+    REFLECT_ACCESSOR("material", "マテリアル", GetMaterialAsset, SetMaterialAsset,
+        p.assetType = ::CoreEngine::AssetType::Material,
+        p.tooltip = "描き方を決めるシェーダ（名前.Surface.hlsl）と値（.mat）。指さなければモデルのテクスチャとマテリアルの値で描く")
+    REFLECT_METHOD("SetMaterialFloat", "マテリアルの値を上書き（数）", SetMaterialFloat)
+    REFLECT_METHOD("SetMaterialInt", "マテリアルの値を上書き（整数）", SetMaterialInt)
+    REFLECT_METHOD("SetMaterialVector", "マテリアルの値を上書き（ベクトル）", SetMaterialVector)
+    REFLECT_METHOD("SetMaterialTexture", "マテリアルのテクスチャを上書き", SetMaterialTexture)
+    REFLECT_METHOD("ClearMaterialOverrides", "マテリアルの上書きをやめる", ClearMaterialOverrides)
+    REFLECT_METHOD("GetMaterialFloat", "マテリアルの値（数）", GetMaterialFloat)
+    REFLECT_METHOD("GetMaterialVector", "マテリアルの値（ベクトル）", GetMaterialVector)
 REFLECT_DEFINE_END()
 REFLECT_REGISTER(CoreEngine::MeshRendererComponent)
 
@@ -255,6 +267,7 @@ namespace CoreEngine
             LoadTexture(std::exchange(pendingTexturePath_, {}));
         }
 
+        surfaceMaterial_.Resolve();
         BuildCustomShaderPipelineIfNeeded();
     }
 
@@ -305,6 +318,7 @@ namespace CoreEngine
         default:
             break;
         }
+        surfaceSynced_ = false;
     }
 
     // カスタムシェーダー指定があるときだけ専用パイプラインを組む（共有キャッシュ経由）
@@ -336,6 +350,107 @@ namespace CoreEngine
             model_->SetCustomPipeline(customShaderPipeline_.get());
             model_->SetCustomShaderProvider(customShaderProvider_);
         }
+    }
+
+    void MeshRendererComponent::SyncSurfaceMaterial()
+    {
+        if (!model_) {
+            return;
+        }
+        if (!surfaceMaterial_.IsSet() || customShaderProvider_) {
+            if (surfaceSynced_) {
+                model_->SetSurfaceMaterial(nullptr, nullptr, nullptr);
+                surfaceSynced_ = false;
+            }
+            return;
+        }
+
+        const ShaderMaterial* const material = surfaceMaterial_.GetMaterial();
+        const uint64_t revision = ShaderMaterialLibrary::GetInstance().GetShaderRevision();
+        if (surfaceSynced_ && syncedMaterial_ == material && syncedShaderRevision_ == revision
+            && (!material || syncedShaderPath_ == material->GetShaderPath())) {
+            return;
+        }
+
+        GameObject* owner = GetOwner();
+        EngineSystem* engine = owner ? owner->GetEngineSystem() : nullptr;
+        auto* modelMgr = engine ? engine->GetService<ModelManager>() : nullptr;
+        SurfaceMaterialPipelineCache* cache = modelMgr ? modelMgr->GetSurfaceMaterialPipelineCache() : nullptr;
+        if (!cache) {
+            return;
+        }
+
+        // 読めない・3D 用でない・組めないマテリアルはマゼンタで描く
+        SurfaceMaterialPipeline* const pipeline = material ? cache->Get(material->GetShaderPath()) : nullptr;
+        model_->SetSurfaceMaterial(pipeline, cache->GetError(), &surfaceMaterial_);
+
+        surfaceSynced_ = true;
+        syncedMaterial_ = material;
+        syncedShaderPath_ = material ? material->GetShaderPath() : std::string();
+        syncedShaderRevision_ = revision;
+    }
+
+    void MeshRendererComponent::SetMaterial(const std::string& materialPath)
+    {
+        Reflection::AssetRefValue value;
+        if (!materialPath.empty()) {
+            AssetRef<ShaderMaterialAsset> reference(materialPath);
+            value = reference.GetValue();
+        }
+        SetMaterialAsset(value);
+    }
+
+    void MeshRendererComponent::SetMaterialAsset(const Reflection::AssetRefValue& value)
+    {
+        if (surfaceMaterial_.SetAsset(value) && awoken_) {
+            surfaceMaterial_.Resolve();
+        }
+    }
+
+    void MeshRendererComponent::SetMaterialFloat(const std::string& name, float value)
+    {
+        const float numbers[] = { value };
+        surfaceMaterial_.SetNumbers(name, numbers);
+    }
+
+    void MeshRendererComponent::SetMaterialInt(const std::string& name, int value)
+    {
+        const float numbers[] = { static_cast<float>(value) };
+        surfaceMaterial_.SetNumbers(name, numbers);
+    }
+
+    void MeshRendererComponent::SetMaterialVector(const std::string& name, const Vector4& value)
+    {
+        const float numbers[] = { value.x, value.y, value.z, value.w };
+        surfaceMaterial_.SetNumbers(name, numbers);
+    }
+
+    void MeshRendererComponent::SetMaterialTexture(const std::string& name, const std::string& texturePath)
+    {
+        surfaceMaterial_.SetTexture(name, texturePath);
+    }
+
+    void MeshRendererComponent::ClearMaterialOverrides()
+    {
+        surfaceMaterial_.ClearOverrides();
+    }
+
+    float MeshRendererComponent::GetMaterialFloat(const std::string& name) const
+    {
+        const MaterialNumbers* const numbers = surfaceMaterial_.FindNumbers(name);
+        return (numbers && !numbers->empty()) ? numbers->front() : 0.0f;
+    }
+
+    Vector4 MeshRendererComponent::GetMaterialVector(const std::string& name) const
+    {
+        Vector4 value = { 0.0f, 0.0f, 0.0f, 0.0f };
+        if (const MaterialNumbers* const numbers = surfaceMaterial_.FindNumbers(name)) {
+            float* const components[] = { &value.x, &value.y, &value.z, &value.w };
+            for (size_t index = 0; index < numbers->size() && index < 4; ++index) {
+                *components[index] = (*numbers)[index];
+            }
+        }
+        return value;
     }
 
     TransformComponent* MeshRendererComponent::ResolveTransform() const
@@ -375,6 +490,7 @@ namespace CoreEngine
             return false;
         }
 
+        SyncSurfaceMaterial();
         model_->Draw(transform->Get(), view, texture_.gpuHandle);
         return true;
     }

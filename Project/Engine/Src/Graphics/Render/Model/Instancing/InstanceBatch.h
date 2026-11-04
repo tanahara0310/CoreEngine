@@ -13,6 +13,8 @@ namespace CoreEngine
     class CustomShaderPipeline;
     class ModelResource;
     class ICustomShaderProvider;
+    class ShaderMaterialSlot;
+    struct SurfaceMaterialVariant;
 
     /// @brief インスタンシング描画のバッチを識別するキー
     /// 同一キーの描画リクエストは 1 度の DrawIndexedInstanced にまとめられる。
@@ -31,6 +33,8 @@ namespace CoreEngine
         ID3D12RootSignature* customRootSignature = nullptr; ///< カスタムシェーダー RootSignature（nullptr = 既定）
         const ICustomShaderProvider* customProvider = nullptr; ///< カスタムリソースバインドコールバック（nullptr = なし）
         const CustomShaderPipeline* customPipeline = nullptr; ///< BindCustomResources に渡すパイプライン情報
+        const SurfaceMaterialVariant* surfaceVariant = nullptr; ///< 3D モデルのマテリアル（nullptr = 既定のシェーダー）
+        const void* surfaceMaterial = nullptr; ///< 3D モデルのマテリアルの値の印（ShaderMaterialSlot::GetBatchIdentity）
 
         /// @brief キーを組み立てる（生成箇所を一本化するファクトリ）
         /// @details 「GBuffer パスではカスタムシェーダーを無効化する」規則をここに集約する。
@@ -42,7 +46,8 @@ namespace CoreEngine
             D3D12_GPU_DESCRIPTOR_HANDLE emissive,
             D3D12_GPU_VIRTUAL_ADDRESS materialCBV, bool isGBufferPass,
             ID3D12PipelineState* customForwardPSO, ID3D12RootSignature* customRootSignature,
-            const ICustomShaderProvider* customProvider, const CustomShaderPipeline* customPipeline)
+            const ICustomShaderProvider* customProvider, const CustomShaderPipeline* customPipeline,
+            const SurfaceMaterialVariant* surfaceVariant = nullptr, const void* surfaceMaterial = nullptr)
         {
             InstanceBatchKey key{};
             key.resource = resource;
@@ -60,6 +65,8 @@ namespace CoreEngine
             key.customRootSignature = isGBufferPass ? nullptr : customRootSignature;
             key.customProvider = isGBufferPass ? nullptr : customProvider;
             key.customPipeline = isGBufferPass ? nullptr : customPipeline;
+            key.surfaceVariant = surfaceVariant;
+            key.surfaceMaterial = surfaceVariant ? surfaceMaterial : nullptr;
             return key;
         }
 
@@ -69,7 +76,8 @@ namespace CoreEngine
             return std::tie(resource, subMeshIndex, lodIndex,
                 baseColorSRV, normalMapSRV, metallicRoughnessSRV, occlusionSRV, emissiveSRV,
                 materialCBV, isGBufferPass,
-                customForwardPSO, customRootSignature, customProvider, customPipeline);
+                customForwardPSO, customRootSignature, customProvider, customPipeline,
+                surfaceVariant, surfaceMaterial);
         }
 
         bool operator==(const InstanceBatchKey& other) const {
@@ -97,5 +105,6 @@ namespace CoreEngine
         InstanceBatchKey                    key;
         std::vector<TransformationMatrix>   instances;
         D3D12_GPU_VIRTUAL_ADDRESS           materialCBV = 0;  ///< バッチ共通のマテリアルCBV
+        ShaderMaterialSlot*                 surfaceSlot = nullptr; ///< 3D モデルのマテリアルの値を差す欄（バッチの最初の 1 つ）
     };
 }

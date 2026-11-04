@@ -4,6 +4,8 @@
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
+#include "Graphics/Material/ShaderMaterialSlot.h"
+#include "Graphics/Material/SurfaceMaterialPipeline.h"
 #include "Camera/Camera.h"
 #include "Camera/View/ViewInfo.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
@@ -179,6 +181,18 @@ namespace CoreEngine
         }
     }
 
+    const SurfaceMaterialVariant* Model::ResolveSurfaceVariant(bool gBufferPass, bool skinned) const
+    {
+        const SurfaceMaterialPipeline::Pass pass =
+            gBufferPass ? SurfaceMaterialPipeline::Pass::GBuffer : SurfaceMaterialPipeline::Pass::Forward;
+        if (surfacePipeline_) {
+            if (const SurfaceMaterialVariant* variant = surfacePipeline_->GetVariant(pass, skinned)) {
+                return variant;
+            }
+        }
+        return surfaceFallback_ ? surfaceFallback_->GetVariant(pass, skinned) : nullptr;
+    }
+
     void Model::Draw(const WorldTransform& transform, const DrawViewInfo& view,
         D3D12_GPU_DESCRIPTOR_HANDLE textureHandle) {
 
@@ -205,7 +219,22 @@ namespace CoreEngine
 
             EnsureGPUSkinning(cmdList, renderer->GetCurrentPipelineState());
 
+            // 3D モデルのマテリアルはそのシェーダーの RS と PSO に差し替えて描き、今のパスの既定へ戻す
+            const SurfaceMaterialVariant* surface = ResolveSurfaceVariant(view.isGBufferPass, true);
+            bool surfaceBound = true;
+            if (surface) {
+                cmdList->SetGraphicsRootSignature(surface->GetRootSignature());
+                cmdList->SetPipelineState(surface->GetPipelineState(
+                    view.isGBufferPass ? BlendMode::kBlendModeNone : renderer->GetCurrentBlendMode()));
+                renderer->BindPassSceneResources(cmdList, surface->modelBindings);
+                surfaceBound = !surfaceSlot_
+                    || surfaceSlot_->BindSurface(cmdList, *surface, renderContext_.dxCommon->GetUploadRing());
+            }
+
             for (const auto& subMesh : subMeshes) {
+                if (!surfaceBound) {
+                    break;
+                }
                 const auto& textures = resource_->GetMaterialTextures(subMesh.materialIndex);
                 D3D12_GPU_DESCRIPTOR_HANDLE baseColorTex = (textureHandle.ptr != 0)
                     ? textureHandle : textures.baseColor;
@@ -214,7 +243,14 @@ namespace CoreEngine
                     subMesh, baseColorTex, textures.normal,
                     textures.metallicRoughness, textures.occlusion, textures.emissive);
 
-                renderer->BindModelDrawPacket(cmdList, packet);
+                if (surface) {
+                    renderer->BindModelDrawPacket(cmdList, packet, surface->modelBindings);
+                } else {
+                    renderer->BindModelDrawPacket(cmdList, packet);
+                }
+            }
+            if (surface) {
+                renderer->RestorePassPipeline(cmdList);
             }
             return;
         }
@@ -249,6 +285,8 @@ namespace CoreEngine
         }
 
         const bool isGBufferPass = view.isGBufferPass;
+        const SurfaceMaterialVariant* surface = ResolveSurfaceVariant(isGBufferPass, false);
+        const void* surfaceMaterial = (surface && surfaceSlot_) ? surfaceSlot_->GetBatchIdentity() : nullptr;
 
         // ===== Hi-Z オクルージョンカリング（メイン GameView の GBuffer 構築時のみ） =====
         // サブメッシュ単位で前々フレームの判定結果を参照し、遮蔽中の範囲だけ Submit をスキップする。
@@ -276,9 +314,10 @@ namespace CoreEngine
                 baseColorTex, textures.normal, textures.metallicRoughness,
                 textures.occlusion, textures.emissive,
                 materialCBV, isGBufferPass,
-                customForwardPSO_, customRootSignature_, customProvider_, customPipeline_);
+                customForwardPSO_, customRootSignature_, customProvider_, customPipeline_,
+                surface, surfaceMaterial);
 
-            batch->Submit(key, mtx, materialCBV);
+            batch->Submit(key, mtx, materialCBV, surface ? surfaceSlot_ : nullptr);
         }
     }
 

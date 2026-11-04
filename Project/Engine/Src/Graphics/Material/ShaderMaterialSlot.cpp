@@ -3,6 +3,7 @@
 
 #include "Graphics/Material/ShaderMaterialLibrary.h"
 #include "Graphics/Material/ShaderMaterialPipeline.h"
+#include "Graphics/Material/SurfaceMaterialPipeline.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
 
 #include <algorithm>
@@ -109,16 +110,17 @@ namespace CoreEngine
         return whiteTexture_.gpuHandle;
     }
 
-    bool ShaderMaterialSlot::Bind(ID3D12GraphicsCommandList* commandList, const ShaderMaterialPipeline& pipeline,
-        UploadRing& uploadRing, D3D12_GPU_VIRTUAL_ADDRESS transform, D3D12_GPU_VIRTUAL_ADDRESS draw,
-        D3D12_GPU_DESCRIPTOR_HANDLE mainTexture)
+    bool ShaderMaterialSlot::BindParams(ID3D12GraphicsCommandList* commandList, const MaterialParamLayout& layout,
+        RootSlot paramsSlot, std::span<const RootSlot> textureSlots, UploadRing& uploadRing)
     {
-        const MaterialParamLayout& layout = pipeline.GetLayout();
-
         // 足りないテクスチャを白で埋められないなら描かない（差していない表はデバッグレイヤーが止める）
-        std::vector<D3D12_GPU_DESCRIPTOR_HANDLE> extraTextures;
-        extraTextures.reserve(layout.textures.size());
-        for (const std::string& name : layout.textures) {
+        const size_t textureCount = (std::min)(textureSlots.size(), layout.textures.size());
+        std::vector<D3D12_GPU_DESCRIPTOR_HANDLE> textures(textureCount);
+        for (size_t index = 0; index < textureCount; ++index) {
+            if (!textureSlots[index].IsValid()) {
+                continue;
+            }
+            const std::string& name = layout.textures[index];
             D3D12_GPU_DESCRIPTOR_HANDLE handle{};
             if (const auto found = overrideTextures_.find(name); found != overrideTextures_.end()) {
                 handle = found->second.gpuHandle;
@@ -132,9 +134,30 @@ namespace CoreEngine
             if (handle.ptr == 0) {
                 return false;
             }
-            extraTextures.push_back(handle);
+            textures[index] = handle;
         }
 
+        if (paramsSlot.IsValid() && layout.size > 0) {
+            Pack(layout);
+            const D3D12_GPU_VIRTUAL_ADDRESS params =
+                uploadRing.AllocateConstants(packed_.data(), static_cast<uint32_t>(packed_.size()));
+            if (params == 0) {
+                return false;
+            }
+            commandList->SetGraphicsRootConstantBufferView(paramsSlot.index, params);
+        }
+        for (size_t index = 0; index < textureCount; ++index) {
+            if (textures[index].ptr != 0) {
+                commandList->SetGraphicsRootDescriptorTable(textureSlots[index].index, textures[index]);
+            }
+        }
+        return true;
+    }
+
+    bool ShaderMaterialSlot::Bind(ID3D12GraphicsCommandList* commandList, const ShaderMaterialPipeline& pipeline,
+        UploadRing& uploadRing, D3D12_GPU_VIRTUAL_ADDRESS transform, D3D12_GPU_VIRTUAL_ADDRESS draw,
+        D3D12_GPU_DESCRIPTOR_HANDLE mainTexture)
+    {
         if (pipeline.GetTransformSlot().IsValid()) {
             commandList->SetGraphicsRootConstantBufferView(pipeline.GetTransformSlot().index, transform);
         }
@@ -144,21 +167,16 @@ namespace CoreEngine
         if (pipeline.GetTextureSlot().IsValid()) {
             commandList->SetGraphicsRootDescriptorTable(pipeline.GetTextureSlot().index, mainTexture);
         }
-        if (pipeline.GetParamsSlot().IsValid() && layout.size > 0) {
-            Pack(layout);
-            const D3D12_GPU_VIRTUAL_ADDRESS params =
-                uploadRing.AllocateConstants(packed_.data(), static_cast<uint32_t>(packed_.size()));
-            if (params == 0) {
-                return false;
-            }
-            commandList->SetGraphicsRootConstantBufferView(pipeline.GetParamsSlot().index, params);
+        return BindParams(commandList, pipeline.GetLayout(), pipeline.GetParamsSlot(),
+            pipeline.GetExtraTextureSlots(), uploadRing);
+    }
+
+    bool ShaderMaterialSlot::BindSurface(ID3D12GraphicsCommandList* commandList, const SurfaceMaterialVariant& variant,
+        UploadRing& uploadRing)
+    {
+        if (!variant.layout) {
+            return true;
         }
-        const std::vector<RootSlot>& textureSlots = pipeline.GetExtraTextureSlots();
-        for (size_t index = 0; index < textureSlots.size() && index < extraTextures.size(); ++index) {
-            if (textureSlots[index].IsValid()) {
-                commandList->SetGraphicsRootDescriptorTable(textureSlots[index].index, extraTextures[index]);
-            }
-        }
-        return true;
+        return BindParams(commandList, *variant.layout, variant.paramsSlot, variant.textureSlots, uploadRing);
     }
 }

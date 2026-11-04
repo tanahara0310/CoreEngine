@@ -12,6 +12,8 @@
 #include "Graphics/Model/TransformationMatrix.h"
 #include "Diagnostics/EngineStats.h"
 #include "Graphics/Shader/ICustomShaderProvider.h"
+#include "Graphics/Material/ShaderMaterialSlot.h"
+#include "Graphics/Material/SurfaceMaterialPipeline.h"
 
 namespace CoreEngine
 {
@@ -39,7 +41,8 @@ namespace CoreEngine
 
     void InstanceBatchManager::Submit(const InstanceBatchKey& key,
         const TransformationMatrix& matrix,
-        D3D12_GPU_VIRTUAL_ADDRESS materialCBV)
+        D3D12_GPU_VIRTUAL_ADDRESS materialCBV,
+        ShaderMaterialSlot* surfaceSlot)
     {
         // フレーム切り替えチェック（自動）
         UpdateFrameIndex();
@@ -49,6 +52,7 @@ namespace CoreEngine
             InstanceBatch batch;
             batch.key = key;
             batch.materialCBV = materialCBV;
+            batch.surfaceSlot = surfaceSlot;
             batch.instances.reserve(16);
             batch.instances.push_back(matrix);
             batches_.emplace(key, std::move(batch));
@@ -158,6 +162,19 @@ namespace CoreEngine
         packet.occlusionSRV.ptr = batch.key.occlusionSRV;
         packet.emissiveSRV.ptr = batch.key.emissiveSRV;
         packet.isSkinned = false;
+
+        // 3D モデルのマテリアルのバッチは、そのシェーダーの RS と PSO に差し替えて描き、今のパスの既定へ戻す
+        if (const SurfaceMaterialVariant* surface = batch.key.surfaceVariant) {
+            cmdList->SetGraphicsRootSignature(surface->GetRootSignature());
+            cmdList->SetPipelineState(surface->GetPipelineState(
+                batch.key.isGBufferPass ? BlendMode::kBlendModeNone : renderer->GetCurrentBlendMode()));
+            renderer->BindPassSceneResources(cmdList, surface->modelBindings);
+            if (!batch.surfaceSlot || batch.surfaceSlot->BindSurface(cmdList, *surface, dxCommon_->GetUploadRing())) {
+                renderer->BindModelDrawPacket(cmdList, packet, surface->modelBindings);
+            }
+            renderer->RestorePassPipeline(cmdList);
+            return;
+        }
 
         // カスタム PSO が指定されているバッチは RS と PSO を差し替えて描画する
         if (batch.key.customForwardPSO) {
