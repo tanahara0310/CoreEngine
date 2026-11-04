@@ -1,0 +1,17 @@
+{
+    "shader": {
+        "path": "Application/Assets/Materials/Dissolve.Graph.PS.hlsl"
+    },
+    "textures": {},
+    "values": {
+        "dissolve": 0.35,
+        "edgeColor": [
+            1.0,
+            0.45,
+            0.1,
+            1.0
+        ],
+        "edgeWidth": 0.06,
+        "noiseScale": 30.0
+    }
+}

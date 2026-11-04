@@ -231,6 +231,7 @@ namespace CoreEngine::InspectorLayout
         case AssetType::Audio:    return "♪";
         case AssetType::Material: return "◍";
         case AssetType::Shader:   return "▧";
+        case AssetType::ShaderGraph: return "◆";
         case AssetType::Json:
         case AssetType::Csv:      return "▤";
         default:                  return "▫";

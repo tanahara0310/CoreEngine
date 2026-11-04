@@ -19,7 +19,8 @@ namespace CoreEngine
         Json,
         Csv,
         PhysicsMaterial,
-        WaterProfile
+        WaterProfile,
+        ShaderGraph
     };
 
     // AssetType を文字列に変換
@@ -40,6 +41,7 @@ namespace CoreEngine
         case AssetType::Csv:             return "Csv";
         case AssetType::PhysicsMaterial: return "PhysicsMaterial";
         case AssetType::WaterProfile:    return "WaterProfile";
+        case AssetType::ShaderGraph:     return "ShaderGraph";
         default:                         return "Unknown";
         }
     }
@@ -60,6 +62,7 @@ namespace CoreEngine
         if (typeStr == "Csv")             return AssetType::Csv;
         if (typeStr == "PhysicsMaterial") return AssetType::PhysicsMaterial;
         if (typeStr == "WaterProfile")    return AssetType::WaterProfile;
+        if (typeStr == "ShaderGraph")     return AssetType::ShaderGraph;
         return AssetType::Unknown;
     }
 }

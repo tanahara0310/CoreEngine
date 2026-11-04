@@ -1,0 +1,426 @@
+{
+    "links": [
+        {
+            "from": [
+                15,
+                "Out"
+            ],
+            "to": [
+                1,
+                "Alpha"
+            ]
+        },
+        {
+            "from": [
+                14,
+                "Out"
+            ],
+            "to": [
+                1,
+                "Base Color"
+            ]
+        },
+        {
+            "from": [
+                2,
+                "Out"
+            ],
+            "to": [
+                3,
+                "Scale"
+            ]
+        },
+        {
+            "from": [
+                4,
+                "Out"
+            ],
+            "to": [
+                5,
+                "Edge"
+            ]
+        },
+        {
+            "from": [
+                3,
+                "Out"
+            ],
+            "to": [
+                5,
+                "In"
+            ]
+        },
+        {
+            "from": [
+                4,
+                "Out"
+            ],
+            "to": [
+                7,
+                "A"
+            ]
+        },
+        {
+            "from": [
+                17,
+                "Out"
+            ],
+            "to": [
+                7,
+                "B"
+            ]
+        },
+        {
+            "from": [
+                7,
+                "Out"
+            ],
+            "to": [
+                8,
+                "Edge"
+            ]
+        },
+        {
+            "from": [
+                3,
+                "Out"
+            ],
+            "to": [
+                8,
+                "In"
+            ]
+        },
+        {
+            "from": [
+                5,
+                "Out"
+            ],
+            "to": [
+                9,
+                "A"
+            ]
+        },
+        {
+            "from": [
+                8,
+                "Out"
+            ],
+            "to": [
+                9,
+                "B"
+            ]
+        },
+        {
+            "from": [
+                9,
+                "Out"
+            ],
+            "to": [
+                11,
+                "A"
+            ]
+        },
+        {
+            "from": [
+                10,
+                "A"
+            ],
+            "to": [
+                11,
+                "B"
+            ]
+        },
+        {
+            "from": [
+                12,
+                "Out"
+            ],
+            "to": [
+                13,
+                "A"
+            ]
+        },
+        {
+            "from": [
+                11,
+                "Out"
+            ],
+            "to": [
+                13,
+                "B"
+            ]
+        },
+        {
+            "from": [
+                10,
+                "RGB"
+            ],
+            "to": [
+                14,
+                "A"
+            ]
+        },
+        {
+            "from": [
+                13,
+                "Out"
+            ],
+            "to": [
+                14,
+                "B"
+            ]
+        },
+        {
+            "from": [
+                10,
+                "A"
+            ],
+            "to": [
+                15,
+                "A"
+            ]
+        },
+        {
+            "from": [
+                5,
+                "Out"
+            ],
+            "to": [
+                15,
+                "B"
+            ]
+        },
+        {
+            "from": [
+                4,
+                "Out"
+            ],
+            "to": [
+                16,
+                "In"
+            ]
+        },
+        {
+            "from": [
+                6,
+                "Out"
+            ],
+            "to": [
+                17,
+                "A"
+            ]
+        },
+        {
+            "from": [
+                16,
+                "Out"
+            ],
+            "to": [
+                17,
+                "B"
+            ]
+        }
+    ],
+    "nodes": [
+        {
+            "id": 1,
+            "pos": [
+                1240.0,
+                180.0
+            ],
+            "type": "Master"
+        },
+        {
+            "id": 2,
+            "pos": [
+                0.0,
+                60.0
+            ],
+            "property": "p4",
+            "type": "Property"
+        },
+        {
+            "id": 3,
+            "pos": [
+                180.0,
+                0.0
+            ],
+            "type": "SimpleNoise"
+        },
+        {
+            "id": 4,
+            "pos": [
+                0.0,
+                220.0
+            ],
+            "property": "p1",
+            "type": "Property"
+        },
+        {
+            "id": 5,
+            "pos": [
+                420.0,
+                0.0
+            ],
+            "type": "Step"
+        },
+        {
+            "id": 6,
+            "pos": [
+                0.0,
+                380.0
+            ],
+            "property": "p3",
+            "type": "Property"
+        },
+        {
+            "id": 7,
+            "pos": [
+                420.0,
+                300.0
+            ],
+            "type": "Add"
+        },
+        {
+            "id": 8,
+            "pos": [
+                600.0,
+                200.0
+            ],
+            "type": "Step"
+        },
+        {
+            "id": 9,
+            "pos": [
+                780.0,
+                100.0
+            ],
+            "type": "Subtract"
+        },
+        {
+            "id": 10,
+            "pos": [
+                600.0,
+                420.0
+            ],
+            "type": "SpriteColor"
+        },
+        {
+            "id": 11,
+            "pos": [
+                940.0,
+                100.0
+            ],
+            "type": "Multiply"
+        },
+        {
+            "id": 12,
+            "pos": [
+                780.0,
+                260.0
+            ],
+            "property": "p2",
+            "type": "Property"
+        },
+        {
+            "id": 13,
+            "pos": [
+                940.0,
+                240.0
+            ],
+            "type": "Multiply"
+        },
+        {
+            "id": 14,
+            "pos": [
+                1080.0,
+                300.0
+            ],
+            "type": "Add"
+        },
+        {
+            "id": 15,
+            "pos": [
+                1080.0,
+                440.0
+            ],
+            "type": "Multiply"
+        },
+        {
+            "id": 16,
+            "pos": [
+                180.0,
+                300.0
+            ],
+            "type": "Step",
+            "values": {
+                "Edge": [
+                    0.001,
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "id": 17,
+            "pos": [
+                260.0,
+                420.0
+            ],
+            "type": "Multiply"
+        }
+    ],
+    "properties": [
+        {
+            "default": [
+                0.35
+            ],
+            "display": "Dissolve",
+            "id": "p1",
+            "name": "dissolve",
+            "range": [
+                0.0,
+                1.0
+            ],
+            "type": "Float"
+        },
+        {
+            "default": [
+                1.0,
+                0.45,
+                0.1,
+                1.0
+            ],
+            "display": "Edge Color",
+            "hdr": true,
+            "id": "p2",
+            "name": "edgeColor",
+            "type": "Color"
+        },
+        {
+            "default": [
+                0.06
+            ],
+            "display": "Edge Width",
+            "id": "p3",
+            "name": "edgeWidth",
+            "range": [
+                0.0,
+                0.3
+            ],
+            "type": "Float"
+        },
+        {
+            "default": [
+                30.0
+            ],
+            "display": "Noise Scale",
+            "id": "p4",
+            "name": "noiseScale",
+            "type": "Float"
+        }
+    ],
+    "target": "Sprite",
+    "version": 1
+}

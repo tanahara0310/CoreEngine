@@ -1,0 +1,350 @@
+{
+    "links": [
+        {
+            "from": [
+                16,
+                "Out"
+            ],
+            "to": [
+                1,
+                "Base Color"
+            ]
+        },
+        {
+            "from": [
+                2,
+                "Time"
+            ],
+            "to": [
+                4,
+                "A"
+            ]
+        },
+        {
+            "from": [
+                3,
+                "Out"
+            ],
+            "to": [
+                4,
+                "B"
+            ]
+        },
+        {
+            "from": [
+                4,
+                "Out"
+            ],
+            "to": [
+                6,
+                "A"
+            ]
+        },
+        {
+            "from": [
+                5,
+                "Out"
+            ],
+            "to": [
+                6,
+                "B"
+            ]
+        },
+        {
+            "from": [
+                6,
+                "Out"
+            ],
+            "to": [
+                7,
+                "In"
+            ]
+        },
+        {
+            "from": [
+                7,
+                "Out"
+            ],
+            "to": [
+                8,
+                "In"
+            ]
+        },
+        {
+            "from": [
+                9,
+                "Out"
+            ],
+            "to": [
+                10,
+                "A"
+            ]
+        },
+        {
+            "from": [
+                8,
+                "Out"
+            ],
+            "to": [
+                11,
+                "A"
+            ]
+        },
+        {
+            "from": [
+                10,
+                "Out"
+            ],
+            "to": [
+                11,
+                "B"
+            ]
+        },
+        {
+            "from": [
+                13,
+                "Out"
+            ],
+            "to": [
+                14,
+                "A"
+            ]
+        },
+        {
+            "from": [
+                11,
+                "Out"
+            ],
+            "to": [
+                14,
+                "B"
+            ]
+        },
+        {
+            "from": [
+                14,
+                "Out"
+            ],
+            "to": [
+                15,
+                "A"
+            ]
+        },
+        {
+            "from": [
+                12,
+                "A"
+            ],
+            "to": [
+                15,
+                "B"
+            ]
+        },
+        {
+            "from": [
+                12,
+                "RGB"
+            ],
+            "to": [
+                16,
+                "A"
+            ]
+        },
+        {
+            "from": [
+                15,
+                "Out"
+            ],
+            "to": [
+                16,
+                "B"
+            ]
+        }
+    ],
+    "nodes": [
+        {
+            "id": 1,
+            "pos": [
+                1240.0,
+                200.0
+            ],
+            "type": "Master"
+        },
+        {
+            "id": 2,
+            "pos": [
+                0.0,
+                0.0
+            ],
+            "type": "Time"
+        },
+        {
+            "id": 3,
+            "pos": [
+                0.0,
+                160.0
+            ],
+            "property": "p2",
+            "type": "Property"
+        },
+        {
+            "id": 4,
+            "pos": [
+                200.0,
+                40.0
+            ],
+            "type": "Multiply"
+        },
+        {
+            "id": 5,
+            "pos": [
+                200.0,
+                180.0
+            ],
+            "property": "p4",
+            "type": "Property"
+        },
+        {
+            "id": 6,
+            "pos": [
+                380.0,
+                60.0
+            ],
+            "type": "Add"
+        },
+        {
+            "id": 7,
+            "pos": [
+                540.0,
+                60.0
+            ],
+            "type": "Sine"
+        },
+        {
+            "id": 8,
+            "pos": [
+                680.0,
+                60.0
+            ],
+            "type": "Saturate"
+        },
+        {
+            "id": 9,
+            "pos": [
+                380.0,
+                220.0
+            ],
+            "property": "p3",
+            "type": "Property"
+        },
+        {
+            "id": 10,
+            "pos": [
+                560.0,
+                200.0
+            ],
+            "type": "Maximum",
+            "values": {
+                "B": [
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "id": 11,
+            "pos": [
+                820.0,
+                100.0
+            ],
+            "type": "Power"
+        },
+        {
+            "id": 12,
+            "pos": [
+                560.0,
+                360.0
+            ],
+            "type": "SpriteColor"
+        },
+        {
+            "id": 13,
+            "pos": [
+                560.0,
+                500.0
+            ],
+            "property": "p1",
+            "type": "Property"
+        },
+        {
+            "id": 14,
+            "pos": [
+                880.0,
+                260.0
+            ],
+            "type": "Multiply"
+        },
+        {
+            "id": 15,
+            "pos": [
+                880.0,
+                400.0
+            ],
+            "type": "Multiply"
+        },
+        {
+            "id": 16,
+            "pos": [
+                1060.0,
+                300.0
+            ],
+            "type": "Add"
+        }
+    ],
+    "properties": [
+        {
+            "default": [
+                0.9,
+                0.8,
+                0.5,
+                1.0
+            ],
+            "display": "Shine Color",
+            "hdr": true,
+            "id": "p1",
+            "name": "shineColor",
+            "type": "Color"
+        },
+        {
+            "default": [
+                2.5
+            ],
+            "display": "Speed",
+            "id": "p2",
+            "name": "speed",
+            "type": "Float"
+        },
+        {
+            "default": [
+                12.0
+            ],
+            "display": "Sharpness",
+            "id": "p3",
+            "name": "sharpness",
+            "type": "Float"
+        },
+        {
+            "default": [
+                0.0
+            ],
+            "display": "Phase",
+            "id": "p4",
+            "name": "phase",
+            "type": "Float"
+        }
+    ],
+    "target": "Sprite",
+    "version": 1
+}

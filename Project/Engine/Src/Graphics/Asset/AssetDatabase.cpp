@@ -661,6 +661,12 @@ namespace CoreEngine
             return AssetType::WaterProfile;
         }
 
+        // シェーダーグラフ
+        if (ext == ".shadergraph")
+        {
+            return AssetType::ShaderGraph;
+        }
+
         // プレハブ
         if (ext == ".prefab")
         {
@@ -723,6 +729,11 @@ namespace CoreEngine
         for (const auto& [guid, info] : assetsByGUID_)
         {
             if (info.type != AssetType::Shader)
+            {
+                continue;
+            }
+            // シェーダーグラフが作るシェーダは、ほかから include されない
+            if (info.fullPath.filename().wstring().find(L".Graph.") != std::wstring::npos)
             {
                 continue;
             }

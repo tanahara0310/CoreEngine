@@ -7,6 +7,8 @@
 #include "Editor/ImGui/ImGuiAll.h"
 #include "Editor/Inspector/InspectorLayout.h"
 #include "Editor/Scene/EditorSceneAccess.h"
+#include "Editor/ShaderGraph/ShaderGraphAsset.h"
+#include "Editor/ShaderGraph/ShaderGraphEditor.h"
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Graphics/Asset/AssetRef.h"
 #include "Graphics/Material/ShaderMaterial.h"
@@ -24,6 +26,8 @@
 #include <cmath>
 #include <cstring>
 #include <fstream>
+#include <map>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <system_error>
@@ -56,11 +60,48 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
             return pipeline ? &pipeline->GetLayout() : nullptr;
         }
 
-        /// @brief 色として出す項目か（名前に color を含む 3〜4 成分の数）
-        bool IsColorField(const MaterialParamField& field)
+        /// @brief シェーダーグラフが作ったシェーダの、色のプロパティの名前
+        struct GraphShaderInfo
+        {
+            std::filesystem::file_time_type writeTime{};
+            std::string sourceGraph;         ///< 元のグラフ（`Application/Assets/…`）
+            std::vector<std::string> colors; ///< Color のプロパティの名前
+        };
+
+        /// @brief マテリアルのシェーダがシェーダーグラフの生成物なら、その中身を引く（違えば nullptr）
+        const GraphShaderInfo* FindGraphShader(const ShaderMaterial& material)
+        {
+            if (material.GetShaderPath().empty()) {
+                return nullptr;
+            }
+            const std::filesystem::path shader = ProjectPaths::Resolve(material.GetShaderPath());
+            if (!ShaderGraph::IsGeneratedShaderPath(shader)) {
+                return nullptr;
+            }
+            std::error_code ec;
+            const std::filesystem::file_time_type writeTime = std::filesystem::last_write_time(shader, ec);
+            if (ec) {
+                return nullptr;
+            }
+            static std::map<std::filesystem::path, GraphShaderInfo> cache;
+            GraphShaderInfo& info = cache[shader];
+            if (info.writeTime != writeTime || info.sourceGraph.empty()) {
+                info.writeTime = writeTime;
+                info.sourceGraph = ShaderGraph::ReadSourceGraph(shader);
+                info.colors = ShaderGraph::ReadColorProperties(shader);
+            }
+            return info.sourceGraph.empty() ? nullptr : &info;
+        }
+
+        /// @brief 色として出す項目か
+        /// @details シェーダーグラフのシェーダなら Color のプロパティ。それ以外は名前に color を含む 3〜4 成分の数。
+        bool IsColorField(const MaterialParamField& field, const GraphShaderInfo* graph)
         {
             if (field.kind != MaterialParamField::Kind::Float || field.components < 3) {
                 return false;
+            }
+            if (graph) {
+                return std::find(graph->colors.begin(), graph->colors.end(), field.name) != graph->colors.end();
             }
             std::string lower = field.name;
             std::transform(lower.begin(), lower.end(), lower.begin(),
@@ -71,7 +112,7 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
         /// @brief 値 1 つ（配列なら要素 1 つ）の欄
         /// @param commit 編集を終えたら true にする
         /// @return 値を変えたら true
-        bool DrawValue(ShaderMaterial& material, const MaterialParamField& field, const std::string& key, bool& commit)
+        bool DrawValue(ShaderMaterial& material, const MaterialParamField& field, const std::string& key, bool color, bool& commit)
         {
             std::array<float, 4> numbers = { 0.0f, 0.0f, 0.0f, 0.0f };
             if (const MaterialNumbers* const current = material.FindNumbers(key)) {
@@ -84,7 +125,7 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
             bool changed = false;
             ImGui::PushID(key.c_str());
             ImGui::SetNextItemWidth(-FLT_MIN);
-            if (IsColorField(field)) {
+            if (color) {
                 const ImGuiColorEditFlags flags = ImGuiColorEditFlags_Float | ImGuiColorEditFlags_HDR;
                 changed = (count >= 4) ? ImGui::ColorEdit4("##value", numbers.data(), flags)
                                        : ImGui::ColorEdit3("##value", numbers.data(), flags);
@@ -255,6 +296,15 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
             ImGui::EndTable();
         }
 
+        const GraphShaderInfo* const graph = FindGraphShader(material);
+        if (graph) {
+            if (ImGui::Button("シェーダーグラフを開く")) {
+                ShaderGraph::ShaderGraphEditor::Get().Open(ProjectPaths::Resolve(graph->sourceGraph));
+            }
+            UI::SameLine();
+            InspectorLayout::Hint(graph->sourceGraph.c_str());
+        }
+
         if (material.GetShaderPath().empty()) {
             InspectorLayout::Hint("シェーダを選ぶと、シェーダの値（register(b0) の定数バッファ）の欄が出ます。");
         } else if (const MaterialParamLayout* const layout = givenLayout ? givenLayout : FindLayout(material)) {
@@ -265,15 +315,16 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
                 ImGui::TableSetupColumn("##label", ImGuiTableColumnFlags_WidthFixed, 130.0f);
                 ImGui::TableSetupColumn("##value", ImGuiTableColumnFlags_WidthStretch);
                 for (const MaterialParamField& field : layout->fields) {
+                    const bool color = IsColorField(field, graph);
                     if (field.elements == 0) {
                         BeginRow(field.name.c_str());
-                        changed |= DrawValue(material, field, field.name, commit);
+                        changed |= DrawValue(material, field, field.name, color, commit);
                         continue;
                     }
                     for (uint32_t index = 0; index < field.elements; ++index) {
                         const std::string key = field.name + "[" + std::to_string(index) + "]";
                         BeginRow(key.c_str());
-                        changed |= DrawValue(material, field, key, commit);
+                        changed |= DrawValue(material, field, key, color, commit);
                     }
                 }
                 for (const std::string& name : layout->textures) {

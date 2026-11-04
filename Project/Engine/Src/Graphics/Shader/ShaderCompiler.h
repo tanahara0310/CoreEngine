@@ -65,12 +65,14 @@ namespace CoreEngine
         /// @param profile コンパイルプロファイル（例: L"ps_6_0"）
         /// @param entryPoint エントリーポイント（空ならライブラリ）
         /// @param errorMessage 失敗したときの訳
+        /// @param warningMessage 省略可。通ったときの警告（無ければ空）
         /// @return コンパイル済みバイナリ（失敗時 nullptr）
         Microsoft::WRL::ComPtr<IDxcBlob> CompileForCooking(
             const std::wstring& filePath,
             const std::wstring& profile,
             const std::wstring& entryPoint,
-            std::string& errorMessage);
+            std::string& errorMessage,
+            std::string* warningMessage = nullptr);
 
     private:
         /// @brief 書き出し時にコンパイルした DXIL（CookedShader）があれば読む
