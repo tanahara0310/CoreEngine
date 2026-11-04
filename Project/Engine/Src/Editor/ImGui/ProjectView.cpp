@@ -12,6 +12,7 @@
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/EditorTheme.h"
 #include "Editor/ImGui/ImGuiAll.h"
+#include <imgui_internal.h>
 #include "Editor/ImGui/Widgets/EditorBars.h"
 #include "Editor/Inspector/PrefabAssetInspector.h"
 #include "Editor/Inspector/TextureImportInspector.h"
@@ -657,7 +658,7 @@ namespace CoreEngine
 
     void ProjectView::HandleEntryInteraction(const Entry& entry, int index)
     {
-        // シングルクリックで選択、ダブルクリックで潜る / 開く
+        // 押して離したら選択（ドラッグしたときは選択を変えない）、ダブルクリックで潜る / 開く
         if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(0)) {
             const double now = ImGui::GetTime();
             if (lastClickedIndex_ == index && (now - lastClickTime_) < 0.3) {
@@ -668,12 +669,19 @@ namespace CoreEngine
                 }
                 lastClickedIndex_ = -1;
                 lastClickTime_ = 0.0;
+                pressedIndex_ = -1;
             } else {
-                selectedIndex_ = index;
-                UpdateSelection(entry, index);
+                pressedIndex_ = index;
                 lastClickedIndex_ = index;
                 lastClickTime_ = now;
             }
+        }
+        if (pressedIndex_ == index && ImGui::IsMouseReleased(0)) {
+            if (!ImGui::IsMouseDragPastThreshold(0)) {
+                selectedIndex_ = index;
+                UpdateSelection(entry, index);
+            }
+            pressedIndex_ = -1;
         }
 
         DrawEntryContextMenu(entry);

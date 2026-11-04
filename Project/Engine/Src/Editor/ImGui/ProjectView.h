@@ -227,6 +227,7 @@ namespace CoreEngine
         int selectedIndex_ = -1;                // 選択中のインデックス
         double lastClickTime_ = 0.0;            // 最後のクリック時刻
         int lastClickedIndex_ = -1;             // 最後にクリックされたインデックス
+        int pressedIndex_ = -1;                 // 押したまま離していない項目のインデックス
 
         // 右ペイン表示データ
         std::vector<Entry> currentEntries_;
