@@ -3,6 +3,7 @@
 
 #ifdef CORE_EDITOR
 
+#include "Editor/ShaderGraph/ShaderGraphSubGraph.h"
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Graphics/Asset/AssetRef.h"
 #include "Graphics/Material/ShaderMaterial.h"
@@ -17,6 +18,8 @@
 #include <charconv>
 #include <cwctype>
 #include <fstream>
+#include <map>
+#include <mutex>
 #include <sstream>
 #include <system_error>
 
@@ -75,12 +78,111 @@ namespace CoreEngine::Editor::ShaderGraph
             const char* const begin = text.data();
             return std::from_chars(begin, begin + text.size(), value).ec == std::errc();
         }
+
+        /// @brief 読んだサブグラフ（ファイルの更新日時が変わるまで使う）
+        struct CachedSubGraph
+        {
+            std::filesystem::file_time_type time;
+            std::shared_ptr<const Graph> graph;
+        };
+
+        /// @brief サブグラフのファイルを読む（同じ更新日時なら前に読んだものを返す）
+        std::shared_ptr<const Graph> LoadSubGraph(const std::filesystem::path& file, std::string& error)
+        {
+            static std::mutex mutex;
+            static std::map<std::wstring, CachedSubGraph> cache;
+            std::error_code ec;
+            const std::filesystem::file_time_type time = std::filesystem::last_write_time(file, ec);
+            if (ec) {
+                error = "サブグラフ " + Logger::GetInstance().PathToUtf8(file.filename()) + " が見つかりません";
+                return nullptr;
+            }
+            const std::wstring key = Lower(file.lexically_normal().wstring());
+            {
+                std::scoped_lock lock(mutex);
+                if (const auto found = cache.find(key); found != cache.end() && found->second.time == time) {
+                    return found->second.graph;
+                }
+            }
+            auto graph = std::make_shared<Graph>();
+            std::vector<std::string> warnings;
+            if (!LoadGraphFile(file, *graph, error, warnings)) {
+                return nullptr;
+            }
+            if (!graph->subGraph) {
+                error = Logger::GetInstance().PathToUtf8(file.filename()) + " はサブグラフではありません";
+                return nullptr;
+            }
+            std::scoped_lock lock(mutex);
+            cache[key] = CachedSubGraph{ time, graph };
+            return graph;
+        }
+
+        /// @brief 生成したシェーダを、前と違えば検査コンパイルを通してから書く
+        /// @return 書けなければ訳（書いた・前と同じなら空）
+        std::string WriteGenerated(const std::filesystem::path& graphFile, Target target, const std::string& hlsl,
+            ShaderCompiler& compiler, bool& written)
+        {
+            written = false;
+            const std::filesystem::path shaderFile = GeneratedShaderPath(graphFile, target);
+            if (ReadText(shaderFile) == hlsl) {
+                return {};
+            }
+            const std::string key = AssetDatabase::GetInstance().GetGUID(graphFile);
+            const CompileCheck check = CheckCompile(compiler, hlsl,
+                ScratchShaderPath((key.empty() ? std::string("graph") : key) + ".save", target), target, true);
+            if (!check.ok) {
+                return check.message;
+            }
+            if (!WriteFileReplacing(shaderFile, hlsl)) {
+                return "シェーダを書けません";
+            }
+            AssetDatabase::GetInstance().ImportAsset(shaderFile);
+            written = true;
+            return {};
+        }
     }
 
     bool IsGraphFile(const std::filesystem::path& path)
     {
         const std::wstring name = Lower(path.filename().wstring());
-        return EndsWith(name, L".shadergraph") || EndsWith(name, L".shadergraph.meta");
+        return EndsWith(name, L".shadergraph") || EndsWith(name, L".shadergraph.meta")
+            || EndsWith(name, L".shadersubgraph") || EndsWith(name, L".shadersubgraph.meta");
+    }
+
+    bool IsSubGraphFile(const std::filesystem::path& path)
+    {
+        return EndsWith(Lower(path.filename().wstring()), L".shadersubgraph");
+    }
+
+    std::filesystem::path FindSubGraphFile(const std::string& guid, const std::string& path)
+    {
+        std::filesystem::path file;
+        if (!guid.empty()) {
+            if (const AssetInfo* const info = AssetDatabase::GetInstance().FindAssetByGUID(guid)) {
+                file = info->fullPath;
+            }
+        }
+        if (file.empty() && !path.empty()) {
+            file = ProjectPaths::Resolve(path);
+        }
+        std::error_code ec;
+        if (file.empty() || !std::filesystem::exists(file, ec)) {
+            return {};
+        }
+        return file;
+    }
+
+    SubGraphResolver MakeSubGraphResolver()
+    {
+        return [](const std::string& guid, const std::string& path, std::string& error) -> std::shared_ptr<const Graph> {
+            const std::filesystem::path file = FindSubGraphFile(guid, path);
+            if (file.empty()) {
+                error = "サブグラフ " + path + " が見つかりません";
+                return nullptr;
+            }
+            return LoadSubGraph(file, error);
+        };
     }
 
     std::filesystem::path GeneratedShaderPath(const std::filesystem::path& graphFile, Target target)
@@ -296,30 +398,132 @@ namespace CoreEngine::Editor::ShaderGraph
         GenerateOptions options;
         options.sourcePath = ToAssetText(graphFile);
         options.resolveInclude = MakeIncludeResolver();
+        options.resolveSubGraph = MakeSubGraphResolver();
         result.generated = Generate(graph, options);
         if (!result.generated.fatal.empty()) {
             result.error = result.generated.fatal;
             return result;
         }
 
-        const std::filesystem::path shaderFile = GeneratedShaderPath(graphFile, graph.target);
-        if (ReadText(shaderFile) != result.generated.hlsl) {
-            const std::string key = AssetDatabase::GetInstance().GetGUID(graphFile);
-            const CompileCheck check = CheckCompile(compiler, result.generated.hlsl,
-                ScratchShaderPath((key.empty() ? std::string("graph") : key) + ".save", graph.target), graph.target, true);
-            if (!check.ok) {
-                result.error = check.message;
-                return result;
-            }
-            if (!WriteFileReplacing(shaderFile, result.generated.hlsl)) {
-                result.error = "シェーダを書けません";
-                return result;
-            }
-            AssetDatabase::GetInstance().ImportAsset(shaderFile);
-            result.shaderWritten = true;
+        result.error = WriteGenerated(graphFile, graph.target, result.generated.hlsl, compiler, result.shaderWritten);
+        if (!result.error.empty()) {
+            return result;
         }
         result.updatedMaterials = SyncMaterials(graphFile, graph);
         return result;
+    }
+
+    bool CreateSubGraph(const std::filesystem::path& folder, const std::string& name, Target previewTarget,
+        std::filesystem::path* created, std::string* error)
+    {
+        const auto fail = [error](std::string message) {
+            if (error) {
+                *error = std::move(message);
+            }
+            return false;
+        };
+        if (name.empty() || name.find_first_of("\\/:*?\"<>|.") != std::string::npos) {
+            return fail("名前に使えない文字があります（\\ / : * ? \" < > | . は使えません）。");
+        }
+        Logger& log = Logger::GetInstance();
+        const std::filesystem::path base = folder.is_absolute() ? folder : ProjectPaths::Resolve(log.PathToUtf8(folder));
+        const std::filesystem::path file = base / log.Utf8ToPath(name + kSubGraphExtension);
+        if (std::filesystem::exists(file)) {
+            return fail("同じ名前のサブグラフがあります。");
+        }
+        if (!WriteFileReplacing(file, JsonManager::ToFileText(WriteGraph(MakeEmptySubGraph(previewTarget))))) {
+            return fail("サブグラフを書けません。");
+        }
+        AssetDatabase::GetInstance().ImportAsset(file);
+        if (created) {
+            *created = file;
+        }
+        return true;
+    }
+
+    bool SaveSubGraph(const std::filesystem::path& file, const Graph& graph, std::string& error)
+    {
+        if (!WriteFileReplacing(file, JsonManager::ToFileText(WriteGraph(graph)))) {
+            error = "サブグラフを書けません";
+            return false;
+        }
+        AssetDatabase::GetInstance().ImportAsset(file);
+        return true;
+    }
+
+    std::vector<std::filesystem::path> FindGraphFiles()
+    {
+        std::vector<std::filesystem::path> files;
+        for (const AssetInfo* info : AssetDatabase::GetInstance().GetAssetsOfType(AssetType::ShaderGraph)) {
+            if (EndsWith(Lower(info->fullPath.filename().wstring()), L".shadergraph")) {
+                files.push_back(info->fullPath);
+            }
+        }
+        std::sort(files.begin(), files.end());
+        return files;
+    }
+
+    Regeneration PrepareRegeneration(const std::filesystem::path& graphFile, const std::string& guid, const std::string& path,
+        ShaderCompiler& compiler, const SubGraphResolver& resolve)
+    {
+        Regeneration regeneration;
+        regeneration.file = graphFile;
+        std::error_code ec;
+        regeneration.time = std::filesystem::last_write_time(graphFile, ec);
+        std::string error;
+        std::vector<std::string> warnings;
+        if (ec || !LoadGraphFile(graphFile, regeneration.graph, error, warnings)
+            || !UsesSubGraph(regeneration.graph, guid, path, resolve)) {
+            regeneration.graph = Graph{};
+            return regeneration;
+        }
+        regeneration.uses = true;
+        SyncSubGraphNodes(regeneration.graph, resolve);
+
+        GenerateOptions options;
+        options.sourcePath = ToAssetText(graphFile);
+        options.resolveInclude = MakeIncludeResolver();
+        options.resolveSubGraph = resolve;
+        const GenerateResult generated = Generate(regeneration.graph, options);
+        if (!generated.fatal.empty()) {
+            regeneration.error = generated.fatal;
+            return regeneration;
+        }
+        const Target target = regeneration.graph.target;
+        if (ReadText(GeneratedShaderPath(graphFile, target)) == generated.hlsl) {
+            return regeneration;
+        }
+        const std::string key = AssetDatabase::GetInstance().GetGUID(graphFile);
+        const CompileCheck check = CheckCompile(compiler, generated.hlsl,
+            ScratchShaderPath((key.empty() ? std::string("graph") : key) + ".regenerate", target), target, true);
+        if (!check.ok) {
+            regeneration.error = check.message;
+            return regeneration;
+        }
+        regeneration.hlsl = generated.hlsl;
+        return regeneration;
+    }
+
+    bool ApplyRegeneration(Regeneration& regeneration)
+    {
+        if (!regeneration.uses || !regeneration.error.empty()) {
+            return regeneration.error.empty();
+        }
+        // 作っている間にグラフのファイルが書き換わっていれば、何も書かない
+        std::error_code ec;
+        if (std::filesystem::last_write_time(regeneration.file, ec) != regeneration.time || ec) {
+            return true;
+        }
+        if (!regeneration.hlsl.empty()) {
+            const std::filesystem::path shaderFile = GeneratedShaderPath(regeneration.file, regeneration.graph.target);
+            if (!WriteFileReplacing(shaderFile, regeneration.hlsl)) {
+                regeneration.error = "シェーダを書けません";
+                return false;
+            }
+            AssetDatabase::GetInstance().ImportAsset(shaderFile);
+        }
+        SyncMaterials(regeneration.file, regeneration.graph);
+        return true;
     }
 
     bool CreateGraph(const std::filesystem::path& folder, const std::string& name, Target target,
