@@ -254,7 +254,7 @@ namespace CoreEngine
                 "マテリアル {} を書けません", assetPath_);
             return false;
         }
-        out << root.dump(4) << "\n";
+        out << JsonManager::ToFileText(root);
         out.close();
         if (!out) {
             return false;

@@ -21,6 +21,7 @@
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/Sprite/SpriteRenderer.h"
 #include "Graphics/Shader/ShaderCompiler.h"
+#include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
 
@@ -513,7 +514,7 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
             root["shader"] = AssetPathToJson(Logger::GetInstance().PathToUtf8(ProjectPaths::MakeRelative(shaderPath)));
             root["values"] = json::parse(forModel ? kSurfaceTemplateValues : kTemplateValues);
         }
-        if (!WriteText(materialPath, root.dump(4) + "\n")) {
+        if (!WriteText(materialPath, JsonManager::ToFileText(root))) {
             return fail("マテリアルを書けません。");
         }
         AssetDatabase::GetInstance().ImportAsset(materialPath);

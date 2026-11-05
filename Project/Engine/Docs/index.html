@@ -10370,7 +10370,7 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   </div>
 
   <h2 id="format-material">マテリアル（.mat）</h2>
-  <p>スプライト描画・UI 画像・メッシュ描画に付けるマテリアルです（<a href="#script-material">マテリアルとシェーダ</a>・<a href="#script-material-3d">3D モデル</a>）。インスペクタで編集すると書き直されます。</p>
+  <p>スプライト描画・UI 画像・メッシュ描画に付けるマテリアルです（<a href="#script-material">マテリアルとシェーダ</a>・<a href="#script-material-3d">3D モデル</a>）。インスペクタで編集すると書き直されます。数は、シーンの JSON と同じく float として最も短い桁で書きます（<code>0.45</code> は <code>0.45</code> のまま）。</p>
   <script type="text/x-code" data-lang="json" data-file="Application/Assets/Materials/Glow.mat">
     {
         "shader": { "guid": "…", "path": "Application/Assets/Materials/Glow.PS.hlsl" },
@@ -10498,6 +10498,12 @@ python Tools/OkinawaBeach/bake_araha_walk.py
     <li><strong>Project からのドラッグ</strong>：Project の項目は、押して離したときに選ぶようにしました。ドラッグして Inspector の欄へ落とすあいだ、Inspector が落とした項目に切り替わりません。</li>
     <li><strong>描けないとき</strong>：3D モデルのマテリアルのシェーダをコンパイルできないときは、エディタを止めずにモデルをマゼンタで描き、コンソールに訳を出します。前に描けていたシェーダを書き換えてコンパイルできなくなったときも、直して保存するまでマゼンタです。スプライトと UI 画像のマテリアルのシェーダも、コンパイルできないときに止まらず、前の見た目のままでなくマゼンタで描くようにしました。</li>
     <li><strong>書き出し</strong>：ゲームを書き出すとき、<span class="path">.Surface.hlsl</span> の 3 つの入口を DXIL にして入れます。</li>
+  </ul>
+
+  <h3 id="changelog-v0-59-1">v0.59.1 <span class="dim">（2026-11-05）</span></h3>
+  <p>マテリアルを保存すると、数が長い桁で書かれていた不具合を直した版です。</p>
+  <ul>
+    <li><strong>マテリアルの数の桁</strong>：インスペクタでマテリアル（<span class="path">.mat</span>）を保存すると（シェーダーグラフの保存で値を足したときも）、<code>0.45</code> が <code>0.44999998807907104</code> のような長い桁で書かれ、git の差分が読みにくくなっていました。シーンの JSON と同じく、float として最も短い桁で書くようにしました（<a href="#format-material">マテリアル（.mat）</a>）。読み込む値は変わりません。</li>
   </ul>
 
   <h3 id="changelog-v0-59-0">v0.59.0 <span class="dim">（2026-11-04）</span></h3>
