@@ -19,8 +19,17 @@ namespace CoreEngine::Editor::ShaderGraph
     /// @brief グラフの拡張子
     inline constexpr const char* kGraphExtension = ".shadergraph";
 
-    /// @brief グラフのファイルか（.meta を含む）
+    /// @brief グラフかサブグラフのファイルか（.meta を含む。書き出したゲームには入れない）
     bool IsGraphFile(const std::filesystem::path& path);
+
+    /// @brief サブグラフのファイルか（.meta は含まない）
+    bool IsSubGraphFile(const std::filesystem::path& path);
+
+    /// @brief サブグラフのファイルを GUID（無ければパス）で探す（無ければ空）
+    std::filesystem::path FindSubGraphFile(const std::string& guid, const std::string& path);
+
+    /// @brief Assets のサブグラフを GUID（無ければパス）で読む読み手（読んだものは更新日時まで覚える・裏のスレッドでも使える）
+    SubGraphResolver MakeSubGraphResolver();
 
     /// @brief グラフが作るシェーダのパス（グラフの隣の `名前.Graph.PS.hlsl`。ポストエフェクトは `名前.Graph.CS.hlsl`、
     ///        3D は `名前.Graph.Surface.hlsl`）
@@ -86,6 +95,40 @@ namespace CoreEngine::Editor::ShaderGraph
     /// @return 作れたら true
     bool CreateGraph(const std::filesystem::path& folder, const std::string& name, Target target,
         std::filesystem::path* created, std::string* error);
+
+    /// @brief 新しいサブグラフを作る（出口と出力 1 つだけ）
+    /// @param previewTarget サブグラフの窓のプレビューの目標
+    /// @param created 作ったサブグラフの場所
+    /// @return 作れたら true
+    bool CreateSubGraph(const std::filesystem::path& folder, const std::string& name, Target previewTarget,
+        std::filesystem::path* created, std::string* error);
+
+    /// @brief サブグラフを保存する（生成物は無い）
+    /// @return 書けなければ false（error に訳）
+    bool SaveSubGraph(const std::filesystem::path& file, const Graph& graph, std::string& error);
+
+    /// @brief Assets の中のグラフ（.shadergraph）のフルパス（パスの順）
+    std::vector<std::filesystem::path> FindGraphFiles();
+
+    /// @brief サブグラフを使うグラフの作り直し 1 本
+    struct Regeneration
+    {
+        std::filesystem::path file;
+        std::filesystem::file_time_type time; ///< 読んだときのグラフのファイルの更新日時（書く前に変わっていたら書かない）
+        Graph graph;        ///< 写しを合わせたグラフ
+        bool uses = false;  ///< 保存したサブグラフを使っている（使っていなければほかは空）
+        std::string hlsl;   ///< 書く生成物（前と同じなら空）
+        std::string error;  ///< 作れなかった訳（前の生成物のまま）
+    };
+
+    /// @brief グラフがサブグラフを使っていれば、写しを合わせて生成し、検査コンパイルする（ファイルは書かない・裏のスレッドで呼べる）
+    /// @param guid, path 保存したサブグラフ
+    Regeneration PrepareRegeneration(const std::filesystem::path& graphFile, const std::string& guid, const std::string& path,
+        ShaderCompiler& compiler, const SubGraphResolver& resolve);
+
+    /// @brief 作り直した生成物を書き、.mat に足りない値を足す（グラフのファイルは書かない・メインスレッドで呼ぶ）
+    /// @return 書けなければ false（error に訳を入れる）
+    bool ApplyRegeneration(Regeneration& regeneration);
 
     /// @brief グラフのシェーダを指す .mat のフルパス（パスの順）
     std::vector<std::filesystem::path> FindGraphMaterials(const std::filesystem::path& graphFile, Target target);

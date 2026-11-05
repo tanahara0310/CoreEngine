@@ -661,8 +661,8 @@ namespace CoreEngine
             return AssetType::WaterProfile;
         }
 
-        // シェーダーグラフ
-        if (ext == ".shadergraph")
+        // シェーダーグラフとサブグラフ
+        if (ext == ".shadergraph" || ext == ".shadersubgraph")
         {
             return AssetType::ShaderGraph;
         }

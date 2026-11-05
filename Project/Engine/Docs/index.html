@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.62.0">
+<meta name="engine-version" content="0.63.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2951,7 +2951,7 @@ kbd {
       <tr><td>フォルダを作る</td><td>空いている所を右クリック <span class="ui">フォルダを作成...</span></td></tr>
       <tr><td>スクリプトを作る</td><td><span class="ui">＋ 作成</span>、または右クリック <span class="ui">スクリプトを作成...</span>。<a href="#script-first">詳しく</a></td></tr>
       <tr><td>マテリアルを作る</td><td>右クリック <span class="ui">マテリアルを作成...</span>（シェーダの雛形も作れます）。選ぶとインスペクタで値を変えられます。<a href="#script-material">詳しく</a></td></tr>
-      <tr><td>シェーダーグラフを作る</td><td>右クリック <span class="ui">シェーダーグラフを作成...</span>（目標を選び、グラフ・シェーダ・マテリアルを作って開きます）。.shadergraph はダブルクリックで開きます。<a href="#shader-graph">詳しく</a></td></tr>
+      <tr><td>シェーダーグラフを作る</td><td>右クリック <span class="ui">シェーダーグラフを作成...</span>（目標を選び、グラフ・シェーダ・マテリアルを作って開きます）。部品にするサブグラフは <span class="ui">シェーダーサブグラフを作成...</span>。.shadergraph と .shadersubgraph はダブルクリックで開きます。<a href="#shader-graph">詳しく</a></td></tr>
       <tr><td>名前を変える</td><td><kbd>F2</kbd>、または右クリック <span class="ui">名前を変更</span>（.meta も一緒に変わり、GUID は保たれます）</td></tr>
       <tr><td>コピー・切り取り・貼り付け</td><td><kbd>Ctrl</kbd>+<kbd>C</kbd> ／ <kbd>X</kbd> ／ <kbd>V</kbd>（コピーには新しい GUID が付きます）</td></tr>
       <tr><td>削除</td><td><kbd>Delete</kbd>（ごみ箱へ送るので、エクスプローラのごみ箱から戻せます）</td></tr>
@@ -5894,7 +5894,7 @@ kbd {
   </ul>
 </article>
 
-<article class="page" id="shader-graph" data-group="スクリプト" data-title="シェーダーグラフ（ノードでシェーダを作る）" data-nav="シェーダーグラフ" data-keywords="シェーダーグラフ shader graph shadergraph ノード node つなぐ hlsl を書かない ビジュアル ディゾルブ dissolve 溶ける 光る 光の帯 シャイン shine ノイズ noise プロパティ property blackboard プレビュー preview マテリアル mat スプライト ui 画像 graph.ps.hlsl graph.cs.hlsl graph.surface.hlsl ポストエフェクト posteffect 画面全体 scene color screen position custom function カスタム関数 関数 _float hlsl を書く 3d モデル meshrenderer lit unlit 頂点 vertex 揺らす 波打つ 法線 normal フレネル fresnel 縁 view direction transform ノードのプレビュー node preview グループ group 付箋 sticky note メモ redirect 中継点 hlsl を見る hlsl を書き出す export 手書きへ移す カテゴリの色">
+<article class="page" id="shader-graph" data-group="スクリプト" data-title="シェーダーグラフ（ノードでシェーダを作る）" data-nav="シェーダーグラフ" data-keywords="シェーダーグラフ shader graph shadergraph ノード node つなぐ hlsl を書かない ビジュアル ディゾルブ dissolve 溶ける 光る 光の帯 シャイン shine ノイズ noise プロパティ property blackboard プレビュー preview マテリアル mat スプライト ui 画像 graph.ps.hlsl graph.cs.hlsl graph.surface.hlsl ポストエフェクト posteffect 画面全体 scene color screen position custom function カスタム関数 関数 _float hlsl を書く 3d モデル meshrenderer lit unlit 頂点 vertex 揺らす 波打つ 法線 normal フレネル fresnel 縁 view direction transform ノードのプレビュー node preview グループ group 付箋 sticky note メモ redirect 中継点 hlsl を見る hlsl を書き出す export 手書きへ移す カテゴリの色 サブグラフ sub graph subgraph shadersubgraph 部品 使い回す 再利用 まとめる サブグラフにする">
   <h1>シェーダーグラフ（ノードでシェーダを作る）</h1>
   <p class="lead">ノードを線でつないで、<a href="#api-SpriteRenderer">スプライト描画</a> と <a href="#api-UIImage">UI 画像</a> のピクセルシェーダ、画面全体に掛ける <a href="#script-posteffect">ポストエフェクト</a> のコンピュートシェーダ、<a href="#api-MeshRenderer">メッシュ描画</a> の 3D モデルのシェーダを作ります。HLSL を書かずに、光る・溶けて消える・模様が流れる・画面がゆがむ・頂点が波打つ、といった見た目を作れます。Unity の Shader Graph に近い作りです。</p>
 
@@ -5910,7 +5910,7 @@ kbd {
     </tbody>
   </table>
   </div>
-  <p>3 つとも git に入れます。チームのほかの人は、グラフを開かなくても .mat とシェーダでそのまま描けます。</p>
+  <p>3 つとも git に入れます。チームのほかの人は、グラフを開かなくても .mat とシェーダでそのまま描けます。何度も使うノードのまとまりは、<span class="path">名前.shadersubgraph</span>（サブグラフ）にして、ほかのグラフから 1 つのノードとして使えます（<a href="#sg-subgraph">サブグラフ</a>）。</p>
 
   <h3 id="sg-targets">目標（スプライト・ポストエフェクト・3D）</h3>
   <p>グラフは、作るときに選んだ目標のシェーダを作ります。目標は後から変えられません（3D の Lit と Unlit の間だけは、何も選んでいないときの Inspector で変えられます。作るシェーダの名前は同じなので、付けている .mat はそのまま使えます）。</p>
@@ -5947,7 +5947,7 @@ kbd {
   <table>
     <thead><tr><th>場所</th><th>中身</th></tr></thead>
     <tbody>
-      <tr><td>上のタブ</td><td>開いているグラフ。保存していない変更があると印が付きます。閉じるときに、保存していなければ <span class="ui">保存して閉じる</span> ／ <span class="ui">保存せずに閉じる</span> ／ <span class="ui">やめる</span> を聞きます。</td></tr>
+      <tr><td>上のタブ</td><td>開いているグラフ（サブグラフは名前の後ろに「（サブグラフ）」）。保存していない変更があると印が付きます。閉じるときに、保存していなければ <span class="ui">保存して閉じる</span> ／ <span class="ui">保存せずに閉じる</span> ／ <span class="ui">やめる</span> を聞きます。</td></tr>
       <tr><td>左（Blackboard）</td><td>グラフのプロパティ（.mat とスクリプトから変えられる値）の一覧。</td></tr>
       <tr><td>真ん中（キャンバス）</td><td>ノードと線。右下に全体の縮図が出ます。ノードの見出しは分類ごとの色（Input・Math・UV・Procedural・Channel・Artistic・Utility）で、出口は青、Property は紫、エラーのあるノードは赤です。</td></tr>
       <tr><td>右上（Main Preview）</td><td>グラフの結果を板に描いた絵。市松模様は透明な所です。ポストエフェクトは、画面の代わりの画像に掛けた絵です。3D は、球・立方体・平面を決まったライト 1 つと環境光で照らした絵です（ドラッグで回せます）。</td></tr>
@@ -5973,6 +5973,7 @@ kbd {
       <tr><td>グループにする</td><td>ノードを選んで <kbd>Ctrl</kbd>+<kbd>G</kbd>、またはノードの右クリック <span class="ui">グループにする</span>（<a href="#sg-organize">グラフを整える</a>）。</td></tr>
       <tr><td>線の途中に中継点を置く</td><td>線をダブルクリック（Redirect）。</td></tr>
       <tr><td>付箋を置く</td><td>空いている所を右クリックして、検索の窓の一番下の <span class="ui">付箋を置く</span>。</td></tr>
+      <tr><td>サブグラフを置く・作る</td><td>検索の <span class="ui">Sub Graphs</span> から選ぶか、Project のサブグラフをキャンバスへドラッグ。ノードを選んで右クリックの <span class="ui">サブグラフにする…</span> で、選んだノードをサブグラフへ切り出せます（<a href="#sg-subgraph">サブグラフ</a>）。</td></tr>
       <tr><td>戻す・やり直す</td><td><kbd>Ctrl</kbd>+<kbd>Z</kbd> ／ <kbd>Ctrl</kbd>+<kbd>Y</kbd>。シーンの操作と同じ履歴に積みます。</td></tr>
       <tr><td>保存</td><td><kbd>Ctrl</kbd>+<kbd>S</kbd>、または窓の上の <span class="ui">保存</span>。</td></tr>
     </tbody>
@@ -6065,6 +6066,45 @@ kbd {
     <li><span class="ui">書き出す…</span>：グラフの隣に、手書きのシェーダの名前（<span class="path">名前.PS.hlsl</span> ／ <span class="path">名前.CS.hlsl</span> ／ <span class="path">名前.Surface.hlsl</span>。同じ名前があれば番号を足す）で書きます。このグラフのシェーダを指す .mat の一覧から、書き出したシェーダへ付け替えるものを選べます（はじめは全部に印）。グラフはそのまま残り、保存すれば <span class="path">.Graph.</span> のシェーダも作り続けます。</li>
     <li>書き出したシェーダは手書きのシェーダとして扱います。先頭の行が <code>// Exported from …</code> になり、.mat のインスペクタでは、範囲のある Float もただの数の欄になり、Color は名前に <code>color</code> を含むときだけ色の欄になります。HLSL で書き足したいときに、グラフから手書きへ移す入口として使ってください（<a href="#script-material">マテリアルとシェーダ</a>）。</li>
   </ul>
+
+  <h2 id="sg-subgraph">サブグラフ（ノードのまとまりを部品にする）</h2>
+  <p>何度も使うノードのまとまりを 1 つのファイル（<span class="path">名前.shadersubgraph</span>）にして、ほかのグラフから 1 つのノードとして使えます。サブグラフを直して保存すると、使っているグラフのシェーダを全部作り直します。Unity の Sub Graph に近い作りです。</p>
+  <ol class="steps">
+    <li>Project の一覧の空いている所を右クリックし、<span class="ui">シェーダーサブグラフを作成...</span> を選びます。プレビューの目標を選び、名前を入れて <span class="ui">作成</span> を押すと、今のフォルダにサブグラフができて窓が開きます（タブの名前に「（サブグラフ）」が付きます）。シェーダと .mat は作りません。</li>
+    <li>左の <span class="ui">入力</span> の ＋ で、使う側のノードの入力を足します。種類は Float・Vector 2〜4・Color・Texture 2D・Sampler State です。名前をキャンバスへドラッグすると、中で使えます。</li>
+    <li>出口の <span class="ui">Output</span> ノードを選ぶと、Inspector で出力を足す・消す・並べ替える・種類（Float・Vector 2〜4・Texture 2D・Sampler State）と表示名を変えることができます。作ったときは Vector 4 の Out が 1 つです。</li>
+    <li>ノードをつないで <kbd>Ctrl</kbd>+<kbd>S</kbd> で保存します。</li>
+    <li>使う側のグラフで、検索の <span class="ui">Sub Graphs</span> の下から選ぶか、Project のサブグラフをキャンバスへドラッグして置きます。</li>
+  </ol>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>項目</th><th>決まり</th></tr></thead>
+    <tbody>
+      <tr><td>サブグラフの窓</td><td>何も選んでいないときの Inspector で、<span class="ui">プレビューの目標</span>（スプライト／UI 画像・ポストエフェクト・3D（Lit）・3D（Unlit））と <span class="ui">分類</span> を変えられます。Main Preview・ノードのプレビュー・エラーの検査は、その目標のグラフにサブグラフの中身を置き、最初の数の出力を Base Color へつないだ形で行います。サブグラフ自体は目標を持たないので、検索ではノードを全部置けます（プレビューの目標で使えないノードはエラーになり、目標を変えると消えます）。</td></tr>
+      <tr><td>使える目標</td><td>中のノード（入れ子のサブグラフの中も）が全部使える目標だけです。使えない目標のグラフの検索には出ず、ドラッグしても置けません。Vertex で使えないノードを含む出力を Vertex の出口へつなぐと、今までのノードと同じエラーになります。</td></tr>
+      <tr><td>使う側のノード</td><td>見出しはサブグラフのファイル名で、色は赤紫です。ダブルクリックか右クリックの <span class="ui">サブグラフを開く</span> で開きます。つないでいない数の入力はノードの値（置いたときはサブグラフの既定値）、Texture 2D は部品の画像（Sample Texture 2D のつないでいない Texture と同じ）、Sampler State は線形・繰り返しを使います。サブグラフで決めた既定の画像は、サブグラフの窓のプレビューにだけ使います。</td></tr>
+      <tr><td>分類</td><td>検索では <span class="ui">Sub Graphs/分類</span> の下にファイル名で出ます。分類が空なら <span class="ui">Sub Graphs</span> の直下です。</td></tr>
+      <tr><td>保存したとき</td><td>Assets の中の、このサブグラフを使う（入れ子も）グラフを全部、閉じているものも含めて裏で作り直します。終わると窓の下に「作り直したグラフ N 本・作れなかったグラフ M 本（名前）」を出します。作れなかったグラフはシェーダが前のままで、わけはログに出ます。使う側のグラフのファイルは書き換えません。</td></tr>
+      <tr><td>形が変わったとき</td><td>開いているグラフは、サブグラフの保存に合わせてノードのピンを直します（消えた入力・出力への線は外れます。<kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せます）。ピンは <code>p1</code>・<code>o1</code> のような鍵で結ぶので、入力や出力の表示名を変えても線は切れません。</td></tr>
+      <tr><td>名前を変える・見つからない</td><td>サブグラフは GUID で指すので、Project で名前を変えたり動かしたりしても切れません。消した・壊れたときはノードのエラーになり、出力は 0 です（ピンと線は残ります）。</td></tr>
+      <tr><td>入れ子と輪</td><td>サブグラフの中にサブグラフを置けます。自分を含むことになるサブグラフ（A の中に B、B の中に A）は検索に出ず、置けません。</td></tr>
+      <tr><td>作るシェーダ</td><td>使う側のシェーダの中へ展開して書きます。中のノードの変数は <code>n5_n3_Out</code> のように、使う側のノードの番号を前に付けた名前になります。<span class="ui">HLSL</span> でサブグラフのノードを選ぶと、中の行もまとめて色が付きます。中のノードのエラーは「名前 の Multiply（3）: …」のように、使う側のノードのエラーとして出ます。</td></tr>
+      <tr><td>Sampler State の入力</td><td>サブグラフの入力にだけ使えます。ふつうのグラフへ貼り付けたときは入りません。</td></tr>
+      <tr><td>書き出したゲーム</td><td>.shadersubgraph はエディタだけが読み、書き出したゲームには入りません（使う側のシェーダに展開してあります）。</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3 id="sg-subgraph-extract">選んだノードをサブグラフにする</h3>
+  <p>グラフの一部をそのままサブグラフへ移せます。ノードを選び、右クリックの <span class="ui">サブグラフにする…</span> を選んで名前を入れると、グラフの隣にサブグラフを作り、選んだノードを置き換えるノードを 1 つ置きます。計算は切り出す前と同じです（変数の名前だけが変わります）。</p>
+  <ul>
+    <li>入力は、選んだノードの外から入る線の元（ノードとピン）ごとに 1 つできます。種類はその線の今の型です。</li>
+    <li>出力は、選んだ中から外へ出る線の元ごとに 1 つできます。</li>
+    <li>選んだ中の出口と Property ノードは外に残ります。Property はサブグラフの入力になり、外の Property ノードからつなぎます。付箋は中へ移ります。</li>
+    <li>選んだノードが全部同じグループに入っていれば、置いたノードもそのグループに入ります。</li>
+    <li>置き換えは <kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せます（作ったサブグラフのファイルは残ります）。</li>
+  </ul>
+  <p>サブグラフのノードを使うグラフを v0.62.0 までのエンジンで開くと、そのノードは「知らない種類のノード」になります。</p>
 
   <h2 id="sg-nodes">ノードの一覧</h2>
   <p>ノードを選ぶと、Inspector に説明が出ます。出口の Fragment は、<span class="ui">Base Color</span>（RGB）と <span class="ui">Alpha</span> を受け取ります。つないでいない欄は、スプライトならマテリアルを付けていないときと同じ色、ポストエフェクトなら画面の色になります。3D の出口は <a href="#sg-3d">3D のマテリアルを作る</a> を見てください。<strong>（スプライト）</strong>・<strong>（ポストエフェクト）</strong>・<strong>（3D）</strong> と書いたノードは、その目標のグラフにだけ置けます。</p>
@@ -10510,7 +10550,7 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   </table>
   </div>
 
-  <p>シェーダーグラフ（<span class="path">.shadergraph</span>）は、エディタが書く JSON です。手で直さず、シェーダーグラフの窓で直してください。グラフが作ったシェーダ（<span class="path">.Graph.PS.hlsl</span> ／ <span class="path">.Graph.CS.hlsl</span>）の先頭の行に、元のグラフの場所が入っています（<a href="#shader-graph">シェーダーグラフ</a>）。</p>
+  <p>シェーダーグラフ（<span class="path">.shadergraph</span>）とサブグラフ（<span class="path">.shadersubgraph</span>）は、エディタが書く JSON です。手で直さず、シェーダーグラフの窓で直してください。グラフが作ったシェーダ（<span class="path">.Graph.PS.hlsl</span> ／ <span class="path">.Graph.CS.hlsl</span>）の先頭の行に、元のグラフの場所が入っています（<a href="#shader-graph">シェーダーグラフ</a>）。</p>
 
   <h2 id="format-saved">セーブデータ（SaveFile）</h2>
   <p><code>SaveFile("MyGame/Record.json")</code> は <span class="path">Application/Saved/MyGame/Record.json</span> を読み書きします。中身は、<code>Set…</code> で入れた名前と値の JSON です。</p>
@@ -10601,6 +10641,15 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-63-0">v0.63.0 <span class="dim">（2026-11-06）</span></h3>
+  <p>シェーダーグラフに、ノードのまとまりを部品にするサブグラフを足した版です。サブグラフを使わないグラフが保存で書くシェーダは、前の版と 1 文字も変わりません（<a href="#sg-subgraph">サブグラフ</a>）。</p>
+  <ul>
+    <li><strong>サブグラフ</strong>：Project の右クリック <span class="ui">シェーダーサブグラフを作成...</span> で <span class="path">名前.shadersubgraph</span> を作り、入力（Float・Vector・Color・Texture 2D・Sampler State）と出力を決めて、ほかのグラフから 1 つのノードとして使えます。置くのは検索の <span class="ui">Sub Graphs</span> か、Project からのドラッグです。サブグラフの中にサブグラフも置けます。</li>
+    <li><strong>保存で作り直す</strong>：サブグラフを保存すると、使っているグラフ（閉じているものも・入れ子も）のシェーダを裏で作り直し、作り直した本数と作れなかったグラフを窓の下に出します。開いているグラフは、ノードのピンをサブグラフの今の形に合わせます。</li>
+    <li><strong>選んだノードをサブグラフにする</strong>：ノードを選んで右クリックの <span class="ui">サブグラフにする…</span> で、グラフの隣にサブグラフを作り、選んだノードを 1 つのノードに置き換えます。計算は切り出す前と同じです（<a href="#sg-subgraph-extract">選んだノードをサブグラフにする</a>）。</li>
+    <li><strong>グラフのファイル</strong>：サブグラフのノードは、サブグラフを GUID とパスで指し、入力と出力の形の写しを持ちます。v0.62.0 までのエンジンで開くと「知らない種類のノード」になります。.shadersubgraph は書き出したゲームには入りません。</li>
+  </ul>
 
   <h3 id="changelog-v0-62-0">v0.62.0 <span class="dim">（2026-11-05）</span></h3>
   <p>シェーダーグラフを大きくしても読みやすく・直しやすくする道具を足した版です。保存で書くシェーダは前の版と 1 文字も変わりません（<a href="#shader-graph">シェーダーグラフ</a>）。</p>

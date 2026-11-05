@@ -68,4 +68,5 @@ namespace CoreEngine::Editor::Theme
     inline const ImVec4 kGraphChannel = FromSrgb(110, 90, 38);
     inline const ImVec4 kGraphArtistic = FromSrgb(128, 72, 34);
     inline const ImVec4 kGraphUtility = FromSrgb(80, 80, 90);
+    inline const ImVec4 kGraphSubGraph = FromSrgb(116, 50, 98);
 }

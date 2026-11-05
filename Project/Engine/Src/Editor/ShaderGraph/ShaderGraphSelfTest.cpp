@@ -44,7 +44,7 @@ namespace CoreEngine::Editor::ShaderGraph
             options.sourcePath = "SelfTest/" + fullName + ".shadergraph";
             options.previewNode = previewNode;
             options.previewPin = std::string(previewPin);
-            cases.push_back(SelfTestCase{ fullName, graph.target, Generate(graph, options) });
+            cases.push_back(SelfTestCase{ fullName, graph.target, Generate(graph, options), graph, options });
         }
 
         /// @brief Fragment の出口のうち、目標で使う欄へ全部つなぐ（スプライトとポストエフェクトは Base Color と Alpha）

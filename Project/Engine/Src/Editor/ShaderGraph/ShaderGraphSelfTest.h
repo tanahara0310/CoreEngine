@@ -15,6 +15,8 @@ namespace CoreEngine::Editor::ShaderGraph
         std::string name;
         Target target = Target::Sprite;
         GenerateResult generated;
+        Graph graph;             ///< 作ったグラフ（ノードのプレビューの件は空）
+        GenerateOptions options; ///< 作ったときの指定
     };
 
     /// @brief 全ノードの検査に使うグラフを作って HLSL にする

@@ -118,7 +118,7 @@ namespace CoreEngine
             if (ext == ".hlsl" || ext == ".hlsli" || ext == ".cso") {
                 return ProjectView::Kind::Shader;
             }
-            if (ext == ".shadergraph") {
+            if (ext == ".shadergraph" || ext == ".shadersubgraph") {
                 return ProjectView::Kind::ShaderGraph;
             }
             if (ext == ".json" || ext == ".csv") {
@@ -136,7 +136,12 @@ namespace CoreEngine
                 if (ImGui::Button("シェーダーグラフで開く")) {
                     Graph::ShaderGraphEditor::Get().Open(file);
                 }
-                UI::Hint("ダブルクリックでも開けます。保存すると、隣のシェーダ（名前.Graph.PS.hlsl か 名前.Graph.CS.hlsl）を作り直します。");
+                if (Graph::IsSubGraphFile(file)) {
+                    UI::Hint("サブグラフです。ダブルクリックでも開けます。シェーダーグラフの窓へドラッグするとノードとして置けます。"
+                             "保存すると、使っているグラフのシェーダを作り直します。");
+                } else {
+                    UI::Hint("ダブルクリックでも開けます。保存すると、隣のシェーダ（名前.Graph.PS.hlsl か 名前.Graph.CS.hlsl）を作り直します。");
+                }
                 return;
             }
             if (!Graph::IsGeneratedShaderPath(file)) {
@@ -699,6 +704,12 @@ namespace CoreEngine
         case Kind::Audio:   payloadType = "AUDIO_FILE";   payloadLabel = "音";         break;
         case Kind::Prefab:  payloadType = "PREFAB_FILE";  payloadLabel = "プレハブ";   break;
         case Kind::Material: payloadType = "MATERIAL_FILE"; payloadLabel = "マテリアル"; break;
+        case Kind::ShaderGraph:
+            if (Editor::ShaderGraph::IsSubGraphFile(entry.path)) {
+                payloadType = Editor::ShaderGraph::ShaderGraphEditor::kSubGraphPayload;
+                payloadLabel = "サブグラフ";
+            }
+            break;
         default: break;
         }
         if (!payloadType) {
@@ -707,7 +718,9 @@ namespace CoreEngine
 
         if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_SourceAllowNullID)) {
             const std::string filename = Logger::GetInstance().PathToUtf8(entry.path.filename());
-            ImGui::SetDragDropPayload(payloadType, filename.c_str(), filename.size() + 1);
+            // サブグラフは Application/Assets からのパスを、ほかはファイル名を渡す
+            const std::string data = entry.kind == Kind::ShaderGraph ? Editor::ShaderGraph::ToAssetText(entry.path) : filename;
+            ImGui::SetDragDropPayload(payloadType, data.c_str(), data.size() + 1);
             const KindStyle style = StyleOf(entry.kind);
             ImGui::TextColored(style.color, "%s", style.glyph);
             UI::SameLine(0.0f, 6.0f);
@@ -1422,7 +1435,10 @@ namespace CoreEngine
             OpenNewMaterialDialog();
         }
         if (ImGui::MenuItem("シェーダーグラフを作成...")) {
-            OpenNewShaderGraphDialog();
+            OpenNewShaderGraphDialog(false);
+        }
+        if (ImGui::MenuItem("シェーダーサブグラフを作成...")) {
+            OpenNewShaderGraphDialog(true);
         }
         ImGui::Separator();
         if (ImGui::MenuItem("貼り付け", "Ctrl+V", false, !clipboardPaths_.empty())) {
@@ -1589,9 +1605,10 @@ namespace CoreEngine
         ImGui::EndPopup();
     }
 
-    void ProjectView::OpenNewShaderGraphDialog()
+    void ProjectView::OpenNewShaderGraphDialog(bool subGraph)
     {
         showNewShaderGraphDialog_ = true;
+        newShaderGraphSubGraph_ = subGraph;
         newShaderGraphError_.clear();
         newShaderGraphName_[0] = '\0';
         newShaderGraphTarget_ = static_cast<int>(Editor::ShaderGraph::Target::Sprite);
@@ -1599,7 +1616,7 @@ namespace CoreEngine
 
     void ProjectView::DrawNewShaderGraphDialog()
     {
-        constexpr const char* kTitle = "新しいシェーダーグラフ";
+        const char* const kTitle = newShaderGraphSubGraph_ ? "新しいシェーダーサブグラフ###NewShaderGraph" : "新しいシェーダーグラフ###NewShaderGraph";
         if (showNewShaderGraphDialog_ && !ImGui::IsPopupOpen(kTitle)) {
             ImGui::OpenPopup(kTitle);
         }
@@ -1609,8 +1626,15 @@ namespace CoreEngine
             return;
         }
 
-        UI::Hint("今開いているフォルダへ、グラフ（名前.shadergraph）と、グラフが作るシェーダ、");
-        UI::Hint("それを使うマテリアル（名前.mat）を作ります。目標は後から変えられません（3D の Lit と Unlit の間だけは変えられます）。");
+        const bool subGraph = newShaderGraphSubGraph_;
+        if (subGraph) {
+            UI::Hint("今開いているフォルダへ、サブグラフ（名前.shadersubgraph）を作ります。シェーダと .mat は作りません。");
+            UI::Hint("グラフの検索の Sub Graphs から置くか、シェーダーグラフの窓へドラッグして使います。");
+            UI::Hint("下で選ぶのはサブグラフの窓のプレビューの目標です。後から変えられます。");
+        } else {
+            UI::Hint("今開いているフォルダへ、グラフ（名前.shadergraph）と、グラフが作るシェーダ、");
+            UI::Hint("それを使うマテリアル（名前.mat）を作ります。目標は後から変えられません（3D の Lit と Unlit の間だけは変えられます）。");
+        }
         UI::Separator();
 
         for (const Editor::ShaderGraph::Target target : Editor::ShaderGraph::kAllTargetList) {
@@ -1622,7 +1646,9 @@ namespace CoreEngine
             }
         }
         const auto newTarget = static_cast<Editor::ShaderGraph::Target>(newShaderGraphTarget_);
-        if (newTarget == Editor::ShaderGraph::Target::PostEffect) {
+        if (subGraph) {
+            UI::Hint("使える目標は中のノードで決まります。");
+        } else if (newTarget == Editor::ShaderGraph::Target::PostEffect) {
             UI::Hint("シェーダは 名前.Graph.CS.hlsl。グラフの Inspector から Project.json の postEffects へ足すと画面に掛かります。");
         } else if (Editor::ShaderGraph::Is3D(newTarget)) {
             UI::Hint("シェーダは 名前.Graph.Surface.hlsl。MeshRenderer のマテリアルに .mat を付けて使います。");
@@ -1644,9 +1670,11 @@ namespace CoreEngine
         UI::Separator();
         if (ImGui::Button("作成") || enterPressed) {
             std::filesystem::path created;
-            if (Editor::ShaderGraph::CreateGraph(GetCurrentFolder(), newShaderGraphName_,
-                    static_cast<Editor::ShaderGraph::Target>(newShaderGraphTarget_),
-                    &created, &newShaderGraphError_)) {
+            const auto target = static_cast<Editor::ShaderGraph::Target>(newShaderGraphTarget_);
+            const bool made = subGraph
+                ? Editor::ShaderGraph::CreateSubGraph(GetCurrentFolder(), newShaderGraphName_, target, &created, &newShaderGraphError_)
+                : Editor::ShaderGraph::CreateGraph(GetCurrentFolder(), newShaderGraphName_, target, &created, &newShaderGraphError_);
+            if (made) {
                 showNewShaderGraphDialog_ = false;
                 ImGui::CloseCurrentPopup();
                 NavigateToDirectory(created.parent_path());

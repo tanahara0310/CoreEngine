@@ -379,6 +379,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Editor\ShaderGraph\ShaderGraphNodeLibrary.cpp" />
     <ClCompile Include="Engine\Src\Editor\ShaderGraph\ShaderGraphPreview.cpp" />
     <ClCompile Include="Engine\Src\Editor\ShaderGraph\ShaderGraphSelfTest.cpp" />
+    <ClCompile Include="Engine\Src\Editor\ShaderGraph\ShaderGraphSubGraph.cpp" />
     <ClCompile Include="Engine\Src\Editor\Inspector\TextureImportInspector.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\SceneSettingsPanel.cpp" />
     <ClCompile Include="Engine\Src\Collision\CollisionConfig.cpp" />
@@ -1540,6 +1541,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Editor\ShaderGraph\ShaderGraphNodeLibrary.h" />
     <ClInclude Include="Engine\Src\Editor\ShaderGraph\ShaderGraphPreview.h" />
     <ClInclude Include="Engine\Src\Editor\ShaderGraph\ShaderGraphSelfTest.h" />
+    <ClInclude Include="Engine\Src\Editor\ShaderGraph\ShaderGraphSubGraph.h" />
     <ClInclude Include="Engine\Src\Editor\Inspector\TextureImportInspector.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\SceneSettingsPanel.h" />
     <ClInclude Include="Engine\Src\Collision\CollisionConfig.h" />
