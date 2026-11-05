@@ -304,7 +304,7 @@ namespace CoreEngine
         // 新しいシェーダーグラフを作る窓
         bool showNewShaderGraphDialog_ = false;
         char newShaderGraphName_[128] = {};
-        bool newShaderGraphPostEffect_ = false; ///< ポストエフェクトのグラフを作る
+        int newShaderGraphTarget_ = 0; ///< 作るグラフの目標（`Editor::ShaderGraph::Target` の値）
         std::string newShaderGraphError_;
 
         // フォルダツリーキャッシュ（毎フレームのファイルシステムスキャンを抑止）

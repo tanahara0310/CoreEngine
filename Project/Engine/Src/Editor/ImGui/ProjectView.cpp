@@ -1594,7 +1594,7 @@ namespace CoreEngine
         showNewShaderGraphDialog_ = true;
         newShaderGraphError_.clear();
         newShaderGraphName_[0] = '\0';
-        newShaderGraphPostEffect_ = false;
+        newShaderGraphTarget_ = static_cast<int>(Editor::ShaderGraph::Target::Sprite);
     }
 
     void ProjectView::DrawNewShaderGraphDialog()
@@ -1610,18 +1610,22 @@ namespace CoreEngine
         }
 
         UI::Hint("今開いているフォルダへ、グラフ（名前.shadergraph）と、グラフが作るシェーダ、");
-        UI::Hint("それを使うマテリアル（名前.mat）を作ります。目標は後から変えられません。");
+        UI::Hint("それを使うマテリアル（名前.mat）を作ります。目標は後から変えられません（3D の Lit と Unlit の間だけは変えられます）。");
         UI::Separator();
 
-        if (ImGui::RadioButton("スプライト／UI 画像", !newShaderGraphPostEffect_)) {
-            newShaderGraphPostEffect_ = false;
+        for (const Editor::ShaderGraph::Target target : Editor::ShaderGraph::kAllTargetList) {
+            if (target != Editor::ShaderGraph::kAllTargetList[0]) {
+                UI::SameLine();
+            }
+            if (ImGui::RadioButton(Editor::ShaderGraph::DisplayName(target), newShaderGraphTarget_ == static_cast<int>(target))) {
+                newShaderGraphTarget_ = static_cast<int>(target);
+            }
         }
-        UI::SameLine();
-        if (ImGui::RadioButton("ポストエフェクト", newShaderGraphPostEffect_)) {
-            newShaderGraphPostEffect_ = true;
-        }
-        if (newShaderGraphPostEffect_) {
+        const auto newTarget = static_cast<Editor::ShaderGraph::Target>(newShaderGraphTarget_);
+        if (newTarget == Editor::ShaderGraph::Target::PostEffect) {
             UI::Hint("シェーダは 名前.Graph.CS.hlsl。グラフの Inspector から Project.json の postEffects へ足すと画面に掛かります。");
+        } else if (Editor::ShaderGraph::Is3D(newTarget)) {
+            UI::Hint("シェーダは 名前.Graph.Surface.hlsl。MeshRenderer のマテリアルに .mat を付けて使います。");
         } else {
             UI::Hint("シェーダは 名前.Graph.PS.hlsl。スプライトと UI 画像に .mat を付けて使います。");
         }
@@ -1641,7 +1645,7 @@ namespace CoreEngine
         if (ImGui::Button("作成") || enterPressed) {
             std::filesystem::path created;
             if (Editor::ShaderGraph::CreateGraph(GetCurrentFolder(), newShaderGraphName_,
-                    newShaderGraphPostEffect_ ? Editor::ShaderGraph::Target::PostEffect : Editor::ShaderGraph::Target::Sprite,
+                    static_cast<Editor::ShaderGraph::Target>(newShaderGraphTarget_),
                     &created, &newShaderGraphError_)) {
                 showNewShaderGraphDialog_ = false;
                 ImGui::CloseCurrentPopup();

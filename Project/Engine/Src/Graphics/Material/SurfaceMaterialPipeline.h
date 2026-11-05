@@ -13,11 +13,13 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
 namespace CoreEngine
 {
+    class RootSignatureConfig;
     class ShaderCompiler;
     class ShaderReflectionBuilder;
 
@@ -31,6 +33,27 @@ namespace CoreEngine
         const wchar_t* entryPoint;
         const char* debugName;
     };
+
+    /// @brief 頂点の関数（`#define SURFACE_VERTEX`）を持つシェーダの頂点シェーダの入口（`ModelSurface.hlsli`）
+    inline constexpr const wchar_t* kSurfaceStaticVertexEntry = L"SurfaceStaticVertexMain";
+    inline constexpr const wchar_t* kSurfaceSkinnedVertexEntry = L"SurfaceSkinnedVertexMain";
+
+    /// @brief 頂点の関数を持つシェーダの、レイトレの影の形を作るコンピュートシェーダの入口
+    inline constexpr const wchar_t* kSurfaceDeformEntry = L"SurfaceDeformMain";
+
+    /// @brief シェーダーグラフの Main Preview の頂点シェーダとピクセルシェーダの入口（`ModelSurface.hlsli`）
+    inline constexpr const wchar_t* kSurfacePreviewVertexEntry = L"SurfacePreviewVertexMain";
+    inline constexpr const wchar_t* kSurfacePreviewPixelEntry = L"SurfacePreviewMain";
+
+    /// @brief 3D モデルのマテリアルのルートシグネチャの差し方（CBV はルート・SRV は表・インスタンスはルート SRV・
+    ///        頂点アニメーションはルート定数・サンプラーは固定）
+    RootSignatureConfig MakeSurfaceMaterialRootSignatureConfig();
+
+    /// @brief シェーダの文字に `#define SURFACE_VERTEX` の行があるか
+    bool SurfaceShaderTextHasVertexFunction(std::string_view text);
+
+    /// @brief シェーダのファイルに `#define SURFACE_VERTEX` の行があるか（読めなければ false）
+    bool SurfaceShaderHasVertexFunction(const std::string& shaderPath);
 
     /// @brief GBuffer・GBuffer（スキン）・前方描画・前方描画（スキン）の順
     inline constexpr SurfaceMaterialStage kSurfaceMaterialStages[] = {
@@ -54,9 +77,22 @@ namespace CoreEngine
         ID3D12PipelineState* GetPipelineState(BlendMode mode) const;
     };
 
+    /// @brief 頂点の関数を持つシェーダの、レイトレの影の形を作るコンピュートシェーダ（`SurfaceDeformMain`）
+    struct SurfaceDeformVariant
+    {
+        std::unique_ptr<RootSignatureManager> rootSignature;
+        Microsoft::WRL::ComPtr<ID3D12PipelineState> pipelineState;
+        const MaterialParamLayout* layout = nullptr; ///< 持ち主のパイプラインの値の並び
+        BindingTable bindings;                       ///< `VertexAnimationDeformBind` の並び
+        RootSlot mainTextureSlot;                    ///< モデルのベースカラーのテクスチャ（`gTexture`。読まなければ無効）
+        RootSlot paramsSlot;                         ///< マテリアルの値（b10）
+        std::vector<RootSlot> textureSlots;          ///< `layout->textures` と同じ並び（使わないものは無効）
+    };
+
     /// @brief 3D モデルのマテリアルのシェーダ（`名前.Surface.hlsl`）で組んだパイプライン
     /// @details 静的なモデルとスキンのモデル、GBuffer（不透明）と前方描画（ブレンドあり）の 4 通りがあり、
     ///          使うときに初めて組む。値の並びは b10 の定数バッファ、テクスチャは t11 から読む。
+    ///          頂点の関数を持つシェーダは、頂点シェーダも同じファイルの入口から作る（無ければエンジンの頂点シェーダ）。
     class SurfaceMaterialPipeline
     {
     public:
@@ -87,6 +123,13 @@ namespace CoreEngine
 
         const std::string& GetShaderPath() const { return shaderPath_; }
 
+        /// @brief 頂点の関数（`#define SURFACE_VERTEX`）を持つか
+        bool HasVertexFunction() const { return hasVertexFunction_; }
+
+        /// @brief レイトレの影の形を作るコンピュートシェーダを引く（初めてなら組む）
+        /// @return 頂点の関数が無いか、組めなければ nullptr
+        const SurfaceDeformVariant* GetDeformVariant();
+
     private:
         static constexpr size_t kVariantCount = 4;
 
@@ -98,6 +141,12 @@ namespace CoreEngine
         /// @brief ピクセルシェーダを入口を選んでコンパイルする（前方描画は静的とスキンで同じものを使う）
         Microsoft::WRL::ComPtr<IDxcBlob> CompilePixelShader(Pass pass, bool skinned, std::string& error);
 
+        /// @brief 頂点シェーダをコンパイルする（頂点の関数があれば自分のファイルの入口・GBuffer と前方描画で同じもの）
+        Microsoft::WRL::ComPtr<IDxcBlob> CompileVertexShader(Pass pass, bool skinned, std::string& error);
+
+        /// @brief レイトレの影の形を作るコンピュートシェーダを組む
+        bool BuildDeformVariant();
+
         ID3D12Device* device_ = nullptr;
         ShaderCompiler* compiler_ = nullptr;
         ShaderReflectionBuilder* reflectionBuilder_ = nullptr;
@@ -106,6 +155,10 @@ namespace CoreEngine
         std::array<std::unique_ptr<SurfaceMaterialVariant>, kVariantCount> variants_;
         std::array<bool, kVariantCount> attempted_{};
         Microsoft::WRL::ComPtr<IDxcBlob> forwardPixelShader_;
+        bool hasVertexFunction_ = false;
+        std::array<Microsoft::WRL::ComPtr<IDxcBlob>, 2> ownVertexShaders_; ///< 頂点の関数があるときの静的・スキン
+        std::unique_ptr<SurfaceDeformVariant> deform_;
+        bool deformAttempted_ = false;
     };
 
     /// @brief 3D モデルのマテリアルのシェーダごとにパイプラインを 1 つずつ持つ

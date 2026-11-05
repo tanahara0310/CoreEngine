@@ -50,6 +50,9 @@ REFLECT_DEFINE_BEGIN(CoreEngine::MeshRendererComponent, "メッシュ描画")
     REFLECT_ACCESSOR("material", "マテリアル", GetMaterialAsset, SetMaterialAsset,
         p.assetType = ::CoreEngine::AssetType::Material,
         p.tooltip = "描き方を決めるシェーダ（名前.Surface.hlsl）と値（.mat）。指さなければモデルのテクスチャとマテリアルの値で描く")
+    REFLECT_ACCESSOR("boundsPadding", "境界の余白", GetBoundsPadding, SetBoundsPadding,
+        p.range = Range(0.0f, 1000.0f, 0.01f),
+        p.tooltip = "画面の外かを決める箱を各向きへ広げる量（m）。マテリアルで頂点を大きく動かして画面の端で消えるときに増やす")
     REFLECT_METHOD("SetMaterialFloat", "マテリアルの値を上書き（数）", SetMaterialFloat)
     REFLECT_METHOD("SetMaterialInt", "マテリアルの値を上書き（整数）", SetMaterialInt)
     REFLECT_METHOD("SetMaterialVector", "マテリアルの値を上書き（ベクトル）", SetMaterialVector)
@@ -470,7 +473,12 @@ namespace CoreEngine
         }
 
         const BoundingBox& localAABB = model_->GetModelResource()->GetLocalBoundingBox();
-        return localAABB.TransformBy(transform->Get().GetWorldMatrix());
+        return ModelVisibility::PadBounds(localAABB.TransformBy(transform->Get().GetWorldMatrix()), boundsPadding_);
+    }
+
+    void MeshRendererComponent::SetBoundsPadding(float padding)
+    {
+        boundsPadding_ = (std::max)(padding, 0.0f);
     }
 
     // 視錐台 → Hi-Z の順に棄却してから Submit する。判定は DrawViewInfo だけで完結させる
@@ -491,6 +499,7 @@ namespace CoreEngine
         }
 
         SyncSurfaceMaterial();
+        model_->SetBoundsPadding(boundsPadding_);
         model_->Draw(transform->Get(), view, texture_.gpuHandle);
         return true;
     }

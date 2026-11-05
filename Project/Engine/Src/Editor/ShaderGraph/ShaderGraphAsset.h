@@ -22,7 +22,8 @@ namespace CoreEngine::Editor::ShaderGraph
     /// @brief グラフのファイルか（.meta を含む）
     bool IsGraphFile(const std::filesystem::path& path);
 
-    /// @brief グラフが作るシェーダのパス（グラフの隣の `名前.Graph.PS.hlsl`。ポストエフェクトは `名前.Graph.CS.hlsl`）
+    /// @brief グラフが作るシェーダのパス（グラフの隣の `名前.Graph.PS.hlsl`。ポストエフェクトは `名前.Graph.CS.hlsl`、
+    ///        3D は `名前.Graph.Surface.hlsl`）
     std::filesystem::path GeneratedShaderPath(const std::filesystem::path& graphFile, Target target);
 
     /// @brief シェーダーグラフが作ったシェーダのパスか
@@ -31,7 +32,7 @@ namespace CoreEngine::Editor::ShaderGraph
     /// @brief コンピュートシェーダの名前か（`名前.CS.hlsl`。プロジェクトのポストエフェクトの決まり）
     bool IsComputeShaderPath(const std::filesystem::path& path);
 
-    /// @brief 目標のシェーダのプロファイル（ps_6_0 ／ cs_6_0）
+    /// @brief 目標のシェーダのプロファイル（ps_6_0 ／ cs_6_0。3D は Main Preview のピクセルシェーダの ps_6_0）
     const wchar_t* ShaderProfile(Target target);
 
     /// @brief Custom Function のファイルを、ファイル名だけの include にする（同じ名前のシェーダが 2 つあれば失敗）
@@ -57,10 +58,11 @@ namespace CoreEngine::Editor::ShaderGraph
 
     /// @brief HLSL を一時ファイルに書いてコンパイルできるか確かめる（警告も失敗として扱う）
     /// @param scratchFile 書く一時ファイル（中間フォルダの中）
+    /// @param allEntries 3D のとき、Main Preview の 2 つに加えて描画とレイトレの全部の入口もコンパイルする
     CompileCheck CheckCompile(ShaderCompiler& compiler, const std::string& hlsl, const std::filesystem::path& scratchFile,
-        Target target);
+        Target target, bool allEntries = false);
 
-    /// @brief 検査コンパイルの一時ファイルの置き場（`key.PS.hlsl` ／ `key.CS.hlsl`）
+    /// @brief 検査コンパイルの一時ファイルの置き場（`key.PS.hlsl` ／ `key.CS.hlsl` ／ `key.Surface.hlsl`）
     std::filesystem::path ScratchShaderPath(const std::string& key, Target target);
 
     /// @brief エラーの文から、そのファイルの行番号を拾う（拾えなければ空）

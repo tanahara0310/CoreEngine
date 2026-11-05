@@ -126,6 +126,30 @@ float SG_Rectangle(float2 uv, float width, float height)
     return saturate(min(d.x, d.y));
 }
 
+/// @brief 法線マップの色（0〜1）を接空間の向き（-1〜1）にする
+float3 SG_NormalUnpack(float4 color)
+{
+    return color.rgb * 2.0f - 1.0f;
+}
+
+/// @brief 接空間の法線の傾きを strength 倍にする（0 で平ら）
+float3 SG_NormalStrength(float3 normal, float strength)
+{
+    return float3(normal.xy * strength, lerp(1.0f, normal.z, saturate(strength)));
+}
+
+/// @brief 接空間の法線 2 つを重ねる（Whiteout）
+float3 SG_NormalBlend(float3 a, float3 b)
+{
+    return normalize(float3(a.xy + b.xy, a.z * b.z));
+}
+
+/// @brief 面を斜めから見るほど 1 に近づく値
+float SG_FresnelEffect(float3 normal, float3 viewDirection, float power)
+{
+    return pow(max(1.0f - saturate(dot(normalize(normal), normalize(viewDirection))), 1e-6f), power);
+}
+
 #ifdef POST_EFFECT_MATERIAL_HLSLI
 
 /// @brief SG_Ellipse のポストエフェクト版（縁の幅は画面の UV のままのときの 1 画素）

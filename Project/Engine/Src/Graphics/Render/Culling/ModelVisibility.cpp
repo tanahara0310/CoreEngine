@@ -18,7 +18,7 @@ namespace CoreEngine
     {
         /// @brief AABB の画面投影サイズから LOD レベルを算出する（0=フル詳細）
         uint32_t ComputeLodByCoverage(const BoundingBox& localAABB,
-            const Matrix4x4& worldMatrix, const Camera* camera)
+            const Matrix4x4& worldMatrix, const Camera* camera, float boundsPadding)
         {
             // 画面占有率のしきい値。coverage は「モデルの外接球半径が画面半分の高さに
             // 対して占める割合」で、1.0 なら画面の半分を覆う大きさ。
@@ -55,7 +55,7 @@ namespace CoreEngine
             const float scaleX = std::sqrt(m[0][0] * m[0][0] + m[0][1] * m[0][1] + m[0][2] * m[0][2]);
             const float scaleY = std::sqrt(m[1][0] * m[1][0] + m[1][1] * m[1][1] + m[1][2] * m[1][2]);
             const float scaleZ = std::sqrt(m[2][0] * m[2][0] + m[2][1] * m[2][1] + m[2][2] * m[2][2]);
-            const float worldRadius = localRadius * (std::max)({ scaleX, scaleY, scaleZ });
+            const float worldRadius = localRadius * (std::max)({ scaleX, scaleY, scaleZ }) + boundsPadding;
 
             const Vector3 cameraPosition = camera->GetPosition();
             const float dx = worldCenter.x - cameraPosition.x;
@@ -93,7 +93,7 @@ namespace CoreEngine
     }
 
     uint32_t ModelVisibility::SelectLod(const ModelResource& resource, const Matrix4x4& worldMatrix,
-        const Camera* camera)
+        const Camera* camera, float boundsPadding)
     {
         const auto& settings = RenderOptimizationSettings::Get();
         if (settings.forcedLodIndex >= 0) {
@@ -103,7 +103,18 @@ namespace CoreEngine
         if (!settings.lodEnabled) {
             return 0;
         }
-        return ComputeLodByCoverage(resource.GetLocalBoundingBox(), worldMatrix, camera);
+        return ComputeLodByCoverage(resource.GetLocalBoundingBox(), worldMatrix, camera, boundsPadding);
+    }
+
+    BoundingBox ModelVisibility::PadBounds(const BoundingBox& bounds, float padding)
+    {
+        if (padding <= 0.0f || !bounds.IsValid()) {
+            return bounds;
+        }
+        BoundingBox padded = bounds;
+        padded.min -= Vector3{ padding, padding, padding };
+        padded.max += Vector3{ padding, padding, padding };
+        return padded;
     }
 
     bool ModelVisibility::IsModelInView(const Frustum& frustum, const BoundingBox& worldBounds)
@@ -119,7 +130,7 @@ namespace CoreEngine
 
     void ModelVisibility::BeginOcclusionQuery(HiZOcclusionSystem* hiZ,
         const ModelResource& resource, const Matrix4x4& worldMatrix,
-        const Matrix4x4& viewProjection, bool eligible)
+        const Matrix4x4& viewProjection, bool eligible, float boundsPadding)
     {
         // 登録先システムはモデルの生存中は不変の前提（スロット返却先が変わると二重管理になる）。
         // 登録済みスロットの返却先を失わないよう、null では上書きしない
@@ -133,6 +144,7 @@ namespace CoreEngine
 
         resource_ = &resource;
         worldMatrix_ = worldMatrix;
+        boundsPadding_ = boundsPadding;
         hiZ_->SetViewProjection(viewProjection);
 
         if (occlusionIds_.size() != resource.GetSubMeshes().size()) {
@@ -163,7 +175,7 @@ namespace CoreEngine
 
         const BoundingBox& localBounds = resource_->GetSubMeshLocalBounds(subMeshIndex);
         if (occlusionId != HiZOcclusionSystem::kInvalidId && localBounds.IsValid()) {
-            hiZ_->SubmitBounds(occlusionId, localBounds.TransformBy(worldMatrix_));
+            hiZ_->SubmitBounds(occlusionId, PadBounds(localBounds.TransformBy(worldMatrix_), boundsPadding_));
             if (!hiZ_->IsVisible(occlusionId)) {
                 EngineStats::GetInstance().RecordOcclusionCulled();
                 return false;

@@ -6,6 +6,8 @@
 #include "Editor/ShaderGraph/ShaderGraphNodeLibrary.h"
 
 #include <algorithm>
+#include <functional>
+#include <map>
 #include <set>
 
 namespace CoreEngine::Editor::ShaderGraph
@@ -124,16 +126,34 @@ namespace CoreEngine::Editor::ShaderGraph
         }
 
         /// @brief つながっていない入力の式
-        std::string UnconnectedInput(Target target, const Node& node, const PinDesc& pin, ValueType type)
+        std::string UnconnectedInput(Target target, uint8_t stage, const Node& node, const PinDesc& pin, ValueType type)
         {
+            const bool model = Is3D(target);
+            const bool vertex = model && stage == kStageVertex;
             const char* const defaultColor = target == Target::PostEffect ? "IN.sceneColor" : "IN.spriteColor";
             switch (pin.binding) {
             case PinBinding::UV:           return Convert("IN.uv", 2, WidthOf(type));
             case PinBinding::MainTexture:  return "gTexture";
             case PinBinding::Sampler:      return SamplerName(target, "Linear Repeat");
-            case PinBinding::DefaultRGB:   return Convert(std::string(defaultColor) + ".rgb", 3, WidthOf(type));
-            case PinBinding::DefaultAlpha: return Convert(std::string(defaultColor) + ".a", 1, WidthOf(type));
-            case PinBinding::Value:        break;
+            case PinBinding::DefaultRGB:
+                return Convert(model ? std::string("OUT.baseColor") : std::string(defaultColor) + ".rgb", 3, WidthOf(type));
+            case PinBinding::DefaultAlpha:
+                return Convert(model ? std::string("OUT.alpha") : std::string(defaultColor) + ".a", 1, WidthOf(type));
+            case PinBinding::WorldNormal:
+                if (model) {
+                    return Convert(vertex ? "normalize(mul((float3x3)IN.worldToObject, IN.normalOS))" : "normalize(IN.normalWS)",
+                        3, WidthOf(type));
+                }
+                break;
+            case PinBinding::ViewDirection:
+                if (model && !vertex) {
+                    return Convert("SurfaceViewDirection(IN)", 3, WidthOf(type));
+                }
+                break;
+            case PinBinding::Value:
+            case PinBinding::ModelValue:
+            case PinBinding::SourceVertex:
+                break;
             }
             std::array<float, 4> numbers = pin.fallback;
             if (const auto found = node.values.find(pin.name); found != node.values.end()) {
@@ -164,6 +184,372 @@ namespace CoreEngine::Editor::ShaderGraph
         {
             return 4 - WidthOf(type);
         }
+
+        /// @brief 出口の欄と、代入する `OUT` の名前
+        struct MasterField
+        {
+            std::string_view pin;
+            std::string_view field;
+            bool tangentNormal = false; ///< 接空間の法線をワールドへ直して代入する
+        };
+
+        constexpr MasterField kFragmentFields[] = {
+            { "Base Color", "baseColor" },
+            { "Normal (Tangent Space)", "normalWS", true },
+            { "Metallic", "metallic" },
+            { "Roughness", "roughness" },
+            { "Ambient Occlusion", "occlusion" },
+            { "Emission", "emission" },
+            { "Alpha", "alpha" },
+        };
+
+        constexpr MasterField kVertexFields[] = {
+            { "Position", "positionOS" },
+            { "Normal", "normalOS" },
+        };
+
+        /// @brief root から入力をたどって、使うノードを依存の順に並べる（root では rootPin が true のピンだけたどる）
+        std::vector<int> CollectOrder(const Graph& graph, const Node& root, const std::function<bool(const PinDesc&)>& rootPin)
+        {
+            std::vector<int> order;
+            std::set<int> visited;
+            std::function<void(int)> visit = [&](int id) {
+                if (!visited.insert(id).second) {
+                    return;
+                }
+                const Node* const node = graph.FindNode(id);
+                const NodeDesc* const desc = node ? FindNodeDesc(*node) : nullptr;
+                if (desc) {
+                    for (const PinDesc& pin : desc->inputs) {
+                        if (id == root.id && rootPin && !rootPin(pin)) {
+                            continue;
+                        }
+                        if (const Link* const link = graph.FindLinkTo(id, pin.name)) {
+                            visit(link->fromNode);
+                        }
+                    }
+                }
+                order.push_back(id);
+            };
+            visit(root.id);
+            return order;
+        }
+
+        /// @brief 関数 1 つ（スプライト・ポストエフェクトの main、3D の SurfaceVertex か Surface）のノードの文を作る
+        class FunctionWriter
+        {
+        public:
+            FunctionWriter(const Graph& graph, const Resolution& resolution, const GenerateOptions& options, uint8_t stage,
+                std::vector<std::pair<int, GlobalCode>>& globals, std::vector<NodeIssue>& issues)
+                : graph_(graph), resolution_(resolution), options_(options), stage_(stage), globals_(globals), issues_(issues)
+            {
+            }
+
+            /// @brief 入力ピンの式（つながっていなければ目標と段で決まる既定）
+            std::string Input(const Node& node, const NodeDesc& desc, const ResolvedNode& resolved, size_t index,
+                bool& connected) const
+            {
+                const PinDesc& pin = desc.inputs[index];
+                const ValueType type = resolved.inputs[index];
+                connected = false;
+                if (const Link* const link = graph_.FindLinkTo(node.id, pin.name)) {
+                    const Node* const source = graph_.FindNode(link->fromNode);
+                    const NodeDesc* const sourceDesc = source ? FindNodeDesc(*source) : nullptr;
+                    const int output = sourceDesc ? sourceDesc->FindOutput(link->fromPin) : -1;
+                    const auto expression = outputs_.find({ link->fromNode, output });
+                    const auto sourceResolved = resolution_.nodes.find(link->fromNode);
+                    if (expression != outputs_.end() && sourceResolved != resolution_.nodes.end()
+                        && output >= 0 && static_cast<size_t>(output) < sourceResolved->second.outputs.size()) {
+                        const ValueType from = sourceResolved->second.outputs[static_cast<size_t>(output)];
+                        if (Compatible(from, IsNumeric(type) ? ValueType::Float : type)) {
+                            connected = true;
+                            return IsNumeric(type) ? Convert(expression->second, WidthOf(from), WidthOf(type)) : expression->second;
+                        }
+                    }
+                }
+                return UnconnectedInput(graph_.target, stage_, node, pin, type);
+            }
+
+            /// @brief 並べたノードの文を書く（出口のノードは飛ばす）
+            void Write(const std::vector<int>& order)
+            {
+                for (const int id : order) {
+                    const Node* const node = graph_.FindNode(id);
+                    const NodeDesc* const desc = node ? FindNodeDesc(*node) : nullptr;
+                    const auto resolved = resolution_.nodes.find(id);
+                    if (!node || !desc || resolved == resolution_.nodes.end() || IsMasterNodeType(node->type)) {
+                        continue;
+                    }
+
+                    EmitArgs args{ graph_, *node, *desc };
+                    args.target = graph_.target;
+                    args.stage = stage_;
+                    args.resolveInclude = options_.resolveInclude;
+                    args.dynamicWidth = resolved->second.dynamicWidth;
+                    args.inType = resolved->second.inputs;
+                    args.outType = resolved->second.outputs;
+                    args.outExpr.assign(desc->outputs.size(), std::string());
+                    for (size_t index = 0; index < desc->inputs.size(); ++index) {
+                        bool connected = false;
+                        args.in.push_back(Input(*node, *desc, resolved->second, index, connected));
+                        args.connected.push_back(connected);
+                    }
+                    if (!desc->Supports(graph_.target)) {
+                        args.error = std::string("このノードは") + DisplayName(graph_.target) + "では使えません";
+                    } else if (Is3D(graph_.target) && !desc->SupportsStage(stage_)) {
+                        args.error = std::string("このノードは ") + StageName(stage_) + " では使えません";
+                    } else if (desc->emit) {
+                        desc->emit(args);
+                    }
+                    for (const GlobalCode& global : args.globals) {
+                        if (!args.error.empty()) {
+                            break;
+                        }
+                        const auto same = std::find_if(globals_.begin(), globals_.end(),
+                            [&](const auto& placed) { return placed.second.key == global.key; });
+                        if (same != globals_.end() && same->second.code != global.code) {
+                            args.error = "同じ関数（" + global.key.substr(global.key.find(':') + 1)
+                                + "）を、中身の違う別のノードでも作っています";
+                        }
+                    }
+                    if (args.error.empty()) {
+                        for (const GlobalCode& global : args.globals) {
+                            const bool placed = std::any_of(globals_.begin(), globals_.end(),
+                                [&](const auto& item) { return item.second.key == global.key; });
+                            if (!placed) {
+                                globals_.push_back({ id, global });
+                            }
+                        }
+                    }
+                    if (!args.error.empty()) {
+                        ++errors_;
+                        const bool reported = std::any_of(issues_.begin(), issues_.end(),
+                            [&](const NodeIssue& issue) { return issue.node == id && issue.message == args.error; });
+                        if (!reported) {
+                            issues_.push_back({ id, args.error });
+                        }
+                        args.code.clear();
+                        for (size_t index = 0; index < desc->outputs.size(); ++index) {
+                            args.Out(index, ZeroOf(args.outType[index]));
+                        }
+                    }
+
+                    const int first = CountLines(body_) + 1;
+                    body_ += "    // " + std::to_string(id) + " " + std::string(desc->title) + "\n";
+                    body_ += args.code;
+                    lines_.push_back({ id, { first, CountLines(body_) } });
+                    for (size_t index = 0; index < desc->outputs.size(); ++index) {
+                        outputs_[{ id, static_cast<int>(index) }] = args.outExpr[index];
+                    }
+                }
+            }
+
+            /// @brief ノードの出力の式（無ければ空）
+            std::string Output(int node, int output) const
+            {
+                const auto found = outputs_.find({ node, output });
+                return found != outputs_.end() ? found->second : std::string();
+            }
+
+            const std::string& Body() const { return body_; }
+
+            /// @brief 書いた文の行を、関数の本文の前の行数 offset だけずらして result へ足す
+            void AddLines(std::multimap<int, std::pair<int, int>>& result, int offset) const
+            {
+                for (const auto& [id, lines] : lines_) {
+                    result.emplace(id, std::pair<int, int>{ lines.first + offset, lines.second + offset });
+                }
+            }
+
+            /// @brief 作れなかったノードの数
+            int ErrorCount() const { return errors_; }
+
+        private:
+            const Graph& graph_;
+            const Resolution& resolution_;
+            const GenerateOptions& options_;
+            uint8_t stage_ = kStageFragment;
+            std::vector<std::pair<int, GlobalCode>>& globals_;
+            std::vector<NodeIssue>& issues_;
+            std::map<std::pair<int, int>, std::string> outputs_; ///< ノード・出力の番号 → 式
+            std::string body_;
+            std::vector<std::pair<int, std::pair<int, int>>> lines_;
+            int errors_ = 0;
+        };
+
+        /// @brief 映すノードの、色にする出力の式（無ければ空）
+        std::string PreviewColor(const FunctionWriter& writer, const Resolution& resolution, const GenerateOptions& options,
+            const Node& root)
+        {
+            const NodeDesc* const desc = FindNodeDesc(root);
+            const ResolvedNode& resolved = resolution.nodes.at(root.id);
+            int output = -1;
+            if (desc && !options.previewPin.empty()) {
+                output = desc->FindOutput(options.previewPin);
+            }
+            if (output < 0) {
+                for (size_t index = 0; index < resolved.outputs.size(); ++index) {
+                    if (IsNumeric(resolved.outputs[index])) {
+                        output = static_cast<int>(index);
+                        break;
+                    }
+                }
+            }
+            if (output < 0 || !IsNumeric(resolved.outputs[static_cast<size_t>(output)])) {
+                return {};
+            }
+            return ToColor(writer.Output(root.id, output), WidthOf(resolved.outputs[static_cast<size_t>(output)]));
+        }
+
+        /// @brief ファイルの先頭の行（生成物の印とプロパティの表）
+        std::string HeaderLines(const Graph& graph, const GenerateOptions& options)
+        {
+            std::string head;
+            head += std::string(kGeneratedMarker) + options.sourcePath + ". Changes are overwritten when the graph is saved.\n";
+            for (const Property& property : graph.properties) {
+                head += std::string(kPropertyLinePrefix) + property.name + " " + ToString(property.type);
+                if (property.type == PropertyType::Color && property.hdr) {
+                    head += " hdr";
+                }
+                if (property.hasRange) {
+                    head += " range " + FormatFloat(property.rangeMin) + " " + FormatFloat(property.rangeMax);
+                }
+                if (property.type == PropertyType::Texture2D && property.linear) {
+                    head += " linear";
+                }
+                head += "\n";
+            }
+            return head;
+        }
+
+        /// @brief プロパティの定数バッファとテクスチャの宣言
+        std::string PropertyDeclarations(const Graph& graph, std::string_view bufferName, int bufferRegister, int firstTexture)
+        {
+            std::vector<const Property*> numeric;
+            std::vector<const Property*> textures;
+            for (const Property& property : graph.properties) {
+                (property.type == PropertyType::Texture2D ? textures : numeric).push_back(&property);
+            }
+            std::stable_sort(numeric.begin(), numeric.end(), [](const Property* a, const Property* b) {
+                return PropertyOrder(a->type) < PropertyOrder(b->type);
+            });
+            std::string text;
+            if (!numeric.empty()) {
+                text += "\nstruct GraphProperties\n{\n";
+                for (const Property* property : numeric) {
+                    text += "    " + TypeName(WidthOf(property->type)) + " " + property->name + ";\n";
+                }
+                text += "};\nConstantBuffer<GraphProperties> " + std::string(bufferName) + " : register(b"
+                    + std::to_string(bufferRegister) + ");\n";
+            }
+            if (!textures.empty()) {
+                text += "\n";
+                for (size_t index = 0; index < textures.size(); ++index) {
+                    text += "Texture2D<float4> " + textures[index]->name + " : register(t"
+                        + std::to_string(static_cast<size_t>(firstTexture) + index) + ");\n";
+                }
+            }
+            return text;
+        }
+
+        /// @brief 関数の外に置く文を並べる
+        void AppendGlobals(std::string& head, const std::vector<std::pair<int, GlobalCode>>& globals, GenerateResult& result)
+        {
+            for (const auto& [id, global] : globals) {
+                head += "\n";
+                const int first = CountLines(head) + 1;
+                head += global.code;
+                result.globalLines[id] = { first, CountLines(head) };
+            }
+        }
+
+        /// @brief 3D のモデルのマテリアル（`名前.Graph.Surface.hlsl`）を作る
+        void Generate3D(const Graph& graph, const GenerateOptions& options, const Resolution& resolution, const Node& root,
+            GenerateResult& result)
+        {
+            std::vector<std::pair<int, GlobalCode>> globals;
+            const bool previewing = root.type != kMasterNodeType;
+
+            // 頂点の関数（Vertex の出口からたどる）
+            FunctionWriter vertex(graph, resolution, options, kStageVertex, globals, result.issues);
+            std::string vertexAssignments;
+            if (const Node* const master = graph.FindVertexMaster()) {
+                const NodeDesc* const desc = FindNodeDesc(*master);
+                const auto resolved = resolution.nodes.find(master->id);
+                if (desc && resolved != resolution.nodes.end()) {
+                    vertex.Write(CollectOrder(graph, *master, nullptr));
+                    for (const MasterField& field : kVertexFields) {
+                        const int index = desc->FindInput(field.pin);
+                        if (index < 0) {
+                            continue;
+                        }
+                        bool connected = false;
+                        const std::string expression = vertex.Input(*master, *desc, resolved->second,
+                            static_cast<size_t>(index), connected);
+                        if (connected) {
+                            vertexAssignments += "    OUT." + std::string(field.field) + " = " + expression + ";\n";
+                        }
+                    }
+                }
+            }
+            if (vertex.ErrorCount() > 0) {
+                result.fatal = "Vertex の出口へつながるノードに問題があるので、シェーダを作りません";
+                return;
+            }
+            const bool hasVertex = !vertexAssignments.empty();
+
+            // 画素の関数（Fragment の出口か映すノードからたどる）
+            FunctionWriter fragment(graph, resolution, options, kStageFragment, globals, result.issues);
+            std::string fragmentAssignments;
+            if (previewing) {
+                fragment.Write(CollectOrder(graph, root, nullptr));
+                const std::string color = PreviewColor(fragment, resolution, options, root);
+                if (color.empty()) {
+                    result.fatal = "このノードには映せる出力がありません";
+                    return;
+                }
+                fragmentAssignments = "    OUT.baseColor = (" + color + ").rgb;\n    OUT.alpha = 1.0f;\n";
+            } else {
+                const Target target = graph.target;
+                fragment.Write(CollectOrder(graph, root, [target](const PinDesc& pin) { return pin.Supports(target); }));
+                const NodeDesc* const desc = FindNodeDesc(root);
+                const ResolvedNode& resolved = resolution.nodes.at(root.id);
+                for (const MasterField& field : kFragmentFields) {
+                    const int index = desc ? desc->FindInput(field.pin) : -1;
+                    if (index < 0 || !desc->inputs[static_cast<size_t>(index)].Supports(target)) {
+                        continue;
+                    }
+                    bool connected = false;
+                    const std::string expression = fragment.Input(root, *desc, resolved, static_cast<size_t>(index), connected);
+                    if (!connected) {
+                        continue;
+                    }
+                    fragmentAssignments += "    OUT." + std::string(field.field) + " = "
+                        + (field.tangentNormal ? "SurfaceTangentToWorld(IN, " + expression + ")" : expression) + ";\n";
+                }
+            }
+
+            std::string head = HeaderLines(graph, options);
+            head += graph.target == Target::Lit && !previewing ? "#define SURFACE_LIT\n" : "#define SURFACE_UNLIT\n";
+            if (hasVertex) {
+                head += "#define SURFACE_VERTEX\n";
+            }
+            head += "#include \"ModelSurface.hlsli\"\n";
+            head += "#include \"ShaderGraphLibrary.hlsli\"\n";
+            head += PropertyDeclarations(graph, "gGraph", kSurfaceGraphConstantRegister, kSurfaceGraphFirstTexture);
+            AppendGlobals(head, globals, result);
+
+            if (hasVertex) {
+                head += "\nvoid SurfaceVertex(SurfaceVertexInput IN, inout SurfaceVertexOutput OUT)\n{\n";
+                vertex.AddLines(result.nodeLines, CountLines(head));
+                head += vertex.Body() + (vertex.Body().empty() ? "" : "\n") + vertexAssignments + "}\n";
+            }
+            head += "\nvoid Surface(SurfaceInput IN, inout SurfaceOutput OUT)\n{\n";
+            fragment.AddLines(result.nodeLines, CountLines(head));
+            head += fragment.Body() + (fragment.Body().empty() || fragmentAssignments.empty() ? "" : "\n")
+                + fragmentAssignments + "}\n";
+            result.hlsl = std::move(head);
+        }
     }
 
     Resolution Resolve(const Graph& graph)
@@ -193,10 +579,13 @@ namespace CoreEngine::Editor::ShaderGraph
             }
         }
 
-        // 出口（または映すノード）から入力をたどって、使うノードを依存の順に並べる
+        // 出口（または映すノード）
         const Node* root = nullptr;
         if (options.previewNode != 0) {
             root = graph.FindNode(options.previewNode);
+            if (root && IsMasterNodeType(root->type)) {
+                root = nullptr;
+            }
         }
         if (!root) {
             root = graph.FindMaster();
@@ -205,114 +594,16 @@ namespace CoreEngine::Editor::ShaderGraph
             result.fatal = "出口のノードがありません";
             return result;
         }
-        std::vector<int> order;
-        std::set<int> visited;
-        std::function<void(int)> visit = [&](int id) {
-            if (!visited.insert(id).second) {
-                return;
-            }
-            const Node* const node = graph.FindNode(id);
-            const NodeDesc* const desc = node ? FindNodeDesc(*node) : nullptr;
-            if (desc) {
-                for (const PinDesc& pin : desc->inputs) {
-                    if (const Link* const link = graph.FindLinkTo(id, pin.name)) {
-                        visit(link->fromNode);
-                    }
-                }
-            }
-            order.push_back(id);
-        };
-        visit(root->id);
-
-        // 出力の式（ノード・出力の番号 → 式）
-        std::map<std::pair<int, int>, std::string> outputs;
-        const auto inputExpression = [&](const Node& node, const NodeDesc& desc, const ResolvedNode& resolved,
-                                         size_t index, bool& connected) -> std::string {
-            const PinDesc& pin = desc.inputs[index];
-            const ValueType type = resolved.inputs[index];
-            connected = false;
-            if (const Link* const link = graph.FindLinkTo(node.id, pin.name)) {
-                const Node* const source = graph.FindNode(link->fromNode);
-                const NodeDesc* const sourceDesc = source ? FindNodeDesc(*source) : nullptr;
-                const int output = sourceDesc ? sourceDesc->FindOutput(link->fromPin) : -1;
-                const auto expression = outputs.find({ link->fromNode, output });
-                const auto sourceResolved = resolution.nodes.find(link->fromNode);
-                if (expression != outputs.end() && sourceResolved != resolution.nodes.end()
-                    && output >= 0 && static_cast<size_t>(output) < sourceResolved->second.outputs.size()) {
-                    const ValueType from = sourceResolved->second.outputs[static_cast<size_t>(output)];
-                    if (Compatible(from, IsNumeric(type) ? ValueType::Float : type)) {
-                        connected = true;
-                        return IsNumeric(type) ? Convert(expression->second, WidthOf(from), WidthOf(type)) : expression->second;
-                    }
-                }
-            }
-            return UnconnectedInput(graph.target, node, pin, type);
-        };
-
-        std::string body;
-        std::vector<std::pair<int, std::pair<int, int>>> bodyLines;
-        std::vector<std::pair<int, GlobalCode>> globals; ///< 関数の外に置く文と、置いたノード
-        for (const int id : order) {
-            const Node* const node = graph.FindNode(id);
-            const NodeDesc* const desc = node ? FindNodeDesc(*node) : nullptr;
-            const auto resolved = resolution.nodes.find(id);
-            if (!node || !desc || resolved == resolution.nodes.end() || node->type == kMasterNodeType) {
-                continue;
-            }
-
-            EmitArgs args{ graph, *node, *desc };
-            args.target = graph.target;
-            args.resolveInclude = options.resolveInclude;
-            args.dynamicWidth = resolved->second.dynamicWidth;
-            args.inType = resolved->second.inputs;
-            args.outType = resolved->second.outputs;
-            args.outExpr.assign(desc->outputs.size(), std::string());
-            for (size_t index = 0; index < desc->inputs.size(); ++index) {
-                bool connected = false;
-                args.in.push_back(inputExpression(*node, *desc, resolved->second, index, connected));
-                args.connected.push_back(connected);
-            }
-            if (!desc->Supports(graph.target)) {
-                args.error = std::string("このノードは") + DisplayName(graph.target) + "では使えません";
-            } else if (desc->emit) {
-                desc->emit(args);
-            }
-            for (const GlobalCode& global : args.globals) {
-                if (!args.error.empty()) {
-                    break;
-                }
-                const auto same = std::find_if(globals.begin(), globals.end(),
-                    [&](const auto& placed) { return placed.second.key == global.key; });
-                if (same != globals.end() && same->second.code != global.code) {
-                    args.error = "同じ関数（" + global.key.substr(global.key.find(':') + 1)
-                        + "）を、中身の違う別のノードでも作っています";
-                }
-            }
-            if (args.error.empty()) {
-                for (const GlobalCode& global : args.globals) {
-                    const bool placed = std::any_of(globals.begin(), globals.end(),
-                        [&](const auto& item) { return item.second.key == global.key; });
-                    if (!placed) {
-                        globals.push_back({ id, global });
-                    }
-                }
-            }
-            if (!args.error.empty()) {
-                result.issues.push_back({ id, args.error });
-                args.code.clear();
-                for (size_t index = 0; index < desc->outputs.size(); ++index) {
-                    args.Out(index, ZeroOf(args.outType[index]));
-                }
-            }
-
-            const int first = CountLines(body) + 1;
-            body += "    // " + std::to_string(id) + " " + std::string(desc->title) + "\n";
-            body += args.code;
-            bodyLines.push_back({ id, { first, CountLines(body) } });
-            for (size_t index = 0; index < desc->outputs.size(); ++index) {
-                outputs[{ id, static_cast<int>(index) }] = args.outExpr[index];
-            }
+        if (Is3D(graph.target)) {
+            Generate3D(graph, options, resolution, *root, result);
+            return result;
         }
+
+        // 出口から入力をたどって、使うノードを依存の順に書く
+        std::vector<std::pair<int, GlobalCode>> globals; ///< 関数の外に置く文と、置いたノード
+        FunctionWriter writer(graph, resolution, options, kStageFragment, globals, result.issues);
+        writer.Write(CollectOrder(graph, *root, nullptr));
+        std::string body = writer.Body();
 
         // 出口の式
         std::string color;
@@ -320,81 +611,27 @@ namespace CoreEngine::Editor::ShaderGraph
             const NodeDesc* const desc = FindNodeDesc(kMasterNodeType);
             const ResolvedNode& resolved = resolution.nodes.at(root->id);
             bool connected = false;
-            const std::string baseColor = inputExpression(*root, *desc, resolved, 0, connected);
-            const std::string alpha = inputExpression(*root, *desc, resolved, 1, connected);
+            const std::string baseColor = writer.Input(*root, *desc, resolved,
+                static_cast<size_t>(desc->FindInput("Base Color")), connected);
+            const std::string alpha = writer.Input(*root, *desc, resolved, static_cast<size_t>(desc->FindInput("Alpha")), connected);
             body += std::string(body.empty() ? "" : "\n") + "    float3 baseColor = " + baseColor + ";\n";
             body += "    float alpha = " + alpha + ";\n";
             color = "float4(baseColor, alpha)";
         } else {
-            const NodeDesc* const desc = FindNodeDesc(*root);
-            const ResolvedNode& resolved = resolution.nodes.at(root->id);
-            int output = -1;
-            if (desc && !options.previewPin.empty()) {
-                output = desc->FindOutput(options.previewPin);
-            }
-            if (output < 0) {
-                for (size_t index = 0; index < resolved.outputs.size(); ++index) {
-                    if (IsNumeric(resolved.outputs[index])) {
-                        output = static_cast<int>(index);
-                        break;
-                    }
-                }
-            }
-            if (output < 0 || !IsNumeric(resolved.outputs[static_cast<size_t>(output)])) {
+            color = PreviewColor(writer, resolution, options, *root);
+            if (color.empty()) {
                 result.fatal = "このノードには映せる出力がありません";
                 return result;
             }
-            color = ToColor(outputs[{ root->id, output }], WidthOf(resolved.outputs[static_cast<size_t>(output)]));
         }
 
         // ファイルの頭（プロパティの表・定数・テクスチャ）
-        std::string head;
-        head += std::string(kGeneratedMarker) + options.sourcePath + ". Changes are overwritten when the graph is saved.\n";
-        for (const Property& property : graph.properties) {
-            head += std::string(kPropertyLinePrefix) + property.name + " " + ToString(property.type);
-            if (property.type == PropertyType::Color && property.hdr) {
-                head += " hdr";
-            }
-            if (property.hasRange) {
-                head += " range " + FormatFloat(property.rangeMin) + " " + FormatFloat(property.rangeMax);
-            }
-            if (property.type == PropertyType::Texture2D && property.linear) {
-                head += " linear";
-            }
-            head += "\n";
-        }
+        std::string head = HeaderLines(graph, options);
         const bool postEffect = graph.target == Target::PostEffect;
         head += postEffect ? "#include \"PostEffectMaterial.hlsli\"\n" : "#include \"SpriteMaterial.hlsli\"\n";
         head += "#include \"ShaderGraphLibrary.hlsli\"\n";
-
-        std::vector<const Property*> numeric;
-        std::vector<const Property*> textures;
-        for (const Property& property : graph.properties) {
-            (property.type == PropertyType::Texture2D ? textures : numeric).push_back(&property);
-        }
-        std::stable_sort(numeric.begin(), numeric.end(), [](const Property* a, const Property* b) {
-            return PropertyOrder(a->type) < PropertyOrder(b->type);
-        });
-        if (!numeric.empty()) {
-            head += "\nstruct GraphProperties\n{\n";
-            for (const Property* property : numeric) {
-                head += "    " + TypeName(WidthOf(property->type)) + " " + property->name + ";\n";
-            }
-            head += "};\nConstantBuffer<GraphProperties> gMaterial : register(b0);\n";
-        }
-        if (!textures.empty()) {
-            head += "\n";
-            for (size_t index = 0; index < textures.size(); ++index) {
-                head += "Texture2D<float4> " + textures[index]->name + " : register(t" + std::to_string(index + 1) + ");\n";
-            }
-        }
-
-        for (const auto& [id, global] : globals) {
-            head += "\n";
-            const int first = CountLines(head) + 1;
-            head += global.code;
-            result.globalLines[id] = { first, CountLines(head) };
-        }
+        head += PropertyDeclarations(graph, "gMaterial", 0, 1);
+        AppendGlobals(head, globals, result);
 
         if (postEffect) {
             head += R"(
@@ -454,10 +691,7 @@ float4 main(SpriteVertexOutput input) : SV_TARGET0
 )";
         }
 
-        const int offset = CountLines(head);
-        for (const auto& [id, lines] : bodyLines) {
-            result.nodeLines[id] = { lines.first + offset, lines.second + offset };
-        }
+        writer.AddLines(result.nodeLines, CountLines(head));
         if (postEffect) {
             result.hlsl = head + body + "    gOutput[id.xy] = " + color + ";\n}\n";
         } else {

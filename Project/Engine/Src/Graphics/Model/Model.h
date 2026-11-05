@@ -160,6 +160,10 @@ namespace CoreEngine
         /// @note SetCustomForwardPSO() と合わせて MeshRendererComponent がカスタムシェーダーの PSO を組むときに呼ぶ。
         void SetCustomShaderProvider(const ICustomShaderProvider* provider) { customProvider_ = provider; }
 
+        /// @brief カリングと LOD で境界を広げる量 [m]（頂点を動かすマテリアルで画面の端で消えないように）
+        void SetBoundsPadding(float padding) { boundsPadding_ = padding; }
+        float GetBoundsPadding() const { return boundsPadding_; }
+
         /// @brief 3D モデルのマテリアル（`名前.Surface.hlsl`）で描く
         /// @param pipeline マテリアルのシェーダのパイプライン（nullptr なら fallback で描く）
         /// @param fallback pipeline で組めない組み合わせを描くパイプライン（マゼンタ）。両方 nullptr なら既定のシェーダーで描く
@@ -171,6 +175,12 @@ namespace CoreEngine
             surfaceFallback_ = fallback;
             surfaceSlot_ = slot;
         }
+
+        /// @brief 描いている 3D モデルのマテリアルのパイプライン（指していないか組めなければ nullptr）
+        SurfaceMaterialPipeline* GetSurfacePipeline() const { return surfacePipeline_; }
+
+        /// @brief 3D モデルのマテリアルの値とテクスチャの欄（指していなければ nullptr）
+        ShaderMaterialSlot* GetSurfaceSlot() const { return surfaceSlot_; }
 
     private:
         /// @brief 3D モデルのマテリアルの組み合わせを引く（指していなければ nullptr）
@@ -221,6 +231,7 @@ namespace CoreEngine
 
         // 可視性評価（LOD選択・Hi-Zオクルージョン判定）。最適化の実装詳細はこちらが持つ
         ModelVisibility visibility_;
+        float boundsPadding_ = 0.0f;
 
         // 内部ヘルパーメソッド
         /// @brief 前フレーム WVP をモーションベクターに使ってよいか

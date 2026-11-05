@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "VertexAnimationDeformer.h"
 
+#include "Graphics/Material/ShaderMaterialSlot.h"
+#include "Graphics/Material/SurfaceMaterialPipeline.h"
 #include "Graphics/Model/Model.h"
 #include "Graphics/Model/ModelResource.h"
 #include "Graphics/Pipeline/ComputePipelineUtil.h"
@@ -175,8 +177,26 @@ namespace CoreEngine
         const VertexAnimationParams& params, uint64_t frame)
     {
         std::vector<Output> outputs(requests.size());
-        if (!cmdList || requests.empty() || !EnsurePipeline()) {
+        if (!cmdList || requests.empty()) {
             return outputs;
+        }
+
+        // ===== 依頼ごとに動かすパイプラインを決める（マテリアルの CS か、揺れの CS） =====
+        std::vector<const SurfaceDeformVariant*> surfaceVariants(requests.size(), nullptr);
+        bool engineReady = false;
+        bool engineTried = false;
+        std::vector<bool> runnable(requests.size(), false);
+        for (size_t i = 0; i < requests.size(); ++i) {
+            if (requests[i].surface) {
+                surfaceVariants[i] = requests[i].surface->GetDeformVariant();
+                runnable[i] = surfaceVariants[i] != nullptr;
+                continue;
+            }
+            if (!engineTried) {
+                engineTried = true;
+                engineReady = EnsurePipeline();
+            }
+            runnable[i] = engineReady;
         }
 
         // ===== 持ち主ごとの頂点バッファを用意し、書き込みの状態へまとめて切り替える =====
@@ -184,7 +204,7 @@ namespace CoreEngine
         BarrierBatch toWrite(cmdList);
         for (size_t i = 0; i < requests.size(); ++i) {
             const Request& request = requests[i];
-            if (!request.owner || !request.model) {
+            if (!runnable[i] || !request.owner || !request.model) {
                 continue;
             }
             const ModelResource* resource = request.model->GetModelResource();
@@ -200,42 +220,73 @@ namespace CoreEngine
         toWrite.Flush();
 
         // ===== 持ち主ごと・サブメッシュ（マテリアル）ごとに、そのインデックスが指す頂点を書く =====
-        cmdList->SetComputeRootSignature(rootSignatureMg_->GetRootSignature());
-        cmdList->SetPipelineState(pso_.Get());
         ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
-        binder.SetConstants(bindings_[VertexAnimationDeformBind::gVertexAnim], params);
+        UploadRing& uploadRing = graphicsCore_->GetUploadRing();
+        ID3D12PipelineState* currentPipeline = nullptr;
         BarrierBatch toRead(cmdList);
         for (size_t i = 0; i < requests.size(); ++i) {
             Entry* entry = targets[i];
             if (!entry) {
                 continue;
             }
-            const Model& model = *requests[i].model;
+            const Request& request = requests[i];
+            const SurfaceDeformVariant* surface = surfaceVariants[i];
+            ID3D12RootSignature* const rootSignature =
+                surface ? surface->rootSignature->GetRootSignature() : rootSignatureMg_->GetRootSignature();
+            ID3D12PipelineState* const pipeline = surface ? surface->pipelineState.Get() : pso_.Get();
+            const BindingTable& bindings = surface ? surface->bindings : bindings_;
+            if (pipeline != currentPipeline) {
+                // ルートシグネチャを差し替えるとルート引数も消えるので、時間・風も差し直す
+                cmdList->SetComputeRootSignature(rootSignature);
+                cmdList->SetPipelineState(pipeline);
+                binder.SetConstants(bindings[VertexAnimationDeformBind::gVertexAnim], params);
+                currentPipeline = pipeline;
+            }
+
+            const Model& model = *request.model;
             const ModelResource* resource = model.GetModelResource();
-            binder.Set(bindings_[VertexAnimationDeformBind::gSourceVertices], resource->GetVertexBuffer()->GetGPUVirtualAddress());
-            binder.Set(bindings_[VertexAnimationDeformBind::gIndices], resource->GetIndexBuffer()->GetGPUVirtualAddress());
-            binder.Set(bindings_[VertexAnimationDeformBind::gOutputVertices], entry->vertices.GpuAddress());
+            bool bound = true;
+            if (surface && request.slot) {
+                bound = request.slot->BindSurfaceDeform(cmdList, *surface, uploadRing);
+            }
+            const D3D12_GPU_VIRTUAL_ADDRESS source = request.sourceVertices
+                ? request.sourceVertices->GetGPUVirtualAddress()
+                : resource->GetVertexBuffer()->GetGPUVirtualAddress();
+            binder.Set(bindings[VertexAnimationDeformBind::gSourceVertices], source);
+            binder.Set(bindings[VertexAnimationDeformBind::gIndices], resource->GetIndexBuffer()->GetGPUVirtualAddress());
+            binder.Set(bindings[VertexAnimationDeformBind::gOutputVertices], entry->vertices.GpuAddress());
 
             DeformConstants constants{};
-            constants.world = requests[i].world;
-            constants.worldInverseTranspose = MathCore::Matrix::Transpose(MathCore::Matrix::Inverse(requests[i].world));
+            constants.world = request.world;
+            constants.worldInverseTranspose = MathCore::Matrix::Transpose(MathCore::Matrix::Inverse(request.world));
             constants.vertexCount = entry->vertexCount;
+            constants.applyVertexAnimation = request.applyVertexAnimation ? 1u : 0u;
             for (const SubMeshData& subMesh : resource->GetSubMeshes()) {
+                if (!bound) {
+                    break;
+                }
                 if (subMesh.indexCount == 0) {
                     continue;
                 }
                 // 揺れないマテリアル（なし・魚）のサブメッシュも、元の頂点を書くために回す
                 constants.indexStart = subMesh.startIndex;
                 constants.indexCount = subMesh.indexCount;
-                binder.Set(bindings_[VertexAnimationDeformBind::gMaterial], model.GetMaterialCBVAddress(subMesh.materialIndex));
-                binder.SetConstants(bindings_[VertexAnimationDeformBind::gDeform], constants);
-                binder.ValidateBeforeDraw(bindings_);
+                binder.Set(bindings[VertexAnimationDeformBind::gMaterial], model.GetMaterialCBVAddress(subMesh.materialIndex));
+                if (surface && surface->mainTextureSlot.IsValid()) {
+                    cmdList->SetComputeRootDescriptorTable(surface->mainTextureSlot.index,
+                        resource->GetMaterialTextures(subMesh.materialIndex).baseColor);
+                }
+                binder.SetConstants(bindings[VertexAnimationDeformBind::gDeform], constants);
+                binder.ValidateBeforeDraw(bindings);
                 cmdList->Dispatch((subMesh.indexCount + kThreadGroupSize - 1) / kThreadGroupSize, 1, 1);
             }
 
             // BLAS の入力とレイトレーシングのシェーダーからの読み取りは NON_PIXEL_SHADER_RESOURCE
             // （UAV の書き込みの完了もこの遷移が保証する）
             toRead.Transition(entry->vertices, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            if (!bound) {
+                continue;
+            }
             outputs[i].vertices = entry->vertices.Get();
             outputs[i].vertexBufferIndex = entry->rawSrv.IsValid() ? entry->rawSrv.Index() : UINT32_MAX;
         }

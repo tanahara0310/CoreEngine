@@ -125,6 +125,10 @@ public:
     Reflection::AssetRefValue GetMaterialAsset() const { return surfaceMaterial_.GetAsset(); }
     void SetMaterialAsset(const Reflection::AssetRefValue& value);
 
+    /// @brief カリングと LOD で境界を広げる量 [m]（頂点を動かすマテリアルで画面の端で消えないように）
+    float GetBoundsPadding() const { return boundsPadding_; }
+    void SetBoundsPadding(float padding);
+
     /// @brief カスタムシェーダーを使う場合のプロバイダを登録する（所有権は移さない）
     void SetCustomShaderProvider(ICustomShaderProvider* provider) { customShaderProvider_ = provider; }
 
@@ -162,7 +166,7 @@ public:
     /// @return 実際に描画したら true
     bool DrawIfVisible(const DrawViewInfo& view);
 
-    /// @brief ワールド空間の AABB（カリング / Hi-Z / ピッキングの事前棄却用）
+    /// @brief ワールド空間の AABB（境界の余白を含む。カリング / Hi-Z / ピッキングの事前棄却用）
     BoundingBox GetWorldBoundingBox() const;
 
     /// @brief 兄弟の TransformComponent（描画に必要なワールド行列の出どころ）
@@ -204,6 +208,7 @@ private:
     std::string textureName_;
     std::string pendingTexturePath_;
     BlendMode blendMode_ = BlendMode::kBlendModeNone;
+    float boundsPadding_ = 0.0f;
 
     json pendingMaterials_;  ///< メッシュを読み込むまで控えるマテリアル（`materials` の配列）
 

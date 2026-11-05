@@ -111,7 +111,7 @@ namespace CoreEngine
     }
 
     bool ShaderMaterialSlot::BindParams(ID3D12GraphicsCommandList* commandList, const MaterialParamLayout& layout,
-        RootSlot paramsSlot, std::span<const RootSlot> textureSlots, UploadRing& uploadRing)
+        RootSlot paramsSlot, std::span<const RootSlot> textureSlots, UploadRing& uploadRing, bool compute)
     {
         // 足りないテクスチャを白で埋められないなら描かない（差していない表はデバッグレイヤーが止める）
         const size_t textureCount = (std::min)(textureSlots.size(), layout.textures.size());
@@ -144,10 +144,19 @@ namespace CoreEngine
             if (params == 0) {
                 return false;
             }
-            commandList->SetGraphicsRootConstantBufferView(paramsSlot.index, params);
+            if (compute) {
+                commandList->SetComputeRootConstantBufferView(paramsSlot.index, params);
+            } else {
+                commandList->SetGraphicsRootConstantBufferView(paramsSlot.index, params);
+            }
         }
         for (size_t index = 0; index < textureCount; ++index) {
-            if (textures[index].ptr != 0) {
+            if (textures[index].ptr == 0) {
+                continue;
+            }
+            if (compute) {
+                commandList->SetComputeRootDescriptorTable(textureSlots[index].index, textures[index]);
+            } else {
                 commandList->SetGraphicsRootDescriptorTable(textureSlots[index].index, textures[index]);
             }
         }
@@ -178,5 +187,15 @@ namespace CoreEngine
             return true;
         }
         return BindParams(commandList, *variant.layout, variant.paramsSlot, variant.textureSlots, uploadRing);
+    }
+
+    bool ShaderMaterialSlot::BindSurfaceDeform(ID3D12GraphicsCommandList* commandList, const SurfaceDeformVariant& variant,
+        UploadRing& uploadRing)
+    {
+        if (!variant.layout) {
+            return true;
+        }
+        return BindParams(commandList, *variant.layout, variant.paramsSlot, variant.textureSlots, uploadRing,
+            /*compute=*/true);
     }
 }

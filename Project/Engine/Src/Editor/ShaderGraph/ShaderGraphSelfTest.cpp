@@ -11,18 +11,35 @@ namespace CoreEngine::Editor::ShaderGraph
 {
     namespace
     {
-        constexpr int kTestNode = 2;
+        constexpr int kMasterNode = 1;
+        constexpr int kVertexMasterNode = 2;
         constexpr int kSampleNode = 50;
+
+        /// @brief 試すノードの番号（3D は 2 番が頂点の出口）
+        int TestNode(Target target)
+        {
+            return Is3D(target) ? 3 : 2;
+        }
 
         void Connect(Graph& graph, int from, std::string_view fromPin, int to, std::string_view toPin)
         {
             graph.links.push_back(Link{ from, std::string(fromPin), to, std::string(toPin) });
         }
 
+        const char* Prefix(Target target)
+        {
+            switch (target) {
+            case Target::PostEffect: return "Post_";
+            case Target::Lit: return "Lit_";
+            case Target::Unlit: return "Unlit_";
+            default: return "";
+            }
+        }
+
         void Add(std::vector<SelfTestCase>& cases, const Graph& graph, const std::string& name, int previewNode,
             std::string_view previewPin)
         {
-            const std::string fullName = (graph.target == Target::PostEffect ? "Post_" : "") + name;
+            const std::string fullName = Prefix(graph.target) + name;
             GenerateOptions options;
             options.sourcePath = "SelfTest/" + fullName + ".shadergraph";
             options.previewNode = previewNode;
@@ -30,18 +47,42 @@ namespace CoreEngine::Editor::ShaderGraph
             cases.push_back(SelfTestCase{ fullName, graph.target, Generate(graph, options) });
         }
 
+        /// @brief Fragment の出口のうち、目標で使う欄へ全部つなぐ（スプライトとポストエフェクトは Base Color と Alpha）
+        void ConnectFragment(Graph& graph, int from, std::string_view fromPin)
+        {
+            const NodeDesc* const master = FindNodeDesc(kMasterNodeType);
+            for (const PinDesc& pin : master->inputs) {
+                if (pin.Supports(graph.target)) {
+                    Connect(graph, from, fromPin, kMasterNode, pin.name);
+                }
+            }
+        }
+
+        /// @brief Vertex の出口の 2 つの欄へつなぐ
+        void ConnectVertex(Graph& graph, int from, std::string_view fromPin)
+        {
+            Connect(graph, from, fromPin, kVertexMasterNode, "Position");
+            Connect(graph, from, fromPin, kVertexMasterNode, "Normal");
+        }
+
         /// @brief 試すノードを 1 つ置き、Dynamic の入力へ幅 width の定数をつなぐ（0 ならつながない）
-        Graph MakeNodeGraph(Target target, const NodeDesc& desc, int width)
+        Graph MakeNodeGraph(Target target, const NodeDesc& desc, int width, uint8_t stage)
         {
             Graph graph = MakeEmptyGraph(target);
             Node node;
-            node.id = kTestNode;
+            node.id = TestNode(target);
             node.type = std::string(desc.type);
             if (desc.type == "Swizzle") {
                 // 入力の幅に収まる並び（逆順）にする
                 std::string mask = std::string("xyzw").substr(0, static_cast<size_t>((std::max)(1, width)));
                 std::reverse(mask.begin(), mask.end());
                 node.settings["Mask"] = mask;
+            }
+            if (desc.type == "Transform") {
+                // 段ごとに移せる空間の組にする
+                node.settings["From"] = stage == kStageVertex ? "Object" : "World";
+                node.settings["To"] = stage == kStageVertex ? "World" : "Tangent";
+                node.settings["Type"] = stage == kStageVertex ? "Position" : "Direction";
             }
             graph.nodes.push_back(node);
             if (width == 0) {
@@ -57,48 +98,71 @@ namespace CoreEngine::Editor::ShaderGraph
                 constant.values["X"] = { 0.25f, 0.0f, 0.0f, 0.0f };
                 constant.values["Y"] = { 0.5f, 0.0f, 0.0f, 0.0f };
                 graph.nodes.push_back(constant);
-                Connect(graph, constant.id, "Out", kTestNode, desc.inputs[index].name);
+                Connect(graph, constant.id, "Out", node.id, desc.inputs[index].name);
             }
             return graph;
+        }
+
+        /// @brief ノード 1 種類を、出力ごとに映す形と出口へつなぐ形で試す
+        void AddNodeCases(std::vector<SelfTestCase>& cases, Target target, const NodeDesc& desc, uint8_t stage)
+        {
+            const bool vertex = stage == kStageVertex;
+            const int test = TestNode(target);
+            const bool hasDynamic = std::any_of(desc.inputs.begin(), desc.inputs.end(),
+                [](const PinDesc& pin) { return pin.type == ValueType::Dynamic; });
+            const int maxWidth = hasDynamic ? 4 : 0;
+            for (int width = 0; width <= maxWidth; ++width) {
+                const Graph base = MakeNodeGraph(target, desc, width, stage);
+                for (size_t output = 0; output < desc.outputs.size(); ++output) {
+                    const PinDesc& pin = desc.outputs[output];
+                    const std::string name = std::string(desc.type) + "_w" + std::to_string(width) + "_o" + std::to_string(output);
+                    Graph graph = base;
+                    if (pin.type == ValueType::Texture2D || pin.type == ValueType::SamplerState) {
+                        // テクスチャとサンプラーは Sample Texture 2D（Vertex は LOD）を通して色にする
+                        Node sample;
+                        sample.id = kSampleNode;
+                        sample.type = vertex ? "SampleTexture2DLOD" : "SampleTexture2D";
+                        graph.nodes.push_back(sample);
+                        Connect(graph, test, pin.name, kSampleNode, pin.type == ValueType::Texture2D ? "Texture" : "Sampler");
+                        if (vertex) {
+                            ConnectVertex(graph, kSampleNode, "RGBA");
+                            Add(cases, graph, name + "_vertex", 0, "");
+                            continue;
+                        }
+                        Add(cases, graph, name + "_preview", kSampleNode, "RGBA");
+                        Connect(graph, kSampleNode, "RGBA", kMasterNode, "Base Color");
+                        Connect(graph, kSampleNode, "A", kMasterNode, "Alpha");
+                        Add(cases, graph, name + "_master", 0, "");
+                        continue;
+                    }
+                    if (vertex) {
+                        ConnectVertex(graph, test, pin.name);
+                        Add(cases, graph, name + "_vertex", 0, "");
+                        continue;
+                    }
+                    Add(cases, graph, name + "_preview", test, pin.name);
+                    ConnectFragment(graph, test, pin.name);
+                    Add(cases, graph, name + "_master", 0, "");
+                }
+            }
         }
     }
 
     /// @brief 目標 1 つ分の検査のグラフを足す
     static void AddTargetCases(std::vector<SelfTestCase>& cases, Target target)
     {
+        const int test = TestNode(target);
         Add(cases, MakeEmptyGraph(target), "Empty", 0, "");
 
         for (const NodeDesc& desc : AllNodes()) {
             if (!desc.creatable || !desc.Supports(target)) {
                 continue;
             }
-            const bool hasDynamic = std::any_of(desc.inputs.begin(), desc.inputs.end(),
-                [](const PinDesc& pin) { return pin.type == ValueType::Dynamic; });
-            const int maxWidth = hasDynamic ? 4 : 0;
-            for (int width = 0; width <= maxWidth; ++width) {
-                const Graph base = MakeNodeGraph(target, desc, width);
-                for (size_t output = 0; output < desc.outputs.size(); ++output) {
-                    const PinDesc& pin = desc.outputs[output];
-                    const std::string name = std::string(desc.type) + "_w" + std::to_string(width) + "_o" + std::to_string(output);
-                    Graph graph = base;
-                    if (pin.type == ValueType::Texture2D || pin.type == ValueType::SamplerState) {
-                        // テクスチャとサンプラーは Sample Texture 2D を通して色にする
-                        Node sample;
-                        sample.id = kSampleNode;
-                        sample.type = "SampleTexture2D";
-                        graph.nodes.push_back(sample);
-                        Connect(graph, kTestNode, pin.name, kSampleNode, pin.type == ValueType::Texture2D ? "Texture" : "Sampler");
-                        Add(cases, graph, name + "_preview", kSampleNode, "RGBA");
-                        Connect(graph, kSampleNode, "RGBA", 1, "Base Color");
-                        Connect(graph, kSampleNode, "A", 1, "Alpha");
-                        Add(cases, graph, name + "_master", 0, "");
-                        continue;
-                    }
-                    Add(cases, graph, name + "_preview", kTestNode, pin.name);
-                    Connect(graph, kTestNode, pin.name, 1, "Base Color");
-                    Connect(graph, kTestNode, pin.name, 1, "Alpha");
-                    Add(cases, graph, name + "_master", 0, "");
-                }
+            if (!Is3D(target) || desc.SupportsStage(kStageFragment)) {
+                AddNodeCases(cases, target, desc, kStageFragment);
+            }
+            if (Is3D(target) && desc.SupportsStage(kStageVertex)) {
+                AddNodeCases(cases, target, desc, kStageVertex);
             }
         }
 
@@ -106,7 +170,7 @@ namespace CoreEngine::Editor::ShaderGraph
         constexpr PropertyType kTypes[] = { PropertyType::Float, PropertyType::Vector2, PropertyType::Vector3,
             PropertyType::Vector4, PropertyType::Color, PropertyType::Texture2D };
         Graph all = MakeEmptyGraph(target);
-        int nextId = 2;
+        int nextId = all.NextNodeId();
         int sum = 0;
         for (const PropertyType type : kTypes) {
             Property property;
@@ -118,7 +182,7 @@ namespace CoreEngine::Editor::ShaderGraph
             Graph single = MakeEmptyGraph(target);
             single.properties.push_back(property);
             Node node;
-            node.id = kTestNode;
+            node.id = test;
             node.type = "Property";
             node.property = property.id;
             single.nodes.push_back(node);
@@ -127,11 +191,22 @@ namespace CoreEngine::Editor::ShaderGraph
                 sample.id = kSampleNode;
                 sample.type = "SampleTexture2D";
                 single.nodes.push_back(sample);
-                Connect(single, kTestNode, "Out", kSampleNode, "Texture");
-                Connect(single, kSampleNode, "RGBA", 1, "Base Color");
+                Connect(single, test, "Out", kSampleNode, "Texture");
+                Connect(single, kSampleNode, "RGBA", kMasterNode, "Base Color");
+                if (Is3D(target)) {
+                    Node lod;
+                    lod.id = kSampleNode + 1;
+                    lod.type = "SampleTexture2DLOD";
+                    single.nodes.push_back(lod);
+                    Connect(single, test, "Out", lod.id, "Texture");
+                    ConnectVertex(single, lod.id, "RGBA");
+                }
             } else {
-                Connect(single, kTestNode, "Out", 1, "Base Color");
-                Connect(single, kTestNode, "Out", 1, "Alpha");
+                Connect(single, test, "Out", kMasterNode, "Base Color");
+                Connect(single, test, "Out", kMasterNode, "Alpha");
+                if (Is3D(target)) {
+                    ConnectVertex(single, test, "Out");
+                }
             }
             Add(cases, single, std::string("Property_") + ToString(type), 0, "");
 
@@ -165,12 +240,12 @@ namespace CoreEngine::Editor::ShaderGraph
             }
             sum = add.id;
         }
-        Connect(all, sum, "Out", 1, "Base Color");
+        Connect(all, sum, "Out", kMasterNode, "Base Color");
         Add(cases, all, "Property_All", 0, "");
 
-        // Custom Function（全部の種類のピン・同じ関数を 2 つのノードで使う）
+        // Custom Function（全部の種類のピン・同じ関数を 2 つのノードで使う。3D は Vertex でも使う）
         Graph function = MakeEmptyGraph(target);
-        for (const int id : { kTestNode, kTestNode + 1 }) {
+        for (const int id : { test, test + 1 }) {
             Node node;
             node.id = id;
             node.type = std::string(kCustomFunctionType);
@@ -180,16 +255,19 @@ namespace CoreEngine::Editor::ShaderGraph
             node.settings["Body"] = "x = a;\ny = b;\n\nz = c + t.SampleLevel(s, b, 0.0f).rgb;\nw = d;";
             function.nodes.push_back(node);
         }
-        Connect(function, kTestNode, "z", kTestNode + 1, "c");
-        Connect(function, kTestNode + 1, "z", 1, "Base Color");
-        Connect(function, kTestNode, "x", 1, "Alpha");
+        Connect(function, test, "z", test + 1, "c");
+        Connect(function, test + 1, "z", kMasterNode, "Base Color");
+        Connect(function, test, "x", kMasterNode, "Alpha");
+        if (Is3D(target)) {
+            Connect(function, test + 1, "z", kVertexMasterNode, "Position");
+        }
         Add(cases, function, "CustomFunction_All", 0, "");
     }
 
     std::vector<SelfTestCase> BuildSelfTestCases()
     {
         std::vector<SelfTestCase> cases;
-        for (const Target target : { Target::Sprite, Target::PostEffect }) {
+        for (const Target target : kAllTargetList) {
             AddTargetCases(cases, target);
         }
         return cases;

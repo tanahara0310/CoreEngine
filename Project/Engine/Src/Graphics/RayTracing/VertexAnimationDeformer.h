@@ -20,6 +20,8 @@ namespace CoreEngine
     class GraphicsCore;
     class Model;
     class RootSignatureManager;
+    class ShaderMaterialSlot;
+    class SurfaceMaterialPipeline;
     class ShaderCompiler;
     class ShaderReflectionBuilder;
     class ShaderReflectionData;
@@ -48,11 +50,24 @@ namespace CoreEngine
         };
 
         static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
+
+        /// @brief 3D モデルのマテリアルの `SurfaceDeformMain`（ModelSurface.hlsli。頂点の並びと gDeform は space2）
+        inline constexpr ShaderBindingDecl kSurfaceDecls[] = {
+            { "gMaterial",        ShaderBindingType::CBV, BindingUsage::Optional },
+            { "gVertexAnim",      ShaderBindingType::CBV, BindingUsage::Optional },
+            { "gDeform",          ShaderBindingType::CBV, BindingUsage::Required },
+            { "gSourceVertices",  ShaderBindingType::SRV, BindingUsage::Required },
+            { "gIndices",         ShaderBindingType::SRV, BindingUsage::Required },
+            { "gOutputVertices",  ShaderBindingType::UAV, BindingUsage::Required },
+        };
+
+        static_assert(std::size(kSurfaceDecls) == Slot::Count, "kSurfaceDecls と Slot の並びがずれている");
     }
 
-    /// @brief 頂点アニメーション（植物の揺れ・海草）をかけた形を、レイトレーシング用に毎フレーム作る
+    /// @brief 頂点アニメーション（植物の揺れ・海草）と、頂点を動かすマテリアルをかけた形を、レイトレーシング用に毎フレーム作る
     /// @details 描画の頂点シェーダーと同じ式（Shaders/Include/Object/VertexAnimation.hlsli）を同じマテリアル定数・
     ///          同じ時間で CS 実行し、持ち主（コンポーネント）ごとの頂点バッファ（VertexData の並び）へ書く。
+    ///          頂点の関数を持つマテリアル（`#define SURFACE_VERTEX`）は、そのシェーダの `SurfaceDeformMain` で動かす。
     ///          AccelerationStructureManager::BuildOrUpdateDynamicBLAS がこれを頂点にして BLAS を更新し、
     ///          水面の映り込みのヒットシェーディングも同じ頂点を読むので、影・水面の反射・コースティクスに
     ///          映る形が画面の揺れと一致する。
@@ -66,7 +81,7 @@ namespace CoreEngine
             uint32_t indexStart = 0;          ///< サブメッシュのインデックスの開始位置（LOD0）
             uint32_t indexCount = 0;          ///< インデックス数
             uint32_t vertexCount = 0;         ///< 頂点数
-            uint32_t padding = 0;
+            uint32_t applyVertexAnimation = 0;  ///< 1 = 植物の揺れなどを先に掛ける（`SurfaceDeformMain` だけが読む）
         };
 
         /// @brief 持ち主 1 つぶんの変形の依頼
@@ -74,6 +89,10 @@ namespace CoreEngine
             const void* owner = nullptr;  ///< 持ち主の識別子（コンポーネントのアドレス。持ち主ごとに頂点バッファを持つ）
             const Model* model = nullptr; ///< 変形するモデル（マテリアルの頂点アニメーションの種類・倍率を読む）
             Matrix4x4 world{};            ///< ワールド行列（個体ごとの位相と風向き）
+            ID3D12Resource* sourceVertices = nullptr; ///< 元の頂点（nullptr ならモデルの頂点。スキンはスキン済みの頂点）
+            SurfaceMaterialPipeline* surface = nullptr; ///< 頂点の関数を持つマテリアル（nullptr なら揺れだけ）
+            ShaderMaterialSlot* slot = nullptr;           ///< そのマテリアルの値とテクスチャ
+            bool applyVertexAnimation = true;             ///< 植物の揺れなども掛けるか（スキンは掛けない）
         };
 
         /// @brief DeformBatch の結果（依頼 1 つにつき 1 つ）
@@ -148,7 +167,7 @@ namespace CoreEngine
         CB_FIELD(VertexAnimationDeformer::DeformConstants, indexStart),
         CB_FIELD(VertexAnimationDeformer::DeformConstants, indexCount),
         CB_FIELD(VertexAnimationDeformer::DeformConstants, vertexCount),
-        CB_FIELD(VertexAnimationDeformer::DeformConstants, padding),
+        CB_FIELD(VertexAnimationDeformer::DeformConstants, applyVertexAnimation),
     };
     CB_VERIFY_LAYOUT(VertexAnimationDeformer::DeformConstants, kDeformConstantsFields);
 }

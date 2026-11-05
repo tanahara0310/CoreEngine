@@ -3,6 +3,8 @@
 
 #include "Graphics/Material/ShaderMaterial.h"
 #include "Graphics/Material/ShaderMaterialLibrary.h"
+#include "Graphics/Pipeline/ComputePipelineUtil.h"
+#include "Graphics/RayTracing/VertexAnimationDeformer.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/Model/ModelBindings.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
@@ -11,27 +13,108 @@
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Utility/Logger/Logger.h"
 
+#include <exception>
+#include <fstream>
 #include <iterator>
+#include <sstream>
 
 namespace CoreEngine
 {
+    RootSignatureConfig MakeSurfaceMaterialRootSignatureConfig()
+    {
+        RootSignatureConfig config;
+        config.SetDefaultCBVStrategy(BindingStrategy::RootDescriptor);
+        config.SetDefaultSRVStrategy(BindingStrategy::DescriptorTable);
+        config.SetDefaultSamplerStrategy(BindingStrategy::StaticSampler);
+        config.ConfigureResource("gInstanceData", BindingStrategy::RootDescriptor);
+        config.ConfigureResource("gVertexAnim", BindingStrategy::RootConstants);
+        config.ConfigureSampler("gSampler", SamplerConfig::Anisotropic());
+        config.ConfigureSampler("gShadowSampler", SamplerConfig::Shadow());
+        config.ConfigureSampler("gPointSampler", SamplerConfig::Point());
+        config.ConfigureSampler("gClampSampler", SamplerConfig::LinearClamp());
+        return config;
+    }
+
     namespace
     {
-        /// @brief モデル描画と同じ差し方（CBV はルート・SRV は表・インスタンスはルート SRV・頂点アニメーションはルート定数）
-        RootSignatureConfig MakeConfig()
+        /// @brief レイトレの影の形を作るコンピュートシェーダの差し方（頂点の並びと定数はルート・テクスチャは表）
+        RootSignatureConfig MakeDeformConfig()
         {
             RootSignatureConfig config;
+            config.SetFlags(D3D12_ROOT_SIGNATURE_FLAG_NONE);
             config.SetDefaultCBVStrategy(BindingStrategy::RootDescriptor);
             config.SetDefaultSRVStrategy(BindingStrategy::DescriptorTable);
             config.SetDefaultSamplerStrategy(BindingStrategy::StaticSampler);
-            config.ConfigureResource("gInstanceData", BindingStrategy::RootDescriptor);
             config.ConfigureResource("gVertexAnim", BindingStrategy::RootConstants);
+            config.ConfigureResource("gDeform", BindingStrategy::RootConstants);
+            config.ConfigureResource("gSourceVertices", BindingStrategy::RootDescriptor);
+            config.ConfigureResource("gIndices", BindingStrategy::RootDescriptor);
+            config.ConfigureResource("gOutputVertices", BindingStrategy::RootDescriptor);
             config.ConfigureSampler("gSampler", SamplerConfig::Anisotropic());
-            config.ConfigureSampler("gShadowSampler", SamplerConfig::Shadow());
             config.ConfigureSampler("gPointSampler", SamplerConfig::Point());
             config.ConfigureSampler("gClampSampler", SamplerConfig::LinearClamp());
             return config;
         }
+    }
+
+    bool SurfaceShaderTextHasVertexFunction(std::string_view text)
+    {
+        constexpr std::string_view kDirective = "define";
+        constexpr std::string_view kName = "SURFACE_VERTEX";
+        const auto isSpace = [](char c) { return c == ' ' || c == '\t'; };
+        const auto isNameChar = [](char c) {
+            return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_';
+        };
+        size_t lineStart = 0;
+        while (lineStart < text.size()) {
+            size_t lineEnd = text.find('\n', lineStart);
+            if (lineEnd == std::string_view::npos) {
+                lineEnd = text.size();
+            }
+            const std::string_view line = text.substr(lineStart, lineEnd - lineStart);
+            lineStart = lineEnd + 1;
+
+            size_t at = 0;
+            while (at < line.size() && isSpace(line[at])) {
+                ++at;
+            }
+            if (at >= line.size() || line[at] != '#') {
+                continue;
+            }
+            ++at;
+            while (at < line.size() && isSpace(line[at])) {
+                ++at;
+            }
+            if (line.substr(at, kDirective.size()) != kDirective) {
+                continue;
+            }
+            at += kDirective.size();
+            if (at >= line.size() || !isSpace(line[at])) {
+                continue;
+            }
+            while (at < line.size() && isSpace(line[at])) {
+                ++at;
+            }
+            if (line.substr(at, kName.size()) != kName) {
+                continue;
+            }
+            at += kName.size();
+            if (at >= line.size() || !isNameChar(line[at])) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool SurfaceShaderHasVertexFunction(const std::string& shaderPath)
+    {
+        std::ifstream file(Logger::GetInstance().Utf8ToPath(shaderPath), std::ios::binary);
+        if (!file) {
+            return false;
+        }
+        std::ostringstream text;
+        text << file.rdbuf();
+        return SurfaceShaderTextHasVertexFunction(text.str());
     }
 
     ID3D12RootSignature* SurfaceMaterialVariant::GetRootSignature() const
@@ -48,6 +131,7 @@ namespace CoreEngine
         ShaderReflectionBuilder& reflectionBuilder, std::string shaderPath)
         : device_(device), compiler_(&compiler), reflectionBuilder_(&reflectionBuilder), shaderPath_(std::move(shaderPath))
     {
+        hasVertexFunction_ = SurfaceShaderHasVertexFunction(shaderPath_);
     }
 
     SurfaceMaterialPipeline::~SurfaceMaterialPipeline() = default;
@@ -100,6 +184,21 @@ namespace CoreEngine
         return blob;
     }
 
+    Microsoft::WRL::ComPtr<IDxcBlob> SurfaceMaterialPipeline::CompileVertexShader(Pass pass, bool skinned, std::string& error)
+    {
+        Logger& log = Logger::GetInstance();
+        if (!hasVertexFunction_) {
+            const SurfaceMaterialStage& spec = kSurfaceMaterialStages[VariantIndex(pass, skinned)];
+            return compiler_->CompileShader(log.Utf8ToPath(spec.vertexShader).wstring(), L"vs_6_0", L"main", &error);
+        }
+        Microsoft::WRL::ComPtr<IDxcBlob>& blob = ownVertexShaders_[skinned ? 1 : 0];
+        if (!blob) {
+            blob = compiler_->CompileShader(log.Utf8ToPath(shaderPath_).wstring(), L"vs_6_0",
+                skinned ? kSurfaceSkinnedVertexEntry : kSurfaceStaticVertexEntry, &error);
+        }
+        return blob;
+    }
+
     bool SurfaceMaterialPipeline::BuildVariant(Pass pass, bool skinned)
     {
         Logger& log = Logger::GetInstance();
@@ -107,9 +206,7 @@ namespace CoreEngine
 
         std::string error;
         const Microsoft::WRL::ComPtr<IDxcBlob> pixelBlob = CompilePixelShader(pass, skinned, error);
-        const Microsoft::WRL::ComPtr<IDxcBlob> vertexBlob = pixelBlob
-            ? compiler_->CompileShader(log.Utf8ToPath(spec.vertexShader).wstring(), L"vs_6_0", L"main", &error)
-            : nullptr;
+        const Microsoft::WRL::ComPtr<IDxcBlob> vertexBlob = pixelBlob ? CompileVertexShader(pass, skinned, error) : nullptr;
         if (!pixelBlob || !vertexBlob) {
             log.Logf(LogLevel::Error, LogCategory::Shader, "3D モデルのマテリアルのシェーダ {} をコンパイルできません: {}",
                 shaderPath_, error);
@@ -125,7 +222,7 @@ namespace CoreEngine
 
         auto variant = std::make_unique<SurfaceMaterialVariant>();
         variant->rootSignature = std::make_unique<RootSignatureManager>();
-        const auto rootResult = variant->rootSignature->Build(device_, *reflection, MakeConfig());
+        const auto rootResult = variant->rootSignature->Build(device_, *reflection, MakeSurfaceMaterialRootSignatureConfig());
         if (!rootResult.success) {
             log.Logf(LogLevel::Error, LogCategory::Shader, "3D モデルのマテリアルのシェーダ {} のルートシグネチャを作れません: {}",
                 shaderPath_, rootResult.errorMessage);
@@ -154,6 +251,9 @@ namespace CoreEngine
         }
 
         ReadMaterialParamLayout(compiler_->GetDxcUtils(), pixelBlob.Get(), layout_, shaderName, kSurfaceMaterialRegisters);
+        if (hasVertexFunction_) {
+            ReadMaterialParamLayout(compiler_->GetDxcUtils(), vertexBlob.Get(), layout_, shaderName, kSurfaceMaterialRegisters);
+        }
 
         variant->layout = &layout_;
         variant->modelBindings = BindingTable::Resolve(*reflection, ModelBind::kCustom, shaderName, /*warnUndeclared=*/false);
@@ -163,6 +263,72 @@ namespace CoreEngine
             variant->textureSlots.push_back(variant->rootSignature->GetRootSlot(name));
         }
         variants_[VariantIndex(pass, skinned)] = std::move(variant);
+        return true;
+    }
+
+    const SurfaceDeformVariant* SurfaceMaterialPipeline::GetDeformVariant()
+    {
+        if (!hasVertexFunction_) {
+            return nullptr;
+        }
+        if (!deformAttempted_) {
+            deformAttempted_ = true;
+            BuildDeformVariant();
+        }
+        return deform_.get();
+    }
+
+    bool SurfaceMaterialPipeline::BuildDeformVariant()
+    {
+        Logger& log = Logger::GetInstance();
+        std::string error;
+        const Microsoft::WRL::ComPtr<IDxcBlob> blob = compiler_->CompileShader(
+            log.Utf8ToPath(shaderPath_).wstring(), L"cs_6_0", kSurfaceDeformEntry, &error);
+        if (!blob) {
+            log.Logf(LogLevel::Error, LogCategory::Shader,
+                "3D モデルのマテリアルのシェーダ {} の影の形を作るシェーダをコンパイルできません: {}", shaderPath_, error);
+            return false;
+        }
+
+        const std::string shaderName = "SurfaceDeform " + shaderPath_;
+        const std::unique_ptr<ShaderReflectionData> reflection = reflectionBuilder_->BuildFromComputeShader(blob.Get(), shaderName);
+        if (!reflection) {
+            return false;
+        }
+
+        auto variant = std::make_unique<SurfaceDeformVariant>();
+        variant->rootSignature = std::make_unique<RootSignatureManager>();
+        const auto rootResult = variant->rootSignature->Build(device_, *reflection, MakeDeformConfig());
+        if (!rootResult.success) {
+            log.Logf(LogLevel::Error, LogCategory::Shader,
+                "3D モデルのマテリアルのシェーダ {} の影の形を作るルートシグネチャを作れません: {}", shaderPath_,
+                rootResult.errorMessage);
+            return false;
+        }
+        variant->pipelineState = ComputePipelineUtil::Create(
+            device_, variant->rootSignature->GetRootSignature(), blob.Get(), shaderName);
+        if (!variant->pipelineState) {
+            return false;
+        }
+        try {
+            variant->bindings = BindingTable::Resolve(*reflection, VertexAnimationDeformBind::kSurfaceDecls, shaderName,
+                /*warnUndeclared=*/false);
+        }
+        catch (const std::exception& e) {
+            log.Logf(LogLevel::Error, LogCategory::Shader,
+                "3D モデルのマテリアルのシェーダ {} の影の形を作るシェーダの資源が足りません: {}", shaderPath_, e.what());
+            return false;
+        }
+
+        ReadMaterialParamLayout(compiler_->GetDxcUtils(), blob.Get(), layout_, shaderName, kSurfaceMaterialRegisters);
+        variant->layout = &layout_;
+        variant->mainTextureSlot = variant->rootSignature->GetRootSlot("gTexture");
+        variant->paramsSlot = layout_.bufferName.empty() ? RootSlot{} : variant->rootSignature->GetRootSlot(layout_.bufferName);
+        variant->textureSlots.reserve(layout_.textures.size());
+        for (const std::string& name : layout_.textures) {
+            variant->textureSlots.push_back(variant->rootSignature->GetRootSlot(name));
+        }
+        deform_ = std::move(variant);
         return true;
     }
 
