@@ -58,6 +58,7 @@ namespace CoreEngine::Editor::ShaderGraph
                     return;
                 }
 
+                const bool redirect = node->type == kRedirectNodeType;
                 std::vector<ValueType> sources(desc->inputs.size(), ValueType::Float);
                 std::vector<bool> connected(desc->inputs.size(), false);
                 for (size_t index = 0; index < desc->inputs.size(); ++index) {
@@ -81,7 +82,7 @@ namespace CoreEngine::Editor::ShaderGraph
                     }
                     const ValueType from = source->second.outputs[static_cast<size_t>(output)];
                     const ValueType pin = desc->inputs[index].type;
-                    if (!Compatible(from, pin == ValueType::Dynamic ? ValueType::Float : pin)) {
+                    if (!redirect && !Compatible(from, pin == ValueType::Dynamic ? ValueType::Float : pin)) {
                         result_.issues.push_back({ id, std::string(desc->inputs[index].name) + " へは、この種類の値をつなげません" });
                         continue;
                     }
@@ -104,6 +105,11 @@ namespace CoreEngine::Editor::ShaderGraph
                 }
                 if (desc->resolveOutputs) {
                     desc->resolveOutputs(graph_, *node, dynamicWidth, resolved.outputs);
+                }
+                if (redirect && !resolved.inputs.empty() && !resolved.outputs.empty()) {
+                    // 中継点は、つながった値の種類（テクスチャとサンプラーも）をそのまま渡す
+                    resolved.inputs[0] = connected[0] ? sources[0] : ValueType::Float;
+                    resolved.outputs[0] = resolved.inputs[0];
                 }
 
                 visiting_.erase(id);
@@ -235,6 +241,55 @@ namespace CoreEngine::Editor::ShaderGraph
             return order;
         }
 
+        /// @brief いくつかの根から入力をたどって、使うノードを依存の順に並べる（共有するノードは 1 回）
+        std::vector<int> CollectOrder(const Graph& graph, const std::vector<const Node*>& roots)
+        {
+            std::vector<int> order;
+            std::set<int> visited;
+            std::function<void(int)> visit = [&](int id) {
+                if (!visited.insert(id).second) {
+                    return;
+                }
+                const Node* const node = graph.FindNode(id);
+                const NodeDesc* const desc = node ? FindNodeDesc(*node) : nullptr;
+                if (desc) {
+                    for (const PinDesc& pin : desc->inputs) {
+                        if (const Link* const link = graph.FindLinkTo(id, pin.name)) {
+                            visit(link->fromNode);
+                        }
+                    }
+                }
+                order.push_back(id);
+            };
+            for (const Node* root : roots) {
+                visit(root->id);
+            }
+            return order;
+        }
+
+        /// @brief 並べたノードが 3D の値（位置・法線・接線・視線・カメラ・モデルの面）を使うか
+        bool Uses3DInput(const Graph& graph, const std::vector<int>& order)
+        {
+            for (const int id : order) {
+                const Node* const node = graph.FindNode(id);
+                const NodeDesc* const desc = node ? FindNodeDesc(*node) : nullptr;
+                if (!desc) {
+                    continue;
+                }
+                if (desc->category.starts_with("Input/Geometry") || desc->category.starts_with("Input/Model")
+                    || desc->type == "Camera") {
+                    return true;
+                }
+                for (const PinDesc& pin : desc->inputs) {
+                    if ((pin.binding == PinBinding::WorldNormal || pin.binding == PinBinding::ViewDirection)
+                        && !graph.FindLinkTo(id, pin.name)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
         /// @brief 関数 1 つ（スプライト・ポストエフェクトの main、3D の SurfaceVertex か Surface）のノードの文を作る
         class FunctionWriter
         {
@@ -334,10 +389,12 @@ namespace CoreEngine::Editor::ShaderGraph
                         }
                     }
 
-                    const int first = CountLines(body_) + 1;
-                    body_ += "    // " + std::to_string(id) + " " + std::string(desc->title) + "\n";
-                    body_ += args.code;
-                    lines_.push_back({ id, { first, CountLines(body_) } });
+                    if (node->type != kRedirectNodeType || !args.code.empty()) {
+                        const int first = CountLines(body_) + 1;
+                        body_ += "    // " + std::to_string(id) + " " + std::string(desc->title) + "\n";
+                        body_ += args.code;
+                        lines_.push_back({ id, { first, CountLines(body_) } });
+                    }
                     for (size_t index = 0; index < desc->outputs.size(); ++index) {
                         outputs_[{ id, static_cast<int>(index) }] = args.outExpr[index];
                     }
@@ -463,6 +520,98 @@ namespace CoreEngine::Editor::ShaderGraph
             }
         }
 
+        /// @brief スプライトとポストエフェクトのファイルの頭（プロパティの表・include・定数・テクスチャ・関数の外の文）
+        std::string FlatHead(const Graph& graph, const GenerateOptions& options,
+            const std::vector<std::pair<int, GlobalCode>>& globals, GenerateResult& result)
+        {
+            std::string head = HeaderLines(graph, options);
+            head += graph.target == Target::PostEffect ? "#include \"PostEffectMaterial.hlsli\"\n" : "#include \"SpriteMaterial.hlsli\"\n";
+            head += "#include \"ShaderGraphLibrary.hlsli\"\n";
+            head += PropertyDeclarations(graph, "gMaterial", 0, 1);
+            AppendGlobals(head, globals, result);
+            return head;
+        }
+
+        /// @brief 3D のファイルの頭（プロパティの表・define・include・定数・テクスチャ・関数の外の文）
+        std::string SurfaceHead(const Graph& graph, const GenerateOptions& options,
+            const std::vector<std::pair<int, GlobalCode>>& globals, GenerateResult& result, bool lit, bool hasVertex)
+        {
+            std::string head = HeaderLines(graph, options);
+            head += lit ? "#define SURFACE_LIT\n" : "#define SURFACE_UNLIT\n";
+            if (hasVertex) {
+                head += "#define SURFACE_VERTEX\n";
+            }
+            head += "#include \"ModelSurface.hlsli\"\n";
+            head += "#include \"ShaderGraphLibrary.hlsli\"\n";
+            head += PropertyDeclarations(graph, "gGraph", kSurfaceGraphConstantRegister, kSurfaceGraphFirstTexture);
+            AppendGlobals(head, globals, result);
+            return head;
+        }
+
+        /// @brief ポストエフェクトの GraphInput と main の始め（IN を宣言するところまで）
+        constexpr std::string_view kPostEffectMainBegin = R"(
+struct GraphInput
+{
+    float2 uv;
+    float4 sceneColor;
+    float2 screenSize;
+    float2 invScreenSize;
+    float  time;
+    float  unscaledTime;
+    float  deltaTime;
+};
+
+POST_EFFECT_THREADS
+void main(uint3 id : SV_DispatchThreadID)
+{
+    if (IsOutsideScreen(id.xy)) {
+        return;
+    }
+    GraphInput IN;
+)";
+
+        /// @brief ポストエフェクトの IN の画面の値（この画素）
+        constexpr std::string_view kPostEffectScreenInputs = R"(    IN.uv = PostEffectUV(id.xy);
+    IN.sceneColor = LoadScreen(int2(id.xy));
+    IN.screenSize = float2(gPostEffect.screenSize);
+    IN.invScreenSize = gPostEffect.invScreenSize;
+)";
+
+        /// @brief ポストエフェクトの IN の時間
+        constexpr std::string_view kPostEffectTimeInputs = R"(    IN.time = gPostEffect.time;
+    IN.unscaledTime = gPostEffect.unscaledTime;
+    IN.deltaTime = gPostEffect.deltaTime;
+
+)";
+
+        /// @brief スプライトの GraphInput と main の始め（IN を全部置くところまで）
+        constexpr std::string_view kSpriteMainBegin = R"(
+struct GraphInput
+{
+    float2 uv;
+    float3 positionWS;
+    float4 spriteColor;
+    float4 vertexColor;
+    float2 textureSize;
+    float  time;
+    float  unscaledTime;
+    float  deltaTime;
+};
+
+float4 main(SpriteVertexOutput input) : SV_TARGET0
+{
+    GraphInput IN;
+    IN.uv = SpriteUV(input.texcoord);
+    IN.positionWS = input.worldPos;
+    IN.spriteColor = SpriteDefaultColor(input);
+    IN.vertexColor = SpriteColor();
+    IN.textureSize = gSpriteDraw.textureSize;
+    IN.time = gSpriteDraw.time;
+    IN.unscaledTime = gSpriteDraw.unscaledTime;
+    IN.deltaTime = gSpriteDraw.deltaTime;
+
+)";
+
         /// @brief 3D のモデルのマテリアル（`名前.Graph.Surface.hlsl`）を作る
         void Generate3D(const Graph& graph, const GenerateOptions& options, const Resolution& resolution, const Node& root,
             GenerateResult& result)
@@ -529,16 +678,7 @@ namespace CoreEngine::Editor::ShaderGraph
                 }
             }
 
-            std::string head = HeaderLines(graph, options);
-            head += graph.target == Target::Lit && !previewing ? "#define SURFACE_LIT\n" : "#define SURFACE_UNLIT\n";
-            if (hasVertex) {
-                head += "#define SURFACE_VERTEX\n";
-            }
-            head += "#include \"ModelSurface.hlsli\"\n";
-            head += "#include \"ShaderGraphLibrary.hlsli\"\n";
-            head += PropertyDeclarations(graph, "gGraph", kSurfaceGraphConstantRegister, kSurfaceGraphFirstTexture);
-            AppendGlobals(head, globals, result);
-
+            std::string head = SurfaceHead(graph, options, globals, result, graph.target == Target::Lit && !previewing, hasVertex);
             if (hasVertex) {
                 head += "\nvoid SurfaceVertex(SurfaceVertexInput IN, inout SurfaceVertexOutput OUT)\n{\n";
                 vertex.AddLines(result.nodeLines, CountLines(head));
@@ -626,69 +766,12 @@ namespace CoreEngine::Editor::ShaderGraph
         }
 
         // ファイルの頭（プロパティの表・定数・テクスチャ）
-        std::string head = HeaderLines(graph, options);
+        std::string head = FlatHead(graph, options, globals, result);
         const bool postEffect = graph.target == Target::PostEffect;
-        head += postEffect ? "#include \"PostEffectMaterial.hlsli\"\n" : "#include \"SpriteMaterial.hlsli\"\n";
-        head += "#include \"ShaderGraphLibrary.hlsli\"\n";
-        head += PropertyDeclarations(graph, "gMaterial", 0, 1);
-        AppendGlobals(head, globals, result);
-
         if (postEffect) {
-            head += R"(
-struct GraphInput
-{
-    float2 uv;
-    float4 sceneColor;
-    float2 screenSize;
-    float2 invScreenSize;
-    float  time;
-    float  unscaledTime;
-    float  deltaTime;
-};
-
-POST_EFFECT_THREADS
-void main(uint3 id : SV_DispatchThreadID)
-{
-    if (IsOutsideScreen(id.xy)) {
-        return;
-    }
-    GraphInput IN;
-    IN.uv = PostEffectUV(id.xy);
-    IN.sceneColor = LoadScreen(int2(id.xy));
-    IN.screenSize = float2(gPostEffect.screenSize);
-    IN.invScreenSize = gPostEffect.invScreenSize;
-    IN.time = gPostEffect.time;
-    IN.unscaledTime = gPostEffect.unscaledTime;
-    IN.deltaTime = gPostEffect.deltaTime;
-
-)";
+            head += std::string(kPostEffectMainBegin) + std::string(kPostEffectScreenInputs) + std::string(kPostEffectTimeInputs);
         } else {
-            head += R"(
-struct GraphInput
-{
-    float2 uv;
-    float3 positionWS;
-    float4 spriteColor;
-    float4 vertexColor;
-    float2 textureSize;
-    float  time;
-    float  unscaledTime;
-    float  deltaTime;
-};
-
-float4 main(SpriteVertexOutput input) : SV_TARGET0
-{
-    GraphInput IN;
-    IN.uv = SpriteUV(input.texcoord);
-    IN.positionWS = input.worldPos;
-    IN.spriteColor = SpriteDefaultColor(input);
-    IN.vertexColor = SpriteColor();
-    IN.textureSize = gSpriteDraw.textureSize;
-    IN.time = gSpriteDraw.time;
-    IN.unscaledTime = gSpriteDraw.unscaledTime;
-    IN.deltaTime = gSpriteDraw.deltaTime;
-
-)";
+            head += std::string(kSpriteMainBegin);
         }
 
         writer.AddLines(result.nodeLines, CountLines(head));
@@ -697,6 +780,125 @@ float4 main(SpriteVertexOutput input) : SV_TARGET0
         } else {
             result.hlsl = head + body + "    return " + color + ";\n}\n";
         }
+        return result;
+    }
+
+    NodePreviewResult GenerateNodePreviews(const Graph& graph, const GenerateOptions& options)
+    {
+        NodePreviewResult result;
+        std::set<std::string> names;
+        for (const Property& property : graph.properties) {
+            if (!IsValidPropertyName(property.name, nullptr) || !names.insert(property.name).second) {
+                return result;
+            }
+        }
+
+        // プレビューを開いた、映せる種類のノード（番号の順）
+        std::vector<const Node*> candidates;
+        for (const Node& node : graph.nodes) {
+            const NodeDesc* const desc = FindNodeDesc(node);
+            if (node.preview && desc && HasNodePreview(*desc) && desc->Supports(graph.target)) {
+                candidates.push_back(&node);
+            }
+        }
+        std::sort(candidates.begin(), candidates.end(), [](const Node* a, const Node* b) { return a->id < b->id; });
+        if (candidates.empty()) {
+            return result;
+        }
+
+        // 1 回目: 問題のあるノードを集める（3D は画素の関数で書けるかを見る）
+        const Resolution resolution = Resolve(graph);
+        std::map<int, std::string> reasons;
+        for (const NodeIssue& issue : resolution.issues) {
+            reasons.emplace(issue.node, issue.message);
+        }
+        {
+            std::vector<std::pair<int, GlobalCode>> globals;
+            std::vector<NodeIssue> issues;
+            FunctionWriter probe(graph, resolution, options, kStageFragment, globals, issues);
+            probe.Write(CollectOrder(graph, candidates));
+            for (const NodeIssue& issue : issues) {
+                reasons.emplace(issue.node, issue.message);
+            }
+        }
+
+        // 映すノードとタイルを決める（たどったノードに問題があれば映さない）
+        std::vector<const Node*> chosen;
+        for (const Node* node : candidates) {
+            const std::vector<int> order = CollectOrder(graph, *node, nullptr);
+            std::string reason;
+            for (const int id : order) {
+                if (const auto found = reasons.find(id); found != reasons.end()) {
+                    reason = found->second;
+                    break;
+                }
+            }
+            const ResolvedNode& resolved = resolution.nodes.at(node->id);
+            if (reason.empty() && std::none_of(resolved.outputs.begin(), resolved.outputs.end(), IsNumeric)) {
+                reason = "映せる出力がありません";
+            }
+            if (!reason.empty()) {
+                result.unavailable[node->id] = reason;
+                continue;
+            }
+            if (static_cast<int>(chosen.size()) >= kNodePreviewMax) {
+                result.overflow.push_back(node->id);
+                continue;
+            }
+            const bool sphere = Is3D(graph.target) && Uses3DInput(graph, order);
+            result.tiles.push_back(NodePreviewTile{ node->id, static_cast<int>(chosen.size()), sphere });
+            chosen.push_back(node);
+        }
+        if (chosen.empty()) {
+            return result;
+        }
+
+        // 2 回目: 映すノードとたどったノードを書き、タイルごとに色を選ぶ
+        std::vector<std::pair<int, GlobalCode>> globals;
+        std::vector<NodeIssue> issues;
+        FunctionWriter writer(graph, resolution, options, kStageFragment, globals, issues);
+        writer.Write(CollectOrder(graph, chosen));
+        GenerateOptions colorOptions = options;
+        colorOptions.previewPin.clear();
+
+        // 画素の位置（描き先の px）からタイルの番号を出す
+        const bool postEffect = graph.target == Target::PostEffect;
+        const char* const pixel = Is3D(graph.target) ? "IN.screenPosition" : (postEffect ? "id.xy" : "input.position.xy");
+        const std::string tile = std::to_string(kNodePreviewTile);
+        std::string select;
+        select += "\n    int2 SG_cell = int2(" + std::string(pixel) + ") / " + tile + ";\n";
+        select += "    float4 SG_color = float4(0.0f, 0.0f, 0.0f, 1.0f);\n";
+        select += "    switch (SG_cell.y * " + std::to_string(kNodePreviewColumns) + " + SG_cell.x) {\n";
+        for (size_t index = 0; index < chosen.size(); ++index) {
+            select += "    case " + std::to_string(index) + ": SG_color = "
+                + PreviewColor(writer, resolution, colorOptions, *chosen[index]) + "; break;\n";
+        }
+        select += "    default: break;\n    }\n";
+
+        GenerateResult unused;
+        std::string hlsl;
+        if (Is3D(graph.target)) {
+            hlsl = SurfaceHead(graph, options, globals, unused, false, false);
+            hlsl += "\nvoid Surface(SurfaceInput IN, inout SurfaceOutput OUT)\n{\n";
+            hlsl += writer.Body() + select;
+            hlsl += "    OUT.baseColor = SG_color.rgb;\n    OUT.alpha = 1.0f;\n}\n";
+        } else if (postEffect) {
+            hlsl = FlatHead(graph, options, globals, unused);
+            hlsl += std::string(kPostEffectMainBegin);
+            hlsl += "    IN.uv = (float2(id.xy % " + tile + "u) + 0.5f) / " + tile + ".0f;\n";
+            hlsl += "    IN.sceneColor = SampleScreen(IN.uv);\n";
+            hlsl += "    IN.screenSize = float2(" + tile + ".0f, " + tile + ".0f);\n";
+            hlsl += "    IN.invScreenSize = float2(1.0f / " + tile + ".0f, 1.0f / " + tile + ".0f);\n";
+            hlsl += std::string(kPostEffectTimeInputs);
+            hlsl += writer.Body() + select;
+            hlsl += "    gOutput[id.xy] = float4(SG_color.rgb, 1.0f);\n}\n";
+        } else {
+            hlsl = FlatHead(graph, options, globals, unused);
+            hlsl += std::string(kSpriteMainBegin);
+            hlsl += writer.Body() + select;
+            hlsl += "    return float4(SG_color.rgb, 1.0f);\n}\n";
+        }
+        result.hlsl = std::move(hlsl);
         return result;
     }
 }

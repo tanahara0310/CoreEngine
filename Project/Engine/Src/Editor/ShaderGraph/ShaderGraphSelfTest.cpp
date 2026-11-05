@@ -262,6 +262,78 @@ namespace CoreEngine::Editor::ShaderGraph
             Connect(function, test + 1, "z", kVertexMasterNode, "Position");
         }
         Add(cases, function, "CustomFunction_All", 0, "");
+
+        // Redirect にテクスチャを通す
+        Graph redirect = MakeEmptyGraph(target);
+        {
+            Property property;
+            property.id = redirect.NextPropertyId();
+            property.name = "propTexture";
+            property.type = PropertyType::Texture2D;
+            redirect.properties.push_back(property);
+            Node value;
+            value.id = test;
+            value.type = "Property";
+            value.property = property.id;
+            redirect.nodes.push_back(value);
+            Node relay;
+            relay.id = test + 1;
+            relay.type = std::string(kRedirectNodeType);
+            redirect.nodes.push_back(relay);
+            Node sample;
+            sample.id = kSampleNode;
+            sample.type = "SampleTexture2D";
+            redirect.nodes.push_back(sample);
+            Connect(redirect, test, "Out", relay.id, "In");
+            Connect(redirect, relay.id, "Out", kSampleNode, "Texture");
+            Connect(redirect, kSampleNode, "RGBA", kMasterNode, "Base Color");
+        }
+        Add(cases, redirect, "Redirect_Texture", 0, "");
+
+        // ノードのプレビュー（置けて映せる全部のノードを開き、上限の数ごとに 1 本にする）
+        std::vector<const NodeDesc*> previewable;
+        for (const NodeDesc& desc : AllNodes()) {
+            if (desc.creatable && desc.Supports(target) && HasNodePreview(desc)
+                && (!Is3D(target) || desc.SupportsStage(kStageFragment))) {
+                previewable.push_back(&desc);
+            }
+        }
+        for (size_t first = 0; first < previewable.size(); first += kNodePreviewMax) {
+            Graph graph = MakeEmptyGraph(target);
+            int id = graph.NextNodeId();
+            const size_t last = (std::min)(previewable.size(), first + kNodePreviewMax);
+            for (size_t index = first; index < last; ++index) {
+                Node node;
+                node.id = id++;
+                node.type = std::string(previewable[index]->type);
+                node.preview = true;
+                if (node.type == "Swizzle") {
+                    node.settings["Mask"] = "x";
+                }
+                if (node.type == "Transform") {
+                    node.settings["From"] = "World";
+                    node.settings["To"] = "Tangent";
+                    node.settings["Type"] = "Direction";
+                }
+                graph.nodes.push_back(node);
+            }
+            const std::string name = std::string(Prefix(target)) + "NodePreviews_" + std::to_string(first / kNodePreviewMax);
+            GenerateOptions options;
+            options.sourcePath = "SelfTest/" + name + ".shadergraph";
+            const NodePreviewResult previews = GenerateNodePreviews(graph, options);
+            SelfTestCase result{ name, target, {} };
+            result.generated.hlsl = previews.hlsl;
+            if (previews.hlsl.empty()) {
+                result.generated.fatal = "ノードのプレビューを作れません";
+            }
+            for (const auto& [node, reason] : previews.unavailable) {
+                result.generated.issues.push_back({ node, reason });
+            }
+            if (previews.tiles.size() != last - first) {
+                result.generated.issues.push_back({ 0, "映さなかったノードがあります" });
+            }
+            cases.push_back(std::move(result));
+        }
     }
 
     std::vector<SelfTestCase> BuildSelfTestCases()

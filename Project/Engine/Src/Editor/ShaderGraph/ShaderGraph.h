@@ -98,7 +98,20 @@ namespace CoreEngine::Editor::ShaderGraph
         std::string property; ///< Property ノードが指すプロパティの id
         std::map<std::string, std::array<float, 4>, std::less<>> values;  ///< つながっていない入力とノードの定数
         std::map<std::string, std::string, std::less<>> settings;         ///< 選択肢などの設定
+        bool preview = false; ///< ノードの下のプレビューを開いているか
     };
+
+    /// @brief ノードのまとまり（枠と名前を付けるだけで、生成には入らない）
+    struct Group
+    {
+        int id = 0;
+        std::string title;
+        std::string color;     ///< `kGroupColors` の名前
+        std::vector<int> nodes; ///< 中のノード（ノードは 1 つのグループにだけ入る）
+    };
+
+    /// @brief グループと付箋の色の名前
+    inline constexpr std::string_view kGroupColors[] = { "Gray", "Blue", "Green", "Yellow", "Pink", "Purple" };
 
     /// @brief つながり 1 本（出力 → 入力）
     struct Link
@@ -123,6 +136,12 @@ namespace CoreEngine::Editor::ShaderGraph
         return type == kMasterNodeType || type == kVertexMasterNodeType;
     }
 
+    /// @brief 付箋のノードの種類
+    inline constexpr std::string_view kStickyNoteType = "StickyNote";
+
+    /// @brief 線の途中の中継点のノードの種類
+    inline constexpr std::string_view kRedirectNodeType = "Redirect";
+
     /// @brief グラフ全体（.shadergraph の中身）
     struct Graph
     {
@@ -131,6 +150,7 @@ namespace CoreEngine::Editor::ShaderGraph
         std::vector<Property> properties;
         std::vector<Node> nodes;
         std::vector<Link> links;
+        std::vector<Group> groups;
 
         Node* FindNode(int id);
         const Node* FindNode(int id) const;
@@ -156,8 +176,20 @@ namespace CoreEngine::Editor::ShaderGraph
         /// @brief from から to へ出力をたどって行けるか（つなぐと循環するかの判定）
         bool Reaches(int from, int to) const;
 
-        /// @brief ノードを消す（つながりも消す）
+        /// @brief ノードを消す（つながりとグループからも外す）
         void RemoveNode(int id);
+
+        Group* FindGroup(int id);
+        const Group* FindGroup(int id) const;
+
+        /// @brief ノードの入っているグループ（無ければ nullptr）
+        const Group* FindGroupOf(int node) const;
+
+        /// @brief 次に使えるグループの番号
+        int NextGroupId() const;
+
+        /// @brief ノードをグループから外す（中のノードが無くなったグループは消す）
+        void RemoveFromGroups(int node);
     };
 
     /// @brief 出口だけを置いた空のグラフ（3D は Fragment の出口が 1 番・Vertex の出口が 2 番）

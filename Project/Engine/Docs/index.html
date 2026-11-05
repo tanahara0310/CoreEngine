@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.61.0">
+<meta name="engine-version" content="0.62.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5894,7 +5894,7 @@ kbd {
   </ul>
 </article>
 
-<article class="page" id="shader-graph" data-group="スクリプト" data-title="シェーダーグラフ（ノードでシェーダを作る）" data-nav="シェーダーグラフ" data-keywords="シェーダーグラフ shader graph shadergraph ノード node つなぐ hlsl を書かない ビジュアル ディゾルブ dissolve 溶ける 光る 光の帯 シャイン shine ノイズ noise プロパティ property blackboard プレビュー preview マテリアル mat スプライト ui 画像 graph.ps.hlsl graph.cs.hlsl graph.surface.hlsl ポストエフェクト posteffect 画面全体 scene color screen position custom function カスタム関数 関数 _float hlsl を書く 3d モデル meshrenderer lit unlit 頂点 vertex 揺らす 波打つ 法線 normal フレネル fresnel 縁 view direction transform">
+<article class="page" id="shader-graph" data-group="スクリプト" data-title="シェーダーグラフ（ノードでシェーダを作る）" data-nav="シェーダーグラフ" data-keywords="シェーダーグラフ shader graph shadergraph ノード node つなぐ hlsl を書かない ビジュアル ディゾルブ dissolve 溶ける 光る 光の帯 シャイン shine ノイズ noise プロパティ property blackboard プレビュー preview マテリアル mat スプライト ui 画像 graph.ps.hlsl graph.cs.hlsl graph.surface.hlsl ポストエフェクト posteffect 画面全体 scene color screen position custom function カスタム関数 関数 _float hlsl を書く 3d モデル meshrenderer lit unlit 頂点 vertex 揺らす 波打つ 法線 normal フレネル fresnel 縁 view direction transform ノードのプレビュー node preview グループ group 付箋 sticky note メモ redirect 中継点 hlsl を見る hlsl を書き出す export 手書きへ移す カテゴリの色">
   <h1>シェーダーグラフ（ノードでシェーダを作る）</h1>
   <p class="lead">ノードを線でつないで、<a href="#api-SpriteRenderer">スプライト描画</a> と <a href="#api-UIImage">UI 画像</a> のピクセルシェーダ、画面全体に掛ける <a href="#script-posteffect">ポストエフェクト</a> のコンピュートシェーダ、<a href="#api-MeshRenderer">メッシュ描画</a> の 3D モデルのシェーダを作ります。HLSL を書かずに、光る・溶けて消える・模様が流れる・画面がゆがむ・頂点が波打つ、といった見た目を作れます。Unity の Shader Graph に近い作りです。</p>
 
@@ -5949,9 +5949,9 @@ kbd {
     <tbody>
       <tr><td>上のタブ</td><td>開いているグラフ。保存していない変更があると印が付きます。閉じるときに、保存していなければ <span class="ui">保存して閉じる</span> ／ <span class="ui">保存せずに閉じる</span> ／ <span class="ui">やめる</span> を聞きます。</td></tr>
       <tr><td>左（Blackboard）</td><td>グラフのプロパティ（.mat とスクリプトから変えられる値）の一覧。</td></tr>
-      <tr><td>真ん中（キャンバス）</td><td>ノードと線。右下に全体の縮図が出ます。</td></tr>
+      <tr><td>真ん中（キャンバス）</td><td>ノードと線。右下に全体の縮図が出ます。ノードの見出しは分類ごとの色（Input・Math・UV・Procedural・Channel・Artistic・Utility）で、出口は青、Property は紫、エラーのあるノードは赤です。</td></tr>
       <tr><td>右上（Main Preview）</td><td>グラフの結果を板に描いた絵。市松模様は透明な所です。ポストエフェクトは、画面の代わりの画像に掛けた絵です。3D は、球・立方体・平面を決まったライト 1 つと環境光で照らした絵です（ドラッグで回せます）。</td></tr>
-      <tr><td>右下（Inspector）</td><td>選んだノードの説明・設定・つないでいない入力の値、または選んだプロパティの設定。何も選んでいなければ、グラフの目標（3D は Lit と Unlit の切り替え）と、ポストエフェクトの Project.json への登録。</td></tr>
+      <tr><td>右下（Inspector）</td><td>選んだノードの説明・設定・つないでいない入力の値、または選んだプロパティ・グループ・付箋の設定。何も選んでいなければ、グラフの目標（3D は Lit と Unlit の切り替え）と、ポストエフェクトの Project.json への登録。窓の上の <span class="ui">HLSL</span> を押すと、ここに保存で書くシェーダが出ます（<a href="#sg-hlsl">HLSL を見る・書き出す</a>）。</td></tr>
       <tr><td>下</td><td>コンパイルのエラーと、操作のお知らせ。</td></tr>
     </tbody>
   </table>
@@ -5969,7 +5969,10 @@ kbd {
       <tr><td>選ぶ</td><td>クリック、<kbd>Ctrl</kbd>+クリックで追加、空いている所からドラッグで囲む。</td></tr>
       <tr><td>動かす・見回す</td><td>ノードはドラッグ。キャンバスは中ボタンのドラッグ（<kbd>Alt</kbd>+左ドラッグでも）。<kbd>F</kbd> で全体（選んでいれば選んだもの）を真ん中へ寄せます。</td></tr>
       <tr><td>消す</td><td><kbd>Delete</kbd> ／ <kbd>Backspace</kbd>、またはノードの右クリック <span class="ui">消す</span>。出口のノード（Fragment と、3D の Vertex）は消せません。</td></tr>
-      <tr><td>複製・コピー・貼り付け</td><td><kbd>Ctrl</kbd>+<kbd>D</kbd> ／ <kbd>Ctrl</kbd>+<kbd>C</kbd> ／ <kbd>Ctrl</kbd>+<kbd>V</kbd>。ほかのグラフへも貼れます（使っているプロパティも一緒に足します）。</td></tr>
+      <tr><td>複製・コピー・貼り付け</td><td><kbd>Ctrl</kbd>+<kbd>D</kbd> ／ <kbd>Ctrl</kbd>+<kbd>C</kbd> ／ <kbd>Ctrl</kbd>+<kbd>V</kbd>。ほかのグラフへも貼れます（使っているプロパティも一緒に足します）。グループは写しません。</td></tr>
+      <tr><td>グループにする</td><td>ノードを選んで <kbd>Ctrl</kbd>+<kbd>G</kbd>、またはノードの右クリック <span class="ui">グループにする</span>（<a href="#sg-organize">グラフを整える</a>）。</td></tr>
+      <tr><td>線の途中に中継点を置く</td><td>線をダブルクリック（Redirect）。</td></tr>
+      <tr><td>付箋を置く</td><td>空いている所を右クリックして、検索の窓の一番下の <span class="ui">付箋を置く</span>。</td></tr>
       <tr><td>戻す・やり直す</td><td><kbd>Ctrl</kbd>+<kbd>Z</kbd> ／ <kbd>Ctrl</kbd>+<kbd>Y</kbd>。シーンの操作と同じ履歴に積みます。</td></tr>
       <tr><td>保存</td><td><kbd>Ctrl</kbd>+<kbd>S</kbd>、または窓の上の <span class="ui">保存</span>。</td></tr>
     </tbody>
@@ -6029,6 +6032,38 @@ kbd {
     <li>Main Preview では、再生していないときも Time が進むので、時間で動くグラフは止めずに確かめられます。シーンに置いたスプライト・UI 画像・3D モデルとポストエフェクトでは、Time は再生中だけ進みます（停止中と一時停止中は止まります。海の波や植物の揺れと同じです）。</li>
     <li><span class="ui">選んだノードを映す</span> を入れると、選んだノードの出力を映します。ノードの右クリック <span class="ui">このノードを映す</span> でも同じです。途中の値を見たいところに Preview ノードを挟んでおくこともできます。3D では、その値を色としてライトで照らさずに描きます。</li>
     <li>コンパイルできないグラフは、下にエラーを出し、関係するノードの題名を赤くします。保存はできますが、シェーダは書き換えません（スプライトは前に保存できた見た目のままです）。</li>
+  </ul>
+
+  <h2 id="sg-node-preview">ノードのプレビュー</h2>
+  <p>ノードの下に、そのノードの出力を色にした小さな絵（96×96）が出ます。途中の値がその場で見えるので、どこで思った値にならないのかを探せます。</p>
+  <ul>
+    <li>新しく置いたノードは開いています。前からあるグラフのノードは閉じたままです（並べた位置が重ならないように）。ノードの下の矢印で開け閉めし、窓の上の <span class="ui">プレビューを全部開く</span> ／ <span class="ui">全部閉じる</span> でまとめて切り替えます。開け閉めはグラフに保存し、<kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せます。</li>
+    <li>色にするのは最初の数の出力です。Float は灰色、Vector 2 は赤と緑、Vector 3 と Vector 4 は RGB で出します（透明は出しません）。</li>
+    <li>出口・Property・Float などの定数・Color・Time・付箋・Redirect と、テクスチャやサンプラーだけを出すノードには出ません。</li>
+    <li>3D のグラフでは、位置・法線・接線・視線・カメラ・Model Surface を使うノードは球に、ほかは板に描きます。ライトでは照らさず、値をそのまま色にします。球の向きは Main Preview と同じです。物体の空間の値（Vertex だけで使えるもの）を使うノードは <span class="ui">プレビューなし</span> と出ます（矢印の上の文字にマウスを載せると訳が出ます）。</li>
+    <li>開いたノードを全部まとめて 1 本のシェーダにし、裏でコンパイルします。グラフを変えてから少し後に描き直り、その間は前の絵のままです。一度に出せるのは 100 個までで、それより後のノードには <span class="ui">プレビューは 100 個まで</span> と出ます。</li>
+    <li>値（プロパティの既定値・<span class="ui">板の画像</span> などの画像）と時間は Main Preview と同じものを使います。</li>
+  </ul>
+
+  <h2 id="sg-organize">グラフを整える（グループ・付箋・Redirect）</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>道具</th><th>使い方</th></tr></thead>
+    <tbody>
+      <tr><td>グループ</td><td>ノードを選んで <kbd>Ctrl</kbd>+<kbd>G</kbd>（ノードの右クリック <span class="ui">グループにする</span> でも）。中のノードを囲む枠ができ、すぐに名前を打てます。枠は中のノードに合わせて伸び縮みします。見出しをドラッグすると中のノードごと動き、見出しのダブルクリックで名前を変えます。見出しをクリックすると選べ、Inspector で名前と色（6 色）を変え、<kbd>Delete</kbd> か <span class="ui">グループを消す（ノードは残す）</span> で枠だけ消せます。ノードを外すのは、ノードの右クリック <span class="ui">グループから外す</span> です。ノードは 1 つのグループにだけ入ります。</td></tr>
+      <tr><td>付箋</td><td>空いている所を右クリックして、検索の窓の一番下の <span class="ui">付箋を置く</span>。置くとすぐに書けます。あとで書き換えるときはダブルクリック（Inspector でも書けます）。色と幅は Inspector で変えます。シェーダには入りません。</td></tr>
+      <tr><td>Redirect</td><td>線をダブルクリックすると、その場所に中継点を置いて線を 2 本に分けます。中継点の真ん中の点をつかんで動かすと、線の通り道を変えられます（両端の丸はピンなので、押すと線を引きます）。選んで Delete で消すと、前後の線は 1 本につながったまま残ります。値はそのまま渡し、数のほかにテクスチャとサンプラーも通します。検索の Utility からも置けます。</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>グループは .shadergraph の <code>groups</code> に、付箋と Redirect はノードとして保存します。v0.61.0 までのエンジンで開いて保存すると、グループは消えます（付箋と Redirect は「知らない種類のノード」として残ります）。</p>
+
+  <h2 id="sg-hlsl">HLSL を見る・書き出す</h2>
+  <p>窓の上の <span class="ui">HLSL</span> を押すと、右下（Inspector の場所）に、保存で書くシェーダを行番号付きで出します。ノードを 1 つ選ぶと、そのノードが書いた行に色が付き、その行まで送ります。もう一度 <span class="ui">HLSL</span> を押すか <span class="ui">閉じる</span> で Inspector に戻ります。</p>
+  <ul>
+    <li><span class="ui">コピー</span>：シェーダ全体をクリップボードへ写します。</li>
+    <li><span class="ui">書き出す…</span>：グラフの隣に、手書きのシェーダの名前（<span class="path">名前.PS.hlsl</span> ／ <span class="path">名前.CS.hlsl</span> ／ <span class="path">名前.Surface.hlsl</span>。同じ名前があれば番号を足す）で書きます。このグラフのシェーダを指す .mat の一覧から、書き出したシェーダへ付け替えるものを選べます（はじめは全部に印）。グラフはそのまま残り、保存すれば <span class="path">.Graph.</span> のシェーダも作り続けます。</li>
+    <li>書き出したシェーダは手書きのシェーダとして扱います。先頭の行が <code>// Exported from …</code> になり、.mat のインスペクタでは、範囲のある Float もただの数の欄になり、Color は名前に <code>color</code> を含むときだけ色の欄になります。HLSL で書き足したいときに、グラフから手書きへ移す入口として使ってください（<a href="#script-material">マテリアルとシェーダ</a>）。</li>
   </ul>
 
   <h2 id="sg-nodes">ノードの一覧</h2>
@@ -10566,6 +10601,17 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-62-0">v0.62.0 <span class="dim">（2026-11-05）</span></h3>
+  <p>シェーダーグラフを大きくしても読みやすく・直しやすくする道具を足した版です。保存で書くシェーダは前の版と 1 文字も変わりません（<a href="#shader-graph">シェーダーグラフ</a>）。</p>
+  <ul>
+    <li><strong>ノードのプレビュー</strong>：ノードの下に、そのノードの出力を色にした絵を出すようにしました。新しく置いたノードは開いていて、矢印と <span class="ui">プレビューを全部開く</span> ／ <span class="ui">全部閉じる</span> で切り替えます。3D のグラフでは、3D の値を使うノードを球に、ほかを板に描きます。開いたノードは 1 本のシェーダにまとめて裏でコンパイルするので、窓は止まりません（<a href="#sg-node-preview">ノードのプレビュー</a>）。</li>
+    <li><strong>グループ</strong>：ノードを選んで <kbd>Ctrl</kbd>+<kbd>G</kbd> で、名前と色の付いた枠で囲めます。見出しをドラッグすると中のノードごと動きます（<a href="#sg-organize">グラフを整える</a>）。</li>
+    <li><strong>付箋と Redirect</strong>：グラフにメモを書く付箋と、線をダブルクリックして置く中継点（Redirect）を足しました。Redirect は数・テクスチャ・サンプラーをそのまま渡します。</li>
+    <li><strong>HLSL を見る・書き出す</strong>：窓の上の <span class="ui">HLSL</span> で、保存で書くシェーダを出し、選んだノードの行に色を付けます。<span class="ui">書き出す…</span> で手書きのシェーダとして書き、このグラフを使う .mat を付け替えられます（<a href="#sg-hlsl">HLSL を見る・書き出す</a>）。</li>
+    <li><strong>見出しの色</strong>：ノードの見出しを、分類（Input・Math・UV・Procedural・Channel・Artistic・Utility）ごとの色にしました。</li>
+    <li><strong>グラフのファイル</strong>：.shadergraph に、ノードのプレビューの開け閉め（<code>preview</code>）とグループ（<code>groups</code>）を書くようにしました。使っていなければ今までと同じ中身です。v0.61.0 までのエンジンで開いて保存すると、グループは消えます。</li>
+  </ul>
 
   <h3 id="changelog-v0-61-0">v0.61.0 <span class="dim">（2026-11-05）</span></h3>
   <p>シェーダーグラフで 3D モデルのマテリアルを作れるようにし、3D のマテリアルで頂点を動かせるようにした版です。マテリアルを付けていないモデルの見た目は変わりません（<a href="#sg-3d">3D のマテリアルを作る</a>）。</p>

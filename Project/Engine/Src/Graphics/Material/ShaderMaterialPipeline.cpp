@@ -220,10 +220,18 @@ namespace CoreEngine
                 vertexBlob ? pixelShaderPath : vertexPath, error);
             return false;
         }
+        return BuildFromBlobs(device, compiler.GetDxcUtils(), reflectionBuilder, vertexBlob.Get(), pixelBlob.Get(),
+            pixelShaderPath, target);
+    }
 
-        const std::string shaderName = std::string(target.debugName) + " " + pixelShaderPath;
+    bool ShaderMaterialPipeline::BuildFromBlobs(ID3D12Device* device, IDxcUtils* utils,
+        ShaderReflectionBuilder& reflectionBuilder, IDxcBlob* vertexBlob, IDxcBlob* pixelBlob, const std::string& name,
+        const Target& target)
+    {
+        Logger& log = Logger::GetInstance();
+        const std::string shaderName = std::string(target.debugName) + " " + name;
         const std::unique_ptr<ShaderReflectionData> reflection =
-            reflectionBuilder.BuildFromShaders(vertexBlob.Get(), pixelBlob.Get(), shaderName);
+            reflectionBuilder.BuildFromShaders(vertexBlob, pixelBlob, shaderName);
         if (!reflection) {
             return false;
         }
@@ -240,7 +248,7 @@ namespace CoreEngine
         const auto rootResult = rootSignature->Build(device, *reflection, config);
         if (!rootResult.success) {
             log.Logf(LogLevel::Error, LogCategory::Shader, "マテリアルのシェーダ {} のルートシグネチャを作れません: {}",
-                pixelShaderPath, rootResult.errorMessage);
+                name, rootResult.errorMessage);
             return false;
         }
 
@@ -251,17 +259,17 @@ namespace CoreEngine
             .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(target.depthTest, false)
             .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
-            .BuildAllBlendModes(device, vertexBlob.Get(), pixelBlob.Get(), rootSignature->GetRootSignature());
+            .BuildAllBlendModes(device, vertexBlob, pixelBlob, rootSignature->GetRootSignature());
         if (!built) {
             log.Logf(LogLevel::Error, LogCategory::Shader, "マテリアルのシェーダ {} のパイプラインを作れません",
-                pixelShaderPath);
+                name);
             return false;
         }
 
         // 値の並びはピクセルシェーダを先に見る（頂点シェーダだけが使う値もある）
         MaterialParamLayout layout;
-        ReadMaterialParamLayout(compiler.GetDxcUtils(), pixelBlob.Get(), layout, shaderName);
-        ReadMaterialParamLayout(compiler.GetDxcUtils(), vertexBlob.Get(), layout, shaderName);
+        ReadMaterialParamLayout(utils, pixelBlob, layout, shaderName);
+        ReadMaterialParamLayout(utils, vertexBlob, layout, shaderName);
 
         rootSignature_ = std::move(rootSignature);
         pipelineStates_ = std::move(pipelineStates);
@@ -271,8 +279,8 @@ namespace CoreEngine
         textureSlot_ = rootSignature_->GetRootSlot(kMainTextureName);
         paramsSlot_ = layout_.bufferName.empty() ? RootSlot{} : rootSignature_->GetRootSlot(layout_.bufferName);
         extraTextureSlots_.clear();
-        for (const std::string& name : layout_.textures) {
-            extraTextureSlots_.push_back(rootSignature_->GetRootSlot(name));
+        for (const std::string& texture : layout_.textures) {
+            extraTextureSlots_.push_back(rootSignature_->GetRootSlot(texture));
         }
         return true;
     }

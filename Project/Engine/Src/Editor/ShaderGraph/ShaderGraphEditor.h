@@ -122,6 +122,32 @@ namespace CoreEngine::Editor::ShaderGraph
             bool previewSelected = false;  ///< 選んだノードの出力を映す
             PreviewView previewView;       ///< 3D の形と向き
 
+            // ノードのプレビュー
+            std::string nodePreviewSource; ///< nodePreviews を作ったときの中身
+            NodePreviewResult nodePreviews; ///< 最後に作ったノードのプレビューの並び（hlsl は nodePreviewHlsl へ移す）
+            std::string nodePreviewHlsl;
+            uint64_t nodePreviewKey = 0;    ///< nodePreviewHlsl の印（0 なら映すノードが無い）
+            double nodePreviewChangeTime = 0.0;
+            std::vector<std::pair<uint64_t, std::vector<NodePreviewTile>>> nodePreviewLayouts; ///< 印ごとのタイルの並び（新しいものが後ろ）
+
+            // グループと付箋
+            int selectedGroup = 0;  ///< 選んだグループ（0 なら無し）
+            int renamingGroup = 0;  ///< 見出しで名前を書き換えているグループ
+            bool focusGroupName = false;
+            int editingNote = 0;    ///< 文を書き換えている付箋
+            bool focusNote = false;
+            std::map<int, std::pair<float, float>> nodeSizes; ///< 前のフレームのノードの大きさ（グループの枠に使う）
+
+            // HLSL を見る・書き出す
+            bool showHlsl = false;
+            std::string hlslSource; ///< hlsl を作ったときの中身
+            GenerateResult hlsl;
+            std::vector<std::string> hlslLines;
+            int hlslScrollNode = 0; ///< 最後に行まで送ったノード
+            bool openExport = false;
+            std::filesystem::path exportPath;
+            std::vector<std::pair<std::filesystem::path, bool>> exportMaterials; ///< 付け替えるか選ぶ .mat
+
             // グラフの欄（ポストエフェクトの登録）
             std::vector<std::filesystem::path> graphMaterials; ///< このグラフのシェーダを使う .mat
             double graphMaterialsTime = -1.0e9;                 ///< 最後に .mat を探した時刻
@@ -149,6 +175,12 @@ namespace CoreEngine::Editor::ShaderGraph
         void DrawToolbar(Document& document);
         void DrawCanvas(Document& document);
         void DrawNode(Document& document, Node& node);
+        void DrawStickyNote(Document& document, Node& node);
+        void DrawRedirect(Document& document, Node& node);
+        void DrawNodePreview(Document& document, Node& node);
+        /// @brief グループの枠と見出しを描く（ノードより先に描く）
+        /// @return 見出しの上にマウスがあれば true
+        bool DrawGroups(Document& document, float originX, float originY);
         void DrawSearch(Document& document);
         void DrawBlackboard(Document& document);
         void DrawInspector(Document& document);
@@ -156,8 +188,12 @@ namespace CoreEngine::Editor::ShaderGraph
         void DrawFunctionInspector(Document& document, Node& node);
         void DrawFunctionPins(Document& document, Node& node, bool inputs);
         void DrawGraphInspector(Document& document);
+        void DrawGroupInspector(Document& document, Group& group);
+        void DrawStickyInspector(Document& document, Node& node);
         bool DrawPropertyInspector(Document& document, Property& property);
         void DrawPreview(Document& document);
+        void DrawHlsl(Document& document);
+        void DrawExportDialog(Document& document);
         void DrawMessages(Document& document);
         void DrawCloseDialog();
 
@@ -173,6 +209,18 @@ namespace CoreEngine::Editor::ShaderGraph
         void Paste(Document& document, float x, float y);
         void AddProperty(Document& document, PropertyType type);
         void RemoveProperty(Document& document, const std::string& id);
+        void GroupSelection(Document& document);
+        void UngroupSelection(Document& document);
+        void RemoveGroup(Document& document, int id);
+        /// @brief つながり（link は行き先の入力ピンの番号）の途中に Redirect を置く
+        void InsertRedirect(Document& document, int link, float x, float y);
+        void SetAllPreviews(Document& document, bool open);
+        /// @brief ノードのプレビューを作り直し、裏のコンパイルを頼み、描く中身を決める
+        void UpdateNodePreviews(Document& document);
+        /// @brief 印のタイルの並び（無ければ nullptr）
+        const std::vector<NodePreviewTile>* FindPreviewLayout(const Document& document, uint64_t key) const;
+        void OpenExportDialog(Document& document);
+        void ExportHlsl(Document& document);
 
         /// @brief 変わっていれば Undo の履歴へ積む（操作の途中なら待つ）
         void CommitIfChanged(Document& document);
@@ -192,6 +240,9 @@ namespace CoreEngine::Editor::ShaderGraph
         EngineSystem* engine_ = nullptr;
         std::unique_ptr<ShaderCompiler> compiler_;
         ShaderGraphPreview preview_;
+        ShaderGraphPreview nodePreview_{ "ShaderGraphNodePreview", static_cast<uint32_t>(kNodePreviewAtlas) };
+        ShaderGraphCompileWorker compileWorker_;
+        uint64_t submittedPreviewKey_ = 0; ///< 最後に裏へ頼んだノードのプレビューの印
         ImNodesContext* nodesContext_ = nullptr;
 
         std::vector<std::unique_ptr<Document>> documents_;

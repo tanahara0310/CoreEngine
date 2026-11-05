@@ -1143,6 +1143,18 @@ namespace CoreEngine::Editor::ShaderGraph
                 "値をそのまま渡す。選ぶと Main Preview にこの値を映せます。", "{0}"));
             {
                 NodeDesc desc;
+                desc.type = kRedirectNodeType;
+                desc.title = "Redirect";
+                desc.category = "Utility";
+                desc.summary = "線の途中の中継点。値をそのまま渡します（テクスチャとサンプラーも通します）。"
+                               "線をダブルクリックしても置けます。";
+                desc.inputs = { Pin("In", Dyn) };
+                desc.outputs = { Pin("Out", Dyn) };
+                desc.emit = [](EmitArgs& args) { args.outExpr[0] = args.in[0]; };
+                nodes.push_back(std::move(desc));
+            }
+            {
+                NodeDesc desc;
                 desc.type = kCustomFunctionType;
                 desc.title = "Custom Function";
                 desc.category = "Utility";
@@ -1159,6 +1171,23 @@ namespace CoreEngine::Editor::ShaderGraph
                     SettingDesc{ "Outputs", "出力", {}, "Vector3 Out" },
                 };
                 desc.emit = EmitCustomFunction;
+                nodes.push_back(std::move(desc));
+            }
+
+            // ===== 付箋（検索の窓の下の「付箋を置く」で置く） =====
+            {
+                NodeDesc desc;
+                desc.type = kStickyNoteType;
+                desc.title = "Sticky Note";
+                desc.category = "";
+                desc.summary = "グラフに書くメモ。シェーダには入りません。";
+                desc.settings = {
+                    SettingDesc{ "Text", "文", {}, "" },
+                    SettingDesc{ "Color", "色", { "Yellow", "Blue", "Green", "Pink", "Gray", "Purple" }, "Yellow" },
+                    SettingDesc{ "Width", "幅", {}, "200" },
+                };
+                desc.creatable = false;
+                desc.emit = [](EmitArgs&) {};
                 nodes.push_back(std::move(desc));
             }
 
@@ -1240,6 +1269,18 @@ namespace CoreEngine::Editor::ShaderGraph
             }
         }
         return -1;
+    }
+
+    bool HasNodePreview(const NodeDesc& desc)
+    {
+        constexpr std::string_view kWithoutPreview[] = {
+            "Property", "Float", "Vector2", "Vector3", "Vector4", "Color", "Time", kStickyNoteType, kRedirectNodeType,
+        };
+        if (IsMasterNodeType(desc.type)
+            || std::find(std::begin(kWithoutPreview), std::end(kWithoutPreview), desc.type) != std::end(kWithoutPreview)) {
+            return false;
+        }
+        return std::any_of(desc.outputs.begin(), desc.outputs.end(), [](const PinDesc& pin) { return IsNumeric(pin.type); });
     }
 
     const std::vector<NodeDesc>& AllNodes()

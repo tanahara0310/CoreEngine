@@ -16,6 +16,7 @@
 #include "EngineSystem/Settings/ProjectSettings.h"
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Graphics/Asset/AssetRef.h"
+#include "Graphics/Material/ShaderMaterialLibrary.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/PostEffect/Effect/ProjectPostEffect/ProjectPostEffect.h"
 #include "Graphics/Shader/ShaderCompiler.h"
@@ -71,6 +72,7 @@ namespace CoreEngine::Editor::ShaderGraph
 
         constexpr float kBlackboardWidth = 220.0f;
         constexpr float kSideWidth = 280.0f;
+        constexpr float kHlslSideWidth = 460.0f;
         constexpr float kMessagesHeight = 96.0f;
         constexpr float kInlineFieldWidth = 56.0f;
         constexpr float kLabelWidth = 84.0f;
@@ -81,6 +83,36 @@ namespace CoreEngine::Editor::ShaderGraph
         constexpr const char* kNodeMenuPopup = "##ShaderGraphNodeMenu";
         constexpr const char* kAddPropertyPopup = "##ShaderGraphAddProperty";
         constexpr const char* kCloseDialog = "シェーダーグラフを閉じる";
+        constexpr const char* kExportDialog = "HLSL を書き出す";
+
+        /// @brief グループの枠の余白と、大きさがまだ分からないノードの大きさ
+        constexpr float kGroupPadding = 16.0f;
+        constexpr float kUnknownNodeWidth = 140.0f;
+        constexpr float kUnknownNodeHeight = 60.0f;
+
+        /// @brief 付箋の幅の範囲（px）
+        constexpr float kNoteMinWidth = 80.0f;
+        constexpr float kNoteMaxWidth = 800.0f;
+
+        /// @brief 覚えておくノードのプレビューのタイルの並びの数
+        constexpr size_t kPreviewLayouts = 8;
+
+        /// @brief 中継点の余白とピンの幅（px）
+        constexpr float kRedirectPadding = 3.0f;
+        constexpr float kRedirectPinWidth = 6.0f;
+
+        /// @brief 中継点の中央のつかむ所の幅（両端のピンの当たりの外に 12px 残す）
+        float RedirectHandleWidth()
+        {
+            const float pins = 2.0f * (kRedirectPadding + kRedirectPinWidth);
+            return (std::max)(8.0f, 2.0f * ImNodes::GetStyle().PinHoverRadius + 12.0f - pins);
+        }
+
+        /// @brief 中継点の幅（px）
+        float RedirectWidth()
+        {
+            return 2.0f * (kRedirectPadding + kRedirectPinWidth) + RedirectHandleWidth();
+        }
 
         int InputPinId(int node, size_t index)
         {
@@ -167,6 +199,150 @@ namespace CoreEngine::Editor::ShaderGraph
                 return true;
             }
             return from == to;
+        }
+
+        /// @brief ノードの入力ピンへ type の出力をつなげるか（Redirect の入力は何でも受ける）
+        bool InputAccepts(const NodeDesc& desc, size_t index, ValueType type)
+        {
+            return desc.type == kRedirectNodeType || CanConnect(type, desc.inputs[index].type);
+        }
+
+        /// @brief ノードの出力ピンを type の入力へつなげるか（Redirect の出力は何でも出せる）
+        bool OutputFits(const NodeDesc& desc, size_t index, ValueType type)
+        {
+            return desc.type == kRedirectNodeType || CanConnect(desc.outputs[index].type, type);
+        }
+
+        /// @brief ノードの見出しの色（カテゴリの最上位ごと）
+        ImVec4 CategoryColor(std::string_view category)
+        {
+            const std::string_view top = category.substr(0, category.find('/'));
+            if (top == "Input") {
+                return Theme::kGraphInput;
+            }
+            if (top == "Math") {
+                return Theme::kGraphMath;
+            }
+            if (top == "UV") {
+                return Theme::kGraphUV;
+            }
+            if (top == "Procedural") {
+                return Theme::kGraphProcedural;
+            }
+            if (top == "Channel") {
+                return Theme::kGraphChannel;
+            }
+            if (top == "Artistic") {
+                return Theme::kGraphArtistic;
+            }
+            if (top == "Utility") {
+                return Theme::kGraphUtility;
+            }
+            return Theme::kControl;
+        }
+
+        /// @brief グループと付箋の色
+        ImVec4 NoteColor(std::string_view name)
+        {
+            if (name == "Blue") {
+                return Theme::FromSrgb(46, 78, 122);
+            }
+            if (name == "Green") {
+                return Theme::FromSrgb(48, 98, 64);
+            }
+            if (name == "Yellow") {
+                return Theme::FromSrgb(120, 104, 40);
+            }
+            if (name == "Pink") {
+                return Theme::FromSrgb(124, 60, 90);
+            }
+            if (name == "Purple") {
+                return Theme::FromSrgb(86, 64, 126);
+            }
+            return Theme::FromSrgb(72, 72, 80);
+        }
+
+        /// @brief グループと付箋の色の表示名
+        const char* NoteColorLabel(std::string_view name)
+        {
+            if (name == "Blue") {
+                return "青";
+            }
+            if (name == "Green") {
+                return "緑";
+            }
+            if (name == "Yellow") {
+                return "黄";
+            }
+            if (name == "Pink") {
+                return "桃";
+            }
+            if (name == "Purple") {
+                return "紫";
+            }
+            return "灰";
+        }
+
+        /// @brief 色を選ぶ欄（kGroupColors から）
+        /// @return 変えたら true
+        bool NoteColorCombo(const char* id, std::string& color)
+        {
+            bool changed = false;
+            if (ImGui::BeginCombo(id, NoteColorLabel(color))) {
+                for (const std::string_view option : kGroupColors) {
+                    ImGui::PushID(option.data(), option.data() + option.size());
+                    const ImVec2 swatch(ImGui::GetTextLineHeight(), ImGui::GetTextLineHeight());
+                    const ImVec2 position = ImGui::GetCursorScreenPos();
+                    if (ImGui::Selectable("##color", option == color, ImGuiSelectableFlags_None, ImVec2(0.0f, swatch.y))) {
+                        color = std::string(option);
+                        changed = true;
+                    }
+                    ImDrawList* const drawList = ImGui::GetWindowDrawList();
+                    drawList->AddRectFilled(position, ImVec2(position.x + swatch.x, position.y + swatch.y), ToU32(NoteColor(option)), 3.0f);
+                    drawList->AddText(ImVec2(position.x + swatch.x + 6.0f, position.y), ToU32(Theme::kText), NoteColorLabel(option));
+                    ImGui::PopID();
+                }
+                ImGui::EndCombo();
+            }
+            return changed;
+        }
+
+        /// @brief 付箋の幅（設定の文字から・範囲に収める）
+        float NoteWidth(const Node& node)
+        {
+            const auto found = node.settings.find("Width");
+            float width = 200.0f;
+            if (found != node.settings.end()) {
+                char* end = nullptr;
+                const float parsed = std::strtof(found->second.c_str(), &end);
+                if (end != found->second.c_str()) {
+                    width = parsed;
+                }
+            }
+            return std::clamp(width, kNoteMinWidth, kNoteMaxWidth);
+        }
+
+        /// @brief 文字列を行に分ける（行末の \r は外す）
+        std::vector<std::string> SplitLines(const std::string& text)
+        {
+            std::vector<std::string> lines;
+            size_t start = 0;
+            while (start <= text.size()) {
+                const size_t end = text.find('\n', start);
+                std::string line = text.substr(start, end == std::string::npos ? std::string::npos : end - start);
+                if (!line.empty() && line.back() == '\r') {
+                    line.pop_back();
+                }
+                lines.push_back(std::move(line));
+                if (end == std::string::npos) {
+                    break;
+                }
+                start = end + 1;
+            }
+            if (!lines.empty() && lines.back().empty()) {
+                lines.pop_back();
+            }
+            return lines;
         }
 
         constexpr PropertyType kPropertyTypes[] = {
@@ -430,7 +606,9 @@ namespace CoreEngine::Editor::ShaderGraph
         compiler_ = std::make_unique<ShaderCompiler>();
         compiler_->Initialize();
         preview_.Initialize(engine);
-        selfTestMenu_ = EditorMenuRegistry::Get().Register({
+        nodePreview_.Initialize(engine);
+        compileWorker_.Start();
+        selfTestMenu_ =EditorMenuRegistry::Get().Register({
             .path = "Tools/テスト/シェーダーグラフの全ノード検査",
             .action = [this] { RunSelfTest(); },
             });
@@ -454,7 +632,10 @@ namespace CoreEngine::Editor::ShaderGraph
             ImNodes::DestroyContext(nodesContext_);
             nodesContext_ = nullptr;
         }
+        compileWorker_.Stop();
+        submittedPreviewKey_ = 0;
         preview_.Finalize();
+        nodePreview_.Finalize();
         compiler_.reset();
         engine_ = nullptr;
     }
@@ -605,6 +786,11 @@ namespace CoreEngine::Editor::ShaderGraph
         document->clearSelection = true;
         document->selectedNodes.clear();
         document->selectedLinks.clear();
+        document->renamingGroup = 0;
+        document->editingNote = 0;
+        if (!document->graph.FindGroup(document->selectedGroup)) {
+            document->selectedGroup = 0;
+        }
         if (!document->graph.FindProperty(document->selectedProperty)) {
             document->selectedProperty.clear();
         }
@@ -612,7 +798,12 @@ namespace CoreEngine::Editor::ShaderGraph
 
     void ShaderGraphEditor::RecordPreview(ID3D12GraphicsCommandList* commandList)
     {
+        CompiledShaders compiled;
+        if (compileWorker_.TakeFinished(compiled)) {
+            nodePreview_.SetCompiled(std::move(compiled));
+        }
         preview_.Record(commandList);
+        nodePreview_.Record(commandList);
     }
 
     // ---------------------------------------------------------------- 窓
@@ -755,6 +946,9 @@ namespace CoreEngine::Editor::ShaderGraph
                     Paste(document, minX + 40.0f, minY + 40.0f);
                 }
             }
+            if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_G)) {
+                GroupSelection(document);
+            }
         }
 
         DrawToolbar(document);
@@ -763,7 +957,8 @@ namespace CoreEngine::Editor::ShaderGraph
         const ImVec2 available = ImGui::GetContentRegionAvail();
         const float spacing = ImGui::GetStyle().ItemSpacing.x;
         const float height = (std::max)(120.0f, available.y - (hasMessages ? kMessagesHeight + ImGui::GetStyle().ItemSpacing.y : 0.0f));
-        const float canvasWidth = (std::max)(160.0f, available.x - kBlackboardWidth - kSideWidth - spacing * 2.0f);
+        const float sideWidth = document.showHlsl ? kHlslSideWidth : kSideWidth;
+        const float canvasWidth = (std::max)(160.0f, available.x - kBlackboardWidth - sideWidth - spacing * 2.0f);
 
         if (ImGui::BeginChild("##Blackboard", ImVec2(kBlackboardWidth, height), ImGuiChildFlags_Borders)) {
             DrawBlackboard(document);
@@ -779,7 +974,11 @@ namespace CoreEngine::Editor::ShaderGraph
         if (ImGui::BeginChild("##Side", ImVec2(0.0f, height), ImGuiChildFlags_Borders)) {
             DrawPreview(document);
             ImGui::Separator();
-            DrawInspector(document);
+            if (document.showHlsl) {
+                DrawHlsl(document);
+            } else {
+                DrawInspector(document);
+            }
         }
         ImGui::EndChild();
         if (hasMessages) {
@@ -788,15 +987,17 @@ namespace CoreEngine::Editor::ShaderGraph
             }
             ImGui::EndChild();
         }
+        DrawExportDialog(document);
 
         CommitIfChanged(document);
         UpdateValidation(document);
+        RebuildPreviewValues(document);
         if (document.previewRevision > 0) {
-            RebuildPreviewValues(document);
             preview_.Request(ScratchShaderPath(ScratchKey(document) + ".preview", document.graph.target),
                 document.graph.target, document.previewRevision, document.previewValues, document.previewTexture,
                 document.previewView);
         }
+        UpdateNodePreviews(document);
     }
 
     void ShaderGraphEditor::DrawToolbar(Document& document)
@@ -808,6 +1009,31 @@ namespace CoreEngine::Editor::ShaderGraph
             ImGui::SetTooltip("Ctrl+S。グラフを書き、シェーダを作り直します。");
         }
         ImGui::SameLine();
+        const bool showingHlsl = document.showHlsl;
+        if (showingHlsl) {
+            ImGui::PushStyleColor(ImGuiCol_Button, Theme::kAccentMuted);
+        }
+        if (ImGui::Button("HLSL")) {
+            document.showHlsl = !document.showHlsl;
+        }
+        if (showingHlsl) {
+            ImGui::PopStyleColor();
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("保存で書くシェーダを右に出します（もう一度押すと Inspector に戻ります）。");
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("プレビューを全部開く")) {
+            SetAllPreviews(document, true);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("全部閉じる")) {
+            SetAllPreviews(document, false);
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("ノードの下のプレビューを全部閉じます。");
+        }
+        ImGui::SameLine(0.0f, 16.0f);
         if (document.currentText != document.savedText) {
             ImGui::TextColored(Theme::kWarm, "未保存の変更");
         } else {
@@ -839,6 +1065,7 @@ namespace CoreEngine::Editor::ShaderGraph
 
         ImNodes::BeginNodeEditor();
         const ImVec2 origin = ImGui::GetCursorScreenPos();
+        const bool groupTitleHovered = DrawGroups(document, origin.x, origin.y);
 
         std::vector<int> drawn;
         drawn.reserve(document.graph.nodes.size());
@@ -905,13 +1132,15 @@ namespace CoreEngine::Editor::ShaderGraph
         const bool editorHovered = ImNodes::IsEditorHovered();
         ImNodes::EndNodeEditor();
 
-        // ドラッグで動いた位置をグラフへ戻す
+        // ドラッグで動いた位置をグラフへ戻す（大きさはグループの枠に使う）
         bool moved = false;
         for (const int id : drawn) {
             Node* const node = document.graph.FindNode(id);
             if (!node) {
                 continue;
             }
+            const ImVec2 dimensions = ImNodes::GetNodeDimensions(id);
+            document.nodeSizes[id] = { dimensions.x, dimensions.y };
             const ImVec2 position = ImNodes::GetNodeGridSpacePos(id);
             if (std::abs(position.x - node->x) > 0.5f || std::abs(position.y - node->y) > 0.5f) {
                 moved = true;
@@ -924,6 +1153,9 @@ namespace CoreEngine::Editor::ShaderGraph
             document.pendingLabel = "ノードを動かす";
         }
         document.syncPositions = false;
+        std::erase_if(document.nodeSizes, [&drawn](const auto& entry) {
+            return std::find(drawn.begin(), drawn.end(), entry.first) == drawn.end();
+        });
 
         const ImVec2 panning = ImNodes::EditorContextGetPanning();
         const ImVec2 mouse = ImGui::GetMousePos();
@@ -952,6 +1184,7 @@ namespace CoreEngine::Editor::ShaderGraph
         if (!document.selectedNodes.empty()) {
             ImNodes::GetSelectedNodes(document.selectedNodes.data());
             document.selectedProperty.clear();
+            document.selectedGroup = 0;
         }
         document.selectedLinks.assign(static_cast<size_t>((std::max)(0, ImNodes::NumSelectedLinks())), 0);
         if (!document.selectedLinks.empty()) {
@@ -962,6 +1195,22 @@ namespace CoreEngine::Editor::ShaderGraph
         int hoveredLink = 0;
         const bool nodeHovered = ImNodes::IsNodeHovered(&hoveredNode);
         const bool linkHovered = ImNodes::IsLinkHovered(&hoveredLink);
+
+        if (editorHovered && !groupTitleHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+            document.selectedGroup = 0;
+        }
+        if (editorHovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+            if (nodeHovered) {
+                // 付箋はダブルクリックで文を書き換える
+                if (const Node* const node = document.graph.FindNode(hoveredNode);
+                    node && node->type == kStickyNoteType && document.editingNote != node->id) {
+                    document.editingNote = node->id;
+                    document.focusNote = true;
+                }
+            } else if (linkHovered) {
+                InsertRedirect(document, hoveredLink, document.mouseGridX, document.mouseGridY);
+            }
+        }
 
         HandleLinkEvents(document);
 
@@ -1016,6 +1265,15 @@ namespace CoreEngine::Editor::ShaderGraph
             if (ImGui::MenuItem("このノードを映す")) {
                 document.previewSelected = true;
             }
+            ImGui::Separator();
+            if (ImGui::MenuItem("グループにする", "Ctrl+G")) {
+                GroupSelection(document);
+            }
+            const bool grouped = std::any_of(document.selectedNodes.begin(), document.selectedNodes.end(),
+                [&document](int id) { return document.graph.FindGroupOf(id) != nullptr; });
+            if (ImGui::MenuItem("グループから外す", nullptr, false, grouped)) {
+                UngroupSelection(document);
+            }
             ImGui::EndPopup();
         }
         DrawSearch(document);
@@ -1023,6 +1281,14 @@ namespace CoreEngine::Editor::ShaderGraph
 
     void ShaderGraphEditor::DrawNode(Document& document, Node& node)
     {
+        if (node.type == kStickyNoteType) {
+            DrawStickyNote(document, node);
+            return;
+        }
+        if (node.type == kRedirectNodeType) {
+            DrawRedirect(document, node);
+            return;
+        }
         const NodeDesc* const desc = FindNodeDesc(node);
         const auto resolvedIt = document.resolution.nodes.find(node.id);
         const ResolvedNode* const resolved = resolvedIt != document.resolution.nodes.end() ? &resolvedIt->second : nullptr;
@@ -1044,6 +1310,8 @@ namespace CoreEngine::Editor::ShaderGraph
             pushTitle(Theme::kAccentMuted);
         } else if (isProperty) {
             pushTitle(Theme::FromSrgb(74, 58, 104));
+        } else {
+            pushTitle(CategoryColor(desc->category));
         }
 
         ImGui::PushID(node.id);
@@ -1185,11 +1453,243 @@ namespace CoreEngine::Editor::ShaderGraph
             ImGui::EndGroup();
         }
 
+        if (HasNodePreview(*desc) && desc->Supports(document.graph.target)) {
+            DrawNodePreview(document, node);
+        }
+
         ImNodes::EndNode();
         ImGui::PopID();
         for (int index = 0; index < pushedColors; ++index) {
             ImNodes::PopColorStyle();
         }
+    }
+
+    void ShaderGraphEditor::DrawNodePreview(Document& document, Node& node)
+    {
+        const float side = static_cast<float>(kNodePreviewTile);
+        if (node.preview) {
+            const auto unavailable = document.nodePreviews.unavailable.find(node.id);
+            const bool overflow = std::find(document.nodePreviews.overflow.begin(), document.nodePreviews.overflow.end(), node.id)
+                != document.nodePreviews.overflow.end();
+            const NodePreviewTile* tile = nullptr;
+            if (const std::vector<NodePreviewTile>* const tiles = FindPreviewLayout(document, nodePreview_.GetDrawnKey())) {
+                for (const NodePreviewTile& candidate : *tiles) {
+                    if (candidate.node == node.id) {
+                        tile = &candidate;
+                        break;
+                    }
+                }
+            }
+            const D3D12_GPU_DESCRIPTOR_HANDLE texture = nodePreview_.GetTexture();
+            if (unavailable != document.nodePreviews.unavailable.end()) {
+                ImGui::TextDisabled("プレビューなし");
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("%s", unavailable->second.c_str());
+                }
+            } else if (overflow) {
+                ImGui::TextDisabled("プレビューは %d 個まで", kNodePreviewMax);
+            } else if (tile && texture.ptr != 0) {
+                const float cell = 1.0f / static_cast<float>(kNodePreviewColumns);
+                const ImVec2 uv0(static_cast<float>(tile->tile % kNodePreviewColumns) * cell,
+                    static_cast<float>(tile->tile / kNodePreviewColumns) * cell);
+                ImGui::Image(static_cast<ImTextureID>(texture.ptr), ImVec2(side, side), uv0, ImVec2(uv0.x + cell, uv0.y + cell));
+            } else {
+                const ImVec2 position = ImGui::GetCursorScreenPos();
+                ImGui::Dummy(ImVec2(side, side));
+                ImGui::GetWindowDrawList()->AddRectFilled(position, ImVec2(position.x + side, position.y + side),
+                    ToU32(Theme::kChild));
+            }
+        }
+        if (ImGui::ArrowButton("##preview", node.preview ? ImGuiDir_Up : ImGuiDir_Down)) {
+            node.preview = !node.preview;
+            document.pendingLabel = node.preview ? "プレビューを開く" : "プレビューを閉じる";
+        }
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(node.preview ? "プレビューを閉じる" : "プレビューを開く");
+        }
+    }
+
+    void ShaderGraphEditor::DrawStickyNote(Document& document, Node& node)
+    {
+        const auto setting = [&node](const char* name, const char* fallback) {
+            const auto found = node.settings.find(name);
+            return found != node.settings.end() ? found->second : std::string(fallback);
+        };
+        const ImVec4 color = NoteColor(setting("Color", "Yellow"));
+        const float width = NoteWidth(node);
+
+        ImNodes::PushColorStyle(ImNodesCol_NodeBackground, ToU32(color));
+        ImNodes::PushColorStyle(ImNodesCol_NodeBackgroundHovered, ToU32(Lighten(color, 0.08f)));
+        ImNodes::PushColorStyle(ImNodesCol_NodeBackgroundSelected, ToU32(Lighten(color, 0.16f)));
+        ImGui::PushID(node.id);
+        ImNodes::BeginNode(node.id);
+
+        std::string text = setting("Text", "");
+        if (document.editingNote == node.id) {
+            if (document.focusNote) {
+                ImGui::SetKeyboardFocusHere();
+                document.focusNote = false;
+            }
+            const int lines = 1 + static_cast<int>(std::count(text.begin(), text.end(), '\n'));
+            const float height = ImGui::GetTextLineHeight() * static_cast<float>((std::max)(lines + 1, 3))
+                + ImGui::GetStyle().FramePadding.y * 2.0f;
+            if (UI::InputStringMultiline("##text", text, ImVec2(width, height))) {
+                node.settings["Text"] = text;
+                document.pendingLabel = "付箋を書く";
+            }
+            if (ImGui::IsItemDeactivated()) {
+                document.editingNote = 0;
+            }
+        } else {
+            ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + width);
+            if (text.empty()) {
+                ImGui::TextDisabled("ダブルクリックで書く");
+            } else {
+                ImGui::TextUnformatted(text.c_str(), text.c_str() + text.size());
+            }
+            ImGui::PopTextWrapPos();
+            ImGui::Dummy(ImVec2(width, 0.0f));
+        }
+
+        ImNodes::EndNode();
+        ImGui::PopID();
+        ImNodes::PopColorStyle();
+        ImNodes::PopColorStyle();
+        ImNodes::PopColorStyle();
+    }
+
+    void ShaderGraphEditor::DrawRedirect(Document& document, Node& node)
+    {
+        const auto resolved = document.resolution.nodes.find(node.id);
+        const ValueType inputType = resolved != document.resolution.nodes.end() && !resolved->second.inputs.empty()
+            ? resolved->second.inputs.front() : ValueType::Float;
+        const ValueType outputType = resolved != document.resolution.nodes.end() && !resolved->second.outputs.empty()
+            ? resolved->second.outputs.front() : ValueType::Float;
+        const float height = ImGui::GetTextLineHeight() * 0.6f;
+        const float handle = RedirectHandleWidth();
+
+        ImNodes::PushStyleVar(ImNodesStyleVar_NodePadding, ImVec2(kRedirectPadding, kRedirectPadding));
+        ImGui::PushID(node.id);
+        ImNodes::BeginNode(node.id);
+        ImNodes::PushColorStyle(ImNodesCol_Pin, ToU32(PinColor(inputType)));
+        ImNodes::BeginInputAttribute(InputPinId(node.id, 0),
+            PinShape(inputType, document.graph.FindLinkTo(node.id, "In") != nullptr));
+        ImGui::Dummy(ImVec2(kRedirectPinWidth, height));
+        ImNodes::EndInputAttribute();
+        ImNodes::PopColorStyle();
+
+        // 中央のつかむ所（ピンの当たりの外なので、押すとノードを選んで動かせる）
+        ImGui::SameLine(0.0f, 0.0f);
+        const ImVec2 handleMin = ImGui::GetCursorScreenPos();
+        ImGui::Dummy(ImVec2(handle, height));
+        ImGui::GetWindowDrawList()->AddCircleFilled(ImVec2(handleMin.x + handle * 0.5f, handleMin.y + height * 0.5f),
+            2.5f, ImGui::GetColorU32(ImGuiCol_TextDisabled));
+        ImGui::SameLine(0.0f, 0.0f);
+
+        ImNodes::PushColorStyle(ImNodesCol_Pin, ToU32(PinColor(outputType)));
+        ImNodes::BeginOutputAttribute(OutputPinId(node.id, 0), PinShape(outputType, true));
+        ImGui::Dummy(ImVec2(kRedirectPinWidth, height));
+        ImNodes::EndOutputAttribute();
+        ImNodes::PopColorStyle();
+        ImNodes::EndNode();
+        ImGui::PopID();
+        ImNodes::PopStyleVar();
+    }
+
+    bool ShaderGraphEditor::DrawGroups(Document& document, float originX, float originY)
+    {
+        const ImVec2 panning = ImNodes::EditorContextGetPanning();
+        const ImVec2 offset(originX + panning.x, originY + panning.y);
+        ImDrawList* const drawList = ImGui::GetWindowDrawList();
+        const float titleHeight = ImGui::GetFrameHeight() + 4.0f;
+        bool titleHovered = false;
+
+        for (Group& group : document.graph.groups) {
+            ImVec2 boundsMin(FLT_MAX, FLT_MAX);
+            ImVec2 boundsMax(-FLT_MAX, -FLT_MAX);
+            for (const int id : group.nodes) {
+                const Node* const node = document.graph.FindNode(id);
+                if (!node) {
+                    continue;
+                }
+                ImVec2 size(kUnknownNodeWidth, kUnknownNodeHeight);
+                if (const auto found = document.nodeSizes.find(id); found != document.nodeSizes.end()) {
+                    size = ImVec2(found->second.first, found->second.second);
+                }
+                boundsMin = ImVec2((std::min)(boundsMin.x, node->x), (std::min)(boundsMin.y, node->y));
+                boundsMax = ImVec2((std::max)(boundsMax.x, node->x + size.x), (std::max)(boundsMax.y, node->y + size.y));
+            }
+            if (boundsMin.x > boundsMax.x) {
+                continue;
+            }
+            const ImVec2 frameMin(offset.x + boundsMin.x - kGroupPadding, offset.y + boundsMin.y - kGroupPadding - titleHeight);
+            const ImVec2 frameMax(offset.x + boundsMax.x + kGroupPadding, offset.y + boundsMax.y + kGroupPadding);
+            const ImVec2 titleMax(frameMax.x, frameMin.y + titleHeight);
+            const ImVec4 color = NoteColor(group.color);
+            const bool selected = document.selectedGroup == group.id;
+            constexpr float kRounding = 6.0f;
+            drawList->AddRectFilled(frameMin, frameMax, ToU32(Theme::WithAlpha(color, 0.22f)), kRounding);
+            drawList->AddRectFilled(frameMin, titleMax, ToU32(Theme::WithAlpha(color, 0.8f)), kRounding, ImDrawFlags_RoundCornersTop);
+            drawList->AddRect(frameMin, frameMax, ToU32(selected ? Theme::kAccent : Theme::WithAlpha(color, 0.9f)), kRounding, 0,
+                selected ? 2.0f : 1.0f);
+
+            ImGui::PushID(group.id);
+            if (document.renamingGroup == group.id) {
+                ImGui::SetCursorScreenPos(ImVec2(frameMin.x + 4.0f, frameMin.y + 2.0f));
+                if (document.focusGroupName) {
+                    ImGui::SetKeyboardFocusHere();
+                    document.focusGroupName = false;
+                }
+                ImGui::SetNextItemWidth((std::max)(80.0f, titleMax.x - frameMin.x - 8.0f));
+                std::string title = group.title;
+                if (UI::InputString("##title", title)) {
+                    group.title = title;
+                    document.pendingLabel = "グループの名前を変える";
+                }
+                titleHovered |= ImGui::IsItemHovered();
+                if (ImGui::IsItemDeactivated()) {
+                    document.renamingGroup = 0;
+                }
+            } else {
+                ImGui::SetCursorScreenPos(frameMin);
+                ImGui::InvisibleButton("##title", ImVec2((std::max)(1.0f, titleMax.x - frameMin.x), titleHeight));
+                const bool hovered = ImGui::IsItemHovered();
+                titleHovered |= hovered;
+                if (ImGui::IsItemActivated()) {
+                    document.selectedGroup = group.id;
+                    document.selectedProperty.clear();
+                    document.selectedNodes.clear();
+                    document.clearSelection = true;
+                }
+                // 見出しをつかんで動かすと、中のノードも一緒に動く
+                if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left, 0.0f)) {
+                    const ImVec2 delta = ImGui::GetIO().MouseDelta;
+                    if (delta.x != 0.0f || delta.y != 0.0f) {
+                        for (const int id : group.nodes) {
+                            if (Node* const node = document.graph.FindNode(id)) {
+                                node->x += delta.x;
+                                node->y += delta.y;
+                                document.placeNodes.insert(id);
+                            }
+                        }
+                        document.pendingLabel = "グループを動かす";
+                    }
+                }
+                if (hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                    document.renamingGroup = group.id;
+                    document.focusGroupName = true;
+                }
+                if (hovered && !ImGui::IsItemActive()) {
+                    ImGui::SetTooltip("ドラッグで中のノードごと動かす・ダブルクリックで名前を変える");
+                }
+                const std::string title = group.title.empty() ? std::string("（名前なし）") : group.title;
+                drawList->AddText(ImVec2(frameMin.x + 8.0f, frameMin.y + (titleHeight - ImGui::GetTextLineHeight()) * 0.5f),
+                    ToU32(Theme::kText), title.c_str());
+            }
+            ImGui::PopID();
+        }
+        ImGui::SetCursorScreenPos(ImVec2(originX, originY));
+        return titleHovered;
     }
 
     void ShaderGraphEditor::HandleLinkEvents(Document& document)
@@ -1270,7 +1770,9 @@ namespace CoreEngine::Editor::ShaderGraph
         }
         const ValueType fromType = OutputType(document, *fromNode, from.index);
         const ValueType toType = toDesc->inputs[to.index].type;
-        if (!CanConnect(fromType, toType)) {
+        // つないでいない Redirect の出力は、まだ種類が決まっていないので何へでもつなぐ
+        const bool openRedirect = fromDesc->type == kRedirectNodeType && !document.graph.FindLinkTo(from.node, "In");
+        if (!openRedirect && !InputAccepts(*toDesc, to.index, fromType)) {
             document.notice = std::string("種類が合わないので、つなぎませんでした（") + ValueTypeName(fromType)
                 + " → " + ValueTypeName(toType) + "）。";
             return;
@@ -1309,15 +1811,23 @@ namespace CoreEngine::Editor::ShaderGraph
         }
         if (pin.output) {
             const ValueType type = OutputType(document, *source, pin.index);
-            return std::any_of(desc.inputs.begin(), desc.inputs.end(),
-                [type](const PinDesc& input) { return CanConnect(type, input.type); });
+            for (size_t index = 0; index < desc.inputs.size(); ++index) {
+                if (InputAccepts(desc, index, type)) {
+                    return true;
+                }
+            }
+            return false;
         }
         if (pin.index >= sourceDesc->inputs.size()) {
             return true;
         }
         const ValueType wanted = sourceDesc->inputs[pin.index].type;
-        return std::any_of(desc.outputs.begin(), desc.outputs.end(),
-            [wanted](const PinDesc& output) { return CanConnect(output.type, wanted); });
+        for (size_t index = 0; index < desc.outputs.size(); ++index) {
+            if (OutputFits(desc, index, wanted)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     void ShaderGraphEditor::DrawSearch(Document& document)
@@ -1413,9 +1923,21 @@ namespace CoreEngine::Editor::ShaderGraph
         }
         ImGui::EndChild();
 
+        bool placeNote = false;
+        if (!search_.fromPin) {
+            ImGui::Separator();
+            placeNote = ImGui::Selectable("付箋を置く");
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("グラフにメモを書く（シェーダには入りません）");
+            }
+        }
+
         if (chosen) {
             PlaceNode(document, std::string(chosen->type), search_.gridX, search_.gridY, search_.fromPin);
             search_.fromPin.reset();
+            ImGui::CloseCurrentPopup();
+        } else if (placeNote) {
+            PlaceNode(document, std::string(kStickyNoteType), search_.gridX, search_.gridY, std::nullopt);
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();
@@ -1432,11 +1954,16 @@ namespace CoreEngine::Editor::ShaderGraph
         node.type = type;
         node.x = x;
         node.y = y;
+        node.preview = HasNodePreview(*desc) && desc->Supports(document.graph.target);
         const int id = node.id;
         document.graph.nodes.push_back(std::move(node));
         document.placeNodes.insert(id);
         document.clearSelection = true;
         document.pendingSelect = { id };
+        if (type == kStickyNoteType) {
+            document.editingNote = id;
+            document.focusNote = true;
+        }
 
         if (fromPin) {
             const PinRef pin = DecodePin(*fromPin);
@@ -1445,7 +1972,7 @@ namespace CoreEngine::Editor::ShaderGraph
             if (sourceDesc && pin.output) {
                 const ValueType sourceType = OutputType(document, *source, pin.index);
                 for (size_t index = 0; index < desc->inputs.size(); ++index) {
-                    if (CanConnect(sourceType, desc->inputs[index].type)) {
+                    if (InputAccepts(*desc, index, sourceType)) {
                         Connect(document, *fromPin, InputPinId(id, index));
                         break;
                     }
@@ -1453,7 +1980,7 @@ namespace CoreEngine::Editor::ShaderGraph
             } else if (sourceDesc && pin.index < sourceDesc->inputs.size()) {
                 const ValueType wanted = sourceDesc->inputs[pin.index].type;
                 for (size_t index = 0; index < desc->outputs.size(); ++index) {
-                    if (CanConnect(desc->outputs[index].type, wanted)) {
+                    if (OutputFits(*desc, index, wanted)) {
                         Connect(document, OutputPinId(id, index), *fromPin);
                         break;
                     }
@@ -1465,6 +1992,10 @@ namespace CoreEngine::Editor::ShaderGraph
 
     void ShaderGraphEditor::DeleteSelection(Document& document)
     {
+        if (document.selectedNodes.empty() && document.selectedLinks.empty() && document.selectedGroup != 0) {
+            RemoveGroup(document, document.selectedGroup);
+            return;
+        }
         bool changed = false;
         for (const int link : document.selectedLinks) {
             const PinRef pin = DecodePin(link);
@@ -1478,6 +2009,35 @@ namespace CoreEngine::Editor::ShaderGraph
                 return candidate.toNode == pin.node && candidate.toPin == name;
             }) > 0;
         }
+        // 消す中継点の前と後をつなぎ直す（消さないノードどうしの値の流れは切らない）
+        std::set<int> removing;
+        for (const int id : document.selectedNodes) {
+            if (const Node* const node = document.graph.FindNode(id); node && !IsMasterNodeType(node->type)) {
+                removing.insert(id);
+            }
+        }
+        const auto removedRedirect = [&document, &removing](int id) {
+            const Node* const node = document.graph.FindNode(id);
+            return node && node->type == kRedirectNodeType && removing.contains(id);
+        };
+        std::vector<Link> bridges;
+        for (const int id : removing) {
+            if (!removedRedirect(id)) {
+                continue;
+            }
+            const Link* source = document.graph.FindLinkTo(id, "In");
+            for (size_t step = 0; source && removedRedirect(source->fromNode) && step < document.graph.nodes.size(); ++step) {
+                source = document.graph.FindLinkTo(source->fromNode, "In");
+            }
+            if (!source || removing.contains(source->fromNode)) {
+                continue;
+            }
+            for (const Link& link : document.graph.links) {
+                if (link.fromNode == id && !removing.contains(link.toNode)) {
+                    bridges.push_back(Link{ source->fromNode, source->fromPin, link.toNode, link.toPin });
+                }
+            }
+        }
         for (const int id : document.selectedNodes) {
             const Node* const node = document.graph.FindNode(id);
             if (!node || IsMasterNodeType(node->type)) {
@@ -1485,6 +2045,9 @@ namespace CoreEngine::Editor::ShaderGraph
             }
             document.graph.RemoveNode(id);
             changed = true;
+        }
+        for (const Link& bridge : bridges) {
+            document.graph.links.push_back(bridge);
         }
         if (changed) {
             document.selectedNodes.clear();
@@ -1587,6 +2150,186 @@ namespace CoreEngine::Editor::ShaderGraph
             document.clearSelection = true;
             document.pendingSelect = created;
             document.pendingLabel = "貼り付ける";
+        }
+    }
+
+    // ---------------------------------------------------------------- グループ・Redirect
+
+    void ShaderGraphEditor::GroupSelection(Document& document)
+    {
+        std::vector<int> nodes;
+        for (const int id : document.selectedNodes) {
+            if (document.graph.FindNode(id)) {
+                nodes.push_back(id);
+            }
+        }
+        if (nodes.empty()) {
+            return;
+        }
+        std::sort(nodes.begin(), nodes.end());
+        for (const int id : nodes) {
+            document.graph.RemoveFromGroups(id);
+        }
+        Group group;
+        group.id = document.graph.NextGroupId();
+        group.title = "新しいグループ";
+        group.color = "Blue";
+        group.nodes = std::move(nodes);
+        document.renamingGroup = group.id;
+        document.focusGroupName = true;
+        document.graph.groups.push_back(std::move(group));
+        document.pendingLabel = "グループにする";
+    }
+
+    void ShaderGraphEditor::UngroupSelection(Document& document)
+    {
+        bool changed = false;
+        for (const int id : document.selectedNodes) {
+            if (document.graph.FindGroupOf(id)) {
+                document.graph.RemoveFromGroups(id);
+                changed = true;
+            }
+        }
+        if (changed) {
+            document.pendingLabel = "グループから外す";
+        }
+    }
+
+    void ShaderGraphEditor::RemoveGroup(Document& document, int id)
+    {
+        if (std::erase_if(document.graph.groups, [id](const Group& group) { return group.id == id; }) > 0) {
+            document.pendingLabel = "グループを消す";
+        }
+        if (document.selectedGroup == id) {
+            document.selectedGroup = 0;
+        }
+        if (document.renamingGroup == id) {
+            document.renamingGroup = 0;
+        }
+    }
+
+    void ShaderGraphEditor::InsertRedirect(Document& document, int link, float x, float y)
+    {
+        const PinRef pin = DecodePin(link);
+        const Node* const target = document.graph.FindNode(pin.node);
+        const NodeDesc* const desc = target ? FindNodeDesc(*target) : nullptr;
+        if (!desc || pin.output || pin.index >= desc->inputs.size()) {
+            return;
+        }
+        const std::string toPin(desc->inputs[pin.index].name);
+        const auto found = std::find_if(document.graph.links.begin(), document.graph.links.end(),
+            [&pin, &toPin](const Link& candidate) { return candidate.toNode == pin.node && candidate.toPin == toPin; });
+        if (found == document.graph.links.end()) {
+            return;
+        }
+        const Link original = *found;
+        document.graph.links.erase(found);
+
+        Node redirect;
+        redirect.id = document.graph.NextNodeId();
+        redirect.type = std::string(kRedirectNodeType);
+        redirect.x = x - RedirectWidth() * 0.5f;
+        redirect.y = y - 8.0f;
+        const int id = redirect.id;
+        document.graph.nodes.push_back(std::move(redirect));
+        document.graph.links.push_back(Link{ original.fromNode, original.fromPin, id, "In" });
+        document.graph.links.push_back(Link{ id, "Out", original.toNode, original.toPin });
+
+        // 両端が同じグループなら、中継点も同じグループへ入れる
+        const Group* const fromGroup = document.graph.FindGroupOf(original.fromNode);
+        if (fromGroup && fromGroup == document.graph.FindGroupOf(original.toNode)) {
+            if (Group* const group = document.graph.FindGroup(fromGroup->id)) {
+                group->nodes.push_back(id);
+            }
+        }
+
+        document.placeNodes.insert(id);
+        document.clearSelection = true;
+        document.pendingSelect = { id };
+        document.pendingLabel = "Redirect を置く";
+    }
+
+    void ShaderGraphEditor::SetAllPreviews(Document& document, bool open)
+    {
+        bool changed = false;
+        for (Node& node : document.graph.nodes) {
+            const NodeDesc* const desc = FindNodeDesc(node);
+            if (desc && HasNodePreview(*desc) && desc->Supports(document.graph.target) && node.preview != open) {
+                node.preview = open;
+                changed = true;
+            }
+        }
+        if (changed) {
+            document.pendingLabel = open ? "プレビューを全部開く" : "プレビューを全部閉じる";
+        }
+    }
+
+    // ---------------------------------------------------------------- ノードのプレビュー
+
+    const std::vector<NodePreviewTile>* ShaderGraphEditor::FindPreviewLayout(const Document& document, uint64_t key) const
+    {
+        if (key == 0) {
+            return nullptr;
+        }
+        for (const auto& [layoutKey, tiles] : document.nodePreviewLayouts) {
+            if (layoutKey == key) {
+                return &tiles;
+            }
+        }
+        return nullptr;
+    }
+
+    void ShaderGraphEditor::UpdateNodePreviews(Document& document)
+    {
+        // 中身が変わったら、開いたノードを全部書いたシェーダを作り直す
+        const std::string source = document.currentText + '\n' + document.functionFiles;
+        if (source != document.nodePreviewSource) {
+            document.nodePreviewSource = source;
+            GenerateOptions options;
+            options.sourcePath = ToAssetText(document.file);
+            options.resolveInclude = MakeIncludeResolver();
+            NodePreviewResult result = GenerateNodePreviews(document.graph, options);
+            const uint64_t key = result.hlsl.empty() ? 0
+                : (std::hash<std::string>{}(result.hlsl + '\n' + ToString(document.graph.target)) | 1);
+            if (key != document.nodePreviewKey) {
+                document.nodePreviewKey = key;
+                document.nodePreviewChangeTime = ImGui::GetTime();
+                if (key != 0) {
+                    auto& layouts = document.nodePreviewLayouts;
+                    std::erase_if(layouts, [key](const auto& entry) { return entry.first == key; });
+                    layouts.emplace_back(key, result.tiles);
+                    const uint64_t built = nodePreview_.GetBuiltKey();
+                    while (layouts.size() > kPreviewLayouts) {
+                        const auto oldest = std::find_if(layouts.begin(), layouts.end(),
+                            [built](const auto& entry) { return entry.first != built; });
+                        layouts.erase(oldest);
+                    }
+                }
+            }
+            document.nodePreviewHlsl = std::move(result.hlsl);
+            result.hlsl.clear();
+            document.nodePreviews = std::move(result);
+        }
+
+        const uint64_t key = document.nodePreviewKey;
+        if (key == 0) {
+            return;
+        }
+
+        // 変えてから少し待って、裏のスレッドでコンパイルする
+        if (compiler_ && key != nodePreview_.GetBuiltKey() && key != nodePreview_.GetFailedKey() && key != submittedPreviewKey_
+            && ImGui::GetTime() - document.nodePreviewChangeTime >= kValidateDelay) {
+            compileWorker_.Submit(key, document.nodePreviewHlsl, document.graph.target,
+                ScratchShaderPath(ScratchKey(document) + ".nodes", document.graph.target), *compiler_);
+            submittedPreviewKey_ = key;
+        }
+
+        // 組めたシェーダで描く（新しいものを組んでいる間とコンパイルに失敗したときは、前のものを描き続ける）
+        const uint64_t built = nodePreview_.GetBuiltKey();
+        const std::vector<NodePreviewTile>* const tiles = FindPreviewLayout(document, built);
+        if (tiles && !tiles->empty()) {
+            nodePreview_.RequestTiles(built, document.graph.target, *tiles, document.previewValues, document.previewTexture,
+                document.previewView);
         }
     }
 
@@ -1700,6 +2443,11 @@ namespace CoreEngine::Editor::ShaderGraph
         }
         if (document.selectedNodes.size() > 1) {
             UI::HintF("%d 個のノードを選んでいます。", static_cast<int>(document.selectedNodes.size()));
+            UI::Hint("Ctrl+G でグループにできます。");
+            return;
+        }
+        if (Group* const group = document.graph.FindGroup(document.selectedGroup)) {
+            DrawGroupInspector(document, *group);
             return;
         }
         if (Property* const property = document.graph.FindProperty(document.selectedProperty)) {
@@ -1800,6 +2548,58 @@ namespace CoreEngine::Editor::ShaderGraph
             ImGui::Spacing();
         }
         DimText("並べ替えと消すのは、Project.json を書き換えてください。");
+    }
+
+    void ShaderGraphEditor::DrawGroupInspector(Document& document, Group& group)
+    {
+        ImGui::TextUnformatted("グループ");
+        ImGui::PushID(group.id);
+        Row("名前");
+        std::string title = group.title;
+        if (UI::InputString("##title", title)) {
+            group.title = title;
+            document.pendingLabel = "グループの名前を変える";
+        }
+        Row("色");
+        if (NoteColorCombo("##color", group.color)) {
+            document.pendingLabel = "グループの色を変える";
+        }
+        DimText(std::to_string(group.nodes.size()) + " 個のノードが入っています。見出しをドラッグすると中のノードごと動きます。"
+                "ノードを外すのは、ノードの右クリックの「グループから外す」です。");
+        if (ImGui::Button("グループを消す（ノードは残す）")) {
+            RemoveGroup(document, group.id);
+        }
+        ImGui::PopID();
+    }
+
+    void ShaderGraphEditor::DrawStickyInspector(Document& document, Node& node)
+    {
+        const auto setting = [&node](const char* name, const char* fallback) {
+            const auto found = node.settings.find(name);
+            return found != node.settings.end() ? found->second : std::string(fallback);
+        };
+        ImGui::TextUnformatted("付箋");
+        ImGui::PushID(node.id);
+        Row("色");
+        std::string color = setting("Color", "Yellow");
+        if (NoteColorCombo("##color", color)) {
+            node.settings["Color"] = color;
+            document.pendingLabel = "付箋の色を変える";
+        }
+        Row("幅");
+        int width = static_cast<int>(NoteWidth(node));
+        if (ImGui::SliderInt("##width", &width, static_cast<int>(kNoteMinWidth), static_cast<int>(kNoteMaxWidth), "%d px")) {
+            node.settings["Width"] = std::to_string(width);
+            document.pendingLabel = "付箋の幅を変える";
+        }
+        ImGui::SeparatorText("文");
+        std::string text = setting("Text", "");
+        if (UI::InputStringMultiline("##text", text, ImVec2(-FLT_MIN, ImGui::GetTextLineHeight() * 8.0f))) {
+            node.settings["Text"] = text;
+            document.pendingLabel = "付箋を書く";
+        }
+        DimText("付箋はシェーダには入りません。キャンバスでダブルクリックしても書き換えられます。");
+        ImGui::PopID();
     }
 
     void ShaderGraphEditor::DrawFunctionInspector(Document& document, Node& node)
@@ -1991,6 +2791,10 @@ namespace CoreEngine::Editor::ShaderGraph
         const NodeDesc* const desc = FindNodeDesc(node);
         if (!desc) {
             ImGui::TextColored(Theme::kError, "知らない種類のノード: %s", node.type.c_str());
+            return;
+        }
+        if (node.type == kStickyNoteType) {
+            DrawStickyInspector(document, node);
             return;
         }
         ImGui::TextUnformatted(desc->title.data(), desc->title.data() + desc->title.size());
@@ -2278,6 +3082,225 @@ namespace CoreEngine::Editor::ShaderGraph
             Row("板の画像");
             TexturePathField("##previewTexture", document.previewTexture);
         }
+    }
+
+    void ShaderGraphEditor::DrawHlsl(Document& document)
+    {
+        const std::string source = document.currentText + '\n' + document.functionFiles;
+        if (source != document.hlslSource) {
+            document.hlslSource = source;
+            GenerateOptions options;
+            options.sourcePath = ToAssetText(document.file);
+            options.resolveInclude = MakeIncludeResolver();
+            document.hlsl = Generate(document.graph, options);
+            document.hlslLines = SplitLines(document.hlsl.hlsl);
+            document.hlslScrollNode = -1;
+        }
+
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted("HLSL");
+        ImGui::SameLine();
+        ImGui::BeginDisabled(!document.hlsl.fatal.empty());
+        if (ImGui::Button("コピー")) {
+            ImGui::SetClipboardText(document.hlsl.hlsl.c_str());
+            document.notice = "HLSL をクリップボードへ写しました。";
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("書き出す…")) {
+            OpenExportDialog(document);
+        }
+        ImGui::EndDisabled();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::SetTooltip("グラフの隣に手書きのシェーダとして書き、このグラフを使う .mat を付け替えられます。");
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("閉じる")) {
+            document.showHlsl = false;
+        }
+        if (!document.hlsl.fatal.empty()) {
+            ImGui::PushStyleColor(ImGuiCol_Text, Theme::kError);
+            ImGui::TextWrapped("%s", document.hlsl.fatal.c_str());
+            ImGui::PopStyleColor();
+            return;
+        }
+        DimText("保存で書くシェーダです。ノードを選ぶと、そのノードの行に色が付きます。");
+
+        // 選んだノードの行（関数の外に置いた文も）
+        const int selected = document.selectedNodes.size() == 1 ? document.selectedNodes.front() : 0;
+        std::vector<std::pair<int, int>> ranges;
+        if (selected != 0) {
+            const auto [begin, end] = document.hlsl.nodeLines.equal_range(selected);
+            for (auto it = begin; it != end; ++it) {
+                ranges.push_back(it->second);
+            }
+            if (const auto global = document.hlsl.globalLines.find(selected); global != document.hlsl.globalLines.end()) {
+                ranges.push_back(global->second);
+            }
+            std::sort(ranges.begin(), ranges.end());
+        }
+        const auto highlighted = [&ranges](int line) {
+            return std::any_of(ranges.begin(), ranges.end(),
+                [line](const std::pair<int, int>& range) { return line >= range.first && line <= range.second; });
+        };
+
+        if (ImGui::BeginChild("##hlslText", ImVec2(0.0f, 0.0f), ImGuiChildFlags_Borders, ImGuiWindowFlags_HorizontalScrollbar)) {
+            const float lineHeight = ImGui::GetTextLineHeightWithSpacing();
+            if (selected != document.hlslScrollNode) {
+                document.hlslScrollNode = selected;
+                if (!ranges.empty()) {
+                    ImGui::SetScrollY((std::max)(0.0f, static_cast<float>(ranges.front().first - 3) * lineHeight));
+                }
+            }
+            const float numberWidth = ImGui::CalcTextSize("0000").x;
+            ImDrawList* const drawList = ImGui::GetWindowDrawList();
+            ImGuiListClipper clipper;
+            clipper.Begin(static_cast<int>(document.hlslLines.size()), lineHeight);
+            while (clipper.Step()) {
+                for (int index = clipper.DisplayStart; index < clipper.DisplayEnd; ++index) {
+                    const int line = index + 1;
+                    if (highlighted(line)) {
+                        const ImVec2 position = ImGui::GetCursorScreenPos();
+                        const float width = (std::max)(ImGui::GetContentRegionAvail().x, ImGui::GetWindowWidth()) + ImGui::GetScrollX();
+                        drawList->AddRectFilled(position, ImVec2(position.x + width, position.y + lineHeight),
+                            ToU32(Theme::kAccentMuted));
+                    }
+                    ImGui::TextDisabled("%4d", line);
+                    ImGui::SameLine(numberWidth + ImGui::GetStyle().ItemSpacing.x * 2.0f);
+                    const std::string& text = document.hlslLines[static_cast<size_t>(index)];
+                    ImGui::TextUnformatted(text.c_str(), text.c_str() + text.size());
+                }
+            }
+        }
+        ImGui::EndChild();
+    }
+
+    void ShaderGraphEditor::OpenExportDialog(Document& document)
+    {
+        Logger& log = Logger::GetInstance();
+        const Target target = document.graph.target;
+        const char* suffix = ".PS.hlsl";
+        if (target == Target::PostEffect) {
+            suffix = ".CS.hlsl";
+        } else if (Is3D(target)) {
+            suffix = ".Surface.hlsl";
+        }
+        const std::filesystem::path folder = document.file.parent_path();
+        const std::string stem = log.PathToUtf8(document.file.stem());
+        std::filesystem::path path = folder / log.Utf8ToPath(stem + suffix);
+        std::error_code ec;
+        for (int number = 2; std::filesystem::exists(path, ec); ++number) {
+            path = folder / log.Utf8ToPath(stem + std::to_string(number) + suffix);
+        }
+        document.exportPath = path;
+        document.exportMaterials.clear();
+        for (const std::filesystem::path& file : FindGraphMaterials(document.file, target)) {
+            document.exportMaterials.emplace_back(file, true);
+        }
+        document.openExport = true;
+    }
+
+    void ShaderGraphEditor::DrawExportDialog(Document& document)
+    {
+        if (document.openExport) {
+            ImGui::OpenPopup(kExportDialog);
+            document.openExport = false;
+        }
+        ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+        if (!ImGui::BeginPopupModal(kExportDialog, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            return;
+        }
+        Logger& log = Logger::GetInstance();
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 30.0f);
+        ImGui::TextUnformatted("書く場所");
+        ImGui::SameLine(kLabelWidth);
+        ImGui::TextUnformatted(ToAssetText(document.exportPath).c_str());
+        ImGui::Spacing();
+        ImGui::PushStyleColor(ImGuiCol_Text, Theme::kTextDim);
+        ImGui::TextWrapped("保存で書くシェーダと同じ中身を、手書きのシェーダとして書きます。グラフはそのまま残ります。"
+                           "書き出したシェーダでは、範囲のある Float も .mat のインスペクタでただの数の欄になります。");
+        ImGui::PopStyleColor();
+
+        ImGui::SeparatorText("このシェーダへ付け替える .mat");
+        if (document.exportMaterials.empty()) {
+            ImGui::TextDisabled("このグラフのシェーダを使う .mat はありません。");
+        }
+        for (auto& [file, checked] : document.exportMaterials) {
+            const std::string name = ToAssetText(file);
+            ImGui::PushID(name.c_str());
+            ImGui::Checkbox(log.PathToUtf8(file.filename()).c_str(), &checked);
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("%s", name.c_str());
+            }
+            ImGui::PopID();
+        }
+        ImGui::PopTextWrapPos();
+        ImGui::Spacing();
+
+        if (ImGui::Button("書き出す")) {
+            ExportHlsl(document);
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("やめる")) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+
+    void ShaderGraphEditor::ExportHlsl(Document& document)
+    {
+        if (!compiler_) {
+            return;
+        }
+        Logger& log = Logger::GetInstance();
+        GenerateOptions options;
+        options.sourcePath = ToAssetText(document.file);
+        options.resolveInclude = MakeIncludeResolver();
+        const GenerateResult generated = Generate(document.graph, options);
+        if (!generated.fatal.empty()) {
+            document.notice = "書き出せません: " + generated.fatal;
+            return;
+        }
+
+        // 先頭の生成物の印を、書き出した印に変える（生成物として扱われないように）
+        std::string text = generated.hlsl;
+        if (text.starts_with(kGeneratedMarker)) {
+            const size_t end = text.find('\n');
+            text.replace(0, end == std::string::npos ? text.size() : end, "// Exported from " + options.sourcePath);
+        }
+        const Target target = document.graph.target;
+        const CompileCheck check = CheckCompile(*compiler_, text, ScratchShaderPath(ScratchKey(document) + ".export", target),
+            target, true);
+        if (!check.ok) {
+            document.notice = "書き出せません: " + check.message;
+            return;
+        }
+        if (!WriteFileReplacing(document.exportPath, text)) {
+            document.notice = "書けません: " + log.PathToUtf8(document.exportPath);
+            return;
+        }
+        AssetDatabase::GetInstance().ImportAsset(document.exportPath);
+
+        const std::string shaderText = ToAssetText(document.exportPath);
+        int repointed = 0;
+        for (const auto& [file, checked] : document.exportMaterials) {
+            if (!checked) {
+                continue;
+            }
+            const std::shared_ptr<ShaderMaterial> material = ShaderMaterialLibrary::GetInstance().Get(ToAssetText(file));
+            if (!material) {
+                continue;
+            }
+            material->SetShaderPath(shaderText);
+            if (material->Save()) {
+                ++repointed;
+            }
+        }
+        document.notice = log.PathToUtf8(document.exportPath.filename()) + " に書き出しました。";
+        if (repointed > 0) {
+            document.notice += ".mat を " + std::to_string(repointed) + " 個付け替えました。";
+        }
+        log.Log("シェーダーグラフ「" + document.title + "」: " + document.notice, LogLevel::Info, LogCategory::Shader);
     }
 
     void ShaderGraphEditor::DrawMessages(Document& document)
