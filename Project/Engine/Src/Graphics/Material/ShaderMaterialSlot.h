@@ -2,6 +2,7 @@
 
 #include "Graphics/Asset/AssetRef.h"
 #include "Graphics/Material/ShaderMaterial.h"
+#include "Graphics/RootSignature/RootSlot.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Math/Vector/Vector4.h"
 
@@ -19,6 +20,7 @@ namespace CoreEngine
     class ShaderMaterialPipeline;
     class UploadRing;
     struct MaterialParamLayout;
+    struct SurfaceMaterialVariant;
 
     /// @brief 描画の部品が持つマテリアルの欄（共有のマテリアルと、この部品だけの上書き）
     /// @details 上書きは Unity の MaterialPropertyBlock に当たり、保存しない（スクリプトが再生中に決める）。
@@ -61,6 +63,15 @@ namespace CoreEngine
         /// @brief 値を引く（上書き → マテリアルの順。無ければ nullptr）
         const MaterialNumbers* FindNumbers(std::string_view name) const;
 
+        /// @brief この部品だけの上書きがあるか
+        bool HasOverrides() const { return !overrideValues_.empty() || !overrideTextures_.empty(); }
+
+        /// @brief 同じ値とテクスチャで描く欄どうしで同じになる印（上書きが無ければ共有のマテリアル、あればこの欄）
+        const void* GetBatchIdentity() const
+        {
+            return HasOverrides() ? static_cast<const void*>(this) : static_cast<const void*>(material_.get());
+        }
+
         // ===== 描画 =====
 
         /// @brief パイプラインのルート引数を差す（ルートシグネチャとパイプラインは差してある前提）
@@ -72,7 +83,17 @@ namespace CoreEngine
             D3D12_GPU_VIRTUAL_ADDRESS transform, D3D12_GPU_VIRTUAL_ADDRESS draw,
             D3D12_GPU_DESCRIPTOR_HANDLE mainTexture);
 
+        /// @brief 3D モデルのマテリアルの値（b10）とテクスチャを差す（ルートシグネチャとパイプラインは差してある前提）
+        /// @return 描けるなら true
+        bool BindSurface(ID3D12GraphicsCommandList* commandList, const SurfaceMaterialVariant& variant, UploadRing& uploadRing);
+
     private:
+        /// @brief 値の定数バッファと、`gTexture` 以外のテクスチャを差す
+        /// @param textureSlots `layout.textures` と同じ並びのルートパラメータ（無効なものは差さない）
+        /// @return 描けるなら true
+        bool BindParams(ID3D12GraphicsCommandList* commandList, const MaterialParamLayout& layout, RootSlot paramsSlot,
+            std::span<const RootSlot> textureSlots, UploadRing& uploadRing);
+
         /// @brief 値を定数バッファの並びに詰め直す（並びか値が変わったときだけ）
         void Pack(const MaterialParamLayout& layout);
 

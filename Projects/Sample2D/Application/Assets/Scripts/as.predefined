@@ -931,6 +931,15 @@ class MeshRenderer {
 	void set_texture(const string&in) property;
 	int get_blendMode() const property;
 	void set_blendMode(int) property;
+	string get_material() const property;
+	void set_material(const string&in) property;
+	void SetMaterialFloat(const string&in, float);
+	void SetMaterialInt(const string&in, int);
+	void SetMaterialVector(const string&in, const CoreEngine::Vector4&in);
+	void SetMaterialTexture(const string&in, const string&in);
+	void ClearMaterialOverrides();
+	float GetMaterialFloat(const string&in);
+	CoreEngine::Vector4 GetMaterialVector(const string&in);
 }
 class ParticleSystem {
 	bool get_exists() const property;

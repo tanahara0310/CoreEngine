@@ -7,12 +7,28 @@
 #include "Utility/Path/ProjectPaths.h"
 
 #include <algorithm>
+#include <cctype>
 #include <charconv>
 #include <fstream>
 #include <system_error>
 
 namespace CoreEngine
 {
+    bool IsSurfaceShaderPath(std::string_view path)
+    {
+        constexpr std::string_view kSuffix = ".surface.hlsl";
+        if (path.size() < kSuffix.size()) {
+            return false;
+        }
+        const std::string_view tail = path.substr(path.size() - kSuffix.size());
+        for (size_t index = 0; index < kSuffix.size(); ++index) {
+            if (std::tolower(static_cast<unsigned char>(tail[index])) != kSuffix[index]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     namespace
     {
         constexpr const char* kShaderKey = "shader";

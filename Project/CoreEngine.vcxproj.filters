@@ -691,6 +691,9 @@
     <ClCompile Include="Engine\Src\Graphics\Material\ShaderMaterialSlot.cpp">
       <Filter>Engine\Src\Graphics\Material</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Material\SurfaceMaterialPipeline.cpp">
+      <Filter>Engine\Src\Graphics\Material</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\SkeletonAnimatorFactory.cpp">
       <Filter>Engine\Src\Graphics\Model\Animation</Filter>
     </ClCompile>
@@ -2578,6 +2581,9 @@
       <Filter>Engine\Src\Graphics\Material</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Material\ShaderMaterialSlot.h">
+      <Filter>Engine\Src\Graphics\Material</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Material\SurfaceMaterialPipeline.h">
       <Filter>Engine\Src\Graphics\Material</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Material\UIMaterialInstance.h">

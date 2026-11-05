@@ -9,6 +9,7 @@
 #include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/Model/Skeleton/SkinningComputeDispatcher.h"
 #include "Graphics/Pipeline/CustomShaderPipelineCache.h"
+#include "Graphics/Material/SurfaceMaterialPipeline.h"
 #include "Diagnostics/EngineStats.h"
 #include "Animation/AnimationLoader.h"
 #include "Animation/AnimationPlayer.h"
@@ -65,6 +66,11 @@ namespace CoreEngine
         skinningDispatcher_ = std::make_unique<SkinningComputeDispatcher>();
         skinningDispatcher_->Initialize(dxCommon_->GetDevice());
         renderContext_.skinningDispatcher = skinningDispatcher_.get();
+
+        // 3D モデルのマテリアルは通常モデルのレンダラーのコンパイラとリフレクションで組む
+        BaseModelRenderer* const renderer = renderContext_.modelRenderer;
+        surfaceMaterialPipelineCache_ = std::make_unique<SurfaceMaterialPipelineCache>(
+            dxCommon_->GetDevice(), *renderer->GetShaderCompiler(), *renderer->GetReflectionBuilder());
     }
 
     std::unique_ptr<Model> ModelManager::CreateStaticModel(const std::string& filePath)

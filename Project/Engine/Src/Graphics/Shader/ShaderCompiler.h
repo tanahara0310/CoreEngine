@@ -39,6 +39,17 @@ namespace CoreEngine
             const std::wstring& filePath,
             const wchar_t* profile);
 
+        /// @brief 入口を選んでシェーダーをコンパイルする
+        /// @param entryPoint エントリーポイント（例: L"main"）
+        /// @param errorMessage 渡すと、コンパイルできないときに止めずに訳を入れて nullptr を返す。
+        ///        警告だけならログへ出して結果を返す。nullptr なら CompileShader と同じく止める
+        /// @return コンパイル済みバイナリ（失敗時 nullptr）
+        Microsoft::WRL::ComPtr<IDxcBlob> CompileShader(
+            const std::wstring& filePath,
+            const wchar_t* profile,
+            const wchar_t* entryPoint,
+            std::string* errorMessage);
+
         /// @brief シェーダーライブラリのコンパイル（エントリーポイントなし・lib_6_6）
         Microsoft::WRL::ComPtr<IDxcBlob> CompileShaderLibrary(const std::wstring& filePath);
 
@@ -58,7 +69,9 @@ namespace CoreEngine
         /// @warning ShaderCompiler のインスタンスはスレッドごとに 1 つ用意すること。
         ///          IDxcCompiler3 はスレッドセーフとして文書化されておらず、
         ///          RecordingIncludeHandler もインスタンス状態を持つため .deps が混ざる。
-        Microsoft::WRL::ComPtr<IDxcBlob> CompilePrepared(const PreparedShaderCompile& prepared);
+        /// @param errorMessage 渡すと、コンパイルできないときに止めずに訳を入れて nullptr を返す
+        Microsoft::WRL::ComPtr<IDxcBlob> CompilePrepared(const PreparedShaderCompile& prepared,
+            std::string* errorMessage = nullptr);
 
         /// @brief ゲームの書き出し用にコンパイルする（キャッシュを使わず、出力からデバッグ情報を外す）
         /// @param filePath シェーダの綴りかパス
@@ -83,7 +96,8 @@ namespace CoreEngine
         Microsoft::WRL::ComPtr<IDxcBlob> CompileInternal(
             const std::wstring& filePath,
             const wchar_t* profile,
-            const wchar_t* entryPoint);
+            const wchar_t* entryPoint,
+            std::string* errorMessage = nullptr);
 
         /// @brief AssetDatabase を使って HLSL の実パスを解決する
         std::wstring ResolveShaderPath(const std::wstring& filePath) const;

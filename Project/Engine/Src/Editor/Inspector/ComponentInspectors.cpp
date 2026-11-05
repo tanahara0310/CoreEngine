@@ -15,6 +15,7 @@
 #include "GameObject/Component/Core/MissingComponent.h"
 #include "GameObject/Component/Light/LightComponent.h"
 #include "GameObject/Component/Render/MaterialComponent.h"
+#include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/Component/Render/SpriteAnimatorComponent.h"
 #include "GameObject/Component/Render/SpriteRendererComponent.h"
 #include "GameObject/Component/Render/Text3DRendererComponent.h"
@@ -219,6 +220,11 @@ namespace CoreEngine::Editor::ComponentInspectors
         AddPermanent("UIImage", {
             .drawExtra = [](IComponent& component) {
                 DrawShaderMaterialSection(static_cast<UIImageComponent&>(component).GetMaterialSlot());
+            },
+            });
+        AddPermanent("MeshRenderer", {
+            .drawExtra = [](IComponent& component) {
+                DrawShaderMaterialSection(static_cast<MeshRendererComponent&>(component).GetMaterialSlot());
             },
             });
 

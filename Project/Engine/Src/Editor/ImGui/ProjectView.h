@@ -227,6 +227,7 @@ namespace CoreEngine
         int selectedIndex_ = -1;                // 選択中のインデックス
         double lastClickTime_ = 0.0;            // 最後のクリック時刻
         int lastClickedIndex_ = -1;             // 最後にクリックされたインデックス
+        int pressedIndex_ = -1;                 // 押したまま離していない項目のインデックス
 
         // 右ペイン表示データ
         std::vector<Entry> currentEntries_;
@@ -296,7 +297,8 @@ namespace CoreEngine
         // 新しいマテリアルを作る窓
         bool showNewMaterialDialog_ = false;
         char newMaterialName_[128] = {};
-        bool newMaterialWithShader_ = true;  ///< ピクセルシェーダの雛形も作る
+        bool newMaterialWithShader_ = true;  ///< シェーダの雛形も作る
+        bool newMaterialForModel_ = false;   ///< 3D モデルに付けるマテリアルを作る
         std::string newMaterialError_;
 
         // 新しいシェーダーグラフを作る窓

@@ -75,9 +75,22 @@ namespace CoreEngine
     /// @brief 名前で値を引く関数（無ければ nullptr を返す）
     using MaterialValueLookup = std::function<const MaterialNumbers*(std::string_view)>;
 
-    /// @brief シェーダから値の並び（b0 の定数バッファ）と、`gTexture` 以外のテクスチャの名前を読む
+    /// @brief マテリアルの値とテクスチャを置くレジスタ
+    struct MaterialParamRegisters
+    {
+        uint32_t params = 0;       ///< 値の定数バッファ（space0）
+        uint32_t firstTexture = 0; ///< これより後ろ（space0）のテクスチャだけを値として扱う
+    };
+
+    /// @brief スプライト・UI 画像・ポストエフェクトのマテリアル（値は b0・テクスチャは `gTexture` 以外の全部）
+    inline constexpr MaterialParamRegisters kSpriteMaterialRegisters{ 0, 0 };
+    /// @brief 3D モデルのマテリアル（`ModelSurface.hlsli`。値は b10・テクスチャは t11 から）
+    inline constexpr MaterialParamRegisters kSurfaceMaterialRegisters{ 10, 11 };
+
+    /// @brief シェーダから値の並び（値の定数バッファ）と、`gTexture` 以外のテクスチャの名前を読む
     /// @details すでに並びがあれば足りないテクスチャだけを足す（頂点シェーダとピクセルシェーダを続けて読む）。
-    void ReadMaterialParamLayout(IDxcUtils* utils, IDxcBlob* blob, MaterialParamLayout& layout, const std::string& shaderName);
+    void ReadMaterialParamLayout(IDxcUtils* utils, IDxcBlob* blob, MaterialParamLayout& layout, const std::string& shaderName,
+        const MaterialParamRegisters& registers = kSpriteMaterialRegisters);
 
     /// @brief 値を定数バッファの並びに詰める（引けない項目は 0）
     void PackMaterialParams(const MaterialParamLayout& layout, const MaterialValueLookup& find, std::vector<uint8_t>& out);
@@ -125,7 +138,7 @@ namespace CoreEngine
 
     /// @brief マテリアルのシェーダの組み合わせごとにパイプラインを 1 つずつ持つ
     /// @details シェーダのファイルが変わったら（`ShaderMaterialLibrary` の番号が進んだら）組み直す。
-    ///          組み直しに失敗したら前のパイプラインを使い続ける。
+    ///          組み直しに失敗したら、次に組み直せるまで nullptr を返す。
     ///          組み直した古いパイプラインは、描画中のフレームが使っているかもしれないので捨てずに持つ。
     class ShaderMaterialPipelineCache
     {

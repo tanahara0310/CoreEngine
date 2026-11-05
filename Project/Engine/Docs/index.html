@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.59.1">
+<meta name="engine-version" content="0.60.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2856,7 +2856,7 @@ kbd {
       <tr><td>選択肢</td><td>コンボから選びます。</td></tr>
       <tr><td>配列</td><td>「名前（N 個）」を開き、<span class="ui">要素を追加</span>・<span class="ui">削除</span>・<span class="ui">上へ</span>・<span class="ui">下へ</span>。</td></tr>
       <tr><td>オブジェクト参照</td><td>コンボでシーンのオブジェクトを選ぶか、Hierarchy の行をドラッグして落とします。消えたオブジェクトを指していると赤く「（見つかりません）」。</td></tr>
-      <tr><td>アセット参照</td><td>コンボで選ぶか、Project から同じ種類のファイル（テクスチャ・モデル・音・プレハブ）をドラッグして落とします。</td></tr>
+      <tr><td>アセット参照</td><td>コンボで選ぶか、Project から同じ種類のファイル（テクスチャ・モデル・音・プレハブ・マテリアル）をドラッグして落とします。Project の項目は押して離したときに選ばれるので、ドラッグしているあいだ Inspector は切り替わりません。</td></tr>
     </tbody>
   </table>
   </div>
@@ -5601,7 +5601,7 @@ kbd {
 
 <article class="page" id="script-material" data-group="スクリプト" data-title="マテリアルとシェーダ（スプライト・UI 画像）" data-nav="マテリアルとシェーダ" data-keywords="マテリアル material mat シェーダ shader hlsl ピクセルシェーダ 独自 自作 光る 点滅 グロー ディゾルブ 効果 shadermaterial setmaterialfloat setmaterialvector 上書き 共有 スプライト ui 画像 定数バッファ cbuffer constantbuffer spritematerial.hlsli コマ割り">
   <h1>マテリアルとシェーダ（スプライト・UI 画像）</h1>
-  <p class="lead"><a href="#api-SpriteRenderer">スプライト描画</a> と <a href="#api-UIImage">UI 画像</a> の描き方を、自分で書いたピクセルシェーダで決めます。シェーダと、シェーダへ渡す値をまとめたファイルが<strong>マテリアル（.mat）</strong>です。</p>
+  <p class="lead"><a href="#api-SpriteRenderer">スプライト描画</a> と <a href="#api-UIImage">UI 画像</a> の描き方を、自分で書いたピクセルシェーダで決めます。シェーダと、シェーダへ渡す値をまとめたファイルが<strong>マテリアル（.mat）</strong>です。3D モデルのマテリアルは <a href="#script-material-3d">マテリアルとシェーダ（3D モデル）</a> にあります。</p>
 
   <h2 id="material-overview">仕組み</h2>
   <ul>
@@ -5739,6 +5739,112 @@ kbd {
     <li>ゲームを書き出すと、.mat が指すシェーダを DXIL（コンパイル済みのシェーダ）にして入れます（<a href="#editor-export">ゲームを書き出す</a>）。</li>
     <li>マテリアルを付けたスプライトも、深度は書きません。前後は描く順番で決まります。</li>
     <li>.mat の中身の書き方は <a href="#format-material">ファイルの形式</a> にあります。</li>
+  </ul>
+</article>
+
+<article class="page" id="script-material-3d" data-group="スクリプト" data-title="マテリアルとシェーダ（3D モデル）" data-nav="3D のマテリアル" data-keywords="マテリアル material mat シェーダ shader hlsl 3d モデル メッシュ meshrenderer surface サーフェス surface.hlsl modelsurface.hlsli 自作 光る 発光 エミッシブ 縁 リム 帯 スキャン 溶ける ディゾルブ 法線 setmaterialfloat 上書き 共有 gbuffer 前方描画 スキン マゼンタ">
+  <h1>マテリアルとシェーダ（3D モデル）</h1>
+  <p class="lead"><a href="#api-MeshRenderer">メッシュ描画</a> の見た目を、自分で書いた関数 <code>Surface()</code> で決めます。光・影・フォグ・GBuffer への書き込みはエンジンが行うので、書くのは「この画素の色・法線・金属感・粗さ・発光」だけです（Unity の Surface Shader に近い作りです）。</p>
+
+  <h2 id="material3d-overview">仕組み</h2>
+  <ul>
+    <li>3D モデル用のマテリアルは、名前が <span class="path">.Surface.hlsl</span> で終わるシェーダを指す .mat です。メッシュ描画の <span class="ui">マテリアル</span> 欄で指します。指さなければ、これまでどおりモデルのテクスチャと <a href="#api-Material">マテリアル</a> の値で描きます。</li>
+    <li><code>Surface()</code> の <code>OUT</code> には、マテリアルを付けていないときと同じ値（モデルのテクスチャ × マテリアルの色・法線マップ・金属感・粗さ・AO・発光）が入っています。変えたいところだけ書き換えます。</li>
+    <li>1 つの .mat が、モデルの全部のサブメッシュに効きます。サブメッシュごとのテクスチャと値は <code>OUT</code> に入るので、モデルの見た目を保ったまま足し引きできます。</li>
+    <li>不透明（ブレンドが「なし」）は GBuffer へ、ブレンドありは前方描画で描きます。骨の入ったモデル（<a href="#api-Animator">アニメーション</a>）にも付けられます。どの描き方でも同じ <code>Surface()</code> を通ります。</li>
+    <li>同じ .mat を指すメッシュ描画は中身を共有し、上書きの無いものどうしはまとめて描きます（インスタンシング）。1 つだけ違う値にしたいときは、部品ごとの上書きを使います（<a href="#material3d-script">スクリプトから値を変える</a>）。</li>
+  </ul>
+
+  <h2 id="material3d-create">マテリアルを作る</h2>
+  <ol class="steps">
+    <li>Project の一覧の空いている所を右クリックし、<span class="ui">マテリアルを作成...</span> を選びます。</li>
+    <li>付ける先で <span class="ui">3D モデル</span> を選び、名前を入れて <span class="ui">作成</span> を押すと、今のフォルダに <span class="path">名前.mat</span> と、シェーダの雛形 <span class="path">名前.Surface.hlsl</span> ができます。</li>
+    <li>できた .mat を、メッシュ描画の <span class="ui">マテリアル</span> 欄へドラッグします（その下の <span class="ui">マテリアル</span> コンポーネントは PBR の値の欄で、.mat は受け取りません）。</li>
+    <li>.mat を選ぶか、メッシュ描画の欄の下の <span class="ui">マテリアルの中身</span> を開くと、値の欄が出ます。</li>
+  </ol>
+  <p>雛形のシェーダは、モデルの色に <code>tint</code> を掛け、カメラから見て縁になる所を <code>rimColor</code> で光らせます。作ったときは <code>tint</code> が白、<code>rimColor</code> が黒なので、付けても見た目は変わりません。<code>rimColor</code> を上げると縁が光ります。</p>
+
+  <h2 id="material3d-shader">シェーダを書く</h2>
+  <p>先頭で <span class="path">ModelSurface.hlsli</span> を読み込み、<code>Surface()</code> を 1 つ書きます。値は <code>register(b10)</code> の定数バッファ、テクスチャは <code>register(t11)</code>〜<code>register(t17)</code> に書きます。下の例は、モデルの上を光の帯が下から上へ流れます。</p>
+  <script type="text/x-code" data-lang="text" data-file="Application/Assets/Materials/ScanLine.Surface.hlsl">
+    #include "ModelSurface.hlsli"
+
+    struct Params
+    {
+        float3 lineColor; // 帯の色
+        float  speed;     // 帯が上へ流れる速さ（m/秒）
+        float  spacing;   // 帯の間隔（m）
+    };
+    ConstantBuffer<Params> gParams : register(b10);
+
+    Texture2D gMask : register(t11); // 帯を出す所（白）。指さなければ白＝全体
+
+    void Surface(SurfaceInput IN, inout SurfaceOutput OUT)
+    {
+        float phase = frac((IN.positionWS.y - SurfaceTime() * gParams.speed) / gParams.spacing);
+        float band = smoothstep(0.0f, 0.05f, phase) * (1.0f - smoothstep(0.05f, 0.15f, phase));
+        float mask = gMask.Sample(gSampler, IN.uv).r;
+        OUT.emission += gParams.lineColor * band * mask;
+    }
+  </script>
+
+  <h3 id="material3d-inputs">Surface() に来るものと決めるもの</h3>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>名前</th><th>中身</th></tr></thead>
+    <tbody>
+      <tr><td><code>IN.uv</code> ／ <code>IN.uvRaw</code></td><td>マテリアルの UV の変形を掛けた UV ／ 頂点の UV のまま。</td></tr>
+      <tr><td><code>IN.positionWS</code></td><td>ワールドの位置（m）。</td></tr>
+      <tr><td><code>IN.normalWS</code> ／ <code>IN.tangentWS</code> ／ <code>IN.bitangentWS</code></td><td>補間した頂点の法線・接線・従法線（ワールド・正規化していない）。</td></tr>
+      <tr><td><code>IN.screenPosition</code></td><td>画面の位置（px）。</td></tr>
+      <tr><td><code>OUT.baseColor</code> ／ <code>OUT.alpha</code></td><td>ベースカラー（リニア）／ 不透明度（マテリアルのアルファカットとディザもこの値で決まる）。</td></tr>
+      <tr><td><code>OUT.normalWS</code></td><td>ワールドの法線（正規化済み）。法線マップの値から作るときは <code>SurfaceTangentToWorld(IN, n)</code>。</td></tr>
+      <tr><td><code>OUT.metallic</code> ／ <code>OUT.roughness</code> ／ <code>OUT.occlusion</code></td><td>金属感 ／ 粗さ ／ AO（1 = 遮られていない）。0〜1。</td></tr>
+      <tr><td><code>OUT.emission</code></td><td>自分で光る色。不透明のモデルでは 0〜1 に収まります（強く光らせたいときはブレンドありで描く）。</td></tr>
+      <tr><td><code>SurfaceTime()</code></td><td>秒（240 秒で 0 に戻る）。</td></tr>
+      <tr><td><code>SurfaceViewDirection(IN)</code></td><td>表面からカメラへの向き（正規化済み）。</td></tr>
+      <tr><td><code>gMaterial</code> ／ <code>gTexture</code></td><td>サブメッシュのマテリアルの値（<a href="#api-Material">マテリアル</a> の色など）／ ベースカラーのテクスチャ。</td></tr>
+      <tr><td><code>gSampler</code> ／ <code>gPointSampler</code> ／ <code>gClampSampler</code></td><td>異方性・繰り返し ／ 最も近い画素・繰り返し ／ 線形・端で止める。</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3 id="material3d-values">値とテクスチャ</h3>
+  <ul>
+    <li><code>register(b10)</code> の定数バッファの項目が、マテリアルの値になります。書ける型と色の欄の決まりは <a href="#material-shader-values">スプライトのマテリアル</a> と同じです。</li>
+    <li>テクスチャは <code>register(t11)</code>〜<code>register(t17)</code> に書くと、マテリアルのテクスチャの欄になります（指さなければ白）。レジスタを書かないテクスチャはエンジンが差しません。</li>
+    <li>b0〜b9・t0〜t10 と s0〜s2 はエンジンが使っています。</li>
+    <li>シェーダを保存すると、エディタが作り直します。読み込んでいる <span class="path">.hlsli</span> だけを変えたときは、<span class="path">.Surface.hlsl</span> も保存し直してください。</li>
+  </ul>
+
+  <h2 id="material3d-script">スクリプトから値を変える</h2>
+  <p>共有の値は <a href="#api-ShaderMaterial">ShaderMaterial</a> で、1 つのモデルだけの値はメッシュ描画の <code>SetMaterialFloat</code> などで変えます。使い方は <a href="#material-script">スプライトのマテリアル</a> と同じです。</p>
+  <script type="text/x-code" data-lang="as" data-file="Application/Assets/Scripts/ScanLineControl.as">
+    using namespace CoreEngine;
+
+    class ScanLineControl : ScriptComponent
+    {
+        void Start()
+        {
+            owner.meshRenderer.material = "Application/Assets/Materials/ScanLine.mat";
+        }
+
+        void Update()
+        {
+            // このモデルだけ帯を速く流し、色を変える
+            owner.meshRenderer.SetMaterialFloat("speed", 4.0f);
+            owner.meshRenderer.SetMaterialVector("lineColor", Vector4(1.0f, 0.4f, 0.1f, 0.0f));
+        }
+    }
+  </script>
+
+  <h2 id="material3d-notes">描けないときと注意</h2>
+  <ul>
+    <li>シェーダをコンパイルできないとき、.mat を読めないとき、.mat が <span class="path">.Surface.hlsl</span> でないシェーダを指しているときは、そのモデルをマゼンタで描き、コンソールに訳を出します。描けていたシェーダを書き換えてコンパイルできなくなったときも、直して保存するまでマゼンタで描きます。</li>
+    <li><span class="path">.Surface.hlsl</span> のシェーダは、スプライト描画と UI 画像には付けられません。</li>
+    <li>水面のように C++ のシェーダを持つメッシュ描画では、マテリアルの欄を使いません。</li>
+    <li>水面の映り込み・屈折と、レイトレーシングの影は、<code>Surface()</code> の結果を使いません（モデルの形・テクスチャ・マテリアルの値で決まります）。</li>
+    <li>ゲームを書き出すと、<span class="path">.Surface.hlsl</span> の 3 つの入口（<code>GBufferMain</code>・<code>GBufferMovingMain</code>・<code>ForwardMain</code>）を DXIL にして入れます（<a href="#editor-export">ゲームを書き出す</a>）。</li>
   </ul>
 </article>
 
@@ -10264,7 +10370,7 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   </div>
 
   <h2 id="format-material">マテリアル（.mat）</h2>
-  <p>スプライト描画と UI 画像に付けるマテリアルです（<a href="#script-material">マテリアルとシェーダ</a>）。インスペクタで編集すると書き直されます。数は、シーンの JSON と同じく float として最も短い桁で書きます（<code>0.45</code> は <code>0.45</code> のまま）。</p>
+  <p>スプライト描画・UI 画像・メッシュ描画に付けるマテリアルです（<a href="#script-material">マテリアルとシェーダ</a>・<a href="#script-material-3d">3D モデル</a>）。インスペクタで編集すると書き直されます。数は、シーンの JSON と同じく float として最も短い桁で書きます（<code>0.45</code> は <code>0.45</code> のまま）。</p>
   <script type="text/x-code" data-lang="json" data-file="Application/Assets/Materials/Glow.mat">
     {
         "shader": { "guid": "…", "path": "Application/Assets/Materials/Glow.PS.hlsl" },
@@ -10282,9 +10388,9 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <table>
     <thead><tr><th>キー</th><th>意味</th></tr></thead>
     <tbody>
-      <tr><td><code>shader</code></td><td>ピクセルシェーダ（入口は <code>main</code>）。パスの文字列でも書けます</td></tr>
+      <tr><td><code>shader</code></td><td>ピクセルシェーダ（入口は <code>main</code>）。3D モデル用は名前が <span class="path">.Surface.hlsl</span> で終わるシェーダ。パスの文字列でも書けます</td></tr>
       <tr><td><code>vertexShader</code></td><td>頂点シェーダ（書かなければ標準）</td></tr>
-      <tr><td><code>values</code></td><td>シェーダの <code>register(b0)</code> の項目の値。数か、4 個までの数の配列。配列の項目は要素ごとの配列を並べる。書いていない項目は 0</td></tr>
+      <tr><td><code>values</code></td><td>シェーダの <code>register(b0)</code>（3D モデル用は <code>register(b10)</code>）の項目の値。数か、4 個までの数の配列。配列の項目は要素ごとの配列を並べる。書いていない項目は 0</td></tr>
       <tr><td><code>textures</code></td><td><code>gTexture</code> のほかのテクスチャ。<code>linear</code> を true にすると色でなくデータとして読む（sRGB からリニアへ直さない）</td></tr>
     </tbody>
   </table>
@@ -10381,6 +10487,18 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-60-0">v0.60.0 <span class="dim">（2026-11-05）</span></h3>
+  <p>3D モデルにも、自分で書いたシェーダのマテリアル（.mat）を付けられるようにした版です。関数 <code>Surface()</code> で色・法線・金属感・粗さ・発光を決めると、光・影・フォグはエンジンが付けます。マテリアルを付けていないモデルの見た目は変わりません（<a href="#script-material-3d">マテリアルとシェーダ（3D モデル）</a>）。</p>
+  <ul>
+    <li><strong>メッシュ描画のマテリアル</strong>：メッシュ描画に <span class="ui">マテリアル</span> 欄を足しました。名前が <span class="path">.Surface.hlsl</span> で終わるシェーダを指す .mat を付けると、全部のサブメッシュをそのシェーダで描きます。不透明は GBuffer、ブレンドありは前方描画で、骨の入ったモデルにも付けられます。</li>
+    <li><strong>ModelSurface.hlsli</strong>：<code>Surface(SurfaceInput IN, inout SurfaceOutput OUT)</code> を書くための読み込みファイルです。<code>OUT</code> にはモデルのテクスチャとマテリアルの値で決めた材質が入っています。値は <code>register(b10)</code>、テクスチャは <code>register(t11)</code>〜<code>register(t17)</code> に書きます。エンジンのモデルのシェーダも、このファイルで書き直しました（見た目は同じです）。</li>
+    <li><strong>スクリプト</strong>：メッシュ描画に <code>material</code> と、1 つのモデルだけ値を変える <code>SetMaterialFloat</code>・<code>SetMaterialInt</code>・<code>SetMaterialVector</code>・<code>SetMaterialTexture</code>・<code>ClearMaterialOverrides</code>・<code>GetMaterialFloat</code>・<code>GetMaterialVector</code> を足しました。</li>
+    <li><strong>マテリアルを作成</strong>：<span class="ui">マテリアルを作成...</span> で付ける先（スプライト／UI 画像か 3D モデル）を選べるようにしました。3D モデルを選ぶと、雛形 <span class="path">名前.Surface.hlsl</span> を作ります。作ったときは見た目を変えず、<code>rimColor</code> を上げると縁が光ります。</li>
+    <li><strong>Project からのドラッグ</strong>：Project の項目は、押して離したときに選ぶようにしました。ドラッグして Inspector の欄へ落とすあいだ、Inspector が落とした項目に切り替わりません。</li>
+    <li><strong>描けないとき</strong>：3D モデルのマテリアルのシェーダをコンパイルできないときは、エディタを止めずにモデルをマゼンタで描き、コンソールに訳を出します。前に描けていたシェーダを書き換えてコンパイルできなくなったときも、直して保存するまでマゼンタです。スプライトと UI 画像のマテリアルのシェーダも、コンパイルできないときに止まらず、前の見た目のままでなくマゼンタで描くようにしました。</li>
+    <li><strong>書き出し</strong>：ゲームを書き出すとき、<span class="path">.Surface.hlsl</span> の 3 つの入口を DXIL にして入れます。</li>
+  </ul>
 
   <h3 id="changelog-v0-59-1">v0.59.1 <span class="dim">（2026-11-05）</span></h3>
   <p>マテリアルを保存すると、数が長い桁で書かれていた不具合を直した版です。</p>
@@ -12452,7 +12570,7 @@ void Change()
   {
     id: "ShaderMaterial", kind: "class", cat: "描画", brief: "スプライトと UI 画像のマテリアル（共有の値）",
     keywords: "マテリアル material mat シェーダ shader 値 共有 光る 点滅 setfloat setvector",
-    summary: "マテリアル（.mat）を引いて、共有の値を読み書きします。値を変えると、同じマテリアルを指すスプライト描画と UI 画像の全部に効きます。1 枚だけ変えるときは部品の <code>SetMaterialFloat</code> などを使います（<a href=\"#script-material\">マテリアルとシェーダ</a>）。",
+    summary: "マテリアル（.mat）を引いて、共有の値を読み書きします。値を変えると、同じマテリアルを指すスプライト描画・UI 画像・メッシュ描画の全部に効きます。1 枚だけ変えるときは部品の <code>SetMaterialFloat</code> などを使います（<a href=\"#script-material\">マテリアルとシェーダ</a>）。",
     intro: "<p>パスは <span class=\"path\">Application/Assets</span> からの相対パス、<code>Application/Assets/</code> から始まるパス、ファイル名のどれでも引けます。同じマテリアルは何度引いても同じ中身です。再生中に変えた値は、再生を止めるとファイルの中身へ戻ります（ファイルは書き換えません）。</p>",
     sections: [
       {
@@ -15617,13 +15735,27 @@ void Update()
   {
     id: "MeshRenderer", kind: "component", cat: "描画", display: "メッシュ描画", type: "MeshRenderer",
     accessor: "owner.meshRenderer", title: "メッシュ描画（MeshRenderer）", brief: "3D モデルを描く",
-    keywords: "モデル 描画 表示 見た目 メッシュ gltf obj fbx 立方体 球 ブレンド 半透明",
+    keywords: "モデル 描画 表示 見た目 メッシュ gltf obj fbx 立方体 球 ブレンド 半透明 マテリアル シェーダ surface",
     summary: "3D モデルを読み込んで描きます。見た目を持つ 3D のオブジェクトの中心になるコンポーネントです。",
     requires: "トランスフォーム（無ければ自動で足します）",
     props: [
       ["モデル", "model", "string（モデル）", "なし", ".gltf .glb .obj .fbx。スクリプトではプロジェクトの根からのパス。"],
       ["テクスチャ", "texture", "string（テクスチャ）", "なし", "すべての面の基本色のテクスチャを差し替えます。空ならモデルのテクスチャ。"],
-      ["ブレンド", "blendMode", "int", "0", "0 = なし、1 = アルファ、2 = 加算、3 = 減算、4 = 乗算、5 = スクリーン"]
+      ["ブレンド", "blendMode", "int", "0", "0 = なし、1 = アルファ、2 = 加算、3 = 減算、4 = 乗算、5 = スクリーン"],
+      ["マテリアル", "material", "string（マテリアル）", "なし", "描き方を決めるシェーダ（名前.Surface.hlsl）と値（.mat）。指さなければモデルのテクスチャとマテリアルの値で描く（<a href=\"#script-material-3d\">3D のマテリアル</a>）。"]
+    ],
+    sections: [
+      {
+        title: "マテリアルの値の上書き（このモデルだけ）", members: [
+          { n: "SetMaterialFloat", s: "void SetMaterialFloat(const string&in name, float value)", t: "m", d: "マテリアルの値（数）を、このモデルだけ上書きします。配列の要素は <code>\"名前[番号]\"</code>。" },
+          { n: "SetMaterialInt", s: "void SetMaterialInt(const string&in name, int value)", t: "m", d: "整数の値を上書きします。" },
+          { n: "SetMaterialVector", s: "void SetMaterialVector(const string&in name, const Vector4&in value)", t: "m", d: "ベクトル・色の値を上書きします（float2・float3 の項目は先頭から使う）。" },
+          { n: "SetMaterialTexture", s: "void SetMaterialTexture(const string&in name, const string&in texturePath)", t: "m", d: "テクスチャを上書きします。空のパスで上書きをやめます。" },
+          { n: "ClearMaterialOverrides", s: "void ClearMaterialOverrides()", t: "m", d: "このモデルの上書きを全部やめ、マテリアルの値に戻します。" },
+          { n: "GetMaterialFloat", s: "float GetMaterialFloat(const string&in name)", t: "m", d: "値（上書き → マテリアルの順。無ければ 0）。" },
+          { n: "GetMaterialVector", s: "Vector4 GetMaterialVector(const string&in name)", t: "m", d: "ベクトルの値（足りない成分は 0）。" }
+        ]
+      }
     ],
     notes: "<ul>" +
       "<li>立方体・球・板は <span class=\"path\">Engine/Assets/Models/Primitives</span> の <code>Box/cube.obj</code>・<code>Sphere/sphere.obj</code>・<code>Plane/plane.obj</code> を使います（Project から Game ビューへドラッグすると、このコンポーネント付きのオブジェクトができます）。</li>" +
@@ -15644,7 +15776,7 @@ void Update()
 }`
       }
     ],
-    see: [["api-Material", "マテリアル"], ["editor-project", "モデルを取り込む"]]
+    see: [["api-Material", "マテリアル"], ["script-material-3d", "3D のマテリアル"], ["editor-project", "モデルを取り込む"]]
   },
 
   {

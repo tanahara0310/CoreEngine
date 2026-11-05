@@ -86,6 +86,20 @@ namespace CoreEngine
         void BindModelDrawPacket(ID3D12GraphicsCommandList* cmdList, const ModelDrawPacket& packet,
             const CustomShaderPipeline* customPipeline = nullptr);
 
+        /// @brief 解決済みの表でモデル描画パケットをバインドして描画する（差し替えたルートシグネチャ用）
+        void BindModelDrawPacket(ID3D12GraphicsCommandList* cmdList, const ModelDrawPacket& packet,
+            const BindingTable& bindings);
+
+        /// @brief 差し替えたルートシグネチャへ、シーンのリソース（カメラ・ライト・フォグ・頂点アニメーション）を差し直す
+        /// @note 表に無いリソースは差さない
+        void BindPassSceneResources(ID3D12GraphicsCommandList* cmdList, const BindingTable& bindings);
+
+        /// @brief 今のパス（前方描画か GBuffer）の既定のルートシグネチャと PSO へ戻し、シーンのリソースを差し直す
+        void RestorePassPipeline(ID3D12GraphicsCommandList* cmdList);
+
+        /// @brief 今の前方描画のブレンドモード
+        BlendMode GetCurrentBlendMode() const { return currentBlendMode_; }
+
         /// @brief カスタム PSO 適用後に既定 PSO をコマンドリストへ再設定する
         /// InstanceBatchManager::DrawBatch() がカスタム PSO を使用した後に呼び出す。
         void RestoreDefaultPSO(ID3D12GraphicsCommandList* cmdList);

@@ -188,6 +188,12 @@ namespace CoreEngine
         return CompileInternal(filePath, profile, L"main");
     }
 
+    Microsoft::WRL::ComPtr<IDxcBlob> ShaderCompiler::CompileShader(const std::wstring& filePath,
+        const wchar_t* profile, const wchar_t* entryPoint, std::string* errorMessage)
+    {
+        return CompileInternal(filePath, profile, entryPoint, errorMessage);
+    }
+
     Microsoft::WRL::ComPtr<IDxcBlob> ShaderCompiler::CompileShaderLibrary(const std::wstring& filePath)
     {
         // DXRライブラリはlib_6_6でコンパイル（-Eによるエントリーポイント指定なし）
@@ -298,7 +304,8 @@ namespace CoreEngine
     Microsoft::WRL::ComPtr<IDxcBlob> ShaderCompiler::CompileInternal(
         const std::wstring& filePath,
         const wchar_t* profile,
-        const wchar_t* entryPoint)
+        const wchar_t* entryPoint,
+        std::string* errorMessage)
     {
         PreparedShaderCompile prepared = Prepare(filePath, profile, entryPoint);
 
@@ -307,12 +314,16 @@ namespace CoreEngine
         // ここに記録が二重に入ることはない
         ShaderManifest::GetInstance().Record(prepared.resolvedPath, profile, entryPoint);
 
-        return CompilePrepared(prepared);
+        return CompilePrepared(prepared, errorMessage);
     }
 
-    Microsoft::WRL::ComPtr<IDxcBlob> ShaderCompiler::CompilePrepared(const PreparedShaderCompile& prepared)
+    Microsoft::WRL::ComPtr<IDxcBlob> ShaderCompiler::CompilePrepared(const PreparedShaderCompile& prepared,
+        std::string* errorMessage)
     {
         if (!prepared.IsValid()) {
+            if (errorMessage) {
+                *errorMessage = Logger::GetInstance().WideToUtf8(prepared.resolvedPath) + " が見つかりません";
+            }
             return nullptr;
         }
 
@@ -363,6 +374,10 @@ namespace CoreEngine
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Shader,
                 "シェーダファイルを読み込めませんでした: {} (hr=0x{:08X})",
                 Logger::GetInstance().PathToUtf8(resolvedPath), static_cast<uint32_t>(hr));
+            if (errorMessage) {
+                *errorMessage = Logger::GetInstance().PathToUtf8(resolvedPath) + " を読めませんでした";
+                return nullptr;
+            }
             assert(false && "シェーダファイルが読み込めない");
             return nullptr;
         }
@@ -431,9 +446,20 @@ namespace CoreEngine
         Microsoft::WRL::ComPtr<IDxcBlobUtf8> shaderError;
         shaderResult->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&shaderError), nullptr);
         if (shaderError != nullptr && shaderError->GetStringLength() != 0) {
-            std::string errorMessage(shaderError->GetStringPointer());
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Shader, "{}", errorMessage);
-            assert(false);
+            const std::string message(shaderError->GetStringPointer());
+            if (errorMessage) {
+                HRESULT status = E_FAIL;
+                shaderResult->GetStatus(&status);
+                if (FAILED(status)) {
+                    Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Shader, "{}", message);
+                    *errorMessage = Logger::GetInstance().PathToUtf8(resolvedPath) + " をコンパイルできませんでした: " + message;
+                    return nullptr;
+                }
+                Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Shader, "{}", message);
+            } else {
+                Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Shader, "{}", message);
+                assert(false);
+            }
         }
 
         // コンパイル結果から実行用のバイナリを取得

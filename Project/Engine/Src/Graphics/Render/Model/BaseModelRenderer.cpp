@@ -45,15 +45,21 @@ namespace CoreEngine
         ID3D12GraphicsCommandList* cmdList, const ModelDrawPacket& packet,
         const CustomShaderPipeline* customPipeline)
     {
-        cmdList->IASetVertexBuffers(0, packet.vertexBufferViewCount, packet.vertexBufferViews.data());
-        cmdList->IASetIndexBuffer(&packet.indexBufferView);
-
-        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Graphics);
-
         // カスタム RootSignature 使用時はそのシェーダー側のスロットを使う
         const BindingTable& table = customPipeline
             ? customPipeline->GetModelBindings()
             : (isInGBufferPass_ ? gBufferBindings_ : forwardBindings_);
+        BindModelDrawPacket(cmdList, packet, table);
+    }
+
+    void BaseModelRenderer::BindModelDrawPacket(
+        ID3D12GraphicsCommandList* cmdList, const ModelDrawPacket& packet,
+        const BindingTable& table)
+    {
+        cmdList->IASetVertexBuffers(0, packet.vertexBufferViewCount, packet.vertexBufferViews.data());
+        cmdList->IASetIndexBuffer(&packet.indexBufferView);
+
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Graphics);
         auto slotOf = [&table](ModelBind::Slot slot) -> RootSlot { return table[slot]; };
 
         // インスタンシング: 通常モデルは Root SRV、スキニングモデルは従来 CBV を使用
@@ -102,6 +108,24 @@ namespace CoreEngine
         // （SetGraphicsRootSignature を呼ぶと全バインドがリセットされるため）
         ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Graphics);
         BindForwardSceneResources(binder, forwardBindings_);
+    }
+
+    void BaseModelRenderer::BindPassSceneResources(ID3D12GraphicsCommandList* cmdList, const BindingTable& bindings)
+    {
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Graphics);
+        BindForwardSceneResources(binder, bindings);
+    }
+
+    void BaseModelRenderer::RestorePassPipeline(ID3D12GraphicsCommandList* cmdList)
+    {
+        if (!isInGBufferPass_) {
+            RestoreDefaultPSO(cmdList);
+            return;
+        }
+        cmdList->SetGraphicsRootSignature(gBufferRootSignatureMg_->GetRootSignature());
+        cmdList->SetPipelineState(gBufferPipelineState_);
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Graphics);
+        BindVertexAnimation(binder, gBufferBindings_);
     }
 
     void BaseModelRenderer::BindForwardSceneResources(

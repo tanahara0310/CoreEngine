@@ -4,6 +4,7 @@
 #include "GameObject/Component/Render/IRenderableComponent.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "Graphics/Asset/AssetRef.h"
+#include "Graphics/Material/ShaderMaterialSlot.h"
 #include "Graphics/Model/Model.h"
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
 #include "Graphics/Primitive/IPrimitiveMeshGenerator.h"
@@ -93,6 +94,37 @@ public:
     /// @brief 全サブメッシュのベースカラーを差し替える上書きテクスチャの SRV（無ければ ptr = 0）
     D3D12_GPU_DESCRIPTOR_HANDLE GetTextureOverrideHandle() const { return texture_.gpuHandle; }
 
+    // ===== マテリアル（`名前.Surface.hlsl` を指す .mat） =====
+
+    /// @brief マテリアル（.mat）をパスかファイル名で指す（空ならモデルのテクスチャとマテリアルの値で描く）
+    /// @details 全サブメッシュを同じマテリアルのシェーダで描く。サブメッシュごとのテクスチャと値は `Surface()` の OUT に入る。
+    void SetMaterial(const std::string& materialPath);
+
+    /// @brief 指しているマテリアルのパス（指していなければ空）
+    std::string GetMaterialPath() const { return surfaceMaterial_.GetPath(); }
+
+    /// @brief マテリアルの欄（共有のマテリアルとこの部品だけの上書き）
+    ShaderMaterialSlot& GetMaterialSlot() { return surfaceMaterial_; }
+
+    /// @brief この部品だけマテリアルの値を上書きする
+    void SetMaterialFloat(const std::string& name, float value);
+    void SetMaterialInt(const std::string& name, int value);
+    void SetMaterialVector(const std::string& name, const Vector4& value);
+
+    /// @brief この部品だけマテリアルのテクスチャを上書きする（空のパスなら上書きをやめる）
+    void SetMaterialTexture(const std::string& name, const std::string& texturePath);
+
+    /// @brief この部品だけの上書きを全部やめる
+    void ClearMaterialOverrides();
+
+    /// @brief マテリアルの値を読む（上書き → マテリアルの順。無ければ 0）
+    float GetMaterialFloat(const std::string& name) const;
+    Vector4 GetMaterialVector(const std::string& name) const;
+
+    /// @brief 指しているマテリアル（型記述子とやり取りする値）
+    Reflection::AssetRefValue GetMaterialAsset() const { return surfaceMaterial_.GetAsset(); }
+    void SetMaterialAsset(const Reflection::AssetRefValue& value);
+
     /// @brief カスタムシェーダーを使う場合のプロバイダを登録する（所有権は移さない）
     void SetCustomShaderProvider(ICustomShaderProvider* provider) { customShaderProvider_ = provider; }
 
@@ -155,6 +187,10 @@ private:
     /// @brief カスタムシェーダー用 PSO を構築する（プロバイダ登録時のみ）
     void BuildCustomShaderPipelineIfNeeded();
 
+    /// @brief マテリアルのパイプラインをモデルへ渡す（マテリアル・シェーダ・モデルが変わったときだけ引き直す）
+    /// @note カスタムシェーダーのプロバイダがあれば、マテリアルは使わない。
+    void SyncSurfaceMaterial();
+
     std::unique_ptr<Model> model_;
     std::unique_ptr<IPrimitiveMeshGenerator> generator_;
     std::string modelPath_;
@@ -177,6 +213,12 @@ private:
     // CustomShaderPipelineCache から得る共有パイプライン
     // （同一シェーダー＋同一設定の他コンポーネントと共有される）
     std::shared_ptr<CustomShaderPipeline> customShaderPipeline_;
+
+    ShaderMaterialSlot surfaceMaterial_;            ///< マテリアル（`名前.Surface.hlsl` を指す .mat）
+    bool surfaceSynced_ = false;                    ///< モデルへマテリアルのパイプラインを渡したか
+    const ShaderMaterial* syncedMaterial_ = nullptr;
+    std::string syncedShaderPath_;
+    uint64_t syncedShaderRevision_ = 0;
 
     mutable TransformComponent* transform_ = nullptr;
 };

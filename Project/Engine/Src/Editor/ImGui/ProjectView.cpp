@@ -12,6 +12,7 @@
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/EditorTheme.h"
 #include "Editor/ImGui/ImGuiAll.h"
+#include <imgui_internal.h>
 #include "Editor/ImGui/Widgets/EditorBars.h"
 #include "Editor/Inspector/PrefabAssetInspector.h"
 #include "Editor/Inspector/TextureImportInspector.h"
@@ -657,7 +658,7 @@ namespace CoreEngine
 
     void ProjectView::HandleEntryInteraction(const Entry& entry, int index)
     {
-        // シングルクリックで選択、ダブルクリックで潜る / 開く
+        // 押して離したら選択（ドラッグしたときは選択を変えない）、ダブルクリックで潜る / 開く
         if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(0)) {
             const double now = ImGui::GetTime();
             if (lastClickedIndex_ == index && (now - lastClickTime_) < 0.3) {
@@ -668,12 +669,19 @@ namespace CoreEngine
                 }
                 lastClickedIndex_ = -1;
                 lastClickTime_ = 0.0;
+                pressedIndex_ = -1;
             } else {
-                selectedIndex_ = index;
-                UpdateSelection(entry, index);
+                pressedIndex_ = index;
                 lastClickedIndex_ = index;
                 lastClickTime_ = now;
             }
+        }
+        if (pressedIndex_ == index && ImGui::IsMouseReleased(0)) {
+            if (!ImGui::IsMouseDragPastThreshold(0)) {
+                selectedIndex_ = index;
+                UpdateSelection(entry, index);
+            }
+            pressedIndex_ = -1;
         }
 
         DrawEntryContextMenu(entry);
@@ -1533,15 +1541,25 @@ namespace CoreEngine
             return;
         }
 
-        UI::Hint("今開いているフォルダへ、スプライトと UI 画像に付けるマテリアル（.mat）を作ります。");
+        UI::Hint("今開いているフォルダへ、マテリアル（.mat）を作ります。付ける先は後から変えられません。");
         UI::Separator();
+
+        if (ImGui::RadioButton("スプライト／UI 画像", !newMaterialForModel_)) {
+            newMaterialForModel_ = false;
+        }
+        UI::SameLine();
+        if (ImGui::RadioButton("3D モデル", newMaterialForModel_)) {
+            newMaterialForModel_ = true;
+        }
 
         if (ImGui::IsWindowAppearing()) {
             ImGui::SetKeyboardFocusHere();
         }
         const bool enterPressed = UI::InputText("名前", newMaterialName_, sizeof(newMaterialName_),
             ImGuiInputTextFlags_EnterReturnsTrue);
-        ImGui::Checkbox("ピクセルシェーダの雛形も作る（名前.PS.hlsl）", &newMaterialWithShader_);
+        ImGui::Checkbox(newMaterialForModel_ ? "シェーダの雛形も作る（名前.Surface.hlsl）"
+                                             : "ピクセルシェーダの雛形も作る（名前.PS.hlsl）",
+            &newMaterialWithShader_);
 
         if (!newMaterialError_.empty()) {
             ImGui::TextColored(Theme::kError, "%s", newMaterialError_.c_str());
@@ -1550,8 +1568,10 @@ namespace CoreEngine
         UI::Separator();
         if (ImGui::Button("作成") || enterPressed) {
             std::filesystem::path created;
+            const auto target = newMaterialForModel_ ? Editor::ShaderMaterialInspector::MaterialTarget::Model
+                                                     : Editor::ShaderMaterialInspector::MaterialTarget::Sprite;
             if (Editor::ShaderMaterialInspector::Create(GetCurrentFolder(), newMaterialName_,
-                    newMaterialWithShader_, &created, &newMaterialError_)) {
+                    target, newMaterialWithShader_, &created, &newMaterialError_)) {
                 showNewMaterialDialog_ = false;
                 ImGui::CloseCurrentPopup();
                 NavigateToDirectory(created.parent_path());

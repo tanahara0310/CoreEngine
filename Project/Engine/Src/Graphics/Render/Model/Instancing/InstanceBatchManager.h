@@ -27,8 +27,9 @@ namespace CoreEngine
             uint32_t maxInstancesPerFrame = 8192);
 
         /// @brief 描画リクエストを登録（即時描画はせずバッチに積む）
+        /// @param surfaceSlot 3D モデルのマテリアルの値を差す欄（key.surfaceVariant があるときだけ）
         void Submit(const InstanceBatchKey& key, const TransformationMatrix& matrix,
-            D3D12_GPU_VIRTUAL_ADDRESS materialCBV);
+            D3D12_GPU_VIRTUAL_ADDRESS materialCBV, ShaderMaterialSlot* surfaceSlot = nullptr);
 
         /// @brief パス終了時に呼び出し、バッチを GPU にアップロードして描画する
         /// @param cmdList コマンドリスト

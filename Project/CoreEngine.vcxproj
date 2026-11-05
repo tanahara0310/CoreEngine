@@ -433,6 +433,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Graphics\Material\ShaderMaterialLibrary.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\ShaderMaterialPipeline.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\ShaderMaterialSlot.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Material\SurfaceMaterialPipeline.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\SkeletonAnimatorFactory.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Pipeline\CustomShaderPipeline.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Bloom\Bloom.cpp" />
@@ -1599,6 +1600,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\Material\ShaderMaterialLibrary.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\ShaderMaterialPipeline.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\ShaderMaterialSlot.h" />
+    <ClInclude Include="Engine\Src\Graphics\Material\SurfaceMaterialPipeline.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\UIMaterialInstance.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Animation\IAnimationControllerFactory.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Animation\SkeletonAnimatorFactory.h" />

@@ -29,6 +29,9 @@ namespace CoreEngine {
     class LightBase;
     class ICustomShaderProvider;
     class CustomShaderPipeline;
+    class ShaderMaterialSlot;
+    class SurfaceMaterialPipeline;
+    struct SurfaceMaterialVariant;
     struct Skeleton;
 }
 
@@ -157,7 +160,22 @@ namespace CoreEngine
         /// @note SetCustomForwardPSO() と合わせて MeshRendererComponent がカスタムシェーダーの PSO を組むときに呼ぶ。
         void SetCustomShaderProvider(const ICustomShaderProvider* provider) { customProvider_ = provider; }
 
+        /// @brief 3D モデルのマテリアル（`名前.Surface.hlsl`）で描く
+        /// @param pipeline マテリアルのシェーダのパイプライン（nullptr なら fallback で描く）
+        /// @param fallback pipeline で組めない組み合わせを描くパイプライン（マゼンタ）。両方 nullptr なら既定のシェーダーで描く
+        /// @param slot 値とテクスチャを持つ欄
+        /// @note MeshRendererComponent がマテリアルを指したときに呼ぶ。直接呼ぶ必要はない。
+        void SetSurfaceMaterial(SurfaceMaterialPipeline* pipeline, SurfaceMaterialPipeline* fallback, ShaderMaterialSlot* slot)
+        {
+            surfacePipeline_ = pipeline;
+            surfaceFallback_ = fallback;
+            surfaceSlot_ = slot;
+        }
+
     private:
+        /// @brief 3D モデルのマテリアルの組み合わせを引く（指していなければ nullptr）
+        const SurfaceMaterialVariant* ResolveSurfaceVariant(bool gBufferPass, bool skinned) const;
+
         // 描画に必要な固定依存（ModelManager から注入される）
         ModelRenderContext renderContext_;
 
@@ -195,6 +213,11 @@ namespace CoreEngine
 
         // カスタムリソースバインドプロバイダ（nullptr = 追加バインドなし）
         const ICustomShaderProvider* customProvider_ = nullptr;
+
+        // 3D モデルのマテリアル（どちらも nullptr = 既定のシェーダー）
+        SurfaceMaterialPipeline* surfacePipeline_ = nullptr;
+        SurfaceMaterialPipeline* surfaceFallback_ = nullptr;
+        ShaderMaterialSlot* surfaceSlot_ = nullptr;
 
         // 可視性評価（LOD選択・Hi-Zオクルージョン判定）。最適化の実装詳細はこちらが持つ
         ModelVisibility visibility_;

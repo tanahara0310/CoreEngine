@@ -1,0 +1,20 @@
+#include "ModelSurface.hlsli"
+
+// マテリアルの値（.mat の values で決める。スクリプトの SetMaterialFloat などでも変えられる）
+struct Params
+{
+    float4 tint;     // モデルの色に掛ける色
+    float  rimPower; // 縁の光の鋭さ（大きいほど縁だけが光る）
+    float3 rimColor; // 縁の光の色（黒なら光らない）
+};
+ConstantBuffer<Params> gParams : register(b10);
+
+// OUT にはモデルのテクスチャとマテリアルの値で決めた材質が入っている。変えたいところだけ書き換える
+void Surface(SurfaceInput IN, inout SurfaceOutput OUT)
+{
+    OUT.baseColor *= gParams.tint.rgb;
+    OUT.alpha *= gParams.tint.a;
+
+    float rim = pow(1.0f - saturate(dot(OUT.normalWS, SurfaceViewDirection(IN))), gParams.rimPower);
+    OUT.emission += gParams.rimColor * rim;
+}
