@@ -58,6 +58,33 @@ namespace CoreEngine::Editor::ShaderGraph
     /// @brief グラフから HLSL を作る
     GenerateResult Generate(const Graph& graph, const GenerateOptions& options);
 
+    /// @brief ノードのプレビューを並べる絵（1 枚の一辺・横の数・最大の数）
+    inline constexpr int kNodePreviewTile = 96;
+    inline constexpr int kNodePreviewColumns = 10;
+    inline constexpr int kNodePreviewMax = 100;
+    inline constexpr int kNodePreviewAtlas = kNodePreviewTile * kNodePreviewColumns;
+
+    /// @brief ノードのプレビュー 1 枚
+    struct NodePreviewTile
+    {
+        int node = 0;
+        int tile = 0;        ///< 並べる位置（左上から横へ）
+        bool sphere = false; ///< 3D の値を使うので球に描く（3D の目標だけ）
+    };
+
+    /// @brief ノードのプレビューの HLSL を作った結果
+    struct NodePreviewResult
+    {
+        std::string hlsl;                       ///< 映すノードが無ければ空
+        std::vector<NodePreviewTile> tiles;
+        std::map<int, std::string> unavailable; ///< 映せないノードとその訳
+        std::vector<int> overflow;              ///< 数の上限を超えて映さないノード
+    };
+
+    /// @brief プレビューを開いたノードを全部 1 本のシェーダに書く（画素の位置からタイルを選んで、そのノードの色を出す）
+    /// @note スプライトは main（タイルごとに描く）、ポストエフェクトは main（絵全体を 1 回で書く）、3D は Surface（Unlit）
+    NodePreviewResult GenerateNodePreviews(const Graph& graph, const GenerateOptions& options);
+
     /// @brief 生成したファイルの先頭に書く印（生成物かの判定に使う）
     inline constexpr const char* kGeneratedMarker = "// Generated from ";
 

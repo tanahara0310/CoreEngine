@@ -233,6 +233,44 @@ namespace CoreEngine::Editor::ShaderGraph
     {
         std::erase_if(links, [id](const Link& link) { return link.fromNode == id || link.toNode == id; });
         std::erase_if(nodes, [id](const Node& node) { return node.id == id; });
+        RemoveFromGroups(id);
+    }
+
+    Group* Graph::FindGroup(int id)
+    {
+        const auto found = std::find_if(groups.begin(), groups.end(), [id](const Group& group) { return group.id == id; });
+        return found == groups.end() ? nullptr : &*found;
+    }
+
+    const Group* Graph::FindGroup(int id) const
+    {
+        const auto found = std::find_if(groups.begin(), groups.end(), [id](const Group& group) { return group.id == id; });
+        return found == groups.end() ? nullptr : &*found;
+    }
+
+    const Group* Graph::FindGroupOf(int node) const
+    {
+        const auto found = std::find_if(groups.begin(), groups.end(), [node](const Group& group) {
+            return std::find(group.nodes.begin(), group.nodes.end(), node) != group.nodes.end();
+        });
+        return found == groups.end() ? nullptr : &*found;
+    }
+
+    int Graph::NextGroupId() const
+    {
+        int next = 1;
+        for (const Group& group : groups) {
+            next = (std::max)(next, group.id + 1);
+        }
+        return next;
+    }
+
+    void Graph::RemoveFromGroups(int node)
+    {
+        for (Group& group : groups) {
+            std::erase(group.nodes, node);
+        }
+        std::erase_if(groups, [](const Group& group) { return group.nodes.empty(); });
     }
 
     Graph MakeEmptyGraph(Target target)
@@ -332,6 +370,9 @@ namespace CoreEngine::Editor::ShaderGraph
                         }
                     }
                 }
+                if (const auto preview = item.find("preview"); preview != item.end() && preview->is_boolean()) {
+                    node.preview = preview->get<bool>();
+                }
                 graph.nodes.push_back(std::move(node));
             }
         }
@@ -373,6 +414,41 @@ namespace CoreEngine::Editor::ShaderGraph
                     continue;
                 }
                 graph.links.push_back(std::move(link));
+            }
+        }
+
+        // グループ（無いノードと、前のグループに入ったノードは外す・中が空なら読まない）
+        if (const auto groups = root.find("groups"); groups != root.end() && groups->is_array()) {
+            std::set<int> grouped;
+            for (const json& item : *groups) {
+                if (!item.is_object()) {
+                    continue;
+                }
+                Group group;
+                if (const auto id = item.find("id"); id != item.end() && id->is_number_integer()) {
+                    group.id = id->get<int>();
+                }
+                if (const auto title = item.find("title"); title != item.end() && title->is_string()) {
+                    group.title = title->get<std::string>();
+                }
+                if (const auto color = item.find("color"); color != item.end() && color->is_string()) {
+                    group.color = color->get<std::string>();
+                }
+                if (const auto members = item.find("nodes"); members != item.end() && members->is_array()) {
+                    for (const json& member : *members) {
+                        if (member.is_number_integer() && graph.FindNode(member.get<int>())
+                            && grouped.insert(member.get<int>()).second) {
+                            group.nodes.push_back(member.get<int>());
+                        }
+                    }
+                }
+                if (group.nodes.empty()) {
+                    continue;
+                }
+                if (group.id <= 0 || graph.FindGroup(group.id)) {
+                    group.id = graph.NextGroupId();
+                }
+                graph.groups.push_back(std::move(group));
             }
         }
         return true;
@@ -435,6 +511,9 @@ namespace CoreEngine::Editor::ShaderGraph
                 }
                 item["settings"] = std::move(settings);
             }
+            if (node->preview) {
+                item["preview"] = true;
+            }
             nodeArray.push_back(std::move(item));
         }
         root["nodes"] = std::move(nodeArray);
@@ -452,6 +531,22 @@ namespace CoreEngine::Editor::ShaderGraph
                                       { "to", json::array({ link->toNode, link->toPin }) } });
         }
         root["links"] = std::move(linkArray);
+
+        if (!graph.groups.empty()) {
+            std::vector<const Group*> groups;
+            for (const Group& group : graph.groups) {
+                groups.push_back(&group);
+            }
+            std::sort(groups.begin(), groups.end(), [](const Group* a, const Group* b) { return a->id < b->id; });
+            json groupArray = json::array();
+            for (const Group* group : groups) {
+                std::vector<int> members = group->nodes;
+                std::sort(members.begin(), members.end());
+                groupArray.push_back(json{ { "id", group->id }, { "title", group->title }, { "color", group->color },
+                                           { "nodes", members } });
+            }
+            root["groups"] = std::move(groupArray);
+        }
         return root;
     }
 

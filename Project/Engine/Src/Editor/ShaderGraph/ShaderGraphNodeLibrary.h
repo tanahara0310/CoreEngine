@@ -169,6 +169,9 @@ namespace CoreEngine::Editor::ShaderGraph
         int FindOutput(std::string_view name) const;
     };
 
+    /// @brief ノードの下にプレビューを出せる種類か（出口・プロパティ・定数・Time・付箋・Redirect と、数の出力が無いものは出さない）
+    bool HasNodePreview(const NodeDesc& desc);
+
     /// @brief 全ノードの定義（並びは検索の並び）
     const std::vector<NodeDesc>& AllNodes();
 
