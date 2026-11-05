@@ -472,9 +472,9 @@ namespace CoreEngine::Editor::ShaderGraph
         SpriteDrawData draw{};
         draw.color = { 1.0f, 1.0f, 1.0f, 1.0f };
         draw.textureSize = { static_cast<float>(kSize), static_cast<float>(kSize) };
-        draw.time = Time::TimeSinceStartup();
+        draw.time = Time::UnscaledTimeSinceStartup();
         draw.unscaledTime = Time::UnscaledTimeSinceStartup();
-        draw.deltaTime = Time::DeltaTime();
+        draw.deltaTime = Time::UnscaledDeltaTime();
         const D3D12_GPU_VIRTUAL_ADDRESS drawAddress = ring.AllocateConstants(draw);
 
         D3D12_GPU_VIRTUAL_ADDRESS paramsAddress = 0;
@@ -589,8 +589,8 @@ namespace CoreEngine::Editor::ShaderGraph
         const D3D12_GPU_VIRTUAL_ADDRESS cameraAddress = ring.AllocateConstants(camera);
 
         VertexAnimationParams animation{};
-        animation.time = std::fmod(Time::TimeSinceStartup(), VertexAnimationParams::kWrapSeconds);
-        animation.prevTime = (std::max)(0.0f, animation.time - Time::DeltaTime());
+        animation.time = std::fmod(Time::UnscaledTimeSinceStartup(), VertexAnimationParams::kWrapSeconds);
+        animation.prevTime = (std::max)(0.0f, animation.time - Time::UnscaledDeltaTime());
 
         D3D12_GPU_VIRTUAL_ADDRESS paramsAddress = 0;
         if (pipeline.paramsSlot.IsValid() && pipeline.layout.size > 0) {
@@ -678,9 +678,9 @@ namespace CoreEngine::Editor::ShaderGraph
         frame.screenWidth = kSize;
         frame.screenHeight = kSize;
         frame.invScreenSize = { 1.0f / static_cast<float>(kSize), 1.0f / static_cast<float>(kSize) };
-        frame.time = Time::TimeSinceStartup();
+        frame.time = Time::UnscaledTimeSinceStartup();
         frame.unscaledTime = Time::UnscaledTimeSinceStartup();
-        frame.deltaTime = Time::DeltaTime();
+        frame.deltaTime = Time::UnscaledDeltaTime();
         const D3D12_GPU_VIRTUAL_ADDRESS frameAddress = ring.AllocateConstants(frame);
         if (frameAddress == 0) {
             return;

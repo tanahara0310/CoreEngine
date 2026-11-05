@@ -6026,6 +6026,7 @@ kbd {
   <ul>
     <li>Main Preview は、グラフを変えると少し後に描き直します。<span class="ui">板の画像</span> に画像をドラッグすると、その画像を部品のテクスチャとして描きます。ポストエフェクトでは <span class="ui">画面の画像</span> の画像（空なら <span class="path">uvChecker.png</span>）を画面の代わりにして描きます。</li>
     <li>3D では、<span class="ui">形</span> で球・立方体・平面を選びます。絵をドラッグすると回り、ダブルクリックで向きが戻ります。<span class="ui">モデルの画像</span> に画像をドラッグすると、モデルのベースカラーのテクスチャとして描きます。照らすのはシーンのライトではなく、決まったライト 1 つと環境光です。Vertex の出口につないだ頂点の動きも映ります。</li>
+    <li>Main Preview では、再生していないときも Time が進むので、時間で動くグラフは止めずに確かめられます。シーンに置いたスプライト・UI 画像・3D モデルとポストエフェクトでは、Time は再生中だけ進みます（停止中と一時停止中は止まります。海の波や植物の揺れと同じです）。</li>
     <li><span class="ui">選んだノードを映す</span> を入れると、選んだノードの出力を映します。ノードの右クリック <span class="ui">このノードを映す</span> でも同じです。途中の値を見たいところに Preview ノードを挟んでおくこともできます。3D では、その値を色としてライトで照らさずに描きます。</li>
     <li>コンパイルできないグラフは、下にエラーを出し、関係するノードの題名を赤くします。保存はできますが、シェーダは書き換えません（スプライトは前に保存できた見た目のままです）。</li>
   </ul>
@@ -6107,7 +6108,7 @@ kbd {
     <li><strong>Vertex</strong>：Vertex の出口につなぐと、頂点の関数を持つシェーダになり、頂点を動かせます。Vertex につないだノードは頂点ごとに計算します。画素ごとにしか計算できないノード（Sample Texture 2D・View Direction・Camera・Fresnel Effect・Model Surface・Screen Position・Ellipse・Rectangle）は Vertex につなぐとエラーになります。頂点でテクスチャを読むときは Sample Texture 2D LOD を使います。</li>
     <li><strong>動く頂点の扱い</strong>：頂点の関数は今と前のフレームの時間で 2 回計算し、動きのぶれ（モーションベクター）も合わせます。レイトレーシングの影も、動かした形で落ちます（静的なモデルも骨の入ったモデルも）。</li>
     <li><strong>境界の余白</strong>：カメラに映っているかは、動かす前のモデルの箱で決めます。頂点を大きく動かして画面の端で消えるときは、メッシュ描画の <span class="ui">境界の余白</span>（m）を増やしてください。</li>
-    <li><strong>Time</strong>：3D の Time は 240 秒で 0 に戻ります（植物の揺れと同じ時間）。Vertex では、今と前のフレームの時間をそれぞれ使います。</li>
+    <li><strong>Time</strong>：3D の Time は 240 秒で 0 に戻ります（植物の揺れと同じ時間）。Vertex では、今と前のフレームの時間をそれぞれ使います。シーンの中では再生中だけ進むので、停止中は頂点の動きも止まります（Main Preview では動きます）。</li>
     <li>1 つの .mat が、モデルの全部のサブメッシュに効きます。Model Surface と、つないでいない欄は、サブメッシュごとのテクスチャと値を使います。</li>
   </ul>
 
@@ -10572,6 +10573,7 @@ python Tools/OkinawaBeach/bake_araha_walk.py
     <li><strong>3D のグラフ</strong>：シェーダーグラフの目標に <span class="ui">3D（Lit）</span> と <span class="ui">3D（Unlit）</span> を足しました。<span class="path">名前.Graph.Surface.hlsl</span> を作り、.mat をメッシュ描画の <span class="ui">マテリアル</span> 欄に付けて使います。出口の Fragment に Base Color・Normal (Tangent Space)・Metallic・Roughness・Ambient Occlusion・Emission・Alpha、出口の Vertex に Position・Normal（物体の空間）があります。Lit と Unlit は後から切り替えられます。</li>
     <li><strong>ノード</strong>：Normal Vector・Tangent Vector・View Direction・Model Surface・Camera・Sample Texture 2D LOD・Fresnel Effect・Transform・Normal Unpack・Normal Strength・Normal Blend を足し、Position と Screen Position を 3D でも使えるようにしました。</li>
     <li><strong>3D の Main Preview</strong>：3D のグラフは、球・立方体・平面を決まったライトで照らして映します。ドラッグで回せ、モデルの画像を指せます。</li>
+    <li><strong>Main Preview の時間</strong>：Main Preview は、再生していないときも Time を進めます（スプライト・ポストエフェクトのグラフも）。シーンの中では今までどおり再生中だけ進みます。</li>
     <li><strong>頂点を動かす</strong>：<span class="path">.Surface.hlsl</span> に <code>#define SURFACE_VERTEX</code> と <code>SurfaceVertex()</code> を書くと、頂点の位置と法線を変えられます。動きのぶれ（モーションベクター）とレイトレーシングの影の形も、動かした頂点に合わせます。<code>#define SURFACE_LIT</code> ／ <code>SURFACE_UNLIT</code> で、ライトで照らすかをシェーダで決められます（<a href="#material3d-vertex">頂点を動かす</a>）。</li>
     <li><strong>境界の余白</strong>：メッシュ描画に <span class="ui">境界の余白</span>（スクリプトでは <code>boundsPadding</code>）を足しました。頂点を大きく動かすモデルが画面の端で消えるときに増やします。</li>
     <li><strong>書き出し</strong>：頂点の関数を持つ <span class="path">.Surface.hlsl</span> は、頂点シェーダと影の形を作る入口も DXIL にして入れます。</li>
