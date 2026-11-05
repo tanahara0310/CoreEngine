@@ -59,4 +59,13 @@ namespace CoreEngine::Editor::Theme
     inline const ImVec4 kBorder = FromSrgb(15, 15, 16);   ///< ウィンドウの外周
     inline const ImVec4 kOutline = FromSrgb(58, 58, 66);   ///< チップ・小ボタンの輪郭
     inline const ImVec4 kTransparent = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+
+    // ===== シェーダーグラフのノードの見出し（カテゴリの最上位ごと・白い文字が読める濃さ） =====
+    inline const ImVec4 kGraphInput = FromSrgb(128, 58, 52);
+    inline const ImVec4 kGraphMath = FromSrgb(44, 86, 136);
+    inline const ImVec4 kGraphUV = FromSrgb(36, 108, 102);
+    inline const ImVec4 kGraphProcedural = FromSrgb(54, 104, 58);
+    inline const ImVec4 kGraphChannel = FromSrgb(110, 90, 38);
+    inline const ImVec4 kGraphArtistic = FromSrgb(128, 72, 34);
+    inline const ImVec4 kGraphUtility = FromSrgb(80, 80, 90);
 }

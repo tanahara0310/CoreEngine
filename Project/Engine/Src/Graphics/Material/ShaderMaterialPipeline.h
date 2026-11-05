@@ -113,6 +113,12 @@ namespace CoreEngine
         bool Build(ID3D12Device* device, ShaderCompiler& compiler, ShaderReflectionBuilder& reflectionBuilder,
             const std::string& pixelShaderPath, const std::string& vertexShaderPath, const Target& target);
 
+        /// @brief コンパイル済みのシェーダで組む
+        /// @param name ログとリフレクションに出す名前（ピクセルシェーダのパスなど）
+        /// @return 組めなければ false
+        bool BuildFromBlobs(ID3D12Device* device, IDxcUtils* utils, ShaderReflectionBuilder& reflectionBuilder,
+            IDxcBlob* vertexBlob, IDxcBlob* pixelBlob, const std::string& name, const Target& target);
+
         ID3D12PipelineState* GetPipelineState(BlendMode mode) const;
         ID3D12RootSignature* GetRootSignature() const;
 

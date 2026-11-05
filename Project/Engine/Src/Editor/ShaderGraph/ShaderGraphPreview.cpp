@@ -4,6 +4,7 @@
 #ifdef CORE_EDITOR
 
 #include "Camera/CameraStructs.h"
+#include "Editor/ShaderGraph/ShaderGraphAsset.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/Material/MaterialConstants.h"
 #include "Graphics/Material/SurfaceMaterialPipeline.h"
@@ -40,8 +41,6 @@ namespace CoreEngine::Editor::ShaderGraph
 {
     namespace
     {
-        constexpr const char* kTargetName = "ShaderGraphPreview";
-        constexpr const char* kTarget3DName = "ShaderGraphPreview3D";
         constexpr const char* kWhiteTexture = "white1x1.png";
 
         /// @brief 3D の背景の色（そのまま画面へ出す値）
@@ -78,15 +77,25 @@ namespace CoreEngine::Editor::ShaderGraph
             }
         }
 
-        /// @brief 形と向きからワールド行列を作る（平面は表をカメラへ向ける）
-        Matrix4x4 MakeWorld(const PreviewView& view)
+        /// @brief 原点の深さで、枠の高さちょうどになる大きさ
+        float FillScale()
         {
-            const float scale = ShapeScale(view.shape);
+            return 2.0f * kCameraDistance * std::tan(kFieldOfView * 0.5f);
+        }
+
+        /// @brief 形と向きからワールド行列を作る（平面は表をカメラへ向ける）
+        /// @param rotate false なら向きを変えず、平面は枠いっぱいに広げる
+        Matrix4x4 MakeWorld(PreviewShape shape, const PreviewView& view, bool rotate)
+        {
+            const float scale = (!rotate && shape == PreviewShape::Plane) ? FillScale() : ShapeScale(shape);
             Matrix4x4 world = MathCore::Matrix::Scale({ scale, scale, scale });
-            if (view.shape == PreviewShape::Plane) {
+            if (shape == PreviewShape::Plane) {
                 world = world * MathCore::Matrix::RotationX(-std::numbers::pi_v<float> * 0.5f);
             }
-            return world * MathCore::Matrix::RotationY(view.yaw) * MathCore::Matrix::RotationX(view.pitch);
+            if (rotate) {
+                world = world * MathCore::Matrix::RotationY(view.yaw) * MathCore::Matrix::RotationX(view.pitch);
+            }
+            return world;
         }
 
         /// @brief ポストエフェクトで画面の代わりに読む既定の画像
@@ -109,6 +118,22 @@ namespace CoreEngine::Editor::ShaderGraph
                 retired.erase(retired.begin());
             }
         }
+
+        /// @brief 描く範囲をタイル 1 枚にする
+        void SetTileViewport(ID3D12GraphicsCommandList* commandList, float x, float y, float size)
+        {
+            const D3D12_VIEWPORT viewport{ x, y, size, size, 0.0f, 1.0f };
+            const D3D12_RECT scissor{ static_cast<LONG>(x), static_cast<LONG>(y), static_cast<LONG>(x + size),
+                static_cast<LONG>(y + size) };
+            commandList->RSSetViewports(1, &viewport);
+            commandList->RSSetScissorRects(1, &scissor);
+        }
+
+        /// @brief スプライトの標準の頂点シェーダのパス
+        std::wstring StandardVertexShader()
+        {
+            return Logger::GetInstance().Utf8ToPath(kStandardMaterialVertexShader).wstring();
+        }
     }
 
     const char* DisplayName(PreviewShape shape)
@@ -120,6 +145,124 @@ namespace CoreEngine::Editor::ShaderGraph
         }
     }
 
+    // ---------------------------------------------------------------- 裏のコンパイル
+
+    struct ShaderGraphCompileWorker::Job
+    {
+        uint64_t key = 0;
+        Target target = Target::Sprite;
+        std::string hlsl;
+        std::filesystem::path file;
+        PreparedShaderCompile vertex;
+        PreparedShaderCompile pixel;
+        PreparedShaderCompile compute;
+    };
+
+    ShaderGraphCompileWorker::ShaderGraphCompileWorker() = default;
+
+    ShaderGraphCompileWorker::~ShaderGraphCompileWorker()
+    {
+        Stop();
+    }
+
+    void ShaderGraphCompileWorker::Start()
+    {
+        if (thread_.joinable()) {
+            return;
+        }
+        thread_ = std::jthread([this](std::stop_token stop) { Run(stop); });
+    }
+
+    void ShaderGraphCompileWorker::Stop()
+    {
+        if (thread_.joinable()) {
+            thread_.request_stop();
+            thread_.join();
+        }
+        thread_ = std::jthread();
+        std::lock_guard lock(mutex_);
+        pending_.reset();
+        finished_.reset();
+    }
+
+    void ShaderGraphCompileWorker::Submit(uint64_t key, std::string hlsl, Target target, const std::filesystem::path& file,
+        const ShaderCompiler& prepareCompiler)
+    {
+        auto job = std::make_unique<Job>();
+        job->key = key;
+        job->target = target;
+        job->hlsl = std::move(hlsl);
+        job->file = file;
+        const std::wstring path = file.wstring();
+        if (target == Target::PostEffect) {
+            job->compute = prepareCompiler.Prepare(path, L"cs_6_0", L"main");
+        } else if (Is3D(target)) {
+            job->vertex = prepareCompiler.Prepare(path, L"vs_6_0", kSurfacePreviewVertexEntry);
+            job->pixel = prepareCompiler.Prepare(path, L"ps_6_0", kSurfacePreviewPixelEntry);
+        } else {
+            job->vertex = prepareCompiler.Prepare(StandardVertexShader(), L"vs_6_0", L"main");
+            job->pixel = prepareCompiler.Prepare(path, L"ps_6_0", L"main");
+        }
+        {
+            std::lock_guard lock(mutex_);
+            pending_ = std::move(job);
+        }
+        wake_.notify_one();
+    }
+
+    bool ShaderGraphCompileWorker::TakeFinished(CompiledShaders& result)
+    {
+        std::lock_guard lock(mutex_);
+        if (!finished_) {
+            return false;
+        }
+        result = std::move(*finished_);
+        finished_.reset();
+        return true;
+    }
+
+    void ShaderGraphCompileWorker::Run(std::stop_token stop)
+    {
+        ShaderCompiler compiler;
+        compiler.Initialize();
+        while (!stop.stop_requested()) {
+            std::unique_ptr<Job> job;
+            {
+                std::unique_lock lock(mutex_);
+                if (!wake_.wait(lock, stop, [this] { return pending_ != nullptr; })) {
+                    return;
+                }
+                job = std::move(pending_);
+            }
+
+            CompiledShaders result;
+            result.key = job->key;
+            result.target = job->target;
+            if (!WriteFileReplacing(job->file, job->hlsl)) {
+                result.error = "プレビューのシェーダを書けません";
+            }
+            const auto compile = [&compiler, &result](const PreparedShaderCompile& prepared,
+                Microsoft::WRL::ComPtr<IDxcBlob>& blob) {
+                if (!prepared.IsValid() || !result.error.empty()) {
+                    return;
+                }
+                std::string error;
+                blob = compiler.CompilePrepared(prepared, &error);
+                if (!blob) {
+                    result.error = error.empty() ? std::string("コンパイルできません") : error;
+                }
+            };
+            compile(job->vertex, result.vertex);
+            compile(job->pixel, result.pixel);
+            compile(job->compute, result.compute);
+
+            std::lock_guard lock(mutex_);
+            finished_ = std::move(result);
+        }
+    }
+
+    // ---------------------------------------------------------------- プレビュー
+
     ShaderGraphPreview::ComputePipeline::ComputePipeline() = default;
     ShaderGraphPreview::ComputePipeline::~ComputePipeline() = default;
     ShaderGraphPreview::SurfacePipeline::SurfacePipeline() = default;
@@ -127,7 +270,11 @@ namespace CoreEngine::Editor::ShaderGraph
     ShaderGraphPreview::PreviewMesh::PreviewMesh() = default;
     ShaderGraphPreview::PreviewMesh::~PreviewMesh() = default;
 
-    ShaderGraphPreview::ShaderGraphPreview() = default;
+    ShaderGraphPreview::ShaderGraphPreview(std::string name, uint32_t size)
+        : name_(std::move(name)), size_(size)
+    {
+    }
+
     ShaderGraphPreview::~ShaderGraphPreview() = default;
 
     void ShaderGraphPreview::Initialize(EngineSystem* engine)
@@ -160,20 +307,18 @@ namespace CoreEngine::Editor::ShaderGraph
         retiredSurfaces_.clear();
         reflectionBuilder_.reset();
         compiler_.reset();
+        compiled_.reset();
+        tiles_.clear();
+        requestedKey_ = 0;
+        builtKey_ = 0;
+        failedKey_ = 0;
+        drawnKey_ = 0;
         engine_ = nullptr;
         drawn_ = false;
     }
 
-    void ShaderGraphPreview::Request(const std::filesystem::path& shaderFile, Target target, uint64_t revision,
-        const ShaderMaterial& values, const std::string& mainTexture, const PreviewView& view)
+    void ShaderGraphPreview::LoadTextures(Target target, const std::string& mainTexture)
     {
-        requestedShader_ = shaderFile;
-        requestedTarget_ = target;
-        requestedRevision_ = revision;
-        values_ = values;
-        view_ = view;
-        requested_ = true;
-
         TextureManager& textures = TextureManager::GetInstance();
         if (!textures.IsInitialized()) {
             return;
@@ -190,15 +335,122 @@ namespace CoreEngine::Editor::ShaderGraph
         }
     }
 
-    std::unique_ptr<ShaderGraphPreview::ComputePipeline> ShaderGraphPreview::BuildComputePipeline(ID3D12Device* device)
+    void ShaderGraphPreview::Request(const std::filesystem::path& shaderFile, Target target, uint64_t revision,
+        const ShaderMaterial& values, const std::string& mainTexture, const PreviewView& view)
+    {
+        requestedShader_ = shaderFile;
+        requestedTarget_ = target;
+        requestedRevision_ = revision;
+        requestedKey_ = 0;
+        values_ = values;
+        view_ = view;
+        requested_ = true;
+        tiles_.assign(1, DrawTile{ 0.0f, 0.0f, static_cast<float>(size_), view.shape, true });
+        LoadTextures(target, mainTexture);
+    }
+
+    void ShaderGraphPreview::SetCompiled(CompiledShaders shaders)
+    {
+        compiled_ = std::move(shaders);
+    }
+
+    void ShaderGraphPreview::RequestTiles(uint64_t key, Target target, const std::vector<NodePreviewTile>& tiles,
+        const ShaderMaterial& values, const std::string& mainTexture, const PreviewView& view)
+    {
+        requestedKey_ = key;
+        requestedTarget_ = target;
+        values_ = values;
+        view_ = view;
+        requested_ = true;
+        tiles_.clear();
+        for (const NodePreviewTile& tile : tiles) {
+            DrawTile draw;
+            draw.x = static_cast<float>((tile.tile % kNodePreviewColumns) * kNodePreviewTile);
+            draw.y = static_cast<float>((tile.tile / kNodePreviewColumns) * kNodePreviewTile);
+            draw.size = static_cast<float>(kNodePreviewTile);
+            draw.shape = tile.sphere ? PreviewShape::Sphere : PreviewShape::Plane;
+            draw.rotate = tile.sphere;
+            tiles_.push_back(draw);
+        }
+        LoadTextures(target, mainTexture);
+    }
+
+    CompiledShaders ShaderGraphPreview::CompileRequested()
+    {
+        CompiledShaders shaders;
+        shaders.target = requestedTarget_;
+        const std::wstring path = requestedShader_.wstring();
+        std::string error;
+        if (requestedTarget_ == Target::PostEffect) {
+            shaders.compute = compiler_->CompileShader(path, L"cs_6_0", L"main", &error);
+        } else if (Is3D(requestedTarget_)) {
+            shaders.pixel = compiler_->CompileShader(path, L"ps_6_0", kSurfacePreviewPixelEntry, &error);
+            if (shaders.pixel) {
+                shaders.vertex = compiler_->CompileShader(path, L"vs_6_0", kSurfacePreviewVertexEntry, &error);
+            }
+        } else {
+            shaders.vertex = compiler_->CompileShader(StandardVertexShader(), L"vs_6_0", L"main", &error);
+            if (shaders.vertex) {
+                shaders.pixel = compiler_->CompileShader(path, L"ps_6_0", L"main", &error);
+            }
+        }
+        const bool compiled = requestedTarget_ == Target::PostEffect ? shaders.compute != nullptr
+                                                                     : (shaders.vertex && shaders.pixel);
+        if (!compiled) {
+            shaders.error = error.empty() ? std::string("コンパイルできません") : error;
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Shader,
+                "[ShaderGraph] プレビューのシェーダをコンパイルできません: {}", shaders.error);
+        }
+        return shaders;
+    }
+
+    bool ShaderGraphPreview::BuildPipeline(const CompiledShaders& shaders, bool hasVertexFunction)
+    {
+        GraphicsCore* const dx = engine_ ? engine_->GetService<GraphicsCore>() : nullptr;
+        if (!dx || !shaders.error.empty()) {
+            return false;
+        }
+        ID3D12Device* const device = dx->GetDevice();
+        if (shaders.target == Target::PostEffect) {
+            std::unique_ptr<ComputePipeline> pipeline = shaders.compute
+                ? BuildComputePipeline(device, shaders.compute.Get()) : nullptr;
+            if (!pipeline) {
+                return false;
+            }
+            Retire(compute_, retiredComputes_);
+            compute_ = std::move(pipeline);
+            return true;
+        }
+        if (!shaders.vertex || !shaders.pixel) {
+            return false;
+        }
+        if (Is3D(shaders.target)) {
+            std::unique_ptr<SurfacePipeline> pipeline =
+                BuildSurfacePipeline(device, shaders.vertex.Get(), shaders.pixel.Get(), hasVertexFunction);
+            if (!pipeline) {
+                return false;
+            }
+            Retire(surface_, retiredSurfaces_);
+            surface_ = std::move(pipeline);
+            return true;
+        }
+        auto pipeline = std::make_unique<ShaderMaterialPipeline>();
+        const ShaderMaterialPipeline::Target target{ name_.c_str(), false };
+        if (!pipeline->BuildFromBlobs(device, compiler_->GetDxcUtils(), *reflectionBuilder_, shaders.vertex.Get(),
+                shaders.pixel.Get(), name_, target)) {
+            return false;
+        }
+        Retire(pipeline_, retiredPipelines_);
+        pipeline_ = std::move(pipeline);
+        return true;
+    }
+
+    std::unique_ptr<ShaderGraphPreview::ComputePipeline> ShaderGraphPreview::BuildComputePipeline(ID3D12Device* device,
+        IDxcBlob* blob)
     {
         Logger& log = Logger::GetInstance();
-        const Microsoft::WRL::ComPtr<IDxcBlob> blob = compiler_->CompileShader(requestedShader_.wstring(), L"cs_6_0");
-        if (!blob) {
-            return nullptr;
-        }
         auto pipeline = std::make_unique<ComputePipeline>();
-        pipeline->reflection = reflectionBuilder_->BuildFromComputeShader(blob.Get(), kTargetName);
+        pipeline->reflection = reflectionBuilder_->BuildFromComputeShader(blob, name_);
         if (!pipeline->reflection) {
             return nullptr;
         }
@@ -211,11 +463,11 @@ namespace CoreEngine::Editor::ShaderGraph
             return nullptr;
         }
         pipeline->pipelineState = ComputePipelineUtil::Create(device, pipeline->rootSignature->GetRootSignature(),
-            blob.Get(), std::string(kTargetName) + "_CS");
+            blob, name_ + "_CS");
         if (!pipeline->pipelineState) {
             return nullptr;
         }
-        ReadMaterialParamLayout(compiler_->GetDxcUtils(), blob.Get(), pipeline->layout, kTargetName);
+        ReadMaterialParamLayout(compiler_->GetDxcUtils(), blob, pipeline->layout, name_);
         RootSignatureManager& root = *pipeline->rootSignature;
         pipeline->inputSlot = root.GetRootSlot("gTexture");
         pipeline->outputSlot = root.GetRootSlot("gOutput");
@@ -227,22 +479,13 @@ namespace CoreEngine::Editor::ShaderGraph
         return pipeline;
     }
 
-    std::unique_ptr<ShaderGraphPreview::SurfacePipeline> ShaderGraphPreview::BuildSurfacePipeline(ID3D12Device* device)
+    std::unique_ptr<ShaderGraphPreview::SurfacePipeline> ShaderGraphPreview::BuildSurfacePipeline(ID3D12Device* device,
+        IDxcBlob* vertexBlob, IDxcBlob* pixelBlob, bool hasVertexFunction)
     {
         Logger& log = Logger::GetInstance();
-        const std::wstring path = requestedShader_.wstring();
-        std::string error;
-        const Microsoft::WRL::ComPtr<IDxcBlob> pixelBlob =
-            compiler_->CompileShader(path, L"ps_6_0", kSurfacePreviewPixelEntry, &error);
-        const Microsoft::WRL::ComPtr<IDxcBlob> vertexBlob =
-            pixelBlob ? compiler_->CompileShader(path, L"vs_6_0", kSurfacePreviewVertexEntry, &error) : nullptr;
-        if (!pixelBlob || !vertexBlob) {
-            log.Logf(LogLevel::Error, LogCategory::Shader, "[ShaderGraph] プレビューのシェーダをコンパイルできません: {}", error);
-            return nullptr;
-        }
-
+        const std::string shaderName = name_ + "3D";
         auto pipeline = std::make_unique<SurfacePipeline>();
-        pipeline->reflection = reflectionBuilder_->BuildFromShaders(vertexBlob.Get(), pixelBlob.Get(), kTarget3DName);
+        pipeline->reflection = reflectionBuilder_->BuildFromShaders(vertexBlob, pixelBlob, shaderName);
         if (!pipeline->reflection) {
             return nullptr;
         }
@@ -257,23 +500,21 @@ namespace CoreEngine::Editor::ShaderGraph
 
         pipeline->pipelineStates = std::make_unique<PipelineStateManager>();
         PipelineStateBuilder builder = pipeline->pipelineStates->CreateBuilder();
-        builder.SetDebugName(kTarget3DName)
+        builder.SetDebugName(shaderName)
             .SetInputLayoutFromReflection(*pipeline->reflection)
             .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(true, true)
             .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
             .SetRenderTargetFormat(DXGI_FORMAT_R16G16B16A16_FLOAT)
             .SetDepthStencilFormat(DXGI_FORMAT_D24_UNORM_S8_UINT);
-        if (!builder.Build(device, vertexBlob.Get(), pixelBlob.Get(), pipeline->rootSignature->GetRootSignature())) {
+        if (!builder.Build(device, vertexBlob, pixelBlob, pipeline->rootSignature->GetRootSignature())) {
             log.Logf(LogLevel::Error, LogCategory::Shader, "[ShaderGraph] プレビューのパイプラインを作れません");
             return nullptr;
         }
 
-        const std::string shaderName = kTarget3DName;
-        ReadMaterialParamLayout(compiler_->GetDxcUtils(), pixelBlob.Get(), pipeline->layout, shaderName,
-            kSurfaceMaterialRegisters);
-        if (SurfaceShaderHasVertexFunction(log.PathToUtf8(requestedShader_))) {
-            ReadMaterialParamLayout(compiler_->GetDxcUtils(), vertexBlob.Get(), pipeline->layout, shaderName,
+        ReadMaterialParamLayout(compiler_->GetDxcUtils(), pixelBlob, pipeline->layout, shaderName, kSurfaceMaterialRegisters);
+        if (hasVertexFunction) {
+            ReadMaterialParamLayout(compiler_->GetDxcUtils(), vertexBlob, pipeline->layout, shaderName,
                 kSurfaceMaterialRegisters);
         }
 
@@ -315,68 +556,63 @@ namespace CoreEngine::Editor::ShaderGraph
 
     bool ShaderGraphPreview::EnsurePipeline()
     {
-        if (requestedShader_.empty() || !engine_) {
+        if (!engine_) {
             return false;
         }
-        const bool compute = requestedTarget_ == Target::PostEffect;
-        const bool surface = Is3D(requestedTarget_);
-        if (builtShader_ == requestedShader_ && builtTarget_ == requestedTarget_ && builtRevision_ == requestedRevision_) {
-            if (surface) {
-                return surface_ != nullptr;
+        const auto hasPipeline = [this](Target target) {
+            if (target == Target::PostEffect) {
+                return compute_ != nullptr;
             }
-            return compute ? compute_ != nullptr : pipeline_ != nullptr;
+            return Is3D(target) ? surface_ != nullptr : pipeline_ != nullptr;
+        };
+
+        // 裏でコンパイルしたシェーダ（ノードのプレビュー）は印で比べる
+        if (requestedKey_ != 0) {
+            return builtKey_ == requestedKey_ && builtTarget_ == requestedTarget_ && hasPipeline(requestedTarget_);
+        }
+
+        if (requestedShader_.empty()) {
+            return false;
+        }
+        if (builtShader_ == requestedShader_ && builtTarget_ == requestedTarget_ && builtRevision_ == requestedRevision_) {
+            return hasPipeline(requestedTarget_);
         }
         builtShader_ = requestedShader_;
         builtTarget_ = requestedTarget_;
         builtRevision_ = requestedRevision_;
 
-        GraphicsCore* const dx = engine_->GetService<GraphicsCore>();
-        if (!dx) {
-            return false;
-        }
-        if (surface) {
-            std::unique_ptr<SurfacePipeline> pipeline = BuildSurfacePipeline(dx->GetDevice());
-            if (!pipeline) {
-                error_ = "プレビューのパイプラインを組めません（コンソールを見てください）";
-                return surface_ != nullptr;
-            }
-            Retire(surface_, retiredSurfaces_);
-            surface_ = std::move(pipeline);
-            error_.clear();
-            return true;
-        }
-        if (compute) {
-            std::unique_ptr<ComputePipeline> pipeline = BuildComputePipeline(dx->GetDevice());
-            if (!pipeline) {
-                error_ = "プレビューのパイプラインを組めません（コンソールを見てください）";
-                return compute_ != nullptr;
-            }
-            Retire(compute_, retiredComputes_);
-            compute_ = std::move(pipeline);
-            error_.clear();
-            return true;
-        }
-
-        auto pipeline = std::make_unique<ShaderMaterialPipeline>();
-        const ShaderMaterialPipeline::Target target{ kTargetName, false };
-        if (!pipeline->Build(dx->GetDevice(), *compiler_, *reflectionBuilder_,
-                Logger::GetInstance().PathToUtf8(requestedShader_), std::string(), target)) {
+        const CompiledShaders shaders = CompileRequested();
+        const bool hasVertexFunction = Is3D(requestedTarget_)
+            && SurfaceShaderHasVertexFunction(Logger::GetInstance().PathToUtf8(requestedShader_));
+        if (!BuildPipeline(shaders, hasVertexFunction)) {
             error_ = "プレビューのパイプラインを組めません（コンソールを見てください）";
-            return pipeline_ != nullptr;
+            return hasPipeline(requestedTarget_);
         }
-        Retire(pipeline_, retiredPipelines_);
-        pipeline_ = std::move(pipeline);
         error_.clear();
         return true;
     }
 
     void ShaderGraphPreview::Record(ID3D12GraphicsCommandList* commandList)
     {
-        if (!requested_ || !commandList || !engine_) {
+        if (!commandList || !engine_) {
+            return;
+        }
+        // 裏から届いたシェーダは、描くかどうかに関わらず組んでおく
+        if (compiled_) {
+            const CompiledShaders shaders = std::move(*compiled_);
+            compiled_.reset();
+            if (BuildPipeline(shaders, false)) {
+                builtKey_ = shaders.key;
+                builtTarget_ = shaders.target;
+            } else {
+                failedKey_ = shaders.key;
+            }
+        }
+        if (!requested_) {
             return;
         }
         requested_ = false;
-        if (!EnsurePipeline()) {
+        if (tiles_.empty() || !EnsurePipeline()) {
             return;
         }
         Render* const render = engine_->GetService<Render>();
@@ -390,7 +626,7 @@ namespace CoreEngine::Editor::ShaderGraph
         }
         if (Is3D(requestedTarget_)) {
             if (!target3D_) {
-                RenderTargetDescriptor desc(kTarget3DName, kSize, kSize);
+                RenderTargetDescriptor desc(name_ + "3D", size_, size_);
                 desc.needsDepthStencil = false;
                 desc.autoResize = false;
                 std::memcpy(desc.clearColor, kBackground3D, sizeof(kBackground3D));
@@ -405,15 +641,15 @@ namespace CoreEngine::Editor::ShaderGraph
                     return;
                 }
                 depth_ = std::make_unique<SceneDepth>();
-                depth_->Initialize(dx->GetDevice(), dx->GetDescriptorAllocator(), static_cast<int32_t>(kSize),
-                    static_cast<int32_t>(kSize));
+                depth_->Initialize(dx->GetDevice(), dx->GetDescriptorAllocator(), static_cast<int32_t>(size_),
+                    static_cast<int32_t>(size_));
             }
             const D3D12_GPU_DESCRIPTOR_HANDLE main = mainTexture_.gpuHandle.ptr != 0 ? mainTexture_.gpuHandle : white;
             RecordSurface(commandList, main, white);
             return;
         }
         if (!target_) {
-            RenderTargetDescriptor desc(kTargetName, kSize, kSize);
+            RenderTargetDescriptor desc(name_, size_, size_);
             desc.needsDepthStencil = false;
             desc.autoResize = false;
             desc.clearColor[0] = desc.clearColor[1] = desc.clearColor[2] = desc.clearColor[3] = 0.0f;
@@ -445,7 +681,7 @@ namespace CoreEngine::Editor::ShaderGraph
         const MaterialParamLayout& layout = pipeline.GetLayout();
         UploadRing& ring = dx->GetUploadRing();
 
-        // 板の 4 頂点（画面いっぱい・左上が UV の 0,0）
+        // 板の 4 頂点（描く範囲いっぱい・左上が UV の 0,0）
         std::array<VertexData, 4> vertices{};
         vertices[0].position = { -1.0f, -1.0f, 0.0f, 1.0f };
         vertices[0].texcoord = { 0.0f, 1.0f };
@@ -469,9 +705,10 @@ namespace CoreEngine::Editor::ShaderGraph
         transform.world = MathCore::Matrix::Identity();
         const D3D12_GPU_VIRTUAL_ADDRESS transformAddress = ring.AllocateConstants(transform);
 
+        const float tileSize = tiles_.front().size;
         SpriteDrawData draw{};
         draw.color = { 1.0f, 1.0f, 1.0f, 1.0f };
-        draw.textureSize = { static_cast<float>(kSize), static_cast<float>(kSize) };
+        draw.textureSize = { tileSize, tileSize };
         draw.time = Time::UnscaledTimeSinceStartup();
         draw.unscaledTime = Time::UnscaledTimeSinceStartup();
         draw.deltaTime = Time::UnscaledDeltaTime();
@@ -526,10 +763,14 @@ namespace CoreEngine::Editor::ShaderGraph
             commandList->SetGraphicsRootDescriptorTable(textureSlots[index].index, handle);
         }
 
-        commandList->DrawInstanced(4, 1, 0, 0);
+        for (const DrawTile& tile : tiles_) {
+            SetTileViewport(commandList, tile.x, tile.y, tile.size);
+            commandList->DrawInstanced(4, 1, 0, 0);
+        }
         target_->End(commandList);
         drawn_ = true;
         drawnTarget_ = target_;
+        drawnKey_ = requestedKey_;
     }
 
     void ShaderGraphPreview::RecordSurface(ID3D12GraphicsCommandList* commandList, D3D12_GPU_DESCRIPTOR_HANDLE main,
@@ -542,30 +783,65 @@ namespace CoreEngine::Editor::ShaderGraph
         const SurfacePipeline& pipeline = *surface_;
         UploadRing& ring = dx->GetUploadRing();
 
-        const PreviewMesh& mesh = GetMesh(view_.shape);
-        const uint32_t vertexBytes = static_cast<uint32_t>(mesh.vertices.size() * sizeof(VertexData));
-        const uint32_t indexBytes = static_cast<uint32_t>(mesh.indices.size() * sizeof(uint32_t));
-        if (vertexBytes == 0 || indexBytes == 0) {
-            return;
-        }
-        const UploadAllocation vertexMemory = ring.Allocate(vertexBytes, 16);
-        const UploadAllocation indexMemory = ring.Allocate(indexBytes, 16);
-        if (!vertexMemory.IsValid() || !indexMemory.IsValid()) {
-            return;
-        }
-        std::memcpy(vertexMemory.cpu, mesh.vertices.data(), vertexBytes);
-        std::memcpy(indexMemory.cpu, mesh.indices.data(), indexBytes);
+        // 形ごとの頂点と番号（タイルで使う形だけ）
+        struct MeshMemory
+        {
+            D3D12_VERTEX_BUFFER_VIEW vertexView{};
+            D3D12_INDEX_BUFFER_VIEW indexView{};
+            UINT indexCount = 0;
+        };
+        std::array<std::optional<MeshMemory>, 3> meshMemory;
+        const auto uploadMesh = [&](PreviewShape shape) -> const MeshMemory* {
+            std::optional<MeshMemory>& slot = meshMemory[static_cast<size_t>(shape)];
+            if (slot) {
+                return &*slot;
+            }
+            const PreviewMesh& mesh = GetMesh(shape);
+            const uint32_t vertexBytes = static_cast<uint32_t>(mesh.vertices.size() * sizeof(VertexData));
+            const uint32_t indexBytes = static_cast<uint32_t>(mesh.indices.size() * sizeof(uint32_t));
+            if (vertexBytes == 0 || indexBytes == 0) {
+                return nullptr;
+            }
+            const UploadAllocation vertexMemory = ring.Allocate(vertexBytes, 16);
+            const UploadAllocation indexMemory = ring.Allocate(indexBytes, 16);
+            if (!vertexMemory.IsValid() || !indexMemory.IsValid()) {
+                return nullptr;
+            }
+            std::memcpy(vertexMemory.cpu, mesh.vertices.data(), vertexBytes);
+            std::memcpy(indexMemory.cpu, mesh.indices.data(), indexBytes);
+            MeshMemory memory;
+            memory.vertexView.BufferLocation = vertexMemory.gpuAddress;
+            memory.vertexView.SizeInBytes = vertexBytes;
+            memory.vertexView.StrideInBytes = static_cast<UINT>(sizeof(VertexData));
+            memory.indexView.BufferLocation = indexMemory.gpuAddress;
+            memory.indexView.SizeInBytes = indexBytes;
+            memory.indexView.Format = DXGI_FORMAT_R32_UINT;
+            memory.indexCount = static_cast<UINT>(mesh.indices.size());
+            slot = memory;
+            return &*slot;
+        };
 
         const Vector3 eye = { 0.0f, 0.0f, -kCameraDistance };
-        SurfacePreviewConstants preview{};
-        preview.world = MakeWorld(view_);
-        preview.worldInverseTranspose = MathCore::Matrix::Transpose(MathCore::Matrix::Inverse(preview.world));
-        preview.viewProjection = MathCore::Matrix::LookAt(eye, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f })
+        const Matrix4x4 viewProjection = MathCore::Matrix::LookAt(eye, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f })
             * MathCore::Rendering::PerspectiveFov(kFieldOfView, 1.0f, 0.1f, 10.0f);
-        preview.lightDirection = Normalize(kLightDirection);
-        preview.ambient = kAmbient;
-        preview.lightColor = { 1.0f, 1.0f, 1.0f };
-        const D3D12_GPU_VIRTUAL_ADDRESS previewAddress = ring.AllocateConstants(preview);
+
+        // タイルごとの形の向き（同じ形と向きは 1 つの定数を使い回す）
+        std::array<std::array<D3D12_GPU_VIRTUAL_ADDRESS, 2>, 3> previewAddresses{};
+        const auto previewConstants = [&](PreviewShape shape, bool rotate) {
+            D3D12_GPU_VIRTUAL_ADDRESS& address = previewAddresses[static_cast<size_t>(shape)][rotate ? 1 : 0];
+            if (address != 0) {
+                return address;
+            }
+            SurfacePreviewConstants preview{};
+            preview.world = MakeWorld(shape, view_, rotate);
+            preview.worldInverseTranspose = MathCore::Matrix::Transpose(MathCore::Matrix::Inverse(preview.world));
+            preview.viewProjection = viewProjection;
+            preview.lightDirection = Normalize(kLightDirection);
+            preview.ambient = kAmbient;
+            preview.lightColor = { 1.0f, 1.0f, 1.0f };
+            address = ring.AllocateConstants(preview);
+            return address;
+        };
 
         MaterialConstants material{};
         material.color = { 1.0f, 1.0f, 1.0f, 1.0f };
@@ -601,7 +877,7 @@ namespace CoreEngine::Editor::ShaderGraph
                 return;
             }
         }
-        if (previewAddress == 0 || materialAddress == 0 || cameraAddress == 0) {
+        if (materialAddress == 0 || cameraAddress == 0) {
             return;
         }
 
@@ -616,20 +892,7 @@ namespace CoreEngine::Editor::ShaderGraph
         commandList->SetGraphicsRootSignature(pipeline.rootSignature->GetRootSignature());
         commandList->SetPipelineState(pipeline.pipelineStates->GetPipelineState(BlendMode::kBlendModeNone));
         commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-        D3D12_VERTEX_BUFFER_VIEW vertexView{};
-        vertexView.BufferLocation = vertexMemory.gpuAddress;
-        vertexView.SizeInBytes = vertexBytes;
-        vertexView.StrideInBytes = static_cast<UINT>(sizeof(VertexData));
-        commandList->IASetVertexBuffers(0, 1, &vertexView);
-        D3D12_INDEX_BUFFER_VIEW indexView{};
-        indexView.BufferLocation = indexMemory.gpuAddress;
-        indexView.SizeInBytes = indexBytes;
-        indexView.Format = DXGI_FORMAT_R32_UINT;
-        commandList->IASetIndexBuffer(&indexView);
 
-        if (pipeline.previewSlot.IsValid()) {
-            commandList->SetGraphicsRootConstantBufferView(pipeline.previewSlot.index, previewAddress);
-        }
         if (pipeline.materialSlot.IsValid()) {
             commandList->SetGraphicsRootConstantBufferView(pipeline.materialSlot.index, materialAddress);
         }
@@ -657,10 +920,24 @@ namespace CoreEngine::Editor::ShaderGraph
             commandList->SetGraphicsRootDescriptorTable(pipeline.textureSlots[index].index, handle);
         }
 
-        commandList->DrawIndexedInstanced(static_cast<UINT>(mesh.indices.size()), 1, 0, 0, 0);
+        for (const DrawTile& tile : tiles_) {
+            const MeshMemory* const mesh = uploadMesh(tile.shape);
+            const D3D12_GPU_VIRTUAL_ADDRESS previewAddress = previewConstants(tile.shape, tile.rotate);
+            if (!mesh || previewAddress == 0) {
+                continue;
+            }
+            SetTileViewport(commandList, tile.x, tile.y, tile.size);
+            commandList->IASetVertexBuffers(0, 1, &mesh->vertexView);
+            commandList->IASetIndexBuffer(&mesh->indexView);
+            if (pipeline.previewSlot.IsValid()) {
+                commandList->SetGraphicsRootConstantBufferView(pipeline.previewSlot.index, previewAddress);
+            }
+            commandList->DrawIndexedInstanced(mesh->indexCount, 1, 0, 0, 0);
+        }
         target3D_->End(commandList);
         drawn_ = true;
         drawnTarget_ = target3D_;
+        drawnKey_ = requestedKey_;
     }
 
     void ShaderGraphPreview::RecordCompute(ID3D12GraphicsCommandList* commandList, D3D12_GPU_DESCRIPTOR_HANDLE input,
@@ -675,9 +952,9 @@ namespace CoreEngine::Editor::ShaderGraph
         UploadRing& ring = dx->GetUploadRing();
 
         ProjectPostEffect::FrameData frame{};
-        frame.screenWidth = kSize;
-        frame.screenHeight = kSize;
-        frame.invScreenSize = { 1.0f / static_cast<float>(kSize), 1.0f / static_cast<float>(kSize) };
+        frame.screenWidth = size_;
+        frame.screenHeight = size_;
+        frame.invScreenSize = { 1.0f / static_cast<float>(size_), 1.0f / static_cast<float>(size_) };
         frame.time = Time::UnscaledTimeSinceStartup();
         frame.unscaledTime = Time::UnscaledTimeSinceStartup();
         frame.deltaTime = Time::UnscaledDeltaTime();
@@ -718,10 +995,11 @@ namespace CoreEngine::Editor::ShaderGraph
             const D3D12_GPU_DESCRIPTOR_HANDLE handle = loaded && loaded->gpuHandle.ptr != 0 ? loaded->gpuHandle : white;
             commandList->SetComputeRootDescriptorTable(pipeline.textureSlots[index].index, handle);
         }
-        commandList->Dispatch((kSize + kGroupSize - 1) / kGroupSize, (kSize + kGroupSize - 1) / kGroupSize, 1);
+        commandList->Dispatch((size_ + kGroupSize - 1) / kGroupSize, (size_ + kGroupSize - 1) / kGroupSize, 1);
         offscreen->End(commandList);
         drawn_ = true;
         drawnTarget_ = target_;
+        drawnKey_ = requestedKey_;
     }
 
     D3D12_GPU_DESCRIPTOR_HANDLE ShaderGraphPreview::GetTexture() const
