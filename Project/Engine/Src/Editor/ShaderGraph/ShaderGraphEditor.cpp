@@ -12,6 +12,7 @@
 #include "Editor/ShaderGraph/ShaderGraphAsset.h"
 #include "Editor/ShaderGraph/ShaderGraphNodeLibrary.h"
 #include "Editor/ShaderGraph/ShaderGraphSelfTest.h"
+#include "Editor/ShaderGraph/ShaderGraphSubGraph.h"
 #include "EngineSystem/EngineSystem.h"
 #include "EngineSystem/Settings/ProjectSettings.h"
 #include "Graphics/Asset/AssetDatabase.h"
@@ -33,6 +34,8 @@
 #include <cstring>
 #include <functional>
 #include <map>
+#include <set>
+#include <span>
 
 namespace CoreEngine::Editor::ShaderGraph
 {
@@ -84,6 +87,16 @@ namespace CoreEngine::Editor::ShaderGraph
         constexpr const char* kAddPropertyPopup = "##ShaderGraphAddProperty";
         constexpr const char* kCloseDialog = "シェーダーグラフを閉じる";
         constexpr const char* kExportDialog = "HLSL を書き出す";
+        constexpr const char* kExtractDialog = "サブグラフにする";
+
+        /// @brief 検索の木でサブグラフを置く場所
+        constexpr const char* kSubGraphSearchRoot = "Sub Graphs";
+
+        /// @brief サブグラフの出力に選べる種類
+        constexpr PropertyType kSubGraphOutputTypes[] = {
+            PropertyType::Float, PropertyType::Vector2, PropertyType::Vector3,
+            PropertyType::Vector4, PropertyType::Texture2D, PropertyType::SamplerState,
+        };
 
         /// @brief グループの枠の余白と、大きさがまだ分からないノードの大きさ
         constexpr float kGroupPadding = 16.0f;
@@ -350,6 +363,21 @@ namespace CoreEngine::Editor::ShaderGraph
             PropertyType::Vector4, PropertyType::Color, PropertyType::Texture2D,
         };
 
+        /// @brief サブグラフの入力に選べる種類
+        constexpr PropertyType kSubGraphInputTypes[] = {
+            PropertyType::Float, PropertyType::Vector2, PropertyType::Vector3,
+            PropertyType::Vector4, PropertyType::Color, PropertyType::Texture2D, PropertyType::SamplerState,
+        };
+
+        /// @brief Blackboard で選べるプロパティの種類（サブグラフだけ Sampler State も選べる）
+        std::span<const PropertyType> PropertyTypesFor(const Graph& graph)
+        {
+            if (graph.subGraph) {
+                return kSubGraphInputTypes;
+            }
+            return kPropertyTypes;
+        }
+
         const char* PropertyTypeLabel(PropertyType type)
         {
             switch (type) {
@@ -359,6 +387,7 @@ namespace CoreEngine::Editor::ShaderGraph
             case PropertyType::Vector4: return "Vector 4";
             case PropertyType::Color: return "Color";
             case PropertyType::Texture2D: return "Texture 2D";
+            case PropertyType::SamplerState: return "Sampler State";
             }
             return "?";
         }
@@ -373,6 +402,7 @@ namespace CoreEngine::Editor::ShaderGraph
             case PropertyType::Vector4: return "NewVector4";
             case PropertyType::Color: return "NewColor";
             case PropertyType::Texture2D: return "NewTexture";
+            case PropertyType::SamplerState: return "NewSampler";
             }
             return "NewProperty";
         }
@@ -461,6 +491,99 @@ namespace CoreEngine::Editor::ShaderGraph
             return stamps;
         }
 
+        /// @brief ノードの設定の値（書いていなければ空）
+        std::string NodeSetting(const Node& node, const char* name)
+        {
+            const auto found = node.settings.find(name);
+            return found != node.settings.end() ? found->second : std::string();
+        }
+
+        /// @brief サブグラフのノードが指すファイルと、その更新の日時を並べる（入れ子のサブグラフと、その中の Custom Function のファイルもたどる）
+        void AppendSubGraphStamps(const Graph& graph, const SubGraphResolver& resolve, std::set<std::wstring>& visited,
+            std::string& stamps)
+        {
+            for (const Node& node : graph.nodes) {
+                if (node.type != kSubGraphNodeType) {
+                    continue;
+                }
+                const std::string guid = NodeSetting(node, "Guid");
+                const std::string path = NodeSetting(node, "Path");
+                const std::filesystem::path file = FindSubGraphFile(guid, path);
+                std::error_code ec;
+                const std::filesystem::file_time_type time = file.empty()
+                    ? std::filesystem::file_time_type{} : std::filesystem::last_write_time(file, ec);
+                const bool found = !file.empty() && !ec;
+                stamps += guid + ' ' + path + '=' + (found ? std::to_string(time.time_since_epoch().count()) : std::string("-")) + '\n';
+                if (!found || !visited.insert(file.lexically_normal().wstring()).second) {
+                    continue;
+                }
+                std::string error;
+                if (const std::shared_ptr<const Graph> sub = resolve(guid, path, error)) {
+                    stamps += FunctionFileStamps(*sub);
+                    AppendSubGraphStamps(*sub, resolve, visited, stamps);
+                }
+            }
+        }
+
+        /// @brief 生成で読む外のファイル（Custom Function のファイルとサブグラフ）と、その更新の日時を並べた文字
+        std::string SourceFileStamps(const Graph& graph)
+        {
+            std::string stamps = FunctionFileStamps(graph);
+            std::set<std::wstring> visited;
+            AppendSubGraphStamps(graph, MakeSubGraphResolver(), visited, stamps);
+            return stamps;
+        }
+
+        /// @brief 窓で生成するときの決まり（Custom Function のファイルとサブグラフを読む）
+        GenerateOptions EditorGenerateOptions(const std::filesystem::path& file)
+        {
+            GenerateOptions options;
+            options.sourcePath = ToAssetText(file);
+            options.resolveInclude = MakeIncludeResolver();
+            options.resolveSubGraph = MakeSubGraphResolver();
+            return options;
+        }
+
+        /// @brief 窓のグラフを生成する（サブグラフはプレビューの目標のグラフに置いた形にする）
+        GenerateResult GenerateForEditor(const Graph& graph, const GenerateOptions& options)
+        {
+            if (graph.subGraph) {
+                return Generate(MakeSubGraphPreviewGraph(graph), options);
+            }
+            return Generate(graph, options);
+        }
+
+        /// @brief 窓のグラフのノードのプレビューを生成する（サブグラフはプレビューの目標のグラフに置いた形にする）
+        NodePreviewResult GenerateNodePreviewsForEditor(const Graph& graph, const GenerateOptions& options)
+        {
+            if (graph.subGraph) {
+                return GenerateNodePreviews(MakeSubGraphPreviewGraph(graph), options);
+            }
+            return GenerateNodePreviews(graph, options);
+        }
+
+        /// @brief 検索の木でのサブグラフの場所（分類が空なら Sub Graphs の直下）
+        std::string SubGraphSearchCategory(const std::string& category)
+        {
+            const std::string root = kSubGraphSearchRoot;
+            if (category.empty()) {
+                return root;
+            }
+            if (category == root || category.starts_with(root + "/")) {
+                return category;
+            }
+            return root + "/" + category;
+        }
+
+        /// @brief サブグラフの名前に使えるか（使えなければ訳）
+        std::string CheckSubGraphName(const std::string& name)
+        {
+            if (name.empty() || name.find_first_of("\\/:*?\"<>|.") != std::string::npos) {
+                return "名前に使えない文字があります（\\ / : * ? \" < > | . は使えません）。";
+            }
+            return {};
+        }
+
         /// @brief 欄の名前を左に書き、欄を残りの幅いっぱいにする
         void Row(const char* label)
         {
@@ -502,6 +625,38 @@ namespace CoreEngine::Editor::ShaderGraph
             const std::filesystem::path a = ProjectPaths::Resolve(left).lexically_normal();
             const std::filesystem::path b = ProjectPaths::Resolve(right).lexically_normal();
             return _wcsicmp(a.c_str(), b.c_str()) == 0;
+        }
+
+        /// @brief グラフへ置くサブグラフのノードを作る
+        /// @param graph, file 置く先のグラフとそのファイル
+        /// @param category 検索の木での場所（要らなければ nullptr）
+        /// @return 置けなければ訳（置けるなら空）
+        std::string PrepareSubGraphNode(const Graph& graph, const std::filesystem::path& file, const std::string& guid,
+            const std::string& path, Node& node, std::string* category)
+        {
+            const SubGraphResolver resolve = MakeSubGraphResolver();
+            std::string error;
+            const std::shared_ptr<const Graph> sub = resolve(guid, path, error);
+            if (!sub) {
+                return error;
+            }
+            if (graph.subGraph) {
+                const std::string selfGuid = AssetDatabase::GetInstance().GetGUID(file);
+                const std::string selfPath = ToAssetText(file);
+                if ((!selfGuid.empty() && guid == selfGuid) || SameAssetFile(path, selfPath)
+                    || UsesSubGraph(*sub, selfGuid, selfPath, resolve)) {
+                    return "このサブグラフ自身を含むので置けません";
+                }
+            }
+            const SubGraphSnapshot snapshot = MakeSubGraphSnapshot(*sub, resolve);
+            if (!graph.subGraph && (snapshot.targets & TargetBit(graph.target)) == 0) {
+                return std::string(DisplayName(graph.target)) + " では使えないノードを含みます";
+            }
+            node = MakeSubGraphNode(0, guid, path, *sub, snapshot);
+            if (category) {
+                *category = SubGraphSearchCategory(sub->category);
+            }
+            return {};
         }
 
         /// @brief postEffects とエンジンのポストエフェクトに無い名前（base・base2・base3…）
@@ -621,6 +776,13 @@ namespace CoreEngine::Editor::ShaderGraph
             selfTest_.request_stop();
             selfTest_.join();
         }
+        if (regenerate_.joinable()) {
+            regenerate_.request_stop();
+            regenerate_.join();
+        }
+        runningRegeneration_.reset();
+        queuedRegenerations_.clear();
+        regenerated_.clear();
         for (const std::unique_ptr<Document>& document : documents_) {
             EditorCommandStack::Get().RemoveCommandsReferencing(document.get());
             if (document->context) {
@@ -738,6 +900,7 @@ namespace CoreEngine::Editor::ShaderGraph
                 LogLevel::Warn, LogCategory::Shader);
             return false;
         }
+        SyncSubGraphNodes(graph, MakeSubGraphResolver());
 
         auto document = std::make_unique<Document>();
         document->file = graphFile;
@@ -813,6 +976,7 @@ namespace CoreEngine::Editor::ShaderGraph
         if (!engine_) {
             return;
         }
+        FinishRegeneration();
         if (focusRequested_) {
             ImGui::SetWindowFocus();
             focusRequested_ = false;
@@ -820,6 +984,7 @@ namespace CoreEngine::Editor::ShaderGraph
         if (documents_.empty()) {
             UI::Hint("Project で .shadergraph をダブルクリックすると、ここで開きます。");
             UI::Hint("新しいグラフは Project の右クリック > シェーダーグラフを作成 で作れます。");
+            UI::Hint("何度も使うノードのまとまりは、Project の右クリック > シェーダーサブグラフを作成 で部品にできます。");
             return;
         }
 
@@ -834,7 +999,8 @@ namespace CoreEngine::Editor::ShaderGraph
                     document.selectOnNextFrame = false;
                 }
                 bool open = true;
-                const std::string label = document.title + "###" + Logger::GetInstance().PathToUtf8(document.file);
+                const std::string label = document.title + (document.graph.subGraph ? "（サブグラフ）" : "") + "###"
+                    + Logger::GetInstance().PathToUtf8(document.file);
                 if (ImGui::BeginTabItem(label.c_str(), &open, flags)) {
                     activeDocument_ = index;
                     DrawDocument(document);
@@ -988,6 +1154,7 @@ namespace CoreEngine::Editor::ShaderGraph
             ImGui::EndChild();
         }
         DrawExportDialog(document);
+        DrawExtractDialog(document);
 
         CommitIfChanged(document);
         UpdateValidation(document);
@@ -1006,7 +1173,9 @@ namespace CoreEngine::Editor::ShaderGraph
             Save(document);
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("Ctrl+S。グラフを書き、シェーダを作り直します。");
+            ImGui::SetTooltip(document.graph.subGraph
+                ? "Ctrl+S。サブグラフを書き、使っているグラフのシェーダを作り直します。"
+                : "Ctrl+S。グラフを書き、シェーダを作り直します。");
         }
         ImGui::SameLine();
         const bool showingHlsl = document.showHlsl;
@@ -1046,6 +1215,10 @@ namespace CoreEngine::Editor::ShaderGraph
             ImGui::TextDisabled("確かめています…");
         } else if (!document.validatedHlsl.empty()) {
             ImGui::TextColored(Theme::kOk, "シェーダ OK");
+        }
+        if (runningRegeneration_) {
+            ImGui::SameLine(0.0f, 16.0f);
+            ImGui::TextDisabled("サブグラフを使うグラフを作り直しています…");
         }
         ImGui::SameLine(0.0f, 16.0f);
         ImGui::TextDisabled("%s", ToAssetText(document.file).c_str());
@@ -1201,11 +1374,13 @@ namespace CoreEngine::Editor::ShaderGraph
         }
         if (editorHovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
             if (nodeHovered) {
-                // 付箋はダブルクリックで文を書き換える
+                // 付箋はダブルクリックで文を書き換え、サブグラフのノードはダブルクリックでサブグラフを開く
                 if (const Node* const node = document.graph.FindNode(hoveredNode);
                     node && node->type == kStickyNoteType && document.editingNote != node->id) {
                     document.editingNote = node->id;
                     document.focusNote = true;
+                } else if (node && node->type == kSubGraphNodeType) {
+                    OpenSubGraph(document, *node);
                 }
             } else if (linkHovered) {
                 InsertRedirect(document, hoveredLink, document.mouseGridX, document.mouseGridY);
@@ -1249,6 +1424,11 @@ namespace CoreEngine::Editor::ShaderGraph
                     document.pendingLabel = "プロパティを置く";
                 }
             }
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kSubGraphPayload)) {
+                const auto* data = static_cast<const char*>(payload->Data);
+                const std::string path(data, strnlen(data, static_cast<size_t>(payload->DataSize)));
+                PlaceSubGraphFile(document, path, document.mouseGridX, document.mouseGridY);
+            }
             ImGui::EndDragDropTarget();
         }
 
@@ -1265,6 +1445,11 @@ namespace CoreEngine::Editor::ShaderGraph
             if (ImGui::MenuItem("このノードを映す")) {
                 document.previewSelected = true;
             }
+            if (const Node* const node = document.graph.FindNode(menuNode_); node && node->type == kSubGraphNodeType) {
+                if (ImGui::MenuItem("サブグラフを開く")) {
+                    OpenSubGraph(document, *node);
+                }
+            }
             ImGui::Separator();
             if (ImGui::MenuItem("グループにする", "Ctrl+G")) {
                 GroupSelection(document);
@@ -1273,6 +1458,15 @@ namespace CoreEngine::Editor::ShaderGraph
                 [&document](int id) { return document.graph.FindGroupOf(id) != nullptr; });
             if (ImGui::MenuItem("グループから外す", nullptr, false, grouped)) {
                 UngroupSelection(document);
+            }
+            if (ImGui::MenuItem("サブグラフにする…")) {
+                document.extractNodes = std::set<int>(document.selectedNodes.begin(), document.selectedNodes.end());
+                document.extractName.clear();
+                document.extractError.clear();
+                document.openExtract = true;
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("選んだノードをグラフの隣のサブグラフへ移し、1 つのノードに置き換えます。");
             }
             ImGui::EndPopup();
         }
@@ -1310,6 +1504,8 @@ namespace CoreEngine::Editor::ShaderGraph
             pushTitle(Theme::kAccentMuted);
         } else if (isProperty) {
             pushTitle(Theme::FromSrgb(74, 58, 104));
+        } else if (node.type == kSubGraphNodeType) {
+            pushTitle(Theme::kGraphSubGraph);
         } else {
             pushTitle(CategoryColor(desc->category));
         }
@@ -1401,10 +1597,11 @@ namespace CoreEngine::Editor::ShaderGraph
                 }
                 ImNodes::PushColorStyle(ImNodesCol_Pin, ToU32(PinColor(type)));
                 ImNodes::BeginInputAttribute(InputPinId(node.id, index), PinShape(type, connected));
+                const std::string_view label = pin.Label();
                 if (used) {
-                    ImGui::TextUnformatted(pin.name.data(), pin.name.data() + pin.name.size());
+                    ImGui::TextUnformatted(label.data(), label.data() + label.size());
                 } else {
-                    ImGui::TextDisabled("%.*s（使わない）", static_cast<int>(pin.name.size()), pin.name.data());
+                    ImGui::TextDisabled("%.*s（使わない）", static_cast<int>(label.size()), label.data());
                 }
                 if (!connected) {
                     if (const char* const hint = BindingHint(pin.binding, document.graph.target)) {
@@ -1435,7 +1632,8 @@ namespace CoreEngine::Editor::ShaderGraph
         if (!desc->outputs.empty()) {
             float widest = 0.0f;
             for (const PinDesc& pin : desc->outputs) {
-                widest = (std::max)(widest, ImGui::CalcTextSize(pin.name.data(), pin.name.data() + pin.name.size()).x);
+                const std::string_view label = pin.Label();
+                widest = (std::max)(widest, ImGui::CalcTextSize(label.data(), label.data() + label.size()).x);
             }
             ImGui::BeginGroup();
             for (size_t index = 0; index < desc->outputs.size(); ++index) {
@@ -1444,9 +1642,10 @@ namespace CoreEngine::Editor::ShaderGraph
                     ? resolved->outputs[index] : (pin.type == ValueType::Dynamic ? ValueType::Float : pin.type);
                 ImNodes::PushColorStyle(ImNodesCol_Pin, ToU32(PinColor(type)));
                 ImNodes::BeginOutputAttribute(OutputPinId(node.id, index), PinShape(type, true));
-                const float width = ImGui::CalcTextSize(pin.name.data(), pin.name.data() + pin.name.size()).x;
+                const std::string_view label = pin.Label();
+                const float width = ImGui::CalcTextSize(label.data(), label.data() + label.size()).x;
                 ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (widest - width));
-                ImGui::TextUnformatted(pin.name.data(), pin.name.data() + pin.name.size());
+                ImGui::TextUnformatted(label.data(), label.data() + label.size());
                 ImNodes::EndOutputAttribute();
                 ImNodes::PopColorStyle();
             }
@@ -1837,7 +2036,13 @@ namespace CoreEngine::Editor::ShaderGraph
             ImGui::SetNextWindowPos(ImVec2(search_.screenX, search_.screenY));
             search_.open = false;
             search_.focusFilter = true;
+            CollectSubGraphChoices(document);
         }
+        // サブグラフの窓では目標で絞らない（プレビューの目標で使えないノードは、置いた後にノードのエラーになる）
+        const auto listed = [this, &document](const NodeDesc& desc) {
+            return desc.creatable && (document.graph.subGraph || desc.Supports(document.graph.target))
+                && Accepts(document, desc, search_.fromPin);
+        };
         ImGui::SetNextWindowSizeConstraints(ImVec2(280.0f, 0.0f), ImVec2(340.0f, 460.0f));
         if (!ImGui::BeginPopup(kSearchPopup)) {
             return;
@@ -1852,13 +2057,14 @@ namespace CoreEngine::Editor::ShaderGraph
 
         const std::string filter = Lower(search_.filter);
         const NodeDesc* chosen = nullptr;
+        const SubGraphChoice* chosenSubGraph = nullptr;
         if (ImGui::BeginChild("##results", ImVec2(0.0f, 320.0f))) {
             if (filter.empty()) {
                 // 分類の木（`Math/Basic` は Math の下の Basic）
                 std::map<std::string, std::map<std::string, std::vector<const NodeDesc*>>> tree;
                 std::vector<std::string> order;
                 for (const NodeDesc& desc : AllNodes()) {
-                    if (!desc.creatable || !desc.Supports(document.graph.target) || !Accepts(document, desc, search_.fromPin)) {
+                    if (!listed(desc)) {
                         continue;
                     }
                     const std::string category(desc.category);
@@ -1894,10 +2100,33 @@ namespace CoreEngine::Editor::ShaderGraph
                     }
                     ImGui::TreePop();
                 }
+
+                // サブグラフ（`Sub Graphs/分類` の下に名前）
+                std::map<std::string, std::vector<const SubGraphChoice*>> subGraphTree;
+                for (const SubGraphChoice& choice : search_.subGraphs) {
+                    subGraphTree[choice.category].push_back(&choice);
+                }
+                for (const auto& [category, choices] : subGraphTree) {
+                    if (!ImGui::TreeNode(category.c_str())) {
+                        continue;
+                    }
+                    for (const SubGraphChoice* choice : choices) {
+                        ImGui::PushID(choice);
+                        if (ImGui::Selectable(choice->name.c_str())) {
+                            chosenSubGraph = choice;
+                        }
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip("%s", NodeSetting(choice->node, "Path").c_str());
+                        }
+                        ImGui::PopID();
+                    }
+                    ImGui::TreePop();
+                }
             } else {
                 const NodeDesc* first = nullptr;
+                const SubGraphChoice* firstSubGraph = nullptr;
                 for (const NodeDesc& desc : AllNodes()) {
-                    if (!desc.creatable || !desc.Supports(document.graph.target) || !Accepts(document, desc, search_.fromPin)) {
+                    if (!listed(desc)) {
                         continue;
                     }
                     if (!Contains(desc.title, filter) && !Contains(desc.type, filter) && !Contains(desc.category, filter)) {
@@ -1916,8 +2145,27 @@ namespace CoreEngine::Editor::ShaderGraph
                     ImGui::SameLine();
                     ImGui::TextDisabled("%s", std::string(desc.category).c_str());
                 }
-                if (enter && first && !chosen) {
-                    chosen = first;
+                for (const SubGraphChoice& choice : search_.subGraphs) {
+                    if (!Contains(choice.name, filter) && !Contains(choice.category, filter)) {
+                        continue;
+                    }
+                    if (!first && !firstSubGraph) {
+                        firstSubGraph = &choice;
+                    }
+                    ImGui::PushID(&choice);
+                    if (ImGui::Selectable(choice.name.c_str(), firstSubGraph == &choice)) {
+                        chosenSubGraph = &choice;
+                    }
+                    ImGui::PopID();
+                    ImGui::SameLine();
+                    ImGui::TextDisabled("%s", choice.category.c_str());
+                }
+                if (enter && !chosen && !chosenSubGraph) {
+                    if (first) {
+                        chosen = first;
+                    } else {
+                        chosenSubGraph = firstSubGraph;
+                    }
                 }
             }
         }
@@ -1936,6 +2184,13 @@ namespace CoreEngine::Editor::ShaderGraph
             PlaceNode(document, std::string(chosen->type), search_.gridX, search_.gridY, search_.fromPin);
             search_.fromPin.reset();
             ImGui::CloseCurrentPopup();
+        } else if (chosenSubGraph) {
+            Node node = chosenSubGraph->node;
+            node.x = search_.gridX;
+            node.y = search_.gridY;
+            AddNode(document, std::move(node), search_.fromPin);
+            search_.fromPin.reset();
+            ImGui::CloseCurrentPopup();
         } else if (placeNote) {
             PlaceNode(document, std::string(kStickyNoteType), search_.gridX, search_.gridY, std::nullopt);
             ImGui::CloseCurrentPopup();
@@ -1945,22 +2200,29 @@ namespace CoreEngine::Editor::ShaderGraph
 
     void ShaderGraphEditor::PlaceNode(Document& document, const std::string& type, float x, float y, std::optional<int> fromPin)
     {
-        const NodeDesc* const desc = FindNodeDesc(type);
-        if (!desc) {
-            return;
-        }
         Node node;
-        node.id = document.graph.NextNodeId();
         node.type = type;
         node.x = x;
         node.y = y;
+        AddNode(document, std::move(node), fromPin);
+    }
+
+    void ShaderGraphEditor::AddNode(Document& document, Node node, std::optional<int> fromPin)
+    {
+        // サブグラフのノードはピンが設定で決まるので、設定から定義を引く
+        const NodeDesc* const desc = node.type == kSubGraphNodeType ? FindNodeDesc(node) : FindNodeDesc(node.type);
+        if (!desc) {
+            return;
+        }
+        node.id = document.graph.NextNodeId();
         node.preview = HasNodePreview(*desc) && desc->Supports(document.graph.target);
         const int id = node.id;
+        const bool note = node.type == kStickyNoteType;
         document.graph.nodes.push_back(std::move(node));
         document.placeNodes.insert(id);
         document.clearSelection = true;
         document.pendingSelect = { id };
-        if (type == kStickyNoteType) {
+        if (note) {
             document.editingNote = id;
             document.focusNote = true;
         }
@@ -1988,6 +2250,140 @@ namespace CoreEngine::Editor::ShaderGraph
             }
         }
         document.pendingLabel = "ノードを置く";
+    }
+
+    void ShaderGraphEditor::CollectSubGraphChoices(const Document& document)
+    {
+        search_.subGraphs.clear();
+        Logger& log = Logger::GetInstance();
+        for (const AssetInfo* info : AssetDatabase::GetInstance().GetAssetsOfType(AssetType::ShaderGraph)) {
+            if (!IsSubGraphFile(info->fullPath)) {
+                continue;
+            }
+            SubGraphChoice choice;
+            const std::string guid = AssetDatabase::GetInstance().GetGUID(info->fullPath);
+            if (!PrepareSubGraphNode(document.graph, document.file, guid, ToAssetText(info->fullPath), choice.node,
+                    &choice.category).empty()) {
+                continue;
+            }
+            const NodeDesc* const desc = FindNodeDesc(choice.node);
+            if (!desc || !Accepts(document, *desc, search_.fromPin)) {
+                continue;
+            }
+            choice.name = log.PathToUtf8(info->fullPath.stem());
+            search_.subGraphs.push_back(std::move(choice));
+        }
+        std::sort(search_.subGraphs.begin(), search_.subGraphs.end(), [](const SubGraphChoice& a, const SubGraphChoice& b) {
+            return a.category != b.category ? a.category < b.category : a.name < b.name;
+        });
+    }
+
+    void ShaderGraphEditor::PlaceSubGraphFile(Document& document, const std::string& assetPath, float x, float y)
+    {
+        const std::string guid = AssetDatabase::GetInstance().GetGUID(ProjectPaths::Resolve(assetPath));
+        Node node;
+        const std::string reason = PrepareSubGraphNode(document.graph, document.file, guid, assetPath, node, nullptr);
+        if (!reason.empty()) {
+            document.notice = "サブグラフを置けません: " + reason;
+            return;
+        }
+        node.x = x;
+        node.y = y;
+        AddNode(document, std::move(node), std::nullopt);
+        document.pendingLabel = "サブグラフを置く";
+        document.notice.clear();
+    }
+
+    void ShaderGraphEditor::OpenSubGraph(Document& document, const Node& node)
+    {
+        const std::string path = NodeSetting(node, "Path");
+        const std::filesystem::path file = FindSubGraphFile(NodeSetting(node, "Guid"), path);
+        if (file.empty()) {
+            document.notice = "サブグラフ " + path + " が見つかりません。";
+            return;
+        }
+        Open(file);
+    }
+
+    void ShaderGraphEditor::DrawExtractDialog(Document& document)
+    {
+        if (document.openExtract) {
+            ImGui::OpenPopup(kExtractDialog);
+            document.openExtract = false;
+        }
+        ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+        if (!ImGui::BeginPopupModal(kExtractDialog, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            return;
+        }
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 30.0f);
+        ImGui::TextUnformatted("選んだノードを、グラフの隣のサブグラフ（名前.shadersubgraph）へ移し、1 つのノードに置き換えます。");
+        ImGui::PushStyleColor(ImGuiCol_Text, Theme::kTextDim);
+        ImGui::TextWrapped("外から入る線は入力に、外へ出る線は出力になります。選んだ中の出口と Property ノードは外に残ります。"
+                           "置き換えは Ctrl+Z で戻せます（作ったサブグラフのファイルは残ります）。");
+        ImGui::PopStyleColor();
+        ImGui::PopTextWrapPos();
+        ImGui::Spacing();
+        Row("名前");
+        if (ImGui::IsWindowAppearing()) {
+            ImGui::SetKeyboardFocusHere();
+        }
+        const bool entered = UI::InputString("##extractName", document.extractName, ImGuiInputTextFlags_EnterReturnsTrue);
+        if (!document.extractError.empty()) {
+            ImGui::TextColored(Theme::kError, "%s", document.extractError.c_str());
+        }
+        ImGui::Spacing();
+        if (ImGui::Button("作る") || entered) {
+            if (ExtractSelection(document)) {
+                ImGui::CloseCurrentPopup();
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("やめる")) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+
+    bool ShaderGraphEditor::ExtractSelection(Document& document)
+    {
+        Logger& log = Logger::GetInstance();
+        if (std::string error = CheckSubGraphName(document.extractName); !error.empty()) {
+            document.extractError = std::move(error);
+            return false;
+        }
+        const std::filesystem::path file = document.file.parent_path() / log.Utf8ToPath(document.extractName + kSubGraphExtension);
+        std::error_code ec;
+        if (std::filesystem::exists(file, ec)) {
+            document.extractError = "同じ名前のサブグラフがあります。";
+            return false;
+        }
+
+        Graph graph = document.graph;
+        Graph subGraph;
+        std::string error;
+        const int id = ExtractSubGraph(graph, document.extractNodes, std::string(), ToAssetText(file), MakeSubGraphResolver(),
+            subGraph, error);
+        if (id == 0) {
+            document.extractError = error;
+            return false;
+        }
+        if (!SaveSubGraph(file, subGraph, error)) {
+            document.extractError = error;
+            return false;
+        }
+        if (Node* const node = graph.FindNode(id)) {
+            node->settings["Guid"] = AssetDatabase::GetInstance().GetGUID(file);
+        }
+        document.graph = std::move(graph);
+        document.placeNodes.insert(id);
+        document.selectedNodes.clear();
+        document.selectedLinks.clear();
+        document.clearSelection = true;
+        document.pendingSelect = { id };
+        document.pendingLabel = "サブグラフにする";
+        document.notice = log.PathToUtf8(file.filename()) + " を作り、選んだノードを置き換えました。";
+        log.Log("シェーダーグラフ「" + document.title + "」: " + document.notice, LogLevel::Info, LogCategory::Shader);
+        return true;
     }
 
     void ShaderGraphEditor::DeleteSelection(Document& document)
@@ -2061,6 +2457,7 @@ namespace CoreEngine::Editor::ShaderGraph
     {
         Graph clip;
         clip.target = document.graph.target;
+        clip.subGraph = document.graph.subGraph;
         for (const int id : document.selectedNodes) {
             const Node* const node = document.graph.FindNode(id);
             if (!node || IsMasterNodeType(node->type)) {
@@ -2117,7 +2514,7 @@ namespace CoreEngine::Editor::ShaderGraph
             if (node.type == "Property") {
                 const Property* const original = clip.FindProperty(source.property);
                 const Property* const same = document.graph.FindProperty(source.property);
-                if (!original) {
+                if (!original || (original->type == PropertyType::SamplerState && !document.graph.subGraph)) {
                     continue;
                 }
                 if (same && same->name == original->name) {
@@ -2285,10 +2682,7 @@ namespace CoreEngine::Editor::ShaderGraph
         const std::string source = document.currentText + '\n' + document.functionFiles;
         if (source != document.nodePreviewSource) {
             document.nodePreviewSource = source;
-            GenerateOptions options;
-            options.sourcePath = ToAssetText(document.file);
-            options.resolveInclude = MakeIncludeResolver();
-            NodePreviewResult result = GenerateNodePreviews(document.graph, options);
+            NodePreviewResult result = GenerateNodePreviewsForEditor(document.graph, EditorGenerateOptions(document.file));
             const uint64_t key = result.hlsl.empty() ? 0
                 : (std::hash<std::string>{}(result.hlsl + '\n' + ToString(document.graph.target)) | 1);
             if (key != document.nodePreviewKey) {
@@ -2376,17 +2770,18 @@ namespace CoreEngine::Editor::ShaderGraph
 
     void ShaderGraphEditor::DrawBlackboard(Document& document)
     {
+        const bool subGraph = document.graph.subGraph;
         ImGui::AlignTextToFramePadding();
-        ImGui::TextUnformatted("Blackboard");
+        ImGui::TextUnformatted(subGraph ? "入力" : "Blackboard");
         ImGui::SameLine(ImGui::GetContentRegionAvail().x - ImGui::GetFrameHeight() + ImGui::GetCursorPosX() - ImGui::GetStyle().ItemSpacing.x);
         if (ImGui::Button("+", ImVec2(ImGui::GetFrameHeight(), 0.0f))) {
             ImGui::OpenPopup(kAddPropertyPopup);
         }
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("プロパティを足す");
+            ImGui::SetTooltip(subGraph ? "入力を足す" : "プロパティを足す");
         }
         if (ImGui::BeginPopup(kAddPropertyPopup)) {
-            for (const PropertyType type : kPropertyTypes) {
+            for (const PropertyType type : PropertyTypesFor(document.graph)) {
                 if (ImGui::MenuItem(PropertyTypeLabel(type))) {
                     AddProperty(document, type);
                 }
@@ -2423,7 +2818,7 @@ namespace CoreEngine::Editor::ShaderGraph
             RemoveProperty(document, removeId);
         }
         if (document.graph.properties.empty()) {
-            UI::Hint("＋ で .mat とスクリプトから変えられる値を足します。");
+            UI::Hint(subGraph ? "＋ で、使う側のノードの入力を足します。" : "＋ で .mat とスクリプトから変えられる値を足します。");
         } else {
             UI::Hint("名前をキャンバスへドラッグすると置けます。");
         }
@@ -2457,8 +2852,134 @@ namespace CoreEngine::Editor::ShaderGraph
         DrawGraphInspector(document);
     }
 
+    void ShaderGraphEditor::DrawSubGraphInspector(Document& document)
+    {
+        DimText("ノードか入力を選ぶと、ここで値を変えられます。出力は Output ノードを選ぶと足せます。");
+        ImGui::SeparatorText("サブグラフ");
+        ImGui::TextUnformatted("プレビューの目標");
+        ImGui::SetNextItemWidth(-FLT_MIN);
+        const Target current = document.graph.target;
+        if (ImGui::BeginCombo("##previewTarget", DisplayName(current))) {
+            for (const Target target : kAllTargetList) {
+                if (ImGui::Selectable(DisplayName(target), target == current) && target != current) {
+                    document.graph.target = target;
+                    document.pendingLabel = "プレビューの目標を変える";
+                }
+            }
+            ImGui::EndCombo();
+        }
+        DimText("サブグラフは目標を持ちません。この目標のグラフに置いた形で、プレビューと検査をします。"
+                "使える目標は中のノードで決まります。");
+        ImGui::TextUnformatted("分類");
+        ImGui::SetNextItemWidth(-FLT_MIN);
+        std::string category = document.graph.category;
+        if (UI::InputStringWithHint("##category", "（Sub Graphs の直下）", category)) {
+            document.graph.category = category;
+            document.pendingLabel = "分類を変える";
+        }
+        DimText("使う側の検索では " + SubGraphSearchCategory(document.graph.category) + " の下に「" + document.title + "」で出ます。");
+    }
+
+    void ShaderGraphEditor::DrawOutputsInspector(Document& document, Node& node)
+    {
+        const auto found = node.settings.find("Outputs");
+        std::vector<SubGraphPin> pins = ParseSubGraphPins(found != node.settings.end() ? found->second : std::string(kDefaultSubGraphOutputs));
+
+        ImGui::SeparatorText("出力");
+        bool changed = false;
+        std::optional<size_t> removed;
+        std::optional<size_t> raised;
+        std::optional<size_t> lowered;
+        const float typeWidth = 96.0f;
+        const float buttonWidth = ImGui::GetFrameHeight();
+        const float spacing = ImGui::GetStyle().ItemSpacing.x;
+        for (size_t index = 0; index < pins.size(); ++index) {
+            SubGraphPin& pin = pins[index];
+            ImGui::PushID(pin.key.c_str());
+            ImGui::SetNextItemWidth(typeWidth);
+            if (ImGui::BeginCombo("##type", PropertyTypeLabel(pin.type))) {
+                for (const PropertyType type : kSubGraphOutputTypes) {
+                    if (ImGui::Selectable(PropertyTypeLabel(type), type == pin.type) && type != pin.type) {
+                        pin.type = type;
+                        changed = true;
+                    }
+                }
+                ImGui::EndCombo();
+            }
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(-(buttonWidth + spacing) * 3.0f);
+            std::string label = pin.label;
+            const bool entered = UI::InputString("##label", label, ImGuiInputTextFlags_EnterReturnsTrue);
+            const bool committed = entered || ImGui::IsItemDeactivatedAfterEdit();
+            std::erase(label, ';');
+            if (committed && !label.empty() && label != pin.label) {
+                pin.label = label;
+                changed = true;
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("表示名（Enter を押すか、ほかをクリックすると決まります）。変えても使う側の線は切れません");
+            }
+            ImGui::SameLine();
+            ImGui::BeginDisabled(index == 0);
+            if (ImGui::Button("▲", ImVec2(buttonWidth, 0.0f))) {
+                raised = index;
+            }
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            ImGui::BeginDisabled(index + 1 == pins.size());
+            if (ImGui::Button("▼", ImVec2(buttonWidth, 0.0f))) {
+                lowered = index;
+            }
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            ImGui::BeginDisabled(pins.size() == 1);
+            if (ImGui::Button("×", ImVec2(buttonWidth, 0.0f))) {
+                removed = index;
+            }
+            ImGui::EndDisabled();
+            ImGui::PopID();
+        }
+
+        if (pins.size() < kMaxSubGraphPins && ImGui::Button("出力を足す")) {
+            const auto used = [&pins](const std::string& key) {
+                return std::any_of(pins.begin(), pins.end(), [&key](const SubGraphPin& pin) { return pin.key == key; });
+            };
+            int number = 1;
+            while (used("o" + std::to_string(number))) {
+                ++number;
+            }
+            pins.push_back(SubGraphPin{ PropertyType::Float, "o" + std::to_string(number), "Out" + std::to_string(pins.size() + 1) });
+            changed = true;
+        }
+        DimText("使う側のノードの出力の並びです。種類は Float・Vector・Texture 2D・Sampler State から選べます。");
+
+        if (removed) {
+            const std::string key = pins[*removed].key;
+            pins.erase(pins.begin() + static_cast<std::ptrdiff_t>(*removed));
+            std::erase_if(document.graph.links, [&](const Link& link) { return link.toNode == node.id && link.toPin == key; });
+            node.values.erase(key);
+            changed = true;
+        }
+        if (raised) {
+            std::swap(pins[*raised], pins[*raised - 1]);
+            changed = true;
+        }
+        if (lowered) {
+            std::swap(pins[*lowered], pins[*lowered + 1]);
+            changed = true;
+        }
+        if (changed) {
+            node.settings["Outputs"] = FormatSubGraphPins(pins);
+            document.pendingLabel = "出力を変える";
+        }
+    }
+
     void ShaderGraphEditor::DrawGraphInspector(Document& document)
     {
+        if (document.graph.subGraph) {
+            DrawSubGraphInspector(document);
+            return;
+        }
         DimText("ノードかプロパティを選ぶと、ここで値を変えられます。");
         ImGui::SeparatorText("グラフ");
         Row("目標");
@@ -2818,8 +3339,19 @@ namespace CoreEngine::Editor::ShaderGraph
             }
             return;
         }
+        if (node.type == kSubGraphOutputType) {
+            DrawOutputsInspector(document, node);
+            return;
+        }
 
         ImGui::PushID(node.id);
+        if (node.type == kSubGraphNodeType) {
+            DimText(NodeSetting(node, "Path"));
+            if (ImGui::Button("サブグラフを開く")) {
+                OpenSubGraph(document, node);
+            }
+            DimText("ピンはサブグラフの入力と出力です。サブグラフを保存すると、このノードも合わせます。");
+        }
         if (node.type == "Color") {
             std::array<float, 4> color{ 1.0f, 1.0f, 1.0f, 1.0f };
             if (const auto found = node.values.find("Color"); found != node.values.end()) {
@@ -2879,8 +3411,9 @@ namespace CoreEngine::Editor::ShaderGraph
                 header = true;
             }
             const std::string name(pin.name);
+            const std::string label(pin.Label());
             if (const char* const hint = BindingHint(pin.binding, document.graph.target)) {
-                Row(name.c_str());
+                Row(label.c_str());
                 ImGui::TextDisabled("%s", hint);
                 continue;
             }
@@ -2888,7 +3421,7 @@ namespace CoreEngine::Editor::ShaderGraph
             const int width = (std::max)(1, WidthOf(type));
             std::array<float, 4> value = InputValue(node, pin);
             ImGui::PushID(static_cast<int>(index));
-            Row(name.c_str());
+            Row(label.c_str());
             if (ImGui::DragScalarN("##value", ImGuiDataType_Float, value.data(), width, 0.01f, nullptr, nullptr, "%.3f")) {
                 node.values[name] = value;
                 document.pendingLabel = "値を変える";
@@ -2932,7 +3465,7 @@ namespace CoreEngine::Editor::ShaderGraph
 
         Row("種類");
         if (ImGui::BeginCombo("##type", PropertyTypeLabel(property.type))) {
-            for (const PropertyType type : kPropertyTypes) {
+            for (const PropertyType type : PropertyTypesFor(document.graph)) {
                 if (ImGui::Selectable(PropertyTypeLabel(type), type == property.type) && type != property.type) {
                     property.type = type;
                     property.value = type == PropertyType::Color
@@ -2973,6 +3506,18 @@ namespace CoreEngine::Editor::ShaderGraph
             ImGui::SameLine();
             changed |= ImGui::Checkbox("データとして読む（リニア）", &property.linear);
             break;
+        case PropertyType::SamplerState:
+            ImGui::TextDisabled("線形・繰り返し");
+            break;
+        }
+        if (document.graph.subGraph) {
+            if (property.type == PropertyType::Texture2D) {
+                DimText("既定の画像は、この窓のプレビューにだけ使います。使う側でつながなければ、部品の画像（Main Texture）を読みます。");
+            } else if (property.type == PropertyType::SamplerState) {
+                DimText("使う側でつながなければ、線形・繰り返しで読みます。");
+            } else {
+                DimText("既定値は、使う側でノードを置いたときの入力の値になります。");
+            }
         }
 
         if (property.type == PropertyType::Float) {
@@ -3089,10 +3634,7 @@ namespace CoreEngine::Editor::ShaderGraph
         const std::string source = document.currentText + '\n' + document.functionFiles;
         if (source != document.hlslSource) {
             document.hlslSource = source;
-            GenerateOptions options;
-            options.sourcePath = ToAssetText(document.file);
-            options.resolveInclude = MakeIncludeResolver();
-            document.hlsl = Generate(document.graph, options);
+            document.hlsl = GenerateForEditor(document.graph, EditorGenerateOptions(document.file));
             document.hlslLines = SplitLines(document.hlsl.hlsl);
             document.hlslScrollNode = -1;
         }
@@ -3105,13 +3647,17 @@ namespace CoreEngine::Editor::ShaderGraph
             ImGui::SetClipboardText(document.hlsl.hlsl.c_str());
             document.notice = "HLSL をクリップボードへ写しました。";
         }
-        ImGui::SameLine();
-        if (ImGui::Button("書き出す…")) {
-            OpenExportDialog(document);
-        }
         ImGui::EndDisabled();
-        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-            ImGui::SetTooltip("グラフの隣に手書きのシェーダとして書き、このグラフを使う .mat を付け替えられます。");
+        if (!document.graph.subGraph) {
+            ImGui::SameLine();
+            ImGui::BeginDisabled(!document.hlsl.fatal.empty());
+            if (ImGui::Button("書き出す…")) {
+                OpenExportDialog(document);
+            }
+            ImGui::EndDisabled();
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                ImGui::SetTooltip("グラフの隣に手書きのシェーダとして書き、このグラフを使う .mat を付け替えられます。");
+            }
         }
         ImGui::SameLine();
         if (ImGui::Button("閉じる")) {
@@ -3123,7 +3669,9 @@ namespace CoreEngine::Editor::ShaderGraph
             ImGui::PopStyleColor();
             return;
         }
-        DimText("保存で書くシェーダです。ノードを選ぶと、そのノードの行に色が付きます。");
+        DimText(document.graph.subGraph
+            ? "サブグラフは生成物を作りません。プレビューの目標のグラフに置いたときのシェーダです。ノードを選ぶと、そのノードの行に色が付きます。"
+            : "保存で書くシェーダです。ノードを選ぶと、そのノードの行に色が付きます。");
 
         // 選んだノードの行（関数の外に置いた文も）
         const int selected = document.selectedNodes.size() == 1 ? document.selectedNodes.front() : 0;
@@ -3253,9 +3801,10 @@ namespace CoreEngine::Editor::ShaderGraph
             return;
         }
         Logger& log = Logger::GetInstance();
-        GenerateOptions options;
-        options.sourcePath = ToAssetText(document.file);
-        options.resolveInclude = MakeIncludeResolver();
+        if (document.graph.subGraph) {
+            return;
+        }
+        const GenerateOptions options = EditorGenerateOptions(document.file);
         const GenerateResult generated = Generate(document.graph, options);
         if (!generated.fatal.empty()) {
             document.notice = "書き出せません: " + generated.fatal;
@@ -3363,13 +3912,16 @@ namespace CoreEngine::Editor::ShaderGraph
 
     void ShaderGraphEditor::UpdateValidation(Document& document)
     {
-        // Custom Function のファイルが書き換わったら、同じ HLSL でも検査し直す
+        // Custom Function のファイルかサブグラフが書き換わったら、サブグラフのノードを今の形へ合わせ、同じ HLSL でも検査し直す
         if (ImGui::GetTime() - document.functionFilesTime >= kFunctionFileInterval) {
             document.functionFilesTime = ImGui::GetTime();
-            std::string stamps = FunctionFileStamps(document.graph);
+            std::string stamps = SourceFileStamps(document.graph);
             if (stamps != document.functionFiles) {
                 document.functionFiles = std::move(stamps);
                 document.validatedHlsl.clear();
+                if (SyncSubGraphNodes(document.graph, MakeSubGraphResolver())) {
+                    document.pendingLabel = "サブグラフの形に合わせる";
+                }
             }
         }
 
@@ -3377,11 +3929,9 @@ namespace CoreEngine::Editor::ShaderGraph
         const std::string key = document.currentText + '\n' + std::to_string(previewNode) + '\n' + document.functionFiles;
         if (key != document.requestedKey) {
             document.requestedKey = key;
-            GenerateOptions options;
-            options.sourcePath = ToAssetText(document.file);
+            GenerateOptions options = EditorGenerateOptions(document.file);
             options.previewNode = previewNode;
-            options.resolveInclude = MakeIncludeResolver();
-            GenerateResult generated = Generate(document.graph, options);
+            GenerateResult generated = GenerateForEditor(document.graph, options);
             document.issues = std::move(generated.issues);
             document.errorNodes.clear();
             for (const NodeIssue& issue : document.issues) {
@@ -3457,6 +4007,9 @@ namespace CoreEngine::Editor::ShaderGraph
         document.previewValuesText = std::move(text);
         document.previewValues = ShaderMaterial{};
         for (const Property& property : document.graph.properties) {
+            if (property.type == PropertyType::SamplerState) {
+                continue;
+            }
             if (property.type == PropertyType::Texture2D) {
                 if (!property.texture.empty()) {
                     document.previewValues.SetTexture(property.name, MaterialTexture{ property.texture, property.linear });
@@ -3475,6 +4028,19 @@ namespace CoreEngine::Editor::ShaderGraph
         }
         Logger& log = Logger::GetInstance();
         document.currentText = GraphText(document.graph);
+        if (document.graph.subGraph) {
+            std::string error;
+            if (!SaveSubGraph(document.file, document.graph, error)) {
+                document.notice = "保存できません: " + error;
+                log.Log("シェーダーサブグラフ「" + document.title + "」: " + document.notice, LogLevel::Warn, LogCategory::Shader);
+                return;
+            }
+            document.savedText = document.currentText;
+            document.notice = "保存しました。使っているグラフを作り直しています…";
+            StartRegeneration(RegenerationRequest{
+                AssetDatabase::GetInstance().GetGUID(document.file), ToAssetText(document.file), document.file });
+            return;
+        }
         const SaveResult result = SaveGraph(document.file, document.graph, *compiler_);
         if (result.graphSaved) {
             document.savedText = document.currentText;
@@ -3553,6 +4119,96 @@ namespace CoreEngine::Editor::ShaderGraph
                 failures == 0 ? LogLevel::Info : LogLevel::Error, LogCategory::Shader);
             selfTestRunning_ = false;
         });
+    }
+
+    void ShaderGraphEditor::StartRegeneration(RegenerationRequest request)
+    {
+        if (runningRegeneration_) {
+            const bool queued = std::any_of(queuedRegenerations_.begin(), queuedRegenerations_.end(),
+                [&request](const RegenerationRequest& other) { return other.file == request.file; });
+            if (!queued) {
+                queuedRegenerations_.push_back(std::move(request));
+            }
+            return;
+        }
+        if (regenerate_.joinable()) {
+            regenerate_.join();
+        }
+        regenerated_.clear();
+        regenerateDone_ = false;
+        runningRegeneration_ = request;
+        regenerate_ = std::jthread([this, request, files = FindGraphFiles()](std::stop_token stop) {
+            ShaderCompiler compiler;
+            compiler.Initialize();
+            const SubGraphResolver resolve = MakeSubGraphResolver();
+            std::vector<Regeneration> results;
+            for (const std::filesystem::path& file : files) {
+                if (stop.stop_requested()) {
+                    break;
+                }
+                Regeneration regeneration = PrepareRegeneration(file, request.guid, request.path, compiler, resolve);
+                if (regeneration.uses) {
+                    results.push_back(std::move(regeneration));
+                }
+            }
+            regenerated_ = std::move(results);
+            regenerateDone_ = true;
+        });
+    }
+
+    void ShaderGraphEditor::FinishRegeneration()
+    {
+        if (!runningRegeneration_ || !regenerateDone_) {
+            return;
+        }
+        regenerate_.join();
+        const RegenerationRequest request = *runningRegeneration_;
+        runningRegeneration_.reset();
+
+        Logger& log = Logger::GetInstance();
+        const std::string subGraphName = log.PathToUtf8(request.file.stem());
+        int rebuilt = 0;
+        std::vector<std::string> failed;
+        for (Regeneration& regeneration : regenerated_) {
+            const std::string name = log.PathToUtf8(regeneration.file.stem());
+            if (ApplyRegeneration(regeneration)) {
+                ++rebuilt;
+                continue;
+            }
+            failed.push_back(name);
+            log.Log("シェーダーグラフ「" + name + "」を作り直せません（シェーダは前のままです）: " + regeneration.error,
+                LogLevel::Warn, LogCategory::Shader);
+        }
+        regenerated_.clear();
+
+        std::string notice;
+        if (rebuilt == 0 && failed.empty()) {
+            notice = "このサブグラフを使うグラフはありません。";
+        } else {
+            notice = "作り直したグラフ " + std::to_string(rebuilt) + " 本";
+            if (!failed.empty()) {
+                std::string names;
+                for (const std::string& name : failed) {
+                    names += (names.empty() ? "" : "、") + name;
+                }
+                notice += "・作れなかったグラフ " + std::to_string(failed.size()) + " 本（" + names + "）";
+            }
+            notice += "。";
+        }
+        log.Log("シェーダーサブグラフ「" + subGraphName + "」を保存しました。" + notice,
+            failed.empty() ? LogLevel::Info : LogLevel::Warn, LogCategory::Shader);
+        for (const std::unique_ptr<Document>& document : documents_) {
+            std::error_code ec;
+            if (document->file == request.file || std::filesystem::equivalent(document->file, request.file, ec)) {
+                document->notice = "保存しました。" + notice;
+            }
+        }
+
+        if (!queuedRegenerations_.empty()) {
+            RegenerationRequest next = std::move(queuedRegenerations_.front());
+            queuedRegenerations_.erase(queuedRegenerations_.begin());
+            StartRegeneration(std::move(next));
+        }
     }
 }
 

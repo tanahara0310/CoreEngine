@@ -168,7 +168,8 @@ namespace CoreEngine
         void DrawNewShaderGraphDialog();
 
         /// @brief 新しいシェーダーグラフを作る窓を開く
-        void OpenNewShaderGraphDialog();
+        /// @param subGraph サブグラフを作る
+        void OpenNewShaderGraphDialog(bool subGraph);
 
         /// @brief 項目 1 件の右クリックメニュー（コピー・切り取り・名前の変更・削除）
         void DrawEntryContextMenu(const Entry& entry);
@@ -303,6 +304,7 @@ namespace CoreEngine
 
         // 新しいシェーダーグラフを作る窓
         bool showNewShaderGraphDialog_ = false;
+        bool newShaderGraphSubGraph_ = false; ///< サブグラフを作る
         char newShaderGraphName_[128] = {};
         int newShaderGraphTarget_ = 0; ///< 作るグラフの目標（`Editor::ShaderGraph::Target` の値）
         std::string newShaderGraphError_;

@@ -3,6 +3,7 @@
 #ifdef CORE_EDITOR
 
 #include "Editor/ShaderGraph/ShaderGraph.h"
+#include "Editor/ShaderGraph/ShaderGraphAsset.h"
 #include "Editor/ShaderGraph/ShaderGraphCodeGen.h"
 #include "Editor/ShaderGraph/ShaderGraphNodeLibrary.h"
 #include "Editor/ShaderGraph/ShaderGraphPreview.h"
@@ -38,6 +39,9 @@ namespace CoreEngine::Editor::ShaderGraph
     public:
         /// @brief 窓の名前（パネルの id）
         static constexpr const char* kPanelId = "Shader Graph";
+
+        /// @brief Project の窓からサブグラフをドラッグするときの名前（中身は `Application/Assets/…` のパス）
+        static constexpr const char* kSubGraphPayload = "SHADERSUBGRAPH_FILE";
 
         static ShaderGraphEditor& Get();
 
@@ -148,10 +152,24 @@ namespace CoreEngine::Editor::ShaderGraph
             std::filesystem::path exportPath;
             std::vector<std::pair<std::filesystem::path, bool>> exportMaterials; ///< 付け替えるか選ぶ .mat
 
+            // 選んだノードをサブグラフにする
+            bool openExtract = false;
+            std::set<int> extractNodes; ///< 窓を開いたときに選んでいたノード
+            std::string extractName;
+            std::string extractError;
+
             // グラフの欄（ポストエフェクトの登録）
             std::vector<std::filesystem::path> graphMaterials; ///< このグラフのシェーダを使う .mat
             double graphMaterialsTime = -1.0e9;                 ///< 最後に .mat を探した時刻
             int registerStage = 1;                              ///< Project.json に足すときの段（kStages の番号）
+        };
+
+        /// @brief 検索に出すサブグラフ 1 つ
+        struct SubGraphChoice
+        {
+            std::string name;
+            std::string category; ///< 検索の木の場所（`Sub Graphs/…`）
+            Node node;            ///< 置くノード（番号は置くときに決める）
         };
 
         /// @brief ノードの検索を開いたときの状態
@@ -165,6 +183,15 @@ namespace CoreEngine::Editor::ShaderGraph
             float screenX = 0.0f;
             float screenY = 0.0f;
             std::optional<int> fromPin; ///< つながりを落とした元のピン
+            std::vector<SubGraphChoice> subGraphs; ///< 開いたときに集めた、置けるサブグラフ
+        };
+
+        /// @brief 保存したサブグラフを使うグラフの作り直し
+        struct RegenerationRequest
+        {
+            std::string guid;
+            std::string path;
+            std::filesystem::path file;
         };
 
         void EnsureNodesContext();
@@ -188,6 +215,8 @@ namespace CoreEngine::Editor::ShaderGraph
         void DrawFunctionInspector(Document& document, Node& node);
         void DrawFunctionPins(Document& document, Node& node, bool inputs);
         void DrawGraphInspector(Document& document);
+        void DrawSubGraphInspector(Document& document);
+        void DrawOutputsInspector(Document& document, Node& node);
         void DrawGroupInspector(Document& document, Group& group);
         void DrawStickyInspector(Document& document, Node& node);
         bool DrawPropertyInspector(Document& document, Property& property);
@@ -204,6 +233,18 @@ namespace CoreEngine::Editor::ShaderGraph
         void OpenSearch(Document& document, std::optional<int> fromPin);
         bool Accepts(const Document& document, const NodeDesc& desc, std::optional<int> fromPin) const;
         void PlaceNode(Document& document, const std::string& type, float x, float y, std::optional<int> fromPin);
+        /// @brief ノードに番号を付けて置き、fromPin があればつなぐ
+        void AddNode(Document& document, Node node, std::optional<int> fromPin);
+        /// @brief 検索に出すサブグラフを集める（輪になるもの・この目標で使えないものは出さない）
+        void CollectSubGraphChoices(const Document& document);
+        /// @brief Project の窓から落としたサブグラフを置く
+        void PlaceSubGraphFile(Document& document, const std::string& assetPath, float x, float y);
+        /// @brief サブグラフのノードが指すサブグラフを開く
+        void OpenSubGraph(Document& document, const Node& node);
+        void DrawExtractDialog(Document& document);
+        /// @brief 選んでいたノードをサブグラフへ切り出す
+        /// @return 切り出せたら true
+        bool ExtractSelection(Document& document);
         void DeleteSelection(Document& document);
         void CopySelection(const Document& document);
         void Paste(Document& document, float x, float y);
@@ -237,6 +278,11 @@ namespace CoreEngine::Editor::ShaderGraph
         /// @brief 全ノードの検査を裏で始める（結果はログへ出す）
         void RunSelfTest();
 
+        /// @brief サブグラフを使うグラフの作り直しを裏で始める（走っていれば後に回す）
+        void StartRegeneration(RegenerationRequest request);
+        /// @brief 裏の作り直しが終わっていれば、生成物を書いて知らせる
+        void FinishRegeneration();
+
         EngineSystem* engine_ = nullptr;
         std::unique_ptr<ShaderCompiler> compiler_;
         ShaderGraphPreview preview_;
@@ -256,6 +302,12 @@ namespace CoreEngine::Editor::ShaderGraph
         ScopedRegistration selfTestMenu_;
         std::jthread selfTest_;
         std::atomic<bool> selfTestRunning_ = false;
+
+        std::jthread regenerate_;
+        std::atomic<bool> regenerateDone_ = false;
+        std::optional<RegenerationRequest> runningRegeneration_;
+        std::vector<RegenerationRequest> queuedRegenerations_;
+        std::vector<Regeneration> regenerated_; ///< 裏のスレッドが作ったもの（終わってから読む）
     };
 }
 
