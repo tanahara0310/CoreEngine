@@ -20,6 +20,7 @@ namespace CoreEngine
     class ShaderMaterialPipeline;
     class UploadRing;
     struct MaterialParamLayout;
+    struct SurfaceDeformVariant;
     struct SurfaceMaterialVariant;
 
     /// @brief 描画の部品が持つマテリアルの欄（共有のマテリアルと、この部品だけの上書き）
@@ -87,12 +88,18 @@ namespace CoreEngine
         /// @return 描けるなら true
         bool BindSurface(ID3D12GraphicsCommandList* commandList, const SurfaceMaterialVariant& variant, UploadRing& uploadRing);
 
+        /// @brief レイトレの影の形を作るコンピュートシェーダへ値（b10）とテクスチャを差す
+        /// @return 動かせるなら true
+        bool BindSurfaceDeform(ID3D12GraphicsCommandList* commandList, const SurfaceDeformVariant& variant,
+            UploadRing& uploadRing);
+
     private:
         /// @brief 値の定数バッファと、`gTexture` 以外のテクスチャを差す
         /// @param textureSlots `layout.textures` と同じ並びのルートパラメータ（無効なものは差さない）
+        /// @param compute コンピュートのルート引数へ差すか
         /// @return 描けるなら true
         bool BindParams(ID3D12GraphicsCommandList* commandList, const MaterialParamLayout& layout, RootSlot paramsSlot,
-            std::span<const RootSlot> textureSlots, UploadRing& uploadRing);
+            std::span<const RootSlot> textureSlots, UploadRing& uploadRing, bool compute = false);
 
         /// @brief 値を定数バッファの並びに詰め直す（並びか値が変わったときだけ）
         void Pack(const MaterialParamLayout& layout);

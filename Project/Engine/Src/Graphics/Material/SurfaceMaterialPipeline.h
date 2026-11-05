@@ -68,6 +68,18 @@ namespace CoreEngine
         ID3D12PipelineState* GetPipelineState(BlendMode mode) const;
     };
 
+    /// @brief 頂点の関数を持つシェーダの、レイトレの影の形を作るコンピュートシェーダ（`SurfaceDeformMain`）
+    struct SurfaceDeformVariant
+    {
+        std::unique_ptr<RootSignatureManager> rootSignature;
+        Microsoft::WRL::ComPtr<ID3D12PipelineState> pipelineState;
+        const MaterialParamLayout* layout = nullptr; ///< 持ち主のパイプラインの値の並び
+        BindingTable bindings;                       ///< `VertexAnimationDeformBind` の並び
+        RootSlot mainTextureSlot;                    ///< モデルのベースカラーのテクスチャ（`gTexture`。読まなければ無効）
+        RootSlot paramsSlot;                         ///< マテリアルの値（b10）
+        std::vector<RootSlot> textureSlots;          ///< `layout->textures` と同じ並び（使わないものは無効）
+    };
+
     /// @brief 3D モデルのマテリアルのシェーダ（`名前.Surface.hlsl`）で組んだパイプライン
     /// @details 静的なモデルとスキンのモデル、GBuffer（不透明）と前方描画（ブレンドあり）の 4 通りがあり、
     ///          使うときに初めて組む。値の並びは b10 の定数バッファ、テクスチャは t11 から読む。
@@ -105,6 +117,10 @@ namespace CoreEngine
         /// @brief 頂点の関数（`#define SURFACE_VERTEX`）を持つか
         bool HasVertexFunction() const { return hasVertexFunction_; }
 
+        /// @brief レイトレの影の形を作るコンピュートシェーダを引く（初めてなら組む）
+        /// @return 頂点の関数が無いか、組めなければ nullptr
+        const SurfaceDeformVariant* GetDeformVariant();
+
     private:
         static constexpr size_t kVariantCount = 4;
 
@@ -119,6 +135,9 @@ namespace CoreEngine
         /// @brief 頂点シェーダをコンパイルする（頂点の関数があれば自分のファイルの入口・GBuffer と前方描画で同じもの）
         Microsoft::WRL::ComPtr<IDxcBlob> CompileVertexShader(Pass pass, bool skinned, std::string& error);
 
+        /// @brief レイトレの影の形を作るコンピュートシェーダを組む
+        bool BuildDeformVariant();
+
         ID3D12Device* device_ = nullptr;
         ShaderCompiler* compiler_ = nullptr;
         ShaderReflectionBuilder* reflectionBuilder_ = nullptr;
@@ -129,6 +148,8 @@ namespace CoreEngine
         Microsoft::WRL::ComPtr<IDxcBlob> forwardPixelShader_;
         bool hasVertexFunction_ = false;
         std::array<Microsoft::WRL::ComPtr<IDxcBlob>, 2> ownVertexShaders_; ///< 頂点の関数があるときの静的・スキン
+        std::unique_ptr<SurfaceDeformVariant> deform_;
+        bool deformAttempted_ = false;
     };
 
     /// @brief 3D モデルのマテリアルのシェーダごとにパイプラインを 1 つずつ持つ

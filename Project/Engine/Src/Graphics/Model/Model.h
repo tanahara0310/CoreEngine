@@ -176,6 +176,12 @@ namespace CoreEngine
             surfaceSlot_ = slot;
         }
 
+        /// @brief 描いている 3D モデルのマテリアルのパイプライン（指していないか組めなければ nullptr）
+        SurfaceMaterialPipeline* GetSurfacePipeline() const { return surfacePipeline_; }
+
+        /// @brief 3D モデルのマテリアルの値とテクスチャの欄（指していなければ nullptr）
+        ShaderMaterialSlot* GetSurfaceSlot() const { return surfaceSlot_; }
+
     private:
         /// @brief 3D モデルのマテリアルの組み合わせを引く（指していなければ nullptr）
         const SurfaceMaterialVariant* ResolveSurfaceVariant(bool gBufferPass, bool skinned) const;

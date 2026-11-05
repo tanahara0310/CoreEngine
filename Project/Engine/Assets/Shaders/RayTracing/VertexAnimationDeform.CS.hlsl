@@ -29,7 +29,7 @@ struct DeformConstants
     uint indexStart; // このサブメッシュのインデックスの開始位置（LOD0）
     uint indexCount; // インデックス数
     uint vertexCount; // 頂点数（範囲外の添字は捨てる）
-    uint padding;
+    uint applyVertexAnimation; // 使わない（ModelSurface.hlsli の SurfaceDeformMain と同じ並びにする）
 };
 
 StructuredBuffer<SourceVertex> gSourceVertices : register(t0);

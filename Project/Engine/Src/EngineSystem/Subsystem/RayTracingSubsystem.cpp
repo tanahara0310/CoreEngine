@@ -24,6 +24,7 @@
 #include "Graphics/RayTracing/VertexAnimationDeformer.h"
 #include "Graphics/Render/Model/VertexAnimation.h"
 #include "Graphics/Material/MaterialInstance.h"
+#include "Graphics/Material/SurfaceMaterialPipeline.h"
 #include "Graphics/Model/VertexData.h"
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
@@ -319,7 +320,7 @@ namespace CoreEngine
             ID3D12Resource* vertices = nullptr;      ///< 動いた頂点（揺れる物は変形の後に入る）
             uint32_t vertexBufferIndex = UINT32_MAX; ///< その頂点の SRV（ヒットシェーディングが読む）
             bool changed = true;                     ///< 前フレームから頂点が動いたか
-            int deformIndex = -1;                    ///< deformRequests の番号（揺れる物だけ）
+            int deformIndex = -1;                    ///< deformRequests の番号（揺れる物・頂点を動かすマテリアルの物だけ）
         };
         std::vector<DynamicTarget> dynamicTargets;
         std::vector<VertexAnimationDeformer::Request> deformRequests;
@@ -368,16 +369,35 @@ namespace CoreEngine
                     target.row = tlasInstances.size();
                     target.owner = &renderer;
                     target.resource = resource;
+                    // 頂点を動かすマテリアル（`#define SURFACE_VERTEX`）は、揺れと同じ距離の内で同じ式の CS を掛ける
+                    SurfaceMaterialPipeline* const surface = model->GetSurfacePipeline();
+                    const bool surfaceMoves = deformer && surface && surface->HasVertexFunction()
+                        && withinSwayDistance(&renderer, *resource, world, renderer.GetBoundsPadding());
                     if (model->HasSkinCluster()) {
                         target.vertices = mutableModel->PrepareSkinnedVerticesForRayTracing(asCmdList, target.changed);
                         target.vertexBufferIndex = model->GetSkinnedVertexBufferHeapIndex();
                         if (target.vertices) {
+                            if (surfaceMoves) {
+                                // スキン済みの頂点にもう 1 回掛ける（作れなければスキン済みの頂点のまま）
+                                target.deformIndex = static_cast<int>(deformRequests.size());
+                                VertexAnimationDeformer::Request request{ &renderer, model, world };
+                                request.sourceVertices = target.vertices;
+                                request.surface = surface;
+                                request.slot = model->GetSurfaceSlot();
+                                request.applyVertexAnimation = false;
+                                deformRequests.push_back(request);
+                            }
                             dynamicTargets.push_back(target);
                         }
-                    } else if (swaying && SwaysWithWindOrWater(*model, animParams)
-                        && withinSwayDistance(&renderer, *resource, world, renderer.GetBoundsPadding())) {
+                    } else if (surfaceMoves || (swaying && SwaysWithWindOrWater(*model, animParams)
+                        && withinSwayDistance(&renderer, *resource, world, renderer.GetBoundsPadding()))) {
                         target.deformIndex = static_cast<int>(deformRequests.size());
-                        deformRequests.push_back({ &renderer, model, world });
+                        VertexAnimationDeformer::Request request{ &renderer, model, world };
+                        if (surfaceMoves) {
+                            request.surface = surface;
+                            request.slot = model->GetSurfaceSlot();
+                        }
+                        deformRequests.push_back(request);
                         dynamicTargets.push_back(target);
                     }
                 }
@@ -398,8 +418,11 @@ namespace CoreEngine
                 for (DynamicTarget& target : dynamicTargets) {
                     if (target.deformIndex >= 0) {
                         const VertexAnimationDeformer::Output& output = deformed[static_cast<size_t>(target.deformIndex)];
-                        target.vertices = output.vertices;
-                        target.vertexBufferIndex = output.vertexBufferIndex;
+                        if (output.vertices) {
+                            target.vertices = output.vertices;
+                            target.vertexBufferIndex = output.vertexBufferIndex;
+                            target.changed = true;
+                        }
                     }
                     // 作れなければ静止形の BLAS のまま
                     if (!target.vertices) {

@@ -3,6 +3,8 @@
 
 #include "Graphics/Material/ShaderMaterial.h"
 #include "Graphics/Material/ShaderMaterialLibrary.h"
+#include "Graphics/Pipeline/ComputePipelineUtil.h"
+#include "Graphics/RayTracing/VertexAnimationDeformer.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/Model/ModelBindings.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
@@ -11,6 +13,7 @@
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Utility/Logger/Logger.h"
 
+#include <exception>
 #include <fstream>
 #include <iterator>
 #include <sstream>
@@ -30,6 +33,25 @@ namespace CoreEngine
             config.ConfigureResource("gVertexAnim", BindingStrategy::RootConstants);
             config.ConfigureSampler("gSampler", SamplerConfig::Anisotropic());
             config.ConfigureSampler("gShadowSampler", SamplerConfig::Shadow());
+            config.ConfigureSampler("gPointSampler", SamplerConfig::Point());
+            config.ConfigureSampler("gClampSampler", SamplerConfig::LinearClamp());
+            return config;
+        }
+
+        /// @brief レイトレの影の形を作るコンピュートシェーダの差し方（頂点の並びと定数はルート・テクスチャは表）
+        RootSignatureConfig MakeDeformConfig()
+        {
+            RootSignatureConfig config;
+            config.SetFlags(D3D12_ROOT_SIGNATURE_FLAG_NONE);
+            config.SetDefaultCBVStrategy(BindingStrategy::RootDescriptor);
+            config.SetDefaultSRVStrategy(BindingStrategy::DescriptorTable);
+            config.SetDefaultSamplerStrategy(BindingStrategy::StaticSampler);
+            config.ConfigureResource("gVertexAnim", BindingStrategy::RootConstants);
+            config.ConfigureResource("gDeform", BindingStrategy::RootConstants);
+            config.ConfigureResource("gSourceVertices", BindingStrategy::RootDescriptor);
+            config.ConfigureResource("gIndices", BindingStrategy::RootDescriptor);
+            config.ConfigureResource("gOutputVertices", BindingStrategy::RootDescriptor);
+            config.ConfigureSampler("gSampler", SamplerConfig::Anisotropic());
             config.ConfigureSampler("gPointSampler", SamplerConfig::Point());
             config.ConfigureSampler("gClampSampler", SamplerConfig::LinearClamp());
             return config;
@@ -242,6 +264,72 @@ namespace CoreEngine
             variant->textureSlots.push_back(variant->rootSignature->GetRootSlot(name));
         }
         variants_[VariantIndex(pass, skinned)] = std::move(variant);
+        return true;
+    }
+
+    const SurfaceDeformVariant* SurfaceMaterialPipeline::GetDeformVariant()
+    {
+        if (!hasVertexFunction_) {
+            return nullptr;
+        }
+        if (!deformAttempted_) {
+            deformAttempted_ = true;
+            BuildDeformVariant();
+        }
+        return deform_.get();
+    }
+
+    bool SurfaceMaterialPipeline::BuildDeformVariant()
+    {
+        Logger& log = Logger::GetInstance();
+        std::string error;
+        const Microsoft::WRL::ComPtr<IDxcBlob> blob = compiler_->CompileShader(
+            log.Utf8ToPath(shaderPath_).wstring(), L"cs_6_0", kSurfaceDeformEntry, &error);
+        if (!blob) {
+            log.Logf(LogLevel::Error, LogCategory::Shader,
+                "3D モデルのマテリアルのシェーダ {} の影の形を作るシェーダをコンパイルできません: {}", shaderPath_, error);
+            return false;
+        }
+
+        const std::string shaderName = "SurfaceDeform " + shaderPath_;
+        const std::unique_ptr<ShaderReflectionData> reflection = reflectionBuilder_->BuildFromComputeShader(blob.Get(), shaderName);
+        if (!reflection) {
+            return false;
+        }
+
+        auto variant = std::make_unique<SurfaceDeformVariant>();
+        variant->rootSignature = std::make_unique<RootSignatureManager>();
+        const auto rootResult = variant->rootSignature->Build(device_, *reflection, MakeDeformConfig());
+        if (!rootResult.success) {
+            log.Logf(LogLevel::Error, LogCategory::Shader,
+                "3D モデルのマテリアルのシェーダ {} の影の形を作るルートシグネチャを作れません: {}", shaderPath_,
+                rootResult.errorMessage);
+            return false;
+        }
+        variant->pipelineState = ComputePipelineUtil::Create(
+            device_, variant->rootSignature->GetRootSignature(), blob.Get(), shaderName);
+        if (!variant->pipelineState) {
+            return false;
+        }
+        try {
+            variant->bindings = BindingTable::Resolve(*reflection, VertexAnimationDeformBind::kSurfaceDecls, shaderName,
+                /*warnUndeclared=*/false);
+        }
+        catch (const std::exception& e) {
+            log.Logf(LogLevel::Error, LogCategory::Shader,
+                "3D モデルのマテリアルのシェーダ {} の影の形を作るシェーダの資源が足りません: {}", shaderPath_, e.what());
+            return false;
+        }
+
+        ReadMaterialParamLayout(compiler_->GetDxcUtils(), blob.Get(), layout_, shaderName, kSurfaceMaterialRegisters);
+        variant->layout = &layout_;
+        variant->mainTextureSlot = variant->rootSignature->GetRootSlot("gTexture");
+        variant->paramsSlot = layout_.bufferName.empty() ? RootSlot{} : variant->rootSignature->GetRootSlot(layout_.bufferName);
+        variant->textureSlots.reserve(layout_.textures.size());
+        for (const std::string& name : layout_.textures) {
+            variant->textureSlots.push_back(variant->rootSignature->GetRootSlot(name));
+        }
+        deform_ = std::move(variant);
         return true;
     }
 
