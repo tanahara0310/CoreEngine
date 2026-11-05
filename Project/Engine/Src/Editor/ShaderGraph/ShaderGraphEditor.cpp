@@ -97,6 +97,23 @@ namespace CoreEngine::Editor::ShaderGraph
         /// @brief 覚えておくノードのプレビューのタイルの並びの数
         constexpr size_t kPreviewLayouts = 8;
 
+        /// @brief 中継点の余白とピンの幅（px）
+        constexpr float kRedirectPadding = 3.0f;
+        constexpr float kRedirectPinWidth = 6.0f;
+
+        /// @brief 中継点の中央のつかむ所の幅（両端のピンの当たりの外に 12px 残す）
+        float RedirectHandleWidth()
+        {
+            const float pins = 2.0f * (kRedirectPadding + kRedirectPinWidth);
+            return (std::max)(8.0f, 2.0f * ImNodes::GetStyle().PinHoverRadius + 12.0f - pins);
+        }
+
+        /// @brief 中継点の幅（px）
+        float RedirectWidth()
+        {
+            return 2.0f * (kRedirectPadding + kRedirectPinWidth) + RedirectHandleWidth();
+        }
+
         int InputPinId(int node, size_t index)
         {
             return node * kPinStride + static_cast<int>(index);
@@ -1549,20 +1566,29 @@ namespace CoreEngine::Editor::ShaderGraph
         const ValueType outputType = resolved != document.resolution.nodes.end() && !resolved->second.outputs.empty()
             ? resolved->second.outputs.front() : ValueType::Float;
         const float height = ImGui::GetTextLineHeight() * 0.6f;
+        const float handle = RedirectHandleWidth();
 
-        ImNodes::PushStyleVar(ImNodesStyleVar_NodePadding, ImVec2(3.0f, 3.0f));
+        ImNodes::PushStyleVar(ImNodesStyleVar_NodePadding, ImVec2(kRedirectPadding, kRedirectPadding));
         ImGui::PushID(node.id);
         ImNodes::BeginNode(node.id);
         ImNodes::PushColorStyle(ImNodesCol_Pin, ToU32(PinColor(inputType)));
         ImNodes::BeginInputAttribute(InputPinId(node.id, 0),
             PinShape(inputType, document.graph.FindLinkTo(node.id, "In") != nullptr));
-        ImGui::Dummy(ImVec2(6.0f, height));
+        ImGui::Dummy(ImVec2(kRedirectPinWidth, height));
         ImNodes::EndInputAttribute();
         ImNodes::PopColorStyle();
-        ImGui::SameLine(0.0f, 2.0f);
+
+        // 中央のつかむ所（ピンの当たりの外なので、押すとノードを選んで動かせる）
+        ImGui::SameLine(0.0f, 0.0f);
+        const ImVec2 handleMin = ImGui::GetCursorScreenPos();
+        ImGui::Dummy(ImVec2(handle, height));
+        ImGui::GetWindowDrawList()->AddCircleFilled(ImVec2(handleMin.x + handle * 0.5f, handleMin.y + height * 0.5f),
+            2.5f, ImGui::GetColorU32(ImGuiCol_TextDisabled));
+        ImGui::SameLine(0.0f, 0.0f);
+
         ImNodes::PushColorStyle(ImNodesCol_Pin, ToU32(PinColor(outputType)));
         ImNodes::BeginOutputAttribute(OutputPinId(node.id, 0), PinShape(outputType, true));
-        ImGui::Dummy(ImVec2(6.0f, height));
+        ImGui::Dummy(ImVec2(kRedirectPinWidth, height));
         ImNodes::EndOutputAttribute();
         ImNodes::PopColorStyle();
         ImNodes::EndNode();
@@ -1983,6 +2009,35 @@ namespace CoreEngine::Editor::ShaderGraph
                 return candidate.toNode == pin.node && candidate.toPin == name;
             }) > 0;
         }
+        // 消す中継点の前と後をつなぎ直す（消さないノードどうしの値の流れは切らない）
+        std::set<int> removing;
+        for (const int id : document.selectedNodes) {
+            if (const Node* const node = document.graph.FindNode(id); node && !IsMasterNodeType(node->type)) {
+                removing.insert(id);
+            }
+        }
+        const auto removedRedirect = [&document, &removing](int id) {
+            const Node* const node = document.graph.FindNode(id);
+            return node && node->type == kRedirectNodeType && removing.contains(id);
+        };
+        std::vector<Link> bridges;
+        for (const int id : removing) {
+            if (!removedRedirect(id)) {
+                continue;
+            }
+            const Link* source = document.graph.FindLinkTo(id, "In");
+            for (size_t step = 0; source && removedRedirect(source->fromNode) && step < document.graph.nodes.size(); ++step) {
+                source = document.graph.FindLinkTo(source->fromNode, "In");
+            }
+            if (!source || removing.contains(source->fromNode)) {
+                continue;
+            }
+            for (const Link& link : document.graph.links) {
+                if (link.fromNode == id && !removing.contains(link.toNode)) {
+                    bridges.push_back(Link{ source->fromNode, source->fromPin, link.toNode, link.toPin });
+                }
+            }
+        }
         for (const int id : document.selectedNodes) {
             const Node* const node = document.graph.FindNode(id);
             if (!node || IsMasterNodeType(node->type)) {
@@ -1990,6 +2045,9 @@ namespace CoreEngine::Editor::ShaderGraph
             }
             document.graph.RemoveNode(id);
             changed = true;
+        }
+        for (const Link& bridge : bridges) {
+            document.graph.links.push_back(bridge);
         }
         if (changed) {
             document.selectedNodes.clear();
@@ -2170,7 +2228,7 @@ namespace CoreEngine::Editor::ShaderGraph
         Node redirect;
         redirect.id = document.graph.NextNodeId();
         redirect.type = std::string(kRedirectNodeType);
-        redirect.x = x - 10.0f;
+        redirect.x = x - RedirectWidth() * 0.5f;
         redirect.y = y - 8.0f;
         const int id = redirect.id;
         document.graph.nodes.push_back(std::move(redirect));
