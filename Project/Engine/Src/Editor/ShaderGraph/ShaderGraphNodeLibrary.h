@@ -6,6 +6,7 @@
 
 #include <array>
 #include <functional>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -69,9 +70,13 @@ namespace CoreEngine::Editor::ShaderGraph
         std::array<float, 4> fallback{ 0.0f, 0.0f, 0.0f, 0.0f }; ///< つながっていないときの値
         PinBinding binding = PinBinding::Value;
         uint8_t targets = kAllTargets; ///< ピンを出す目標（出口の欄を目標で変える）
+        std::string_view label;        ///< 表示名（空なら name。サブグラフのピンは name が鍵）
 
         /// @brief この目標で使うピンか
         bool Supports(Target target) const { return (targets & TargetBit(target)) != 0; }
+
+        /// @brief 表示名
+        std::string_view Label() const { return label.empty() ? name : label; }
     };
 
     /// @brief ノードの設定 1 つ（選択肢か文字）
@@ -100,6 +105,37 @@ namespace CoreEngine::Editor::ShaderGraph
     /// @return 直せなければ false（error に訳）
     using IncludeResolver = std::function<bool(const std::string& file, std::string& includeName, std::string& error)>;
 
+    /// @brief サブグラフのノードの指す先（GUID とパス）からサブグラフを返す
+    /// @return 読めなければ nullptr（error に訳）
+    using SubGraphResolver = std::function<std::shared_ptr<const Graph>(const std::string& guid, const std::string& path,
+        std::string& error)>;
+
+    /// @brief サブグラフの入力か出力 1 つ（`種類 鍵 表示名`）
+    struct SubGraphPin
+    {
+        PropertyType type = PropertyType::Float; ///< 入力は Float〜Color・Texture2D・SamplerState、出力は Color を除く
+        std::string key;   ///< ピンの名前（p1・o1。表示名を変えても線が切れない）
+        std::string label; ///< 表示名
+    };
+
+    /// @brief サブグラフの入力・出力の数の上限（それぞれ）
+    inline constexpr size_t kMaxSubGraphPins = 32;
+
+    /// @brief サブグラフのピンの並び（`種類 鍵 表示名;…`）を読む（読めない項目は飛ばす）
+    std::vector<SubGraphPin> ParseSubGraphPins(std::string_view text);
+
+    /// @brief サブグラフのピンの並びを設定の文字にする
+    std::string FormatSubGraphPins(const std::vector<SubGraphPin>& pins);
+
+    /// @brief プロパティの種類をピンの種類へ（Color は Vector4）
+    ValueType ToValueType(PropertyType type);
+
+    /// @brief 目標の印の並びを文字にする（`Sprite,PostEffect,Lit,Unlit`。無ければ `None`）
+    std::string FormatTargets(uint8_t targets);
+
+    /// @brief 目標の印の並びを読む（空なら全部）
+    uint8_t ParseTargets(std::string_view text);
+
     /// @brief ノードの HLSL を作るときに渡すもの
     struct EmitArgs
     {
@@ -125,6 +161,7 @@ namespace CoreEngine::Editor::ShaderGraph
 
         std::vector<GlobalCode> globals; ///< 関数の外に置く文
         IncludeResolver resolveInclude;  ///< Custom Function のファイルの include の名前を決める（空ならファイル名）
+        std::string prefix;              ///< 変数の名前の前置き（サブグラフの中のノードは、使う側のノードの `n番号_`）
 
         /// @brief 出力の変数の名前
         std::string VariableName(size_t output) const;
@@ -179,7 +216,7 @@ namespace CoreEngine::Editor::ShaderGraph
     /// @note Custom Function は既定のピンの定義を返す。置いたノードには `FindNodeDesc(const Node&)` を使う
     const NodeDesc* FindNodeDesc(std::string_view type);
 
-    /// @brief 置いたノードの定義を引く（Custom Function はノードの設定のピンで作った定義。無ければ nullptr）
+    /// @brief 置いたノードの定義を引く（Custom Function・サブグラフ・サブグラフの出口は、ノードの設定のピンで作った定義。無ければ nullptr）
     const NodeDesc* FindNodeDesc(const Node& node);
 
     /// @brief ピンの種類の名前（Custom Function の設定に書く綴り）

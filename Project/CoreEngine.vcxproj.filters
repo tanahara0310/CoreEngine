@@ -529,6 +529,9 @@
     <ClCompile Include="Engine\Src\Editor\ShaderGraph\ShaderGraphSelfTest.cpp">
       <Filter>Engine\Src\Editor\ShaderGraph</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\ShaderGraph\ShaderGraphSubGraph.cpp">
+      <Filter>Engine\Src\Editor\ShaderGraph</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Inspector\TextureImportInspector.cpp">
       <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClCompile>
@@ -2401,6 +2404,9 @@
       <Filter>Engine\Src\Editor\ShaderGraph</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ShaderGraph\ShaderGraphSelfTest.h">
+      <Filter>Engine\Src\Editor\ShaderGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ShaderGraph\ShaderGraphSubGraph.h">
       <Filter>Engine\Src\Editor\ShaderGraph</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Inspector\TextureImportInspector.h">

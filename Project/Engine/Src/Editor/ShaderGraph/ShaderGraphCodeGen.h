@@ -43,6 +43,7 @@ namespace CoreEngine::Editor::ShaderGraph
         int previewNode = 0;     ///< 0 以外なら、このノードの出力を色として出す
         std::string previewPin;  ///< 映す出力ピン（空なら最初の数の出力）
         IncludeResolver resolveInclude; ///< Custom Function のファイルの include の名前を決める（空ならファイル名）
+        SubGraphResolver resolveSubGraph; ///< サブグラフのノードの中身を読む（空ならサブグラフのノードはエラー）
     };
 
     /// @brief HLSL を作った結果

@@ -64,6 +64,7 @@ namespace CoreEngine::Editor::ShaderGraph
         Vector4,
         Color,
         Texture2D,
+        SamplerState, ///< サブグラフの入力だけ
     };
 
     /// @brief プロパティの種類の名前（ファイルに書く綴り）
@@ -130,10 +131,16 @@ namespace CoreEngine::Editor::ShaderGraph
     /// @brief 3D の頂点の出口のノードの種類（Vertex）
     inline constexpr std::string_view kVertexMasterNodeType = "MasterVertex";
 
-    /// @brief 出口のノード（Fragment か Vertex）か
+    /// @brief サブグラフの出口のノードの種類
+    inline constexpr std::string_view kSubGraphOutputType = "SubGraphOutput";
+
+    /// @brief サブグラフを使うノードの種類
+    inline constexpr std::string_view kSubGraphNodeType = "SubGraph";
+
+    /// @brief 出口のノード（Fragment・Vertex・サブグラフの出口）か
     constexpr bool IsMasterNodeType(std::string_view type)
     {
-        return type == kMasterNodeType || type == kVertexMasterNodeType;
+        return type == kMasterNodeType || type == kVertexMasterNodeType || type == kSubGraphOutputType;
     }
 
     /// @brief 付箋のノードの種類
@@ -142,11 +149,13 @@ namespace CoreEngine::Editor::ShaderGraph
     /// @brief 線の途中の中継点のノードの種類
     inline constexpr std::string_view kRedirectNodeType = "Redirect";
 
-    /// @brief グラフ全体（.shadergraph の中身）
+    /// @brief グラフ全体（.shadergraph と .shadersubgraph の中身）
     struct Graph
     {
         int version = 1;
-        Target target = Target::Sprite;
+        Target target = Target::Sprite; ///< サブグラフはプレビューの目標
+        bool subGraph = false;          ///< サブグラフか（properties が入力・出口は SubGraphOutput）
+        std::string category;           ///< サブグラフ: 使う側の検索の分類（空なら Sub Graphs の直下）
         std::vector<Property> properties;
         std::vector<Node> nodes;
         std::vector<Link> links;
@@ -163,6 +172,9 @@ namespace CoreEngine::Editor::ShaderGraph
 
         /// @brief 頂点の出口のノード（無ければ nullptr）
         const Node* FindVertexMaster() const;
+
+        /// @brief サブグラフの出口のノード（無ければ nullptr）
+        const Node* FindSubGraphOutput() const;
 
         /// @brief 入力ピンへつながっているつながり（無ければ nullptr）
         const Link* FindLinkTo(int node, std::string_view pin) const;
@@ -194,6 +206,12 @@ namespace CoreEngine::Editor::ShaderGraph
 
     /// @brief 出口だけを置いた空のグラフ（3D は Fragment の出口が 1 番・Vertex の出口が 2 番）
     Graph MakeEmptyGraph(Target target);
+
+    /// @brief 出口（出力 1 つ）だけを置いた空のサブグラフ
+    Graph MakeEmptySubGraph(Target previewTarget);
+
+    /// @brief 作ったサブグラフの出口の出力の並び
+    inline constexpr std::string_view kDefaultSubGraphOutputs = "Vector4 o1 Out";
 
     /// @brief JSON からグラフを読む
     /// @param warnings 読み飛ばしたもの

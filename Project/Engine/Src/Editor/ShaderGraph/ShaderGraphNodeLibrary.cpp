@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <charconv>
 #include <cmath>
+#include <deque>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -176,7 +177,8 @@ namespace CoreEngine::Editor::ShaderGraph
                 first = false;
             }
             for (size_t index = 0; index < args.desc.outputs.size(); ++index) {
-                const std::string variable = "n" + std::to_string(args.node.id) + "_" + std::string(args.desc.outputs[index].name);
+                const std::string variable = args.prefix + "n" + std::to_string(args.node.id) + "_"
+                    + std::string(args.desc.outputs[index].name);
                 args.code += "    " + TypeName(args.outType[index]) + " " + variable + " = "
                     + Literal({ 0.0f, 0.0f, 0.0f, 0.0f }, WidthOf(args.outType[index])) + ";\n";
                 args.outExpr[index] = variable;
@@ -299,18 +301,16 @@ namespace CoreEngine::Editor::ShaderGraph
                 desc.creatable = false;
                 desc.resolveOutputs = [](const Graph& graph, const Node& node, int, std::vector<ValueType>& out) {
                     const Property* const property = graph.FindProperty(node.property);
-                    if (!property) {
-                        out[0] = F;
-                    } else if (property->type == PropertyType::Texture2D) {
-                        out[0] = Tex;
-                    } else {
-                        out[0] = VectorType(WidthOf(property->type));
-                    }
+                    out[0] = property ? ToValueType(property->type) : F;
                 };
                 desc.emit = [](EmitArgs& args) {
                     const Property* const property = args.graph.FindProperty(args.node.property);
                     if (!property) {
                         args.error = "指しているプロパティがありません";
+                        return;
+                    }
+                    if (property->type == PropertyType::SamplerState) {
+                        args.error = "サンプラーの入力はサブグラフの中でだけ使えます";
                         return;
                     }
                     if (property->type == PropertyType::Texture2D) {
@@ -1174,6 +1174,27 @@ namespace CoreEngine::Editor::ShaderGraph
                 nodes.push_back(std::move(desc));
             }
 
+            // ===== サブグラフ（ピンはノードの設定の写しから作る） =====
+            {
+                NodeDesc desc;
+                desc.type = kSubGraphNodeType;
+                desc.title = "Sub Graph";
+                desc.category = "";
+                desc.summary = "サブグラフ（.shadersubgraph）の中のノードを、ここへ展開して使います。ダブルクリックで開きます。";
+                desc.creatable = false;
+                nodes.push_back(std::move(desc));
+            }
+            {
+                NodeDesc desc;
+                desc.type = kSubGraphOutputType;
+                desc.title = "Output";
+                desc.category = "";
+                desc.summary = "サブグラフの出口。ここへつないだ値が、使う側のノードの出力になります。"
+                               "出力の足し引きは、選んで Inspector から行います。";
+                desc.creatable = false;
+                nodes.push_back(std::move(desc));
+            }
+
             // ===== 付箋（検索の窓の下の「付箋を置く」で置く） =====
             {
                 NodeDesc desc;
@@ -1194,12 +1215,44 @@ namespace CoreEngine::Editor::ShaderGraph
             return nodes;
         }
 
-        /// @brief Custom Function のピンの並びごとに作った定義（ピンの名前の文字列もここに持つ）
+        /// @brief ノードの設定のピンで作った定義（ピンの名前・表示名・見出しの文字列もここに持つ）
         struct OwnedNodeDesc
         {
-            std::vector<std::string> names;
+            std::deque<std::string> strings;
             NodeDesc desc;
+
+            /// @brief 文字列を持ち、指す view を返す
+            std::string_view Keep(std::string text)
+            {
+                return strings.emplace_back(std::move(text));
+            }
         };
+
+        /// @brief サブグラフのピン 1 つの定義（テクスチャとサンプラーは、つながなければ既定のもの）
+        PinDesc SubGraphPinDesc(OwnedNodeDesc& owned, const SubGraphPin& pin)
+        {
+            const ValueType type = ToValueType(pin.type);
+            PinBinding binding = PinBinding::Value;
+            if (type == Tex) {
+                binding = PinBinding::MainTexture;
+            } else if (type == Smp) {
+                binding = PinBinding::Sampler;
+            }
+            PinDesc desc = Pin(owned.Keep(pin.key), type, {}, binding);
+            desc.label = owned.Keep(pin.label);
+            return desc;
+        }
+
+        /// @brief パスのファイル名から拡張子を除いたもの
+        std::string FileStem(std::string_view path)
+        {
+            const size_t slash = path.find_last_of("/\\");
+            std::string_view name = slash == std::string_view::npos ? path : path.substr(slash + 1);
+            if (const size_t dot = name.find('.'); dot != std::string_view::npos) {
+                name = name.substr(0, dot);
+            }
+            return std::string(name);
+        }
 
         /// @brief Custom Function のピン 1 つの定義（テクスチャとサンプラーは、つながなければ既定のもの）
         PinDesc FunctionPinDesc(std::string_view name, ValueType type)
@@ -1221,7 +1274,7 @@ namespace CoreEngine::Editor::ShaderGraph
 
     std::string EmitArgs::VariableName(size_t output) const
     {
-        return "n" + std::to_string(node.id) + "_" + Identifier(desc.outputs[output].name);
+        return prefix + "n" + std::to_string(node.id) + "_" + Identifier(desc.outputs[output].name);
     }
 
     void EmitArgs::Out(size_t output, std::string_view expression)
@@ -1302,7 +1355,7 @@ namespace CoreEngine::Editor::ShaderGraph
     const NodeDesc* FindNodeDesc(const Node& node)
     {
         const NodeDesc* const base = FindNodeDesc(node.type);
-        if (!base || node.type != kCustomFunctionType) {
+        if (!base || (node.type != kCustomFunctionType && node.type != kSubGraphNodeType && node.type != kSubGraphOutputType)) {
             return base;
         }
         const auto setting = [&](std::string_view name) {
@@ -1316,9 +1369,10 @@ namespace CoreEngine::Editor::ShaderGraph
             }
             return std::string();
         };
-        const std::string inputs = setting("Inputs");
-        const std::string outputs = setting("Outputs");
-        const std::string key = inputs + "\n" + outputs;
+        std::string key = node.type + "\n" + setting("Inputs") + "\n" + setting("Outputs");
+        if (node.type == kSubGraphNodeType) {
+            key += "\n" + setting("Path") + "\n" + setting("Targets");
+        }
 
         static std::mutex mutex;
         static std::map<std::string, std::unique_ptr<OwnedNodeDesc>> cache;
@@ -1326,24 +1380,33 @@ namespace CoreEngine::Editor::ShaderGraph
         if (const auto found = cache.find(key); found != cache.end()) {
             return &found->second->desc;
         }
-        const std::vector<FunctionPin> in = ParseFunctionPins(inputs);
-        const std::vector<FunctionPin> out = ParseFunctionPins(outputs);
         auto owned = std::make_unique<OwnedNodeDesc>();
-        owned->names.reserve(in.size() + out.size());
-        for (const FunctionPin& pin : in) {
-            owned->names.push_back(pin.name);
-        }
-        for (const FunctionPin& pin : out) {
-            owned->names.push_back(pin.name);
-        }
         owned->desc = *base;
         owned->desc.inputs.clear();
         owned->desc.outputs.clear();
-        for (size_t index = 0; index < in.size(); ++index) {
-            owned->desc.inputs.push_back(FunctionPinDesc(owned->names[index], in[index].type));
-        }
-        for (size_t index = 0; index < out.size(); ++index) {
-            owned->desc.outputs.push_back(FunctionPinDesc(owned->names[in.size() + index], out[index].type));
+        if (node.type == kCustomFunctionType) {
+            for (const FunctionPin& pin : ParseFunctionPins(setting("Inputs"))) {
+                owned->desc.inputs.push_back(FunctionPinDesc(owned->Keep(pin.name), pin.type));
+            }
+            for (const FunctionPin& pin : ParseFunctionPins(setting("Outputs"))) {
+                owned->desc.outputs.push_back(FunctionPinDesc(owned->Keep(pin.name), pin.type));
+            }
+        } else if (node.type == kSubGraphOutputType) {
+            for (const SubGraphPin& pin : ParseSubGraphPins(setting("Outputs"))) {
+                owned->desc.inputs.push_back(SubGraphPinDesc(*owned, pin));
+            }
+        } else {
+            for (const SubGraphPin& pin : ParseSubGraphPins(setting("Inputs"))) {
+                owned->desc.inputs.push_back(SubGraphPinDesc(*owned, pin));
+            }
+            for (const SubGraphPin& pin : ParseSubGraphPins(setting("Outputs"))) {
+                owned->desc.outputs.push_back(SubGraphPinDesc(*owned, pin));
+            }
+            const std::string stem = FileStem(setting("Path"));
+            if (!stem.empty()) {
+                owned->desc.title = owned->Keep(stem);
+            }
+            owned->desc.targets = ParseTargets(setting("Targets"));
         }
         return &cache.emplace(key, std::move(owned)).first->second->desc;
     }
@@ -1412,6 +1475,101 @@ namespace CoreEngine::Editor::ShaderGraph
             text += std::string(text.empty() ? "" : ";") + ToString(pin.type) + " " + pin.name;
         }
         return text;
+    }
+
+    std::vector<SubGraphPin> ParseSubGraphPins(std::string_view text)
+    {
+        const auto trim = [](std::string_view value) {
+            const size_t begin = value.find_first_not_of(" \t\r\n");
+            if (begin == std::string_view::npos) {
+                return std::string_view();
+            }
+            const size_t end = value.find_last_not_of(" \t\r\n");
+            return value.substr(begin, end - begin + 1);
+        };
+        constexpr PropertyType kTypes[] = { PropertyType::Float, PropertyType::Vector2, PropertyType::Vector3,
+            PropertyType::Vector4, PropertyType::Color, PropertyType::Texture2D, PropertyType::SamplerState };
+        std::vector<SubGraphPin> pins;
+        std::set<std::string, std::less<>> keys;
+        size_t begin = 0;
+        while (begin <= text.size() && pins.size() < kMaxSubGraphPins) {
+            const size_t end = (std::min)(text.find(';', begin), text.size());
+            const std::string_view item = trim(text.substr(begin, end - begin));
+            begin = end + 1;
+            const size_t typeEnd = item.find_first_of(" \t");
+            if (typeEnd == std::string_view::npos) {
+                continue;
+            }
+            const std::string_view typeText = item.substr(0, typeEnd);
+            const auto type = std::find_if(std::begin(kTypes), std::end(kTypes),
+                [typeText](PropertyType candidate) { return typeText == ToString(candidate); });
+            if (type == std::end(kTypes)) {
+                continue;
+            }
+            const std::string_view rest = trim(item.substr(typeEnd + 1));
+            const size_t keyEnd = (std::min)(rest.find_first_of(" \t"), rest.size());
+            SubGraphPin pin;
+            pin.type = *type;
+            pin.key = std::string(rest.substr(0, keyEnd));
+            pin.label = std::string(trim(rest.substr(keyEnd)));
+            if (pin.key.empty() || !keys.insert(pin.key).second) {
+                continue;
+            }
+            if (pin.label.empty()) {
+                pin.label = pin.key;
+            }
+            pins.push_back(std::move(pin));
+        }
+        return pins;
+    }
+
+    std::string FormatSubGraphPins(const std::vector<SubGraphPin>& pins)
+    {
+        std::string text;
+        for (const SubGraphPin& pin : pins) {
+            std::string label = pin.label;
+            std::erase(label, ';');
+            text += std::string(text.empty() ? "" : ";") + ToString(pin.type) + " " + pin.key + " " + label;
+        }
+        return text;
+    }
+
+    ValueType ToValueType(PropertyType type)
+    {
+        switch (type) {
+        case PropertyType::Texture2D: return Tex;
+        case PropertyType::SamplerState: return Smp;
+        default: return VectorType(WidthOf(type));
+        }
+    }
+
+    std::string FormatTargets(uint8_t targets)
+    {
+        std::string text;
+        for (const Target target : kAllTargetList) {
+            if ((targets & TargetBit(target)) != 0) {
+                text += std::string(text.empty() ? "" : ",") + ToString(target);
+            }
+        }
+        return text.empty() ? std::string("None") : text;
+    }
+
+    uint8_t ParseTargets(std::string_view text)
+    {
+        if (text.empty()) {
+            return kAllTargets;
+        }
+        uint8_t targets = 0;
+        for (const Target target : kAllTargetList) {
+            const std::string_view name = ToString(target);
+            for (size_t at = text.find(name); at != std::string_view::npos; at = text.find(name, at + 1)) {
+                const size_t end = at + name.size();
+                if ((at == 0 || text[at - 1] == ',') && (end == text.size() || text[end] == ',')) {
+                    targets |= TargetBit(target);
+                }
+            }
+        }
+        return targets;
     }
 
     std::string SamplerName(Target target, std::string_view filter)

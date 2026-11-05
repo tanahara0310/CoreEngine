@@ -267,6 +267,16 @@ namespace CoreEngine::Editor::ShaderGraph
             return order;
         }
 
+        /// @brief ノードの番号の並び
+        std::vector<int> NodeIds(const std::vector<const Node*>& nodes)
+        {
+            std::vector<int> ids;
+            for (const Node* node : nodes) {
+                ids.push_back(node->id);
+            }
+            return ids;
+        }
+
         /// @brief 並べたノードが 3D の値（位置・法線・接線・視線・カメラ・モデルの面）を使うか
         bool Uses3DInput(const Graph& graph, const std::vector<int>& order)
         {
@@ -296,7 +306,8 @@ namespace CoreEngine::Editor::ShaderGraph
         public:
             FunctionWriter(const Graph& graph, const Resolution& resolution, const GenerateOptions& options, uint8_t stage,
                 std::vector<std::pair<int, GlobalCode>>& globals, std::vector<NodeIssue>& issues)
-                : graph_(graph), resolution_(resolution), options_(options), stage_(stage), globals_(globals), issues_(issues)
+                : graph_(graph), resolution_(resolution), options_(options), stage_(stage), target_(graph.target),
+                  globals_(globals), issues_(issues)
             {
             }
 
@@ -322,12 +333,16 @@ namespace CoreEngine::Editor::ShaderGraph
                         }
                     }
                 }
-                return UnconnectedInput(graph_.target, stage_, node, pin, type);
+                return UnconnectedInput(target_, stage_, node, pin, type);
             }
 
             /// @brief 並べたノードの文を書く（出口のノードは飛ばす）
-            void Write(const std::vector<int>& order)
+            /// @param roots 並べたときの根（根のサブグラフのノードは全部の出力を書く）
+            /// @param rootPin 根でたどったピン（空なら全部）
+            void Write(const std::vector<int>& order, const std::vector<int>& roots,
+                const std::function<bool(const PinDesc&)>& rootPin = nullptr)
             {
+                const std::set<int> written(order.begin(), order.end());
                 for (const int id : order) {
                     const Node* const node = graph_.FindNode(id);
                     const NodeDesc* const desc = node ? FindNodeDesc(*node) : nullptr;
@@ -337,9 +352,10 @@ namespace CoreEngine::Editor::ShaderGraph
                     }
 
                     EmitArgs args{ graph_, *node, *desc };
-                    args.target = graph_.target;
+                    args.target = target_;
                     args.stage = stage_;
                     args.resolveInclude = options_.resolveInclude;
+                    args.prefix = prefix_;
                     args.dynamicWidth = resolved->second.dynamicWidth;
                     args.inType = resolved->second.inputs;
                     args.outType = resolved->second.outputs;
@@ -349,10 +365,19 @@ namespace CoreEngine::Editor::ShaderGraph
                         args.in.push_back(Input(*node, *desc, resolved->second, index, connected));
                         args.connected.push_back(connected);
                     }
-                    if (!desc->Supports(graph_.target)) {
-                        args.error = std::string("このノードは") + DisplayName(graph_.target) + "では使えません";
-                    } else if (Is3D(graph_.target) && !desc->SupportsStage(stage_)) {
+                    if (!desc->Supports(target_)) {
+                        args.error = std::string("このノードは") + DisplayName(target_) + "では使えません";
+                    } else if (Is3D(target_) && !desc->SupportsStage(stage_)) {
                         args.error = std::string("このノードは ") + StageName(stage_) + " では使えません";
+                    } else if (properties_ && node->type == "Property") {
+                        const auto found = properties_->find(node->property);
+                        if (found == properties_->end()) {
+                            args.error = "指しているプロパティがありません";
+                        } else if (!args.outExpr.empty()) {
+                            args.outExpr[0] = found->second;
+                        }
+                    } else if (node->type == kSubGraphNodeType) {
+                        WriteSubGraph(args, UsedOutputs(*node, *desc, written, roots, rootPin));
                     } else if (desc->emit) {
                         desc->emit(args);
                     }
@@ -389,9 +414,9 @@ namespace CoreEngine::Editor::ShaderGraph
                         }
                     }
 
-                    if (node->type != kRedirectNodeType || !args.code.empty()) {
+                    if (!args.code.empty() || (prefix_.empty() && node->type != kRedirectNodeType)) {
                         const int first = CountLines(body_) + 1;
-                        body_ += "    // " + std::to_string(id) + " " + std::string(desc->title) + "\n";
+                        body_ += "    // " + label_ + std::to_string(id) + " " + std::string(desc->title) + "\n";
                         body_ += args.code;
                         lines_.push_back({ id, { first, CountLines(body_) } });
                     }
@@ -422,16 +447,191 @@ namespace CoreEngine::Editor::ShaderGraph
             int ErrorCount() const { return errors_; }
 
         private:
+            /// @brief この関数で使うサブグラフのノードの出力（根なら全部・ほかは書くノードへ入る線の元）
+            std::set<std::string, std::less<>> UsedOutputs(const Node& node, const NodeDesc& desc, const std::set<int>& written,
+                const std::vector<int>& roots, const std::function<bool(const PinDesc&)>& rootPin) const
+            {
+                std::set<std::string, std::less<>> used;
+                if (std::find(roots.begin(), roots.end(), node.id) != roots.end()) {
+                    for (const PinDesc& pin : desc.outputs) {
+                        used.emplace(pin.name);
+                    }
+                    return used;
+                }
+                for (const Link& link : graph_.links) {
+                    if (link.fromNode != node.id || !written.contains(link.toNode)) {
+                        continue;
+                    }
+                    if (rootPin && std::find(roots.begin(), roots.end(), link.toNode) != roots.end()) {
+                        const Node* const target = graph_.FindNode(link.toNode);
+                        const NodeDesc* const targetDesc = target ? FindNodeDesc(*target) : nullptr;
+                        const int index = targetDesc ? targetDesc->FindInput(link.toPin) : -1;
+                        if (index < 0 || !rootPin(targetDesc->inputs[static_cast<size_t>(index)])) {
+                            continue;
+                        }
+                    }
+                    used.insert(link.fromPin);
+                }
+                return used;
+            }
+
+            /// @brief サブグラフの中のノードの問題を、使う側のノードの問題の文にする
+            static std::string DescribeInnerIssue(const Graph& subGraph, std::string_view name, const NodeIssue& issue)
+            {
+                if (issue.node == 0) {
+                    return std::string(name) + ": " + issue.message;
+                }
+                const Node* const node = subGraph.FindNode(issue.node);
+                const NodeDesc* const desc = node ? FindNodeDesc(*node) : nullptr;
+                const std::string title = desc ? std::string(desc->title) : (node ? node->type : std::string("?"));
+                return std::string(name) + " の " + title + "（" + std::to_string(issue.node) + "）: " + issue.message;
+            }
+
+            /// @brief サブグラフのノード: 使う出力へつながる中のノードを前置きを付けてこの関数へ書き、中の出口の式を出力にする
+            /// @details 中のノードの段の検査は中のノードで行う（Vertex だけの出力と Fragment だけの出力を 1 つのサブグラフに持てる）
+            void WriteSubGraph(EmitArgs& args, const std::set<std::string, std::less<>>& used)
+            {
+                const Node& node = args.node;
+                const NodeDesc& desc = args.desc;
+                const std::string guid = args.Setting("Guid");
+                const std::string path = args.Setting("Path");
+                const std::string identity = guid.empty() ? path : guid;
+                if (identity.empty()) {
+                    args.error = "サブグラフを指していません";
+                    return;
+                }
+                if (std::find(chain_.begin(), chain_.end(), identity) != chain_.end()) {
+                    args.error = "サブグラフが自分を含んでいます";
+                    return;
+                }
+                std::string error;
+                const std::shared_ptr<const Graph> subGraph =
+                    options_.resolveSubGraph ? options_.resolveSubGraph(guid, path, error) : nullptr;
+                if (!subGraph) {
+                    args.error = error.empty() ? "サブグラフ " + path + " が見つかりません" : error;
+                    return;
+                }
+                const Node* const output = subGraph->FindSubGraphOutput();
+                const NodeDesc* const outputDesc = output ? FindNodeDesc(*output) : nullptr;
+                if (!output || !outputDesc) {
+                    args.error = "サブグラフに出口がありません";
+                    return;
+                }
+
+                // 入力の式（中の Property ノードの値。つないでいない数は、ノードの値か、無ければサブグラフの既定値）
+                std::map<std::string, std::string, std::less<>> inputs;
+                for (const Property& property : subGraph->properties) {
+                    const ValueType type = ToValueType(property.type);
+                    const int index = desc.FindInput(property.id);
+                    std::string expression;
+                    if (index >= 0) {
+                        const size_t at = static_cast<size_t>(index);
+                        const ValueType from = args.inType[at];
+                        if (IsNumeric(type) && IsNumeric(from)) {
+                            if (args.connected[at] || node.values.contains(property.id)) {
+                                expression = Convert(args.in[at], WidthOf(from), WidthOf(type));
+                            }
+                        } else if (type == from) {
+                            expression = args.in[at];
+                        }
+                    }
+                    if (expression.empty()) {
+                        if (type == ValueType::Texture2D) {
+                            expression = "gTexture";
+                        } else if (type == ValueType::SamplerState) {
+                            expression = SamplerName(target_, "Linear Repeat");
+                        } else {
+                            expression = Literal(property.value, WidthOf(type));
+                        }
+                    }
+                    inputs.emplace(property.id, std::move(expression));
+                }
+
+                // 中のノード（出口からたどったもの）
+                const Resolution resolution = Resolve(*subGraph);
+                std::vector<std::pair<int, GlobalCode>> globals = globals_;
+                const size_t placed = globals.size();
+                std::vector<NodeIssue> issues;
+                FunctionWriter inner(*subGraph, resolution, options_, stage_, globals, issues);
+                inner.target_ = target_;
+                inner.prefix_ = prefix_ + "n" + std::to_string(node.id) + "_";
+                inner.label_ = label_ + std::to_string(node.id) + "/";
+                inner.properties_ = &inputs;
+                inner.chain_ = chain_;
+                inner.chain_.push_back(identity);
+                const auto usedPin = [&used](const PinDesc& pin) { return used.contains(pin.name); };
+                const std::vector<int> order = CollectOrder(*subGraph, *output, usedPin);
+                inner.Write(order, { output->id }, usedPin);
+                for (const NodeIssue& issue : resolution.issues) {
+                    if (std::find(order.begin(), order.end(), issue.node) != order.end()) {
+                        issues.push_back(issue);
+                    }
+                }
+
+                // 中の出口の欄の式を、写しの出力の種類へ直す
+                std::vector<std::string> outputs(desc.outputs.size());
+                const ResolvedNode& outputResolved = resolution.nodes.at(output->id);
+                for (size_t index = 0; index < desc.outputs.size() && issues.empty(); ++index) {
+                    const PinDesc& pin = desc.outputs[index];
+                    if (!used.contains(pin.name)) {
+                        outputs[index] = ZeroOf(args.outType[index]);
+                        continue;
+                    }
+                    const int source = outputDesc->FindInput(pin.name);
+                    if (source < 0) {
+                        issues.push_back({ 0, "出力 " + std::string(pin.Label()) + " がサブグラフにありません" });
+                        break;
+                    }
+                    bool connected = false;
+                    std::string expression = inner.Input(*output, *outputDesc, outputResolved, static_cast<size_t>(source),
+                        connected);
+                    const ValueType from = outputResolved.inputs[static_cast<size_t>(source)];
+                    const ValueType to = args.outType[index];
+                    if (IsNumeric(from) && IsNumeric(to)) {
+                        expression = Convert(expression, WidthOf(from), WidthOf(to));
+                    } else if (from != to) {
+                        issues.push_back({ 0, "出力 " + std::string(pin.Label()) + " の種類がサブグラフと違います" });
+                        break;
+                    }
+                    outputs[index] = std::move(expression);
+                }
+
+                if (!issues.empty()) {
+                    for (const NodeIssue& issue : issues) {
+                        const std::string message = DescribeInnerIssue(*subGraph, desc.title, issue);
+                        const bool reported = std::any_of(issues_.begin(), issues_.end(),
+                            [&](const NodeIssue& item) { return item.node == node.id && item.message == message; });
+                        if (!reported) {
+                            issues_.push_back({ node.id, message });
+                        }
+                    }
+                    args.error = DescribeInnerIssue(*subGraph, desc.title, issues.front());
+                    return;
+                }
+                args.code += inner.Body();
+                for (size_t index = 0; index < outputs.size(); ++index) {
+                    args.outExpr[index] = std::move(outputs[index]);
+                }
+                for (size_t index = placed; index < globals.size(); ++index) {
+                    args.globals.push_back(globals[index].second);
+                }
+            }
+
             const Graph& graph_;
             const Resolution& resolution_;
             const GenerateOptions& options_;
             uint8_t stage_ = kStageFragment;
+            Target target_ = Target::Sprite; ///< 書いている目標（サブグラフの中も使う側の目標）
             std::vector<std::pair<int, GlobalCode>>& globals_;
             std::vector<NodeIssue>& issues_;
             std::map<std::pair<int, int>, std::string> outputs_; ///< ノード・出力の番号 → 式
             std::string body_;
             std::vector<std::pair<int, std::pair<int, int>>> lines_;
             int errors_ = 0;
+            std::string prefix_; ///< 変数の名前の前置き（サブグラフの中は `n使う側の番号_`）
+            std::string label_;  ///< 文の前の注釈の番号の前置き（サブグラフの中は `使う側の番号/`）
+            const std::map<std::string, std::string, std::less<>>* properties_ = nullptr; ///< サブグラフの中: 入力の id → 式
+            std::vector<std::string> chain_; ///< 展開している途中のサブグラフ（輪の判定）
         };
 
         /// @brief 映すノードの、色にする出力の式（無ければ空）
@@ -464,6 +664,9 @@ namespace CoreEngine::Editor::ShaderGraph
             std::string head;
             head += std::string(kGeneratedMarker) + options.sourcePath + ". Changes are overwritten when the graph is saved.\n";
             for (const Property& property : graph.properties) {
+                if (property.type == PropertyType::SamplerState) {
+                    continue;
+                }
                 head += std::string(kPropertyLinePrefix) + property.name + " " + ToString(property.type);
                 if (property.type == PropertyType::Color && property.hdr) {
                     head += " hdr";
@@ -485,7 +688,9 @@ namespace CoreEngine::Editor::ShaderGraph
             std::vector<const Property*> numeric;
             std::vector<const Property*> textures;
             for (const Property& property : graph.properties) {
-                (property.type == PropertyType::Texture2D ? textures : numeric).push_back(&property);
+                if (property.type != PropertyType::SamplerState) {
+                    (property.type == PropertyType::Texture2D ? textures : numeric).push_back(&property);
+                }
             }
             std::stable_sort(numeric.begin(), numeric.end(), [](const Property* a, const Property* b) {
                 return PropertyOrder(a->type) < PropertyOrder(b->type);
@@ -626,7 +831,7 @@ float4 main(SpriteVertexOutput input) : SV_TARGET0
                 const NodeDesc* const desc = FindNodeDesc(*master);
                 const auto resolved = resolution.nodes.find(master->id);
                 if (desc && resolved != resolution.nodes.end()) {
-                    vertex.Write(CollectOrder(graph, *master, nullptr));
+                    vertex.Write(CollectOrder(graph, *master, nullptr), { master->id });
                     for (const MasterField& field : kVertexFields) {
                         const int index = desc->FindInput(field.pin);
                         if (index < 0) {
@@ -651,7 +856,7 @@ float4 main(SpriteVertexOutput input) : SV_TARGET0
             FunctionWriter fragment(graph, resolution, options, kStageFragment, globals, result.issues);
             std::string fragmentAssignments;
             if (previewing) {
-                fragment.Write(CollectOrder(graph, root, nullptr));
+                fragment.Write(CollectOrder(graph, root, nullptr), { root.id });
                 const std::string color = PreviewColor(fragment, resolution, options, root);
                 if (color.empty()) {
                     result.fatal = "このノードには映せる出力がありません";
@@ -660,7 +865,8 @@ float4 main(SpriteVertexOutput input) : SV_TARGET0
                 fragmentAssignments = "    OUT.baseColor = (" + color + ").rgb;\n    OUT.alpha = 1.0f;\n";
             } else {
                 const Target target = graph.target;
-                fragment.Write(CollectOrder(graph, root, [target](const PinDesc& pin) { return pin.Supports(target); }));
+                const auto targetPin = [target](const PinDesc& pin) { return pin.Supports(target); };
+                fragment.Write(CollectOrder(graph, root, targetPin), { root.id }, targetPin);
                 const NodeDesc* const desc = FindNodeDesc(root);
                 const ResolvedNode& resolved = resolution.nodes.at(root.id);
                 for (const MasterField& field : kFragmentFields) {
@@ -742,7 +948,7 @@ float4 main(SpriteVertexOutput input) : SV_TARGET0
         // 出口から入力をたどって、使うノードを依存の順に書く
         std::vector<std::pair<int, GlobalCode>> globals; ///< 関数の外に置く文と、置いたノード
         FunctionWriter writer(graph, resolution, options, kStageFragment, globals, result.issues);
-        writer.Write(CollectOrder(graph, *root, nullptr));
+        writer.Write(CollectOrder(graph, *root, nullptr), { root->id });
         std::string body = writer.Body();
 
         // 出口の式
@@ -816,7 +1022,7 @@ float4 main(SpriteVertexOutput input) : SV_TARGET0
             std::vector<std::pair<int, GlobalCode>> globals;
             std::vector<NodeIssue> issues;
             FunctionWriter probe(graph, resolution, options, kStageFragment, globals, issues);
-            probe.Write(CollectOrder(graph, candidates));
+            probe.Write(CollectOrder(graph, candidates), NodeIds(candidates));
             for (const NodeIssue& issue : issues) {
                 reasons.emplace(issue.node, issue.message);
             }
@@ -857,7 +1063,7 @@ float4 main(SpriteVertexOutput input) : SV_TARGET0
         std::vector<std::pair<int, GlobalCode>> globals;
         std::vector<NodeIssue> issues;
         FunctionWriter writer(graph, resolution, options, kStageFragment, globals, issues);
-        writer.Write(CollectOrder(graph, chosen));
+        writer.Write(CollectOrder(graph, chosen), NodeIds(chosen));
         GenerateOptions colorOptions = options;
         colorOptions.previewPin.clear();
 

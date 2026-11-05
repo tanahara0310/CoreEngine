@@ -45,7 +45,8 @@ namespace CoreEngine::Editor::ShaderGraph
         bool ParsePropertyType(const std::string& text, PropertyType& type)
         {
             for (const PropertyType candidate : { PropertyType::Float, PropertyType::Vector2, PropertyType::Vector3,
-                                                  PropertyType::Vector4, PropertyType::Color, PropertyType::Texture2D }) {
+                                                  PropertyType::Vector4, PropertyType::Color, PropertyType::Texture2D,
+                                                  PropertyType::SamplerState }) {
                 if (text == ToString(candidate)) {
                     type = candidate;
                     return true;
@@ -115,6 +116,7 @@ namespace CoreEngine::Editor::ShaderGraph
         case PropertyType::Vector4:   return "Vector4";
         case PropertyType::Color:     return "Color";
         case PropertyType::Texture2D: return "Texture2D";
+        case PropertyType::SamplerState: return "SamplerState";
         }
         return "Float";
     }
@@ -128,6 +130,7 @@ namespace CoreEngine::Editor::ShaderGraph
         case PropertyType::Vector4:   return 4;
         case PropertyType::Color:     return 4;
         case PropertyType::Texture2D: return 0;
+        case PropertyType::SamplerState: return 0;
         }
         return 1;
     }
@@ -176,6 +179,13 @@ namespace CoreEngine::Editor::ShaderGraph
     {
         const auto found = std::find_if(nodes.begin(), nodes.end(),
             [](const Node& node) { return node.type == kVertexMasterNodeType; });
+        return found == nodes.end() ? nullptr : &*found;
+    }
+
+    const Node* Graph::FindSubGraphOutput() const
+    {
+        const auto found = std::find_if(nodes.begin(), nodes.end(),
+            [](const Node& node) { return node.type == kSubGraphOutputType; });
         return found == nodes.end() ? nullptr : &*found;
     }
 
@@ -294,6 +304,21 @@ namespace CoreEngine::Editor::ShaderGraph
         return graph;
     }
 
+    Graph MakeEmptySubGraph(Target previewTarget)
+    {
+        Graph graph;
+        graph.target = previewTarget;
+        graph.subGraph = true;
+        Node output;
+        output.id = 1;
+        output.type = std::string(kSubGraphOutputType);
+        output.x = 400.0f;
+        output.y = 0.0f;
+        output.settings["Outputs"] = std::string(kDefaultSubGraphOutputs);
+        graph.nodes.push_back(std::move(output));
+        return graph;
+    }
+
     bool ReadGraph(const json& root, Graph& graph, std::vector<std::string>& warnings)
     {
         if (!root.is_object()) {
@@ -306,6 +331,12 @@ namespace CoreEngine::Editor::ShaderGraph
                 warnings.push_back("知らない出口 " + target->get<std::string>() + " なので Sprite として読みました");
             }
         }
+        if (const auto subGraph = root.find("subGraph"); subGraph != root.end() && subGraph->is_boolean()) {
+            graph.subGraph = subGraph->get<bool>();
+        }
+        if (const auto category = root.find("category"); graph.subGraph && category != root.end() && category->is_string()) {
+            graph.category = category->get<std::string>();
+        }
 
         if (const auto properties = root.find("properties"); properties != root.end() && properties->is_array()) {
             for (const json& item : *properties) {
@@ -316,7 +347,9 @@ namespace CoreEngine::Editor::ShaderGraph
                 property.id = item.value("id", std::string());
                 property.name = item.value("name", std::string());
                 property.display = item.value("display", property.name);
-                if (!ParsePropertyType(item.value("type", std::string("Float")), property.type)) {
+                if (!ParsePropertyType(item.value("type", std::string("Float")), property.type)
+                    || (property.type == PropertyType::SamplerState && !graph.subGraph)) {
+                    property.type = PropertyType::Float;
                     warnings.push_back("プロパティ " + property.name + " の種類が読めないので Float にしました");
                 }
                 if (const auto value = item.find("default"); value != item.end()) {
@@ -376,7 +409,17 @@ namespace CoreEngine::Editor::ShaderGraph
                 graph.nodes.push_back(std::move(node));
             }
         }
-        if (!graph.FindMaster()) {
+        if (graph.subGraph) {
+            if (!graph.FindSubGraphOutput()) {
+                Node output;
+                output.id = graph.NextNodeId();
+                output.type = std::string(kSubGraphOutputType);
+                output.x = 400.0f;
+                output.settings["Outputs"] = std::string(kDefaultSubGraphOutputs);
+                graph.nodes.push_back(std::move(output));
+                warnings.push_back("出口のノードが無かったので足しました");
+            }
+        } else if (!graph.FindMaster()) {
             Node master;
             master.id = graph.NextNodeId();
             master.type = std::string(kMasterNodeType);
@@ -384,7 +427,7 @@ namespace CoreEngine::Editor::ShaderGraph
             graph.nodes.push_back(std::move(master));
             warnings.push_back("出口のノードが無かったので足しました");
         }
-        if (Is3D(graph.target) && !graph.FindVertexMaster()) {
+        if (!graph.subGraph && Is3D(graph.target) && !graph.FindVertexMaster()) {
             Node vertex;
             vertex.id = graph.NextNodeId();
             vertex.type = std::string(kVertexMasterNodeType);
@@ -459,6 +502,10 @@ namespace CoreEngine::Editor::ShaderGraph
         json root = json::object();
         root["version"] = graph.version;
         root["target"] = ToString(graph.target);
+        if (graph.subGraph) {
+            root["subGraph"] = true;
+            root["category"] = graph.category;
+        }
 
         json properties = json::array();
         for (const Property& property : graph.properties) {
@@ -470,7 +517,7 @@ namespace CoreEngine::Editor::ShaderGraph
             if (property.type == PropertyType::Texture2D) {
                 item["default"] = property.texture;
                 item["linear"] = property.linear;
-            } else {
+            } else if (property.type != PropertyType::SamplerState) {
                 item["default"] = WriteNumbers(property.value, WidthOf(property.type));
             }
             if (property.hasRange) {
