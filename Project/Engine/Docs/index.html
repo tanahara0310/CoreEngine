@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.60.0">
+<meta name="engine-version" content="0.61.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5742,7 +5742,7 @@ kbd {
   </ul>
 </article>
 
-<article class="page" id="script-material-3d" data-group="スクリプト" data-title="マテリアルとシェーダ（3D モデル）" data-nav="3D のマテリアル" data-keywords="マテリアル material mat シェーダ shader hlsl 3d モデル メッシュ meshrenderer surface サーフェス surface.hlsl modelsurface.hlsli 自作 光る 発光 エミッシブ 縁 リム 帯 スキャン 溶ける ディゾルブ 法線 setmaterialfloat 上書き 共有 gbuffer 前方描画 スキン マゼンタ">
+<article class="page" id="script-material-3d" data-group="スクリプト" data-title="マテリアルとシェーダ（3D モデル）" data-nav="3D のマテリアル" data-keywords="マテリアル material mat シェーダ shader hlsl 3d モデル メッシュ meshrenderer surface サーフェス surface.hlsl modelsurface.hlsli 自作 光る 発光 エミッシブ 縁 リム 帯 スキャン 溶ける ディゾルブ 法線 setmaterialfloat 上書き 共有 gbuffer 前方描画 スキン マゼンタ 頂点 vertex surface_vertex surfacevertex 揺らす 波打つ 膨らむ surface_lit surface_unlit unlit 境界の余白">
   <h1>マテリアルとシェーダ（3D モデル）</h1>
   <p class="lead"><a href="#api-MeshRenderer">メッシュ描画</a> の見た目を、自分で書いた関数 <code>Surface()</code> で決めます。光・影・フォグ・GBuffer への書き込みはエンジンが行うので、書くのは「この画素の色・法線・金属感・粗さ・発光」だけです（Unity の Surface Shader に近い作りです）。</p>
 
@@ -5817,6 +5817,51 @@ kbd {
     <li>シェーダを保存すると、エディタが作り直します。読み込んでいる <span class="path">.hlsli</span> だけを変えたときは、<span class="path">.Surface.hlsl</span> も保存し直してください。</li>
   </ul>
 
+  <h3 id="material3d-vertex">頂点を動かす（SURFACE_VERTEX）</h3>
+  <p><code>ModelSurface.hlsli</code> を読み込む前に <code>#define SURFACE_VERTEX</code> を書くと、頂点の関数 <code>SurfaceVertex()</code> で頂点の位置と法線を変えられます。下の例は、モデルを法線の向きへ波打たせます。</p>
+  <script type="text/x-code" data-lang="text" data-file="Application/Assets/Materials/Wobble.Surface.hlsl">
+    #define SURFACE_VERTEX
+    #include "ModelSurface.hlsli"
+
+    struct Params
+    {
+        float amplitude; // 膨らむ量（m）
+        float frequency; // 波の細かさ（1 m あたりの山の数）
+        float speed;     // 波の速さ
+        float padding;
+    };
+    ConstantBuffer<Params> gParams : register(b10);
+
+    void SurfaceVertex(SurfaceVertexInput IN, inout SurfaceVertexOutput OUT)
+    {
+        float wave = sin(IN.positionOS.y * gParams.frequency * 6.2831853f + IN.time * gParams.speed);
+        OUT.positionOS = IN.positionOS + IN.normalOS * wave * gParams.amplitude;
+    }
+
+    void Surface(SurfaceInput IN, inout SurfaceOutput OUT)
+    {
+    }
+  </script>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>名前</th><th>中身</th></tr></thead>
+    <tbody>
+      <tr><td><code>IN.positionOS</code> ／ <code>IN.normalOS</code> ／ <code>IN.tangentOS</code></td><td>物体の空間の位置（植物の揺れなどの頂点アニメーションの後）／ 法線 ／ 接線。</td></tr>
+      <tr><td><code>IN.uv</code></td><td>頂点の UV（マテリアルの UV の変形は掛けない）。</td></tr>
+      <tr><td><code>IN.time</code></td><td>秒（240 秒で 0 に戻る）。<code>SurfaceVertex()</code> は今と前のフレームの時間で 2 回呼ばれるので、時間は <code>SurfaceTime()</code> でなくこちらを使います。</td></tr>
+      <tr><td><code>IN.objectToWorld</code> ／ <code>IN.worldToObject</code></td><td>物体の空間 ↔ ワールドの行列（行ベクトル。<code>mul(float4(p, 1.0f), IN.objectToWorld)</code>）。</td></tr>
+      <tr><td><code>OUT.positionOS</code> ／ <code>OUT.normalOS</code></td><td>動かした後の物体の空間の位置 ／ 法線。初めは入力の値です。</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li>値とテクスチャは <code>Surface()</code> と同じ <code>register(b10)</code>・<code>register(t11)</code> から読めます。テクスチャは <code>SampleLevel</code> で読みます。</li>
+    <li>骨の入ったモデルの頂点シェーダは b0 を行列に使うので、<code>SurfaceVertex()</code> から <code>gMaterial</code> は読めません。</li>
+    <li>頂点の関数は、GBuffer・前方描画・モーションベクター・レイトレーシングの影の形のすべてに使われます。</li>
+    <li>カメラに映っているかは、動かす前のモデルの箱で決めます。頂点を大きく動かして画面の端で消えるときは、メッシュ描画の <span class="ui">境界の余白</span>（m）を増やしてください。</li>
+    <li><code>#define SURFACE_LIT</code> ／ <code>#define SURFACE_UNLIT</code> を書くと、モデルの <a href="#api-Material">マテリアル</a> の Lighting によらず、ライトで照らす ／ 照らさないに決まります。</li>
+  </ul>
+
   <h2 id="material3d-script">スクリプトから値を変える</h2>
   <p>共有の値は <a href="#api-ShaderMaterial">ShaderMaterial</a> で、1 つのモデルだけの値はメッシュ描画の <code>SetMaterialFloat</code> などで変えます。使い方は <a href="#material-script">スプライトのマテリアル</a> と同じです。</p>
   <script type="text/x-code" data-lang="as" data-file="Application/Assets/Scripts/ScanLineControl.as">
@@ -5843,14 +5888,15 @@ kbd {
     <li>シェーダをコンパイルできないとき、.mat を読めないとき、.mat が <span class="path">.Surface.hlsl</span> でないシェーダを指しているときは、そのモデルをマゼンタで描き、コンソールに訳を出します。描けていたシェーダを書き換えてコンパイルできなくなったときも、直して保存するまでマゼンタで描きます。</li>
     <li><span class="path">.Surface.hlsl</span> のシェーダは、スプライト描画と UI 画像には付けられません。</li>
     <li>水面のように C++ のシェーダを持つメッシュ描画では、マテリアルの欄を使いません。</li>
-    <li>水面の映り込み・屈折と、レイトレーシングの影は、<code>Surface()</code> の結果を使いません（モデルの形・テクスチャ・マテリアルの値で決まります）。</li>
-    <li>ゲームを書き出すと、<span class="path">.Surface.hlsl</span> の 3 つの入口（<code>GBufferMain</code>・<code>GBufferMovingMain</code>・<code>ForwardMain</code>）を DXIL にして入れます（<a href="#editor-export">ゲームを書き出す</a>）。</li>
+    <li>水面の映り込み・屈折は、<code>Surface()</code> と <code>SurfaceVertex()</code> の結果を使いません。レイトレーシングの影は、<code>SurfaceVertex()</code> で動かした形を使い、色と透け方は <code>Surface()</code> を使いません（モデルのテクスチャとマテリアルの値で決まります）。</li>
+    <li>ゲームを書き出すと、<span class="path">.Surface.hlsl</span> の 3 つの入口（<code>GBufferMain</code>・<code>GBufferMovingMain</code>・<code>ForwardMain</code>）を DXIL にして入れます。頂点の関数を持つシェーダは、頂点シェーダの入口（<code>SurfaceStaticVertexMain</code>・<code>SurfaceSkinnedVertexMain</code>）と影の形を作る入口（<code>SurfaceDeformMain</code>）も入れます（<a href="#editor-export">ゲームを書き出す</a>）。</li>
+    <li>シェーダーグラフの 3D のグラフでも、同じシェーダを作れます（<a href="#sg-3d">3D のマテリアルを作る</a>）。</li>
   </ul>
 </article>
 
-<article class="page" id="shader-graph" data-group="スクリプト" data-title="シェーダーグラフ（ノードでシェーダを作る）" data-nav="シェーダーグラフ" data-keywords="シェーダーグラフ shader graph shadergraph ノード node つなぐ hlsl を書かない ビジュアル ディゾルブ dissolve 溶ける 光る 光の帯 シャイン shine ノイズ noise プロパティ property blackboard プレビュー preview マテリアル mat スプライト ui 画像 graph.ps.hlsl graph.cs.hlsl ポストエフェクト posteffect 画面全体 scene color screen position custom function カスタム関数 関数 _float hlsl を書く">
+<article class="page" id="shader-graph" data-group="スクリプト" data-title="シェーダーグラフ（ノードでシェーダを作る）" data-nav="シェーダーグラフ" data-keywords="シェーダーグラフ shader graph shadergraph ノード node つなぐ hlsl を書かない ビジュアル ディゾルブ dissolve 溶ける 光る 光の帯 シャイン shine ノイズ noise プロパティ property blackboard プレビュー preview マテリアル mat スプライト ui 画像 graph.ps.hlsl graph.cs.hlsl graph.surface.hlsl ポストエフェクト posteffect 画面全体 scene color screen position custom function カスタム関数 関数 _float hlsl を書く 3d モデル meshrenderer lit unlit 頂点 vertex 揺らす 波打つ 法線 normal フレネル fresnel 縁 view direction transform">
   <h1>シェーダーグラフ（ノードでシェーダを作る）</h1>
-  <p class="lead">ノードを線でつないで、<a href="#api-SpriteRenderer">スプライト描画</a> と <a href="#api-UIImage">UI 画像</a> のピクセルシェーダと、画面全体に掛ける <a href="#script-posteffect">ポストエフェクト</a> のコンピュートシェーダを作ります。HLSL を書かずに、光る・溶けて消える・模様が流れる・画面がゆがむ、といった見た目を作れます。Unity の Shader Graph に近い作りです。</p>
+  <p class="lead">ノードを線でつないで、<a href="#api-SpriteRenderer">スプライト描画</a> と <a href="#api-UIImage">UI 画像</a> のピクセルシェーダ、画面全体に掛ける <a href="#script-posteffect">ポストエフェクト</a> のコンピュートシェーダ、<a href="#api-MeshRenderer">メッシュ描画</a> の 3D モデルのシェーダを作ります。HLSL を書かずに、光る・溶けて消える・模様が流れる・画面がゆがむ・頂点が波打つ、といった見た目を作れます。Unity の Shader Graph に近い作りです。</p>
 
   <h2 id="sg-overview">仕組み</h2>
   <p>グラフを保存すると、エディタがグラフから HLSL のシェーダを作り、マテリアル（.mat）がそのシェーダを指します。できあがるのはふつうのマテリアルなので、付け方・スクリプトからの値の変え方・書き出しは <a href="#script-material">マテリアルとシェーダ</a> と同じです。</p>
@@ -5859,21 +5905,23 @@ kbd {
     <thead><tr><th>ファイル</th><th>中身</th></tr></thead>
     <tbody>
       <tr><td><span class="path">名前.shadergraph</span></td><td>グラフ（ノード・線・プロパティ）。エディタだけが読みます。</td></tr>
-      <tr><td><span class="path">名前.Graph.PS.hlsl</span> ／ <span class="path">名前.Graph.CS.hlsl</span></td><td>グラフから作ったシェーダ。スプライトのグラフはピクセルシェーダ（.PS）、ポストエフェクトのグラフはコンピュートシェーダ（.CS）です。保存のたびに書き直すので、手で直さないでください。</td></tr>
-      <tr><td><span class="path">名前.mat</span></td><td>上のシェーダを指すマテリアル。スプライトのグラフはスプライト描画と UI 画像の <span class="ui">マテリアル</span> 欄へ付け、ポストエフェクトのグラフは Project.json の <code>postEffects</code> に入れます。プロパティの値はここに入ります。</td></tr>
+      <tr><td><span class="path">名前.Graph.PS.hlsl</span> ／ <span class="path">名前.Graph.CS.hlsl</span> ／ <span class="path">名前.Graph.Surface.hlsl</span></td><td>グラフから作ったシェーダ。スプライトのグラフはピクセルシェーダ（.PS）、ポストエフェクトのグラフはコンピュートシェーダ（.CS）、3D のグラフは 3D モデルのシェーダ（.Surface。手書きの <a href="#script-material-3d">3D のマテリアル</a> と同じ作り）です。保存のたびに書き直すので、手で直さないでください。</td></tr>
+      <tr><td><span class="path">名前.mat</span></td><td>上のシェーダを指すマテリアル。スプライトのグラフはスプライト描画と UI 画像の <span class="ui">マテリアル</span> 欄へ、3D のグラフはメッシュ描画の <span class="ui">マテリアル</span> 欄へ付け、ポストエフェクトのグラフは Project.json の <code>postEffects</code> に入れます。プロパティの値はここに入ります。</td></tr>
     </tbody>
   </table>
   </div>
   <p>3 つとも git に入れます。チームのほかの人は、グラフを開かなくても .mat とシェーダでそのまま描けます。</p>
 
-  <h3 id="sg-targets">目標（スプライトとポストエフェクト）</h3>
-  <p>グラフは、作るときに選んだ目標のシェーダを作ります。目標は後から変えられません。</p>
+  <h3 id="sg-targets">目標（スプライト・ポストエフェクト・3D）</h3>
+  <p>グラフは、作るときに選んだ目標のシェーダを作ります。目標は後から変えられません（3D の Lit と Unlit の間だけは、何も選んでいないときの Inspector で変えられます。作るシェーダの名前は同じなので、付けている .mat はそのまま使えます）。</p>
   <div class="table-wrap">
   <table>
-    <thead><tr><th>目標</th><th>作るシェーダ</th><th>使い方</th><th>出口の Base Color と Alpha をつながないとき</th></tr></thead>
+    <thead><tr><th>目標</th><th>作るシェーダ</th><th>使い方</th><th>出口の欄をつながないとき</th></tr></thead>
     <tbody>
       <tr><td>スプライト／UI 画像</td><td><span class="path">.Graph.PS.hlsl</span>（ピクセルシェーダ）</td><td>.mat をスプライト描画か UI 画像に付ける</td><td>マテリアルを付けていないときと同じ色（テクスチャ × 部品の色）</td></tr>
       <tr><td>ポストエフェクト</td><td><span class="path">.Graph.CS.hlsl</span>（コンピュートシェーダ）</td><td>.mat を Project.json の <code>postEffects</code> に入れる（<a href="#sg-posteffect">ポストエフェクトを作る</a>）</td><td>画面の色のまま</td></tr>
+      <tr><td>3D（Lit）</td><td><span class="path">.Graph.Surface.hlsl</span>（3D モデルのシェーダ）</td><td>.mat をメッシュ描画の <span class="ui">マテリアル</span> 欄に付ける（<a href="#sg-3d">3D のマテリアルを作る</a>）</td><td>マテリアルを付けていないときと同じ値（モデルのテクスチャ × マテリアルの値）。シーンのライトで照らす</td></tr>
+      <tr><td>3D（Unlit）</td><td>同上</td><td>同上</td><td>同上。ライトで照らさず、Base Color をそのまま出す</td></tr>
     </tbody>
   </table>
   </div>
@@ -5882,15 +5930,15 @@ kbd {
   <h2 id="sg-create">作る・開く</h2>
   <ol class="steps">
     <li>Project の一覧の空いている所を右クリックし、<span class="ui">シェーダーグラフを作成...</span> を選びます。</li>
-    <li>目標（<span class="ui">スプライト／UI 画像</span> か <span class="ui">ポストエフェクト</span>）を選び、名前を入れて <span class="ui">作成</span> を押すと、今のフォルダに上の 3 つのファイルができて、シェーダーグラフの窓が開きます。できたばかりのグラフは、スプライトならマテリアルを付けていないときと同じ色（テクスチャ × 部品の色）、ポストエフェクトなら画面をそのまま描きます。</li>
-    <li>できた .mat を、スプライト描画（か UI 画像）の <span class="ui">マテリアル</span> 欄へドラッグします。ポストエフェクトは <a href="#sg-posteffect">ポストエフェクトを作る</a> の手順で画面に掛けます。</li>
-    <li>ノードをつないで <kbd>Ctrl</kbd>+<kbd>S</kbd> で保存すると、シーンのスプライトの見た目が変わります。</li>
+    <li>目標（<span class="ui">スプライト／UI 画像</span>・<span class="ui">ポストエフェクト</span>・<span class="ui">3D（Lit）</span>・<span class="ui">3D（Unlit）</span>）を選び、名前を入れて <span class="ui">作成</span> を押すと、今のフォルダに上の 3 つのファイルができて、シェーダーグラフの窓が開きます。できたばかりのグラフは、スプライトならマテリアルを付けていないときと同じ色（テクスチャ × 部品の色）、ポストエフェクトなら画面をそのまま、3D ならマテリアルを付けていないときと同じ見た目で描きます。</li>
+    <li>できた .mat を、スプライト描画（か UI 画像）の <span class="ui">マテリアル</span> 欄へドラッグします。3D はメッシュ描画の <span class="ui">マテリアル</span> 欄へドラッグします。ポストエフェクトは <a href="#sg-posteffect">ポストエフェクトを作る</a> の手順で画面に掛けます。</li>
+    <li>ノードをつないで <kbd>Ctrl</kbd>+<kbd>S</kbd> で保存すると、シーンのスプライトやモデルの見た目が変わります。</li>
   </ol>
   <p>あとから開くときは、次のどれかを使います。</p>
   <ul>
     <li>Project で .shadergraph をダブルクリックする（インスペクタの <span class="ui">シェーダーグラフで開く</span> でも開きます）。</li>
     <li>グラフのシェーダを指す .mat を選び、インスペクタの <span class="ui">シェーダーグラフを開く</span> を押す。</li>
-    <li>グラフが作った .Graph.PS.hlsl（か .Graph.CS.hlsl）を選び、インスペクタの <span class="ui">元のグラフを開く</span> を押す。</li>
+    <li>グラフが作った .Graph.PS.hlsl（か .Graph.CS.hlsl・.Graph.Surface.hlsl）を選び、インスペクタの <span class="ui">元のグラフを開く</span> を押す。</li>
     <li><span class="ui">Window<span class="arrow">▸</span>Rendering<span class="arrow">▸</span>Shader Graph</span> で窓を出す（開いていたグラフのタブが並びます）。</li>
   </ul>
 
@@ -5902,8 +5950,8 @@ kbd {
       <tr><td>上のタブ</td><td>開いているグラフ。保存していない変更があると印が付きます。閉じるときに、保存していなければ <span class="ui">保存して閉じる</span> ／ <span class="ui">保存せずに閉じる</span> ／ <span class="ui">やめる</span> を聞きます。</td></tr>
       <tr><td>左（Blackboard）</td><td>グラフのプロパティ（.mat とスクリプトから変えられる値）の一覧。</td></tr>
       <tr><td>真ん中（キャンバス）</td><td>ノードと線。右下に全体の縮図が出ます。</td></tr>
-      <tr><td>右上（Main Preview）</td><td>グラフの結果を板に描いた絵。市松模様は透明な所です。ポストエフェクトは、画面の代わりの画像に掛けた絵です。</td></tr>
-      <tr><td>右下（Inspector）</td><td>選んだノードの説明・設定・つないでいない入力の値、または選んだプロパティの設定。何も選んでいなければ、グラフの目標と、ポストエフェクトの Project.json への登録。</td></tr>
+      <tr><td>右上（Main Preview）</td><td>グラフの結果を板に描いた絵。市松模様は透明な所です。ポストエフェクトは、画面の代わりの画像に掛けた絵です。3D は、球・立方体・平面を決まったライト 1 つと環境光で照らした絵です（ドラッグで回せます）。</td></tr>
+      <tr><td>右下（Inspector）</td><td>選んだノードの説明・設定・つないでいない入力の値、または選んだプロパティの設定。何も選んでいなければ、グラフの目標（3D は Lit と Unlit の切り替え）と、ポストエフェクトの Project.json への登録。</td></tr>
       <tr><td>下</td><td>コンパイルのエラーと、操作のお知らせ。</td></tr>
     </tbody>
   </table>
@@ -5920,7 +5968,7 @@ kbd {
       <tr><td>線を外す</td><td>入力のピンから線をドラッグして離す、または線を選んで <kbd>Delete</kbd>。</td></tr>
       <tr><td>選ぶ</td><td>クリック、<kbd>Ctrl</kbd>+クリックで追加、空いている所からドラッグで囲む。</td></tr>
       <tr><td>動かす・見回す</td><td>ノードはドラッグ。キャンバスは中ボタンのドラッグ（<kbd>Alt</kbd>+左ドラッグでも）。<kbd>F</kbd> で全体（選んでいれば選んだもの）を真ん中へ寄せます。</td></tr>
-      <tr><td>消す</td><td><kbd>Delete</kbd> ／ <kbd>Backspace</kbd>、またはノードの右クリック <span class="ui">消す</span>。出口のノード（Fragment）は消せません。</td></tr>
+      <tr><td>消す</td><td><kbd>Delete</kbd> ／ <kbd>Backspace</kbd>、またはノードの右クリック <span class="ui">消す</span>。出口のノード（Fragment と、3D の Vertex）は消せません。</td></tr>
       <tr><td>複製・コピー・貼り付け</td><td><kbd>Ctrl</kbd>+<kbd>D</kbd> ／ <kbd>Ctrl</kbd>+<kbd>C</kbd> ／ <kbd>Ctrl</kbd>+<kbd>V</kbd>。ほかのグラフへも貼れます（使っているプロパティも一緒に足します）。</td></tr>
       <tr><td>戻す・やり直す</td><td><kbd>Ctrl</kbd>+<kbd>Z</kbd> ／ <kbd>Ctrl</kbd>+<kbd>Y</kbd>。シーンの操作と同じ履歴に積みます。</td></tr>
       <tr><td>保存</td><td><kbd>Ctrl</kbd>+<kbd>S</kbd>、または窓の上の <span class="ui">保存</span>。</td></tr>
@@ -5977,30 +6025,33 @@ kbd {
   <h2 id="sg-preview">プレビューとエラー</h2>
   <ul>
     <li>Main Preview は、グラフを変えると少し後に描き直します。<span class="ui">板の画像</span> に画像をドラッグすると、その画像を部品のテクスチャとして描きます。ポストエフェクトでは <span class="ui">画面の画像</span> の画像（空なら <span class="path">uvChecker.png</span>）を画面の代わりにして描きます。</li>
-    <li><span class="ui">選んだノードを映す</span> を入れると、選んだノードの出力を映します。ノードの右クリック <span class="ui">このノードを映す</span> でも同じです。途中の値を見たいところに Preview ノードを挟んでおくこともできます。</li>
+    <li>3D では、<span class="ui">形</span> で球・立方体・平面を選びます。絵をドラッグすると回り、ダブルクリックで向きが戻ります。<span class="ui">モデルの画像</span> に画像をドラッグすると、モデルのベースカラーのテクスチャとして描きます。照らすのはシーンのライトではなく、決まったライト 1 つと環境光です。Vertex の出口につないだ頂点の動きも映ります。</li>
+    <li><span class="ui">選んだノードを映す</span> を入れると、選んだノードの出力を映します。ノードの右クリック <span class="ui">このノードを映す</span> でも同じです。途中の値を見たいところに Preview ノードを挟んでおくこともできます。3D では、その値を色としてライトで照らさずに描きます。</li>
     <li>コンパイルできないグラフは、下にエラーを出し、関係するノードの題名を赤くします。保存はできますが、シェーダは書き換えません（スプライトは前に保存できた見た目のままです）。</li>
   </ul>
 
   <h2 id="sg-nodes">ノードの一覧</h2>
-  <p>ノードを選ぶと、Inspector に説明が出ます。出口の Fragment は、<span class="ui">Base Color</span>（RGB）と <span class="ui">Alpha</span> を受け取ります。つないでいない欄は、スプライトならマテリアルを付けていないときと同じ色、ポストエフェクトなら画面の色になります。<strong>（スプライト）</strong>・<strong>（ポストエフェクト）</strong> と書いたノードは、その目標のグラフにだけ置けます。</p>
+  <p>ノードを選ぶと、Inspector に説明が出ます。出口の Fragment は、<span class="ui">Base Color</span>（RGB）と <span class="ui">Alpha</span> を受け取ります。つないでいない欄は、スプライトならマテリアルを付けていないときと同じ色、ポストエフェクトなら画面の色になります。3D の出口は <a href="#sg-3d">3D のマテリアルを作る</a> を見てください。<strong>（スプライト）</strong>・<strong>（ポストエフェクト）</strong>・<strong>（3D）</strong> と書いたノードは、その目標のグラフにだけ置けます。</p>
   <div class="table-wrap">
   <table>
     <thead><tr><th>分類</th><th>ノード</th></tr></thead>
     <tbody>
       <tr><td>Input/Basic</td><td>Float ・ Vector 2 ・ Vector 3 ・ Vector 4 ・ Color ・ Time（時間 ／ その sin・cos ／ 前のフレームからの時間 ／ 時間の倍率を掛けない時間）</td></tr>
-      <tr><td>Input/Geometry</td><td>UV（スプライトはコマ割りと反転を済ませた UV、ポストエフェクトは画面の左上 0・右下 1）・ Position（スプライトだけ。スプライトはワールド座標、UI 画像は画面の px）</td></tr>
+      <tr><td>Input/Geometry</td><td>UV（スプライトはコマ割りと反転を済ませた UV、ポストエフェクトは画面の左上 0・右下 1、3D はマテリアルの UV の変形を掛けた UV。Vertex では頂点の UV のまま）・ Position <strong>（スプライトと 3D）</strong>（スプライトはワールド座標、UI 画像は画面の px、3D は World ＝ ワールドの位置 ／ Object ＝ 物体の空間の位置（Vertex だけ））・ Normal Vector <strong>（3D）</strong>（World ／ Object（Vertex だけ）／ Tangent ＝ (0, 0, 1)）・ Tangent Vector <strong>（3D）</strong>（World ／ Object（Vertex だけ））・ View Direction <strong>（3D）</strong>（表面からカメラへの向き）</td></tr>
+      <tr><td>Input/Model <strong>（3D）</strong></td><td>Model Surface（マテリアルを付けていないときの値。モデルのテクスチャ × マテリアルの色・法線マップの値（接空間）・金属感・粗さ・AO・発光）</td></tr>
       <tr><td>Input/Sprite <strong>（スプライト）</strong></td><td>Sprite Color（テクスチャ × 部品の色）・ Vertex Color（部品の色）・ Main Texture（部品のテクスチャとその大きさ）</td></tr>
-      <tr><td>Input/Scene <strong>（ポストエフェクト）</strong></td><td>Scene Color（画面の色。UV をつなぐと、その場所の画面の色を読む）・ Screen Position（Default ＝ 0〜1 ／ Center ＝ 真ん中が 0 で −1〜1 ／ Pixel ＝ 画素の位置）・ Screen（画面の幅・高さ・1 画素の大きさ）</td></tr>
-      <tr><td>Input/Texture</td><td>Sample Texture 2D（テクスチャの色を読む。つながなければ、スプライトは部品のテクスチャ、ポストエフェクトは画面）・ Sampler State（下の表）</td></tr>
+      <tr><td>Input/Scene</td><td>Scene Color <strong>（ポストエフェクト）</strong>（画面の色。UV をつなぐと、その場所の画面の色を読む）・ Screen Position <strong>（ポストエフェクトと 3D）</strong>（ポストエフェクトは Default ＝ 0〜1 ／ Center ＝ 真ん中が 0 で −1〜1 ／ Pixel ＝ 画素の位置、3D は画素の位置）・ Screen <strong>（ポストエフェクト）</strong>（画面の幅・高さ・1 画素の大きさ）・ Camera <strong>（3D）</strong>（カメラのワールドの位置）</td></tr>
+      <tr><td>Input/Texture</td><td>Sample Texture 2D（テクスチャの色を読む。つながなければ、スプライトは部品のテクスチャ、ポストエフェクトは画面、3D はモデルのテクスチャ）・ Sample Texture 2D LOD（細かさ（ミップ）を指して読む。Vertex でも使える）・ Sampler State（下の表）</td></tr>
       <tr><td>Math/Basic</td><td>Add ・ Subtract ・ Multiply ・ Divide ・ Power ・ Square Root</td></tr>
       <tr><td>Math/Advanced</td><td>Absolute ・ Negate ・ Length ・ Normalize</td></tr>
       <tr><td>Math/Range</td><td>Clamp ・ Remap ・ Maximum ・ Minimum ・ One Minus ・ Saturate ・ Fraction</td></tr>
       <tr><td>Math/Round</td><td>Floor ・ Ceiling ・ Round ・ Step</td></tr>
       <tr><td>Math/Trigonometry</td><td>Sine ・ Cosine</td></tr>
       <tr><td>Math/Interpolation</td><td>Lerp ・ Inverse Lerp ・ Smoothstep</td></tr>
-      <tr><td>Math/Vector</td><td>Dot Product ・ Distance</td></tr>
+      <tr><td>Math/Vector</td><td>Dot Product ・ Distance ・ Fresnel Effect <strong>（3D）</strong>（カメラから見て縁ほど 1 に近い）・ Transform <strong>（3D）</strong>（位置か向きを空間の間で移す。Vertex は Object ↔ World、Fragment は World ↔ Tangent）</td></tr>
       <tr><td>Channel</td><td>Split（成分に分ける）・ Combine（成分をまとめる）・ Swizzle（成分を並べ替える。<code>xyz</code>・<code>wzyx</code> など）</td></tr>
       <tr><td>UV</td><td>Tiling And Offset ・ Rotate ・ Polar Coordinates</td></tr>
+      <tr><td>Artistic/Normal</td><td>Normal Unpack（法線マップの色を −1〜1 の向きにする）・ Normal Strength（法線の凹凸を強める・弱める）・ Normal Blend（2 つの法線を重ねる）</td></tr>
       <tr><td>Procedural/Noise</td><td>Simple Noise ・ Gradient Noise ・ Voronoi</td></tr>
       <tr><td>Procedural/Shape</td><td>Ellipse ・ Rectangle</td></tr>
       <tr><td>Utility</td><td>Preview（値をそのまま渡す。選ぶと Main Preview にその値を映す）・ Custom Function（HLSL で書いた関数を呼ぶ。<a href="#sg-custom-function">Custom Function</a>）</td></tr>
@@ -6010,12 +6061,12 @@ kbd {
   <p>Sampler State の読み方は 4 つあり、目標によって使えるものが違います。使えないものを選ぶと、ノードにエラーが出ます。</p>
   <div class="table-wrap">
   <table>
-    <thead><tr><th>読み方</th><th>スプライト</th><th>ポストエフェクト</th></tr></thead>
+    <thead><tr><th>読み方</th><th>スプライト</th><th>ポストエフェクト</th><th>3D</th></tr></thead>
     <tbody>
-      <tr><td>Linear Repeat（線形・繰り返し）</td><td>○（つながないときの既定）</td><td>○</td></tr>
-      <tr><td>Point Repeat（最も近い画素・繰り返し）</td><td>○</td><td>×</td></tr>
-      <tr><td>Linear Clamp（線形・端で止める）</td><td>○</td><td>○</td></tr>
-      <tr><td>Point Clamp（最も近い画素・端で止める）</td><td>×</td><td>○</td></tr>
+      <tr><td>Linear Repeat（線形・繰り返し）</td><td>○（つながないときの既定）</td><td>○</td><td>○（つながないときの既定・異方性）</td></tr>
+      <tr><td>Point Repeat（最も近い画素・繰り返し）</td><td>○</td><td>×</td><td>○</td></tr>
+      <tr><td>Linear Clamp（線形・端で止める）</td><td>○</td><td>○</td><td>○</td></tr>
+      <tr><td>Point Clamp（最も近い画素・端で止める）</td><td>×</td><td>○</td><td>×</td></tr>
     </tbody>
   </table>
   </div>
@@ -6032,6 +6083,32 @@ kbd {
     <li>値は、.mat のインスペクタで変えられます（Project.json に入れる前でも、欄は出ます）。スクリプトからは <code>PostEffect::GetMaterial</code> で変えます（<a href="#script-posteffect">プロジェクトのポストエフェクト</a>）。</li>
     <li>並べ替えと消すのは、Project.json の <code>postEffects</code> を書き換えてください。</li>
     <li>コンピュートシェーダには画素どうしの差分が無いので、テクスチャはいつもいちばん細かい画像（ミップ 0）を読みます。</li>
+  </ul>
+
+  <h2 id="sg-3d">3D のマテリアルを作る</h2>
+  <p>3D のグラフは、手書きの <a href="#script-material-3d">3D のマテリアル</a> と同じ <span class="path">.Surface.hlsl</span> のシェーダを作ります。光・影・フォグ・GBuffer への書き込みはエンジンが行うので、グラフで決めるのは画素の材質と、頂点の位置だけです。出口は 2 つあります。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>出口</th><th>欄</th><th>つないでいないとき</th></tr></thead>
+    <tbody>
+      <tr><td rowspan="6">Fragment（画素ごと）</td><td><span class="ui">Base Color</span>（RGB・リニア）</td><td rowspan="6">マテリアルを付けていないときと同じ値（モデルのテクスチャ × マテリアルの色・法線マップ・金属感・粗さ・AO・発光）</td></tr>
+      <tr><td><span class="ui">Normal (Tangent Space)</span>（接空間の法線。Lit だけ）</td></tr>
+      <tr><td><span class="ui">Metallic</span> ／ <span class="ui">Roughness</span>（Lit だけ）</td></tr>
+      <tr><td><span class="ui">Ambient Occlusion</span>（1 = 遮られていない。Lit だけ）</td></tr>
+      <tr><td><span class="ui">Emission</span>（自分で光る色。Lit だけ）</td></tr>
+      <tr><td><span class="ui">Alpha</span>（マテリアルのアルファカットとディザもこの値で決まる）</td></tr>
+      <tr><td rowspan="2">Vertex（頂点ごと）</td><td><span class="ui">Position</span>（物体の空間の位置）</td><td rowspan="2">元の頂点のまま</td></tr>
+      <tr><td><span class="ui">Normal</span>（物体の空間の法線）</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li><strong>Lit と Unlit</strong>：Lit はシーンのライトで照らします。Unlit は照らさずに Base Color をそのまま出し、Lit だけの欄は使いません（つないだ線は残り、題名の横に「使わない」と出ます）。どちらも、モデルの <a href="#api-Material">マテリアル</a> の Lighting の設定によりません。</li>
+    <li><strong>Vertex</strong>：Vertex の出口につなぐと、頂点の関数を持つシェーダになり、頂点を動かせます。Vertex につないだノードは頂点ごとに計算します。画素ごとにしか計算できないノード（Sample Texture 2D・View Direction・Camera・Fresnel Effect・Model Surface・Screen Position・Ellipse・Rectangle）は Vertex につなぐとエラーになります。頂点でテクスチャを読むときは Sample Texture 2D LOD を使います。</li>
+    <li><strong>動く頂点の扱い</strong>：頂点の関数は今と前のフレームの時間で 2 回計算し、動きのぶれ（モーションベクター）も合わせます。レイトレーシングの影も、動かした形で落ちます（静的なモデルも骨の入ったモデルも）。</li>
+    <li><strong>境界の余白</strong>：カメラに映っているかは、動かす前のモデルの箱で決めます。頂点を大きく動かして画面の端で消えるときは、メッシュ描画の <span class="ui">境界の余白</span>（m）を増やしてください。</li>
+    <li><strong>Time</strong>：3D の Time は 240 秒で 0 に戻ります（植物の揺れと同じ時間）。Vertex では、今と前のフレームの時間をそれぞれ使います。</li>
+    <li>1 つの .mat が、モデルの全部のサブメッシュに効きます。Model Surface と、つないでいない欄は、サブメッシュごとのテクスチャと値を使います。</li>
   </ul>
 
   <h2 id="sg-custom-function">Custom Function（HLSL を書く）</h2>
@@ -6066,7 +6143,7 @@ kbd {
   </script>
   <ul>
     <li>関数の中でコンパイルのエラーがあると、その Custom Function の題名が赤くなり、下にエラーを出します。</li>
-    <li>スプライトのグラフでは <code>Sample</code>、ポストエフェクトのグラフでは <code>SampleLevel</code>（ミップを指す読み方）を使います。</li>
+    <li>スプライトのグラフと 3D の Fragment では <code>Sample</code>、ポストエフェクトのグラフと 3D の Vertex では <code>SampleLevel</code>（ミップを指す読み方）を使います。3D の Vertex と Fragment の両方へつないだ Custom Function は、両方でコンパイルできる書き方（<code>SampleLevel</code>）にしてください。</li>
   </ul>
 
   <h2 id="sg-samples">見本</h2>
@@ -6080,7 +6157,8 @@ kbd {
   <ul>
     <li>ゲームを書き出すと、.shadergraph は入れず、グラフが作ったシェーダを DXIL（コンパイル済みのシェーダ）にして入れます（<a href="#editor-export">ゲームを書き出す</a>）。</li>
     <li>ポストエフェクトのグラフが作った <span class="path">.Graph.CS.hlsl</span> は、Project.json に入れていなくても、コンピュートシェーダとして書き出します。</li>
-    <li>今作れるのは、スプライト描画と UI 画像のピクセルシェーダと、ポストエフェクトのコンピュートシェーダです。3D のモデル・頂点を動かすシェーダ・画面の深さ（Scene Depth）を読むノードは、まだありません。</li>
+    <li>3D のグラフが作った <span class="path">.Graph.Surface.hlsl</span> は、手書きの <span class="path">.Surface.hlsl</span> と同じく、使う入口を全部 DXIL にして書き出します。</li>
+    <li>画面の深さ（Scene Depth）を読むノードと、3D の半透明のグラフで画面の色を読むノードは、まだありません。</li>
     <li>グラフが作ったシェーダは、ほかのシェーダから <code>#include</code> できません。</li>
     <li><span class="ui">Tools<span class="arrow">▸</span>テスト<span class="arrow">▸</span>シェーダーグラフの全ノード検査</span> は、置ける全部のノードを、入力の幅ごとにつないだグラフにしてコンパイルし、結果を Console に出します（エンジンのノードを足したり直したりしたときの確かめ用）。</li>
   </ul>
@@ -10487,6 +10565,17 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-61-0">v0.61.0 <span class="dim">（2026-11-05）</span></h3>
+  <p>シェーダーグラフで 3D モデルのマテリアルを作れるようにし、3D のマテリアルで頂点を動かせるようにした版です。マテリアルを付けていないモデルの見た目は変わりません（<a href="#sg-3d">3D のマテリアルを作る</a>）。</p>
+  <ul>
+    <li><strong>3D のグラフ</strong>：シェーダーグラフの目標に <span class="ui">3D（Lit）</span> と <span class="ui">3D（Unlit）</span> を足しました。<span class="path">名前.Graph.Surface.hlsl</span> を作り、.mat をメッシュ描画の <span class="ui">マテリアル</span> 欄に付けて使います。出口の Fragment に Base Color・Normal (Tangent Space)・Metallic・Roughness・Ambient Occlusion・Emission・Alpha、出口の Vertex に Position・Normal（物体の空間）があります。Lit と Unlit は後から切り替えられます。</li>
+    <li><strong>ノード</strong>：Normal Vector・Tangent Vector・View Direction・Model Surface・Camera・Sample Texture 2D LOD・Fresnel Effect・Transform・Normal Unpack・Normal Strength・Normal Blend を足し、Position と Screen Position を 3D でも使えるようにしました。</li>
+    <li><strong>3D の Main Preview</strong>：3D のグラフは、球・立方体・平面を決まったライトで照らして映します。ドラッグで回せ、モデルの画像を指せます。</li>
+    <li><strong>頂点を動かす</strong>：<span class="path">.Surface.hlsl</span> に <code>#define SURFACE_VERTEX</code> と <code>SurfaceVertex()</code> を書くと、頂点の位置と法線を変えられます。動きのぶれ（モーションベクター）とレイトレーシングの影の形も、動かした頂点に合わせます。<code>#define SURFACE_LIT</code> ／ <code>SURFACE_UNLIT</code> で、ライトで照らすかをシェーダで決められます（<a href="#material3d-vertex">頂点を動かす</a>）。</li>
+    <li><strong>境界の余白</strong>：メッシュ描画に <span class="ui">境界の余白</span>（スクリプトでは <code>boundsPadding</code>）を足しました。頂点を大きく動かすモデルが画面の端で消えるときに増やします。</li>
+    <li><strong>書き出し</strong>：頂点の関数を持つ <span class="path">.Surface.hlsl</span> は、頂点シェーダと影の形を作る入口も DXIL にして入れます。</li>
+  </ul>
 
   <h3 id="changelog-v0-60-0">v0.60.0 <span class="dim">（2026-11-05）</span></h3>
   <p>3D モデルにも、自分で書いたシェーダのマテリアル（.mat）を付けられるようにした版です。関数 <code>Surface()</code> で色・法線・金属感・粗さ・発光を決めると、光・影・フォグはエンジンが付けます。マテリアルを付けていないモデルの見た目は変わりません（<a href="#script-material-3d">マテリアルとシェーダ（3D モデル）</a>）。</p>
@@ -15742,7 +15831,8 @@ void Update()
       ["モデル", "model", "string（モデル）", "なし", ".gltf .glb .obj .fbx。スクリプトではプロジェクトの根からのパス。"],
       ["テクスチャ", "texture", "string（テクスチャ）", "なし", "すべての面の基本色のテクスチャを差し替えます。空ならモデルのテクスチャ。"],
       ["ブレンド", "blendMode", "int", "0", "0 = なし、1 = アルファ、2 = 加算、3 = 減算、4 = 乗算、5 = スクリーン"],
-      ["マテリアル", "material", "string（マテリアル）", "なし", "描き方を決めるシェーダ（名前.Surface.hlsl）と値（.mat）。指さなければモデルのテクスチャとマテリアルの値で描く（<a href=\"#script-material-3d\">3D のマテリアル</a>）。"]
+      ["マテリアル", "material", "string（マテリアル）", "なし", "描き方を決めるシェーダ（名前.Surface.hlsl）と値（.mat）。指さなければモデルのテクスチャとマテリアルの値で描く（<a href=\"#script-material-3d\">3D のマテリアル</a>）。"],
+      ["境界の余白", "boundsPadding", "float", "0", "画面の外かを決める箱を各向きへ広げる量（m）。マテリアルで頂点を大きく動かして、画面の端で消えるときに増やす。"]
     ],
     sections: [
       {

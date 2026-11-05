@@ -935,6 +935,8 @@ class MeshRenderer {
 	void set_blendMode(int) property;
 	string get_material() const property;
 	void set_material(const string&in) property;
+	float get_boundsPadding() const property;
+	void set_boundsPadding(float) property;
 	void SetMaterialFloat(const string&in, float);
 	void SetMaterialInt(const string&in, int);
 	void SetMaterialVector(const string&in, const CoreEngine::Vector4&in);
