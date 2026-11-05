@@ -19,8 +19,12 @@ namespace CoreEngine::Editor::ShaderGraph
         UV,           ///< 描いている面の UV（ポストエフェクトは画面の UV）
         MainTexture,  ///< 部品のテクスチャ（ポストエフェクトは画面。どちらも `gTexture`）
         Sampler,      ///< 線形・繰り返しのサンプラー
-        DefaultRGB,   ///< 既定の色の RGB（スプライトはマテリアルなしと同じ色・ポストエフェクトはそのままの画面）
+        DefaultRGB,   ///< 既定の色の RGB（スプライトはマテリアルなしと同じ色・ポストエフェクトはそのままの画面・3D はモデルの色）
         DefaultAlpha, ///< 既定の色の A
+        ModelValue,   ///< 3D の出口: モデルの今の値（何も代入しない）
+        SourceVertex, ///< 3D の頂点の出口: 元の頂点（何も代入しない）
+        WorldNormal,  ///< 3D: ワールドの法線
+        ViewDirection, ///< 3D の Fragment: 物からカメラへの向き
     };
 
     /// @brief 目標ごとの印（`NodeDesc::targets` に重ねる）
@@ -30,7 +34,19 @@ namespace CoreEngine::Editor::ShaderGraph
     }
 
     /// @brief 全部の目標
-    inline constexpr uint8_t kAllTargets = TargetBit(Target::Sprite) | TargetBit(Target::PostEffect);
+    inline constexpr uint8_t kAllTargets = TargetBit(Target::Sprite) | TargetBit(Target::PostEffect)
+        | TargetBit(Target::Lit) | TargetBit(Target::Unlit);
+
+    /// @brief 3D の目標
+    inline constexpr uint8_t k3DTargets = TargetBit(Target::Lit) | TargetBit(Target::Unlit);
+
+    /// @brief 3D のノードが働く段（`NodeDesc::stages` に重ねる）
+    inline constexpr uint8_t kStageVertex = 1;   ///< 頂点の関数（SurfaceVertex）
+    inline constexpr uint8_t kStageFragment = 2; ///< 画素の関数（Surface・スプライトとポストエフェクトは全部これ）
+    inline constexpr uint8_t kAllStages = kStageVertex | kStageFragment;
+
+    /// @brief 段の表示名
+    const char* StageName(uint8_t stage);
 
     /// @brief Custom Function のノードの種類
     inline constexpr std::string_view kCustomFunctionType = "CustomFunction";
@@ -52,6 +68,10 @@ namespace CoreEngine::Editor::ShaderGraph
         ValueType type = ValueType::Float;
         std::array<float, 4> fallback{ 0.0f, 0.0f, 0.0f, 0.0f }; ///< つながっていないときの値
         PinBinding binding = PinBinding::Value;
+        uint8_t targets = kAllTargets; ///< ピンを出す目標（出口の欄を目標で変える）
+
+        /// @brief この目標で使うピンか
+        bool Supports(Target target) const { return (targets & TargetBit(target)) != 0; }
     };
 
     /// @brief ノードの設定 1 つ（選択肢か文字）
@@ -61,6 +81,10 @@ namespace CoreEngine::Editor::ShaderGraph
         std::string_view label;
         std::vector<std::string_view> choices; ///< 空なら文字を書く欄
         std::string_view fallback;
+        uint8_t targets = kAllTargets; ///< 設定を出す目標
+
+        /// @brief この目標で使う設定か
+        bool Supports(Target target) const { return (targets & TargetBit(target)) != 0; }
     };
 
     struct NodeDesc;
@@ -83,6 +107,10 @@ namespace CoreEngine::Editor::ShaderGraph
         const Node& node;
         const NodeDesc& desc;
         Target target = Target::Sprite;
+        uint8_t stage = kStageFragment; ///< 3D で今書いている関数（`kStageVertex` か `kStageFragment`）
+
+        /// @brief 3D の頂点の関数を書いているか
+        bool Vertex() const { return Is3D(target) && stage == kStageVertex; }
 
         std::vector<std::string> in;      ///< 入力の式（ピンの幅へ直したもの）
         std::vector<ValueType> inType;    ///< 入力の種類（ピンの幅へ直した後）
@@ -120,9 +148,13 @@ namespace CoreEngine::Editor::ShaderGraph
         std::vector<SettingDesc> settings;
         bool creatable = true; ///< 検索から置けるか（出口は置けない）
         uint8_t targets = kAllTargets; ///< 使える目標（`TargetBit` を重ねたもの）
+        uint8_t stages = kAllStages;   ///< 3D で使える段（`kStageVertex`・`kStageFragment` を重ねたもの）
 
         /// @brief この目標で使えるか
         bool Supports(Target target) const { return (targets & TargetBit(target)) != 0; }
+
+        /// @brief 3D のこの段で使えるか
+        bool SupportsStage(uint8_t stage) const { return (stages & stage) != 0; }
 
         /// @brief HLSL を作る
         std::function<void(EmitArgs&)> emit;

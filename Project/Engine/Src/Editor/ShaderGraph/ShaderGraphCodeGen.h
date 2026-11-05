@@ -51,7 +51,7 @@ namespace CoreEngine::Editor::ShaderGraph
         std::string hlsl;
         std::vector<NodeIssue> issues; ///< ノードごとの問題（あっても HLSL は作る）
         std::string fatal;             ///< HLSL を作れなかった訳（空なら作れた）
-        std::map<int, std::pair<int, int>> nodeLines; ///< ノード → HLSL の行（1 始まり・最初と最後）
+        std::multimap<int, std::pair<int, int>> nodeLines; ///< ノード → HLSL の行（1 始まり・最初と最後。3D は Vertex と Fragment の 2 つあることがある）
         std::map<int, std::pair<int, int>> globalLines; ///< ノード → そのノードが関数の外に置いた文の行
     };
 
@@ -63,6 +63,10 @@ namespace CoreEngine::Editor::ShaderGraph
 
     /// @brief 生成したファイルの先頭のプロパティの行（`// property 名前 種類 …`）
     inline constexpr const char* kPropertyLinePrefix = "// property ";
+
+    /// @brief 3D の生成物のプロパティの定数バッファ（b）と最初のテクスチャ（t）の番号（`kSurfaceMaterialRegisters` と同じ値）
+    inline constexpr int kSurfaceGraphConstantRegister = 10;
+    inline constexpr int kSurfaceGraphFirstTexture = 11;
 }
 
 #endif // CORE_EDITOR

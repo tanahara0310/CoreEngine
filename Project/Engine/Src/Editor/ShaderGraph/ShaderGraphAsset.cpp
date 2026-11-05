@@ -7,6 +7,7 @@
 #include "Graphics/Asset/AssetRef.h"
 #include "Graphics/Material/ShaderMaterial.h"
 #include "Graphics/Material/ShaderMaterialLibrary.h"
+#include "Graphics/Material/SurfaceMaterialPipeline.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
@@ -23,9 +24,10 @@ namespace CoreEngine::Editor::ShaderGraph
 {
     namespace
     {
-        /// @brief 生成したシェーダの名前の印（スプライト・ポストエフェクト）
+        /// @brief 生成したシェーダの名前の印（スプライト・ポストエフェクト・3D）
         constexpr const wchar_t* kGeneratedSuffix = L".Graph.PS.hlsl";
         constexpr const wchar_t* kGeneratedComputeSuffix = L".Graph.CS.hlsl";
+        constexpr const wchar_t* kGeneratedSurfaceSuffix = L".Graph.Surface.hlsl";
 
         std::wstring Lower(std::wstring text)
         {
@@ -83,14 +85,20 @@ namespace CoreEngine::Editor::ShaderGraph
 
     std::filesystem::path GeneratedShaderPath(const std::filesystem::path& graphFile, Target target)
     {
-        const wchar_t* const suffix = target == Target::PostEffect ? kGeneratedComputeSuffix : kGeneratedSuffix;
+        const wchar_t* suffix = kGeneratedSuffix;
+        if (target == Target::PostEffect) {
+            suffix = kGeneratedComputeSuffix;
+        } else if (Is3D(target)) {
+            suffix = kGeneratedSurfaceSuffix;
+        }
         return graphFile.parent_path() / (graphFile.stem().wstring() + suffix);
     }
 
     bool IsGeneratedShaderPath(const std::filesystem::path& path)
     {
         const std::wstring name = Lower(path.filename().wstring());
-        return EndsWith(name, Lower(kGeneratedSuffix)) || EndsWith(name, Lower(kGeneratedComputeSuffix));
+        return EndsWith(name, Lower(kGeneratedSuffix)) || EndsWith(name, Lower(kGeneratedComputeSuffix))
+            || EndsWith(name, Lower(kGeneratedSurfaceSuffix));
     }
 
     bool IsComputeShaderPath(const std::filesystem::path& path)
@@ -186,28 +194,70 @@ namespace CoreEngine::Editor::ShaderGraph
 
     std::filesystem::path ScratchShaderPath(const std::string& key, Target target)
     {
-        const char* const suffix = target == Target::PostEffect ? ".CS.hlsl" : ".PS.hlsl";
+        const char* suffix = ".PS.hlsl";
+        if (target == Target::PostEffect) {
+            suffix = ".CS.hlsl";
+        } else if (Is3D(target)) {
+            suffix = ".Surface.hlsl";
+        }
         return ProjectPaths::Intermediate("ShaderGraph") / Logger::GetInstance().Utf8ToPath(key + suffix);
     }
 
     CompileCheck CheckCompile(ShaderCompiler& compiler, const std::string& hlsl, const std::filesystem::path& scratchFile,
-        Target target)
+        Target target, bool allEntries)
     {
         CompileCheck check;
         if (!WriteFileReplacing(scratchFile, hlsl)) {
             check.message = "検査用のファイルを書けません: " + Logger::GetInstance().PathToUtf8(scratchFile);
             return check;
         }
-        std::string error;
-        std::string warning;
-        const auto blob = compiler.CompileForCooking(scratchFile.wstring(), ShaderProfile(target), L"main", error, &warning);
-        if (!blob) {
-            check.message = error;
-            return check;
+
+        struct Entry
+        {
+            const wchar_t* profile;
+            const wchar_t* name;
+        };
+        std::vector<Entry> entries;
+        if (!Is3D(target)) {
+            entries.push_back({ ShaderProfile(target), L"main" });
+        } else {
+            entries.push_back({ L"ps_6_0", kSurfacePreviewPixelEntry });
+            entries.push_back({ L"vs_6_0", kSurfacePreviewVertexEntry });
+            if (allEntries) {
+                for (const SurfaceMaterialStage& stage : kSurfaceMaterialStages) {
+                    const bool listed = std::any_of(entries.begin(), entries.end(),
+                        [&stage](const Entry& entry) { return std::wstring_view(entry.name) == stage.entryPoint; });
+                    if (!listed) {
+                        entries.push_back({ L"ps_6_0", stage.entryPoint });
+                    }
+                }
+                if (SurfaceShaderTextHasVertexFunction(hlsl)) {
+                    entries.push_back({ L"vs_6_0", kSurfaceStaticVertexEntry });
+                    entries.push_back({ L"vs_6_0", kSurfaceSkinnedVertexEntry });
+                    entries.push_back({ L"cs_6_0", kSurfaceDeformEntry });
+                }
+            }
         }
-        if (!warning.empty()) {
-            check.message = "警告が出ました: " + warning;
-            return check;
+
+        for (const Entry& entry : entries) {
+            std::string label;
+            if (Is3D(target)) {
+                for (const wchar_t* c = entry.name; *c; ++c) {
+                    label += static_cast<char>(*c);
+                }
+                label = "入口 " + label + ": ";
+            }
+            std::string error;
+            std::string warning;
+            const auto blob = compiler.CompileForCooking(scratchFile.wstring(), entry.profile, entry.name, error, &warning);
+            if (!blob) {
+                check.message = label + error;
+                return check;
+            }
+            if (!warning.empty()) {
+                check.message = label + "警告が出ました: " + warning;
+                return check;
+            }
         }
         check.ok = true;
         return check;
@@ -256,7 +306,7 @@ namespace CoreEngine::Editor::ShaderGraph
         if (ReadText(shaderFile) != result.generated.hlsl) {
             const std::string key = AssetDatabase::GetInstance().GetGUID(graphFile);
             const CompileCheck check = CheckCompile(compiler, result.generated.hlsl,
-                ScratchShaderPath((key.empty() ? std::string("graph") : key) + ".save", graph.target), graph.target);
+                ScratchShaderPath((key.empty() ? std::string("graph") : key) + ".save", graph.target), graph.target, true);
             if (!check.ok) {
                 result.error = check.message;
                 return result;

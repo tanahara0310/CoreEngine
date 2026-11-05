@@ -244,14 +244,18 @@ namespace CoreEngine::Editor::ShaderGraph
         }
 
         /// @brief つないでいないときに使うものの説明（ノードに書いた値を使うなら nullptr）
-        const char* BindingHint(PinBinding binding)
+        const char* BindingHint(PinBinding binding, Target target)
         {
             switch (binding) {
             case PinBinding::UV: return "UV0";
             case PinBinding::MainTexture: return "Main";
             case PinBinding::Sampler: return "既定";
             case PinBinding::DefaultRGB:
-            case PinBinding::DefaultAlpha: return "既定の色";
+            case PinBinding::DefaultAlpha: return Is3D(target) ? "モデルの値" : "既定の色";
+            case PinBinding::ModelValue: return "モデルの値";
+            case PinBinding::SourceVertex: return "元の頂点";
+            case PinBinding::WorldNormal: return Is3D(target) ? "面の法線" : nullptr;
+            case PinBinding::ViewDirection: return Is3D(target) ? "カメラへ" : nullptr;
             default: return nullptr;
             }
         }
@@ -790,7 +794,8 @@ namespace CoreEngine::Editor::ShaderGraph
         if (document.previewRevision > 0) {
             RebuildPreviewValues(document);
             preview_.Request(ScratchShaderPath(ScratchKey(document) + ".preview", document.graph.target),
-                document.graph.target, document.previewRevision, document.previewValues, document.previewTexture);
+                document.graph.target, document.previewRevision, document.previewValues, document.previewTexture,
+                document.previewView);
         }
     }
 
@@ -1022,7 +1027,7 @@ namespace CoreEngine::Editor::ShaderGraph
         const auto resolvedIt = document.resolution.nodes.find(node.id);
         const ResolvedNode* const resolved = resolvedIt != document.resolution.nodes.end() ? &resolvedIt->second : nullptr;
         const bool hasError = document.errorNodes.contains(node.id) || (desc && !desc->Supports(document.graph.target));
-        const bool isMaster = node.type == kMasterNodeType;
+        const bool isMaster = IsMasterNodeType(node.type);
         const bool isProperty = node.type == "Property";
         const bool isFunction = node.type == kCustomFunctionType;
 
@@ -1074,6 +1079,9 @@ namespace CoreEngine::Editor::ShaderGraph
             if (isFunction) {
                 break;
             }
+            if (!setting.Supports(document.graph.target)) {
+                continue;
+            }
             const std::string current = SettingValue(node, setting);
             ImGui::PushID(setting.name.data(), setting.name.data() + setting.name.size());
             if (!setting.choices.empty()) {
@@ -1119,11 +1127,19 @@ namespace CoreEngine::Editor::ShaderGraph
                 const ValueType type = resolved && index < resolved->inputs.size()
                     ? resolved->inputs[index] : (pin.type == ValueType::Dynamic ? ValueType::Float : pin.type);
                 const bool connected = document.graph.FindLinkTo(node.id, pin.name) != nullptr;
+                const bool used = pin.Supports(document.graph.target);
+                if (!used && !connected) {
+                    continue;
+                }
                 ImNodes::PushColorStyle(ImNodesCol_Pin, ToU32(PinColor(type)));
                 ImNodes::BeginInputAttribute(InputPinId(node.id, index), PinShape(type, connected));
-                ImGui::TextUnformatted(pin.name.data(), pin.name.data() + pin.name.size());
+                if (used) {
+                    ImGui::TextUnformatted(pin.name.data(), pin.name.data() + pin.name.size());
+                } else {
+                    ImGui::TextDisabled("%.*s（使わない）", static_cast<int>(pin.name.size()), pin.name.data());
+                }
                 if (!connected) {
-                    if (const char* const hint = BindingHint(pin.binding)) {
+                    if (const char* const hint = BindingHint(pin.binding, document.graph.target)) {
                         ImGui::SameLine();
                         ImGui::TextDisabled("%s", hint);
                     } else if (type == ValueType::Float) {
@@ -1464,7 +1480,7 @@ namespace CoreEngine::Editor::ShaderGraph
         }
         for (const int id : document.selectedNodes) {
             const Node* const node = document.graph.FindNode(id);
-            if (!node || node->type == kMasterNodeType) {
+            if (!node || IsMasterNodeType(node->type)) {
                 continue;
             }
             document.graph.RemoveNode(id);
@@ -1484,7 +1500,7 @@ namespace CoreEngine::Editor::ShaderGraph
         clip.target = document.graph.target;
         for (const int id : document.selectedNodes) {
             const Node* const node = document.graph.FindNode(id);
-            if (!node || node->type == kMasterNodeType) {
+            if (!node || IsMasterNodeType(node->type)) {
                 continue;
             }
             clip.nodes.push_back(*node);
@@ -1518,7 +1534,7 @@ namespace CoreEngine::Editor::ShaderGraph
         float minX = FLT_MAX;
         float minY = FLT_MAX;
         for (const Node& node : clip.nodes) {
-            if (node.type != kMasterNodeType) {
+            if (!IsMasterNodeType(node.type)) {
                 minX = (std::min)(minX, node.x);
                 minY = (std::min)(minY, node.y);
             }
@@ -1531,7 +1547,7 @@ namespace CoreEngine::Editor::ShaderGraph
         std::vector<int> created;
         int next = document.graph.NextNodeId();
         for (const Node& source : clip.nodes) {
-            if (source.type == kMasterNodeType) {
+            if (IsMasterNodeType(source.type)) {
                 continue;
             }
             Node node = source;
@@ -1698,6 +1714,21 @@ namespace CoreEngine::Editor::ShaderGraph
         DimText("ノードかプロパティを選ぶと、ここで値を変えられます。");
         ImGui::SeparatorText("グラフ");
         Row("目標");
+        if (Is3D(document.graph.target)) {
+            const Target current = document.graph.target;
+            if (ImGui::BeginCombo("##target", DisplayName(current))) {
+                for (const Target target : { Target::Lit, Target::Unlit }) {
+                    if (ImGui::Selectable(DisplayName(target), target == current) && target != current) {
+                        document.graph.target = target;
+                        document.pendingLabel = "目標を変える";
+                    }
+                }
+                ImGui::EndCombo();
+            }
+            DimText("Lit と Unlit は作るシェーダの名前が同じなので、付けている .mat はそのまま使えます。"
+                    "Unlit に無い欄へのつなぎは残り、使われません。");
+            return;
+        }
         ImGui::TextUnformatted(DisplayName(document.graph.target));
         if (document.graph.target != Target::PostEffect) {
             return;
@@ -2003,6 +2034,9 @@ namespace CoreEngine::Editor::ShaderGraph
             DrawFunctionInspector(document, node);
         }
         for (const SettingDesc& setting : function ? kNoSettings : desc->settings) {
+            if (!setting.Supports(document.graph.target)) {
+                continue;
+            }
             const std::string current = SettingValue(node, setting);
             const std::string label(setting.label.empty() ? setting.name : setting.label);
             ImGui::PushID(setting.name.data(), setting.name.data() + setting.name.size());
@@ -2033,7 +2067,7 @@ namespace CoreEngine::Editor::ShaderGraph
         bool header = false;
         for (size_t index = 0; index < desc->inputs.size(); ++index) {
             const PinDesc& pin = desc->inputs[index];
-            if (document.graph.FindLinkTo(node.id, pin.name)) {
+            if (document.graph.FindLinkTo(node.id, pin.name) || !pin.Supports(document.graph.target)) {
                 continue;
             }
             if (!header) {
@@ -2041,7 +2075,7 @@ namespace CoreEngine::Editor::ShaderGraph
                 header = true;
             }
             const std::string name(pin.name);
-            if (const char* const hint = BindingHint(pin.binding)) {
+            if (const char* const hint = BindingHint(pin.binding, document.graph.target)) {
                 Row(name.c_str());
                 ImGui::TextDisabled("%s", hint);
                 continue;
@@ -2171,11 +2205,12 @@ namespace CoreEngine::Editor::ShaderGraph
         const float side = (std::min)(ImGui::GetContentRegionAvail().x, static_cast<float>(ShaderGraphPreview::kSize));
         const ImVec2 position = ImGui::GetCursorScreenPos();
         ImDrawList* const drawList = ImGui::GetWindowDrawList();
+        const bool is3D = Is3D(document.graph.target);
 
-        // 透けたところが分かるように市松模様を敷く
+        // 透けたところが分かるように市松模様を敷く（3D は背景ごと描く）
         constexpr int kCells = 16;
         const float cell = side / static_cast<float>(kCells);
-        for (int y = 0; y < kCells; ++y) {
+        for (int y = 0; y < kCells && !is3D; ++y) {
             for (int x = 0; x < kCells; ++x) {
                 const ImVec2 min(position.x + cell * static_cast<float>(x), position.y + cell * static_cast<float>(y));
                 drawList->AddRectFilled(min, ImVec2(min.x + cell, min.y + cell),
@@ -2186,7 +2221,27 @@ namespace CoreEngine::Editor::ShaderGraph
         if (texture.ptr != 0 && document.previewRevision > 0) {
             drawList->AddImage(static_cast<ImTextureID>(texture.ptr), position, ImVec2(position.x + side, position.y + side));
         }
-        ImGui::Dummy(ImVec2(side, side));
+        if (is3D) {
+            // 絵をドラッグすると形が回る・ダブルクリックで向きを戻す
+            ImGui::InvisibleButton("##previewRotate", ImVec2((std::max)(side, 1.0f), (std::max)(side, 1.0f)));
+            PreviewView& view = document.previewView;
+            if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left, 0.0f)) {
+                constexpr float kRadiansPerPixel = 0.01f;
+                constexpr float kPitchLimit = 1.5f;
+                const ImVec2 delta = ImGui::GetIO().MouseDelta;
+                view.yaw -= delta.x * kRadiansPerPixel;
+                view.pitch = std::clamp(view.pitch - delta.y * kRadiansPerPixel, -kPitchLimit, kPitchLimit);
+            }
+            if (ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                view.yaw = 0.0f;
+                view.pitch = 0.0f;
+            }
+            if (ImGui::IsItemHovered() && !ImGui::IsItemActive()) {
+                ImGui::SetTooltip("ドラッグで回す・ダブルクリックで向きを戻す");
+            }
+        } else {
+            ImGui::Dummy(ImVec2(side, side));
+        }
         if (!preview_.GetError().empty()) {
             ImGui::PushStyleColor(ImGuiCol_Text, Theme::kError);
             ImGui::TextWrapped("%s", preview_.GetError().c_str());
@@ -2202,6 +2257,22 @@ namespace CoreEngine::Editor::ShaderGraph
             TexturePathField("##previewTexture", document.previewTexture, "（uvChecker.png）");
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip("Scene Color と Main Texture が読む、画面の代わりの画像");
+            }
+        } else if (is3D) {
+            Row("形");
+            PreviewShape& shape = document.previewView.shape;
+            if (ImGui::BeginCombo("##previewShape", DisplayName(shape))) {
+                for (const PreviewShape option : { PreviewShape::Sphere, PreviewShape::Cube, PreviewShape::Plane }) {
+                    if (ImGui::Selectable(DisplayName(option), option == shape)) {
+                        shape = option;
+                    }
+                }
+                ImGui::EndCombo();
+            }
+            Row("モデルの画像");
+            TexturePathField("##previewTexture", document.previewTexture);
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("モデルのベースカラーのテクスチャ（Model Surface ノードと、つないでいない Base Color が読む）");
             }
         } else {
             Row("板の画像");
@@ -2264,7 +2335,7 @@ namespace CoreEngine::Editor::ShaderGraph
             return 0;
         }
         const Node* const node = document.graph.FindNode(document.selectedNodes.front());
-        return node && node->type != kMasterNodeType ? node->id : 0;
+        return node && !IsMasterNodeType(node->type) ? node->id : 0;
     }
 
     void ShaderGraphEditor::UpdateValidation(Document& document)
@@ -2441,7 +2512,7 @@ namespace CoreEngine::Editor::ShaderGraph
                 }
                 if (message.empty()) {
                     const CompileCheck check = CheckCompile(compiler, test.generated.hlsl,
-                        ScratchShaderPath("SelfTest", test.target), test.target);
+                        ScratchShaderPath("SelfTest", test.target), test.target, true);
                     message = check.ok ? std::string() : check.message;
                 }
                 if (!message.empty()) {
@@ -2450,7 +2521,7 @@ namespace CoreEngine::Editor::ShaderGraph
                 }
             }
             std::error_code ec;
-            for (const Target target : { Target::Sprite, Target::PostEffect }) {
+            for (const Target target : kAllTargetList) {
                 std::filesystem::remove(ScratchShaderPath("SelfTest", target), ec);
             }
             const std::string summary = "シェーダーグラフの全ノード検査: " + std::to_string(checked) + " 件中 "

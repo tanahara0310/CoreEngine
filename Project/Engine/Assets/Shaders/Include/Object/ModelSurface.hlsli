@@ -145,6 +145,12 @@ float SurfaceTime()
     return gVertexAnim.time;
 }
 
+/// @brief 前のフレームからの秒
+float SurfaceDeltaTime()
+{
+    return gVertexAnim.time - gVertexAnim.prevTime;
+}
+
 /// @brief 物の表面からカメラへの向き（正規化済み）
 float3 SurfaceViewDirection(SurfaceInput IN)
 {
@@ -159,6 +165,16 @@ float3 SurfaceTangentToWorld(SurfaceInput IN, float3 normalTS)
     T = normalize(T - dot(T, N) * N);
     float3 B = cross(N, T);
     return normalize(mul(normalTS, float3x3(T, B, N)));
+}
+
+/// @brief ワールドの向きを接空間（x = 接線・y = 従法線・z = 法線）へ移す
+float3 SurfaceWorldToTangent(SurfaceInput IN, float3 directionWS)
+{
+    float3 N = normalize(IN.normalWS);
+    float3 T = normalize(IN.tangentWS);
+    T = normalize(T - dot(T, N) * N);
+    float3 B = cross(N, T);
+    return mul(float3x3(T, B, N), directionWS);
 }
 
 /// @brief Surface() の結果を GBuffer へ書く

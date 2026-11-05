@@ -25,11 +25,15 @@ namespace CoreEngine::Editor::ShaderGraph
             "gSpriteDraw", "gSpriteTransform", "gOutput", "gPostEffect", "baseColor", "alpha",
             "id", "GraphInput", "GraphProperties", "SpriteUV", "SampleSprite", "SpriteColor", "SpriteDefaultColor",
             "IsOutsideScreen", "PostEffectUV", "LoadScreen", "SampleScreen",
+            "gGraph", "OUT", "Surface", "SurfaceVertex", "gNormalMap", "gMetallicRoughnessMap", "gEmissiveMap", "gAOMap",
+            "gCamera", "gLightCounts", "gDirectionalLights", "gPointLights", "gSpotLights", "gAreaLights",
+            "gRTShadowMask", "gFog", "gVertexAnim", "gInstanceData", "gTransformationMatrix", "gSurfacePreview",
+            "gSourceVertices", "gIndices", "gOutputVertices", "gDeform",
         };
 
         bool ParseTarget(const std::string& text, Target& target)
         {
-            for (const Target candidate : { Target::Sprite, Target::PostEffect }) {
+            for (const Target candidate : kAllTargetList) {
                 if (text == ToString(candidate)) {
                     target = candidate;
                     return true;
@@ -85,6 +89,8 @@ namespace CoreEngine::Editor::ShaderGraph
         switch (target) {
         case Target::Sprite: return "Sprite";
         case Target::PostEffect: return "PostEffect";
+        case Target::Lit: return "Lit";
+        case Target::Unlit: return "Unlit";
         }
         return "Sprite";
     }
@@ -94,6 +100,8 @@ namespace CoreEngine::Editor::ShaderGraph
         switch (target) {
         case Target::Sprite: return "スプライト／UI 画像";
         case Target::PostEffect: return "ポストエフェクト";
+        case Target::Lit: return "3D（Lit）";
+        case Target::Unlit: return "3D（Unlit）";
         }
         return "スプライト／UI 画像";
     }
@@ -164,6 +172,13 @@ namespace CoreEngine::Editor::ShaderGraph
         return found == nodes.end() ? nullptr : &*found;
     }
 
+    const Node* Graph::FindVertexMaster() const
+    {
+        const auto found = std::find_if(nodes.begin(), nodes.end(),
+            [](const Node& node) { return node.type == kVertexMasterNodeType; });
+        return found == nodes.end() ? nullptr : &*found;
+    }
+
     const Link* Graph::FindLinkTo(int node, std::string_view pin) const
     {
         const auto found = std::find_if(links.begin(), links.end(),
@@ -230,6 +245,14 @@ namespace CoreEngine::Editor::ShaderGraph
         master.x = 400.0f;
         master.y = 0.0f;
         graph.nodes.push_back(std::move(master));
+        if (Is3D(target)) {
+            Node vertex;
+            vertex.id = 2;
+            vertex.type = std::string(kVertexMasterNodeType);
+            vertex.x = 400.0f;
+            vertex.y = -160.0f;
+            graph.nodes.push_back(std::move(vertex));
+        }
         return graph;
     }
 
@@ -319,6 +342,15 @@ namespace CoreEngine::Editor::ShaderGraph
             master.x = 400.0f;
             graph.nodes.push_back(std::move(master));
             warnings.push_back("出口のノードが無かったので足しました");
+        }
+        if (Is3D(graph.target) && !graph.FindVertexMaster()) {
+            Node vertex;
+            vertex.id = graph.NextNodeId();
+            vertex.type = std::string(kVertexMasterNodeType);
+            vertex.x = 400.0f;
+            vertex.y = -160.0f;
+            graph.nodes.push_back(std::move(vertex));
+            warnings.push_back("頂点の出口のノードが無かったので足しました");
         }
 
         if (const auto links = root.find("links"); links != root.end() && links->is_array()) {

@@ -20,24 +20,23 @@
 
 namespace CoreEngine
 {
+    RootSignatureConfig MakeSurfaceMaterialRootSignatureConfig()
+    {
+        RootSignatureConfig config;
+        config.SetDefaultCBVStrategy(BindingStrategy::RootDescriptor);
+        config.SetDefaultSRVStrategy(BindingStrategy::DescriptorTable);
+        config.SetDefaultSamplerStrategy(BindingStrategy::StaticSampler);
+        config.ConfigureResource("gInstanceData", BindingStrategy::RootDescriptor);
+        config.ConfigureResource("gVertexAnim", BindingStrategy::RootConstants);
+        config.ConfigureSampler("gSampler", SamplerConfig::Anisotropic());
+        config.ConfigureSampler("gShadowSampler", SamplerConfig::Shadow());
+        config.ConfigureSampler("gPointSampler", SamplerConfig::Point());
+        config.ConfigureSampler("gClampSampler", SamplerConfig::LinearClamp());
+        return config;
+    }
+
     namespace
     {
-        /// @brief モデル描画と同じ差し方（CBV はルート・SRV は表・インスタンスはルート SRV・頂点アニメーションはルート定数）
-        RootSignatureConfig MakeConfig()
-        {
-            RootSignatureConfig config;
-            config.SetDefaultCBVStrategy(BindingStrategy::RootDescriptor);
-            config.SetDefaultSRVStrategy(BindingStrategy::DescriptorTable);
-            config.SetDefaultSamplerStrategy(BindingStrategy::StaticSampler);
-            config.ConfigureResource("gInstanceData", BindingStrategy::RootDescriptor);
-            config.ConfigureResource("gVertexAnim", BindingStrategy::RootConstants);
-            config.ConfigureSampler("gSampler", SamplerConfig::Anisotropic());
-            config.ConfigureSampler("gShadowSampler", SamplerConfig::Shadow());
-            config.ConfigureSampler("gPointSampler", SamplerConfig::Point());
-            config.ConfigureSampler("gClampSampler", SamplerConfig::LinearClamp());
-            return config;
-        }
-
         /// @brief レイトレの影の形を作るコンピュートシェーダの差し方（頂点の並びと定数はルート・テクスチャは表）
         RootSignatureConfig MakeDeformConfig()
         {
@@ -223,7 +222,7 @@ namespace CoreEngine
 
         auto variant = std::make_unique<SurfaceMaterialVariant>();
         variant->rootSignature = std::make_unique<RootSignatureManager>();
-        const auto rootResult = variant->rootSignature->Build(device_, *reflection, MakeConfig());
+        const auto rootResult = variant->rootSignature->Build(device_, *reflection, MakeSurfaceMaterialRootSignatureConfig());
         if (!rootResult.success) {
             log.Logf(LogLevel::Error, LogCategory::Shader, "3D モデルのマテリアルのシェーダ {} のルートシグネチャを作れません: {}",
                 shaderPath_, rootResult.errorMessage);

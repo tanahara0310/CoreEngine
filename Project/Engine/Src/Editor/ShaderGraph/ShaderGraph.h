@@ -36,7 +36,18 @@ namespace CoreEngine::Editor::ShaderGraph
     {
         Sprite,     ///< スプライトと UI 画像（ピクセルシェーダ）
         PostEffect, ///< プロジェクトのポストエフェクト（コンピュートシェーダ）
+        Lit,        ///< 3D モデル（ライトで照らす・`名前.Surface.hlsl`）
+        Unlit,      ///< 3D モデル（ライトで照らさない・`名前.Surface.hlsl`）
     };
+
+    /// @brief 全部の出口の種類
+    inline constexpr Target kAllTargetList[] = { Target::Sprite, Target::PostEffect, Target::Lit, Target::Unlit };
+
+    /// @brief 3D モデルの出口か
+    constexpr bool Is3D(Target target)
+    {
+        return target == Target::Lit || target == Target::Unlit;
+    }
 
     /// @brief 出口の種類の名前（ファイルに書く綴り）
     const char* ToString(Target target);
@@ -100,8 +111,17 @@ namespace CoreEngine::Editor::ShaderGraph
         bool operator==(const Link&) const = default;
     };
 
-    /// @brief 出口のノードの種類
+    /// @brief 出口のノードの種類（Fragment）
     inline constexpr std::string_view kMasterNodeType = "Master";
+
+    /// @brief 3D の頂点の出口のノードの種類（Vertex）
+    inline constexpr std::string_view kVertexMasterNodeType = "MasterVertex";
+
+    /// @brief 出口のノード（Fragment か Vertex）か
+    constexpr bool IsMasterNodeType(std::string_view type)
+    {
+        return type == kMasterNodeType || type == kVertexMasterNodeType;
+    }
 
     /// @brief グラフ全体（.shadergraph の中身）
     struct Graph
@@ -121,6 +141,9 @@ namespace CoreEngine::Editor::ShaderGraph
         /// @brief 出口のノード（無ければ nullptr）
         const Node* FindMaster() const;
 
+        /// @brief 頂点の出口のノード（無ければ nullptr）
+        const Node* FindVertexMaster() const;
+
         /// @brief 入力ピンへつながっているつながり（無ければ nullptr）
         const Link* FindLinkTo(int node, std::string_view pin) const;
 
@@ -137,7 +160,7 @@ namespace CoreEngine::Editor::ShaderGraph
         void RemoveNode(int id);
     };
 
-    /// @brief 出口だけを置いた空のグラフ
+    /// @brief 出口だけを置いた空のグラフ（3D は Fragment の出口が 1 番・Vertex の出口が 2 番）
     Graph MakeEmptyGraph(Target target);
 
     /// @brief JSON からグラフを読む

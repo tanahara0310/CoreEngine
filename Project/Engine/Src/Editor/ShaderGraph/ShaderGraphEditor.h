@@ -104,7 +104,7 @@ namespace CoreEngine::Editor::ShaderGraph
             // 検査コンパイル
             std::string requestedKey; ///< 最後に HLSL を作った中身
             std::string pendingHlsl;  ///< 検査を待っている HLSL
-            std::map<int, std::pair<int, int>> pendingLines; ///< ノード → 行（負の番号は、そのノードが関数の外に置いた文）
+            std::multimap<int, std::pair<int, int>> pendingLines; ///< ノード → 行（負の番号は、そのノードが関数の外に置いた文）
             std::string functionFiles;          ///< Custom Function のファイルとその日時
             double functionFilesTime = -1.0e9;  ///< 最後にファイルの日時を見た時刻
             double changeTime = 0.0;
@@ -118,8 +118,9 @@ namespace CoreEngine::Editor::ShaderGraph
             uint64_t previewRevision = 0;
             ShaderMaterial previewValues;
             std::string previewValuesText; ///< previewValues を作ったときのプロパティ
-            std::string previewTexture;    ///< 板に貼るテクスチャ・ポストエフェクトでは画面の代わりの画像（空なら既定）
+            std::string previewTexture;    ///< 板に貼るテクスチャ・ポストエフェクトでは画面の代わりの画像・3D ではモデルの画像（空なら既定）
             bool previewSelected = false;  ///< 選んだノードの出力を映す
+            PreviewView previewView;       ///< 3D の形と向き
 
             // グラフの欄（ポストエフェクトの登録）
             std::vector<std::filesystem::path> graphMaterials; ///< このグラフのシェーダを使う .mat

@@ -19,6 +19,7 @@
 
 namespace CoreEngine
 {
+    class RootSignatureConfig;
     class ShaderCompiler;
     class ShaderReflectionBuilder;
 
@@ -39,6 +40,14 @@ namespace CoreEngine
 
     /// @brief 頂点の関数を持つシェーダの、レイトレの影の形を作るコンピュートシェーダの入口
     inline constexpr const wchar_t* kSurfaceDeformEntry = L"SurfaceDeformMain";
+
+    /// @brief シェーダーグラフの Main Preview の頂点シェーダとピクセルシェーダの入口（`ModelSurface.hlsli`）
+    inline constexpr const wchar_t* kSurfacePreviewVertexEntry = L"SurfacePreviewVertexMain";
+    inline constexpr const wchar_t* kSurfacePreviewPixelEntry = L"SurfacePreviewMain";
+
+    /// @brief 3D モデルのマテリアルのルートシグネチャの差し方（CBV はルート・SRV は表・インスタンスはルート SRV・
+    ///        頂点アニメーションはルート定数・サンプラーは固定）
+    RootSignatureConfig MakeSurfaceMaterialRootSignatureConfig();
 
     /// @brief シェーダの文字に `#define SURFACE_VERTEX` の行があるか
     bool SurfaceShaderTextHasVertexFunction(std::string_view text);
