@@ -263,7 +263,7 @@ namespace CoreEngine
         Matrix4x4 worldMatrix = transform.GetWorldMatrix();
 
         // ===== LOD 選択（AABB の画面投影サイズベース、詳細は ModelVisibility 側） =====
-        const uint32_t lodIndex = ModelVisibility::SelectLod(*resource_, worldMatrix, camera);
+        const uint32_t lodIndex = ModelVisibility::SelectLod(*resource_, worldMatrix, camera, boundsPadding_);
 
         Matrix4x4 wvp = worldMatrix * view.view->viewProjection;
         // 従来型シャドウマップ廃止に伴い lightViewProjection はレイアウト維持のみ（単位行列）
@@ -293,7 +293,7 @@ namespace CoreEngine
         // 適用可否は DrawViewInfo だけから決まる（呼び出し順やレンダラー状態に依存しない）。
         const bool occlusionEligible = isGBufferPass && isGameView;
         visibility_.BeginOcclusionQuery(renderContext_.hiZOcclusion, *resource_, worldMatrix,
-            view.view->viewProjection, occlusionEligible);
+            view.view->viewProjection, occlusionEligible, boundsPadding_);
 
         for (uint32_t i = 0; i < subMeshes.size(); ++i) {
             const auto& subMesh = subMeshes[i];

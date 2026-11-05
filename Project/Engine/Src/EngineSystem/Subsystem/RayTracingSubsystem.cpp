@@ -325,12 +325,13 @@ namespace CoreEngine
         std::vector<VertexAnimationDeformer::Request> deformRequests;
 
         /// 揺れを反映する距離の内にあるか（反映中の物は kDynamicGeometryKeepScale 倍の距離まで反映を続ける）
-        auto withinSwayDistance = [&](const void* owner, const ModelResource& resource, const Matrix4x4& world) {
+        auto withinSwayDistance = [&](const void* owner, const ModelResource& resource, const Matrix4x4& world,
+                                      float boundsPadding) {
             if (swayDistance <= 0.0f || !hasCamera) {
                 return true;
             }
             const float limit = asMgr->HasDynamicBLAS(owner) ? swayDistance * kDynamicGeometryKeepScale : swayDistance;
-            return DistanceToBounds(resource, world, cameraPosition) <= limit;
+            return DistanceToBounds(resource, world, cameraPosition) - boundsPadding <= limit;
         };
 
         // 「メッシュを持つか」はコンポーネントの有無で決まるので、具象クラスを知る必要はない。
@@ -374,7 +375,7 @@ namespace CoreEngine
                             dynamicTargets.push_back(target);
                         }
                     } else if (swaying && SwaysWithWindOrWater(*model, animParams)
-                        && withinSwayDistance(&renderer, *resource, world)) {
+                        && withinSwayDistance(&renderer, *resource, world, renderer.GetBoundsPadding())) {
                         target.deformIndex = static_cast<int>(deformRequests.size());
                         deformRequests.push_back({ &renderer, model, world });
                         dynamicTargets.push_back(target);

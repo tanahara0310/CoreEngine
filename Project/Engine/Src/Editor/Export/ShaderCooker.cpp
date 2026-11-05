@@ -47,7 +47,8 @@ namespace CoreEngine::Editor
     {
         // 一度も描いていないマテリアルのシェーダも入れる（.mat が指すピクセルシェーダと頂点シェーダ。
         // プロジェクトのポストエフェクトのマテリアルと、名前が .CS.hlsl で終わるシェーダはコンピュートシェーダ。
-        // 名前が .Surface.hlsl で終わるシェーダは 3D モデルの全部の入口と、描けないときのシェーダ）
+        // 名前が .Surface.hlsl で終わるシェーダは 3D モデルの全部の入口と、描けないときのシェーダ。
+        // 頂点の関数を持つものは頂点シェーダとレイトレの影の形を作るコンピュートシェーダも同じファイルから）
         const std::vector<ShaderManifest::Entry> recorded = ShaderManifest::GetInstance().Collect();
         std::set<ShaderManifest::Entry> targets(recorded.begin(), recorded.end());
         Logger& log = Logger::GetInstance();
@@ -57,9 +58,18 @@ namespace CoreEngine::Editor
             postEffectMaterials.insert(info ? ToAssetPath(*info) : effect.material);
         }
         const auto addSurfaceShader = [&targets, &log](const std::string& shaderPath) {
+            const std::wstring file = log.Utf8ToPath(shaderPath).generic_wstring();
+            const bool vertexFunction = SurfaceShaderHasVertexFunction(shaderPath);
             for (const SurfaceMaterialStage& stage : kSurfaceMaterialStages) {
-                targets.insert({ log.Utf8ToPath(shaderPath).generic_wstring(), L"ps_6_0", stage.entryPoint });
-                targets.insert({ log.Utf8ToPath(stage.vertexShader).generic_wstring(), L"vs_6_0", L"main" });
+                targets.insert({ file, L"ps_6_0", stage.entryPoint });
+                if (!vertexFunction) {
+                    targets.insert({ log.Utf8ToPath(stage.vertexShader).generic_wstring(), L"vs_6_0", L"main" });
+                }
+            }
+            if (vertexFunction) {
+                targets.insert({ file, L"vs_6_0", kSurfaceStaticVertexEntry });
+                targets.insert({ file, L"vs_6_0", kSurfaceSkinnedVertexEntry });
+                targets.insert({ file, L"cs_6_0", kSurfaceDeformEntry });
             }
         };
         bool hasSurfaceMaterial = false;

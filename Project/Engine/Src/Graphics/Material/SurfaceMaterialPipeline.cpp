@@ -11,7 +11,9 @@
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Utility/Logger/Logger.h"
 
+#include <fstream>
 #include <iterator>
+#include <sstream>
 
 namespace CoreEngine
 {
@@ -34,6 +36,66 @@ namespace CoreEngine
         }
     }
 
+    bool SurfaceShaderTextHasVertexFunction(std::string_view text)
+    {
+        constexpr std::string_view kDirective = "define";
+        constexpr std::string_view kName = "SURFACE_VERTEX";
+        const auto isSpace = [](char c) { return c == ' ' || c == '\t'; };
+        const auto isNameChar = [](char c) {
+            return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_';
+        };
+        size_t lineStart = 0;
+        while (lineStart < text.size()) {
+            size_t lineEnd = text.find('\n', lineStart);
+            if (lineEnd == std::string_view::npos) {
+                lineEnd = text.size();
+            }
+            const std::string_view line = text.substr(lineStart, lineEnd - lineStart);
+            lineStart = lineEnd + 1;
+
+            size_t at = 0;
+            while (at < line.size() && isSpace(line[at])) {
+                ++at;
+            }
+            if (at >= line.size() || line[at] != '#') {
+                continue;
+            }
+            ++at;
+            while (at < line.size() && isSpace(line[at])) {
+                ++at;
+            }
+            if (line.substr(at, kDirective.size()) != kDirective) {
+                continue;
+            }
+            at += kDirective.size();
+            if (at >= line.size() || !isSpace(line[at])) {
+                continue;
+            }
+            while (at < line.size() && isSpace(line[at])) {
+                ++at;
+            }
+            if (line.substr(at, kName.size()) != kName) {
+                continue;
+            }
+            at += kName.size();
+            if (at >= line.size() || !isNameChar(line[at])) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool SurfaceShaderHasVertexFunction(const std::string& shaderPath)
+    {
+        std::ifstream file(Logger::GetInstance().Utf8ToPath(shaderPath), std::ios::binary);
+        if (!file) {
+            return false;
+        }
+        std::ostringstream text;
+        text << file.rdbuf();
+        return SurfaceShaderTextHasVertexFunction(text.str());
+    }
+
     ID3D12RootSignature* SurfaceMaterialVariant::GetRootSignature() const
     {
         return rootSignature ? rootSignature->GetRootSignature() : nullptr;
@@ -48,6 +110,7 @@ namespace CoreEngine
         ShaderReflectionBuilder& reflectionBuilder, std::string shaderPath)
         : device_(device), compiler_(&compiler), reflectionBuilder_(&reflectionBuilder), shaderPath_(std::move(shaderPath))
     {
+        hasVertexFunction_ = SurfaceShaderHasVertexFunction(shaderPath_);
     }
 
     SurfaceMaterialPipeline::~SurfaceMaterialPipeline() = default;
@@ -100,6 +163,21 @@ namespace CoreEngine
         return blob;
     }
 
+    Microsoft::WRL::ComPtr<IDxcBlob> SurfaceMaterialPipeline::CompileVertexShader(Pass pass, bool skinned, std::string& error)
+    {
+        Logger& log = Logger::GetInstance();
+        if (!hasVertexFunction_) {
+            const SurfaceMaterialStage& spec = kSurfaceMaterialStages[VariantIndex(pass, skinned)];
+            return compiler_->CompileShader(log.Utf8ToPath(spec.vertexShader).wstring(), L"vs_6_0", L"main", &error);
+        }
+        Microsoft::WRL::ComPtr<IDxcBlob>& blob = ownVertexShaders_[skinned ? 1 : 0];
+        if (!blob) {
+            blob = compiler_->CompileShader(log.Utf8ToPath(shaderPath_).wstring(), L"vs_6_0",
+                skinned ? kSurfaceSkinnedVertexEntry : kSurfaceStaticVertexEntry, &error);
+        }
+        return blob;
+    }
+
     bool SurfaceMaterialPipeline::BuildVariant(Pass pass, bool skinned)
     {
         Logger& log = Logger::GetInstance();
@@ -107,9 +185,7 @@ namespace CoreEngine
 
         std::string error;
         const Microsoft::WRL::ComPtr<IDxcBlob> pixelBlob = CompilePixelShader(pass, skinned, error);
-        const Microsoft::WRL::ComPtr<IDxcBlob> vertexBlob = pixelBlob
-            ? compiler_->CompileShader(log.Utf8ToPath(spec.vertexShader).wstring(), L"vs_6_0", L"main", &error)
-            : nullptr;
+        const Microsoft::WRL::ComPtr<IDxcBlob> vertexBlob = pixelBlob ? CompileVertexShader(pass, skinned, error) : nullptr;
         if (!pixelBlob || !vertexBlob) {
             log.Logf(LogLevel::Error, LogCategory::Shader, "3D モデルのマテリアルのシェーダ {} をコンパイルできません: {}",
                 shaderPath_, error);
@@ -154,6 +230,9 @@ namespace CoreEngine
         }
 
         ReadMaterialParamLayout(compiler_->GetDxcUtils(), pixelBlob.Get(), layout_, shaderName, kSurfaceMaterialRegisters);
+        if (hasVertexFunction_) {
+            ReadMaterialParamLayout(compiler_->GetDxcUtils(), vertexBlob.Get(), layout_, shaderName, kSurfaceMaterialRegisters);
+        }
 
         variant->layout = &layout_;
         variant->modelBindings = BindingTable::Resolve(*reflection, ModelBind::kCustom, shaderName, /*warnUndeclared=*/false);

@@ -34,8 +34,12 @@ namespace CoreEngine
         /// @details 画面占有率ベース: 距離でなく「画面をどれだけ占めるか」で決めるため、
         ///          カメラを近づければ自然にフル詳細へ、遠ざかるほど低ポリへ切り替わる。
         ///          返り値は SubMeshData::GetLod でクランプされる前提。
+        /// @param boundsPadding 境界を広げる量 [m]（頂点を動かすマテリアルのぶん）
         static uint32_t SelectLod(const ModelResource& resource, const Matrix4x4& worldMatrix,
-            const Camera* camera);
+            const Camera* camera, float boundsPadding = 0.0f);
+
+        /// @brief ワールドの AABB を各軸 padding [m] ずつ広げる（無効な AABB はそのまま）
+        static BoundingBox PadBounds(const BoundingBox& bounds, float padding);
 
         /// @brief オブジェクト単位の視錐台カリング判定（デバッグトグル込み）
         /// @param frustum ViewInfo が保持する視錐台（フレーム先頭で 1 回だけ抽出済み）
@@ -45,11 +49,12 @@ namespace CoreEngine
         /// @brief フレームのオクルージョン判定を準備する（モデル単位で Draw 毎に呼ぶ）
         /// @param hiZ Hi-Zオクルージョンカリングシステム（nullptr なら判定なし = 常に可視）
         /// @param eligible 判定対象パスか（メイン GameView の GBuffer 構築時のみ true）
+        /// @param boundsPadding サブメッシュの境界を広げる量 [m]
         /// @details eligible=false または Hi-Z が収集無効なら、以後 IsSubMeshVisible は常に true。
         ///          サブメッシュ数が変わった場合（リロード等）はスロットを登録し直す。
         void BeginOcclusionQuery(HiZOcclusionSystem* hiZ,
             const ModelResource& resource, const Matrix4x4& worldMatrix,
-            const Matrix4x4& viewProjection, bool eligible);
+            const Matrix4x4& viewProjection, bool eligible, float boundsPadding = 0.0f);
 
         /// @brief サブメッシュの AABB を判定対象へ登録し、前々フレームの遮蔽結果を返す
         /// @details 遮蔽スキップ中も AABB を毎フレーム登録し続け、再可視化の判定対象から外さない。
@@ -64,6 +69,7 @@ namespace CoreEngine
         // BeginOcclusionQuery で確定するフレーム内状態
         const ModelResource* resource_ = nullptr;
         Matrix4x4 worldMatrix_{};
+        float boundsPadding_ = 0.0f;
         bool active_ = false;
 
         // Hi-Z の判定スロット ID（サブメッシュ単位。添字はサブメッシュに一致）
