@@ -58,7 +58,9 @@ void CalculateDirectionalLights(
             rtShadow = gRTShadowMask.Load(int3(coord, 0)).r;
         }
     }
-    float shadowFactor = ApplyShadowLightFloor(rtShadow);
+    // 前方描画には空の環境光が無いので、拡散だけ影の中にも kShadowLightFloor を残す。
+    // スペキュラは日向率をそのまま掛ける
+    float diffuseShadow = ApplyShadowLightFloor(rtShadow);
 
     for (uint i = 0; i < gLightCounts.directionalLightCount; ++i)
     {
@@ -69,8 +71,8 @@ void CalculateDirectionalLights(
             input.normal, gDirectionalLights[i].direction,
             gDirectionalLights[i].color.rgb, gDirectionalLights[i].intensity,
             toEye, albedo, metallic, roughness, ao);
-        totalDiffuse += result.diffuse * shadowFactor;
-        totalSpecular += result.specular;
+        totalDiffuse += result.diffuse * diffuseShadow;
+        totalSpecular += result.specular * rtShadow;
     }
 }
 

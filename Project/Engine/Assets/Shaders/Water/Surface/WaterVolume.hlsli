@@ -112,7 +112,7 @@ float3 ResolveWaterTransmissionColor(uint2 pixelCoord, float2 screenUV)
 
 /// @brief 水面越しに見える水中の色（背景の色に、視線の上り光路の吸収と散乱を掛けた色）
 /// @param transmittance       exp(-σt·d) 視線の上り光路の波長別透過率
-/// @param mainLightVisibility メインライト（0 番）の日向率（影の中の光を残した値）
+/// @param mainLightVisibility メインライト（0 番）の日向率（0=影 / 1=日向）
 float3 ResolveWaterTransmission(
     uint2 pixelCoord, float2 screenUV, float3 transmittance,
     float3 sigmaS, float3 sigmaT, float mainLightVisibility)

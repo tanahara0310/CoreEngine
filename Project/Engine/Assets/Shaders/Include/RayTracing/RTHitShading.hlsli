@@ -370,9 +370,7 @@ float3 ShadeHitSurface(
 
     const float3 F0 = lerp(float3(DIELECTRIC_F0, DIELECTRIC_F0, DIELECTRIC_F0), surface.albedo, surface.metallic);
     const float3 albedo = ApplyWetDarkening(surface.albedo, max(underwater.factor, wetness));
-    const float mainLightShadow = ApplyShadowLightFloor(mainLightVisibility);
     float3 color = surface.emissive;
-    bool mainLightEnabled = false;
     float mainLightCloudShadow = 1.0f;
     if (gDirectionalLightCount > 0)
     {
@@ -385,7 +383,7 @@ float3 ShadeHitSurface(
                 continue;
             }
             const float3 L = normalize(-light.direction);
-            const float shadow = (i == 0) ? mainLightShadow : 1.0f;
+            const float shadow = (i == 0) ? mainLightVisibility : 1.0f;
             const float cloudShadow = SampleHitCloudShadow(surface.position, L);
             // メインライトの直接光は水中の割合だけ消し、補助ライトは水の透過率で弱める
             const float3 lightScale = (i == 0)
@@ -397,12 +395,11 @@ float3 ShadeHitSurface(
             if (gSkyAmbientEnabled == 0)
             {
                 color += CalculateHalfLambertAmbient(
-                    surface.normal, L, light.color.rgb, light.intensity, albedo, surface.metallic, surface.ao) * shadow
-                    * underwater.ambientTransmittance;
+                    surface.normal, L, light.color.rgb, light.intensity, albedo, surface.metallic, surface.ao)
+                    * ApplyShadowLightFloor(shadow) * underwater.ambientTransmittance;
             }
             if (i == 0)
             {
-                mainLightEnabled = true;
                 mainLightCloudShadow = cloudShadow;
             }
         }
@@ -416,12 +413,12 @@ float3 ShadeHitSurface(
             * mainLightCloudShadow;
     }
 
+    // 空の光には太陽の影を掛けない（さえぎりは AO が受け持つ）
     if (gSkyAmbientEnabled != 0)
     {
-        const float skyShadow = mainLightEnabled ? mainLightShadow : 1.0f;
         StructuredBuffer<float4> skyIrradianceSH = ResourceDescriptorHeap[gSkyIrradianceSHIndex];
         color += albedo * (1.0f - surface.metallic)
-            * EvaluateSkyIrradianceSH9(skyIrradianceSH, surface.normal) * gSkyAmbientScale * surface.ao * skyShadow
+            * EvaluateSkyIrradianceSH9(skyIrradianceSH, surface.normal) * gSkyAmbientScale * surface.ao
             * underwater.ambientTransmittance;
 
         if (gSkySpecularEnabled != 0)
@@ -432,7 +429,7 @@ float3 ShadeHitSurface(
             const float3 prefiltered = skySpecularMap.SampleLevel(
                 gLinearWrap, R, roughness * (kRTHitSkySpecularMipCount - 1.0f)).rgb;
             const float2 envBRDF = EnvBRDFApprox(roughness, NdotV);
-            color += prefiltered * (F0 * envBRDF.x + envBRDF.y) * gSkyAmbientScale * surface.ao * skyShadow
+            color += prefiltered * (F0 * envBRDF.x + envBRDF.y) * gSkyAmbientScale * surface.ao
                 * underwater.ambientTransmittance;
         }
     }

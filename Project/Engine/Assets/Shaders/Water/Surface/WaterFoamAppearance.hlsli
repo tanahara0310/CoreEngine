@@ -201,7 +201,7 @@ struct WaterFoamResult
 /// @param surfacePosition     水面の点（頂点変位後のワールド座標）
 /// @param fallbackDepth       海底の高さの範囲の外で使う水深（視線の延長で測った鉛直水深）
 /// @param normal              水面の法線
-/// @param mainLightVisibility メインライト（0 番）の日向率（影の中の光を残した値）
+/// @param mainLightVisibility メインライト（0 番）の日向率（0=影 / 1=日向）
 /// @details 白波の泡は FFT の参照格子座標で評価し、模様は泡と一緒に風下へ流す。
 ///          岸の泡は水の粒の静止位置で読み、模様もそこで評価する（寄せ・引きと一緒に動く）。
 ///          2 つの泡は模様の動きが違うので、別々にレース（lace）と白濁（haze）を作って重ねる。

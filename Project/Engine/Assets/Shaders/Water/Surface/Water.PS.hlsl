@@ -110,12 +110,10 @@ WaterPixelOutput main(WaterPSInput input)
     uint2 pixelCoord = min(uint2(input.position.xy), uint2(sceneDepthWidth - 1, sceneDepthHeight - 1));
 
     // ---- 3. メインライトの日向率（水より上の遮蔽物の影が水面に落ちているか）----
-    // 太陽の鏡面反射（きらめき）には日向率をそのまま掛ける。
-    // 拡散の項（泡・水中の散乱・波頭の透過）は、影の中でも直接光を kShadowLightFloor だけ残す。
+    // きらめき・泡・水中の散乱・波頭の透過の太陽の分に掛ける。影の中の明るさは空の光が受け持つ
     const float sunVisibility = (gSunVisibilityEnabled != 0)
         ? gWaterSunVisibility.Load(int3(pixelCoord, 0))
         : 1.0f;
-    const float sunDiffuseVisibility = ApplyShadowLightFloor(sunVisibility);
 
     // ---- 4. 水面専用 PBR フォワード出力（discard なし）----
     // 空環境マップが有効なフレームでは、反射色は RT 反射か空キューブマップの色になり、
@@ -159,12 +157,12 @@ WaterPixelOutput main(WaterPSInput input)
     // ---- 7. 泡（水面の上のレースと、水面下の白濁）----
     const WaterFoamResult foam = ResolveWaterFoam(
         input.baseWorldXZ, input.worldPosition, waterColumnResult.viewRayVerticalDepth,
-        surfaceNormal, sunDiffuseVisibility);
+        surfaceNormal, sunVisibility);
     reflectanceWeight *= (1.0f - foam.surfaceFoam);
 
     // ---- 8. 透過（水面越しに見える水中の色）----
     float3 transmissionColor = ResolveWaterTransmission(
-        pixelCoord, screenUV, transmittance, sigmaS, sigmaT, sunDiffuseVisibility);
+        pixelCoord, screenUV, transmittance, sigmaS, sigmaT, sunVisibility);
     // 水面下の気泡は、その奥から透過してくる光を遮り、自分が散乱した光に置き換える
     transmissionColor = lerp(transmissionColor, foam.color * kFoamHazeTint, foam.bubbleHaze);
     // 水中の放射輝度は、水面から空気へ出るときに屈折で立体角が広がって 1/n² になる
@@ -226,7 +224,7 @@ WaterPixelOutput main(WaterPSInput input)
     // 波を透過して視点へ出てくる光なので、水面で反射されずに「抜けてきた」分だけ、
     // つまり (1 - フレネル反射率) と、水から空気へ出る 1/n² を掛けて加算する。
     output.color.rgb += ComputeWaterSubsurfaceScattering(
-        surfaceNormal, viewDir, input.waveHeight, sigmaS, sigmaT, foam.surfaceFoam, sunDiffuseVisibility)
+        surfaceNormal, viewDir, input.waveHeight, sigmaS, sigmaT, foam.surfaceFoam, sunVisibility)
         * (1.0f - reflectanceWeight) * WaterRadianceExitScale();
 
     // ---- 13. 空気遠近感（Aerial Perspective）----

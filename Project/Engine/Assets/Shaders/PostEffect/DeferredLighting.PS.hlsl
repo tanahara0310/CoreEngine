@@ -320,7 +320,8 @@ PixelShaderOutput main(PixelShaderInput input)
             continue;
         float3 L = normalize(-dL.direction);
 
-        // ライトインデックスに対応する RT シャドウマスクを選択（未使用時は影なし）
+        // ライトインデックスに対応する RT シャドウマスクを選択（未使用時は影なし）。
+        // 影の中の直接光は 0（拡散もスペキュラも）。影の中の明るさは空の環境光が受け持つ
         float shadowFactor = 1.0f;
         if (useRTShadow)
         {
@@ -329,7 +330,6 @@ PixelShaderOutput main(PixelShaderInput input)
             else if (di == 2) shadowFactor = gRTShadowMask2.Load(loadCoord).r;
             else              shadowFactor = gRTShadowMask3.Load(loadCoord).r;
         }
-        shadowFactor = ApplyShadowLightFloor(shadowFactor);
 
         // 雲影。RT シャドウとは別に底上げする（雲影は柔らかく、影の中でも空からの
         // 光が回り込むので、ジオメトリの影ほど暗く落とさない）
@@ -454,28 +454,16 @@ PixelShaderOutput main(PixelShaderInput input)
     // 大気が有効なら空アンビエント、無効ならハーフランバートアンビエント
     float3 ambient = float3(0.0f, 0.0f, 0.0f);
     {
-        // -------------------------------------------------------
-        // アンビエントのシャドウ方針:
-        //   テンポラル蓄積済みのRTシャドウをそのまま使用する（既に十分滑らか）。
-        //   RTシャドウ未使用時（未ディスパッチ・非DXR環境）は影なし。
-        // -------------------------------------------------------
         if (gSkyAmbient.enabled != 0)
         {
             // ===== 空アンビエント（大気散乱由来。Sky Light 相当） =====
             // 大気の Sky-View LUT を SH9 射影した放射照度で照らす。
             // 昼は青みがかった環境光・夕方はオレンジ・夜はほぼゼロと時刻に追従する。
-            // 影はメインライトのシャドウを弱く適用する
-            float skyShadow = 1.0f;
-            if (gLightCounts.directionalLightCount > 0 && gDirectionalLights[0].enabled)
-            {
-                if (useRTShadow)
-                    skyShadow = gRTShadowMask0.Load(loadCoord).r;
-                skyShadow = ApplyShadowLightFloor(skyShadow);
-            }
+            // 太陽の影は掛けない（空の光のさえぎりは AO が受け持つ）
 
             // 拡散: SH9 放射照度。金属は拡散反射しないため減衰させる
             float3 skyIrradiance = EvaluateSkyIrradiance(N);
-            ambient = albedo * (1.0f - metallic) * skyIrradiance * gSkyAmbient.scale * ao * skyShadow;
+            ambient = albedo * (1.0f - metallic) * skyIrradiance * gSkyAmbient.scale * ao;
 
             // スペキュラ: プリフィルタ済み空キューブマップによる環境反射（Phase 3b）。
             // 空・雲・太陽まわりのグレアが roughness に応じたぼけで映り込む。
@@ -488,7 +476,7 @@ PixelShaderOutput main(PixelShaderInput input)
                 float3 prefiltered = gSkySpecularMap.SampleLevel(gSampler, R, mipLevel).rgb;
                 float2 envBRDF = EnvBRDFApprox(roughness, NdotV);
                 float3 specular = prefiltered * (F0 * envBRDF.x + envBRDF.y);
-                ambient += specular * gSkyAmbient.scale * ao * skyShadow;
+                ambient += specular * gSkyAmbient.scale * ao;
             }
         }
         else
