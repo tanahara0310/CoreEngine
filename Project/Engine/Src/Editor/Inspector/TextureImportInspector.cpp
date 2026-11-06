@@ -25,7 +25,7 @@ namespace CoreEngine::Editor::TextureImportInspector
         };
 
         constexpr const char* kDefaultFormatLabel =
-            (TextureImporter::kDefaultCompression == TextureCompression::Auto) ? "既定（透明があれば BC3・無ければ BC1）" :
+            (TextureImporter::kDefaultCompression == TextureCompression::Auto) ? "既定（法線マップは BC5・透明があれば BC3・無ければ BC1）" :
             (TextureImporter::kDefaultCompression == TextureCompression::BC3) ? "既定（BC3）" :
             (TextureImporter::kDefaultCompression == TextureCompression::BC1) ? "既定（BC1）" :
             (TextureImporter::kDefaultCompression == TextureCompression::None) ? "既定（圧縮しない）" : "既定（BC7）";
@@ -34,6 +34,7 @@ namespace CoreEngine::Editor::TextureImportInspector
             Choice{ "", "使い道に合わせる" },
             Choice{ "srgb", "sRGB（色）" },
             Choice{ "linear", "リニア（データ）" },
+            Choice{ "normal", "法線マップ（データ）" },
         };
 
         constexpr std::array kFormats = {
@@ -41,6 +42,7 @@ namespace CoreEngine::Editor::TextureImportInspector
             Choice{ "bc7", "BC7" },
             Choice{ "bc3", "BC3" },
             Choice{ "bc1", "BC1（透明なし）" },
+            Choice{ "bc5", "BC5（赤と緑だけ）" },
             Choice{ "none", "圧縮しない" },
         };
 

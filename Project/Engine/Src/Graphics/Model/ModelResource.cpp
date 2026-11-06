@@ -314,7 +314,7 @@ namespace CoreEngine
             if (!material.metallicRoughnessTexture.empty())
                 textureRequests.push_back({ material.metallicRoughnessTexture, TextureColorSpace::Linear });
             if (!material.normalTexture.empty())
-                textureRequests.push_back({ material.normalTexture, TextureColorSpace::Linear });
+                textureRequests.push_back({ material.normalTexture, TextureColorSpace::Normal });
             if (!material.occlusionTexture.empty())
                 textureRequests.push_back({ material.occlusionTexture, TextureColorSpace::Linear });
             if (!material.emissiveTexture.empty())
@@ -350,7 +350,7 @@ namespace CoreEngine
 
             // Normalマップ
             if (!material.normalTexture.empty()) {
-                handles.normal = textureManager_->Load(material.normalTexture, TextureColorSpace::Linear).gpuHandle;
+                handles.normal = textureManager_->Load(material.normalTexture, TextureColorSpace::Normal).gpuHandle;
                 handles.hasNormal = true;
             } else {
                 handles.normal = defaultWhiteTexture;

@@ -30,7 +30,18 @@ namespace CoreEngine::Editor
         {
             bool srgb = false;
             bool linear = false;
+            bool normal = false;
         };
+
+        /// @brief 色空間の版を作る印を立てる
+        void Mark(CookTarget& target, TextureColorSpace colorSpace)
+        {
+            switch (colorSpace) {
+            case TextureColorSpace::Linear: target.linear = true; break;
+            case TextureColorSpace::Normal: target.normal = true; break;
+            default: target.srgb = true; break;
+            }
+        }
 
         /// @brief パスを照合用のキーにする
         std::wstring MakeKey(const std::filesystem::path& path)
@@ -54,12 +65,16 @@ namespace CoreEngine::Editor
         // モデルの .cmesh のマテリアルと .mat から、画像ごとの使い道を集める（テクスチャのパスの解き方は実行時と同じ）
         std::unordered_map<std::wstring, Usage> usages;
         const TexturePathResolver resolver;
-        const auto mark = [&](const std::string& texture, bool linear) {
+        const auto mark = [&](const std::string& texture, TextureColorSpace colorSpace) {
             if (texture.empty()) {
                 return;
             }
             Usage& usage = usages[MakeKey(resolver.ResolveAssetPath(texture))];
-            (linear ? usage.linear : usage.srgb) = true;
+            switch (colorSpace) {
+            case TextureColorSpace::Linear: usage.linear = true; break;
+            case TextureColorSpace::Normal: usage.normal = true; break;
+            default: usage.srgb = true; break;
+            }
         };
         for (const AssetInfo* model : AssetDatabase::GetInstance().GetAssetsOfType(AssetType::Model)) {
             MeshAsset asset;
@@ -67,11 +82,11 @@ namespace CoreEngine::Editor
                 continue;
             }
             for (const MaterialAsset& material : asset.model.materials) {
-                mark(material.baseColorTexture, false);
-                mark(material.emissiveTexture, false);
-                mark(material.metallicRoughnessTexture, true);
-                mark(material.normalTexture, true);
-                mark(material.occlusionTexture, true);
+                mark(material.baseColorTexture, TextureColorSpace::SRGB);
+                mark(material.emissiveTexture, TextureColorSpace::SRGB);
+                mark(material.metallicRoughnessTexture, TextureColorSpace::Linear);
+                mark(material.normalTexture, TextureColorSpace::Normal);
+                mark(material.occlusionTexture, TextureColorSpace::Linear);
             }
         }
         std::vector<MaterialTexture> materialTextures;
@@ -80,7 +95,7 @@ namespace CoreEngine::Editor
                 continue;
             }
             for (const MaterialTexture& texture : materialTextures) {
-                mark(texture.path, texture.linear);
+                mark(texture.path, texture.linear ? TextureColorSpace::Linear : TextureColorSpace::SRGB);
             }
         }
 
@@ -95,15 +110,17 @@ namespace CoreEngine::Editor
             }
             const auto found = usages.find(MakeKey(source));
             const Usage usage = (found != usages.end()) ? found->second : Usage{};
-            target.linear = usage.linear;
-            target.srgb = usage.srgb || !usage.linear;
 
-            // 取り込み設定で色空間を決めた画像は、その版だけを作る
+            // 使い道ごとに、取り込み設定を当てた後の色空間（実行時に読む版）を作る
             const std::string setting = AssetDatabase::GetInstance().GetImportColorSpace(ToUtf8(source));
-            if (!setting.empty()) {
-                const bool linear = ApplyImportColorSpace(setting, TextureColorSpace::SRGB) == TextureColorSpace::Linear;
-                target.linear = linear;
-                target.srgb = !linear;
+            if (usage.srgb || (!usage.linear && !usage.normal)) {
+                Mark(target, ApplyImportColorSpace(setting, TextureColorSpace::SRGB));
+            }
+            if (usage.linear) {
+                Mark(target, ApplyImportColorSpace(setting, TextureColorSpace::Linear));
+            }
+            if (usage.normal) {
+                Mark(target, ApplyImportColorSpace(setting, TextureColorSpace::Normal));
             }
             targets.push_back(std::move(target));
         }
@@ -115,9 +132,10 @@ namespace CoreEngine::Editor
     {
         const std::string guid = AssetDatabase::GetInstance().GetGUID(target.source);
 
-        for (const TextureColorSpace colorSpace : { TextureColorSpace::SRGB, TextureColorSpace::Linear }) {
+        for (const TextureColorSpace colorSpace : { TextureColorSpace::SRGB, TextureColorSpace::Linear, TextureColorSpace::Normal }) {
             if ((colorSpace == TextureColorSpace::SRGB && !target.srgb) ||
-                (colorSpace == TextureColorSpace::Linear && !target.linear)) {
+                (colorSpace == TextureColorSpace::Linear && !target.linear) ||
+                (colorSpace == TextureColorSpace::Normal && !target.normal)) {
                 continue;
             }
 

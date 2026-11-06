@@ -15,6 +15,7 @@ namespace CoreEngine
     {
         constexpr const char* kKind = "Texture";
 
+        /// @brief クック済みの DDS が無いときに代わりに読む色空間（Linear は SRGB、ほかは Linear）
         TextureColorSpace Other(TextureColorSpace colorSpace)
         {
             return (colorSpace == TextureColorSpace::Linear) ? TextureColorSpace::SRGB : TextureColorSpace::Linear;
@@ -49,8 +50,7 @@ namespace CoreEngine
 
     std::filesystem::path TextureDerivedData::IntermediatePath(const std::filesystem::path& source, TextureColorSpace colorSpace)
     {
-        return DerivedData::IntermediatePath(kKind, source,
-            (colorSpace == TextureColorSpace::Linear) ? ".linear.dds" : ".srgb.dds");
+        return DerivedData::IntermediatePath(kKind, source, std::string(".") + ColorSpaceName(colorSpace) + ".dds");
     }
 
     DerivedData::Result TextureDerivedData::Find(const std::filesystem::path& source, TextureColorSpace colorSpace)

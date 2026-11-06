@@ -45,8 +45,8 @@ namespace CoreEngine
             return DirectX::LoadFromHDRFile(filePath.c_str(), nullptr, image);
         }
 
-        // Linear は埋め込みの色情報を無視して UNORM（非 sRGB）の形式で読む。
-        if (colorSpace == TextureColorSpace::Linear) {
+        // Linear と Normal は埋め込みの色情報を無視して UNORM（非 sRGB）の形式で読む。
+        if (IsLinearData(colorSpace)) {
             return DirectX::LoadFromWICFile(filePath.c_str(), DirectX::WIC_FLAGS_IGNORE_SRGB, nullptr, image);
         }
 

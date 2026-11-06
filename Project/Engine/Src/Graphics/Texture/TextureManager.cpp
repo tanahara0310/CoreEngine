@@ -110,9 +110,9 @@ namespace CoreEngine
         const std::string key = Logger::GetInstance().PathToUtf8(resolvedPath);
 
         // 同一ファイルでも色空間が異なればGPUリソースの内容が異なるため、キーを分離する。
-        return (colorSpace == TextureColorSpace::Linear)
-            ? key + "|linear"
-            : key;
+        return (colorSpace == TextureColorSpace::SRGB)
+            ? key
+            : key + "|" + ColorSpaceName(colorSpace);
     }
 
     // テクスチャの読み込み

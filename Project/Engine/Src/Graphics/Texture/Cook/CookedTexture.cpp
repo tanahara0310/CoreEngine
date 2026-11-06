@@ -16,6 +16,17 @@ namespace CoreEngine
     {
         constexpr std::wstring_view kSrgbSuffix = L".dds";
         constexpr std::wstring_view kLinearSuffix = L".linear.dds";
+        constexpr std::wstring_view kNormalSuffix = L".normal.dds";
+
+        /// @brief 色空間ごとのクック済みの DDS の末尾
+        std::wstring_view SuffixOf(TextureColorSpace colorSpace)
+        {
+            switch (colorSpace) {
+            case TextureColorSpace::Linear: return kLinearSuffix;
+            case TextureColorSpace::Normal: return kNormalSuffix;
+            default: return kSrgbSuffix;
+            }
+        }
 
         /// @brief 小文字にする（ASCII 以外はそのまま）
         std::wstring ToLower(std::wstring text)
@@ -89,7 +100,7 @@ namespace CoreEngine
         if (cooked.empty()) {
             return {};
         }
-        cooked += (colorSpace == TextureColorSpace::Linear) ? kLinearSuffix : kSrgbSuffix;
+        cooked += SuffixOf(colorSpace);
         return cooked;
     }
 
@@ -100,12 +111,14 @@ namespace CoreEngine
             return {};
         }
 
-        // 末尾の `.linear.dds` か `.dds` を外す
+        // 末尾の `.linear.dds`・`.normal.dds`・`.dds` のどれかを外す
         const std::wstring fileName = source.filename().wstring();
         const std::wstring lowerName = ToLower(fileName);
         size_t suffixLength = 0;
         if (lowerName.ends_with(kLinearSuffix)) {
             suffixLength = kLinearSuffix.size();
+        } else if (lowerName.ends_with(kNormalSuffix)) {
+            suffixLength = kNormalSuffix.size();
         } else if (lowerName.ends_with(kSrgbSuffix)) {
             suffixLength = kSrgbSuffix.size();
         } else {

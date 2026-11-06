@@ -9,7 +9,8 @@ namespace CoreEngine
 {
     /// @brief 書き出し時に画像から作る DDS（クック済みテクスチャ）の名前
     /// @details `Application/Assets/a/b.png` の DDS は `Application/Cooked/a/b.png.dds`、
-    ///          リニア版は `Application/Cooked/a/b.png.linear.dds` に置く（置き場は CookedPath）。
+    ///          リニア版は `Application/Cooked/a/b.png.linear.dds`、法線マップ版は `Application/Cooked/a/b.png.normal.dds`
+    ///          に置く（置き場は CookedPath）。
     ///          書き出したゲームは元の画像を持たず、この DDS を読む。
     ///          中身が同じ DDS は 1 つだけ置き、ほかの綴りは別名の一覧（kAliasFileName）で置いた DDS を指す。
     namespace CookedTexture
