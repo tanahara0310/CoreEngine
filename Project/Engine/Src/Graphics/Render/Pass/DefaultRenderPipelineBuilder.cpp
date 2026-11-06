@@ -31,6 +31,7 @@
 #include "Graphics/Render/Pass/WaterCausticsPass.h"
 #include "Graphics/Render/Pass/GeometryPass.h"
 #include "Graphics/Render/Pass/SceneColorCopyPass.h"
+#include "Graphics/Render/Pass/SceneDepthCopyPass.h"
 #include "Graphics/Render/Pass/WaterSurfacePass.h"
 #include "Graphics/Render/Pass/PostEffectPass.h"
 #include "Graphics/Render/Pass/BackBufferPass.h"
@@ -112,6 +113,8 @@ namespace CoreEngine
         // 背景（穴・世界の縁）も対象にするため SkyBox 描画より後、半透明より前に置く
         pipeline.AddPass(std::make_unique<FogPass>(), RenderPassPhase::Sky, 40);
 
+        // 半透明が深度を読むフレームだけ、半透明の前に深度を写す（シェーダーグラフの Scene Depth）
+        pipeline.AddPass(std::make_unique<SceneDepthCopyPass>(), RenderPassPhase::Transparent, -10);
         pipeline.AddPass(std::make_unique<TransparentQueuePass>(), RenderPassPhase::Transparent, 0);
 
         // 水面: 背景 SceneColor の複製 → 海の範囲マップ → 海底の高さ → 岸の泡 → RT 屈折 → RT 反射 → 水面合成（データフロー順）

@@ -3,6 +3,7 @@
 #include "../PostEffectComputeBase.h"
 #include "EngineSystem/Settings/ProjectSettings.h"
 #include "Graphics/Material/ShaderMaterialPipeline.h"
+#include "Graphics/Render/RenderTarget/SceneDepth.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/RootSignature/RootSlot.h"
 #include "Graphics/Texture/TextureManager.h"
@@ -63,8 +64,11 @@ namespace CoreEngine
             uint32_t width,
             uint32_t height) override;
 
-        /// @brief シェーダが書き換わっていたら組み直す
+        /// @brief シェーダが書き換わっていたら組み直し、画面の深度を距離へ直す値をビューから取る
         void PrepareFrame(const PostEffectFrameContext& ctx) override;
+
+        /// @brief シェーダが画面の深度（gSceneDepthTexture）を読むなら、深度を入力に申告する
+        void DeclareExtraInputs(std::vector<PostEffectInputBinding>& out) const override;
 
         /// @brief Overlay も PostTonemap の段に入る（UI の後へ置くのは並びの位置で決める）
         PostEffectStage GetStage() const override;
@@ -115,6 +119,11 @@ namespace CoreEngine
         RootSlot frameSlot_;
         RootSlot paramsSlot_;
         std::vector<RootSlot> textureSlots_;
+        RootSlot sceneDepthSlot_;
+        RootSlot sceneDepthParamsSlot_;
+
+        /// 画面の深度を距離へ直す値（近い面・遠い面・平行投影か。画面の大きさは描くときに入れる）
+        SceneDepth::ShaderParams sceneDepthParams_{};
 
         /// 組んだときのシェーダのパスと、シェーダの更新の番号
         std::string builtShaderPath_;

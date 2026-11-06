@@ -163,6 +163,8 @@ namespace CoreEngine::Editor::ShaderGraph
             RootSlot frameSlot;
             RootSlot paramsSlot;
             std::vector<RootSlot> textureSlots;
+            RootSlot sceneDepthSlot;
+            RootSlot sceneDepthParamsSlot;
 
             ComputePipeline();
             ~ComputePipeline();
@@ -182,6 +184,8 @@ namespace CoreEngine::Editor::ShaderGraph
             RootSlot paramsSlot;
             std::array<RootSlot, 5> modelTextureSlots; ///< gTexture・法線・金属と粗さ・発光・AO のマップ
             std::vector<RootSlot> textureSlots;
+            RootSlot sceneDepthSlot;
+            RootSlot sceneDepthParamsSlot;
 
             SurfacePipeline();
             ~SurfacePipeline();

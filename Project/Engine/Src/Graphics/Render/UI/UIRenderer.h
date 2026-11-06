@@ -12,6 +12,8 @@
 
 namespace CoreEngine
 {
+    class SceneDepth;
+
     /// @brief UI 描画専用レンダラー（カメラ非依存・スクリーン固定座標）
     /// @details 画面ピクセル座標（左上原点・Y 軸下正）の正射影で描き、パイプラインの最後に呼ばれる。
     /// @note 実装は SpriteRenderer に似ているが、PSO / RootSignature / 定数バッファプールは独立。
@@ -99,6 +101,9 @@ namespace CoreEngine
         /// @brief 次の 1 枚を描くパイプラインを差す（nullptr なら標準。差してあるものと同じなら何もしない）
         void BindPipeline(ID3D12GraphicsCommandList* cmdList, const ShaderMaterialPipeline* pipeline);
 
+        /// @brief 画面の深度を設定（UI 画像のマテリアルの Scene Depth は常に「いちばん遠い」を読む）
+        void SetSceneDepth(SceneDepth* sceneDepth) { sceneDepth_ = sceneDepth; }
+
     protected:
         // ──────────────────────────────────────────────────────────
         // 派生レンダラー用のフック
@@ -131,6 +136,7 @@ namespace CoreEngine
         // BaseRenderer から継承したサブシステムを使用（rootSignatureMg_, psoMg_, shaderCompiler_, reflectionBuilder_ は削除）
 
         GraphicsCore* dxCommon_ = nullptr;
+        SceneDepth* sceneDepth_ = nullptr;
 
         ShaderMaterialPipelineCache materialPipelines_{ ShaderMaterialPipeline::Target{ "UIMaterial", false } };
         /// 差してあるマテリアルのパイプライン（標準なら nullptr）

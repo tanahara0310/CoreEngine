@@ -9,6 +9,8 @@
 #include "GeometryPass.h"
 #include "PostEffectPass.h"
 #include "Graphics/Render/RenderTarget/SceneDepth.h"
+#include "Graphics/RHI/GraphicsCore.h"
+#include "Camera/View/ViewInfo.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/RenderManager.h"
@@ -352,6 +354,28 @@ namespace CoreEngine
                 FrameBlackboard::SceneDepth,
                 context.sceneDepth->GetDepthSRVHandle(),
                 &context.sceneDepth->Resource());
+
+            // シェーダが読む深度（シェーダーグラフの Scene Depth）の値と写し
+            if (context.dxCommon) {
+                SceneDepth::ShaderParams params;
+                params.screenWidth = static_cast<float>((std::max)(context.sceneDepth->GetWidth(), 1));
+                params.screenHeight = static_cast<float>((std::max)(context.sceneDepth->GetHeight(), 1));
+                if (context.frameViews) {
+                    const ViewInfo& view = context.frameViews->Get(context.viewSettings.viewType);
+                    if (view.isValid) {
+                        params.nearZ = view.nearZ;
+                        params.farZ = view.farZ;
+                        params.orthographic = view.projection.m[3][3] != 0.0f ? 1.0f : 0.0f;
+                    }
+                }
+                context.sceneDepth->BeginShaderRead(context.dxCommon->GetUploadRing(), params);
+                if (context.sceneDepth->IsCopyWanted()) {
+                    context.frameBlackboard->SetResource(
+                        FrameBlackboard::SceneDepthCopy,
+                        context.sceneDepth->GetShaderCopySRVHandle(),
+                        &context.sceneDepth->ShaderCopy());
+                }
+            }
         }
 
         if (context.renderTargetManager) {

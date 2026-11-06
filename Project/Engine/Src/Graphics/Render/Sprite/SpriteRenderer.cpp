@@ -5,6 +5,7 @@
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/Render/RenderTarget/SceneDepth.h"
 #include <cassert>
 
 
@@ -96,6 +97,17 @@ namespace CoreEngine
         if (pipeline) {
             cmdList->SetGraphicsRootSignature(pipeline->GetRootSignature());
             cmdList->SetPipelineState(pipeline->GetPipelineState(currentBlendMode_));
+            // 画面の深度は半透明の前に写したもの（写しが無いフレームは「いちばん遠い」）
+            if (sceneDepth_) {
+                if (pipeline->GetSceneDepthSlot().IsValid()) {
+                    cmdList->SetGraphicsRootDescriptorTable(pipeline->GetSceneDepthSlot().index,
+                        sceneDepth_->AcquireTransparentReadSRV());
+                }
+                if (pipeline->GetSceneDepthParamsSlot().IsValid() && sceneDepth_->GetShaderParams() != 0) {
+                    cmdList->SetGraphicsRootConstantBufferView(pipeline->GetSceneDepthParamsSlot().index,
+                        sceneDepth_->GetShaderParams());
+                }
+            }
         } else {
             cmdList->SetGraphicsRootSignature(rootSignatureMg_->GetRootSignature());
             cmdList->SetPipelineState(pipelineState_);
