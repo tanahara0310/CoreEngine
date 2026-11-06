@@ -7,7 +7,7 @@
 
 namespace CoreEngine::ModelBind
 {
-    /// @brief 4 つの宣言表で共有する添字
+    /// @brief 宣言表で共有する添字
     enum Slot : size_t {
         gCamera,
         gLightCounts,
@@ -27,6 +27,9 @@ namespace CoreEngine::ModelBind
         gAOMap,
         gMatrixPalette,
         gVertexAnim,
+        gVertexColors,
+        gSceneDepthTexture,
+        gSceneDepthParams,
         Count
     };
 
@@ -57,6 +60,9 @@ namespace CoreEngine::ModelBind
         { "gAOMap",                kSRV, kOpt  },  // フォワードは環境光を持たないので AO を読まない
         { "gMatrixPalette",        kSRV, kOpt  },  // 実体なし（スキニングは CS 側）
         { "gVertexAnim",           kCBV, kOpt  },  // 頂点アニメーションの時間・風（ルート定数）
+        { "gVertexColors",         kSRV, kOpt  },  // 頂点の色（シェーダーグラフの Vertex Color）
+        { "gSceneDepthTexture",    kSRV, kOpt  },  // 画面の深度（シェーダーグラフの Scene Depth）
+        { "gSceneDepthParams",     kCBV, kOpt  },  // 深度を直す値
     };
 
     /// @brief GBuffer.VS/PS（通常モデル・G-Buffer）
@@ -80,6 +86,9 @@ namespace CoreEngine::ModelBind
         { "gAOMap",                kSRV, kCond },
         { "gMatrixPalette",        kSRV, kOpt  },
         { "gVertexAnim",           kCBV, kOpt  },  // 頂点アニメーションの時間・風（ルート定数）
+        { "gVertexColors",         kSRV, kOpt  },  // 頂点の色（シェーダーグラフの Vertex Color）
+        { "gSceneDepthTexture",    kSRV, kOpt  },  // 画面の深度（シェーダーグラフの Scene Depth）
+        { "gSceneDepthParams",     kCBV, kOpt  },  // 深度を直す値
     };
 
     /// @brief スキニングモデル・フォワード（gInstanceData の代わりに gTransformationMatrix）
@@ -102,6 +111,9 @@ namespace CoreEngine::ModelBind
         { "gAOMap",                kSRV, kOpt  },  // フォワードは環境光を持たないので AO を読まない
         { "gMatrixPalette",        kSRV, kOpt  },
         { "gVertexAnim",           kCBV, kOpt  },  // 頂点アニメーションの時間・風（ルート定数）
+        { "gVertexColors",         kSRV, kOpt  },  // 頂点の色（シェーダーグラフの Vertex Color）
+        { "gSceneDepthTexture",    kSRV, kOpt  },  // 画面の深度（シェーダーグラフの Scene Depth）
+        { "gSceneDepthParams",     kCBV, kOpt  },  // 深度を直す値
     };
 
     /// @brief スキニングモデル・G-Buffer
@@ -124,6 +136,9 @@ namespace CoreEngine::ModelBind
         { "gAOMap",                kSRV, kCond },
         { "gMatrixPalette",        kSRV, kOpt  },
         { "gVertexAnim",           kCBV, kOpt  },  // 頂点アニメーションの時間・風（ルート定数）
+        { "gVertexColors",         kSRV, kOpt  },  // 頂点の色（シェーダーグラフの Vertex Color）
+        { "gSceneDepthTexture",    kSRV, kOpt  },  // 画面の深度（シェーダーグラフの Scene Depth）
+        { "gSceneDepthParams",     kCBV, kOpt  },  // 深度を直す値
     };
 
     /// @brief カスタムシェーダー用。宣言されているものだけエンジンが差すのですべて Optional
@@ -146,6 +161,9 @@ namespace CoreEngine::ModelBind
         { "gAOMap",                kSRV, kOpt },
         { "gMatrixPalette",        kSRV, kOpt },
         { "gVertexAnim",           kCBV, kOpt  },  // 頂点アニメーションの時間・風（ルート定数）
+        { "gVertexColors",         kSRV, kOpt  },  // 頂点の色（シェーダーグラフの Vertex Color）
+        { "gSceneDepthTexture",    kSRV, kOpt  },  // 画面の深度（シェーダーグラフの Scene Depth）
+        { "gSceneDepthParams",     kCBV, kOpt  },  // 深度を直す値
     };
 
     static_assert(std::size(kCustom) == Slot::Count, "kCustom と Slot の並びがずれている");

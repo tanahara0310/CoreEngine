@@ -306,6 +306,8 @@ namespace CoreEngine
             const std::string_view id(header.id, 4);
             if (id == "VERT") {
                 reader.Rest(model.vertices, sizeof(VertexData));
+            } else if (id == "VCOL") {
+                reader.Rest(model.vertexColors, sizeof(uint32_t));
             } else if (id == "INDX") {
                 reader.Rest(model.indices, sizeof(int32_t));
             } else if (id == "SUBM") {
@@ -380,6 +382,13 @@ namespace CoreEngine
             size_t at = writer.BeginChunk("VERT");
             writer.Bytes(model.vertices.data(), model.vertices.size() * sizeof(VertexData));
             writer.EndChunk(at);
+
+            // 頂点の色は持つモデルだけ（頂点と同じ数・同じ並び）
+            if (!model.vertexColors.empty() && model.vertexColors.size() == model.vertices.size()) {
+                at = writer.BeginChunk("VCOL");
+                writer.Bytes(model.vertexColors.data(), model.vertexColors.size() * sizeof(uint32_t));
+                writer.EndChunk(at);
+            }
 
             at = writer.BeginChunk("INDX");
             writer.Bytes(model.indices.data(), model.indices.size() * sizeof(int32_t));

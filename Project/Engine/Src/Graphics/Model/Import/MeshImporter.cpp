@@ -44,7 +44,7 @@ namespace CoreEngine
 
     std::string MeshImporter::Settings()
     {
-        return std::format("lod={},{};err={};min={};sub={};overdraw={};stride={};cmesh={}",
+        return std::format("lod={},{};err={};min={};sub={};overdraw={};stride={};cmesh={};vcol=1",
             kLodRatios[0], kLodRatios[1], kLodTargetError, kMinTriangleCountForLod, kMinSubMeshIndexCount,
             kOverdrawThreshold, sizeof(VertexData), CmeshFile::kVersion);
     }
@@ -235,6 +235,15 @@ namespace CoreEngine
                 remappedVertices.data(), data.vertices.data(),
                 vertexCount, stride, remap.data());
             data.vertices = std::move(remappedVertices);
+
+            // 頂点の色も同じ並べ替えで並べ直す
+            if (data.vertexColors.size() == vertexCount) {
+                std::vector<uint32_t> remappedColors(vertexCount, 0xFFFFFFFFu);
+                meshopt_remapVertexBuffer(
+                    remappedColors.data(), data.vertexColors.data(),
+                    vertexCount, sizeof(uint32_t), remap.data());
+                data.vertexColors = std::move(remappedColors);
+            }
 
             meshopt_remapIndexBuffer(
                 indexData, indexData, data.indices.size(), remap.data());

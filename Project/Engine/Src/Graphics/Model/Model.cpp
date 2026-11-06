@@ -362,6 +362,7 @@ ModelDrawPacket Model::BuildSkinningDrawPacket(
     packet.metallicRoughnessSRV = metallicRoughnessTexture;
     packet.occlusionSRV = occlusionTexture;
     packet.emissiveSRV = emissiveTexture;
+    packet.vertexColorSRV = resource_->GetVertexColorSRV();
     packet.isSkinned = true;
     return packet;
 }

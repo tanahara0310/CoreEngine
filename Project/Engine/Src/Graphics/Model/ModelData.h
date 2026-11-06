@@ -52,6 +52,7 @@ struct SubMeshData {
 struct ModelData {
     std::map<std::string, JointWeightData> skinClusterData; // スキンクラスター（ジョイントと頂点のウェイト情報）
     std::vector<VertexData> vertices;       // 頂点データ
+    std::vector<uint32_t> vertexColors;     // 頂点の色（RGBA8・R が下位の 8 ビット。vertices と同じ並び。無ければ空）
     std::vector<int32_t> indices;           // インデックスデータ
     std::vector<MaterialAsset> materials;    // マテリアルデータ（複数対応）
     std::vector<SubMeshData> subMeshes;     // サブメッシュ情報

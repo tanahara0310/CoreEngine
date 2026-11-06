@@ -382,6 +382,16 @@ namespace CoreEngine
                 outResult.vertices.push_back(ConvertVertex(mesh, vertexIndex));
             }
 
+            // 頂点の色（どれかのメッシュが持てば全頂点ぶん持ち、持たないメッシュは白）
+            if (mesh->HasVertexColors(0)) {
+                outResult.vertexColors.resize(baseVertexIndex, kWhiteVertexColor);
+                for (uint32_t vertexIndex = 0; vertexIndex < mesh->mNumVertices; ++vertexIndex) {
+                    outResult.vertexColors.push_back(PackVertexColor(mesh->mColors[0][vertexIndex]));
+                }
+            } else if (!outResult.vertexColors.empty()) {
+                outResult.vertexColors.resize(outResult.vertices.size(), kWhiteVertexColor);
+            }
+
             // インデックスデータの取得
             for (uint32_t faceIndex = 0; faceIndex < mesh->mNumFaces; ++faceIndex) {
                 const aiFace& face = mesh->mFaces[faceIndex];
@@ -428,6 +438,15 @@ namespace CoreEngine
     }
 
     // ===== ヘルパー関数 =====
+
+    uint32_t ModelLoader::PackVertexColor(const aiColor4D& color)
+    {
+        const auto toByte = [](float value) {
+            const float clamped = (std::min)((std::max)(value, 0.0f), 1.0f);
+            return static_cast<uint32_t>(clamped * 255.0f + 0.5f);
+        };
+        return toByte(color.r) | (toByte(color.g) << 8) | (toByte(color.b) << 16) | (toByte(color.a) << 24);
+    }
 
     VertexData ModelLoader::ConvertVertex(const aiMesh* mesh, uint32_t vertexIndex)
     {

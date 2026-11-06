@@ -255,6 +255,9 @@ namespace CoreEngine
             binder.Set(bindings[VertexAnimationDeformBind::gSourceVertices], source);
             binder.Set(bindings[VertexAnimationDeformBind::gIndices], resource->GetIndexBuffer()->GetGPUVirtualAddress());
             binder.Set(bindings[VertexAnimationDeformBind::gOutputVertices], entry->vertices.GpuAddress());
+            if (surface && surface->vertexColorSlot.IsValid()) {
+                cmdList->SetComputeRootDescriptorTable(surface->vertexColorSlot.index, resource->GetVertexColorSRV());
+            }
 
             DeformConstants constants{};
             constants.world = request.world;

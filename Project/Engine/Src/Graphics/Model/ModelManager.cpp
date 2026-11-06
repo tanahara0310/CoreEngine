@@ -1,6 +1,8 @@
 ﻿#include "pch.h"
 #include "ModelManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Graphics/Model/Derived/ModelDerivedData.h"
@@ -39,6 +41,34 @@ namespace CoreEngine
         assert(dxCommon);
         dxCommon_ = dxCommon;
         customShaderPipelineCache_ = std::make_unique<CustomShaderPipelineCache>();
+
+        // 頂点の色を持たないモデルが読む白（RGBA8 の全ビットが 1）
+        whiteVertexColorBuffer_ = ResourceFactory::CreateBufferResource(dxCommon_->GetDevice(), sizeof(uint32_t));
+        if (whiteVertexColorBuffer_) {
+            void* mapped = nullptr;
+            if (SUCCEEDED(whiteVertexColorBuffer_->Map(0, nullptr, &mapped))) {
+                const uint32_t white = 0xFFFFFFFFu;
+                memcpy(mapped, &white, sizeof(white));
+                whiteVertexColorBuffer_->Unmap(0, nullptr);
+            }
+            if (DescriptorAllocator* descriptors = dxCommon_->GetDescriptorAllocator()) {
+                D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+                srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+                srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+                srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+                srvDesc.Buffer.FirstElement = 0;
+                srvDesc.Buffer.NumElements = 1;
+                srvDesc.Buffer.StructureByteStride = sizeof(uint32_t);
+                srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+                whiteVertexColorSRV_ = UniqueDescriptor(*descriptors,
+                    descriptors->CreateSRV(whiteVertexColorBuffer_.Get(), srvDesc, "WhiteVertexColorSRV"));
+            }
+        }
+    }
+
+    D3D12_GPU_DESCRIPTOR_HANDLE ModelManager::GetWhiteVertexColorSRV() const
+    {
+        return whiteVertexColorSRV_.IsValid() ? whiteVertexColorSRV_.Gpu() : D3D12_GPU_DESCRIPTOR_HANDLE{};
     }
 
     void ModelManager::SetRenderContext(const ModelRenderContext& ctx)
@@ -209,6 +239,7 @@ namespace CoreEngine
         auto resource = std::make_unique<ModelResource>();
         auto& textureManager = TextureManager::GetInstance();
         resource->Initialize(dxCommon_, &textureManager);
+        resource->SetFallbackVertexColorSRV(GetWhiteVertexColorSRV());
         resource->LoadFromModelData(std::move(modelData), key, generator.UseLod());
 
         ModelResource* resourcePtr = nullptr;
@@ -261,6 +292,7 @@ namespace CoreEngine
             resource = std::make_unique<ModelResource>();
             auto& textureManager = TextureManager::GetInstance();
             resource->Initialize(dxCommon_, &textureManager);
+            resource->SetFallbackVertexColorSRV(GetWhiteVertexColorSRV());
             resource->LoadFromFile(directoryPath, filename);
         }
         catch (...) {
