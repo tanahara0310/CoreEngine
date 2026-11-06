@@ -62,7 +62,7 @@ struct SurfaceOutput
     float metallic;
     float roughness;
     float occlusion; ///< 1 = 遮られていない
-    float3 emission; ///< 自己発光（GBuffer では 0〜1 に収まる）
+    float3 emission; ///< 自己発光（リニア。1 を超えてよい）
 };
 
 /// @brief SurfaceVertex() に渡す頂点ごとの値
@@ -257,12 +257,13 @@ GBufferOutput SurfaceGBuffer(VertexShaderOutput input, float movingObject)
     float2 ndcPrev = input.clipPosPrev.xy / input.clipPosPrev.w;
     output.motionVector = float4(ndcCurrent - ndcPrev, 0.0f, movingObject);
 
-    // アンリット: roughness=0 の印と、emissiveMetallic.rgb の色を DeferredLighting がそのまま出す
+    // アンリット: roughness=0 の印と、emissiveMetallic.rgb の色を DeferredLighting がそのまま出す。
+    // 前方描画と同じく 1 を超える色はそのまま書く
     if (SurfaceIsUnlit())
     {
         output.albedoAO = float4(0.0f, 0.0f, 0.0f, 1.0f);
         output.normalRoughness = float4(0.5f, 0.5f, 1.0f, 0.0f);
-        output.emissiveMetallic = float4(albedo, 0.0f);
+        output.emissiveMetallic = float4(max(OUT.baseColor, 0.0f), 0.0f);
         return output;
     }
 
@@ -273,7 +274,7 @@ GBufferOutput SurfaceGBuffer(VertexShaderOutput input, float movingObject)
 
     output.albedoAO = float4(albedo, ao);
     output.normalRoughness = float4(encodedNormal, roughness);
-    output.emissiveMetallic = float4(OUT.emission, metallic);
+    output.emissiveMetallic = float4(max(OUT.emission, 0.0f), metallic);
 
     return output;
 }

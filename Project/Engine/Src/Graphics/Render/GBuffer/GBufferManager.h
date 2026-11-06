@@ -33,7 +33,7 @@ namespace CoreEngine
         static constexpr DXGI_FORMAT kRenderTargetFormats[kTargetCount] = {
                 DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,  // AlbedoAO
                 DXGI_FORMAT_R16G16B16A16_FLOAT,   // NormalRoughness
-                DXGI_FORMAT_R8G8B8A8_UNORM,       // EmissiveMetallic
+                DXGI_FORMAT_R16G16B16A16_FLOAT,   // EmissiveMetallic（エミッシブとアンリット色は 1 を超えてよい）
                 DXGI_FORMAT_R16G16B16A16_FLOAT,   // MotionVector
             };
 
