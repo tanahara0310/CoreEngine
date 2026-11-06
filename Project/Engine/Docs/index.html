@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.63.0">
+<meta name="engine-version" content="0.64.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5742,7 +5742,7 @@ kbd {
   </ul>
 </article>
 
-<article class="page" id="script-material-3d" data-group="スクリプト" data-title="マテリアルとシェーダ（3D モデル）" data-nav="3D のマテリアル" data-keywords="マテリアル material mat シェーダ shader hlsl 3d モデル メッシュ meshrenderer surface サーフェス surface.hlsl modelsurface.hlsli 自作 光る 発光 エミッシブ 縁 リム 帯 スキャン 溶ける ディゾルブ 法線 setmaterialfloat 上書き 共有 gbuffer 前方描画 スキン マゼンタ 頂点 vertex surface_vertex surfacevertex 揺らす 波打つ 膨らむ surface_lit surface_unlit unlit 境界の余白">
+<article class="page" id="script-material-3d" data-group="スクリプト" data-title="マテリアルとシェーダ（3D モデル）" data-nav="3D のマテリアル" data-keywords="マテリアル material mat シェーダ shader hlsl 3d モデル メッシュ meshrenderer surface サーフェス surface.hlsl modelsurface.hlsli 自作 光る 発光 エミッシブ 縁 リム 帯 スキャン 溶ける ディゾルブ 法線 setmaterialfloat 上書き 共有 gbuffer 前方描画 スキン マゼンタ 頂点 vertex surface_vertex surfacevertex 揺らす 波打つ 膨らむ surface_lit surface_unlit unlit 境界の余白 surface_object_space 物体の空間 object surface_vertex_color 頂点の色 vertex color scenedepth.hlsli 深度 scene depth 半透明">
   <h1>マテリアルとシェーダ（3D モデル）</h1>
   <p class="lead"><a href="#api-MeshRenderer">メッシュ描画</a> の見た目を、自分で書いた関数 <code>Surface()</code> で決めます。光・影・フォグ・GBuffer への書き込みはエンジンが行うので、書くのは「この画素の色・法線・金属感・粗さ・発光」だけです（Unity の Surface Shader に近い作りです）。</p>
 
@@ -5796,7 +5796,7 @@ kbd {
       <tr><td><code>IN.uv</code> ／ <code>IN.uvRaw</code></td><td>マテリアルの UV の変形を掛けた UV ／ 頂点の UV のまま。</td></tr>
       <tr><td><code>IN.positionWS</code></td><td>ワールドの位置（m）。</td></tr>
       <tr><td><code>IN.normalWS</code> ／ <code>IN.tangentWS</code> ／ <code>IN.bitangentWS</code></td><td>補間した頂点の法線・接線・従法線（ワールド・正規化していない）。</td></tr>
-      <tr><td><code>IN.screenPosition</code></td><td>画面の位置（px）。</td></tr>
+      <tr><td><code>IN.screenPosition</code> ／ <code>IN.screenDepth</code></td><td>画面の位置（px）／ この面の深度の値（0〜1・近い所が 0）。</td></tr>
       <tr><td><code>OUT.baseColor</code> ／ <code>OUT.alpha</code></td><td>ベースカラー（リニア）／ 不透明度（マテリアルのアルファカットとディザもこの値で決まる）。</td></tr>
       <tr><td><code>OUT.normalWS</code></td><td>ワールドの法線（正規化済み）。法線マップの値から作るときは <code>SurfaceTangentToWorld(IN, n)</code>。</td></tr>
       <tr><td><code>OUT.metallic</code> ／ <code>OUT.roughness</code> ／ <code>OUT.occlusion</code></td><td>金属感 ／ 粗さ ／ AO（1 = 遮られていない）。0〜1。</td></tr>
@@ -5862,6 +5862,54 @@ kbd {
     <li><code>#define SURFACE_LIT</code> ／ <code>#define SURFACE_UNLIT</code> を書くと、モデルの <a href="#api-Material">マテリアル</a> の Lighting によらず、ライトで照らす ／ 照らさないに決まります。</li>
   </ul>
 
+  <h3 id="material3d-object-space">物体の空間・頂点の色・画面の深度</h3>
+  <p><code>ModelSurface.hlsli</code> を読み込む前に次を書くと、<code>Surface()</code> の <code>IN</code> に値が増えます。書かなければ今までと同じシェーダです。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>書くもの</th><th>増える値</th></tr></thead>
+    <tbody>
+      <tr><td><code>#define SURFACE_OBJECT_SPACE</code></td><td><code>Surface()</code> の <code>IN.positionOS</code> ／ <code>IN.normalOS</code> ／ <code>IN.tangentOS</code>（物体の空間の位置・法線・接線。頂点の関数で動かした後の値。法線と接線は補間したままで正規化していない）と、<code>IN.objectToWorld</code> ／ <code>IN.worldToObject</code>（物体の空間 ↔ ワールドの行列。<code>SurfaceVertex()</code> と同じ形）。</td></tr>
+      <tr><td><code>#define SURFACE_VERTEX_COLOR</code></td><td><code>Surface()</code> と <code>SurfaceVertex()</code> の <code>IN.vertexColor</code>（モデルの頂点の色。ファイルの値のまま・色の無いモデルは白）。</td></tr>
+      <tr><td><code>#include "SceneDepth.hlsli"</code></td><td>画面の深度を読む関数（下の表）。</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p><code>SURFACE_OBJECT_SPACE</code> か <code>SURFACE_VERTEX_COLOR</code> を書くと、<code>SURFACE_VERTEX</code> と同じく自分の頂点シェーダを持ちます（<code>SurfaceVertex()</code> は書かなくてかまいません）。下の例は、物体の空間の高さで縞を付けて頂点の色を掛け、半透明のときは奥の物と交わる所を柔らかく消します。</p>
+  <script type="text/x-code" data-lang="text" data-file="Application/Assets/Materials/StripeFade.Surface.hlsl">
+    #define SURFACE_OBJECT_SPACE
+    #define SURFACE_VERTEX_COLOR
+    #include "ModelSurface.hlsli"
+    #include "SceneDepth.hlsli"
+
+    void Surface(SurfaceInput IN, inout SurfaceOutput OUT)
+    {
+        float stripe = step(0.5f, frac(IN.positionOS.y * 4.0f));
+        OUT.baseColor *= IN.vertexColor.rgb * lerp(0.5f, 1.0f, stripe);
+
+        // 奥の物とこの面の距離（m）が 0.5 m より近いほど薄くする
+        float2 uv = SceneScreenUV(IN.screenPosition);
+        float gap = SceneDepthEye(SceneDepthRaw(uv)) - SceneDepthEye(IN.screenDepth);
+        OUT.alpha *= saturate(gap / 0.5f);
+    }
+  </script>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>SceneDepth.hlsli の関数</th><th>中身</th></tr></thead>
+    <tbody>
+      <tr><td><code>SceneDepthRaw(uv)</code></td><td>画面の UV（0〜1・左上が 0）の深度の値（0〜1・近い所が 0）。</td></tr>
+      <tr><td><code>SceneDepthEye(raw)</code> ／ <code>SceneDepthLinear01(raw)</code></td><td>深度の値を、目からの距離（m）／ 0〜1（目からの距離 ÷ カメラの far）にする。</td></tr>
+      <tr><td><code>SceneScreenUV(px)</code> ／ <code>SceneScreenSize()</code></td><td>画面の位置（px）を UV にする ／ 画面の大きさ（px）。</td></tr>
+      <tr><td><code>SceneDepthDifferenceEye(uv, raw)</code> ／ <code>SceneDepthDifferenceLinear01(uv, raw)</code></td><td>UV の奥の物と、深度の値 <code>raw</code> の面の差（m ／ 0〜1）。</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li>画面の深度を読めるのは、ブレンドありで描くモデル（前方描画）だけです。エンジンが半透明を描く前に深度を写し、その写しを差します。不透明のモデルでは、いつも「奥に何も無い」値（<code>SceneDepthRaw</code> が 1）になります。</li>
+    <li>写すのは、深度を読むマテリアルを半透明で描くフレームだけです。使い始めの 1 フレームは「奥に何も無い」値です。</li>
+    <li><code>SceneDepth.hlsli</code> は、スプライト（<a href="#material-shader-values">スプライトのマテリアル</a>）とポストエフェクト（<a href="#script-posteffect">プロジェクトのポストエフェクト</a>）のシェーダでも読み込めます。スプライトはブレンドありのとき、ポストエフェクトはいつも読めます。UI 画像では「奥に何も無い」値です。</li>
+    <li>資源は <code>register(t0, space4)</code> と <code>register(b0, space4)</code> を使います。マテリアルの欄には出ません。</li>
+  </ul>
+
   <h2 id="material3d-script">スクリプトから値を変える</h2>
   <p>共有の値は <a href="#api-ShaderMaterial">ShaderMaterial</a> で、1 つのモデルだけの値はメッシュ描画の <code>SetMaterialFloat</code> などで変えます。使い方は <a href="#material-script">スプライトのマテリアル</a> と同じです。</p>
   <script type="text/x-code" data-lang="as" data-file="Application/Assets/Scripts/ScanLineControl.as">
@@ -5894,7 +5942,7 @@ kbd {
   </ul>
 </article>
 
-<article class="page" id="shader-graph" data-group="スクリプト" data-title="シェーダーグラフ（ノードでシェーダを作る）" data-nav="シェーダーグラフ" data-keywords="シェーダーグラフ shader graph shadergraph ノード node つなぐ hlsl を書かない ビジュアル ディゾルブ dissolve 溶ける 光る 光の帯 シャイン shine ノイズ noise プロパティ property blackboard プレビュー preview マテリアル mat スプライト ui 画像 graph.ps.hlsl graph.cs.hlsl graph.surface.hlsl ポストエフェクト posteffect 画面全体 scene color screen position custom function カスタム関数 関数 _float hlsl を書く 3d モデル meshrenderer lit unlit 頂点 vertex 揺らす 波打つ 法線 normal フレネル fresnel 縁 view direction transform ノードのプレビュー node preview グループ group 付箋 sticky note メモ redirect 中継点 hlsl を見る hlsl を書き出す export 手書きへ移す カテゴリの色 サブグラフ sub graph subgraph shadersubgraph 部品 使い回す 再利用 まとめる サブグラフにする">
+<article class="page" id="shader-graph" data-group="スクリプト" data-title="シェーダーグラフ（ノードでシェーダを作る）" data-nav="シェーダーグラフ" data-keywords="シェーダーグラフ shader graph shadergraph ノード node つなぐ hlsl を書かない ビジュアル ディゾルブ dissolve 溶ける 光る 光の帯 シャイン shine ノイズ noise プロパティ property blackboard プレビュー preview マテリアル mat スプライト ui 画像 graph.ps.hlsl graph.cs.hlsl graph.surface.hlsl ポストエフェクト posteffect 画面全体 scene color screen position custom function カスタム関数 関数 _float hlsl を書く 3d モデル meshrenderer lit unlit 頂点 vertex 揺らす 波打つ 法線 normal フレネル fresnel 縁 view direction transform ノードのプレビュー node preview グループ group 付箋 sticky note メモ redirect 中継点 hlsl を見る hlsl を書き出す export 手書きへ移す カテゴリの色 サブグラフ sub graph subgraph shadersubgraph 部品 使い回す 再利用 まとめる サブグラフにする 物体の空間 object space object 頂点の色 vertex color triplanar 3 方向 parallax 視差 凹凸 高さ heightmap parallax occlusion mapping scene depth 深度 scene depth difference 水際 柔らかく消す screen">
   <h1>シェーダーグラフ（ノードでシェーダを作る）</h1>
   <p class="lead">ノードを線でつないで、<a href="#api-SpriteRenderer">スプライト描画</a> と <a href="#api-UIImage">UI 画像</a> のピクセルシェーダ、画面全体に掛ける <a href="#script-posteffect">ポストエフェクト</a> のコンピュートシェーダ、<a href="#api-MeshRenderer">メッシュ描画</a> の 3D モデルのシェーダを作ります。HLSL を書かずに、光る・溶けて消える・模様が流れる・画面がゆがむ・頂点が波打つ、といった見た目を作れます。Unity の Shader Graph に近い作りです。</p>
 
@@ -6041,7 +6089,7 @@ kbd {
     <li>新しく置いたノードは開いています。前からあるグラフのノードは閉じたままです（並べた位置が重ならないように）。ノードの下の矢印で開け閉めし、窓の上の <span class="ui">プレビューを全部開く</span> ／ <span class="ui">全部閉じる</span> でまとめて切り替えます。開け閉めはグラフに保存し、<kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せます。</li>
     <li>色にするのは最初の数の出力です。Float は灰色、Vector 2 は赤と緑、Vector 3 と Vector 4 は RGB で出します（透明は出しません）。</li>
     <li>出口・Property・Float などの定数・Color・Time・付箋・Redirect と、テクスチャやサンプラーだけを出すノードには出ません。</li>
-    <li>3D のグラフでは、位置・法線・接線・視線・カメラ・Model Surface を使うノードは球に、ほかは板に描きます。ライトでは照らさず、値をそのまま色にします。球の向きは Main Preview と同じです。物体の空間の値（Vertex だけで使えるもの）を使うノードは <span class="ui">プレビューなし</span> と出ます（矢印の上の文字にマウスを載せると訳が出ます）。</li>
+    <li>3D のグラフでは、位置・法線・接線・視線・カメラ・Model Surface・Triplanar・Parallax を使うノードは球に、ほかは板に描きます。ライトでは照らさず、値をそのまま色にします。球の向きは Main Preview と同じです。Fragment で書けないノード（Heightmap をつないでいない Parallax など）と、それにつないだノードは <span class="ui">プレビューなし</span> と出ます（矢印の上の文字にマウスを載せると訳が出ます）。</li>
     <li>開いたノードを全部まとめて 1 本のシェーダにし、裏でコンパイルします。グラフを変えてから少し後に描き直り、その間は前の絵のままです。一度に出せるのは 100 個までで、それより後のノードには <span class="ui">プレビューは 100 個まで</span> と出ます。</li>
     <li>値（プロパティの既定値・<span class="ui">板の画像</span> などの画像）と時間は Main Preview と同じものを使います。</li>
   </ul>
@@ -6113,20 +6161,20 @@ kbd {
     <thead><tr><th>分類</th><th>ノード</th></tr></thead>
     <tbody>
       <tr><td>Input/Basic</td><td>Float ・ Vector 2 ・ Vector 3 ・ Vector 4 ・ Color ・ Time（時間 ／ その sin・cos ／ 前のフレームからの時間 ／ 時間の倍率を掛けない時間）</td></tr>
-      <tr><td>Input/Geometry</td><td>UV（スプライトはコマ割りと反転を済ませた UV、ポストエフェクトは画面の左上 0・右下 1、3D はマテリアルの UV の変形を掛けた UV。Vertex では頂点の UV のまま）・ Position <strong>（スプライトと 3D）</strong>（スプライトはワールド座標、UI 画像は画面の px、3D は World ＝ ワールドの位置 ／ Object ＝ 物体の空間の位置（Vertex だけ））・ Normal Vector <strong>（3D）</strong>（World ／ Object（Vertex だけ）／ Tangent ＝ (0, 0, 1)）・ Tangent Vector <strong>（3D）</strong>（World ／ Object（Vertex だけ））・ View Direction <strong>（3D）</strong>（表面からカメラへの向き）</td></tr>
+      <tr><td>Input/Geometry</td><td>UV（スプライトはコマ割りと反転を済ませた UV、ポストエフェクトは画面の左上 0・右下 1、3D はマテリアルの UV の変形を掛けた UV。Vertex では頂点の UV のまま）・ Position <strong>（スプライトと 3D）</strong>（スプライトはワールド座標、UI 画像は画面の px、3D は World ＝ ワールドの位置 ／ Object ＝ 物体の空間の位置）・ Normal Vector <strong>（3D）</strong>（World ／ Object ／ Tangent ＝ (0, 0, 1)）・ Tangent Vector <strong>（3D）</strong>（World ／ Object）・ View Direction <strong>（3D）</strong>（表面からカメラへの向き）・ Object <strong>（3D）</strong>（物体の原点のワールドの位置と、各軸の大きさ）・ Vertex Color <strong>（スプライトと 3D）</strong>（スプライトは部品の色、3D はモデルの頂点の色。<a href="#sg-vertex-color">頂点の色</a>）</td></tr>
       <tr><td>Input/Model <strong>（3D）</strong></td><td>Model Surface（マテリアルを付けていないときの値。モデルのテクスチャ × マテリアルの色・法線マップの値（接空間）・金属感・粗さ・AO・発光）</td></tr>
-      <tr><td>Input/Sprite <strong>（スプライト）</strong></td><td>Sprite Color（テクスチャ × 部品の色）・ Vertex Color（部品の色）・ Main Texture（部品のテクスチャとその大きさ）</td></tr>
-      <tr><td>Input/Scene</td><td>Scene Color <strong>（ポストエフェクト）</strong>（画面の色。UV をつなぐと、その場所の画面の色を読む）・ Screen Position <strong>（ポストエフェクトと 3D）</strong>（ポストエフェクトは Default ＝ 0〜1 ／ Center ＝ 真ん中が 0 で −1〜1 ／ Pixel ＝ 画素の位置、3D は画素の位置）・ Screen <strong>（ポストエフェクト）</strong>（画面の幅・高さ・1 画素の大きさ）・ Camera <strong>（3D）</strong>（カメラのワールドの位置）</td></tr>
-      <tr><td>Input/Texture</td><td>Sample Texture 2D（テクスチャの色を読む。つながなければ、スプライトは部品のテクスチャ、ポストエフェクトは画面、3D はモデルのテクスチャ）・ Sample Texture 2D LOD（細かさ（ミップ）を指して読む。Vertex でも使える）・ Sampler State（下の表）</td></tr>
+      <tr><td>Input/Sprite <strong>（スプライト）</strong></td><td>Sprite Color（テクスチャ × 部品の色）・ Main Texture（部品のテクスチャとその大きさ）</td></tr>
+      <tr><td>Input/Scene</td><td>Scene Color <strong>（ポストエフェクト）</strong>（画面の色。UV をつなぐと、その場所の画面の色を読む）・ Screen Position <strong>（ポストエフェクトと 3D）</strong>（ポストエフェクトは Default ＝ 0〜1 ／ Center ＝ 真ん中が 0 で −1〜1 ／ Pixel ＝ 画素の位置、3D は画素の位置）・ Screen（画面の幅・高さ・1 画素の大きさ）・ Camera <strong>（3D）</strong>（カメラのワールドの位置）・ Scene Depth（画面の深度）・ Scene Depth Difference <strong>（スプライトと 3D）</strong>（奥の物とこの面の深度の差。どちらも <a href="#sg-scene-depth">画面の深度</a>）</td></tr>
+      <tr><td>Input/Texture</td><td>Sample Texture 2D（テクスチャの色を読む。つながなければ、スプライトは部品のテクスチャ、ポストエフェクトは画面、3D はモデルのテクスチャ）・ Sample Texture 2D LOD（細かさ（ミップ）を指して読む。Vertex でも使える）・ Sampler State（下の表）・ Triplanar <strong>（3D）</strong>（テクスチャを 3 方向から貼る。<a href="#sg-triplanar">Triplanar と Parallax</a>）</td></tr>
       <tr><td>Math/Basic</td><td>Add ・ Subtract ・ Multiply ・ Divide ・ Power ・ Square Root</td></tr>
       <tr><td>Math/Advanced</td><td>Absolute ・ Negate ・ Length ・ Normalize</td></tr>
       <tr><td>Math/Range</td><td>Clamp ・ Remap ・ Maximum ・ Minimum ・ One Minus ・ Saturate ・ Fraction</td></tr>
       <tr><td>Math/Round</td><td>Floor ・ Ceiling ・ Round ・ Step</td></tr>
       <tr><td>Math/Trigonometry</td><td>Sine ・ Cosine</td></tr>
       <tr><td>Math/Interpolation</td><td>Lerp ・ Inverse Lerp ・ Smoothstep</td></tr>
-      <tr><td>Math/Vector</td><td>Dot Product ・ Distance ・ Fresnel Effect <strong>（3D）</strong>（カメラから見て縁ほど 1 に近い）・ Transform <strong>（3D）</strong>（位置か向きを空間の間で移す。Vertex は Object ↔ World、Fragment は World ↔ Tangent）</td></tr>
+      <tr><td>Math/Vector</td><td>Dot Product ・ Distance ・ Fresnel Effect <strong>（3D）</strong>（カメラから見て縁ほど 1 に近い）・ Transform <strong>（3D）</strong>（位置か向きを Object・World・Tangent の間で移す。Vertex でも Fragment でも）</td></tr>
       <tr><td>Channel</td><td>Split（成分に分ける）・ Combine（成分をまとめる）・ Swizzle（成分を並べ替える。<code>xyz</code>・<code>wzyx</code> など）</td></tr>
-      <tr><td>UV</td><td>Tiling And Offset ・ Rotate ・ Polar Coordinates</td></tr>
+      <tr><td>UV</td><td>Tiling And Offset ・ Rotate ・ Polar Coordinates ・ Parallax Mapping <strong>（3D）</strong> ・ Parallax Occlusion Mapping <strong>（3D）</strong>（高さのテクスチャで UV をずらし、凹凸があるように見せる）</td></tr>
       <tr><td>Artistic/Normal</td><td>Normal Unpack（法線マップの色を −1〜1 の向きにする）・ Normal Strength（法線の凹凸を強める・弱める）・ Normal Blend（2 つの法線を重ねる）</td></tr>
       <tr><td>Procedural/Noise</td><td>Simple Noise ・ Gradient Noise ・ Voronoi</td></tr>
       <tr><td>Procedural/Shape</td><td>Ellipse ・ Rectangle</td></tr>
@@ -6180,11 +6228,62 @@ kbd {
   </div>
   <ul>
     <li><strong>Lit と Unlit</strong>：Lit はシーンのライトで照らします。Unlit は照らさずに Base Color をそのまま出し、Lit だけの欄は使いません（つないだ線は残り、題名の横に「使わない」と出ます）。どちらも、モデルの <a href="#api-Material">マテリアル</a> の Lighting の設定によりません。</li>
-    <li><strong>Vertex</strong>：Vertex の出口につなぐと、頂点の関数を持つシェーダになり、頂点を動かせます。Vertex につないだノードは頂点ごとに計算します。画素ごとにしか計算できないノード（Sample Texture 2D・View Direction・Camera・Fresnel Effect・Model Surface・Screen Position・Ellipse・Rectangle）は Vertex につなぐとエラーになります。頂点でテクスチャを読むときは Sample Texture 2D LOD を使います。</li>
+    <li><strong>Vertex</strong>：Vertex の出口につなぐと、頂点の関数を持つシェーダになり、頂点を動かせます。Vertex につないだノードは頂点ごとに計算します。画素ごとにしか計算できないノード（Sample Texture 2D・Triplanar・View Direction・Camera・Fresnel Effect・Model Surface・Screen Position・Screen・Scene Depth・Scene Depth Difference・Parallax Mapping・Parallax Occlusion Mapping・Ellipse・Rectangle）は Vertex につなぐとエラーになります。頂点でテクスチャを読むときは Sample Texture 2D LOD を使います。</li>
     <li><strong>動く頂点の扱い</strong>：頂点の関数は今と前のフレームの時間で 2 回計算し、動きのぶれ（モーションベクター）も合わせます。レイトレーシングの影も、動かした形で落ちます（静的なモデルも骨の入ったモデルも）。</li>
     <li><strong>境界の余白</strong>：カメラに映っているかは、動かす前のモデルの箱で決めます。頂点を大きく動かして画面の端で消えるときは、メッシュ描画の <span class="ui">境界の余白</span>（m）を増やしてください。</li>
     <li><strong>Time</strong>：3D の Time は 240 秒で 0 に戻ります（植物の揺れと同じ時間）。Vertex では、今と前のフレームの時間をそれぞれ使います。シーンの中では再生中だけ進むので、停止中は頂点の動きも止まります（Main Preview では動きます）。</li>
     <li>1 つの .mat が、モデルの全部のサブメッシュに効きます。Model Surface と、つないでいない欄は、サブメッシュごとのテクスチャと値を使います。</li>
+  </ul>
+
+  <h3 id="sg-object-space">物体の空間（Object）</h3>
+  <p>Position・Normal Vector・Tangent Vector の Space を Object にすると、Fragment でも物体の空間の値を読めます。値は頂点の関数で動かした後のもので、物を動かしたり回したりしても、物体の空間で付けた模様は物に付いてきます。</p>
+  <ul>
+    <li><strong>Object ノード</strong>：物体の原点のワールドの位置（Position）と、各軸の大きさ（Scale）を返します。物ごとに色を変えたり、大きさに合わせて模様の細かさを変えたりするときに使います。</li>
+    <li><strong>Transform</strong>：Object・World・Tangent のどの間でも、Vertex でも Fragment でも移せます。Direction は Object と World の間で移した後に正規化します。Tangent との間は、Position を選んでも向きとして移します。</li>
+    <li>Fragment で物体の空間を使うグラフは、物体の空間の値を画素へ渡す頂点シェーダを持ちます。使わないグラフのシェーダは今までと同じです。</li>
+  </ul>
+
+  <h3 id="sg-vertex-color">頂点の色</h3>
+  <p>3D のグラフの Vertex Color は、モデルのファイルにある頂点の色（glTF の <code>COLOR_0</code> など）を返します。色の無いモデルは白です。値はファイルのまま（glTF の決まりどおりリニア）で、Vertex でも Fragment でも使えます。スプライトのグラフの Vertex Color は、今までどおり部品の色です。</p>
+  <ul>
+    <li>モデルを読み込むときに、色も <span class="path">.cmesh</span>（読み込みを速くする中間のファイル）に入れます。この版に上げた後の最初の起動で、手元のモデルの .cmesh を 1 回だけ作り直します。</li>
+    <li>前の版で書き出したゲームの .cmesh もそのまま読めます（色は白になります）。</li>
+    <li>試しに使える、角ごとに色の違う立方体があります：<span class="path">Projects/TestBed/Application/Assets/Models/VertexColorCube/VertexColorCube.gltf</span></li>
+  </ul>
+
+  <h3 id="sg-triplanar">Triplanar と Parallax</h3>
+  <ul>
+    <li><strong>Triplanar</strong>：テクスチャを x・y・z の 3 方向から貼り、面の向きで混ぜます。UV の無い形や、引き伸ばした形でも模様が伸びません。Position をつながなければワールドの位置で貼るので、物を動かすと模様が流れます。物に付けたいときは Position（Object）をつなぎます。Tile は 1 m あたりの繰り返しの数、Blend は混ぜ目の鋭さです。Type を Normal にすると法線マップとして読み、接空間の向きを返すので、出口の Normal (Tangent Space) へそのままつなぎます（テクスチャの Linear にチェックを入れます）。</li>
+    <li><strong>Parallax Mapping</strong>：高さのテクスチャ（Heightmap・白が高い）で UV を視線の向きへずらし、凹凸があるように見せます。返した UV（Parallax UVs）で色や法線のテクスチャを読みます。Amplitude は高さの強さ（0.01 倍で効く）、Channel は高さを読む成分です。軽いですが、斜めから見ると浅く見えます。Heightmap はつないでください。</li>
+    <li><strong>Parallax Occlusion Mapping</strong>：高さのテクスチャを視線に沿って奥へたどるので、斜めから見ても深く見えます。Steps はたどる回数（多いほどきれいで重い）、LOD は読むミップの段で、LOD が LOD Threshold より大きいと効きを弱めます。どちらの Parallax も、形の輪郭は変わりません。</li>
+  </ul>
+
+  <h2 id="sg-scene-depth">画面の深度（Scene Depth）</h2>
+  <p>Scene Depth は、すでに描いた物の深度を画面の位置で読みます。Scene Depth Difference は奥の物とこの面の深度の差で、物と交わる所や水際を柔らかく消すときに使います。UV（画面の 0〜1・左上が 0）をつながなければ、この画素の位置で読みます。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Mode</th><th>値</th></tr></thead>
+    <tbody>
+      <tr><td>Linear01（既定）</td><td>0〜1（目からの距離 ÷ カメラの far）</td></tr>
+      <tr><td>Raw（Scene Depth だけ）</td><td>深度の値そのまま（近い所が 0・遠い所が 1）</td></tr>
+      <tr><td>Eye</td><td>目からの距離（m）</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>描くもの</th><th>読める深度</th></tr></thead>
+    <tbody>
+      <tr><td>ポストエフェクト</td><td>画面の深度（Scene Depth だけ置けます）</td></tr>
+      <tr><td>スプライト・3D（どちらもブレンドあり）</td><td>半透明を描く前の深度</td></tr>
+      <tr><td>3D の不透明・ブレンドなしのスプライト・UI 画像・プレビュー</td><td>いつも「奥に何も無い」値（Raw が 1）</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li>半透明の前に深度を写すのは、深度を読むマテリアルを半透明で描くフレームだけです。使い始めの 1 フレームは「奥に何も無い」値です。</li>
+    <li>例：半透明の板を地面に刺し、Scene Depth Difference（Eye）に 2 を掛けて Saturate し、Alpha に掛けると、交わる所が 0.5 m の幅で柔らかく消えます。</li>
+    <li>Screen はスプライトと 3D でも使えるようになり、画面の大きさ（px）を返します。</li>
   </ul>
 
   <h2 id="sg-custom-function">Custom Function（HLSL を書く）</h2>
@@ -6234,7 +6333,7 @@ kbd {
     <li>ゲームを書き出すと、.shadergraph は入れず、グラフが作ったシェーダを DXIL（コンパイル済みのシェーダ）にして入れます（<a href="#editor-export">ゲームを書き出す</a>）。</li>
     <li>ポストエフェクトのグラフが作った <span class="path">.Graph.CS.hlsl</span> は、Project.json に入れていなくても、コンピュートシェーダとして書き出します。</li>
     <li>3D のグラフが作った <span class="path">.Graph.Surface.hlsl</span> は、手書きの <span class="path">.Surface.hlsl</span> と同じく、使う入口を全部 DXIL にして書き出します。</li>
-    <li>画面の深さ（Scene Depth）を読むノードと、3D の半透明のグラフで画面の色を読むノードは、まだありません。</li>
+    <li>3D の半透明のグラフで画面の色を読むノードは、まだありません（画面の深度は <a href="#sg-scene-depth">Scene Depth</a> で読めます）。</li>
     <li>グラフが作ったシェーダは、ほかのシェーダから <code>#include</code> できません。</li>
     <li><span class="ui">Tools<span class="arrow">▸</span>テスト<span class="arrow">▸</span>シェーダーグラフの全ノード検査</span> は、置ける全部のノードを、入力の幅ごとにつないだグラフにしてコンパイルし、結果を Console に出します（エンジンのノードを足したり直したりしたときの確かめ用）。</li>
   </ul>
@@ -10641,6 +10740,18 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-64-0">v0.64.0 <span class="dim">（2026-11-06）</span></h3>
+  <p>シェーダーグラフに、物体の空間・頂点の色・Triplanar・Parallax・画面の深度のノードを足した版です。今までのグラフが保存で書くシェーダは、前の版と 1 文字も変わりません（<a href="#sg-nodes">ノードの一覧</a>）。</p>
+  <ul>
+    <li><strong>物体の空間</strong>：Position・Normal Vector・Tangent Vector の Object を Fragment でも使えるようにし、Transform は Object・World・Tangent のどの間でも、どの段でも移せるようにしました。物体の原点の位置と大きさを返す Object ノードを足しました（<a href="#sg-object-space">物体の空間</a>）。</li>
+    <li><strong>頂点の色</strong>：モデルの頂点の色を読むようにし、3D のグラフの Vertex Color で使えるようにしました。色の無いモデルは白です。Vertex Color の分類は Input/Geometry に移しました（<a href="#sg-vertex-color">頂点の色</a>）。</li>
+    <li><strong>.cmesh の作り直し</strong>：頂点の色を .cmesh に入れるため、この版に上げた後の最初の起動で、手元のモデルの .cmesh を 1 回だけ作り直します（モデルが多いと時間がかかります）。前の版で書き出したゲームはそのまま動きます。</li>
+    <li><strong>Triplanar と Parallax</strong>：テクスチャを 3 方向から貼る Triplanar と、高さのテクスチャで凹凸に見せる Parallax Mapping・Parallax Occlusion Mapping を足しました（<a href="#sg-triplanar">Triplanar と Parallax</a>）。</li>
+    <li><strong>画面の深度</strong>：Scene Depth と Scene Depth Difference を足し、Screen をスプライトと 3D でも使えるようにしました。ブレンドありのスプライトと 3D は、半透明を描く前の深度の写しを読みます。写すのは深度を読むマテリアルを半透明で描くフレームだけです（<a href="#sg-scene-depth">画面の深度</a>）。</li>
+    <li><strong>手書きのシェーダ</strong>：<span class="path">.Surface.hlsl</span> に <code>#define SURFACE_OBJECT_SPACE</code>・<code>#define SURFACE_VERTEX_COLOR</code> を書くと物体の空間の値と頂点の色を、<code>SceneDepth.hlsli</code> を読み込むと画面の深度を使えます（<a href="#material3d-object-space">物体の空間・頂点の色・画面の深度</a>）。</li>
+    <li><strong>見本のモデル</strong>：TestBed に、角ごとに色の違う立方体 <span class="path">Models/VertexColorCube/VertexColorCube.gltf</span> を足しました。</li>
+  </ul>
 
   <h3 id="changelog-v0-63-0">v0.63.0 <span class="dim">（2026-11-06）</span></h3>
   <p>シェーダーグラフに、ノードのまとまりを部品にするサブグラフを足した版です。サブグラフを使わないグラフが保存で書くシェーダは、前の版と 1 文字も変わりません（<a href="#sg-subgraph">サブグラフ</a>）。</p>
