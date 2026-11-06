@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.65.0">
+<meta name="engine-version" content="0.65.1">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11320,6 +11320,14 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-65-1">v0.65.1 <span class="dim">（2026-11-07）</span></h3>
+  <p>骨の入ったモデル（スキンメッシュ）の動きのぶれ（モーションベクター）を直した版です。走る・腕を振るなど骨で動く手足が、TAA で溶けたように崩れたり、ちらついたりしにくくなります。</p>
+  <ul>
+    <li><strong>骨の動き</strong>：骨の入ったモデルは、前のフレームの位置も今の姿勢で計算していたため、骨で動いた分が動きのぶれに入っていませんでした。物の位置とカメラが止まっていると手足の動きのぶれは 0 になり、TAA は前のフレームの別の場所の色を混ぜていました。スキニングで前のフレームの姿勢の位置も作り、骨の動きも動きのぶれに入れるようにしました。TAA・レイトレーシングの影・SSAO の前のフレームの引き方に効きます。</li>
+    <li><strong>止まった姿勢</strong>：アニメーションが止まったフレームや停止中は、前の姿勢を今の姿勢にそろえ、骨の動きのぶれを 0 にします。</li>
+    <li><strong>手書きのシェーダ</strong>：骨の入ったモデル用の頂点シェーダが <code>t2, space1</code> に前のフレームの位置（<code>gPrevSkinnedPositions</code>）を読みます。<span class="path">.Surface.hlsl</span> でこの名前は使えません。</li>
+  </ul>
 
   <h3 id="changelog-v0-65-0">v0.65.0 <span class="dim">（2026-11-07）</span></h3>
   <p>法線マップの読み方を直し、法線マップ用の圧縮（BC5）を足した版です。glTF の決まりどおり法線マップの緑を画像の上の向きとして読むので、凹凸の上下が正しくなり、UV を鏡映した面とそうでない面で向きがそろいます。</p>
