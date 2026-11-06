@@ -10751,6 +10751,7 @@ python Tools/OkinawaBeach/bake_araha_walk.py
     <li><strong>画面の深度</strong>：Scene Depth と Scene Depth Difference を足し、Screen をスプライトと 3D でも使えるようにしました。ブレンドありのスプライトと 3D は、半透明を描く前の深度の写しを読みます。写すのは深度を読むマテリアルを半透明で描くフレームだけです（<a href="#sg-scene-depth">画面の深度</a>）。</li>
     <li><strong>手書きのシェーダ</strong>：<span class="path">.Surface.hlsl</span> に <code>#define SURFACE_OBJECT_SPACE</code>・<code>#define SURFACE_VERTEX_COLOR</code> を書くと物体の空間の値と頂点の色を、<code>SceneDepth.hlsli</code> を読み込むと画面の深度を使えます（<a href="#material3d-object-space">物体の空間・頂点の色・画面の深度</a>）。</li>
     <li><strong>見本のモデル</strong>：TestBed に、角ごとに色の違う立方体 <span class="path">Models/VertexColorCube/VertexColorCube.gltf</span> を足しました。</li>
+    <li><strong>直したこと</strong>：v0.61.0 から、3D のグラフの Vertex の出口（と手書きの <code>SURFACE_VERTEX</code>）がシーンでは効かず、Main Preview でしか動いていませんでした。シェーダの <code>#define</code> を読むときに、ファイルをプロジェクトの根でなく作業フォルダから探していたためです。</li>
   </ul>
 
   <h3 id="changelog-v0-63-0">v0.63.0 <span class="dim">（2026-11-06）</span></h3>

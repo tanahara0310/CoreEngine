@@ -12,6 +12,7 @@
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/Path/ProjectPaths.h"
 
 #include <exception>
 #include <fstream>
@@ -108,10 +109,10 @@ namespace CoreEngine
             return false;
         }
 
-        /// @brief シェーダのファイルを読む（読めなければ空）
+        /// @brief シェーダのファイルを読む（綴りはプロジェクトかエンジンの根から辿る。読めなければ空）
         std::string ReadShaderText(const std::string& shaderPath)
         {
-            std::ifstream file(Logger::GetInstance().Utf8ToPath(shaderPath), std::ios::binary);
+            std::ifstream file(ProjectPaths::Resolve(shaderPath), std::ios::binary);
             if (!file) {
                 return {};
             }
