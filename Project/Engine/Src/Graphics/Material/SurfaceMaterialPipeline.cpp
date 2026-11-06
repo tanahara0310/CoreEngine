@@ -57,64 +57,89 @@ namespace CoreEngine
         }
     }
 
+    namespace
+    {
+        /// @brief シェーダの文字に `#define 名前` の行があるか
+        bool ShaderTextDefines(std::string_view text, std::string_view name)
+        {
+            constexpr std::string_view kDirective = "define";
+            const auto isSpace = [](char c) { return c == ' ' || c == '\t'; };
+            const auto isNameChar = [](char c) {
+                return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_';
+            };
+            size_t lineStart = 0;
+            while (lineStart < text.size()) {
+                size_t lineEnd = text.find('\n', lineStart);
+                if (lineEnd == std::string_view::npos) {
+                    lineEnd = text.size();
+                }
+                const std::string_view line = text.substr(lineStart, lineEnd - lineStart);
+                lineStart = lineEnd + 1;
+
+                size_t at = 0;
+                while (at < line.size() && isSpace(line[at])) {
+                    ++at;
+                }
+                if (at >= line.size() || line[at] != '#') {
+                    continue;
+                }
+                ++at;
+                while (at < line.size() && isSpace(line[at])) {
+                    ++at;
+                }
+                if (line.substr(at, kDirective.size()) != kDirective) {
+                    continue;
+                }
+                at += kDirective.size();
+                if (at >= line.size() || !isSpace(line[at])) {
+                    continue;
+                }
+                while (at < line.size() && isSpace(line[at])) {
+                    ++at;
+                }
+                if (line.substr(at, name.size()) != name) {
+                    continue;
+                }
+                at += name.size();
+                if (at >= line.size() || !isNameChar(line[at])) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// @brief シェーダのファイルを読む（読めなければ空）
+        std::string ReadShaderText(const std::string& shaderPath)
+        {
+            std::ifstream file(Logger::GetInstance().Utf8ToPath(shaderPath), std::ios::binary);
+            if (!file) {
+                return {};
+            }
+            std::ostringstream text;
+            text << file.rdbuf();
+            return text.str();
+        }
+    }
+
     bool SurfaceShaderTextHasVertexFunction(std::string_view text)
     {
-        constexpr std::string_view kDirective = "define";
-        constexpr std::string_view kName = "SURFACE_VERTEX";
-        const auto isSpace = [](char c) { return c == ' ' || c == '\t'; };
-        const auto isNameChar = [](char c) {
-            return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_';
-        };
-        size_t lineStart = 0;
-        while (lineStart < text.size()) {
-            size_t lineEnd = text.find('\n', lineStart);
-            if (lineEnd == std::string_view::npos) {
-                lineEnd = text.size();
-            }
-            const std::string_view line = text.substr(lineStart, lineEnd - lineStart);
-            lineStart = lineEnd + 1;
-
-            size_t at = 0;
-            while (at < line.size() && isSpace(line[at])) {
-                ++at;
-            }
-            if (at >= line.size() || line[at] != '#') {
-                continue;
-            }
-            ++at;
-            while (at < line.size() && isSpace(line[at])) {
-                ++at;
-            }
-            if (line.substr(at, kDirective.size()) != kDirective) {
-                continue;
-            }
-            at += kDirective.size();
-            if (at >= line.size() || !isSpace(line[at])) {
-                continue;
-            }
-            while (at < line.size() && isSpace(line[at])) {
-                ++at;
-            }
-            if (line.substr(at, kName.size()) != kName) {
-                continue;
-            }
-            at += kName.size();
-            if (at >= line.size() || !isNameChar(line[at])) {
-                return true;
-            }
-        }
-        return false;
+        return ShaderTextDefines(text, "SURFACE_VERTEX");
     }
 
     bool SurfaceShaderHasVertexFunction(const std::string& shaderPath)
     {
-        std::ifstream file(Logger::GetInstance().Utf8ToPath(shaderPath), std::ios::binary);
-        if (!file) {
-            return false;
-        }
-        std::ostringstream text;
-        text << file.rdbuf();
-        return SurfaceShaderTextHasVertexFunction(text.str());
+        return SurfaceShaderTextHasVertexFunction(ReadShaderText(shaderPath));
+    }
+
+    bool SurfaceShaderTextHasOwnVertexShader(std::string_view text)
+    {
+        return ShaderTextDefines(text, "SURFACE_VERTEX") || ShaderTextDefines(text, "SURFACE_OBJECT_SPACE")
+            || ShaderTextDefines(text, "SURFACE_VERTEX_COLOR");
+    }
+
+    bool SurfaceShaderHasOwnVertexShader(const std::string& shaderPath)
+    {
+        return SurfaceShaderTextHasOwnVertexShader(ReadShaderText(shaderPath));
     }
 
     ID3D12RootSignature* SurfaceMaterialVariant::GetRootSignature() const
@@ -131,7 +156,9 @@ namespace CoreEngine
         ShaderReflectionBuilder& reflectionBuilder, std::string shaderPath)
         : device_(device), compiler_(&compiler), reflectionBuilder_(&reflectionBuilder), shaderPath_(std::move(shaderPath))
     {
-        hasVertexFunction_ = SurfaceShaderHasVertexFunction(shaderPath_);
+        const std::string text = ReadShaderText(shaderPath_);
+        hasVertexFunction_ = SurfaceShaderTextHasVertexFunction(text);
+        hasOwnVertexShader_ = SurfaceShaderTextHasOwnVertexShader(text);
     }
 
     SurfaceMaterialPipeline::~SurfaceMaterialPipeline() = default;
@@ -187,7 +214,7 @@ namespace CoreEngine
     Microsoft::WRL::ComPtr<IDxcBlob> SurfaceMaterialPipeline::CompileVertexShader(Pass pass, bool skinned, std::string& error)
     {
         Logger& log = Logger::GetInstance();
-        if (!hasVertexFunction_) {
+        if (!hasOwnVertexShader_) {
             const SurfaceMaterialStage& spec = kSurfaceMaterialStages[VariantIndex(pass, skinned)];
             return compiler_->CompileShader(log.Utf8ToPath(spec.vertexShader).wstring(), L"vs_6_0", L"main", &error);
         }
@@ -251,7 +278,7 @@ namespace CoreEngine
         }
 
         ReadMaterialParamLayout(compiler_->GetDxcUtils(), pixelBlob.Get(), layout_, shaderName, kSurfaceMaterialRegisters);
-        if (hasVertexFunction_) {
+        if (hasOwnVertexShader_) {
             ReadMaterialParamLayout(compiler_->GetDxcUtils(), vertexBlob.Get(), layout_, shaderName, kSurfaceMaterialRegisters);
         }
 
@@ -323,6 +350,7 @@ namespace CoreEngine
         ReadMaterialParamLayout(compiler_->GetDxcUtils(), blob.Get(), layout_, shaderName, kSurfaceMaterialRegisters);
         variant->layout = &layout_;
         variant->mainTextureSlot = variant->rootSignature->GetRootSlot("gTexture");
+        variant->vertexColorSlot = variant->rootSignature->GetRootSlot("gVertexColors");
         variant->paramsSlot = layout_.bufferName.empty() ? RootSlot{} : variant->rootSignature->GetRootSlot(layout_.bufferName);
         variant->textureSlots.reserve(layout_.textures.size());
         for (const std::string& name : layout_.textures) {

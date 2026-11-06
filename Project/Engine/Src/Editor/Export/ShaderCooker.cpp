@@ -59,16 +59,18 @@ namespace CoreEngine::Editor
         }
         const auto addSurfaceShader = [&targets, &log](const std::string& shaderPath) {
             const std::wstring file = log.Utf8ToPath(shaderPath).generic_wstring();
-            const bool vertexFunction = SurfaceShaderHasVertexFunction(shaderPath);
+            const bool ownVertexShader = SurfaceShaderHasOwnVertexShader(shaderPath);
             for (const SurfaceMaterialStage& stage : kSurfaceMaterialStages) {
                 targets.insert({ file, L"ps_6_0", stage.entryPoint });
-                if (!vertexFunction) {
+                if (!ownVertexShader) {
                     targets.insert({ log.Utf8ToPath(stage.vertexShader).generic_wstring(), L"vs_6_0", L"main" });
                 }
             }
-            if (vertexFunction) {
+            if (ownVertexShader) {
                 targets.insert({ file, L"vs_6_0", kSurfaceStaticVertexEntry });
                 targets.insert({ file, L"vs_6_0", kSurfaceSkinnedVertexEntry });
+            }
+            if (SurfaceShaderHasVertexFunction(shaderPath)) {
                 targets.insert({ file, L"cs_6_0", kSurfaceDeformEntry });
             }
         };

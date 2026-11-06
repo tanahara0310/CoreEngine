@@ -10,6 +10,10 @@
 //                    SurfaceStaticVertexMain・SurfaceSkinnedVertexMain と、レイトレの影の形を作る
 //                    SurfaceDeformMain（cs_6_0）が増える。SurfaceVertex() は今と前のフレームの時間で 2 回呼ばれる。
 //                    スキンのモデルの頂点シェーダは b0 を行列に使うので、SurfaceVertex() から gMaterial は読めない。
+//   SURFACE_OBJECT_SPACE : Surface() の IN に物体の空間の位置・法線・接線と、物体の空間とワールドの間の行列が入る。
+//                          頂点シェーダの入口 SurfaceStaticVertexMain・SurfaceSkinnedVertexMain が増える。
+//   SURFACE_VERTEX_COLOR : Surface() と SurfaceVertex() の IN に頂点の色が入る（色の無いモデルは白）。
+//                          頂点シェーダの入口 SurfaceStaticVertexMain・SurfaceSkinnedVertexMain が増える。
 //   SURFACE_LIT    : MaterialComponent の Lighting によらずライトで照らす
 //   SURFACE_UNLIT  : MaterialComponent の Lighting によらずライトで照らさない
 #ifndef MODEL_SURFACE_HLSLI
@@ -17,6 +21,10 @@
 
 #include "Object3dForward.hlsli"
 #include "VertexAnimation.hlsli"
+
+#if defined(SURFACE_VERTEX) || defined(SURFACE_OBJECT_SPACE) || defined(SURFACE_VERTEX_COLOR)
+#define SURFACE_OWN_VERTEX_SHADER
+#endif
 
 // ===== サンプラー（s0 の gSampler は ObjectMaterial.hlsli・異方性・繰り返し） =====
 SamplerState gPointSampler : register(s1); ///< 点・繰り返し
@@ -32,6 +40,17 @@ struct SurfaceInput
     float3 tangentWS; ///< 補間した接線（ワールド・正規化していない）
     float3 bitangentWS; ///< 補間した従法線（ワールド・正規化していない）
     float2 screenPosition; ///< 画面の位置（px）
+    float screenDepth; ///< この面の深度の値（0〜1）
+#ifdef SURFACE_OBJECT_SPACE
+    float3 positionOS; ///< 物体の空間の位置（頂点の関数の後）
+    float3 normalOS; ///< 補間した物体の空間の法線（正規化していない）
+    float3 tangentOS; ///< 補間した物体の空間の接線（正規化していない）
+    float4x4 objectToWorld; ///< 物体の空間 → ワールド（行ベクトル。mul(float4(p, 1), objectToWorld)）
+    float4x4 worldToObject; ///< ワールド → 物体の空間
+#endif
+#ifdef SURFACE_VERTEX_COLOR
+    float4 vertexColor; ///< 頂点の色（無いモデルは白）
+#endif
 };
 
 /// @brief Surface() が決める材質
@@ -56,6 +75,9 @@ struct SurfaceVertexInput
     float time; ///< 秒（240 秒で 0 に戻る。今か前のフレームの時間）
     float4x4 objectToWorld; ///< 物体の空間 → ワールド（行ベクトル。mul(float4(p, 1), objectToWorld)）
     float4x4 worldToObject; ///< ワールド → 物体の空間
+#ifdef SURFACE_VERTEX_COLOR
+    float4 vertexColor; ///< 頂点の色（無いモデルは白）
+#endif
 };
 
 /// @brief SurfaceVertex() が決める頂点（初めは入力の値）
@@ -94,6 +116,19 @@ SurfaceInput MakeSurfaceInput(VertexShaderOutput input)
     IN.tangentWS = input.tangent;
     IN.bitangentWS = input.bitangent;
     IN.screenPosition = input.position.xy;
+    IN.screenDepth = input.position.z;
+#ifdef SURFACE_OBJECT_SPACE
+    IN.positionOS = input.objectPosition;
+    IN.normalOS = input.objectNormal;
+    IN.tangentOS = input.objectTangent;
+    IN.objectToWorld = transpose(float4x4(input.objectToWorld0, input.objectToWorld1, input.objectToWorld2,
+        float4(0.0f, 0.0f, 0.0f, 1.0f)));
+    IN.worldToObject = transpose(float4x4(input.worldToObject0, input.worldToObject1, input.worldToObject2,
+        float4(0.0f, 0.0f, 0.0f, 1.0f)));
+#endif
+#ifdef SURFACE_VERTEX_COLOR
+    IN.vertexColor = input.vertexColor;
+#endif
     return IN;
 }
 
@@ -175,6 +210,28 @@ float3 SurfaceWorldToTangent(SurfaceInput IN, float3 directionWS)
     T = normalize(T - dot(T, N) * N);
     float3 B = cross(N, T);
     return mul(float3x3(T, B, N), directionWS);
+}
+
+/// @brief 頂点の関数の接空間の軸（頂点の法線と接線をワールドへ移して作る）
+float3x3 SurfaceVertexTangentFrame(SurfaceVertexInput IN)
+{
+    float3 N = normalize(mul((float3x3)IN.worldToObject, IN.normalOS));
+    float3 T = normalize(mul(IN.tangentOS, (float3x3)IN.objectToWorld));
+    T = normalize(T - dot(T, N) * N);
+    float3 B = cross(N, T);
+    return float3x3(T, B, N);
+}
+
+/// @brief 頂点の関数で、接空間の向きをワールドの向きにする（正規化済み）
+float3 SurfaceVertexTangentToWorld(SurfaceVertexInput IN, float3 directionTS)
+{
+    return normalize(mul(directionTS, SurfaceVertexTangentFrame(IN)));
+}
+
+/// @brief 頂点の関数で、ワールドの向きを接空間へ移す
+float3 SurfaceVertexWorldToTangent(SurfaceVertexInput IN, float3 directionWS)
+{
+    return mul(SurfaceVertexTangentFrame(IN), directionWS);
 }
 
 /// @brief Surface() の結果を GBuffer へ書く
@@ -275,6 +332,9 @@ struct SurfaceStaticVertexAttributes
     float3 normal : NORMAL0;
     float3 tangent : TANGENT0;
     float4 animData : TEXCOORD1;
+#ifdef SURFACE_VERTEX_COLOR
+    uint vertexID : SV_VertexID;
+#endif
 };
 
 /// @brief スキン済みの頂点（GBufferSkinning.VS.hlsl の VertexShaderInput と同じ並び）
@@ -284,7 +344,50 @@ struct SurfaceSkinnedVertexAttributes
     float2 texcoord : TEXCOORD0;
     float3 normal : NORMAL0;
     float3 tangent : TANGENT0;
+#ifdef SURFACE_VERTEX_COLOR
+    uint vertexID : SV_VertexID;
+#endif
 };
+
+#ifdef SURFACE_VERTEX_COLOR
+/// @brief 頂点の色（1 頂点 4 バイトの RGBA8・頂点の番号で引く。色の無いモデルには白 1 つだけの配列が差される）
+StructuredBuffer<uint> gVertexColors : register(t1, space1);
+
+/// @brief 頂点の色を読む（配列の外は白）
+float4 SurfaceLoadVertexColor(uint vertexID)
+{
+    uint count;
+    uint stride;
+    gVertexColors.GetDimensions(count, stride);
+    if (vertexID >= count)
+    {
+        return float4(1.0f, 1.0f, 1.0f, 1.0f);
+    }
+    const uint packed = gVertexColors[vertexID];
+    return float4(packed & 0xFFu, (packed >> 8) & 0xFFu, (packed >> 16) & 0xFFu, packed >> 24) / 255.0f;
+}
+#endif
+
+/// @brief 物体の空間の値と頂点の色を、ピクセルシェーダへ渡す値に書く（SURFACE_OBJECT_SPACE・SURFACE_VERTEX_COLOR のとき）
+void SurfaceWriteVertexExtras(inout VertexShaderOutput output, float3 positionOS, float3 normalOS, float3 tangentOS,
+    float4 vertexColor, TransformationMatrix mtx)
+{
+#ifdef SURFACE_OBJECT_SPACE
+    output.objectPosition = positionOS;
+    output.objectNormal = normalOS;
+    output.objectTangent = tangentOS;
+    const float4x4 objectToWorldT = transpose(mtx.World);
+    output.objectToWorld0 = objectToWorldT[0];
+    output.objectToWorld1 = objectToWorldT[1];
+    output.objectToWorld2 = objectToWorldT[2];
+    output.worldToObject0 = mtx.WorldInversTranspose[0];
+    output.worldToObject1 = mtx.WorldInversTranspose[1];
+    output.worldToObject2 = mtx.WorldInversTranspose[2];
+#endif
+#ifdef SURFACE_VERTEX_COLOR
+    output.vertexColor = vertexColor;
+#endif
+}
 
 /// @brief 物体の空間の頂点を、ピクセルシェーダへ渡す値にする
 /// @param prevPosition 前のフレームの物体の空間の位置（モーションベクター用）
@@ -310,8 +413,9 @@ VertexShaderOutput SurfaceTransformVertex(float4 position, float3 normalOS, floa
 /// @brief SurfaceVertex() を 1 回呼ぶ（SURFACE_VERTEX が無ければ入力のまま返す）
 /// @param world ワールド行列
 /// @param worldInverseTranspose ワールド行列の逆行列の転置
+/// @param vertexColor 頂点の色（SURFACE_VERTEX_COLOR のときだけ渡す）
 SurfaceVertexOutput SurfaceCallVertex(float3 positionOS, float3 normalOS, float3 tangentOS, float2 uv, float time,
-    float4x4 world, float4x4 worldInverseTranspose)
+    float4x4 world, float4x4 worldInverseTranspose, float4 vertexColor)
 {
     SurfaceVertexOutput OUT;
     OUT.positionOS = positionOS;
@@ -325,6 +429,9 @@ SurfaceVertexOutput SurfaceCallVertex(float3 positionOS, float3 normalOS, float3
     IN.time = time;
     IN.objectToWorld = world;
     IN.worldToObject = transpose(worldInverseTranspose);
+#ifdef SURFACE_VERTEX_COLOR
+    IN.vertexColor = vertexColor;
+#endif
     SurfaceVertex(IN, OUT);
 #endif
     return OUT;
@@ -370,10 +477,14 @@ VertexShaderOutput SurfacePreviewVertexMain(SurfaceStaticVertexAttributes input)
     mtx.LightViewProjection = mtx.WVP;
     mtx.PrevWVP = mtx.WVP;
 
+    const float4 white = float4(1.0f, 1.0f, 1.0f, 1.0f);
     const SurfaceVertexOutput current = SurfaceCallVertex(input.position.xyz, input.normal, input.tangent,
-        input.texcoord, gVertexAnim.time, mtx.World, mtx.WorldInversTranspose);
+        input.texcoord, gVertexAnim.time, mtx.World, mtx.WorldInversTranspose, white);
     const float4 position = float4(current.positionOS, input.position.w);
-    return SurfaceTransformVertex(position, current.normalOS, input.tangent, input.texcoord, position, mtx);
+    VertexShaderOutput output = SurfaceTransformVertex(position, current.normalOS, input.tangent, input.texcoord,
+        position, mtx);
+    SurfaceWriteVertexExtras(output, current.positionOS, current.normalOS, input.tangent, white, mtx);
+    return output;
 }
 
 float4 SurfacePreviewMain(VertexShaderOutput input) : SV_TARGET
@@ -407,8 +518,8 @@ float4 SurfacePreviewMain(VertexShaderOutput input) : SV_TARGET
     return float4(color, 1.0f);
 }
 
-// ===== 頂点を動かす入口（SURFACE_VERTEX のときだけ） =====
-#ifdef SURFACE_VERTEX
+// ===== 自分の頂点シェーダの入口（SURFACE_VERTEX・SURFACE_OBJECT_SPACE・SURFACE_VERTEX_COLOR のどれかのとき） =====
+#ifdef SURFACE_OWN_VERTEX_SHADER
 
 StructuredBuffer<TransformationMatrix> gInstanceData : register(t0, space1);
 ConstantBuffer<TransformationMatrix> gTransformationMatrix : register(b0);
@@ -423,12 +534,19 @@ VertexShaderOutput SurfaceStaticVertexMain(SurfaceStaticVertexAttributes input, 
     ApplyVertexAnimation(input.animData, input.normal, mtx.World, mtx.WorldInversTranspose,
         animatedPos, prevAnimatedPos);
 
+#ifdef SURFACE_VERTEX_COLOR
+    const float4 vertexColor = SurfaceLoadVertexColor(input.vertexID);
+#else
+    const float4 vertexColor = float4(1.0f, 1.0f, 1.0f, 1.0f);
+#endif
     const SurfaceVertexOutput current = SurfaceCallVertex(animatedPos, input.normal, input.tangent, input.texcoord,
-        gVertexAnim.time, mtx.World, mtx.WorldInversTranspose);
+        gVertexAnim.time, mtx.World, mtx.WorldInversTranspose, vertexColor);
     const SurfaceVertexOutput previous = SurfaceCallVertex(prevAnimatedPos, input.normal, input.tangent,
-        input.texcoord, gVertexAnim.prevTime, mtx.World, mtx.WorldInversTranspose);
-    return SurfaceTransformVertex(float4(current.positionOS, input.position.w), current.normalOS, input.tangent,
-        input.texcoord, float4(previous.positionOS, input.position.w), mtx);
+        input.texcoord, gVertexAnim.prevTime, mtx.World, mtx.WorldInversTranspose, vertexColor);
+    VertexShaderOutput output = SurfaceTransformVertex(float4(current.positionOS, input.position.w), current.normalOS,
+        input.tangent, input.texcoord, float4(previous.positionOS, input.position.w), mtx);
+    SurfaceWriteVertexExtras(output, current.positionOS, current.normalOS, input.tangent, vertexColor, mtx);
+    return output;
 }
 
 /// @brief スキンのモデルの頂点シェーダ（GBuffer と前方描画。前のフレームは今の姿勢を前の時間で動かす）
@@ -436,13 +554,25 @@ VertexShaderOutput SurfaceSkinnedVertexMain(SurfaceSkinnedVertexAttributes input
 {
     const TransformationMatrix mtx = gTransformationMatrix;
 
+#ifdef SURFACE_VERTEX_COLOR
+    const float4 vertexColor = SurfaceLoadVertexColor(input.vertexID);
+#else
+    const float4 vertexColor = float4(1.0f, 1.0f, 1.0f, 1.0f);
+#endif
     const SurfaceVertexOutput current = SurfaceCallVertex(input.position.xyz, input.normal, input.tangent,
-        input.texcoord, gVertexAnim.time, mtx.World, mtx.WorldInversTranspose);
+        input.texcoord, gVertexAnim.time, mtx.World, mtx.WorldInversTranspose, vertexColor);
     const SurfaceVertexOutput previous = SurfaceCallVertex(input.position.xyz, input.normal, input.tangent,
-        input.texcoord, gVertexAnim.prevTime, mtx.World, mtx.WorldInversTranspose);
-    return SurfaceTransformVertex(float4(current.positionOS, input.position.w), current.normalOS, input.tangent,
-        input.texcoord, float4(previous.positionOS, input.position.w), mtx);
+        input.texcoord, gVertexAnim.prevTime, mtx.World, mtx.WorldInversTranspose, vertexColor);
+    VertexShaderOutput output = SurfaceTransformVertex(float4(current.positionOS, input.position.w), current.normalOS,
+        input.tangent, input.texcoord, float4(previous.positionOS, input.position.w), mtx);
+    SurfaceWriteVertexExtras(output, current.positionOS, current.normalOS, input.tangent, vertexColor, mtx);
+    return output;
 }
+
+#endif // SURFACE_OWN_VERTEX_SHADER
+
+// ===== レイトレの影の形を作る入口（SURFACE_VERTEX のときだけ） =====
+#ifdef SURFACE_VERTEX
 
 /// @brief レイトレの影の形を作る頂点（C++ 側 VertexData の 64 バイト。VertexAnimationDeform.CS.hlsl と同じ並び）
 struct SurfaceDeformVertex
@@ -494,8 +624,13 @@ void SurfaceDeformMain(uint3 dispatchThreadID : SV_DispatchThreadID)
             gDeform.world, gDeform.worldInverseTranspose, position, prevPosition);
     }
 
+#ifdef SURFACE_VERTEX_COLOR
+    const float4 vertexColor = SurfaceLoadVertexColor(vertexIndex);
+#else
+    const float4 vertexColor = float4(1.0f, 1.0f, 1.0f, 1.0f);
+#endif
     const SurfaceVertexOutput moved = SurfaceCallVertex(position, normal, float3(vertex.tx, vertex.ty, vertex.tz),
-        float2(vertex.u, vertex.v), gVertexAnim.time, gDeform.world, gDeform.worldInverseTranspose);
+        float2(vertex.u, vertex.v), gVertexAnim.time, gDeform.world, gDeform.worldInverseTranspose, vertexColor);
     const float3 movedNormal = normalize(moved.normalOS);
     vertex.px = moved.positionOS.x;
     vertex.py = moved.positionOS.y;

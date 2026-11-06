@@ -333,9 +333,11 @@ namespace CoreEngine::Editor::ShaderGraph
                         entries.push_back({ L"ps_6_0", stage.entryPoint });
                     }
                 }
-                if (SurfaceShaderTextHasVertexFunction(hlsl)) {
+                if (SurfaceShaderTextHasOwnVertexShader(hlsl)) {
                     entries.push_back({ L"vs_6_0", kSurfaceStaticVertexEntry });
                     entries.push_back({ L"vs_6_0", kSurfaceSkinnedVertexEntry });
+                }
+                if (SurfaceShaderTextHasVertexFunction(hlsl)) {
                     entries.push_back({ L"cs_6_0", kSurfaceDeformEntry });
                 }
             }
