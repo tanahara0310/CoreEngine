@@ -43,7 +43,8 @@ struct SurfaceInput
     float3 positionWS; ///< ワールドの位置
     float3 normalWS; ///< 補間した頂点の法線（ワールド・正規化していない）
     float3 tangentWS; ///< 補間した接線（ワールド・正規化していない）
-    float3 bitangentWS; ///< 補間した従法線（ワールド・正規化していない）
+    float3 bitangentWS; ///< 補間した従法線（ワールド・正規化していない。法線マップの緑と同じ画像の上の向き）
+    float bitangentSign; ///< cross(法線, 接線) に掛けると画像の上を向く符号（+1 か -1）
     float2 screenPosition; ///< 画面の位置（px）
     float screenDepth; ///< この面の深度の値（0〜1）
 #ifdef SURFACE_OBJECT_SPACE
@@ -119,7 +120,9 @@ SurfaceInput MakeSurfaceInput(VertexShaderOutput input)
     IN.positionWS = input.worldPosition;
     IN.normalWS = input.normal;
     IN.tangentWS = input.tangent;
-    IN.bitangentWS = input.bitangent;
+    IN.bitangentSign = NormalMapBitangentSign(input.normal, input.tangent,
+        ddx(input.worldPosition), ddy(input.worldPosition), ddx(IN.uv), ddy(IN.uv));
+    IN.bitangentWS = input.bitangent * IN.bitangentSign;
     IN.screenPosition = input.position.xy;
     IN.screenDepth = input.position.z;
 #ifdef SURFACE_OBJECT_SPACE
@@ -144,7 +147,7 @@ SurfaceOutput DefaultSurface(SurfaceInput IN)
     float4 textureColor = gTexture.Sample(gSampler, IN.uv);
     OUT.baseColor = gMaterial.color.rgb * textureColor.rgb;
     OUT.alpha = gMaterial.color.a * textureColor.a;
-    OUT.normalWS = GetNormalFromMap(IN.normalWS, IN.tangentWS, IN.bitangentWS, IN.uv);
+    OUT.normalWS = SampleNormalMapWorld(IN.normalWS, IN.tangentWS, IN.bitangentSign, IN.uv);
 
     float metallic = 0.0f;
     float roughness = 1.0f;
@@ -176,7 +179,7 @@ float3 SurfaceModelNormalTangent(SurfaceInput IN)
     {
         return float3(0.0f, 0.0f, 1.0f);
     }
-    return gNormalMap.Sample(gSampler, IN.uv).rgb * 2.0f - 1.0f;
+    return UnpackNormalMap(gNormalMap.Sample(gSampler, IN.uv));
 }
 
 /// @brief 秒（240 秒で 0 に戻る）
@@ -200,31 +203,21 @@ float3 SurfaceViewDirection(SurfaceInput IN)
 /// @brief 接空間の法線（法線マップの値を -1〜1 にしたもの）をワールドの向きにする
 float3 SurfaceTangentToWorld(SurfaceInput IN, float3 normalTS)
 {
-    float3 N = normalize(IN.normalWS);
-    float3 T = normalize(IN.tangentWS);
-    T = normalize(T - dot(T, N) * N);
-    float3 B = cross(N, T);
-    return normalize(mul(normalTS, float3x3(T, B, N)));
+    return normalize(mul(normalTS, NormalMapTangentFrame(IN.normalWS, IN.tangentWS, IN.bitangentSign)));
 }
 
-/// @brief ワールドの向きを接空間（x = 接線・y = 従法線・z = 法線）へ移す
+/// @brief ワールドの向きを接空間（x = 接線・y = 従法線（画像の上）・z = 法線）へ移す
 float3 SurfaceWorldToTangent(SurfaceInput IN, float3 directionWS)
 {
-    float3 N = normalize(IN.normalWS);
-    float3 T = normalize(IN.tangentWS);
-    T = normalize(T - dot(T, N) * N);
-    float3 B = cross(N, T);
-    return mul(float3x3(T, B, N), directionWS);
+    return mul(NormalMapTangentFrame(IN.normalWS, IN.tangentWS, IN.bitangentSign), directionWS);
 }
 
-/// @brief 頂点の関数の接空間の軸（頂点の法線と接線をワールドへ移して作る）
+/// @brief 頂点の関数の接空間の軸（頂点の法線と接線をワールドへ移して作る。従法線は UV を鏡映していない面の画像の上）
 float3x3 SurfaceVertexTangentFrame(SurfaceVertexInput IN)
 {
-    float3 N = normalize(mul((float3x3)IN.worldToObject, IN.normalOS));
-    float3 T = normalize(mul(IN.tangentOS, (float3x3)IN.objectToWorld));
-    T = normalize(T - dot(T, N) * N);
-    float3 B = cross(N, T);
-    return float3x3(T, B, N);
+    const float3 N = mul((float3x3)IN.worldToObject, IN.normalOS);
+    const float3 T = mul(IN.tangentOS, (float3x3)IN.objectToWorld);
+    return NormalMapTangentFrame(N, T, -1.0f);
 }
 
 /// @brief 頂点の関数で、接空間の向きをワールドの向きにする（正規化済み）
