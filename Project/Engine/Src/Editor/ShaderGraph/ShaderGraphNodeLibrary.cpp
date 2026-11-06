@@ -64,6 +64,28 @@ namespace CoreEngine::Editor::ShaderGraph
             return "normalize(mul((float3x3)IN.worldToObject, " + normal + "))";
         }
 
+        /// @brief Parallax の Channel の設定から、高さを読む成分の重み（float4）
+        std::string HeightChannel(const EmitArgs& args)
+        {
+            const std::string channel = args.Setting("Channel");
+            if (channel == "Red") {
+                return "float4(1.0f, 0.0f, 0.0f, 0.0f)";
+            }
+            if (channel == "Blue") {
+                return "float4(0.0f, 0.0f, 1.0f, 0.0f)";
+            }
+            if (channel == "Alpha") {
+                return "float4(0.0f, 0.0f, 0.0f, 1.0f)";
+            }
+            return "float4(0.0f, 1.0f, 0.0f, 0.0f)";
+        }
+
+        /// @brief Parallax の、面からカメラへの向きを UV の軸で表す式
+        std::string ParallaxView(const std::string& uv)
+        {
+            return "SG_DirectionInUVSpace(SurfaceViewDirection(IN), IN.positionWS, IN.normalWS, " + uv + ")";
+        }
+
         /// @brief `{0}`〜`{9}` を入力の式に置き換える
         std::string Format(std::string_view pattern, const EmitArgs& args)
         {
@@ -430,7 +452,7 @@ namespace CoreEngine::Editor::ShaderGraph
                 desc.title = "Position";
                 desc.category = "Input/Geometry";
                 desc.summary = "スプライトはワールド座標、UI 画像は画面の px（左上が原点・Y は下向き）。"
-                               "3D は Space で World（ワールド）か Object（物体の空間・Vertex だけ）を選ぶ。";
+                               "3D は Space で World（ワールド）か Object（物体の空間。Fragment では頂点の関数で動かした後の値）を選ぶ。";
                 desc.outputs = { Pin("Out", V3) };
                 desc.settings = { Setting3D("Space", "空間", { "World", "Object" }, "World") };
                 desc.targets = TargetBit(Target::Sprite) | k3DTargets;
@@ -443,7 +465,8 @@ namespace CoreEngine::Editor::ShaderGraph
                     if (args.Vertex()) {
                         args.Out(0, object ? "IN.positionOS" : "mul(float4(IN.positionOS, 1.0f), IN.objectToWorld).xyz");
                     } else if (object) {
-                        args.error = "Object の空間は Vertex だけで使えます";
+                        args.Out(0, "IN.positionOS");
+                        args.uses |= kUsesObjectSpace;
                     } else {
                         args.Out(0, "IN.positionWS");
                     }
@@ -455,7 +478,7 @@ namespace CoreEngine::Editor::ShaderGraph
                 desc.type = "NormalVector";
                 desc.title = "Normal Vector";
                 desc.category = "Input/Geometry";
-                desc.summary = "面の法線（正規化済み）。World・Object（Vertex だけ）・Tangent（接空間・いつも 0,0,1）。";
+                desc.summary = "面の法線（正規化済み）。World・Object（物体の空間）・Tangent（接空間・いつも 0,0,1）。";
                 desc.outputs = { Pin("Out", V3) };
                 desc.settings = { SettingDesc{ "Space", "空間", { "World", "Object", "Tangent" }, "World" } };
                 desc.targets = k3DTargets;
@@ -466,7 +489,8 @@ namespace CoreEngine::Editor::ShaderGraph
                     } else if (args.Vertex()) {
                         args.Out(0, space == "Object" ? "IN.normalOS" : VertexNormalToWorld("IN.normalOS"));
                     } else if (space == "Object") {
-                        args.error = "Object の空間は Vertex だけで使えます";
+                        args.Out(0, "normalize(IN.normalOS)");
+                        args.uses |= kUsesObjectSpace;
                     } else {
                         args.Out(0, "normalize(IN.normalWS)");
                     }
@@ -478,7 +502,7 @@ namespace CoreEngine::Editor::ShaderGraph
                 desc.type = "TangentVector";
                 desc.title = "Tangent Vector";
                 desc.category = "Input/Geometry";
-                desc.summary = "面の接線（UV の U の向き・正規化済み）。World・Object（Vertex だけ）。";
+                desc.summary = "面の接線（UV の U の向き・正規化済み）。World・Object（物体の空間）。";
                 desc.outputs = { Pin("Out", V3) };
                 desc.settings = { SettingDesc{ "Space", "空間", { "World", "Object" }, "World" } };
                 desc.targets = k3DTargets;
@@ -487,9 +511,28 @@ namespace CoreEngine::Editor::ShaderGraph
                     if (args.Vertex()) {
                         args.Out(0, object ? "IN.tangentOS" : VertexDirectionToWorld("IN.tangentOS"));
                     } else if (object) {
-                        args.error = "Object の空間は Vertex だけで使えます";
+                        args.Out(0, "normalize(IN.tangentOS)");
+                        args.uses |= kUsesObjectSpace;
                     } else {
                         args.Out(0, "normalize(IN.tangentWS)");
+                    }
+                };
+                nodes.push_back(std::move(desc));
+            }
+            {
+                NodeDesc desc;
+                desc.type = "Object";
+                desc.title = "Object";
+                desc.category = "Input/Geometry";
+                desc.summary = "物体の原点のワールドの位置（Position）と、各軸の大きさ（Scale）。";
+                desc.outputs = { Pin("Position", V3), Pin("Scale", V3) };
+                desc.targets = k3DTargets;
+                desc.emit = [](EmitArgs& args) {
+                    args.Out(0, "IN.objectToWorld[3].xyz");
+                    args.Out(1, "float3(length(IN.objectToWorld[0].xyz), length(IN.objectToWorld[1].xyz), "
+                                "length(IN.objectToWorld[2].xyz))");
+                    if (!args.Vertex()) {
+                        args.uses |= kUsesObjectSpace;
                     }
                 };
                 nodes.push_back(std::move(desc));
@@ -527,11 +570,17 @@ namespace CoreEngine::Editor::ShaderGraph
                 NodeDesc desc;
                 desc.type = "VertexColor";
                 desc.title = "Vertex Color";
-                desc.category = "Input/Sprite";
-                desc.summary = "部品の色（インスペクタとスクリプトで決める色。リニアに直した値）。";
+                desc.category = "Input/Geometry";
+                desc.summary = "スプライトは部品の色（インスペクタとスクリプトで決める色。リニアに直した値）。"
+                               "3D はモデルの頂点の色（ファイルの値のまま。色の無いモデルは白）。";
                 desc.outputs = { Pin("Out", V4) };
-                desc.targets = TargetBit(Target::Sprite);
-                desc.emit = Expression("IN.vertexColor");
+                desc.targets = TargetBit(Target::Sprite) | k3DTargets;
+                desc.emit = [](EmitArgs& args) {
+                    args.Out(0, "IN.vertexColor");
+                    if (Is3D(args.target)) {
+                        args.uses |= kUsesVertexColor;
+                    }
+                };
                 nodes.push_back(std::move(desc));
             }
             {
@@ -635,11 +684,63 @@ namespace CoreEngine::Editor::ShaderGraph
                 desc.category = "Input/Scene";
                 desc.summary = "画面の大きさ（px）。Texel Size は 1 ÷ 大きさ（隣の画素までの UV の差）。";
                 desc.outputs = { Pin("Width", F), Pin("Height", F), Pin("Texel Size", V2) };
-                desc.targets = TargetBit(Target::PostEffect);
+                desc.stages = kStageFragment;
                 desc.emit = [](EmitArgs& args) {
-                    args.Out(0, "IN.screenSize.x");
-                    args.Out(1, "IN.screenSize.y");
-                    args.Out(2, "IN.invScreenSize");
+                    if (args.target == Target::PostEffect) {
+                        args.Out(0, "IN.screenSize.x");
+                        args.Out(1, "IN.screenSize.y");
+                        args.Out(2, "IN.invScreenSize");
+                        return;
+                    }
+                    args.Out(0, "SceneScreenSize().x");
+                    args.Out(1, "SceneScreenSize().y");
+                    args.Out(2, "(1.0f / SceneScreenSize())");
+                };
+                nodes.push_back(std::move(desc));
+            }
+            {
+                NodeDesc desc;
+                desc.type = "SceneDepth";
+                desc.title = "Scene Depth";
+                desc.category = "Input/Scene";
+                desc.summary = "画面の深度。Linear01 は 0〜1（目からの距離 ÷ far）、Raw は深度の値そのまま（近い所が 0）、"
+                               "Eye は目からの距離（m）。UV（画面の 0〜1）をつながなければこの画素。"
+                               "読めるのはポストエフェクト・スプライト・3D の半透明（BlendMode が None 以外）。"
+                               "3D の不透明と UI 画像では、奥に何も無い（いちばん遠い）値になります。";
+                desc.inputs = { Pin("UV", V2, {}, PinBinding::ScreenUV) };
+                desc.outputs = { Pin("Out", F) };
+                desc.settings = { SettingDesc{ "Mode", "形", { "Linear01", "Raw", "Eye" }, "Linear01" } };
+                desc.stages = kStageFragment;
+                desc.emit = [](EmitArgs& args) {
+                    const std::string mode = args.Setting("Mode");
+                    const std::string raw = "SceneDepthRaw(" + args.in[0] + ")";
+                    if (mode == "Raw") {
+                        args.Out(0, raw);
+                    } else if (mode == "Eye") {
+                        args.Out(0, "SceneDepthEye(" + raw + ")");
+                    } else {
+                        args.Out(0, "SceneDepthLinear01(" + raw + ")");
+                    }
+                };
+                nodes.push_back(std::move(desc));
+            }
+            {
+                NodeDesc desc;
+                desc.type = "SceneDepthDifference";
+                desc.title = "Scene Depth Difference";
+                desc.category = "Input/Scene";
+                desc.summary = "奥の物とこの面の深度の差（奥の物が離れているほど大きい）。Linear01 は 0〜1、Eye は m。"
+                               "物と交わる所や水際を柔らかく消すときに使います。読めるのはスプライトと 3D の半透明。";
+                desc.inputs = { Pin("UV", V2, {}, PinBinding::ScreenUV) };
+                desc.outputs = { Pin("Out", F) };
+                desc.settings = { SettingDesc{ "Mode", "形", { "Linear01", "Eye" }, "Linear01" } };
+                desc.targets = TargetBit(Target::Sprite) | k3DTargets;
+                desc.stages = kStageFragment;
+                desc.emit = [](EmitArgs& args) {
+                    const std::string surface = Is3D(args.target) ? "IN.screenDepth" : "input.position.z";
+                    const std::string function = args.Setting("Mode") == "Eye"
+                        ? "SceneDepthDifferenceEye(" : "SceneDepthDifferenceLinear01(";
+                    args.Out(0, function + args.in[0] + ", " + surface + ")");
                 };
                 nodes.push_back(std::move(desc));
             }
@@ -712,6 +813,37 @@ namespace CoreEngine::Editor::ShaderGraph
                         return;
                     }
                     args.Out(0, name);
+                };
+                nodes.push_back(std::move(desc));
+            }
+
+            {
+                NodeDesc desc;
+                desc.type = "Triplanar";
+                desc.title = "Triplanar";
+                desc.category = "Input/Texture";
+                desc.summary = "テクスチャを x・y・z の 3 方向から貼り、面の向きで混ぜる（UV の無い形や、引き伸ばした形でも模様が伸びない）。"
+                               "Texture をつながなければモデルのベースカラーのテクスチャ、Position はワールドの位置、"
+                               "Normal は面の法線（ワールド）。Tile は 1 m あたりの繰り返しの数、Blend は混ぜ方の鋭さ。"
+                               "Type が Normal なら法線マップとして読み、接空間の向きを返します（出口の Normal へつなぐ）。";
+                desc.inputs = { Pin("Texture", Tex, {}, PinBinding::MainTexture),
+                                Pin("Sampler", Smp, {}, PinBinding::Sampler),
+                                Pin("Position", V3, {}, PinBinding::WorldPosition),
+                                Pin("Normal", V3, { 0.0f, 1.0f, 0.0f, 0.0f }, PinBinding::WorldNormal),
+                                Pin("Tile", F, { 1.0f, 0.0f, 0.0f, 0.0f }),
+                                Pin("Blend", F, { 1.0f, 0.0f, 0.0f, 0.0f }) };
+                desc.outputs = { Pin("Out", V4) };
+                desc.settings = { SettingDesc{ "Type", "種類", { "Default", "Normal" }, "Default" } };
+                desc.targets = k3DTargets;
+                desc.stages = kStageFragment;
+                desc.emit = [](EmitArgs& args) {
+                    const std::string call = "(" + args.in[0] + ", " + args.in[1] + ", " + args.in[2] + ", " + args.in[3]
+                        + ", " + args.in[4] + ", " + args.in[5] + ")";
+                    if (args.Setting("Type") == "Normal") {
+                        args.Out(0, "float4(SurfaceWorldToTangent(IN, SG_TriplanarNormal" + call + "), 1.0f)");
+                    } else {
+                        args.Out(0, "SG_Triplanar" + call);
+                    }
                 };
                 nodes.push_back(std::move(desc));
             }
@@ -864,8 +996,8 @@ namespace CoreEngine::Editor::ShaderGraph
                 desc.type = "Transform";
                 desc.title = "Transform";
                 desc.category = "Math/Vector";
-                desc.summary = "位置か向きを空間の間で移す。Object と World の間は Vertex、World と Tangent の間は Fragment で使えます。"
-                               "Direction は移した後に正規化します。";
+                desc.summary = "位置か向きを Object・World・Tangent の間で移す（Vertex と Fragment のどちらでも）。"
+                               "Direction は Object と World の間で移した後に正規化します。Tangent との間はいつも向きとして移します。";
                 desc.inputs = { Pin("In", V3) };
                 desc.outputs = { Pin("Out", V3) };
                 desc.settings = { SettingDesc{ "From", "元", { "Object", "World", "Tangent" }, "Object" },
@@ -877,33 +1009,39 @@ namespace CoreEngine::Editor::ShaderGraph
                     const std::string to = args.Setting("To");
                     const bool position = args.Setting("Type") == "Position";
                     const std::string& value = args.in[0];
+                    const auto known = [](const std::string& space) {
+                        return space == "Object" || space == "World" || space == "Tangent";
+                    };
+                    if (!known(from) || !known(to)) {
+                        args.error = "空間は Object・World・Tangent のどれかにしてください";
+                        return;
+                    }
                     if (from == to) {
                         args.Out(0, value);
                         return;
                     }
-                    if (args.Vertex()) {
-                        if (from == "Object" && to == "World") {
-                            args.Out(0, position ? "mul(float4(" + value + ", 1.0f), IN.objectToWorld).xyz"
-                                                 : VertexDirectionToWorld(value));
-                            return;
-                        }
-                        if (from == "World" && to == "Object") {
-                            args.Out(0, position ? "mul(float4(" + value + ", 1.0f), IN.worldToObject).xyz"
-                                                 : "normalize(mul(" + value + ", (float3x3)IN.worldToObject))");
-                            return;
-                        }
-                        args.error = "Vertex では Object と World の間だけ移せます";
-                        return;
+                    const bool vertex = args.Vertex();
+                    const std::string tangentToWorld = vertex ? "SurfaceVertexTangentToWorld(IN, " : "SurfaceTangentToWorld(IN, ";
+                    const std::string worldToTangent = vertex ? "SurfaceVertexWorldToTangent(IN, " : "SurfaceWorldToTangent(IN, ";
+
+                    // いったんワールドへ移してから、先の空間へ移す
+                    std::string world = value;
+                    if (from == "Object") {
+                        world = position ? "mul(float4(" + value + ", 1.0f), IN.objectToWorld).xyz" : VertexDirectionToWorld(value);
+                    } else if (from == "Tangent") {
+                        world = tangentToWorld + value + ")";
                     }
-                    if (from == "World" && to == "Tangent") {
-                        args.Out(0, "SurfaceWorldToTangent(IN, " + value + ")");
-                        return;
+                    std::string result = world;
+                    if (to == "Object") {
+                        result = position ? "mul(float4(" + world + ", 1.0f), IN.worldToObject).xyz"
+                                          : "normalize(mul(" + world + ", (float3x3)IN.worldToObject))";
+                    } else if (to == "Tangent") {
+                        result = worldToTangent + world + ")";
                     }
-                    if (from == "Tangent" && to == "World") {
-                        args.Out(0, "SurfaceTangentToWorld(IN, " + value + ")");
-                        return;
+                    if (!vertex && (from == "Object" || to == "Object")) {
+                        args.uses |= kUsesObjectSpace;
                     }
-                    args.error = "Fragment では World と Tangent の間だけ移せます";
+                    args.Out(0, result);
                 };
                 nodes.push_back(std::move(desc));
             }
@@ -1064,6 +1202,59 @@ namespace CoreEngine::Editor::ShaderGraph
                                 Pin("Length Scale", F, { 1.0f, 0.0f, 0.0f, 0.0f }) };
                 desc.outputs = { Pin("Out", V2) };
                 desc.emit = Expression("SG_PolarCoordinates({0}, {1}, {2}, {3})");
+                nodes.push_back(std::move(desc));
+            }
+            {
+                NodeDesc desc;
+                desc.type = "ParallaxMapping";
+                desc.title = "Parallax Mapping";
+                desc.category = "UV";
+                desc.summary = "高さのテクスチャで UV を視線の向きへずらし、凹凸があるように見せる（1 回ずらすだけ・軽い）。"
+                               "Heightmap はつないでください。Amplitude は高さの強さ（0.01 倍で効く）、Channel は高さを読む成分。"
+                               "返した UV でほかのテクスチャを読みます。";
+                desc.inputs = { Pin("Heightmap", Tex, {}, PinBinding::RequiredTexture),
+                                Pin("Sampler", Smp, {}, PinBinding::Sampler),
+                                Pin("Amplitude", F, { 1.0f, 0.0f, 0.0f, 0.0f }), UVPin() };
+                desc.outputs = { Pin("Parallax UVs", V2) };
+                desc.settings = { SettingDesc{ "Channel", "高さの成分", { "Red", "Green", "Blue", "Alpha" }, "Green" } };
+                desc.targets = k3DTargets;
+                desc.stages = kStageFragment;
+                desc.emit = [](EmitArgs& args) {
+                    if (!args.connected[0]) {
+                        args.error = "Heightmap をつないでください";
+                        return;
+                    }
+                    args.Out(0, "SG_ParallaxMapping(" + args.in[0] + ", " + args.in[1] + ", " + HeightChannel(args) + ", "
+                        + args.in[2] + ", " + args.in[3] + ", " + ParallaxView(args.in[3]) + ")");
+                };
+                nodes.push_back(std::move(desc));
+            }
+            {
+                NodeDesc desc;
+                desc.type = "ParallaxOcclusionMapping";
+                desc.title = "Parallax Occlusion Mapping";
+                desc.category = "UV";
+                desc.summary = "高さのテクスチャを視線に沿って奥へたどり、見えている所の UV を返す（斜めから見ても深く見える）。"
+                               "Steps はたどる回数（多いほどきれいで重い）、LOD は読むミップの段、"
+                               "LOD が LOD Threshold より大きいと効きを弱める。ほかの欄は Parallax Mapping と同じ。";
+                desc.inputs = { Pin("Heightmap", Tex, {}, PinBinding::RequiredTexture),
+                                Pin("Sampler", Smp, {}, PinBinding::Sampler),
+                                Pin("Amplitude", F, { 1.0f, 0.0f, 0.0f, 0.0f }),
+                                Pin("Steps", F, { 5.0f, 0.0f, 0.0f, 0.0f }), UVPin(),
+                                Pin("LOD", F), Pin("LOD Threshold", F) };
+                desc.outputs = { Pin("Parallax UVs", V2) };
+                desc.settings = { SettingDesc{ "Channel", "高さの成分", { "Red", "Green", "Blue", "Alpha" }, "Green" } };
+                desc.targets = k3DTargets;
+                desc.stages = kStageFragment;
+                desc.emit = [](EmitArgs& args) {
+                    if (!args.connected[0]) {
+                        args.error = "Heightmap をつないでください";
+                        return;
+                    }
+                    args.Out(0, "SG_ParallaxOcclusionMapping(" + args.in[0] + ", " + args.in[1] + ", " + HeightChannel(args)
+                        + ", " + args.in[2] + ", " + args.in[3] + ", " + args.in[4] + ", " + args.in[5] + ", " + args.in[6]
+                        + ", " + ParallaxView(args.in[4]) + ")");
+                };
                 nodes.push_back(std::move(desc));
             }
 

@@ -26,6 +26,9 @@ namespace CoreEngine::Editor::ShaderGraph
         SourceVertex, ///< 3D の頂点の出口: 元の頂点（何も代入しない）
         WorldNormal,  ///< 3D: ワールドの法線
         ViewDirection, ///< 3D の Fragment: 物からカメラへの向き
+        WorldPosition, ///< 3D: ワールドの位置
+        ScreenUV,      ///< 画面の UV（0〜1・左上が原点。この画素）
+        RequiredTexture, ///< つながないとエラーにするテクスチャ
     };
 
     /// @brief 目標ごとの印（`NodeDesc::targets` に重ねる）
@@ -45,6 +48,10 @@ namespace CoreEngine::Editor::ShaderGraph
     inline constexpr uint8_t kStageVertex = 1;   ///< 頂点の関数（SurfaceVertex）
     inline constexpr uint8_t kStageFragment = 2; ///< 画素の関数（Surface・スプライトとポストエフェクトは全部これ）
     inline constexpr uint8_t kAllStages = kStageVertex | kStageFragment;
+
+    /// @brief ノードが 3D で使った値の印（`EmitArgs::uses` に重ねる。生成が `#define` を書く）
+    inline constexpr uint8_t kUsesObjectSpace = 1; ///< Fragment の物体の空間（`SURFACE_OBJECT_SPACE`）
+    inline constexpr uint8_t kUsesVertexColor = 2; ///< 頂点の色（`SURFACE_VERTEX_COLOR`）
 
     /// @brief 段の表示名
     const char* StageName(uint8_t stage);
@@ -162,6 +169,7 @@ namespace CoreEngine::Editor::ShaderGraph
         std::vector<GlobalCode> globals; ///< 関数の外に置く文
         IncludeResolver resolveInclude;  ///< Custom Function のファイルの include の名前を決める（空ならファイル名）
         std::string prefix;              ///< 変数の名前の前置き（サブグラフの中のノードは、使う側のノードの `n番号_`）
+        uint8_t uses = 0;                ///< 3D で使った値の印（`kUsesObjectSpace`・`kUsesVertexColor`）
 
         /// @brief 出力の変数の名前
         std::string VariableName(size_t output) const;

@@ -462,6 +462,9 @@ namespace CoreEngine::Editor::ShaderGraph
             case PinBinding::SourceVertex: return "元の頂点";
             case PinBinding::WorldNormal: return Is3D(target) ? "面の法線" : nullptr;
             case PinBinding::ViewDirection: return Is3D(target) ? "カメラへ" : nullptr;
+            case PinBinding::WorldPosition: return Is3D(target) ? "ワールドの位置" : nullptr;
+            case PinBinding::ScreenUV: return "この画素";
+            case PinBinding::RequiredTexture: return "つなぐ";
             default: return nullptr;
             }
         }
