@@ -30,6 +30,9 @@ namespace CoreEngine::ModelBind
         gVertexColors,
         gSceneDepthTexture,
         gSceneDepthParams,
+        gSkyAmbient,
+        gSkyIrradianceSH,
+        gSkySpecularMap,
         Count
     };
 
@@ -57,12 +60,15 @@ namespace CoreEngine::ModelBind
         { "gNormalMap",            kSRV, kCond },  // マテリアルが持たなければ差さない
         { "gMetallicRoughnessMap", kSRV, kCond },
         { "gEmissiveMap",          kSRV, kCond },
-        { "gAOMap",                kSRV, kOpt  },  // フォワードは環境光を持たないので AO を読まない
+        { "gAOMap",                kSRV, kCond },
         { "gMatrixPalette",        kSRV, kOpt  },  // 実体なし（スキニングは CS 側）
         { "gVertexAnim",           kCBV, kOpt  },  // 頂点アニメーションの時間・風（ルート定数）
         { "gVertexColors",         kSRV, kOpt  },  // 頂点の色（シェーダーグラフの Vertex Color）
         { "gSceneDepthTexture",    kSRV, kOpt  },  // 画面の深度（シェーダーグラフの Scene Depth）
         { "gSceneDepthParams",     kCBV, kOpt  },  // 深度を直す値
+        { "gSkyAmbient",           kCBV, kReq  },  // 空の環境光の有効状態と強さ（DeferredLightingPass が毎フレーム差す）
+        { "gSkyIrradianceSH",      kSRV, kCond },  // 空の環境光が有効なときだけ読む
+        { "gSkySpecularMap",       kSRV, kCond },  // 空の映り込みが有効なときだけ読む
     };
 
     /// @brief GBuffer.VS/PS（通常モデル・G-Buffer）
@@ -89,6 +95,9 @@ namespace CoreEngine::ModelBind
         { "gVertexColors",         kSRV, kOpt  },  // 頂点の色（シェーダーグラフの Vertex Color）
         { "gSceneDepthTexture",    kSRV, kOpt  },  // 画面の深度（シェーダーグラフの Scene Depth）
         { "gSceneDepthParams",     kCBV, kOpt  },  // 深度を直す値
+        { "gSkyAmbient",           kCBV, kOpt  },
+        { "gSkyIrradianceSH",      kSRV, kOpt  },
+        { "gSkySpecularMap",       kSRV, kOpt  },
     };
 
     /// @brief スキニングモデル・フォワード（gInstanceData の代わりに gTransformationMatrix）
@@ -108,12 +117,15 @@ namespace CoreEngine::ModelBind
         { "gNormalMap",            kSRV, kCond },
         { "gMetallicRoughnessMap", kSRV, kCond },
         { "gEmissiveMap",          kSRV, kCond },
-        { "gAOMap",                kSRV, kOpt  },  // フォワードは環境光を持たないので AO を読まない
+        { "gAOMap",                kSRV, kCond },
         { "gMatrixPalette",        kSRV, kOpt  },
         { "gVertexAnim",           kCBV, kOpt  },  // 頂点アニメーションの時間・風（ルート定数）
         { "gVertexColors",         kSRV, kOpt  },  // 頂点の色（シェーダーグラフの Vertex Color）
         { "gSceneDepthTexture",    kSRV, kOpt  },  // 画面の深度（シェーダーグラフの Scene Depth）
         { "gSceneDepthParams",     kCBV, kOpt  },  // 深度を直す値
+        { "gSkyAmbient",           kCBV, kReq  },  // 空の環境光の有効状態と強さ（DeferredLightingPass が毎フレーム差す）
+        { "gSkyIrradianceSH",      kSRV, kCond },  // 空の環境光が有効なときだけ読む
+        { "gSkySpecularMap",       kSRV, kCond },  // 空の映り込みが有効なときだけ読む
     };
 
     /// @brief スキニングモデル・G-Buffer
@@ -139,6 +151,9 @@ namespace CoreEngine::ModelBind
         { "gVertexColors",         kSRV, kOpt  },  // 頂点の色（シェーダーグラフの Vertex Color）
         { "gSceneDepthTexture",    kSRV, kOpt  },  // 画面の深度（シェーダーグラフの Scene Depth）
         { "gSceneDepthParams",     kCBV, kOpt  },  // 深度を直す値
+        { "gSkyAmbient",           kCBV, kOpt  },
+        { "gSkyIrradianceSH",      kSRV, kOpt  },
+        { "gSkySpecularMap",       kSRV, kOpt  },
     };
 
     /// @brief カスタムシェーダー用。宣言されているものだけエンジンが差すのですべて Optional
@@ -164,6 +179,9 @@ namespace CoreEngine::ModelBind
         { "gVertexColors",         kSRV, kOpt  },  // 頂点の色（シェーダーグラフの Vertex Color）
         { "gSceneDepthTexture",    kSRV, kOpt  },  // 画面の深度（シェーダーグラフの Scene Depth）
         { "gSceneDepthParams",     kCBV, kOpt  },  // 深度を直す値
+        { "gSkyAmbient",           kCBV, kOpt  },
+        { "gSkyIrradianceSH",      kSRV, kOpt  },
+        { "gSkySpecularMap",       kSRV, kOpt  },
     };
 
     static_assert(std::size(kCustom) == Slot::Count, "kCustom と Slot の並びがずれている");

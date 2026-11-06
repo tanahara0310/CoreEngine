@@ -448,6 +448,47 @@ float3 EvaluateSkyIrradianceSH9(StructuredBuffer<float4> coefficients, float3 n)
     return max(irradiance, 0.0f);
 }
 
+/// @brief 空のスペキュラキューブマップのミップ数（mip = roughness × (ミップ数 - 1)）
+static const float kSkySpecularMipCount = 5.0f;
+
+/// @brief 空の環境光（SH9 の拡散＋キューブマップの映り込み）
+/// @param irradianceSH 放射照度畳み込み済みの SH9 係数
+/// @param specularMap プリフィルタ済みの空のキューブマップ（specularEnabled が 0 なら読まない）
+/// @param scale 空の輝度単位 → サーフェス光単位の変換係数
+/// @param N 法線（正規化済み）
+/// @param V 表面からカメラへの向き（正規化済み）
+float3 EvaluateSkyAmbient(
+    StructuredBuffer<float4> irradianceSH,
+    TextureCube<float4> specularMap,
+    SamplerState specularSampler,
+    float scale,
+    uint specularEnabled,
+    float3 N,
+    float3 V,
+    float3 albedo,
+    float metallic,
+    float roughness,
+    float ao,
+    float3 F0)
+{
+    // 拡散: 金属は拡散反射しない
+    float3 skyIrradiance = EvaluateSkyIrradianceSH9(irradianceSH, N);
+    float3 ambient = albedo * (1.0f - metallic) * skyIrradiance * scale * ao;
+
+    // 映り込み: 空・雲・太陽まわりのグレアが roughness に応じたぼけで映る
+    if (specularEnabled != 0)
+    {
+        float3 R = reflect(-V, N);
+        float NdotV = saturate(dot(N, V));
+        float mipLevel = roughness * (kSkySpecularMipCount - 1.0f);
+        float3 prefiltered = specularMap.SampleLevel(specularSampler, R, mipLevel).rgb;
+        float2 envBRDF = EnvBRDFApprox(roughness, NdotV);
+        float3 specular = prefiltered * (F0 * envBRDF.x + envBRDF.y);
+        ambient += specular * scale * ao;
+    }
+    return ambient;
+}
+
 // ===================================================================
 // ハーフランバートアンビエント計算（空アンビエントが無いときのフォールバック）
 // ===================================================================

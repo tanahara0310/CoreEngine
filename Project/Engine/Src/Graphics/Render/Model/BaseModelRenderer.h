@@ -66,6 +66,17 @@ namespace CoreEngine
         ///          マスク未提供フレームは white1x1（=影なし）が入る。
         void SetRTShadowMask(D3D12_GPU_DESCRIPTOR_HANDLE handle) { rtShadowMaskHandle_ = handle; }
 
+        /// @brief 前方描画の空の環境光を設定（gSkyAmbient・gSkyIrradianceSH・gSkySpecularMap）
+        /// @details 毎フレーム DeferredLightingPass::Setup が DeferredLighting と同じ値を供給する。0 のものは差さない
+        void SetSkyAmbient(D3D12_GPU_VIRTUAL_ADDRESS params,
+                           D3D12_GPU_DESCRIPTOR_HANDLE irradianceSH,
+                           D3D12_GPU_DESCRIPTOR_HANDLE specularMap)
+        {
+            skyAmbientCBV_ = params;
+            skyIrradianceSHHandle_ = irradianceSH;
+            skySpecularMapHandle_ = specularMap;
+        }
+
         /// @brief 今フレームのフォグ定数を受け取る（gFog b4）
         /// @details FogPass が毎フレーム供給する。どれを差すかはブレンドモードで決まる
         ///          （不透明は全画面パスが掛けるので恒等、加算・スクリーンは減衰のみ）。
@@ -141,6 +152,11 @@ namespace CoreEngine
         SceneDepth* sceneDepth_ = nullptr;
 
         D3D12_GPU_DESCRIPTOR_HANDLE rtShadowMaskHandle_ = {};
+
+        // 今フレームの空の環境光（DeferredLightingPass が供給。0 = 未供給で差さない）
+        D3D12_GPU_VIRTUAL_ADDRESS skyAmbientCBV_ = 0;
+        D3D12_GPU_DESCRIPTOR_HANDLE skyIrradianceSHHandle_ = {};
+        D3D12_GPU_DESCRIPTOR_HANDLE skySpecularMapHandle_ = {};
 
         // 今フレームのフォグ定数（FogPass が供給。0 = 未供給で差さない）
         D3D12_GPU_VIRTUAL_ADDRESS fogFullCBV_ = 0;

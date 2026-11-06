@@ -30,6 +30,11 @@
 SamplerState gPointSampler : register(s1); ///< 点・繰り返し
 SamplerState gClampSampler : register(s2); ///< 線形・端で止める
 
+// ===== 前方描画の空の環境光（DeferredLighting と同じ定数・SH・キューブマップ） =====
+ConstantBuffer<SkyAmbientParams> gSkyAmbient : register(b0, space5);
+StructuredBuffer<float4> gSkyIrradianceSH : register(t0, space5); ///< 放射照度畳み込み済みの SH9 係数
+TextureCube<float4> gSkySpecularMap : register(t1, space5); ///< プリフィルタ済みの空のキューブマップ
+
 /// @brief Surface() に渡す画素ごとの値
 struct SurfaceInput
 {
@@ -279,6 +284,23 @@ GBufferOutput SurfaceGBuffer(VertexShaderOutput input, float movingObject)
     return output;
 }
 
+/// @brief 前方描画の環境光（空の環境光があれば DeferredLighting と同じ式、無ければ半球ランバート）
+/// @details 材質の値は GBuffer に書くときと同じ範囲に収めて使う
+float3 SurfaceForwardAmbient(VertexShaderOutput input, SurfaceOutput OUT, float3 toEye)
+{
+    float3 albedo = saturate(OUT.baseColor);
+    float metallic = saturate(OUT.metallic);
+    float roughness = saturate(max(OUT.roughness, 0.01f));
+    float ao = saturate(OUT.occlusion);
+    if (gSkyAmbient.enabled != 0)
+    {
+        float3 F0 = lerp(float3(DIELECTRIC_F0, DIELECTRIC_F0, DIELECTRIC_F0), albedo, metallic);
+        return EvaluateSkyAmbient(gSkyIrradianceSH, gSkySpecularMap, gClampSampler,
+            gSkyAmbient.scale, gSkyAmbient.specularEnabled, OUT.normalWS, toEye, albedo, metallic, roughness, ao, F0);
+    }
+    return CalculateFallbackAmbient(input, albedo, metallic, ao);
+}
+
 /// @brief Surface() の結果をライトで照らして色を出す
 PixelShaderOutput SurfaceForward(VertexShaderOutput input)
 {
@@ -310,6 +332,7 @@ PixelShaderOutput SurfaceForward(VertexShaderOutput input)
     // PBR ライティング
     output.color.rgb = CalculateAllLighting(input, OUT.baseColor, OUT.metallic, roughness, OUT.occlusion, toEye,
         float4(OUT.baseColor, OUT.alpha));
+    output.color.rgb += SurfaceForwardAmbient(input, OUT, toEye);
     output.color.a = OUT.alpha;
 
     // エミッシブ（自己発光: ライティングの影響を受けず加算）

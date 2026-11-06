@@ -38,29 +38,45 @@ Texture2D<float> gRTShadowMask : register(t6);
 
 // ===== ライティング計算ヘルパー =====
 
+/// @brief メインライトの RT シャドウマスクを画面の位置で読む（全ディレクショナルライト共通）
+/// @details 1x1 のダミー（マスク未提供・非 DXR 環境）は「影なし」の 1 を返す。座標はマスクの範囲へクランプして読む
+float LoadForwardRTShadow(float2 screenPosition)
+{
+    float rtW, rtH;
+    gRTShadowMask.GetDimensions(rtW, rtH);
+    if (rtW > 1.0f && rtH > 1.0f)
+    {
+        int2 coord = int2(clamp(screenPosition, float2(0.0f, 0.0f), float2(rtW - 1.0f, rtH - 1.0f)));
+        return gRTShadowMask.Load(int3(coord, 0)).r;
+    }
+    return 1.0f;
+}
+
+/// @brief 空の環境光が無いときの代わりの環境光（ディレクショナルライトの半球ランバート）
+/// @details DeferredLighting の代わりの環境光と同じく、影の中にも kShadowLightFloor だけ残す
+float3 CalculateFallbackAmbient(VertexShaderOutput input, float3 albedo, float metallic, float ao)
+{
+    float ambientShadow = ApplyShadowLightFloor(LoadForwardRTShadow(input.position.xy));
+    float3 ambient = float3(0.0f, 0.0f, 0.0f);
+    for (uint i = 0; i < gLightCounts.directionalLightCount; ++i)
+    {
+        if (gDirectionalLights[i].enabled == 0)
+            continue;
+        float3 L = normalize(-gDirectionalLights[i].direction);
+        ambient += CalculateHalfLambertAmbient(input.normal, L,
+            gDirectionalLights[i].color.rgb, gDirectionalLights[i].intensity, albedo, metallic, ao) * ambientShadow;
+    }
+    return ambient;
+}
+
 /// @brief ディレクショナルライトのライティングを計算
+/// @details 影の中の直接光は 0（拡散もスペキュラも）。影の中の明るさは環境光が受け持つ
 void CalculateDirectionalLights(
     VertexShaderOutput input,
     float3 albedo, float metallic, float roughness, float ao, float3 toEye,
     inout float3 totalDiffuse, inout float3 totalSpecular)
 {
-    // RTシャドウマスクをスクリーン座標でLoadする（全ディレクショナルライト共通。
-    // 旧シャドウマップも単一マップを全ライトへ適用していたため意味は等価）。
-    // 1x1ダミー（マスク未提供・非DXR環境）は寸法ガードで「影なし」に倒す。
-    // 座標はマスクの範囲へクランプして読む。
-    float rtShadow = 1.0f;
-    {
-        float rtW, rtH;
-        gRTShadowMask.GetDimensions(rtW, rtH);
-        if (rtW > 1.0f && rtH > 1.0f)
-        {
-            int2 coord = int2(clamp(input.position.xy, float2(0.0f, 0.0f), float2(rtW - 1.0f, rtH - 1.0f)));
-            rtShadow = gRTShadowMask.Load(int3(coord, 0)).r;
-        }
-    }
-    // 前方描画には空の環境光が無いので、拡散だけ影の中にも kShadowLightFloor を残す。
-    // スペキュラは日向率をそのまま掛ける
-    float diffuseShadow = ApplyShadowLightFloor(rtShadow);
+    float rtShadow = LoadForwardRTShadow(input.position.xy);
 
     for (uint i = 0; i < gLightCounts.directionalLightCount; ++i)
     {
@@ -71,7 +87,7 @@ void CalculateDirectionalLights(
             input.normal, gDirectionalLights[i].direction,
             gDirectionalLights[i].color.rgb, gDirectionalLights[i].intensity,
             toEye, albedo, metallic, roughness, ao);
-        totalDiffuse += result.diffuse * diffuseShadow;
+        totalDiffuse += result.diffuse * rtShadow;
         totalSpecular += result.specular * rtShadow;
     }
 }

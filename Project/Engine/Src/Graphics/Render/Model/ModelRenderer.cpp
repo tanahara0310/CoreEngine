@@ -40,6 +40,7 @@ namespace CoreEngine
         config.ConfigureResource("gInstanceData", BindingStrategy::RootDescriptor); // インスタンスデータは Root SRV
         config.ConfigureSampler("gShadowSampler", SamplerConfig::Shadow());
         config.ConfigureSampler("gSampler", SamplerConfig::Anisotropic());
+        config.ConfigureSampler("gClampSampler", SamplerConfig::LinearClamp());
         // 頂点アニメーションの時間・風はパスごとに差す 8 個の 32bit 値なのでルート定数にする
         config.ConfigureResource("gVertexAnim", BindingStrategy::RootConstants);
 
@@ -65,7 +66,7 @@ namespace CoreEngine
             });
 
         // 必須リソースの存在確認は宣言表（ModelBind::kForward / kGBuffer）へ移した。
-        // 手書きの 3 個だけでなく 21 個すべてが照合され、種別違いも検出される。
+        // 表のすべてが照合され、種別違いも検出される。
         ResolveBindings(ModelBind::kForward, ModelBind::kGBuffer,
             ModelBind::Slot::Count, "ModelRenderer");
 
