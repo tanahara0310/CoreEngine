@@ -6,6 +6,7 @@
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
 #include "Graphics/RootSignature/ShaderBinder.h"
 #include "Graphics/Render/Model/Instancing/InstanceBatchManager.h"
+#include "Graphics/Render/RenderTarget/SceneDepth.h"
 #include "Diagnostics/EngineStats.h"
 #include "Utility/Logger/Logger.h"
 
@@ -90,6 +91,9 @@ namespace CoreEngine
         if (packet.isSkinned && packet.matrixPaletteSRV.ptr != 0) {
             binder.Set(slotOf(ModelBind::gMatrixPalette), packet.matrixPaletteSRV);
         }
+        if (packet.vertexColorSRV.ptr != 0) {
+            binder.Set(slotOf(ModelBind::gVertexColors), packet.vertexColorSRV);
+        }
         cmdList->DrawIndexedInstanced(packet.indexCount, packet.instanceCount, packet.startIndex, 0, 0);
 
         // 統計情報を記録（インスタンシング判定 + 三角形数集計）
@@ -151,6 +155,16 @@ namespace CoreEngine
         // 加算・スクリーンは内散乱を足すと、背後の不透明面に既に乗った分と二重に光る
         if (const D3D12_GPU_VIRTUAL_ADDRESS fogCBV = SelectFogConstants(); fogCBV != 0) {
             binder.Set(table[ModelBind::gFog], fogCBV);
+        }
+        // 画面の深度は、半透明には写しを、GBuffer には「奥に何も無い」テクスチャを差す
+        if (sceneDepth_) {
+            if (const RootSlot depthSlot = table[ModelBind::gSceneDepthTexture]; depthSlot.IsValid()) {
+                binder.Set(depthSlot,
+                    isInGBufferPass_ ? sceneDepth_->GetFarTextureSRV() : sceneDepth_->AcquireTransparentReadSRV());
+            }
+            if (const D3D12_GPU_VIRTUAL_ADDRESS params = sceneDepth_->GetShaderParams(); params != 0) {
+                binder.Set(table[ModelBind::gSceneDepthParams], params);
+            }
         }
         // RS を差し替えるとルート定数も消えるので、シーンリソースと一緒に差し直す
         BindVertexAnimation(binder, table);

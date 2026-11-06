@@ -128,6 +128,10 @@ namespace CoreEngine
         RootSlot GetDrawSlot() const { return drawSlot_; }
         RootSlot GetTextureSlot() const { return textureSlot_; }
         RootSlot GetParamsSlot() const { return paramsSlot_; }
+        /// @brief 画面の深度（`gSceneDepthTexture`。読まなければ無効）
+        RootSlot GetSceneDepthSlot() const { return sceneDepthSlot_; }
+        /// @brief 深度を直す値（`gSceneDepthParams`。読まなければ無効）
+        RootSlot GetSceneDepthParamsSlot() const { return sceneDepthParamsSlot_; }
         /// @brief `GetLayout().textures` と同じ並びのルートパラメータ
         const std::vector<RootSlot>& GetExtraTextureSlots() const { return extraTextureSlots_; }
 
@@ -139,6 +143,8 @@ namespace CoreEngine
         RootSlot drawSlot_;
         RootSlot textureSlot_;
         RootSlot paramsSlot_;
+        RootSlot sceneDepthSlot_;
+        RootSlot sceneDepthParamsSlot_;
         std::vector<RootSlot> extraTextureSlots_;
     };
 

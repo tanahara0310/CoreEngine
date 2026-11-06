@@ -62,6 +62,9 @@ public:
     /// @details 同一シェーダー＋同一設定のオブジェクトが複数あっても構築は1回で済む。
     CustomShaderPipelineCache* GetCustomShaderPipelineCache() { return customShaderPipelineCache_.get(); }
 
+    /// @brief 頂点の色を持たないモデルに差す、白 1 つだけの配列の SRV
+    D3D12_GPU_DESCRIPTOR_HANDLE GetWhiteVertexColorSRV() const;
+
     /// @brief 3D モデルのマテリアル（`名前.Surface.hlsl`）のパイプラインの共有キャッシュ（描画依存を設定するまでは nullptr）
     SurfaceMaterialPipelineCache* GetSurfaceMaterialPipelineCache() { return surfaceMaterialPipelineCache_.get(); }
 
@@ -133,6 +136,9 @@ private:
     // GraphicsCore
     GraphicsCore* dxCommon_ = nullptr;
 
+    // 頂点の色を持たないモデルに差す、白 1 つだけの配列（StructuredBuffer<uint>）
+    Microsoft::WRL::ComPtr<ID3D12Resource> whiteVertexColorBuffer_;
+    UniqueDescriptor whiteVertexColorSRV_;
 
     // Model インスタンス生成時に注入する描画依存コンテキスト
     ModelRenderContext renderContext_;

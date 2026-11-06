@@ -161,6 +161,7 @@ namespace CoreEngine
         packet.metallicRoughnessSRV.ptr = batch.key.metallicRoughnessSRV;
         packet.occlusionSRV.ptr = batch.key.occlusionSRV;
         packet.emissiveSRV.ptr = batch.key.emissiveSRV;
+        packet.vertexColorSRV = res->GetVertexColorSRV();
         packet.isSkinned = false;
 
         // 3D モデルのマテリアルのバッチは、そのシェーダーの RS と PSO に差し替えて描き、今のパスの既定へ戻す

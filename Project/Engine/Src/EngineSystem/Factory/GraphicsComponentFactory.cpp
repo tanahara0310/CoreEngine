@@ -177,30 +177,42 @@ namespace CoreEngine
             state->whiteFallback = TextureManager::GetInstance().Load("white1x1.png").gpuHandle;
         });
 
-        sequence.Add("レンダラー: モデル / スキンモデル", [state] {
+        sequence.Add("レンダラー: モデル / スキンモデル", [enginePtr, state] {
+            // 画面の深度を読むマテリアルが、写しの無いフレームに読む「いちばん遠い」（白 = 1）
+            SceneDepth* const sceneDepth = enginePtr->GetRenderDomainContext()->GetSceneDepth();
+            if (sceneDepth) {
+                sceneDepth->SetFarTexture(state->whiteFallback);
+            }
+
             auto modelRenderer = std::make_unique<ModelRenderer>();
             modelRenderer->Initialize(state->dx->GetDevice());
             modelRenderer->SetRTShadowMask(state->whiteFallback);
+            modelRenderer->SetSceneDepth(sceneDepth);
             state->renderManager->RegisterRenderer(RenderPassType::Model, std::move(modelRenderer));
 
             auto skinnedRenderer = std::make_unique<SkinnedModelRenderer>();
             skinnedRenderer->Initialize(state->dx->GetDevice());
             skinnedRenderer->SetRTShadowMask(state->whiteFallback);
+            skinnedRenderer->SetSceneDepth(sceneDepth);
             state->renderManager->RegisterRenderer(RenderPassType::SkinnedModel, std::move(skinnedRenderer));
         });
 
-        sequence.Add("レンダラー: スカイボックス / スプライト / UI", [state] {
+        sequence.Add("レンダラー: スカイボックス / スプライト / UI", [enginePtr, state] {
+            SceneDepth* const sceneDepth = enginePtr->GetRenderDomainContext()->GetSceneDepth();
+
             auto skyBoxRenderer = std::make_unique<SkyBoxRenderer>();
             skyBoxRenderer->Initialize(state->dx->GetDevice());
             state->renderManager->RegisterRenderer(RenderPassType::SkyBox, std::move(skyBoxRenderer));
 
             auto spriteRenderer = std::make_unique<SpriteRenderer>();
             spriteRenderer->Initialize(state->dx);
+            spriteRenderer->SetSceneDepth(sceneDepth);
             state->renderManager->RegisterRenderer(RenderPassType::Sprite, std::move(spriteRenderer));
 
             // UI パスは最前面・スクリーン固定座標
             auto uiRenderer = std::make_unique<UIRenderer>();
             uiRenderer->Initialize(state->dx);
+            uiRenderer->SetSceneDepth(sceneDepth);
             state->renderManager->RegisterRenderer(RenderPassType::UI, std::move(uiRenderer));
 
             // MSDF テキストは UI と同じ座標系だが PSO が別なので独立パスにする

@@ -3,6 +3,7 @@
 #include "ModelResource.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Command/UploadContext.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Model/Derived/ModelDerivedData.h"
@@ -107,6 +108,37 @@ namespace CoreEngine
         memcpy(mappedIndex, modelData_.indices.data(), indexBytes);
         indexUploadBuffer->Unmap(0, nullptr);
 
+        // 頂点の色は頂点と同じ数だけあるモデルだけ、別の配列（StructuredBuffer<uint>）で持つ
+        const bool hasColors = !modelData_.vertexColors.empty()
+            && modelData_.vertexColors.size() == modelData_.vertices.size();
+        const size_t colorBytes = hasColors ? sizeof(uint32_t) * modelData_.vertexColors.size() : 0;
+        Microsoft::WRL::ComPtr<ID3D12Resource> colorUploadBuffer;
+        vertexColorBuffer_ = GpuResource();
+        vertexColorSRV_ = UniqueDescriptor();
+        if (hasColors) {
+            vertexColorBuffer_.Reset(
+                ResourceFactory::CreateBufferResource(device, colorBytes, D3D12_HEAP_TYPE_DEFAULT),
+                D3D12_RESOURCE_STATE_GENERIC_READ);
+            colorUploadBuffer = ResourceFactory::CreateBufferResource(device, colorBytes);
+            void* mappedColor = nullptr;
+            colorUploadBuffer->Map(0, nullptr, &mappedColor);
+            memcpy(mappedColor, modelData_.vertexColors.data(), colorBytes);
+            colorUploadBuffer->Unmap(0, nullptr);
+
+            if (DescriptorAllocator* descriptors = dxCommon_->GetDescriptorAllocator()) {
+                D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+                srvDesc.Format = DXGI_FORMAT_UNKNOWN;
+                srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+                srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+                srvDesc.Buffer.FirstElement = 0;
+                srvDesc.Buffer.NumElements = static_cast<UINT>(modelData_.vertexColors.size());
+                srvDesc.Buffer.StructureByteStride = sizeof(uint32_t);
+                srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+                vertexColorSRV_ = UniqueDescriptor(*descriptors,
+                    descriptors->CreateSRV(vertexColorBuffer_.Get(), srvDesc, "ModelVertexColorSRV"));
+            }
+        }
+
         // GENERIC_READ で作られた DEFAULT ヒープバッファを COPY_DEST へ落としてコピーし、
         // 読み側（IA / DXR BLAS 構築 / スキニング SRV）が使える GENERIC_READ へ戻す。
         // 積み先はフレームの描画用リストではなく専用のアップロードコンテキスト。
@@ -119,20 +151,32 @@ namespace CoreEngine
                 BarrierBatch batch(cmdList);
                 batch.Transition(vertexBuffer_, D3D12_RESOURCE_STATE_COPY_DEST);
                 batch.Transition(indexBuffer_, D3D12_RESOURCE_STATE_COPY_DEST);
+                if (hasColors) {
+                    batch.Transition(vertexColorBuffer_, D3D12_RESOURCE_STATE_COPY_DEST);
+                }
             }
 
             cmdList->CopyBufferRegion(vertexBuffer_.Get(), 0, vertexUploadBuffer.Get(), 0, vertexBytes);
             cmdList->CopyBufferRegion(indexBuffer_.Get(), 0, indexUploadBuffer.Get(), 0, indexBytes);
+            if (hasColors) {
+                cmdList->CopyBufferRegion(vertexColorBuffer_.Get(), 0, colorUploadBuffer.Get(), 0, colorBytes);
+            }
 
             {
                 BarrierBatch batch(cmdList);
                 batch.Transition(vertexBuffer_, D3D12_RESOURCE_STATE_GENERIC_READ);
                 batch.Transition(indexBuffer_, D3D12_RESOURCE_STATE_GENERIC_READ);
+                if (hasColors) {
+                    batch.Transition(vertexColorBuffer_, D3D12_RESOURCE_STATE_GENERIC_READ);
+                }
             }
 
             // 中間バッファはコピー完了まで生きていればよい。メンバで抱え続けない。
             recording.KeepAlive(std::move(vertexUploadBuffer));
             recording.KeepAlive(std::move(indexUploadBuffer));
+            if (hasColors) {
+                recording.KeepAlive(std::move(colorUploadBuffer));
+            }
         } // ここで Close → ExecuteCommandLists → Signal
 
         // ===== ローカル空間AABBを頂点データから算出 =====
@@ -203,6 +247,11 @@ namespace CoreEngine
                     + filePath_ + " subMesh=" + std::to_string(s));
             }
         }
+    }
+
+    D3D12_GPU_DESCRIPTOR_HANDLE ModelResource::GetVertexColorSRV() const
+    {
+        return vertexColorSRV_.IsValid() ? vertexColorSRV_.Gpu() : fallbackVertexColorSRV_;
     }
 
     const BoundingBox& ModelResource::GetSubMeshLocalBounds(uint32_t subMeshIndex) const

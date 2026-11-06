@@ -14,6 +14,7 @@
 
 namespace CoreEngine
 {
+    class SceneDepth;
 
     /// @brief スプライト描画用レンダラー
     class SpriteRenderer : public BaseRenderer {
@@ -58,10 +59,14 @@ namespace CoreEngine
         /// @brief 次の 1 枚を描くパイプラインを差す（nullptr なら標準。差してあるものと同じなら何もしない）
         void BindPipeline(ID3D12GraphicsCommandList* cmdList, const ShaderMaterialPipeline* pipeline);
 
+        /// @brief 画面の深度を設定（シェーダーグラフの Scene Depth を読むマテリアルに差す）
+        void SetSceneDepth(SceneDepth* sceneDepth) { sceneDepth_ = sceneDepth; }
+
     private:
         // BaseRenderer から継承したサブシステムを使用（rootSignatureMg_, psoMg_, shaderCompiler_, reflectionBuilder_ は削除）
 
         GraphicsCore* dxCommon_ = nullptr;
+        SceneDepth* sceneDepth_ = nullptr;
 
         // 四角形 1 枚のインデックスバッファ（全スプライトで共有）
         Microsoft::WRL::ComPtr<ID3D12Resource> quadIndexResource_;

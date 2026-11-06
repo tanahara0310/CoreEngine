@@ -49,6 +49,20 @@ namespace CoreEngine::Editor::ShaderGraph
         /// @brief 3D のカメラ（原点を -Z から見る）
         constexpr float kCameraDistance = 2.6f;
         constexpr float kFieldOfView = std::numbers::pi_v<float> / 6.0f;
+        constexpr float kNearZ = 0.1f;
+        constexpr float kFarZ = 10.0f;
+
+        /// @brief 画面の深度を距離へ直す値（プレビューは透視投影・描き先は正方形）
+        SceneDepth::ShaderParams MakeSceneDepthParams(float nearZ, float farZ, uint32_t size)
+        {
+            SceneDepth::ShaderParams params{};
+            params.nearZ = nearZ;
+            params.farZ = farZ;
+            params.screenWidth = static_cast<float>(size);
+            params.screenHeight = static_cast<float>(size);
+            params.orthographic = 0.0f;
+            return params;
+        }
 
         /// @brief 3D のライト（光の進む向き・色・環境光の強さ）
         const Vector3 kLightDirection = { -0.45f, -0.6f, 0.65f };
@@ -476,6 +490,8 @@ namespace CoreEngine::Editor::ShaderGraph
         for (const std::string& name : pipeline->layout.textures) {
             pipeline->textureSlots.push_back(root.GetRootSlot(name));
         }
+        pipeline->sceneDepthSlot = root.GetRootSlot("gSceneDepthTexture");
+        pipeline->sceneDepthParamsSlot = root.GetRootSlot("gSceneDepthParams");
         return pipeline;
     }
 
@@ -531,6 +547,8 @@ namespace CoreEngine::Editor::ShaderGraph
         for (const std::string& name : pipeline->layout.textures) {
             pipeline->textureSlots.push_back(root.GetRootSlot(name));
         }
+        pipeline->sceneDepthSlot = root.GetRootSlot("gSceneDepthTexture");
+        pipeline->sceneDepthParamsSlot = root.GetRootSlot("gSceneDepthParams");
         return pipeline;
     }
 
@@ -726,6 +744,8 @@ namespace CoreEngine::Editor::ShaderGraph
         if (transformAddress == 0 || drawAddress == 0) {
             return;
         }
+        const D3D12_GPU_VIRTUAL_ADDRESS depthParamsAddress = pipeline.GetSceneDepthParamsSlot().IsValid()
+            ? ring.AllocateConstants(MakeSceneDepthParams(0.1f, 10.0f, size_)) : 0;
 
         RenderTargetBeginDesc begin;
         begin.clear = true;
@@ -761,6 +781,13 @@ namespace CoreEngine::Editor::ShaderGraph
             const TextureManager::LoadedTexture* const loaded = values_.FindLoadedTexture(layout.textures[index]);
             const D3D12_GPU_DESCRIPTOR_HANDLE handle = loaded && loaded->gpuHandle.ptr != 0 ? loaded->gpuHandle : white;
             commandList->SetGraphicsRootDescriptorTable(textureSlots[index].index, handle);
+        }
+        // プレビューに画面の深度は無いので、いちばん遠い（白 = 1）を読ませる
+        if (pipeline.GetSceneDepthSlot().IsValid()) {
+            commandList->SetGraphicsRootDescriptorTable(pipeline.GetSceneDepthSlot().index, white);
+        }
+        if (depthParamsAddress != 0) {
+            commandList->SetGraphicsRootConstantBufferView(pipeline.GetSceneDepthParamsSlot().index, depthParamsAddress);
         }
 
         for (const DrawTile& tile : tiles_) {
@@ -823,7 +850,7 @@ namespace CoreEngine::Editor::ShaderGraph
 
         const Vector3 eye = { 0.0f, 0.0f, -kCameraDistance };
         const Matrix4x4 viewProjection = MathCore::Matrix::LookAt(eye, { 0.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f })
-            * MathCore::Rendering::PerspectiveFov(kFieldOfView, 1.0f, 0.1f, 10.0f);
+            * MathCore::Rendering::PerspectiveFov(kFieldOfView, 1.0f, kNearZ, kFarZ);
 
         // タイルごとの形の向き（同じ形と向きは 1 つの定数を使い回す）
         std::array<std::array<D3D12_GPU_VIRTUAL_ADDRESS, 2>, 3> previewAddresses{};
@@ -880,6 +907,8 @@ namespace CoreEngine::Editor::ShaderGraph
         if (materialAddress == 0 || cameraAddress == 0) {
             return;
         }
+        const D3D12_GPU_VIRTUAL_ADDRESS depthParamsAddress = pipeline.sceneDepthParamsSlot.IsValid()
+            ? ring.AllocateConstants(MakeSceneDepthParams(kNearZ, kFarZ, size_)) : 0;
 
         depth_->BeginDepthWrite(commandList);
         RenderTargetBeginDesc begin;
@@ -918,6 +947,12 @@ namespace CoreEngine::Editor::ShaderGraph
             const TextureManager::LoadedTexture* const loaded = values_.FindLoadedTexture(pipeline.layout.textures[index]);
             const D3D12_GPU_DESCRIPTOR_HANDLE handle = loaded && loaded->gpuHandle.ptr != 0 ? loaded->gpuHandle : white;
             commandList->SetGraphicsRootDescriptorTable(pipeline.textureSlots[index].index, handle);
+        }
+        if (pipeline.sceneDepthSlot.IsValid()) {
+            commandList->SetGraphicsRootDescriptorTable(pipeline.sceneDepthSlot.index, white);
+        }
+        if (depthParamsAddress != 0) {
+            commandList->SetGraphicsRootConstantBufferView(pipeline.sceneDepthParamsSlot.index, depthParamsAddress);
         }
 
         for (const DrawTile& tile : tiles_) {
@@ -971,6 +1006,8 @@ namespace CoreEngine::Editor::ShaderGraph
                 return;
             }
         }
+        const D3D12_GPU_VIRTUAL_ADDRESS depthParamsAddress = pipeline.sceneDepthParamsSlot.IsValid()
+            ? ring.AllocateConstants(MakeSceneDepthParams(0.1f, 10.0f, size_)) : 0;
 
         offscreen->BeginCS(commandList);
         commandList->SetComputeRootSignature(pipeline.rootSignature->GetRootSignature());
@@ -986,6 +1023,12 @@ namespace CoreEngine::Editor::ShaderGraph
         }
         if (paramsAddress != 0) {
             commandList->SetComputeRootConstantBufferView(pipeline.paramsSlot.index, paramsAddress);
+        }
+        if (pipeline.sceneDepthSlot.IsValid()) {
+            commandList->SetComputeRootDescriptorTable(pipeline.sceneDepthSlot.index, white);
+        }
+        if (depthParamsAddress != 0) {
+            commandList->SetComputeRootConstantBufferView(pipeline.sceneDepthParamsSlot.index, depthParamsAddress);
         }
         for (size_t index = 0; index < pipeline.textureSlots.size() && index < pipeline.layout.textures.size(); ++index) {
             if (!pipeline.textureSlots[index].IsValid()) {

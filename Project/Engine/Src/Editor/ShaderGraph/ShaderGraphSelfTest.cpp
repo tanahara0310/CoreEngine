@@ -6,6 +6,7 @@
 #include "Editor/ShaderGraph/ShaderGraphNodeLibrary.h"
 
 #include <algorithm>
+#include <map>
 
 namespace CoreEngine::Editor::ShaderGraph
 {
@@ -65,8 +66,11 @@ namespace CoreEngine::Editor::ShaderGraph
             Connect(graph, from, fromPin, kVertexMasterNode, "Normal");
         }
 
+        /// @brief 設定を変えて試すときの設定（無ければ既定）
+        using SettingMap = std::map<std::string, std::string>;
+
         /// @brief 試すノードを 1 つ置き、Dynamic の入力へ幅 width の定数をつなぐ（0 ならつながない）
-        Graph MakeNodeGraph(Target target, const NodeDesc& desc, int width, uint8_t stage)
+        Graph MakeNodeGraph(Target target, const NodeDesc& desc, int width, uint8_t stage, const SettingMap* settings)
         {
             Graph graph = MakeEmptyGraph(target);
             Node node;
@@ -84,7 +88,29 @@ namespace CoreEngine::Editor::ShaderGraph
                 node.settings["To"] = stage == kStageVertex ? "World" : "Tangent";
                 node.settings["Type"] = stage == kStageVertex ? "Position" : "Direction";
             }
+            if (settings) {
+                for (const auto& [name, value] : *settings) {
+                    node.settings[name] = value;
+                }
+            }
             graph.nodes.push_back(node);
+            for (size_t index = 0; index < desc.inputs.size(); ++index) {
+                if (desc.inputs[index].binding != PinBinding::RequiredTexture) {
+                    continue;
+                }
+                // つながないとエラーになるテクスチャへ、テクスチャのプロパティをつなぐ
+                Property property;
+                property.id = graph.NextPropertyId();
+                property.name = "prop" + std::string(desc.inputs[index].name);
+                property.type = PropertyType::Texture2D;
+                graph.properties.push_back(property);
+                Node value;
+                value.id = 40 + static_cast<int>(index);
+                value.type = "Property";
+                value.property = property.id;
+                graph.nodes.push_back(value);
+                Connect(graph, value.id, "Out", node.id, desc.inputs[index].name);
+            }
             if (width == 0) {
                 return graph;
             }
@@ -104,7 +130,10 @@ namespace CoreEngine::Editor::ShaderGraph
         }
 
         /// @brief ノード 1 種類を、出力ごとに映す形と出口へつなぐ形で試す
-        void AddNodeCases(std::vector<SelfTestCase>& cases, Target target, const NodeDesc& desc, uint8_t stage)
+        /// @param settings 変える設定（無ければ既定）
+        /// @param suffix 設定を変えたときに名前へ足す文字
+        void AddNodeCases(std::vector<SelfTestCase>& cases, Target target, const NodeDesc& desc, uint8_t stage,
+            const SettingMap* settings = nullptr, std::string_view suffix = {})
         {
             const bool vertex = stage == kStageVertex;
             const int test = TestNode(target);
@@ -112,10 +141,11 @@ namespace CoreEngine::Editor::ShaderGraph
                 [](const PinDesc& pin) { return pin.type == ValueType::Dynamic; });
             const int maxWidth = hasDynamic ? 4 : 0;
             for (int width = 0; width <= maxWidth; ++width) {
-                const Graph base = MakeNodeGraph(target, desc, width, stage);
+                const Graph base = MakeNodeGraph(target, desc, width, stage, settings);
                 for (size_t output = 0; output < desc.outputs.size(); ++output) {
                     const PinDesc& pin = desc.outputs[output];
-                    const std::string name = std::string(desc.type) + "_w" + std::to_string(width) + "_o" + std::to_string(output);
+                    const std::string name = std::string(desc.type) + std::string(suffix) + "_w" + std::to_string(width)
+                        + "_o" + std::to_string(output);
                     Graph graph = base;
                     if (pin.type == ValueType::Texture2D || pin.type == ValueType::SamplerState) {
                         // テクスチャとサンプラーは Sample Texture 2D（Vertex は LOD）を通して色にする
@@ -163,6 +193,45 @@ namespace CoreEngine::Editor::ShaderGraph
             }
             if (Is3D(target) && desc.SupportsStage(kStageVertex)) {
                 AddNodeCases(cases, target, desc, kStageVertex);
+            }
+        }
+
+        // 既定でない設定の形（物体の空間・Transform の全部の組・Triplanar の法線・深度の形）
+        struct Variant
+        {
+            std::string_view type;
+            SettingMap settings;
+            std::string suffix;
+            bool only3D = true;
+        };
+        std::vector<Variant> variants = {
+            { "Position", { { "Space", "Object" } }, "_Object" },
+            { "NormalVector", { { "Space", "Object" } }, "_Object" },
+            { "TangentVector", { { "Space", "Object" } }, "_Object" },
+            { "Triplanar", { { "Type", "Normal" } }, "_Normal" },
+            { "SceneDepth", { { "Mode", "Raw" } }, "_Raw", false },
+            { "SceneDepth", { { "Mode", "Eye" } }, "_Eye", false },
+            { "SceneDepthDifference", { { "Mode", "Eye" } }, "_Eye", false },
+        };
+        for (const char* from : { "Object", "World", "Tangent" }) {
+            for (const char* to : { "Object", "World", "Tangent" }) {
+                for (const char* kind : { "Position", "Direction" }) {
+                    if (std::string_view(from) != to) {
+                        variants.push_back({ "Transform", { { "From", from }, { "To", to }, { "Type", kind } },
+                            std::string("_") + from + to + kind });
+                    }
+                }
+            }
+        }
+        for (const Variant& variant : variants) {
+            const NodeDesc* const desc = FindNodeDesc(variant.type);
+            if (!desc || !desc->Supports(target) || (variant.only3D && !Is3D(target))) {
+                continue;
+            }
+            for (const uint8_t stage : { kStageFragment, kStageVertex }) {
+                if (Is3D(target) ? desc->SupportsStage(stage) : stage == kStageFragment) {
+                    AddNodeCases(cases, target, *desc, stage, &variant.settings, variant.suffix);
+                }
             }
         }
 
@@ -301,6 +370,7 @@ namespace CoreEngine::Editor::ShaderGraph
         for (size_t first = 0; first < previewable.size(); first += kNodePreviewMax) {
             Graph graph = MakeEmptyGraph(target);
             int id = graph.NextNodeId();
+            const int firstId = id;
             const size_t last = (std::min)(previewable.size(), first + kNodePreviewMax);
             for (size_t index = first; index < last; ++index) {
                 Node node;
@@ -316,6 +386,26 @@ namespace CoreEngine::Editor::ShaderGraph
                     node.settings["Type"] = "Direction";
                 }
                 graph.nodes.push_back(node);
+            }
+            // つながないとエラーになるテクスチャへ、テクスチャのプロパティをつなぐ
+            for (size_t index = first; index < last; ++index) {
+                const NodeDesc& desc = *previewable[index];
+                for (const PinDesc& pin : desc.inputs) {
+                    if (pin.binding != PinBinding::RequiredTexture) {
+                        continue;
+                    }
+                    Property property;
+                    property.id = graph.NextPropertyId();
+                    property.name = "prop" + std::to_string(graph.properties.size());
+                    property.type = PropertyType::Texture2D;
+                    graph.properties.push_back(property);
+                    Node value;
+                    value.id = id++;
+                    value.type = "Property";
+                    value.property = property.id;
+                    graph.nodes.push_back(value);
+                    Connect(graph, value.id, "Out", firstId + static_cast<int>(index - first), pin.name);
+                }
             }
             const std::string name = std::string(Prefix(target)) + "NodePreviews_" + std::to_string(first / kNodePreviewMax);
             GenerateOptions options;

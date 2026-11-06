@@ -3,6 +3,7 @@
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
+#include "Graphics/RHI/Resource/UploadRing.h"
 #include "Utility/Logger/Logger.h"
 
 #include <cassert>
@@ -158,5 +159,87 @@ namespace CoreEngine
 
         depthSRVDescriptor_ = UniqueDescriptor(*descriptorAllocator_, descriptorAllocator_->CreateSRV(
             depthStencilResource_.Get(), srvDesc, "SceneDepthSRV"));
+    }
+
+    void SceneDepth::BeginShaderRead(UploadRing& uploadRing, const ShaderParams& params)
+    {
+        shaderParams_ = uploadRing.AllocateConstants(params);
+        copyWanted_ = copyRequested_ && EnsureShaderCopy();
+        copyRequested_ = false;
+        copyReady_ = false;
+    }
+
+    D3D12_GPU_DESCRIPTOR_HANDLE SceneDepth::GetShaderCopySRVHandle() const
+    {
+        return copySRVDescriptor_.IsValid() ? copySRVDescriptor_.Gpu() : D3D12_GPU_DESCRIPTOR_HANDLE{};
+    }
+
+    void SceneDepth::CopyForShaderRead(ID3D12GraphicsCommandList* cmdList)
+    {
+        if (!cmdList || !copyWanted_ || !copyResource_.Get()) {
+            return;
+        }
+        {
+            BarrierBatch batch(cmdList);
+            batch.Transition(depthStencilResource_, D3D12_RESOURCE_STATE_COPY_SOURCE);
+            batch.Transition(copyResource_, D3D12_RESOURCE_STATE_COPY_DEST);
+        }
+        cmdList->CopyResource(copyResource_.Get(), depthStencilResource_.Get());
+        Barrier::Transition(cmdList, copyResource_,
+            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        copyReady_ = true;
+    }
+
+    D3D12_GPU_DESCRIPTOR_HANDLE SceneDepth::AcquireTransparentReadSRV()
+    {
+        copyRequested_ = true;
+        return copyReady_ ? copySRVDescriptor_.Gpu() : farTextureSRV_;
+    }
+
+    bool SceneDepth::EnsureShaderCopy()
+    {
+        if (copyResource_.Get() && copyWidth_ == width_ && copyHeight_ == height_) {
+            return true;
+        }
+        if (!device_ || !descriptorAllocator_ || width_ <= 0 || height_ <= 0) {
+            return false;
+        }
+
+        D3D12_RESOURCE_DESC resourceDesc{};
+        resourceDesc.Width = width_;
+        resourceDesc.Height = height_;
+        resourceDesc.MipLevels = 1;
+        resourceDesc.DepthOrArraySize = 1;
+        resourceDesc.Format = DXGI_FORMAT_R24G8_TYPELESS;
+        resourceDesc.SampleDesc.Count = 1;
+        resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+        resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+
+        D3D12_CLEAR_VALUE clearValue{};
+        clearValue.DepthStencil.Depth = 1.0f;
+        clearValue.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+
+        ComPtr<ID3D12Resource> resource = ResourceFactory::CreateTextureResource(
+            device_, resourceDesc, D3D12_RESOURCE_STATE_COPY_DEST, &clearValue);
+        if (!resource) {
+            return false;
+        }
+        resource->SetName(L"SceneDepthCopy");
+        copyResource_.Reset(resource, D3D12_RESOURCE_STATE_COPY_DEST);
+        copyWidth_ = width_;
+        copyHeight_ = height_;
+
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+        srvDesc.Format = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
+        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        srvDesc.Texture2D.MipLevels = 1;
+        if (copySRVDescriptor_.IsValid()) {
+            descriptorAllocator_->WriteSRV(copySRVDescriptor_.Get(), copyResource_.Get(), srvDesc);
+        } else {
+            copySRVDescriptor_ = UniqueDescriptor(*descriptorAllocator_, descriptorAllocator_->CreateSRV(
+                copyResource_.Get(), srvDesc, "SceneDepthCopySRV"));
+        }
+        return true;
     }
 }

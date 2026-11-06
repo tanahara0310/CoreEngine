@@ -31,6 +31,9 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE occlusionSRV = {};
         D3D12_GPU_DESCRIPTOR_HANDLE emissiveSRV = {};
 
+        // 頂点の色（StructuredBuffer<uint>。色の無いモデルは白 1 つだけの配列）
+        D3D12_GPU_DESCRIPTOR_HANDLE vertexColorSRV = {};
+
         // スキニング専用 (isSkinned == false のとき matrixPaletteSRV は未使用)
         bool isSkinned = false;
         D3D12_GPU_DESCRIPTOR_HANDLE matrixPaletteSRV = {};

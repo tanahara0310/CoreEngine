@@ -29,6 +29,7 @@ namespace CoreEngine
         static const char* const SceneColor;
         static const char* const SceneColorSnapshot;
         static const char* const SceneDepth;
+        static const char* const SceneDepthCopy; ///< 半透明のシェーダが読む深度の写し（読むフレームだけ）
         static const char* const ReflectionColor;
         static const char* const ReflectionDepth;
         static const char* const SSAO;

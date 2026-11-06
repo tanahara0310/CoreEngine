@@ -326,6 +326,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterReflectionPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\SceneColorCopyPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\SceneDepthCopyPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\WaterCausticsPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\WaterSurfacePass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\RenderDomainContext.cpp" />
@@ -1720,6 +1721,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterReflectionPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\SceneColorCopyPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\SceneDepthCopyPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\SSAOPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\TAAPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\CASPass.h" />

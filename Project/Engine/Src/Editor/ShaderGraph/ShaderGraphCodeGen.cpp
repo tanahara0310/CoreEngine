@@ -156,6 +156,20 @@ namespace CoreEngine::Editor::ShaderGraph
                     return Convert("SurfaceViewDirection(IN)", 3, WidthOf(type));
                 }
                 break;
+            case PinBinding::WorldPosition:
+                if (model) {
+                    return Convert(vertex ? "mul(float4(IN.positionOS, 1.0f), IN.objectToWorld).xyz" : "IN.positionWS",
+                        3, WidthOf(type));
+                }
+                break;
+            case PinBinding::ScreenUV:
+                if (target == Target::PostEffect) {
+                    return Convert("IN.uv", 2, WidthOf(type));
+                }
+                return Convert(model ? "SceneScreenUV(IN.screenPosition)" : "SceneScreenUV(input.position.xy)", 2,
+                    WidthOf(type));
+            case PinBinding::RequiredTexture:
+                return "gTexture";
             case PinBinding::Value:
             case PinBinding::ModelValue:
             case PinBinding::SourceVertex:
@@ -277,7 +291,7 @@ namespace CoreEngine::Editor::ShaderGraph
             return ids;
         }
 
-        /// @brief 並べたノードが 3D の値（位置・法線・接線・視線・カメラ・モデルの面）を使うか
+        /// @brief 並べたノードが 3D の値（位置・法線・接線・視線・カメラ・モデルの面・Parallax）を使うか
         bool Uses3DInput(const Graph& graph, const std::vector<int>& order)
         {
             for (const int id : order) {
@@ -287,11 +301,12 @@ namespace CoreEngine::Editor::ShaderGraph
                     continue;
                 }
                 if (desc->category.starts_with("Input/Geometry") || desc->category.starts_with("Input/Model")
-                    || desc->type == "Camera") {
+                    || desc->type == "Camera" || desc->type == "ParallaxMapping" || desc->type == "ParallaxOcclusionMapping") {
                     return true;
                 }
                 for (const PinDesc& pin : desc->inputs) {
-                    if ((pin.binding == PinBinding::WorldNormal || pin.binding == PinBinding::ViewDirection)
+                    if ((pin.binding == PinBinding::WorldNormal || pin.binding == PinBinding::ViewDirection
+                            || pin.binding == PinBinding::WorldPosition)
                         && !graph.FindLinkTo(id, pin.name)) {
                         return true;
                     }
@@ -393,6 +408,7 @@ namespace CoreEngine::Editor::ShaderGraph
                         }
                     }
                     if (args.error.empty()) {
+                        uses_ |= args.uses;
                         for (const GlobalCode& global : args.globals) {
                             const bool placed = std::any_of(globals_.begin(), globals_.end(),
                                 [&](const auto& item) { return item.second.key == global.key; });
@@ -445,6 +461,9 @@ namespace CoreEngine::Editor::ShaderGraph
 
             /// @brief 作れなかったノードの数
             int ErrorCount() const { return errors_; }
+
+            /// @brief 書いたノードが 3D で使った値の印（`kUsesObjectSpace`・`kUsesVertexColor`）
+            uint8_t Uses() const { return uses_; }
 
         private:
             /// @brief この関数で使うサブグラフのノードの出力（根なら全部・ほかは書くノードへ入る線の元）
@@ -615,6 +634,7 @@ namespace CoreEngine::Editor::ShaderGraph
                 for (size_t index = placed; index < globals.size(); ++index) {
                     args.globals.push_back(globals[index].second);
                 }
+                args.uses |= inner.Uses();
             }
 
             const Graph& graph_;
@@ -628,6 +648,7 @@ namespace CoreEngine::Editor::ShaderGraph
             std::string body_;
             std::vector<std::pair<int, std::pair<int, int>>> lines_;
             int errors_ = 0;
+            uint8_t uses_ = 0; ///< 書いたノードが 3D で使った値の印
             std::string prefix_; ///< 変数の名前の前置き（サブグラフの中は `n使う側の番号_`）
             std::string label_;  ///< 文の前の注釈の番号の前置き（サブグラフの中は `使う側の番号/`）
             const std::map<std::string, std::string, std::less<>>* properties_ = nullptr; ///< サブグラフの中: 入力の id → 式
@@ -738,13 +759,21 @@ namespace CoreEngine::Editor::ShaderGraph
         }
 
         /// @brief 3D のファイルの頭（プロパティの表・define・include・定数・テクスチャ・関数の外の文）
+        /// @param uses ノードが使った値の印（`kUsesObjectSpace`・`kUsesVertexColor`）
         std::string SurfaceHead(const Graph& graph, const GenerateOptions& options,
-            const std::vector<std::pair<int, GlobalCode>>& globals, GenerateResult& result, bool lit, bool hasVertex)
+            const std::vector<std::pair<int, GlobalCode>>& globals, GenerateResult& result, bool lit, bool hasVertex,
+            uint8_t uses)
         {
             std::string head = HeaderLines(graph, options);
             head += lit ? "#define SURFACE_LIT\n" : "#define SURFACE_UNLIT\n";
             if (hasVertex) {
                 head += "#define SURFACE_VERTEX\n";
+            }
+            if ((uses & kUsesObjectSpace) != 0) {
+                head += "#define SURFACE_OBJECT_SPACE\n";
+            }
+            if ((uses & kUsesVertexColor) != 0) {
+                head += "#define SURFACE_VERTEX_COLOR\n";
             }
             head += "#include \"ModelSurface.hlsli\"\n";
             head += "#include \"ShaderGraphLibrary.hlsli\"\n";
@@ -884,7 +913,9 @@ float4 main(SpriteVertexOutput input) : SV_TARGET0
                 }
             }
 
-            std::string head = SurfaceHead(graph, options, globals, result, graph.target == Target::Lit && !previewing, hasVertex);
+            const uint8_t uses = static_cast<uint8_t>(fragment.Uses() | (hasVertex ? vertex.Uses() : 0));
+            std::string head = SurfaceHead(graph, options, globals, result, graph.target == Target::Lit && !previewing, hasVertex,
+                uses);
             if (hasVertex) {
                 head += "\nvoid SurfaceVertex(SurfaceVertexInput IN, inout SurfaceVertexOutput OUT)\n{\n";
                 vertex.AddLines(result.nodeLines, CountLines(head));
@@ -1084,7 +1115,7 @@ float4 main(SpriteVertexOutput input) : SV_TARGET0
         GenerateResult unused;
         std::string hlsl;
         if (Is3D(graph.target)) {
-            hlsl = SurfaceHead(graph, options, globals, unused, false, false);
+            hlsl = SurfaceHead(graph, options, globals, unused, false, false, writer.Uses());
             hlsl += "\nvoid Surface(SurfaceInput IN, inout SurfaceOutput OUT)\n{\n";
             hlsl += writer.Body() + select;
             hlsl += "    OUT.baseColor = SG_color.rgb;\n    OUT.alpha = 1.0f;\n}\n";

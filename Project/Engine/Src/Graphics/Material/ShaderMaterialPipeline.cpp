@@ -278,6 +278,8 @@ namespace CoreEngine
         drawSlot_ = rootSignature_->GetRootSlot("gSpriteDraw");
         textureSlot_ = rootSignature_->GetRootSlot(kMainTextureName);
         paramsSlot_ = layout_.bufferName.empty() ? RootSlot{} : rootSignature_->GetRootSlot(layout_.bufferName);
+        sceneDepthSlot_ = rootSignature_->GetRootSlot("gSceneDepthTexture");
+        sceneDepthParamsSlot_ = rootSignature_->GetRootSlot("gSceneDepthParams");
         extraTextureSlots_.clear();
         for (const std::string& texture : layout_.textures) {
             extraTextureSlots_.push_back(rootSignature_->GetRootSlot(texture));

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Graphics/RHI/Descriptor/UniqueDescriptor.h"
 #include "Graphics/RHI/Resource/GpuResource.h"
 
 #include <d3d12.h>
@@ -165,6 +166,17 @@ namespace CoreEngine
         /// @brief インデックスバッファリソースを取得（BLAS 構築用）
         ID3D12Resource* GetIndexBuffer() const { return indexBuffer_.Get(); }
 
+        // ===== 頂点の色 =====
+
+        /// @brief 色の無いモデルに差す、白 1 つだけの配列の SRV を控える
+        void SetFallbackVertexColorSRV(D3D12_GPU_DESCRIPTOR_HANDLE handle) { fallbackVertexColorSRV_ = handle; }
+
+        /// @brief 頂点の色の SRV（StructuredBuffer<uint>・頂点の番号で引く。色が無ければ白 1 つだけの配列）
+        D3D12_GPU_DESCRIPTOR_HANDLE GetVertexColorSRV() const;
+
+        /// @brief 頂点の色を持つか
+        bool HasVertexColors() const { return vertexColorBuffer_.Get() != nullptr; }
+
         /// @brief BLAS インデックスを設定
         void SetBLASIndex(UINT index) { blasIndex_ = index; }
 
@@ -191,6 +203,11 @@ namespace CoreEngine
         GpuResource indexBuffer_;
         D3D12_INDEX_BUFFER_VIEW indexBufferView_{};
         UINT indexCount_ = 0;
+
+        // 頂点の色（色を持つモデルだけ）と、色の無いモデルに差す白い配列
+        GpuResource vertexColorBuffer_;
+        UniqueDescriptor vertexColorSRV_;
+        D3D12_GPU_DESCRIPTOR_HANDLE fallbackVertexColorSRV_{};
 
         // VRAM（DEFAULT ヒープ）へコピーするための中間バッファはここでは持たない。
         // UploadContext がフェンス完了を検知して解放する（KeepAlive）。

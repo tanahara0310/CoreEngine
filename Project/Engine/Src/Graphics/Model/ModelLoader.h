@@ -71,7 +71,13 @@ namespace CoreEngine
         /// @param vertexIndex 頂点インデックス
         /// @return 変換された頂点データ
         static VertexData ConvertVertex(const aiMesh* mesh, uint32_t vertexIndex);
-        
+
+        /// @brief 頂点の色を RGBA8（R が下位の 8 ビット）へ詰める（値はそのまま・0〜1 へ丸める）
+        static uint32_t PackVertexColor(const aiColor4D& color);
+
+        /// @brief 頂点の色を持たないメッシュの白
+        static constexpr uint32_t kWhiteVertexColor = 0xFFFFFFFFu;
+
         /// @brief マテリアルからテクスチャパスを抽出（存在しなければ空文字列）
         static std::string ExtractTexturePath(
             const aiMaterial* material,

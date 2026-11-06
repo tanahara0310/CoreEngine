@@ -4,6 +4,8 @@
 #ifndef SHADER_GRAPH_LIBRARY_HLSLI
 #define SHADER_GRAPH_LIBRARY_HLSLI
 
+#include "SceneDepth.hlsli"
+
 static const float SG_TwoPi = 6.28318530718f;
 
 /// @brief 2 次元の点から 0〜1 の乱数 1 つ
@@ -148,6 +150,134 @@ float3 SG_NormalBlend(float3 a, float3 b)
 float SG_FresnelEffect(float3 normal, float3 viewDirection, float power)
 {
     return pow(max(1.0f - saturate(dot(normalize(normal), normalize(viewDirection))), 1e-6f), power);
+}
+
+/// @brief 3 方向から貼ったテクスチャの色（Position × Tile の zy・xz・xy で読み、法線の向きで混ぜる）
+float4 SG_Triplanar(Texture2D<float4> tex, SamplerState samplerState, float3 position, float3 normal, float tile,
+    float blend)
+{
+    float3 uv = position * tile;
+    float3 weight = pow(abs(normal), blend);
+    weight /= max(dot(weight, 1.0f), 1e-5f);
+    float4 x = tex.Sample(samplerState, uv.zy);
+    float4 y = tex.Sample(samplerState, uv.xz);
+    float4 z = tex.Sample(samplerState, uv.xy);
+    return x * weight.x + y * weight.y + z * weight.z;
+}
+
+/// @brief 3 方向から貼った法線マップの向き（ワールド・正規化済み）
+float3 SG_TriplanarNormal(Texture2D<float4> tex, SamplerState samplerState, float3 position, float3 normal, float tile,
+    float blend)
+{
+    float3 uv = position * tile;
+    float3 weight = max(pow(abs(normal), blend), 0.0f);
+    weight /= max(dot(weight, 1.0f), 1e-5f);
+    float3 x = tex.Sample(samplerState, uv.zy).rgb * 2.0f - 1.0f;
+    float3 y = tex.Sample(samplerState, uv.xz).rgb * 2.0f - 1.0f;
+    float3 z = tex.Sample(samplerState, uv.xy).rgb * 2.0f - 1.0f;
+    x = float3(x.xy + normal.zy, abs(x.z) * normal.x);
+    y = float3(y.xy + normal.xz, abs(y.z) * normal.y);
+    z = float3(z.xy + normal.xy, abs(z.z) * normal.z);
+    return normalize(x.zyx * weight.x + y.xzy * weight.y + z.xyz * weight.z);
+}
+
+/// @brief ワールドの向きを、UV の向きの軸（x = +u・y = +v・z = 面の法線）で表す（軸は画面の微分から作る）
+float3 SG_DirectionInUVSpace(float3 directionWS, float3 positionWS, float3 normalWS, float2 uv)
+{
+    float3 N = normalize(normalWS);
+    float3 dp1 = ddx(positionWS);
+    float3 dp2 = ddy(positionWS);
+    float2 duv1 = ddx(uv);
+    float2 duv2 = ddy(uv);
+    float3 dp2perp = cross(dp2, N);
+    float3 dp1perp = cross(N, dp1);
+    float orientation = dot(N, cross(dp1, dp2)) < 0.0f ? -1.0f : 1.0f;
+    float3 axisU = (dp2perp * duv1.x + dp1perp * duv2.x) * orientation;
+    float3 axisV = (dp2perp * duv1.y + dp1perp * duv2.y) * orientation;
+    axisU *= rsqrt(max(dot(axisU, axisU), 1e-20f));
+    axisV *= rsqrt(max(dot(axisV, axisV), 1e-20f));
+    return float3(dot(directionWS, axisU), dot(directionWS, axisV), dot(directionWS, N));
+}
+
+/// @brief 高さのテクスチャで UV を 1 回ずらす（Amplitude は 0.01 倍で効く）
+/// @param viewDirUV 面からカメラへの向き（SG_DirectionInUVSpace で UV の軸に直したもの）
+float2 SG_ParallaxMapping(Texture2D<float4> heightmap, SamplerState samplerState, float4 channel, float amplitude,
+    float2 uv, float3 viewDirUV)
+{
+    float height = dot(heightmap.Sample(samplerState, uv), channel);
+    float scale = amplitude * 0.01f;
+    height = height * scale - scale * 0.5f;
+    float3 v = normalize(viewDirUV);
+    v.z += 0.42f;
+    return uv + height * (v.xy / v.z);
+}
+
+/// @brief 高さのテクスチャを視線に沿って奥へたどり、見えている所の UV を返す（1 が上・0 が底。いつも面より奥へ掘る）
+/// @param viewDirUV 面からカメラへの向き（SG_DirectionInUVSpace で UV の軸に直したもの）
+float2 SG_ParallaxOcclusionMapping(Texture2D<float4> heightmap, SamplerState samplerState, float4 channel,
+    float amplitude, float steps, float2 uv, float lod, float lodThreshold, float3 viewDirUV)
+{
+    float maxHeight = amplitude * 0.01f;
+    float3 view = normalize(float3(viewDirUV.xy * maxHeight, max(viewDirUV.z, 1e-4f)));
+    int count = clamp((int)steps, 1, 256);
+    float stepSize = 1.0f / (float)count;
+    float2 offsetPerStep = stepSize * (view.xy / -view.z);
+
+    float2 offset = float2(0.0f, 0.0f);
+    float prevHeight = dot(heightmap.SampleLevel(samplerState, uv, lod), channel);
+    offset += offsetPerStep;
+    float currHeight = dot(heightmap.SampleLevel(samplerState, uv + offset, lod), channel);
+    float rayHeight = 1.0f - stepSize;
+
+    [loop]
+    for (int stepIndex = 0; stepIndex < count; ++stepIndex)
+    {
+        if (currHeight > rayHeight)
+        {
+            break;
+        }
+        prevHeight = currHeight;
+        rayHeight -= stepSize;
+        offset += offsetPerStep;
+        currHeight = dot(heightmap.SampleLevel(samplerState, uv + offset, lod), channel);
+    }
+
+    // 見つけた上下 2 点の間を割線法で詰める
+    float pt0 = rayHeight + stepSize;
+    float pt1 = rayHeight;
+    float delta0 = pt0 - prevHeight;
+    float delta1 = pt1 - currHeight;
+    float2 result = offset;
+    for (int refine = 0; refine < 3; ++refine)
+    {
+        float denominator = delta1 - delta0;
+        if (abs(denominator) < 1e-6f)
+        {
+            break;
+        }
+        float intersectionHeight = (pt0 * delta1 - pt1 * delta0) / denominator;
+        result = (1.0f - intersectionHeight) * offsetPerStep * (float)count;
+        currHeight = dot(heightmap.SampleLevel(samplerState, uv + result, lod), channel);
+        float delta = intersectionHeight - currHeight;
+        if (abs(delta) <= 0.01f)
+        {
+            break;
+        }
+        if (delta < 0.0f)
+        {
+            delta1 = delta;
+            pt1 = intersectionHeight;
+        }
+        else
+        {
+            delta0 = delta;
+            pt0 = intersectionHeight;
+        }
+    }
+
+    // LOD Threshold より細かくない段では効きを弱める
+    result *= 1.0f - saturate(lod - lodThreshold);
+    return uv + result;
 }
 
 #ifdef POST_EFFECT_MATERIAL_HLSLI

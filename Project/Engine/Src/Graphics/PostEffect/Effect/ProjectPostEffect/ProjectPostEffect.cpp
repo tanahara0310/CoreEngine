@@ -3,7 +3,9 @@
 
 #include "Graphics/Material/ShaderMaterial.h"
 #include "Graphics/Material/ShaderMaterialLibrary.h"
+#include "Camera/View/ViewInfo.h"
 #include "Graphics/Pipeline/ComputePipelineUtil.h"
+#include "Graphics/Render/FrameBlackboard.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/Shader/ShaderCompiler.h"
@@ -157,11 +159,25 @@ namespace CoreEngine
         for (const std::string& name : layout_.textures) {
             textureSlots_.push_back(rootSignatureManager_->GetRootSlot(name));
         }
+        sceneDepthSlot_ = rootSignatureManager_->GetRootSlot("gSceneDepthTexture");
+        sceneDepthParamsSlot_ = rootSignatureManager_->GetRootSlot("gSceneDepthParams");
         return true;
     }
 
-    void ProjectPostEffect::PrepareFrame(const PostEffectFrameContext& /*ctx*/)
+    void ProjectPostEffect::DeclareExtraInputs(std::vector<PostEffectInputBinding>& out) const
     {
+        if (sceneDepthSlot_.IsValid()) {
+            out.push_back({ "gSceneDepthTexture", FrameBlackboard::SceneDepth, /*required*/ false });
+        }
+    }
+
+    void ProjectPostEffect::PrepareFrame(const PostEffectFrameContext& ctx)
+    {
+        if (ctx.view && ctx.view->isValid) {
+            sceneDepthParams_.nearZ = ctx.view->nearZ;
+            sceneDepthParams_.farZ = ctx.view->farZ;
+            sceneDepthParams_.orthographic = (ctx.view->projection.m[3][3] != 0.0f) ? 1.0f : 0.0f;
+        }
         if (!material_) {
             return;
         }
@@ -226,6 +242,17 @@ namespace CoreEngine
             const D3D12_GPU_DESCRIPTOR_HANDLE handle =
                 (loaded && loaded->gpuHandle.ptr != 0) ? loaded->gpuHandle : white_.gpuHandle;
             cmdList->SetComputeRootDescriptorTable(textureSlots_[index].index, handle);
+        }
+        // 画面の深度（取れないフレームは白 = いちばん遠い）
+        if (sceneDepthSlot_.IsValid()) {
+            const D3D12_GPU_DESCRIPTOR_HANDLE depth = GetExtraInput("gSceneDepthTexture");
+            cmdList->SetComputeRootDescriptorTable(sceneDepthSlot_.index, depth.ptr != 0 ? depth : white_.gpuHandle);
+        }
+        if (sceneDepthParamsSlot_.IsValid()) {
+            SceneDepth::ShaderParams depthParams = sceneDepthParams_;
+            depthParams.screenWidth = static_cast<float>(width);
+            depthParams.screenHeight = static_cast<float>(height);
+            cmdList->SetComputeRootConstantBufferView(sceneDepthParamsSlot_.index, UploadConstants(depthParams));
         }
 
         cmdList->Dispatch((width + kGroupSize - 1) / kGroupSize, (height + kGroupSize - 1) / kGroupSize, 1);

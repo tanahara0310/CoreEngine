@@ -21,6 +21,7 @@ namespace CoreEngine {
     class InstanceBatchManager;
     class CustomShaderPipeline;
     class ShaderBinder;
+    class SceneDepth;
 }
 
 namespace CoreEngine
@@ -50,6 +51,9 @@ namespace CoreEngine
 
         /// @brief ライトマネージャーを設定
         void SetLightManager(LightManager* lightManager) { lightManager_ = lightManager; }
+
+        /// @brief 画面の深度を設定（シェーダーグラフの Scene Depth を読むマテリアルに差す）
+        void SetSceneDepth(SceneDepth* sceneDepth) { sceneDepth_ = sceneDepth; }
 
     protected:
         /// @brief 現在のブレンドモードに応じたフォグ定数を選ぶ
@@ -90,7 +94,7 @@ namespace CoreEngine
         void BindModelDrawPacket(ID3D12GraphicsCommandList* cmdList, const ModelDrawPacket& packet,
             const BindingTable& bindings);
 
-        /// @brief 差し替えたルートシグネチャへ、シーンのリソース（カメラ・ライト・フォグ・頂点アニメーション）を差し直す
+        /// @brief 差し替えたルートシグネチャへ、シーンのリソース（カメラ・ライト・フォグ・頂点アニメーション・画面の深度）を差し直す
         /// @note 表に無いリソースは差さない
         void BindPassSceneResources(ID3D12GraphicsCommandList* cmdList, const BindingTable& bindings);
 
@@ -134,6 +138,7 @@ namespace CoreEngine
         D3D12_GPU_VIRTUAL_ADDRESS cameraCBV_ = 0;
 
         LightManager* lightManager_ = nullptr;
+        SceneDepth* sceneDepth_ = nullptr;
 
         D3D12_GPU_DESCRIPTOR_HANDLE rtShadowMaskHandle_ = {};
 

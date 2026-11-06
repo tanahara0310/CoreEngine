@@ -3,6 +3,7 @@
 #include "Camera/Camera.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Graphics/Render/RenderTarget/SceneDepth.h"
 #include "Utility/Logger/Logger.h"
 #include "WinApp/WinApp.h"
 #include <cassert>
@@ -113,6 +114,16 @@ namespace CoreEngine
         if (pipeline) {
             cmdList->SetGraphicsRootSignature(pipeline->GetRootSignature());
             cmdList->SetPipelineState(pipeline->GetPipelineState(currentBlendMode_));
+            if (sceneDepth_) {
+                if (pipeline->GetSceneDepthSlot().IsValid() && sceneDepth_->GetFarTextureSRV().ptr != 0) {
+                    cmdList->SetGraphicsRootDescriptorTable(pipeline->GetSceneDepthSlot().index,
+                        sceneDepth_->GetFarTextureSRV());
+                }
+                if (pipeline->GetSceneDepthParamsSlot().IsValid() && sceneDepth_->GetShaderParams() != 0) {
+                    cmdList->SetGraphicsRootConstantBufferView(pipeline->GetSceneDepthParamsSlot().index,
+                        sceneDepth_->GetShaderParams());
+                }
+            }
         } else {
             cmdList->SetGraphicsRootSignature(rootSignatureMg_->GetRootSignature());
             cmdList->SetPipelineState(pipelineState_);
