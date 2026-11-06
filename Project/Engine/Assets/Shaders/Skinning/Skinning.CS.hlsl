@@ -29,7 +29,9 @@ struct Well
 StructuredBuffer<SkinnedVertexGPU> gSourceVertices : register(t0);
 StructuredBuffer<InfluenceGPU> gInfluences : register(t1);
 StructuredBuffer<Well> gMatrixPalette : register(t2);
+StructuredBuffer<Well> gPrevMatrixPalette : register(t3); // 1 フレーム前に描いた姿勢
 RWStructuredBuffer<SkinnedVertexGPU> gOutputVertices : register(u0);
+RWStructuredBuffer<float4> gPrevPositions : register(u1); // 1 フレーム前の姿勢で変形した位置（モーションベクター用）
 
 cbuffer SkinningParams : register(b0)
 {
@@ -62,6 +64,7 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID)
     float4 skinnedPosition = float4(0.0f, 0.0f, 0.0f, 0.0f);
     float3 skinnedNormal = float3(0.0f, 0.0f, 0.0f);
     float3 skinnedTangent = float3(0.0f, 0.0f, 0.0f);
+    float3 prevPosition = float3(0.0f, 0.0f, 0.0f);
 
     [unroll]
     for (uint i = 0; i < 4; ++i)
@@ -70,7 +73,10 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID)
         skinnedPosition += mul(position, well.skeletonSpaceMatrix) * weights[i];
         skinnedNormal += mul(normal, (float3x3) well.skeletonSpaceInverseTransposeMatrix) * weights[i];
         skinnedTangent += mul(tangent, (float3x3) well.skeletonSpaceMatrix) * weights[i];
+        prevPosition += mul(position, gPrevMatrixPalette[indices[i]].skeletonSpaceMatrix).xyz * weights[i];
     }
+
+    gPrevPositions[vertexIndex] = float4(prevPosition, 1.0f);
 
     skinnedPosition.w = 1.0f; // 確実にwを1にする
     skinnedNormal = normalize(skinnedNormal);

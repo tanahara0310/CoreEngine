@@ -1,4 +1,5 @@
 #include "../Object/Object3d.hlsli"
+#include "../Object/SkinnedMotion.hlsli"
 
 // スキニング計算はComputeShader(Skinning.CS.hlsl)側で完了済み。
 // ここではCS出力済みの頂点(position/normal/tangentは既にスキン後のローカル空間座標)を
@@ -12,6 +13,7 @@ struct VertexShaderInput
     float2 texcoord : TEXCOORD0;
     float3 normal : NORMAL0;
     float3 tangent : TANGENT0;
+    uint vertexID : SV_VertexID;
 };
 
 VertexShaderOutput main(VertexShaderInput input)
@@ -28,9 +30,9 @@ VertexShaderOutput main(VertexShaderInput input)
     output.worldPosition = worldPos.xyz;
     output.lightSpacePos = mul(worldPos, gTransformationMatrix.LightViewProjection);
 
-    // モーションベクター用: 現フレーム・前フレームのクリップ座標
+    // モーションベクター用: 現フレーム・前フレームのクリップ座標（前フレームは前の姿勢の位置）
     output.clipPosCurrent = mul(input.position, gTransformationMatrix.WVP);
-    output.clipPosPrev = mul(input.position, gTransformationMatrix.PrevWVP);
+    output.clipPosPrev = mul(LoadPrevSkinnedPosition(input.vertexID), gTransformationMatrix.PrevWVP);
 
     return output;
 }

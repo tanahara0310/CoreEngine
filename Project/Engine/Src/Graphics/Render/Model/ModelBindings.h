@@ -25,7 +25,7 @@ namespace CoreEngine::ModelBind
         gMetallicRoughnessMap,
         gEmissiveMap,
         gAOMap,
-        gMatrixPalette,
+        gPrevSkinnedPositions,
         gVertexAnim,
         gVertexColors,
         gSceneDepthTexture,
@@ -61,7 +61,7 @@ namespace CoreEngine::ModelBind
         { "gMetallicRoughnessMap", kSRV, kCond },
         { "gEmissiveMap",          kSRV, kCond },
         { "gAOMap",                kSRV, kCond },
-        { "gMatrixPalette",        kSRV, kOpt  },  // 実体なし（スキニングは CS 側）
+        { "gPrevSkinnedPositions", kSRV, kOpt  },  // スキンの前のフレームの位置（スキンの頂点シェーダだけ）
         { "gVertexAnim",           kCBV, kOpt  },  // 頂点アニメーションの時間・風（ルート定数）
         { "gVertexColors",         kSRV, kOpt  },  // 頂点の色（シェーダーグラフの Vertex Color）
         { "gSceneDepthTexture",    kSRV, kOpt  },  // 画面の深度（シェーダーグラフの Scene Depth）
@@ -90,7 +90,7 @@ namespace CoreEngine::ModelBind
         { "gMetallicRoughnessMap", kSRV, kCond },
         { "gEmissiveMap",          kSRV, kCond },
         { "gAOMap",                kSRV, kCond },
-        { "gMatrixPalette",        kSRV, kOpt  },
+        { "gPrevSkinnedPositions", kSRV, kOpt  },
         { "gVertexAnim",           kCBV, kOpt  },  // 頂点アニメーションの時間・風（ルート定数）
         { "gVertexColors",         kSRV, kOpt  },  // 頂点の色（シェーダーグラフの Vertex Color）
         { "gSceneDepthTexture",    kSRV, kOpt  },  // 画面の深度（シェーダーグラフの Scene Depth）
@@ -118,7 +118,7 @@ namespace CoreEngine::ModelBind
         { "gMetallicRoughnessMap", kSRV, kCond },
         { "gEmissiveMap",          kSRV, kCond },
         { "gAOMap",                kSRV, kCond },
-        { "gMatrixPalette",        kSRV, kOpt  },
+        { "gPrevSkinnedPositions", kSRV, kOpt  },
         { "gVertexAnim",           kCBV, kOpt  },  // 頂点アニメーションの時間・風（ルート定数）
         { "gVertexColors",         kSRV, kOpt  },  // 頂点の色（シェーダーグラフの Vertex Color）
         { "gSceneDepthTexture",    kSRV, kOpt  },  // 画面の深度（シェーダーグラフの Scene Depth）
@@ -146,7 +146,7 @@ namespace CoreEngine::ModelBind
         { "gMetallicRoughnessMap", kSRV, kCond },
         { "gEmissiveMap",          kSRV, kCond },
         { "gAOMap",                kSRV, kCond },
-        { "gMatrixPalette",        kSRV, kOpt  },
+        { "gPrevSkinnedPositions", kSRV, kReq  },  // スキンの前のフレームの位置（モーションベクター用）
         { "gVertexAnim",           kCBV, kOpt  },  // 頂点アニメーションの時間・風（ルート定数）
         { "gVertexColors",         kSRV, kOpt  },  // 頂点の色（シェーダーグラフの Vertex Color）
         { "gSceneDepthTexture",    kSRV, kOpt  },  // 画面の深度（シェーダーグラフの Scene Depth）
@@ -174,7 +174,7 @@ namespace CoreEngine::ModelBind
         { "gMetallicRoughnessMap", kSRV, kOpt },
         { "gEmissiveMap",          kSRV, kOpt },
         { "gAOMap",                kSRV, kOpt },
-        { "gMatrixPalette",        kSRV, kOpt },
+        { "gPrevSkinnedPositions", kSRV, kOpt },
         { "gVertexAnim",           kCBV, kOpt  },  // 頂点アニメーションの時間・風（ルート定数）
         { "gVertexColors",         kSRV, kOpt  },  // 頂点の色（シェーダーグラフの Vertex Color）
         { "gSceneDepthTexture",    kSRV, kOpt  },  // 画面の深度（シェーダーグラフの Scene Depth）
