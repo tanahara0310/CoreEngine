@@ -229,13 +229,16 @@ float4 ShadeReflectionHit(RayDesc ray, RTWaterHitPayload payload, float coneWidt
 {
     RTHitSurface surface;
     float coneWidth;
-    if (!FindOpaqueHitSurface(gScene, ray, payload, coneWidthAtOrigin, coneSpread, surface, coneWidth))
+    // FindOpaqueHitSurface にはこの関数のローカル変数を渡す（引数をそのまま inout へ渡すと -Od でコンパイルできない）
+    RayDesc hitRay = ray;
+    RTWaterHitPayload hitPayload = payload;
+    if (!FindOpaqueHitSurface(gScene, hitRay, hitPayload, coneWidthAtOrigin, coneSpread, surface, coneWidth))
     {
         return float4(0.0f, 0.0f, 0.0f, 0.0f);
     }
-    const float bias = max(0.02f, payload.hitT * 1.0e-4f);
+    const float bias = max(0.02f, hitPayload.hitT * 1.0e-4f);
     const float visibility = TraceSunVisibility(surface.position, surface.normal, bias);
-    return float4(ShadeHitSurface(surface, -ray.Direction, visibility, AboveWaterLighting()), 1.0f);
+    return float4(ShadeHitSurface(surface, -hitRay.Direction, visibility, AboveWaterLighting()), 1.0f);
 }
 
 [shader("raygeneration")]
