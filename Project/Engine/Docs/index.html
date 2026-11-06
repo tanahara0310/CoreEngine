@@ -1999,6 +1999,198 @@ kbd {
     display: none;
   }
 }
+
+/* シェーダーグラフの図（エディタのキャンバスと同じ色） */
+.sg-canvas {
+  position: relative;
+  box-sizing: content-box;
+  margin: 0 auto;
+  border: 1px solid #0f0f10;
+  border-radius: var(--radius);
+  background-color: #1a1a1c;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: #eeeef2;
+  font-family: var(--font-body);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.sg-canvas svg {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+
+.sg-wire {
+  fill: none;
+  stroke-width: 2;
+}
+
+.sg-node {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px solid #0f0f10;
+  border-radius: 5px;
+  padding-bottom: 7px;
+  background: #2c2c30;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.sg-title {
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 4px 4px 0 0;
+  font-weight: 600;
+  line-height: 26px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.sg-input { background: #803a34; }
+.sg-math { background: #2c5688; }
+.sg-uv { background: #246c66; }
+.sg-procedural { background: #36683a; }
+.sg-channel { background: #6e5a26; }
+.sg-artistic { background: #804822; }
+.sg-utility { background: #50505a; }
+.sg-master { background: #2a3f55; }
+.sg-property { background: #4a3a68; }
+.sg-subgraph { background: #743262; }
+
+.sg-set {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  height: 20px;
+  padding: 0 8px;
+  color: #a8a8b4;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.sg-set b {
+  color: #f29c31;
+  font-weight: 400;
+}
+
+.sg-swatch {
+  height: 22px;
+  padding: 4px 8px;
+  box-sizing: border-box;
+}
+
+.sg-swatch i {
+  display: block;
+  height: 100%;
+  border: 1px solid #0f0f10;
+  border-radius: 2px;
+}
+
+.sg-row {
+  position: relative;
+  display: flex;
+  height: 22px;
+  line-height: 22px;
+  white-space: nowrap;
+}
+
+.sg-in {
+  position: relative;
+  padding-left: 11px;
+}
+
+.sg-in em {
+  margin-left: 6px;
+  color: #f29c31;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-style: normal;
+}
+
+.sg-out {
+  position: relative;
+  margin-left: auto;
+  padding-right: 11px;
+}
+
+.sg-pin {
+  position: absolute;
+  top: 6.5px;
+  box-sizing: border-box;
+  width: 9px;
+  height: 9px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  background: #2c2c30;
+}
+
+.sg-in .sg-pin {
+  left: -5.5px;
+}
+
+.sg-out .sg-pin {
+  right: -5.5px;
+}
+
+.sg-pin.on {
+  background: currentColor;
+}
+
+.sg-pin.sg-t {
+  border-radius: 1px;
+}
+
+.sg-pin.sg-s {
+  border: 0;
+  border-radius: 0;
+  background: currentColor;
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
+
+.sg-f { color: #84e4e7; stroke: #84e4e7; }
+.sg-v2 { color: #9aef92; stroke: #9aef92; }
+.sg-v3 { color: #f6ff9a; stroke: #f6ff9a; }
+.sg-v4 { color: #fbcbf4; stroke: #fbcbf4; }
+.sg-t { color: #ff8b8b; stroke: #ff8b8b; }
+.sg-s { color: #aaaab2; stroke: #aaaab2; }
+
+.sg-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.sg-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: #1a1a1c;
+  color: #eeeef2;
+  font-size: var(--fs-xs);
+}
+
+.sg-key i {
+  display: inline-block;
+  box-sizing: border-box;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.sg-key i.sg-t {
+  border-radius: 1px;
+}
+
+.sg-key i.sg-s {
+  border-radius: 0;
+  clip-path: polygon(0 0, 100% 50%, 0 100%);
+}
 </style>
 </head>
 <body>
@@ -2580,7 +2772,7 @@ kbd {
       <tr><td>Window ▸ Editor</td><td>Camera Editor</td><td>カメラの一覧・追従・キーフレーム・シェイクの調整、エディタ視点の操作設定。</td></tr>
       <tr><td>Window ▸ Analysis</td><td>Profiler ／ Engine Stats ／ Thread Profiler ／ Event Bus ／ Tween</td><td>処理時間、描画の統計、スレッド、イベント、動いている Tween の一覧。</td></tr>
       <tr><td>Window ▸ Rendering</td><td>Render Pass ／ Render Graph ／ Ray Tracing</td><td>描画の中間結果やパスのつながりを調べます（主にエンジンの調整向け）。</td></tr>
-      <tr><td>Window ▸ Rendering</td><td>Shader Graph</td><td>ノードでスプライト・UI 画像・ポストエフェクトのシェーダを作ります。<a href="#shader-graph">詳しく</a></td></tr>
+      <tr><td>Window ▸ Rendering</td><td>Shader Graph</td><td>ノードでスプライト・UI 画像・ポストエフェクト・3D モデルのシェーダを作ります。<a href="#shader-graph-guide">使い方</a>・<a href="#shader-graph">詳しく</a></td></tr>
     </tbody>
   </table>
   </div>
@@ -5942,9 +6134,391 @@ kbd {
   </ul>
 </article>
 
+<article class="page" id="shader-graph-guide" data-group="スクリプト" data-title="シェーダーグラフの使い方（はじめの 1 本と作例）" data-nav="シェーダーグラフの使い方" data-keywords="シェーダーグラフ shader graph 使い方 はじめて 入門 考え方 作例 レシピ 例 点滅 白く光る ヒット ダメージ 流す スクロール ゲージ hp バー 縁 リム rim 光る 膨らむ 頂点 呼吸 柔らかく 水際 交わる 霧 フォグ 遠く ビネット 縁を暗く 白黒 グレー モノクロ uv time sine remap lerp step smoothstep saturate 困ったとき 動かない 変わらない 真っ白 マゼンタ 透けない">
+  <h1>シェーダーグラフの使い方</h1>
+  <p class="lead">シェーダーグラフを初めて使う人向けに、考え方・最初の 1 本・よく使う作例・困ったときの直し方をまとめます。窓の操作、ノードの一覧、目標ごとの決まりは <a href="#shader-graph">シェーダーグラフ</a> にあります。</p>
+
+  <h2 id="sgg-basics">考え方</h2>
+  <p>シェーダは、画面の点（画素）1 つずつについて「何色にするか」を決めるプログラムです。シェーダーグラフでは、その計算をノードと線で組みます。線は左から右へ値を運び、右端の出口（Fragment）に届いた色が、その画素の色になります。</p>
+  <ul>
+    <li><strong>色は数の組</strong>：色は R・G・B と A（透明さ）の 4 つの数で、どれも 0〜1 です（A は 0 が透明・1 が不透明）。色に数を掛けると暗く（0.5 を掛けると半分の明るさ）、色どうしを足すと明るくなります。</li>
+    <li><strong>UV は面の上の場所</strong>：描いている面の上の位置を 0〜1 の 2 つの数で表したものです（左上が (0, 0)・右下が (1, 1)）。テクスチャはこの位置で色を読むので、UV をずらすと絵がずれ、UV を 2 倍にすると絵が 2 回繰り返します。</li>
+    <li><strong>時間で動かす</strong>：Time は起動からの秒数で、毎フレーム増えます。UV に足すと絵が流れ、Sine に通すと −1〜1 を行き来する値になります（点滅や揺れに使います）。</li>
+    <li><strong>混ぜる・区切る</strong>：Lerp は T で A と B を混ぜます（T が 0 なら A・1 なら B）。Step はある値を境に 0 と 1 に分け、Smoothstep は境目をなめらかにします。Saturate は 0〜1 の外へ出た値を切ります。</li>
+    <li><strong>外から変える値はプロパティにする</strong>：.mat のインスペクタやスクリプトから変えたい数は、Blackboard のプロパティにしてノードへつなぎます。</li>
+  </ul>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>やりたいこと</th><th>使うノード</th></tr></thead>
+    <tbody>
+      <tr><td>テクスチャの色を読む</td><td>Sample Texture 2D（Texture をつながなければ、スプライトは部品の絵・3D はモデルのテクスチャ）</td></tr>
+      <tr><td>絵をずらす・繰り返す・回す</td><td>UV と Tiling And Offset・Rotate</td></tr>
+      <tr><td>時間で動かす・点滅させる</td><td>Time・Sine・Remap</td></tr>
+      <tr><td>2 つの色や値を混ぜる</td><td>Lerp</td></tr>
+      <tr><td>ある値を境に分ける</td><td>Step・Smoothstep</td></tr>
+      <tr><td>0〜1 に収める・範囲を移す</td><td>Saturate・Clamp・Remap・One Minus</td></tr>
+      <tr><td>ばらつきや模様を作る</td><td>Simple Noise・Gradient Noise・Voronoi</td></tr>
+      <tr><td>成分を取り出す・まとめる</td><td>Split・Combine・Swizzle</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3 id="sgg-read">図の読み方</h3>
+  <p>このページの図は、シェーダーグラフの窓と同じ描き方です。ノードの見出しの色は分類（Input・Math・UV など）で、出口は青、プロパティは紫です。ピンの色は値の種類です。</p>
+  <p class="sg-keys"><span class="sg-key"><i class="sg-f"></i>Float（数 1 つ）</span><span class="sg-key"><i class="sg-v2"></i>Vector 2</span><span class="sg-key"><i class="sg-v3"></i>Vector 3（RGB）</span><span class="sg-key"><i class="sg-v4"></i>Vector 4（RGBA）</span><span class="sg-key"><i class="sg-t"></i>テクスチャ</span><span class="sg-key"><i class="sg-s"></i>サンプラー</span></p>
+  <ul>
+    <li>橙の文字は、決まった値から変えた所です。入力の横の数（例：<code>0.25</code>）は、ノードを選んだときの Inspector で入れる、つないでいない入力の値です。見出しの下の行（例：<code>Space Object</code>）は、Inspector の設定です。</li>
+    <li>Add・Multiply・Lerp などの入力は、つないだ値の成分の数に合わせます。図のピンの色も、そのときの種類で描いています。</li>
+  </ul>
+
+  <h2 id="sgg-first">はじめての 1 本：スプライトを点滅させる</h2>
+  <p>スプライトの明るさを時間で上げ下げして、点滅させます。途中で何度か保存し、見た目が変わるのを確かめながら進めます。</p>
+
+  <h3 id="sgg-first-create">1. グラフを作って付ける</h3>
+  <ol class="steps">
+    <li><span class="ui">GameObject<span class="arrow">▸</span>2D<span class="arrow">▸</span>スプライト</span> でスプライトを置き、インスペクタのスプライト描画で好きな画像を付けます。</li>
+    <li>Project の一覧の空いている所を右クリックし、<span class="ui">シェーダーグラフを作成...</span> を選びます。目標は <span class="ui">スプライト／UI 画像</span>、名前は <code>Blink</code> にして <span class="ui">作成</span> を押します。<span class="path">Blink.shadergraph</span>・<span class="path">Blink.Graph.PS.hlsl</span>・<span class="path">Blink.mat</span> ができて、シェーダーグラフの窓が開きます。</li>
+    <li>Project の <span class="path">Blink.mat</span> を、スプライトのインスペクタのスプライト描画の <span class="ui">マテリアル</span> 欄へドラッグします。見た目はまだ変わりません。</li>
+  </ol>
+
+  <h3 id="sgg-first-output">2. 出口に色をつなぐ</h3>
+  <ol class="steps">
+    <li>キャンバスの空いている所で <kbd>Space</kbd> を押し、<code>Sprite Color</code> と打って <kbd>Enter</kbd> を押します。</li>
+    <li>Sprite Color の <span class="ui">RGB</span> のピンから、Fragment の <span class="ui">Base Color</span> へドラッグしてつなぎます。<span class="ui">A</span> は <span class="ui">Alpha</span> へつなぎます。</li>
+    <li><kbd>Ctrl</kbd>+<kbd>S</kbd> で保存します。見た目は変わりません。これが「マテリアルを付けていないとき」と同じ計算（テクスチャ × 部品の色）です。</li>
+  </ol>
+  <script type="text/x-sg" data-caption="Sprite Color をそのまま出口へつないだグラフ（マテリアルを付けていないときと同じ見た目）">
+    {"nodes": [
+      {"id": 1, "c": 1, "title": "Fragment", "cat": "Master", "in": [["Base Color", "V3"], ["Alpha", "F"]], "out": [], "w": 88},
+      {"id": 3, "c": 0, "title": "Sprite Color", "cat": "Input", "in": [], "out": [["RGBA", "V4"], ["RGB", "V3"], ["A", "F"]], "w": 102}
+    ], "links": [
+      [3, "RGB", 1, "Base Color"],
+      [3, "A", 1, "Alpha"]
+    ]}
+  </script>
+
+  <h3 id="sgg-first-time">3. 時間で明るさを変える</h3>
+  <ol class="steps">
+    <li><kbd>Space</kbd> で Time・Multiply・Sine・Remap・Multiply（2 つ目）を置きます。</li>
+    <li>次のようにつなぎます（下の図の、速さのノードはまだ置きません）。
+      <ul>
+        <li>Time の <span class="ui">Time</span> → 1 つ目の Multiply の <span class="ui">A</span></li>
+        <li>1 つ目の Multiply の <span class="ui">Out</span> → Sine の <span class="ui">In</span> → Sine の <span class="ui">Out</span> → Remap の <span class="ui">In</span></li>
+        <li>Sprite Color の <span class="ui">RGB</span> → 2 つ目の Multiply の <span class="ui">A</span>（Base Color へつないでいた線は、つなぎ直すと外れます）</li>
+        <li>Remap の <span class="ui">Out</span> → 2 つ目の Multiply の <span class="ui">B</span></li>
+        <li>2 つ目の Multiply の <span class="ui">Out</span> → Fragment の <span class="ui">Base Color</span></li>
+      </ul>
+    </li>
+    <li>Remap を選び、Inspector で <span class="ui">Out Min Max</span> を <code>0.3</code>・<code>1</code> にします。Sine の −1〜1 を 0.3〜1 へ移すので、いちばん暗いときでも 3 割の明るさが残ります。</li>
+    <li>保存すると、ゆっくり点滅します（1 つ目の Multiply の B が 1 のままなので、1 回の明滅に約 6 秒）。シーンでは再生中だけ動きます。止まっていても、窓の右上の Main Preview では動きます。</li>
+  </ol>
+
+  <h3 id="sgg-first-property">4. 速さをプロパティにする</h3>
+  <ol class="steps">
+    <li>Blackboard の <span class="ui">+</span> から <span class="ui">Float</span> を選びます。<span class="ui">名前</span> を <code>speed</code>、<span class="ui">表示名</span> を <code>速さ</code>、<span class="ui">既定値</span> を <code>4</code>、<span class="ui">範囲</span> を <code>0</code>〜<code>20</code> にします。</li>
+    <li>Blackboard の <span class="ui">速さ</span> をキャンバスへドラッグし、出てきたノードの <span class="ui">Out</span> を 1 つ目の Multiply の <span class="ui">B</span> へつなぎます。</li>
+    <li>保存すると、速く点滅します。Project で <span class="path">Blink.mat</span> を選ぶと、インスペクタに <span class="ui">速さ</span> のスライダーが出て、動かすとすぐに速さが変わります。</li>
+  </ol>
+  <script type="text/x-sg" data-caption="時間で明るさを上下させて、スプライトを点滅させるグラフ">
+    {"nodes": [
+      {"id": 1, "c": 5, "title": "Fragment", "cat": "Master", "in": [["Base Color", "V3"], ["Alpha", "F"]], "out": [], "w": 88},
+      {"id": 3, "c": 0, "title": "Time", "cat": "Input", "in": [], "out": [["Time", "F"], ["Sine Time", "F"], ["Cosine Time", "F"], ["Delta Time", "F"], ["Unscaled Time", "F"]], "w": 116},
+      {"id": 4, "c": 0, "title": "速さ", "cat": "Property", "in": [], "out": [["Out", "F"]], "w": 88},
+      {"id": 5, "c": 1, "title": "Multiply", "cat": "Math", "in": [["A", "F"], ["B", "F"]], "out": [["Out", "F"]], "w": 88},
+      {"id": 6, "c": 2, "title": "Sine", "cat": "Math", "in": [["In", "F"]], "out": [["Out", "F"]], "w": 88},
+      {"id": 8, "c": 3, "title": "Sprite Color", "cat": "Input", "in": [], "out": [["RGBA", "V4"], ["RGB", "V3"], ["A", "F"]], "w": 102},
+      {"id": 7, "c": 3, "title": "Remap", "cat": "Math", "in": [["In", "F"], ["In Min Max", "V2"], ["Out Min Max", "V2", "(0.3, 1)"]], "out": [["Out", "F"]], "w": 150},
+      {"id": 9, "c": 4, "title": "Multiply", "cat": "Math", "in": [["A", "V3"], ["B", "V3"]], "out": [["Out", "V3"]], "w": 88}
+    ], "links": [
+      [3, "Time", 5, "A"],
+      [4, "Out", 5, "B"],
+      [5, "Out", 6, "In"],
+      [6, "Out", 7, "In"],
+      [8, "RGB", 9, "A"],
+      [7, "Out", 9, "B"],
+      [9, "Out", 1, "Base Color"],
+      [8, "A", 1, "Alpha"]
+    ]}
+  </script>
+  <p>スクリプトからは、そのスプライトだけの速さを <code>owner.spriteRenderer.SetMaterialFloat("speed", 12.0f);</code> で変えられます（<a href="#material-script">スクリプトから値を変える</a>）。窓の上の <span class="ui">HLSL</span> を押すと、このグラフから作ったシェーダが見られます。ノードを選ぶと、そのノードが書いた行に色が付きます。</p>
+
+  <h2 id="sgg-recipes">作例</h2>
+  <p>どの作例も、目標を選んで新しいグラフを作り、図のとおりにノードを置いてつなぎ、橙の値を Inspector で入れて保存すれば動きます。プロパティのある作例は、Blackboard に同じ名前のプロパティを足してからキャンバスへドラッグします。</p>
+
+  <h3 id="sgg-sprite-flash">スプライト：当たったときに白く光らせる</h3>
+  <p>敵に弾が当たった瞬間に、スプライトを白く光らせます。Lerp で元の色と白を混ぜ、混ぜる割合をプロパティ <code>flash</code>（Float・範囲 0〜1・既定値 0）にします。Color は Inspector で白にします。</p>
+  <script type="text/x-sg" data-caption="flash が 0 なら元の色、1 なら真っ白">
+    {"nodes": [
+      {"id": 1, "c": 2, "title": "Fragment", "cat": "Master", "in": [["Base Color", "V3"], ["Alpha", "F"]], "out": [], "w": 88},
+      {"id": 3, "c": 0, "title": "Sprite Color", "cat": "Input", "in": [], "out": [["RGBA", "V4"], ["RGB", "V3"], ["A", "F"]], "w": 102},
+      {"id": 4, "c": 0, "title": "Color", "cat": "Input", "in": [], "out": [["Out", "V4"]], "swatch": "#ffffff", "w": 88},
+      {"id": 5, "c": 0, "title": "光る強さ", "cat": "Property", "in": [], "out": [["Out", "F"]], "w": 88},
+      {"id": 6, "c": 1, "title": "Lerp", "cat": "Math", "in": [["A", "V4"], ["B", "V4"], ["T", "V4"]], "out": [["Out", "V4"]], "w": 88}
+    ], "links": [
+      [3, "RGB", 6, "A"],
+      [4, "Out", 6, "B"],
+      [5, "Out", 6, "T"],
+      [6, "Out", 1, "Base Color"],
+      [3, "A", 1, "Alpha"]
+    ]}
+  </script>
+  <p>当たったときに <code>flash</code> を 1 にし、少しずつ 0 へ戻します。当たり判定のあるスプライトに、次のスクリプトを付けます。</p>
+  <script type="text/x-code" data-lang="as" data-file="Application/Assets/Scripts/HitFlash.as">
+    using namespace CoreEngine;
+
+    class HitFlash : ScriptComponent
+    {
+        private float flash_ = 0.0f;
+
+        void Update()
+        {
+            // 0.15 秒かけて元の色へ戻す
+            flash_ = Clamp(flash_ - Time::DeltaTime() / 0.15f, 0.0f, 1.0f);
+            owner.spriteRenderer.SetMaterialFloat("flash", flash_);
+        }
+
+        // 当たったら真っ白から始める
+        void OnTriggerEnter(Collision@ other)
+        {
+            flash_ = 1.0f;
+        }
+    }
+  </script>
+
+  <h3 id="sgg-sprite-scroll">スプライト：絵を流す</h3>
+  <p>時間で UV を横へずらして、絵を流します。背景の雲や水面、ベルトコンベアに使えます。Multiply の B が流れる速さ（1 秒あたり絵の幅の何倍か）です。Vector 2 の Y にも値をつなぐと、縦にも流れます。</p>
+  <script type="text/x-sg" data-caption="時間で UV を横へずらし、テクスチャを流す">
+    {"nodes": [
+      {"id": 1, "c": 5, "title": "Fragment", "cat": "Master", "in": [["Base Color", "V3"], ["Alpha", "F"]], "out": [], "w": 88},
+      {"id": 3, "c": 0, "title": "Time", "cat": "Input", "in": [], "out": [["Time", "F"], ["Sine Time", "F"], ["Cosine Time", "F"], ["Delta Time", "F"], ["Unscaled Time", "F"]], "w": 116},
+      {"id": 4, "c": 1, "title": "Multiply", "cat": "Math", "in": [["A", "F"], ["B", "F", "0.25"]], "out": [["Out", "F"]], "w": 88},
+      {"id": 5, "c": 2, "title": "Vector 2", "cat": "Input", "in": [["X", "F"], ["Y", "F"]], "out": [["Out", "V2"]], "w": 88},
+      {"id": 6, "c": 3, "title": "Tiling And Offset", "cat": "UV", "in": [["UV", "V2"], ["Tiling", "V2"], ["Offset", "V2"]], "out": [["Out", "V2"]], "w": 132},
+      {"id": 7, "c": 4, "title": "Sample Texture 2D", "cat": "Input", "in": [["Texture", "T"], ["UV", "V2"], ["Sampler", "S"]], "out": [["RGBA", "V4"], ["R", "F"], ["G", "F"], ["B", "F"], ["A", "F"]], "w": 138}
+    ], "links": [
+      [3, "Time", 4, "A"],
+      [4, "Out", 5, "X"],
+      [5, "Out", 6, "Offset"],
+      [6, "Out", 7, "UV"],
+      [7, "RGBA", 1, "Base Color"],
+      [7, "A", 1, "Alpha"]
+    ]}
+  </script>
+  <div class="callout tip"><p>1 枚の画像をそのまま使うスプライトで使ってください。コマ割りしたスプライトでは UV がコマの中の位置なので、ずらすと隣のコマが見えます。</p></div>
+
+  <h3 id="sgg-sprite-gauge">スプライト：ゲージのように左から出す</h3>
+  <p>HP や時間のゲージのように、スプライトを左から決まった割合だけ出します。UV の横の位置（Split の R）が <code>fill</code> 以下の所で Step が 1 になるので、その所だけ Alpha が残ります。プロパティ <code>fill</code> は Float・範囲 0〜1・既定値 1 です。</p>
+  <script type="text/x-sg" data-caption="UV の横の位置が fill より左の所だけを出す">
+    {"nodes": [
+      {"id": 1, "c": 4, "title": "Fragment", "cat": "Master", "in": [["Base Color", "V3"], ["Alpha", "F"]], "out": [], "w": 88},
+      {"id": 3, "c": 0, "title": "UV", "cat": "Input", "in": [], "out": [["Out", "V2"]], "w": 88},
+      {"id": 5, "c": 1, "title": "Split", "cat": "Channel", "in": [["In", "V2"]], "out": [["R", "F"], ["G", "F"], ["B", "F"], ["A", "F"]], "w": 88},
+      {"id": 6, "c": 1, "title": "残り", "cat": "Property", "in": [], "out": [["Out", "F"]], "w": 88},
+      {"id": 4, "c": 2, "title": "Sprite Color", "cat": "Input", "in": [], "out": [["RGBA", "V4"], ["RGB", "V3"], ["A", "F"]], "w": 102},
+      {"id": 7, "c": 2, "title": "Step", "cat": "Math", "in": [["Edge", "F"], ["In", "F"]], "out": [["Out", "F"]], "w": 96},
+      {"id": 8, "c": 3, "title": "Multiply", "cat": "Math", "in": [["A", "F"], ["B", "F"]], "out": [["Out", "F"]], "w": 88}
+    ], "links": [
+      [3, "Out", 5, "In"],
+      [5, "R", 7, "Edge"],
+      [6, "Out", 7, "In"],
+      [4, "A", 8, "A"],
+      [7, "Out", 8, "B"],
+      [4, "RGB", 1, "Base Color"],
+      [8, "Out", 1, "Alpha"]
+    ]}
+  </script>
+  <script type="text/x-code" data-lang="as" data-file="Application/Assets/Scripts/HpGauge.as">
+    using namespace CoreEngine;
+
+    class HpGauge : ScriptComponent
+    {
+        float hp = 100.0f;
+        float maxHp = 100.0f;
+
+        void Update()
+        {
+            owner.spriteRenderer.SetMaterialFloat("fill", hp / maxHp);
+        }
+    }
+  </script>
+  <ul>
+    <li>境目をぼかしたいときは、Step の代わりに Smoothstep を使い、Edge1 に <code>fill</code>、Edge2 に <code>fill</code> より少し大きい値（Add で 0.02 を足す）、In に Split の R をつなぎ、One Minus に通してから Multiply へつなぎます。</li>
+    <li>下から出すときは、Split の G を使い、One Minus に通してから Step の Edge へつなぎます（UV の縦は上が 0）。</li>
+  </ul>
+
+  <h3 id="sgg-3d-rim">3D：縁を光らせる</h3>
+  <p>カメラから見て物の縁ほど強く光らせます。選んでいる物や、敵の目印に使えます。Fresnel Effect は面を斜めから見るほど 1 に近い値を返し、Power を大きくすると光る所が縁に寄ります。目標は <span class="ui">3D（Lit）</span>、プロパティ <code>rimColor</code> は Color で、<span class="ui">HDR</span> に印を入れます（1 より大きい値で光って見えます）。</p>
+  <script type="text/x-sg" data-caption="カメラから見て縁ほど強く光らせる">
+    {"nodes": [
+      {"id": 2, "c": 2, "title": "Vertex", "cat": "Master", "in": [["Position", "V3"], ["Normal", "V3"]], "out": [], "w": 88},
+      {"id": 1, "c": 2, "title": "Fragment", "cat": "Master", "in": [["Base Color", "V3"], ["Normal (Tangent Space)", "V3"], ["Metallic", "F"], ["Roughness", "F"], ["Ambient Occlusion", "F"], ["Emission", "V3"], ["Alpha", "F"]], "out": [], "w": 160},
+      {"id": 3, "c": 0, "title": "Fresnel Effect", "cat": "Math", "in": [["Normal", "V3"], ["View Dir", "V3"], ["Power", "F", "3"]], "out": [["Out", "F"]], "w": 118},
+      {"id": 4, "c": 0, "title": "縁の色", "cat": "Property", "in": [], "out": [["Out", "V4"]], "w": 88},
+      {"id": 5, "c": 1, "title": "Multiply", "cat": "Math", "in": [["A", "V4"], ["B", "V4"]], "out": [["Out", "V4"]], "w": 88}
+    ], "links": [
+      [3, "Out", 5, "A"],
+      [4, "Out", 5, "B"],
+      [5, "Out", 1, "Emission"]
+    ]}
+  </script>
+  <p>Base Color などのつないでいない欄は、モデルのテクスチャと値のままです。<span class="path">Engine/Assets/Models/Primitives/Sphere</span> を Game ビューへドラッグして球を置き、メッシュ描画の <span class="ui">マテリアル</span> 欄へ .mat をドラッグすると確かめられます。</p>
+
+  <h3 id="sgg-3d-breathe">3D：頂点を動かして膨らませる</h3>
+  <p>頂点を法線の向きへ押し出したり戻したりして、呼吸するように膨らませます。Vertex の出口につないだノードは、画素ごとでなく頂点ごとに計算します。Time の <span class="ui">Sine Time</span> は −1〜1 を行き来する値で、Multiply の B が膨らむ大きさ（m）です。Position と Normal Vector は、Inspector で <span class="ui">空間</span> を <span class="ui">Object</span> にします。</p>
+  <script type="text/x-sg" data-caption="頂点を法線の向きへ押し出したり戻したりする（Vertex の出口）">
+    {"nodes": [
+      {"id": 2, "c": 4, "title": "Vertex", "cat": "Master", "in": [["Position", "V3"], ["Normal", "V3"]], "out": [], "w": 88},
+      {"id": 1, "c": 4, "title": "Fragment", "cat": "Master", "in": [["Base Color", "V3"], ["Normal (Tangent Space)", "V3"], ["Metallic", "F"], ["Roughness", "F"], ["Ambient Occlusion", "F"], ["Emission", "V3"], ["Alpha", "F"]], "out": [], "w": 160},
+      {"id": 3, "c": 0, "title": "Time", "cat": "Input", "in": [], "out": [["Time", "F"], ["Sine Time", "F"], ["Cosine Time", "F"], ["Delta Time", "F"], ["Unscaled Time", "F"]], "w": 116},
+      {"id": 4, "c": 0, "title": "Normal Vector", "cat": "Input", "in": [], "out": [["Out", "V3"]], "set": [["Space", "Object"]], "w": 112},
+      {"id": 5, "c": 0, "title": "Position", "cat": "Input", "in": [], "out": [["Out", "V3"]], "set": [["Space", "Object"]], "w": 100},
+      {"id": 6, "c": 1, "title": "Multiply", "cat": "Math", "in": [["A", "F"], ["B", "F", "0.1"]], "out": [["Out", "F"]], "w": 88},
+      {"id": 7, "c": 2, "title": "Multiply", "cat": "Math", "in": [["A", "V3"], ["B", "V3"]], "out": [["Out", "V3"]], "w": 88},
+      {"id": 8, "c": 3, "title": "Add", "cat": "Math", "in": [["A", "V3"], ["B", "V3"]], "out": [["Out", "V3"]], "w": 88}
+    ], "links": [
+      [3, "Sine Time", 6, "A"],
+      [4, "Out", 7, "A"],
+      [6, "Out", 7, "B"],
+      [5, "Out", 8, "A"],
+      [7, "Out", 8, "B"],
+      [8, "Out", 2, "Position"]
+    ]}
+  </script>
+  <ul>
+    <li>球のように頂点の多いモデルで使ってください。立方体は面ごとに頂点が分かれているので、面がばらばらに離れます。</li>
+    <li>大きく動かして画面の端で物が消えるときは、メッシュ描画の <span class="ui">境界の余白</span>（m）を増やします。</li>
+    <li>シーンでは再生中だけ動きます。止まっていても Main Preview では動きます。</li>
+  </ul>
+
+  <h3 id="sgg-3d-soft">3D：物と交わる所を柔らかく消す</h3>
+  <p>水面やもや、光の板を地面や物に刺したとき、交わる所の線をぼかします。Scene Depth Difference は、奥にある物とこの面の距離（<span class="ui">形</span> が Eye なら m）を返すので、2 を掛けて Saturate すると、交わる所から 0.5 m の幅で透明から不透明へ変わります。目標は <span class="ui">3D（Lit）</span> です。</p>
+  <script type="text/x-sg" data-caption="奥の物との深度の差が 0.5 m より小さい所を透明にする">
+    {"nodes": [
+      {"id": 2, "c": 3, "title": "Vertex", "cat": "Master", "in": [["Position", "V3"], ["Normal", "V3"]], "out": [], "w": 88},
+      {"id": 1, "c": 3, "title": "Fragment", "cat": "Master", "in": [["Base Color", "V3"], ["Normal (Tangent Space)", "V3"], ["Metallic", "F"], ["Roughness", "F"], ["Ambient Occlusion", "F"], ["Emission", "V3"], ["Alpha", "F"]], "out": [], "w": 160},
+      {"id": 3, "c": 2, "title": "Color", "cat": "Input", "in": [], "out": [["Out", "V4"]], "swatch": "#34c2d2", "w": 88},
+      {"id": 4, "c": 0, "title": "Scene Depth Difference", "cat": "Input", "in": [["UV", "V2"]], "out": [["Out", "F"]], "set": [["Mode", "Eye"]], "w": 172},
+      {"id": 5, "c": 1, "title": "Multiply", "cat": "Math", "in": [["A", "F"], ["B", "F", "2"]], "out": [["Out", "F"]], "w": 88},
+      {"id": 6, "c": 2, "title": "Saturate", "cat": "Math", "in": [["In", "F"]], "out": [["Out", "F"]], "w": 88}
+    ], "links": [
+      [3, "Out", 1, "Base Color"],
+      [4, "Out", 5, "A"],
+      [5, "Out", 6, "In"],
+      [6, "Out", 1, "Alpha"]
+    ]}
+  </script>
+  <p>深度は半透明で描く物だけが読めるので、グラフを付けた物を半透明にします。<strong>順番が大事です。</strong></p>
+  <ol class="steps">
+    <li>グラフの .mat を付けた物を選び、インスペクタの <span class="ui">マテリアル</span> コンポーネントの <span class="ui">ディザリング</span> の印を外します。</li>
+    <li>そのあとで、メッシュ描画の <span class="ui">ブレンド</span> を <span class="ui">アルファ</span> にします。</li>
+  </ol>
+  <ul>
+    <li>逆の順にすると、ディザリングを外したときにブレンドが <span class="ui">なし</span> へ戻ります。</li>
+    <li>板を刺す相手（地面や箱）は、ブレンドを <span class="ui">なし</span> のままにします。ブレンドありの物は深度に入らないので、相手まで半透明だと板が相手の上に重なって見えます。</li>
+  </ul>
+
+  <h3 id="sgg-post-fog">ポストエフェクト：遠くを霧にする</h3>
+  <p>画面の深度から目までの距離を読み、遠い所ほど霧の色へ寄せます。目標は <span class="ui">ポストエフェクト</span> です。Divide の B が、霧の色になりきる距離（m）です。<strong>B を 1 のままにすると、1 m より遠い所が全部霧の色になり、画面が真っ白に見えます。</strong></p>
+  <script type="text/x-sg" data-caption="目からの距離を 30 で割り、遠いほど霧の色へ寄せる">
+    {"nodes": [
+      {"id": 1, "c": 4, "title": "Fragment", "cat": "Master", "in": [["Base Color", "V3"], ["Alpha", "F"]], "out": [], "w": 88},
+      {"id": 3, "c": 0, "title": "Scene Depth", "cat": "Input", "in": [["UV", "V2"]], "out": [["Out", "F"]], "set": [["Mode", "Eye"]], "w": 100},
+      {"id": 4, "c": 1, "title": "Divide", "cat": "Math", "in": [["A", "F"], ["B", "F", "30"]], "out": [["Out", "F"]], "w": 88},
+      {"id": 6, "c": 2, "title": "Scene Color", "cat": "Input", "in": [["UV", "V2"]], "out": [["Out", "V3"]], "w": 98},
+      {"id": 7, "c": 2, "title": "Color", "cat": "Input", "in": [], "out": [["Out", "V4"]], "swatch": "#e0e6ee", "w": 88},
+      {"id": 5, "c": 2, "title": "Saturate", "cat": "Math", "in": [["In", "F"]], "out": [["Out", "F"]], "w": 88},
+      {"id": 8, "c": 3, "title": "Lerp", "cat": "Math", "in": [["A", "V4"], ["B", "V4"], ["T", "V4"]], "out": [["Out", "V4"]], "w": 88}
+    ], "links": [
+      [3, "Out", 4, "A"],
+      [4, "Out", 5, "In"],
+      [6, "Out", 8, "A"],
+      [7, "Out", 8, "B"],
+      [5, "Out", 8, "T"],
+      [8, "Out", 1, "Base Color"]
+    ]}
+  </script>
+  <ol class="steps">
+    <li>保存したら、キャンバスの空いている所をクリックして何も選んでいない状態にします。</li>
+    <li>Inspector で、.mat の行の <span class="ui">段</span> を <code>PostTonemap</code> にして <span class="ui">Project.json に足す</span> を押します。</li>
+    <li>エンジンを起動し直すと、画面に掛かります。その後は、グラフを保存するたびにそのまま掛け直します。</li>
+  </ol>
+  <p>空は「いちばん遠い」ので霧の色になります。掛けるのをやめるときは、プロジェクトの <span class="path">Project.json</span> の <code>postEffects</code> から、その行を消します（<a href="#sg-posteffect">ポストエフェクトを作る</a>）。</p>
+
+  <h3 id="sgg-post-vignette">ポストエフェクト：画面の縁を暗くする</h3>
+  <p>画面の真ん中から離れるほど暗くします（ビネット）。Screen Position の <span class="ui">形</span> を <span class="ui">Center</span> にすると、真ん中が 0・上下左右の端が ±1 の値になり、Length でその長さ（真ん中からの距離）を取ります。Smoothstep の Edge1 が暗くなり始める距離、Edge2 が真っ暗になる距離です（四隅は約 1.41）。</p>
+  <script type="text/x-sg" data-caption="画面の真ん中からの距離で、縁へ向かって暗くする">
+    {"nodes": [
+      {"id": 1, "c": 5, "title": "Fragment", "cat": "Master", "in": [["Base Color", "V3"], ["Alpha", "F"]], "out": [], "w": 88},
+      {"id": 3, "c": 0, "title": "Screen Position", "cat": "Input", "in": [], "out": [["Out", "V2"]], "set": [["Mode", "Center"]], "w": 122},
+      {"id": 4, "c": 1, "title": "Length", "cat": "Math", "in": [["In", "V2"]], "out": [["Out", "F"]], "w": 88},
+      {"id": 5, "c": 2, "title": "Smoothstep", "cat": "Math", "in": [["Edge1", "F", "0.6"], ["Edge2", "F", "1.4"], ["In", "F"]], "out": [["Out", "F"]], "w": 128},
+      {"id": 7, "c": 3, "title": "Scene Color", "cat": "Input", "in": [["UV", "V2"]], "out": [["Out", "V3"]], "w": 98},
+      {"id": 6, "c": 3, "title": "One Minus", "cat": "Math", "in": [["In", "F"]], "out": [["Out", "F"]], "w": 88},
+      {"id": 8, "c": 4, "title": "Multiply", "cat": "Math", "in": [["A", "V3"], ["B", "V3"]], "out": [["Out", "V3"]], "w": 88}
+    ], "links": [
+      [3, "Out", 4, "In"],
+      [4, "Out", 5, "In"],
+      [5, "Out", 6, "In"],
+      [7, "Out", 8, "A"],
+      [6, "Out", 8, "B"],
+      [8, "Out", 1, "Base Color"]
+    ]}
+  </script>
+
+  <h3 id="sgg-post-gray">ポストエフェクト：白黒にする</h3>
+  <p>画面の色から明るさだけを取り出して白黒にします。Dot Product の B に、人の目に合わせた明るさの重み（<code>0.2126</code>・<code>0.7152</code>・<code>0.0722</code>）を入れます。プロパティ <code>amount</code>（Float・範囲 0〜1・既定値 1）を Lerp の T につなぐと、スクリプトから白黒の強さを変えられます（ゲームオーバーで少しずつ色を抜く、など）。</p>
+  <script type="text/x-sg" data-caption="明るさだけを取り出し、amount の割合で白黒へ寄せる">
+    {"nodes": [
+      {"id": 1, "c": 3, "title": "Fragment", "cat": "Master", "in": [["Base Color", "V3"], ["Alpha", "F"]], "out": [], "w": 88},
+      {"id": 3, "c": 0, "title": "Scene Color", "cat": "Input", "in": [["UV", "V2"]], "out": [["Out", "V3"]], "w": 98},
+      {"id": 4, "c": 1, "title": "Dot Product", "cat": "Math", "in": [["A", "V3"], ["B", "V3", "(0.2126, 0.7152, 0.0722)"]], "out": [["Out", "F"]], "w": 194},
+      {"id": 5, "c": 1, "title": "白黒の強さ", "cat": "Property", "in": [], "out": [["Out", "F"]], "w": 88},
+      {"id": 6, "c": 2, "title": "Lerp", "cat": "Math", "in": [["A", "V3"], ["B", "V3"], ["T", "V3"]], "out": [["Out", "V3"]], "w": 88}
+    ], "links": [
+      [3, "Out", 4, "A"],
+      [3, "Out", 6, "A"],
+      [4, "Out", 6, "B"],
+      [5, "Out", 6, "T"],
+      [6, "Out", 1, "Base Color"]
+    ]}
+  </script>
+  <p>スクリプトからは <code>PostEffect::GetMaterial</code> で .mat を取り、<code>SetFloat("amount", 値)</code> で変えます（<a href="#script-posteffect">プロジェクトのポストエフェクト</a>）。</p>
+
+  <h3 id="sgg-more">ほかの見本</h3>
+  <ul>
+    <li><span class="path">Projects/Sample2D/Application/Assets/Materials</span> の <span class="path">Dissolve</span>：ノイズで絵を溶かして消し、溶ける縁を光らせます。<span class="path">ShineGraph</span>：時間で明滅する光を足します（<a href="#sg-samples">見本</a>）。</li>
+    <li>テクスチャを 3 方向から貼る・高さのテクスチャで凹凸に見せる・物の空間で模様を付ける：<a href="#sg-triplanar">Triplanar と Parallax</a>・<a href="#sg-object-space">物体の空間</a>。</li>
+  </ul>
+
+  <h2 id="sgg-trouble">困ったとき</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>こうなった</th><th>見る所と直し方</th></tr></thead>
+    <tbody>
+      <tr><td>保存しても見た目が変わらない</td><td>
+        <ul>
+          <li>.mat を付けた欄が違う：スプライトはスプライト描画の <span class="ui">マテリアル</span> 欄、3D はメッシュ描画の <span class="ui">マテリアル</span> 欄です。3D の <span class="ui">マテリアル</span> コンポーネント（ベースカラーなどの値）ではありません。</li>
+          <li>グラフにエラーがある：窓の下にエラーが出て、題名の赤いノードがあります。エラーのあるグラフは保存しても、シェーダを書き換えません。</li>
+          <li>出口の欄につないでいない：つないでいない欄は、マテリアルを付けていないときと同じ値です。</li>
+        </ul>
+      </td></tr>
+      <tr><td>シーンでは動かない（Main Preview では動く）</td><td>シーンの Time は再生中だけ進みます。再生して確かめます。</td></tr>
+      <tr><td>画面や物が真っ白・真っ黒になる</td><td>つないでいない入力が既定の値のままです（Multiply と Divide の B は 1、Lerp の T は 0 など）。ノードを選び、Inspector の値を確かめます。途中の値は、ノードの右クリック <span class="ui">このノードを映す</span> で Main Preview に出せます。</td></tr>
+      <tr><td>物が赤紫（マゼンタ）になる</td><td>シェーダを作れていません。窓の下と Console のエラーを見ます。</td></tr>
+      <tr><td>3D で Alpha をつないでも透けない</td><td>物が不透明で描かれています。<span class="ui">マテリアル</span> コンポーネントの <span class="ui">ディザリング</span> を外してから、メッシュ描画の <span class="ui">ブレンド</span> を <span class="ui">アルファ</span> にします（<a href="#sgg-3d-soft">物と交わる所を柔らかく消す</a>）。</td></tr>
+      <tr><td>Scene Depth の値が動かない・いつも遠い</td><td>3D の不透明の物と UI 画像では読めません。3D は半透明にします。ブレンドありの物は深度に入らないので、相手は不透明にします。</td></tr>
+      <tr><td>ポストエフェクトが掛からない</td><td><span class="ui">Project.json に足す</span> の後は、エンジンを起動し直します。</td></tr>
+      <tr><td>ノードが検索に出ない・Vertex につなげない</td><td>目標で使えないノードは検索に出ません（ノードの一覧の <strong>（3D）</strong> などの印）。テクスチャを読むノードや画面のノードなど、画素ごとにしか計算できないノードは Vertex につなげません（頂点では Sample Texture 2D LOD を使います）。</td></tr>
+      <tr><td>法線マップやノイズの画像で、値がおかしい</td><td>色でない画像のプロパティは、<span class="ui">データとして読む（リニア）</span> に印を入れます。</td></tr>
+      <tr><td>頂点を動かした物が、画面の端で消える</td><td>メッシュ描画の <span class="ui">境界の余白</span>（m）を増やします。</td></tr>
+    </tbody>
+  </table>
+  </div>
+</article>
+
 <article class="page" id="shader-graph" data-group="スクリプト" data-title="シェーダーグラフ（ノードでシェーダを作る）" data-nav="シェーダーグラフ" data-keywords="シェーダーグラフ shader graph shadergraph ノード node つなぐ hlsl を書かない ビジュアル ディゾルブ dissolve 溶ける 光る 光の帯 シャイン shine ノイズ noise プロパティ property blackboard プレビュー preview マテリアル mat スプライト ui 画像 graph.ps.hlsl graph.cs.hlsl graph.surface.hlsl ポストエフェクト posteffect 画面全体 scene color screen position custom function カスタム関数 関数 _float hlsl を書く 3d モデル meshrenderer lit unlit 頂点 vertex 揺らす 波打つ 法線 normal フレネル fresnel 縁 view direction transform ノードのプレビュー node preview グループ group 付箋 sticky note メモ redirect 中継点 hlsl を見る hlsl を書き出す export 手書きへ移す カテゴリの色 サブグラフ sub graph subgraph shadersubgraph 部品 使い回す 再利用 まとめる サブグラフにする 物体の空間 object space object 頂点の色 vertex color triplanar 3 方向 parallax 視差 凹凸 高さ heightmap parallax occlusion mapping scene depth 深度 scene depth difference 水際 柔らかく消す screen">
   <h1>シェーダーグラフ（ノードでシェーダを作る）</h1>
-  <p class="lead">ノードを線でつないで、<a href="#api-SpriteRenderer">スプライト描画</a> と <a href="#api-UIImage">UI 画像</a> のピクセルシェーダ、画面全体に掛ける <a href="#script-posteffect">ポストエフェクト</a> のコンピュートシェーダ、<a href="#api-MeshRenderer">メッシュ描画</a> の 3D モデルのシェーダを作ります。HLSL を書かずに、光る・溶けて消える・模様が流れる・画面がゆがむ・頂点が波打つ、といった見た目を作れます。Unity の Shader Graph に近い作りです。</p>
+  <p class="lead">ノードを線でつないで、<a href="#api-SpriteRenderer">スプライト描画</a> と <a href="#api-UIImage">UI 画像</a> のピクセルシェーダ、画面全体に掛ける <a href="#script-posteffect">ポストエフェクト</a> のコンピュートシェーダ、<a href="#api-MeshRenderer">メッシュ描画</a> の 3D モデルのシェーダを作ります。HLSL を書かずに、光る・溶けて消える・模様が流れる・画面がゆがむ・頂点が波打つ、といった見た目を作れます。Unity の Shader Graph に近い作りです。初めて使うときは、考え方と作例をまとめた <a href="#shader-graph-guide">シェーダーグラフの使い方</a> から読んでください。</p>
 
   <h2 id="sg-overview">仕組み</h2>
   <p>グラフを保存すると、エディタがグラフから HLSL のシェーダを作り、マテリアル（.mat）がそのシェーダを指します。できあがるのはふつうのマテリアルなので、付け方・スクリプトからの値の変え方・書き出しは <a href="#script-material">マテリアルとシェーダ</a> と同じです。</p>
@@ -6328,6 +6902,7 @@ kbd {
     <li><span class="path">ShineGraph</span>：時間で明滅する光をスプライトの絵に足します。同じフォルダの手書きの <span class="path">Shine.PS.hlsl</span> と同じ式をノードで組んだものです（値も同じ <code>shineColor</code>・<code>speed</code>・<code>sharpness</code>・<code>phase</code>）。</li>
     <li><span class="path">Dissolve</span>：ノイズで絵を溶かして消し、溶ける縁を光らせます。<code>dissolve</code> を 0 から 1 へ動かすと消えていきます（縁の色 <code>edgeColor</code>・縁の太さ <code>edgeWidth</code>・模様の細かさ <code>noiseScale</code>）。</li>
   </ul>
+  <p>点滅・白く光る・ゲージ・縁を光らせる・霧などの組み方は、<a href="#sgg-recipes">シェーダーグラフの使い方の作例</a> にあります。</p>
 
   <h2 id="sg-notes">書き出しと注意</h2>
   <ul>
@@ -17446,10 +18021,140 @@ class TitleMenu : ScriptComponent
     return figure;
   }
 
+  // ------------------------------------------------------------------ シェーダーグラフの図
+
+  const SG_SIZE = { title: 26, setting: 20, swatch: 22, row: 22, bottom: 7, columnGap: 44, nodeGap: 18, margin: 14 };
+  const SG_MIN_ZOOM = 0.8;
+  const SG_TYPES = { F: "sg-f", V2: "sg-v2", V3: "sg-v3", V4: "sg-v4", T: "sg-t", S: "sg-s" };
+
+  // 見出し・設定・色見本の下から、ピンの行が始まる
+  function sgRowsTop(node) {
+    return 1 + SG_SIZE.title + (node.set ? node.set.length * SG_SIZE.setting : 0) + (node.swatch ? SG_SIZE.swatch : 0);
+  }
+
+  function sgPinY(node, index) {
+    return node.y + sgRowsTop(node) + index * SG_SIZE.row + SG_SIZE.row / 2;
+  }
+
+  function sgPinIndex(pins, name) {
+    for (let i = 0; i < pins.length; i++) {
+      if (pins[i][0] === name) {
+        return i;
+      }
+    }
+    return 0;
+  }
+
+  // spec = { nodes: [{ id, c（列）, title, cat, in: [[名前, 型, 値?]], out: [[名前, 型]], set?, swatch?, w }], links: [[出す id, ピン, 受ける id, ピン]] }
+  function buildShaderGraph(spec, caption) {
+    const byId = {};
+    const columns = [];
+    spec.nodes.forEach(function (node) {
+      byId[node.id] = node;
+      node.h = sgRowsTop(node) + Math.max(node.in.length, node.out.length) * SG_SIZE.row + SG_SIZE.bottom + 1;
+      (columns[node.c] = columns[node.c] || []).push(node);
+    });
+    const used = {};
+    spec.links.forEach(function (link) {
+      used[link[0] + ">" + link[1]] = true;
+      used[link[2] + "<" + link[3]] = true;
+    });
+
+    // 列は左から順に並べ、縦はいちばん高い列に合わせて真ん中へ寄せる
+    let height = 0;
+    columns.forEach(function (column) {
+      column.total = column.reduce(function (sum, node) {
+        return sum + node.h;
+      }, 0) + (column.length - 1) * SG_SIZE.nodeGap;
+      height = Math.max(height, column.total);
+    });
+    let x = SG_SIZE.margin;
+    columns.forEach(function (column) {
+      const width = Math.max.apply(null, column.map(function (node) {
+        return node.w;
+      }));
+      let y = SG_SIZE.margin + (height - column.total) / 2;
+      column.forEach(function (node) {
+        node.x = x;
+        node.y = y;
+        y += node.h + SG_SIZE.nodeGap;
+      });
+      x += width + SG_SIZE.columnGap;
+    });
+    const canvasWidth = x - SG_SIZE.columnGap + SG_SIZE.margin;
+    const canvasHeight = height + SG_SIZE.margin * 2;
+
+    // 線は出す側の型の色で、出口から受け口へ横向きに曲げる
+    const wires = spec.links.map(function (link) {
+      const from = byId[link[0]];
+      const to = byId[link[2]];
+      const outIndex = sgPinIndex(from.out, link[1]);
+      const x1 = from.x + from.w;
+      const y1 = sgPinY(from, outIndex);
+      const x2 = to.x;
+      const y2 = sgPinY(to, sgPinIndex(to.in, link[3]));
+      const bend = Math.max(36, Math.abs(x2 - x1) * 0.5);
+      return '<path class="sg-wire ' + SG_TYPES[from.out[outIndex][1]] + '" d="M' + x1 + " " + y1 +
+        " C" + (x1 + bend) + " " + y1 + " " + (x2 - bend) + " " + y2 + " " + x2 + " " + y2 + '"/>';
+    }).join("");
+
+    const nodes = spec.nodes.map(function (node) {
+      let html = '<div class="sg-node" style="left:' + node.x + "px;top:" + node.y + "px;width:" + node.w + "px;height:" + node.h + 'px">' +
+        '<div class="sg-title sg-' + escapeHtml(node.cat.toLowerCase()) + '">' + escapeHtml(node.title) + "</div>";
+      (node.set || []).forEach(function (item) {
+        html += '<div class="sg-set"><span>' + escapeHtml(item[0]) + "</span><b>" + escapeHtml(item[1]) + "</b></div>";
+      });
+      if (node.swatch) {
+        html += '<div class="sg-swatch"><i style="background:' + escapeHtml(node.swatch) + '"></i></div>';
+      }
+      const rows = Math.max(node.in.length, node.out.length);
+      for (let i = 0; i < rows; i++) {
+        html += '<div class="sg-row">';
+        const input = node.in[i];
+        if (input) {
+          const linked = used[node.id + "<" + input[0]];
+          html += '<span class="sg-in"><i class="sg-pin ' + SG_TYPES[input[1]] + (linked ? " on" : "") + '"></i>' + escapeHtml(input[0]) +
+            (input[2] && !linked ? "<em>" + escapeHtml(input[2]) + "</em>" : "") + "</span>";
+        }
+        const output = node.out[i];
+        if (output) {
+          html += '<span class="sg-out">' + escapeHtml(output[0]) +
+            '<i class="sg-pin ' + SG_TYPES[output[1]] + (used[node.id + ">" + output[0]] ? " on" : "") + '"></i></span>';
+        }
+        html += "</div>";
+      }
+      return html + "</div>";
+    }).join("");
+
+    const figure = document.createElement("figure");
+    figure.className = "figure";
+    figure.innerHTML = '<div class="scroll-x"><div class="sg-canvas" role="img" aria-label="' + escapeHtml(caption) +
+      '" style="width:' + canvasWidth + "px;height:" + canvasHeight + 'px">' +
+      '<svg width="' + canvasWidth + '" height="' + canvasHeight + '" viewBox="0 0 ' + canvasWidth + " " + canvasHeight + '" aria-hidden="true">' +
+      wires + "</svg>" + nodes + "</div></div>" +
+      (caption ? "<figcaption>" + escapeHtml(caption) + "</figcaption>" : "");
+
+    // 本文の幅に収まらないときは少し縮め、それでも入らなければ横へ送る
+    const scroller = figure.firstChild;
+    const canvas = scroller.firstChild;
+    if (window.ResizeObserver) {
+      new ResizeObserver(function () {
+        const available = scroller.clientWidth;
+        if (available > 0) {
+          canvas.style.zoom = String(Math.max(SG_MIN_ZOOM, Math.min(1, available / (canvasWidth + 2))));
+        }
+      }).observe(scroller);
+    }
+    return figure;
+  }
+
   function enhanceCode(scope) {
     scope.querySelectorAll('script[type="text/x-code"]').forEach(function (script) {
       const block = buildCodeBlock(script.textContent, script.dataset.lang || "as", script.dataset.file || "");
       script.replaceWith(block);
+    });
+    scope.querySelectorAll('script[type="text/x-sg"]').forEach(function (script) {
+      script.replaceWith(buildShaderGraph(JSON.parse(script.textContent), script.dataset.caption || ""));
     });
   }
 
@@ -18121,7 +18826,7 @@ class TitleMenu : ScriptComponent
 
   function textOf(node) {
     const clone = node.cloneNode(true);
-    clone.querySelectorAll(".anchor, .pager, .breadcrumb, .copy-button, .codeblock-head").forEach(function (el) {
+    clone.querySelectorAll(".anchor, .pager, .breadcrumb, .copy-button, .codeblock-head, .sg-canvas").forEach(function (el) {
       el.remove();
     });
     return clone.textContent.replace(/\s+/g, " ").trim();
