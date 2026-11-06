@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.64.3">
+<meta name="engine-version" content="0.65.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -3096,7 +3096,7 @@ kbd {
   <div class="callout note"><p><code>.ogg</code> も「音」として一覧に出ますが、再生できるのは <code>.wav</code> と <code>.mp3</code> だけです。</p></div>
 
   <h2 id="project-texture-color">画像の取り込み設定（色と圧縮）</h2>
-  <p>画像は、使い道に合わせて色（sRGB）かデータ（リニア）として読みます。スプライト・UI 画像・モデルのベースカラーと発光は色、モデルの法線・メタリック/ラフネス・遮蔽と、マテリアルで <code>linear</code> にしたテクスチャはデータです。色として読む画像は、PNG の sRGB の印（sRGB チャンク）が無くても sRGB として扱います。</p>
+  <p>画像は、使い道に合わせて色（sRGB）・データ（リニア）・法線マップのどれかとして読みます。スプライト・UI 画像・モデルのベースカラーと発光は色、モデルのメタリック/ラフネス・遮蔽と、マテリアルで <code>linear</code> にしたテクスチャはデータ、モデルの法線は法線マップです。色として読む画像は、PNG の sRGB の印（sRGB チャンク）が無くても sRGB として扱います。</p>
   <p>画像ごとに決めたいときは、Project で画像を選び、Inspector の <span class="ui">取り込み設定</span> で <span class="ui">色空間</span> と <span class="ui">圧縮</span> を選びます。選んだ設定は画像の <span class="path">.meta</span> の <code>import</code> に書かれ、使い道より優先されます。<span class="path">.meta</span> を直接書いても同じです。</p>
   <script type="text/x-code" data-lang="json" data-file="noise.png.meta">
 {
@@ -3114,19 +3114,22 @@ kbd {
     <tbody>
       <tr><td>書かない</td><td>使い道に合わせる（上のとおり）</td></tr>
       <tr><td><code>"srgb"</code></td><td>いつも色として読む</td></tr>
-      <tr><td><code>"linear"</code></td><td>いつもデータとして読む。画像の値をそのままリニアの値として使うので、色の画像は明るく出る</td></tr>
+      <tr><td><code>"linear"</code></td><td>いつもデータとして読む。画像の値をそのままリニアの値として使うので、色の画像は明るく出る。モデルの法線に使う画像は法線マップのまま読む</td></tr>
+      <tr><td><code>"normal"</code></td><td>いつも法線マップとして読む。データとして読み、圧縮の既定は BC5 になる。シェーダーグラフで法線マップとして使うテクスチャに付けると、モデルの法線マップと同じ形で読める</td></tr>
     </tbody>
   </table>
   </div>
   <p>ノイズやマスクなど、色でない値を描いた画像をスプライトや UI で使うときは <code>"linear"</code> にします。</p>
+  <p>法線マップは、緑が画像の上を向く形（glTF・Blender・Unity と同じ。OpenGL 形式とも呼ぶ）で読みます。緑が画像の下を向く形（DirectX 形式）で描いた画像は、緑を反転してから使ってください。UV を左右に鏡映した面（左右対称のモデルの片側など）でも、同じ画像がそのまま正しい向きで出ます。</p>
   <p>画像は、GPU がそのまま読める圧縮した形（DDS）に変換して使います。圧縮の形式は <code>format</code> で選べます。</p>
   <div class="table-wrap">
   <table>
     <thead><tr><th><code>format</code></th><th>形式</th></tr></thead>
     <tbody>
-      <tr><td>書かない</td><td>既定。透明を使う画素が 1 つでもある画像は BC3、全部が不透明な画像は BC1 にする</td></tr>
+      <tr><td>書かない</td><td>既定。法線マップは BC5、透明を使う画素が 1 つでもある画像は BC3、全部が不透明な画像は BC1 にする</td></tr>
       <tr><td><code>"bc3"</code></td><td>BC3（1 画素 1 バイト）。透明を持てる</td></tr>
       <tr><td><code>"bc1"</code></td><td>BC1（1 画素 0.5 バイト）。色の画質は BC3 と同じで、大きさは半分。透明は持てない（透明の部分は不透明になる）</td></tr>
+      <tr><td><code>"bc5"</code></td><td>BC5（1 画素 1 バイト）。赤と緑の 2 つだけを、それぞれ BC3 の透明と同じ細かさで持つ。法線マップ向け（青はシェーダが赤と緑から作る）。色の画像には使えない</td></tr>
       <tr><td><code>"bc7"</code></td><td>BC7。BC3 より色の段差やにじみが少なく、大きさは同じ。ただし変換が BC3 の 100 倍以上かかる（2048 四方で 1 枚 45 秒ほど）ので、UI やロゴなど、圧縮の汚れが目立つ画像に絞って使う</td></tr>
       <tr><td><code>"none"</code></td><td>圧縮しない（1 画素 4 バイト）。ドット絵など、圧縮でにじませたくない画像に使う。大きさは BC3 の 4 倍</td></tr>
     </tbody>
@@ -3558,18 +3561,19 @@ kbd {
   <div class="callout warn" data-title="スクリプトで開くシーンは外さない"><p>外したシーンを <code>Scene::ChangeScene</code> で開くと、書き出したゲームではシーンが見つかりません。スクリプトに外したシーンの名前の文字列があると、窓に「スクリプトに "…" と書いてあります」と出るので、そのシーンを使うならチェックを付け直してください。また、スクリプトが文字列をつないで作ったパス（<code>"Stage" + n + ".json"</code> など）で、外したシーンだけが使うアセットを読むと、書き出したゲームでは見つかりません。そういうアセットは、パスをそのままスクリプトに書くか、残すシーンやプレハブから参照してください。</p></div>
 
   <h2 id="export-cooking">テクスチャの変換</h2>
-  <p>画像のテクスチャ（PNG・JPG・JPEG・BMP・TGA）は写さずに、GPU がそのまま読める圧縮形式の DDS（既定は、透明のある画像が BC3・全部不透明な画像が BC1。<a href="#project-texture-color">画像の取り込み設定</a>で BC7・非圧縮なども選べます）へ変換して <span class="path">Cooked/</span> に書きます。遊ぶ人の PC では変換しないので、初めての起動でもテクスチャの変換を待ちません。元の画像は入りませんが、隣の <span class="path">.meta</span> は入るので、スクリプトやシーンからは今までどおり <span class="path">.png</span> などの名前で使えます。ただしローディング画面の写真（<a href="#settings-splash">起動中のローディング画面</a>）だけは、DirectX 12 の準備より前に読むので、元の画像のまま写します。</p>
+  <p>画像のテクスチャ（PNG・JPG・JPEG・BMP・TGA）は写さずに、GPU がそのまま読める圧縮形式の DDS（既定は、法線マップが BC5・透明のある画像が BC3・全部不透明な画像が BC1。<a href="#project-texture-color">画像の取り込み設定</a>で BC7・非圧縮なども選べます）へ変換して <span class="path">Cooked/</span> に書きます。遊ぶ人の PC では変換しないので、初めての起動でもテクスチャの変換を待ちません。元の画像は入りませんが、隣の <span class="path">.meta</span> は入るので、スクリプトやシーンからは今までどおり <span class="path">.png</span> などの名前で使えます。ただしローディング画面の写真（<a href="#settings-splash">起動中のローディング画面</a>）だけは、DirectX 12 の準備より前に読むので、元の画像のまま写します。</p>
   <div class="table-wrap">
   <table>
     <thead><tr><th>元の画像</th><th>変換した DDS</th></tr></thead>
     <tbody>
       <tr><td><span class="path">Application/Assets/Models/Rock/Rock_Color.png</span></td><td><span class="path">Application/Cooked/Models/Rock/Rock_Color.png.dds</span>（sRGB）</td></tr>
-      <tr><td><span class="path">Application/Assets/Models/Rock/Rock_Normal.png</span></td><td><span class="path">Application/Cooked/Models/Rock/Rock_Normal.png.linear.dds</span>（リニア）</td></tr>
+      <tr><td><span class="path">Application/Assets/Models/Rock/Rock_Roughness.png</span></td><td><span class="path">Application/Cooked/Models/Rock/Rock_Roughness.png.linear.dds</span>（リニア）</td></tr>
+      <tr><td><span class="path">Application/Assets/Models/Rock/Rock_Normal.png</span></td><td><span class="path">Application/Cooked/Models/Rock/Rock_Normal.png.normal.dds</span>（法線マップ）</td></tr>
     </tbody>
   </table>
   </div>
-  <p>モデルのマテリアルで法線・メタリック/ラフネス・遮蔽に使う画像と、マテリアル（<span class="path">.mat</span>）で <code>linear</code> にしたテクスチャはリニア、それ以外の画像は sRGB で変換します。<span class="path">.meta</span> の取り込み設定で色空間を決めた画像は、その版だけを作ります（<a href="#project-texture-color">画像の取り込み設定</a>）。</p>
-  <p>エディタでも、画像は元のファイルを直接は読まず、同じ変換で作った DDS を読みます。作った DDS は <span class="path">Intermediate/DerivedData/Texture/</span> に置き（名前は画像の GUID と <code>.srgb.dds</code> か <code>.linear.dds</code>）、書き出しはそれを圧縮して写します（<a href="#export-compression">書き出しの圧縮</a>）。隣の <span class="path">.ddinfo</span> に元の画像の大きさ・日時と、中身から計算した印を控えておき、元の画像の中身か変換の設定が変わったときだけ作り直します（日時だけを古いまま差し替えても作り直します）。初めて開くときや画像を描き直したあとは、変換のぶん時間がかかります。</p>
+  <p>モデルのマテリアルで法線に使う画像は法線マップ、メタリック/ラフネス・遮蔽に使う画像と、マテリアル（<span class="path">.mat</span>）で <code>linear</code> にしたテクスチャはリニア、それ以外の画像は sRGB で変換します。<span class="path">.meta</span> の取り込み設定で色空間を決めた画像は、設定を当てた後の版（実行時に読む版）だけを作ります（<a href="#project-texture-color">画像の取り込み設定</a>）。</p>
+  <p>エディタでも、画像は元のファイルを直接は読まず、同じ変換で作った DDS を読みます。作った DDS は <span class="path">Intermediate/DerivedData/Texture/</span> に置き（名前は画像の GUID と <code>.srgb.dds</code>・<code>.linear.dds</code>・<code>.normal.dds</code> のどれか）、書き出しはそれを圧縮して写します（<a href="#export-compression">書き出しの圧縮</a>）。隣の <span class="path">.ddinfo</span> に元の画像の大きさ・日時と、中身から計算した印を控えておき、元の画像の中身か変換の設定が変わったときだけ作り直します（日時だけを古いまま差し替えても作り直します）。初めて開くときや画像を描き直したあとは、変換のぶん時間がかかります。</p>
   <p>別々のモデルが中身の同じ画像を持っているとき（色違いの木が同じ葉の画像を持つなど）は、変換した DDS を 1 つだけ置きます。置かなかった DDS の名前は、書き出し先の根の <span class="path">CookedTextureAliases.txt</span>（1 行に「置かなかった DDS の綴り」と「代わりに読む DDS の綴り」をタブで区切って書いた一覧）に書き、書き出したゲームはそこから代わりの DDS を読みます。中身が同じかは、元の画像の中身と変換の設定から計算した印で決めるので、ファイル名や置き場所が違ってもまとめられます。まとめた数は書き出しの結果に出ます。</p>
   <p>書き出しの最後に、変換したものの一覧 <span class="path">CookManifest.json</span> を書き出し先の根に置きます。一覧のある書き出したゲームは元の画像から DDS を作りません。DDS が無い画像は Console にエラーを出して代わりの画像（<span class="path">error.png</span>）を使うので、書き出し直してください。起動のログの <code>[DerivedData] Texture: クック済み … / 中間 … / 取り込み … / 無し …</code> の行で、どこから読んだかを数えられます（書き出したゲームでは「クック済み」だけになります）。</p>
 
@@ -5987,7 +5991,7 @@ kbd {
     <tbody>
       <tr><td><code>IN.uv</code> ／ <code>IN.uvRaw</code></td><td>マテリアルの UV の変形を掛けた UV ／ 頂点の UV のまま。</td></tr>
       <tr><td><code>IN.positionWS</code></td><td>ワールドの位置（m）。</td></tr>
-      <tr><td><code>IN.normalWS</code> ／ <code>IN.tangentWS</code> ／ <code>IN.bitangentWS</code></td><td>補間した頂点の法線・接線・従法線（ワールド・正規化していない）。</td></tr>
+      <tr><td><code>IN.normalWS</code> ／ <code>IN.tangentWS</code> ／ <code>IN.bitangentWS</code></td><td>補間した頂点の法線・接線・従法線（ワールド・正規化していない）。接線は UV の u が増える向き、従法線は画像の上（v が減る向き。法線マップの緑と同じ向き）。</td></tr>
       <tr><td><code>IN.screenPosition</code> ／ <code>IN.screenDepth</code></td><td>画面の位置（px）／ この面の深度の値（0〜1・近い所が 0）。</td></tr>
       <tr><td><code>OUT.baseColor</code> ／ <code>OUT.alpha</code></td><td>ベースカラー（リニア）／ 不透明度（マテリアルのアルファカットとディザもこの値で決まる）。</td></tr>
       <tr><td><code>OUT.normalWS</code></td><td>ワールドの法線（正規化済み）。法線マップの値から作るときは <code>SurfaceTangentToWorld(IN, n)</code>。</td></tr>
@@ -6827,7 +6831,7 @@ kbd {
 
   <h3 id="sg-triplanar">Triplanar と Parallax</h3>
   <ul>
-    <li><strong>Triplanar</strong>：テクスチャを x・y・z の 3 方向から貼り、面の向きで混ぜます。UV の無い形や、引き伸ばした形でも模様が伸びません。Position をつながなければワールドの位置で貼るので、物を動かすと模様が流れます。物に付けたいときは Position（Object）をつなぎます。Tile は 1 m あたりの繰り返しの数、Blend は混ぜ目の鋭さです。Type を Normal にすると法線マップとして読み、接空間の向きを返すので、出口の Normal (Tangent Space) へそのままつなぎます（テクスチャの Linear にチェックを入れます）。</li>
+    <li><strong>Triplanar</strong>：テクスチャを x・y・z の 3 方向から貼り、面の向きで混ぜます。UV の無い形や、引き伸ばした形でも模様が伸びません。Position をつながなければワールドの位置で貼るので、物を動かすと模様が流れます。物に付けたいときは Position（Object）をつなぎます。Tile は 1 m あたりの繰り返しの数、Blend は混ぜ目の鋭さです。Type を Normal にすると法線マップ（緑が画像の上）として読み、接空間の向きを返すので、出口の Normal (Tangent Space) へそのままつなぎます（テクスチャの Linear にチェックを入れます）。</li>
     <li><strong>Parallax Mapping</strong>：高さのテクスチャ（Heightmap・白が高い）で UV を視線の向きへずらし、凹凸があるように見せます。返した UV（Parallax UVs）で色や法線のテクスチャを読みます。Amplitude は高さの強さ（0.01 倍で効く）、Channel は高さを読む成分です。軽いですが、斜めから見ると浅く見えます。Heightmap はつないでください。</li>
     <li><strong>Parallax Occlusion Mapping</strong>：高さのテクスチャを視線に沿って奥へたどるので、斜めから見ても深く見えます。Steps はたどる回数（多いほどきれいで重い）、LOD は読むミップの段で、LOD が LOD Threshold より大きいと効きを弱めます。どちらの Parallax も、形の輪郭は変わりません。</li>
   </ul>
@@ -11316,6 +11320,15 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-65-0">v0.65.0 <span class="dim">（2026-11-07）</span></h3>
+  <p>法線マップの読み方を直し、法線マップ用の圧縮（BC5）を足した版です。glTF の決まりどおり法線マップの緑を画像の上の向きとして読むので、凹凸の上下が正しくなり、UV を鏡映した面とそうでない面で向きがそろいます。</p>
+  <ul>
+    <li><strong>法線マップの緑の向き</strong>：UV が普通の向きの面では、法線マップの緑を画像の下の向き（DirectX 形式）として読んでいたため、glTF の法線マップ（緑が画像の上）の凹凸が上下に裏返っていました。UV を左右に鏡映した面だけは正しく、鏡映の有無で凹凸の向きが変わっていました。従法線の向きを画素ごとに UV の向きから決め、どちらの面でも緑を画像の上として読むようにしました。不透明と半透明のモデル、レイトレーシングの反射と屈折に写る物で同じです。</li>
+    <li><strong>法線マップの圧縮</strong>：モデルの法線マップを色の画像と同じ BC1 で圧縮していたのを、赤と緑だけを細かく残す BC5 にしました。青はシェーダが赤と緑から作ります。法線マップの DDS は BC1 の 2 倍（BC3 と同じ）の大きさになります。<a href="#project-texture-color">画像の取り込み設定</a>に、色空間の <code>"normal"</code>（法線マップ）と形式の <code>"bc5"</code> を足しました。</li>
+    <li><strong>シェーダーグラフ</strong>：<code>IN.bitangentWS</code>・<code>SurfaceTangentToWorld</code>・<code>SurfaceWorldToTangent</code>・Transform ノードの Tangent の y は画像の上を向きます。Triplanar の Normal も緑を画像の上として読みます。Normal Unpack と Model Surface の Normal は、青を使わず赤と緑から z を作るので、BC5 の画像もそのまま読めます。</li>
+  </ul>
+  <div class="callout warn" data-title="法線マップの凹凸の上下が変わります"><p>UV が普通の向きの面では、法線マップの凹凸の上下が今までと逆になります（glTF の決まりどおりの向きです）。緑が画像の下を向く形（DirectX 形式）で描いた法線マップを使っていたら、緑を反転してから使ってください。取り込んだ後に初めてプロジェクトを開くときと初めて書き出すときに、モデルの法線マップを BC5 へ変換し直すので、いつもより時間がかかります。</p></div>
 
   <h3 id="changelog-v0-64-3">v0.64.3 <span class="dim">（2026-11-07）</span></h3>
   <p>強い発光と、半透明の物の照らし方を直した版です。不透明な物と半透明の物で、同じ材質が同じ明るさに見えるようにしました。</p>
