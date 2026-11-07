@@ -18,6 +18,7 @@ namespace CoreEngine::Editor
         std::filesystem::path relative; ///< 元の画像の綴り（`Application/Assets/…` か `Engine/Assets/…`）
         bool srgb = false;              ///< sRGB 版を作るか
         bool linear = false;            ///< リニア版を作るか
+        bool normal = false;            ///< 法線マップ版を作るか
     };
 
     /// @brief 書き出しで、画像のテクスチャを DDS（クック済みテクスチャ）へ変換する
@@ -27,8 +28,9 @@ namespace CoreEngine::Editor
     {
         /// @brief 変換する画像と、作る色空間の版を決める
         /// @param sources 書き出す画像の絶対パス
-        /// @details モデルのマテリアルで法線・メタリック/ラフネス・遮蔽に使う画像はリニア版を作る。
+        /// @details モデルのマテリアルで法線に使う画像は法線マップ版、メタリック/ラフネス・遮蔽に使う画像はリニア版を作る。
         ///          それ以外の使い道がある画像と、モデルから使われていない画像は sRGB 版を作る。
+        ///          取り込み設定で色空間を決めた画像は、実行時に読む版（設定を当てた後の色空間）を作る。
         std::vector<CookTarget> PlanTargets(const std::vector<std::filesystem::path>& sources);
 
         /// @brief 1 枚を DDS へ変換し、destination の下へ書く

@@ -8,12 +8,13 @@
 // ===== マテリアル =====
 // 定数（struct Material / gMaterial）は頂点シェーダーとも共有するため別ファイルに置いている
 #include "ObjectMaterialConstants.hlsli"
+#include "../Common/NormalMap.hlsli"
 
 // ===== マテリアルテクスチャ & サンプラー =====
 Texture2D<float4> gTexture : register(t0); // ベースカラー
 SamplerState gSampler : register(s0);
 
-Texture2D<float4> gNormalMap : register(t7); // 法線マップ (RGB: タンジェント空間法線)
+Texture2D<float4> gNormalMap : register(t7); // 法線マップ (RG: タンジェント空間法線の x・y。緑 = 画像の上)
 Texture2D<float4> gMetallicRoughnessMap : register(t8); // glTF MetallicRoughness (G: 粗さ, B: 金属性)
 Texture2D<float4> gEmissiveMap : register(t9); // エミッシブマップ
 Texture2D<float> gAOMap : register(t10); // AOマップ (R: 環境遮蔽)
@@ -69,23 +70,14 @@ float3 GetEmissive(float2 uv)
 }
 
 /// @brief ノーマルマップから法線を取得してワールド空間に変換
-float3 GetNormalFromMap(float3 vertexNormal, float3 vertexTangent, float3 vertexBitangent, float2 uv)
+/// @param bitangentSign cross(法線, 接線) に掛けて画像の上へ向ける符号（NormalMapBitangentSign）
+float3 SampleNormalMapWorld(float3 vertexNormal, float3 vertexTangent, float bitangentSign, float2 uv)
 {
     if (gMaterial.useNormalMap == 0)
         return normalize(vertexNormal);
 
-    float3 normalMapSample = gNormalMap.Sample(gSampler, uv).rgb;
-    float3 tangentSpaceNormal = normalMapSample * 2.0f - 1.0f;
-
-    float3 N = normalize(vertexNormal);
-    float3 T = normalize(vertexTangent);
-    float3 B = normalize(vertexBitangent);
-
-    T = normalize(T - dot(T, N) * N);
-    B = cross(N, T);
-
-    float3x3 TBN = float3x3(T, B, N);
-    return normalize(mul(tangentSpaceNormal, TBN));
+    const float3 tangentSpaceNormal = UnpackNormalMap(gNormalMap.Sample(gSampler, uv));
+    return normalize(mul(tangentSpaceNormal, NormalMapTangentFrame(vertexNormal, vertexTangent, bitangentSign)));
 }
 
 #endif // OBJECT_MATERIAL_HLSLI

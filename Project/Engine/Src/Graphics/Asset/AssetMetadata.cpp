@@ -78,8 +78,9 @@ namespace CoreEngine
             }
             return std::string();
         };
-        settings.colorSpace = read("colorSpace", { "srgb", "linear" }, "\"srgb\" か \"linear\"");
-        settings.format = read("format", { "bc7", "bc3", "bc1", "none" }, "\"bc7\"・\"bc3\"・\"bc1\"・\"none\" のどれか");
+        settings.colorSpace = read("colorSpace", { "srgb", "linear", "normal" }, "\"srgb\"・\"linear\"・\"normal\" のどれか");
+        settings.format = read("format", { "bc7", "bc3", "bc1", "bc5", "none" },
+            "\"bc7\"・\"bc3\"・\"bc1\"・\"bc5\"・\"none\" のどれか");
         return settings;
     }
 

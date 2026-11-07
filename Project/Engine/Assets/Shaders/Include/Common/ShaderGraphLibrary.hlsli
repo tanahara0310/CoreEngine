@@ -5,6 +5,7 @@
 #define SHADER_GRAPH_LIBRARY_HLSLI
 
 #include "SceneDepth.hlsli"
+#include "NormalMap.hlsli"
 
 static const float SG_TwoPi = 6.28318530718f;
 
@@ -128,10 +129,10 @@ float SG_Rectangle(float2 uv, float width, float height)
     return saturate(min(d.x, d.y));
 }
 
-/// @brief 法線マップの色（0〜1）を接空間の向き（-1〜1）にする
+/// @brief 法線マップの色（0〜1）を接空間の向き（-1〜1）にする（z は赤と緑から作る）
 float3 SG_NormalUnpack(float4 color)
 {
-    return color.rgb * 2.0f - 1.0f;
+    return UnpackNormalMap(color);
 }
 
 /// @brief 接空間の法線の傾きを strength 倍にする（0 で平ら）
@@ -172,9 +173,10 @@ float3 SG_TriplanarNormal(Texture2D<float4> tex, SamplerState samplerState, floa
     float3 uv = position * tile;
     float3 weight = max(pow(abs(normal), blend), 0.0f);
     weight /= max(dot(weight, 1.0f), 1e-5f);
-    float3 x = tex.Sample(samplerState, uv.zy).rgb * 2.0f - 1.0f;
-    float3 y = tex.Sample(samplerState, uv.xz).rgb * 2.0f - 1.0f;
-    float3 z = tex.Sample(samplerState, uv.xy).rgb * 2.0f - 1.0f;
+    const float3 imageUp = float3(1.0f, -1.0f, 1.0f);
+    float3 x = UnpackNormalMap(tex.Sample(samplerState, uv.zy)) * imageUp;
+    float3 y = UnpackNormalMap(tex.Sample(samplerState, uv.xz)) * imageUp;
+    float3 z = UnpackNormalMap(tex.Sample(samplerState, uv.xy)) * imageUp;
     x = float3(x.xy + normal.zy, abs(x.z) * normal.x);
     y = float3(y.xy + normal.xz, abs(y.z) * normal.y);
     z = float3(z.xy + normal.xy, abs(z.z) * normal.z);

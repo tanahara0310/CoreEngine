@@ -8,6 +8,7 @@
 #include "../Lighting/LightStructures.hlsli"
 #include "../PBR/PBR.hlsli"
 #include "../Common/ColorSpace.hlsli"
+#include "../Common/NormalMap.hlsli"
 // 濡れ暗色化・水面を通った日光の合成（DeferredLighting の水中ライティングと同じ式）
 #include "../Lighting/ShadowLightFloor.hlsli"
 #include "../Lighting/UnderwaterLighting.hlsli"
@@ -249,7 +250,7 @@ RTHitSurface FetchHitSurface(
             gLinearWrap, uv, ComputeHitTextureLod(emissiveTexture, uvPerMeterLog2, footprintLog2)).rgb;
     }
 
-    // 法線マップ（GBuffer.PS と同じ。接線を法線に直交させ、従法線 = 法線 × 接線）
+    // 法線マップ（GBuffer.PS と同じ。接線を法線に直交させ、従法線は三角形の UV から画像の上へ向ける）
     if (subMesh.normalTextureIndex != kRTHitNoTexture)
     {
         float3 tangent = TransformHitDirection(
@@ -258,11 +259,13 @@ RTHitSurface FetchHitSurface(
         if (dot(tangent, tangent) > 1.0e-12f)
         {
             tangent = normalize(tangent);
+            const float bitangentSign = NormalMapBitangentSign(normal, tangent,
+                positions[1] - positions[0], positions[2] - positions[0], edgeUv1, edgeUv2);
             Texture2D<float4> normalTexture = ResourceDescriptorHeap[NonUniformResourceIndex(subMesh.normalTextureIndex)];
-            const float3 tangentSpaceNormal = normalTexture.SampleLevel(
-                gLinearWrap, uv, ComputeHitTextureLod(normalTexture, uvPerMeterLog2, footprintLog2)).rgb * 2.0f - 1.0f;
+            const float3 tangentSpaceNormal = UnpackNormalMap(normalTexture.SampleLevel(
+                gLinearWrap, uv, ComputeHitTextureLod(normalTexture, uvPerMeterLog2, footprintLog2)));
             const float3 mappedNormal = normalize(
-                tangent * tangentSpaceNormal.x + cross(normal, tangent) * tangentSpaceNormal.y
+                tangent * tangentSpaceNormal.x + cross(normal, tangent) * (bitangentSign * tangentSpaceNormal.y)
                 + normal * tangentSpaceNormal.z);
             // 面の裏へ回り込んだ法線は使わない
             if (dot(mappedNormal, faceNormal) > 0.0f)

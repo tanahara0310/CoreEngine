@@ -22,6 +22,9 @@ namespace CoreEngine
             readPath = CookedTexture::Find(resolvedPath, TextureColorSpace::Linear);
         }
         if (readPath.empty()) {
+            readPath = CookedTexture::Find(resolvedPath, TextureColorSpace::Normal);
+        }
+        if (readPath.empty()) {
             readPath = resolvedPath;
         }
 

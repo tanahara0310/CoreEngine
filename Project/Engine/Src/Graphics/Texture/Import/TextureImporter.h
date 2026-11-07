@@ -12,10 +12,11 @@ namespace CoreEngine
     /// @brief 画像の圧縮の形式（.meta の import.format）
     enum class TextureCompression
     {
-        Auto, ///< 透明のある画像は BC3、全部不透明な画像は BC1
+        Auto, ///< 法線マップは BC5、透明のある画像は BC3、全部不透明な画像は BC1
         BC7,  ///< BC7（モード 6 だけを使う速い圧縮）
         BC3,  ///< BC3（DXT5）
         BC1,  ///< BC1（DXT1。透明を持たない。BC3 の半分の大きさ）
+        BC5,  ///< BC5（赤と緑の 2 チャンネルだけ。法線マップ向け。BC3 と同じ大きさ）
         None, ///< 圧縮しない（RGBA 各 8 ビット）
     };
 
@@ -29,7 +30,7 @@ namespace CoreEngine
         /// @brief 取り込み設定で形式を決めていない画像の形式
         inline constexpr TextureCompression kDefaultCompression = TextureCompression::Auto;
 
-        /// @brief 取り込み設定の文字列（"bc7" / "bc3" / "bc1" / "none" / 空）から形式を決める（空なら既定）
+        /// @brief 取り込み設定の文字列（"bc7" / "bc3" / "bc1" / "bc5" / "none" / 空）から形式を決める（空なら既定）
         TextureCompression ParseCompression(std::string_view setting);
 
         /// @brief 形式を取り込み設定の文字列にする
@@ -41,7 +42,7 @@ namespace CoreEngine
         /// @brief 画像を読み、ミップを作って圧縮し、DDS として書く
         /// @param sourcePath 元の画像
         /// @param ddsPath 書き出す DDS
-        /// @param colorSpace SRGB は *_UNORM_SRGB、Linear は *_UNORM の形式で書く
+        /// @param colorSpace SRGB は *_UNORM_SRGB、Linear と Normal は *_UNORM の形式で書く（BC5 は常に BC5_UNORM）
         /// @param compression 圧縮の形式
         /// @return 書けたら true
         bool Import(const std::filesystem::path& sourcePath, const std::filesystem::path& ddsPath,
