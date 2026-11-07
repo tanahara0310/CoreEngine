@@ -8,6 +8,7 @@
 #include "Graphics/Water/Foam/WaterShoreFoam.h"
 #include "Graphics/Water/RayTracing/WaterSeabedRayTracingManager.h"
 #include "Graphics/Water/Surface/WaterRenderResources.h"
+#include "Graphics/Water/Surface/WaterShoreMeshDisplacement.h"
 #include "Graphics/Water/Surface/WaterSurfaceComponent.h"
 #include "Graphics/Water/Surface/WaterSurfaceMeshGenerator.h"
 #include "Graphics/Water/System/WaterFrameContext.h"
@@ -49,12 +50,22 @@ namespace CoreEngine
         if (const WaterShoreFoam* foam = frame.domain.GetWaterShoreFoam(); foam && foam->IsActive()) {
             window_.shoreFoamSRV = foam->GetSRVHandle();
         }
+
+        // 岸の格子の頂点の変位。同じフレームの WaterShoreMeshDisplacementPass が同じ範囲で書く
+        if (const WaterShoreMeshDisplacement* displacement = frame.domain.GetWaterShoreMeshDisplacement();
+            displacement && displacement->IsInitialized()) {
+            window_.shoreMeshDisplacementReady = true;
+            window_.shoreMeshDisplacementSrvIndex = displacement->GetSrvHeapIndex();
+        }
     }
 
     void WaterShoreModule::Capture(const WaterSurfaceComponent& waterPlane, WaterSurfaceData& snapshot) const
     {
         const bool seabedEnabled = window_.seabedSRV.ptr != 0 && window_.size > 0.0f;
-        snapshot.shoreMeshEnabled = (window_.shoreMeshEnabled && seabedEnabled) ? 1u : 0u;
+        // RT と高さの問い合わせは岸の格子の形を頂点の変位から求めるので、変位を書けないときは粗い格子として扱う
+        snapshot.shoreMeshEnabled =
+            (window_.shoreMeshEnabled && seabedEnabled && window_.shoreMeshDisplacementReady) ? 1u : 0u;
+        snapshot.shoreMeshDisplacementSrvIndex = window_.shoreMeshDisplacementSrvIndex;
         snapshot.shoreMeshOriginXZ[0] = window_.originXZ[0];
         snapshot.shoreMeshOriginXZ[1] = window_.originXZ[1];
         snapshot.shoreMeshSize = window_.size;

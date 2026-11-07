@@ -370,6 +370,9 @@
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\WaterShoreFoamPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\WaterShoreMeshDisplacementPass.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
@@ -455,6 +458,9 @@
       <Filter>Engine\Src\Graphics\Water\Surface</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterSurfaceMeshGenerator.cpp">
+      <Filter>Engine\Src\Graphics\Water\Surface</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterShoreMeshDisplacement.cpp">
       <Filter>Engine\Src\Graphics\Water\Surface</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Camera\CameraManager.cpp">
@@ -2307,6 +2313,9 @@
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterSurfaceMeshGenerator.h">
       <Filter>Engine\Src\Graphics\Water\Surface</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterShoreMeshDisplacement.h">
+      <Filter>Engine\Src\Graphics\Water\Surface</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterRenderResources.h">
       <Filter>Engine\Src\Graphics\Water\Surface</Filter>
     </ClInclude>
@@ -2935,6 +2944,9 @@
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\WaterShoreFoamPass.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\WaterShoreMeshDisplacementPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.h">

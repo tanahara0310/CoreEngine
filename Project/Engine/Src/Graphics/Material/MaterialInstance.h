@@ -19,57 +19,57 @@ namespace CoreEngine
 
         // ===== Base Color =====
         /// @brief ベースカラーファクターを設定（ベースカラーテクスチャと乗算される）
-        void SetColor(const Vector4& color) { materialData_->color = color; }
-        Vector4 GetColor() const { return materialData_->color; }
+        void SetColor(const Vector4& color) { materialData_.color = color; Upload(); }
+        Vector4 GetColor() const { return materialData_.color; }
 
         // ===== Lighting =====
         /// @brief ライティング有効/無効 (false=アンリット, true=PBR)
-        void SetLightingEnabled(bool enable) { materialData_->enableLighting = static_cast<int32_t>(enable); }
-        bool IsLightingEnabled() const { return materialData_->enableLighting != 0; }
+        void SetLightingEnabled(bool enable) { materialData_.enableLighting = static_cast<int32_t>(enable); Upload(); }
+        bool IsLightingEnabled() const { return materialData_.enableLighting != 0; }
 
         // ===== UV Transform =====
-        void SetUVTransform(const Matrix4x4& uvTransform) { materialData_->uvTransform = uvTransform; }
-        Matrix4x4 GetUVTransform() const { return materialData_->uvTransform; }
+        void SetUVTransform(const Matrix4x4& uvTransform) { materialData_.uvTransform = uvTransform; Upload(); }
+        Matrix4x4 GetUVTransform() const { return materialData_.uvTransform; }
 
         // ===== PBR Factors =====
         /// @brief 金属性ファクター（MRテクスチャのBチャネルと乗算）
-        void SetMetallic(float metallic)   { materialData_->metallic = metallic; }
-        float GetMetallic() const          { return materialData_->metallic; }
+        void SetMetallic(float metallic)   { materialData_.metallic = metallic; Upload(); }
+        float GetMetallic() const          { return materialData_.metallic; }
         /// @brief 粗さファクター（MRテクスチャのGチャネルと乗算）
-        void SetRoughness(float roughness) { materialData_->roughness = roughness; }
-        float GetRoughness() const         { return materialData_->roughness; }
+        void SetRoughness(float roughness) { materialData_.roughness = roughness; Upload(); }
+        float GetRoughness() const         { return materialData_.roughness; }
         /// @brief AOマップ適用強度 (0=AOマップ無効, 1=フル適用)
-        void SetOcclusionStrength(float strength) { materialData_->occlusionStrength = strength; }
-        float GetOcclusionStrength() const        { return materialData_->occlusionStrength; }
+        void SetOcclusionStrength(float strength) { materialData_.occlusionStrength = strength; Upload(); }
+        float GetOcclusionStrength() const        { return materialData_.occlusionStrength; }
         /// @brief エミッシブファクター（エミッシブテクスチャと乗算）
-        void SetEmissiveFactor(const Vector3& factor) { materialData_->emissiveFactor = factor; }
-        Vector3 GetEmissiveFactor() const             { return materialData_->emissiveFactor; }
+        void SetEmissiveFactor(const Vector3& factor) { materialData_.emissiveFactor = factor; Upload(); }
+        Vector3 GetEmissiveFactor() const             { return materialData_.emissiveFactor; }
 
         // ===== Normal Map =====
         /// @brief 法線マップ使用フラグ（法線は乗算合成できないためフラグで制御）
-        void SetNormalMapEnabled(bool enable)    { materialData_->useNormalMap = static_cast<int32_t>(enable); }
-        bool IsNormalMapEnabled() const          { return materialData_->useNormalMap != 0; }
+        void SetNormalMapEnabled(bool enable)    { materialData_.useNormalMap = static_cast<int32_t>(enable); Upload(); }
+        bool IsNormalMapEnabled() const          { return materialData_.useNormalMap != 0; }
 
         // ===== Alpha Dithering =====
-        void SetDitheringEnabled(bool enable) { materialData_->enableDithering = static_cast<int32_t>(enable); }
-        bool IsDitheringEnabled() const       { return materialData_->enableDithering != 0; }
-        void SetDitheringScale(float scale)   { materialData_->ditheringScale = scale; }
-        float GetDitheringScale() const       { return materialData_->ditheringScale; }
+        void SetDitheringEnabled(bool enable) { materialData_.enableDithering = static_cast<int32_t>(enable); Upload(); }
+        bool IsDitheringEnabled() const       { return materialData_.enableDithering != 0; }
+        void SetDitheringScale(float scale)   { materialData_.ditheringScale = scale; Upload(); }
+        float GetDitheringScale() const       { return materialData_.ditheringScale; }
 
         // ===== Alpha Cutoff (discard しきい値) =====
-        void SetAlphaCutoff(float cutoff)     { materialData_->alphaCutoff = cutoff; }
-        float GetAlphaCutoff() const          { return materialData_->alphaCutoff; }
+        void SetAlphaCutoff(float cutoff)     { materialData_.alphaCutoff = cutoff; Upload(); }
+        float GetAlphaCutoff() const          { return materialData_.alphaCutoff; }
 
         // ===== 頂点アニメーション（Shaders/Include/Object/VertexAnimation.hlsli） =====
         /// @brief 頂点アニメーションの種類（モデルが TEXCOORD_1 / TEXCOORD_2 の値を持つときだけ動く）
-        void SetVertexAnimation(VertexAnimationType type) { materialData_->vertexAnimation = static_cast<int32_t>(type); }
-        VertexAnimationType GetVertexAnimation() const { return static_cast<VertexAnimationType>(materialData_->vertexAnimation); }
+        void SetVertexAnimation(VertexAnimationType type) { materialData_.vertexAnimation = static_cast<int32_t>(type); Upload(); }
+        VertexAnimationType GetVertexAnimation() const { return static_cast<VertexAnimationType>(materialData_.vertexAnimation); }
         /// @brief 振幅の倍率（1 = モデル作成時の想定）
-        void SetVertexAnimStrength(float strength) { materialData_->vertexAnimStrength = strength; }
-        float GetVertexAnimStrength() const        { return materialData_->vertexAnimStrength; }
+        void SetVertexAnimStrength(float strength) { materialData_.vertexAnimStrength = strength; Upload(); }
+        float GetVertexAnimStrength() const        { return materialData_.vertexAnimStrength; }
         /// @brief 速さの倍率（1 = 既定の周期）
-        void SetVertexAnimSpeed(float speed) { materialData_->vertexAnimSpeed = speed; }
-        float GetVertexAnimSpeed() const     { return materialData_->vertexAnimSpeed; }
+        void SetVertexAnimSpeed(float speed) { materialData_.vertexAnimSpeed = speed; Upload(); }
+        float GetVertexAnimSpeed() const     { return materialData_.vertexAnimSpeed; }
 
         // ===== Serialization =====
         /// @brief マテリアルパラメータを JSON に書き出す

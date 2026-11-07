@@ -45,7 +45,8 @@ cbuffer WaterSurfaceData : register(b1)
     float2 gSurfaceShoreMeshOriginXZ;      // 範囲の XZ の最小の角 [m]
     float gSurfaceShoreMeshCellSize;       // 岸の格子の 1 マスの幅 [m]
     float gSurfaceShoreMeshBlendWidth;     // 範囲の端から内側へ、粗い格子の形から移す幅 [m]
-    float2 gSurfacePad3;
+    uint gSurfaceShoreMeshDisplacementSrvIndex; // 岸の格子の頂点の変位（WaterShoreMeshDisplacement.CS）の SRV のヒープの中の番号
+    float gSurfacePad3;
     // 海の範囲マップ（WaterSeaMap.hlsli。地図はシェーダー可視ヒープから番号で引く）
     float2 gSurfaceSeaMapOriginXZ;         // 地図の範囲の XZ の最小の角 [m]
     float gSurfaceSeaMapTexelsPerMeter;    // 1 m あたりのテクセル数
@@ -328,6 +329,28 @@ float3 SampleShoreMeshVertexDisplacement(Texture2DArray<float4> displacementTex,
 /// @brief 岸の格子で、描かれた位置から変位前の格子上の位置を求めるときに水平変位をたどり直す回数
 static const int kShoreMeshInverseIterations = 2;
 
+/// @brief 岸の格子の頂点の変位を書いたテクスチャから、変位前の位置の変位を三角形で補間して返す
+/// @param shoreDisplacement テクセル (i, j) が岸の格子の頂点 (i, j) の変位（WaterShoreMeshDisplacement.CS）
+/// @details 三角形の分け方は FindWaterGridTriangle と同じ（各マスの対角は (1,0)-(0,1)）
+float3 InterpolateShoreMeshDisplacement(Texture2D<float4> shoreDisplacement, float2 baseXZ)
+{
+    const float cellCount = round(gSurfaceShoreMeshSize / gSurfaceShoreMeshCellSize);
+    const float2 gridCoord = (baseXZ - gSurfaceShoreMeshOriginXZ) / gSurfaceShoreMeshCellSize;
+    const float2 cellIndex = clamp(floor(gridCoord), 0.0f, cellCount - 1.0f);
+    const float2 f = saturate(gridCoord - cellIndex);
+    const int2 cell = int2(cellIndex);
+
+    const float3 d10 = shoreDisplacement.Load(int3(cell + int2(1, 0), 0)).xyz;
+    const float3 d01 = shoreDisplacement.Load(int3(cell + int2(0, 1), 0)).xyz;
+    if (f.x + f.y <= 1.0f)
+    {
+        const float3 d00 = shoreDisplacement.Load(int3(cell, 0)).xyz;
+        return d00 * (1.0f - f.x - f.y) + d10 * f.x + d01 * f.y;
+    }
+    const float3 d11 = shoreDisplacement.Load(int3(cell + int2(1, 1), 0)).xyz;
+    return d11 * (f.x + f.y - 1.0f) + d10 * (1.0f - f.y) + d01 * (1.0f - f.x);
+}
+
 /// @brief ラスタライザが実際に描く水面の高さ（基準面からのオフセット）を返す
 /// @details 水面メッシュの頂点（WaterSurfaceMeshGenerator の格子）でだけ変位を評価し、
 ///          ラスタライザと同じ三角形で補間する。岸の格子の範囲の中は岸の格子、外は粗い格子の三角形
@@ -351,16 +374,13 @@ float EvaluateDrawnSurfaceHeight(Texture2DArray<float4> displacementTex, float2 
         && IsInsideShoreMesh(baseXZ, gSurfaceShoreMeshOriginXZ, gSurfaceShoreMeshSize))
     {
         // 岸の格子は短い波の水平変位も持つので、岸の格子の変位でたどり直す
+        Texture2D<float4> shoreDisplacement = ResourceDescriptorHeap[gSurfaceShoreMeshDisplacementSrvIndex];
         [unroll]
         for (int iteration = 0; iteration < kShoreMeshInverseIterations; ++iteration)
         {
-            baseXZ = worldXZ - SampleShoreMeshVertexDisplacement(displacementTex, baseXZ).xz;
+            baseXZ = worldXZ - InterpolateShoreMeshDisplacement(shoreDisplacement, baseXZ).xz;
         }
-        const WaterGridTriangle tri = FindWaterGridTriangle(
-            baseXZ, gSurfaceShoreMeshOriginXZ, gSurfaceShoreMeshCellSize.xx);
-        return SampleShoreMeshVertexDisplacement(displacementTex, tri.corner0).y * tri.weights.x
-            + SampleShoreMeshVertexDisplacement(displacementTex, tri.corner1).y * tri.weights.y
-            + SampleShoreMeshVertexDisplacement(displacementTex, tri.corner2).y * tri.weights.z;
+        return InterpolateShoreMeshDisplacement(shoreDisplacement, baseXZ).y;
     }
 
     float2 gridOrigin;
