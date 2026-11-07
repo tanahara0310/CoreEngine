@@ -637,8 +637,11 @@ namespace CoreEngine
 
         const float sinElevation = -lightDirection.y / std::sqrt(lengthSq);
 
-        // 光源が地平線より下（sin<=0）なら影を落とす意味が無いので基準値のまま返す。
-        // 倍率は kMaxRayDistanceScale で頭打ちにする（地平線近傍での爆発を防ぐ）。
+        // 光源が地平線より下（sin<=0）なら基準値のまま返す。
+        // 倍率は kMaxRayDistanceScale で頭打ちにする。
+        if (sinElevation <= 0.0f) {
+            return settings_.maxRayDistance;
+        }
         const float minSin = 1.0f / kMaxRayDistanceScale;
         const float scale = 1.0f / (std::max)(sinElevation, minSin);
         return settings_.maxRayDistance * (std::min)(scale, kMaxRayDistanceScale);
@@ -715,6 +718,7 @@ namespace CoreEngine
         UINT width, UINT height,
         ViewID viewId,
         uint32_t lightIndex,
+        const void* lightKey,
         const RayTracingShadowWaterSurface& waterSurface)
     {
         // 設定は CVar が保持する。UI・設定復元・コンソールのどの経路で変わってもここで取り込む
@@ -753,8 +757,8 @@ namespace CoreEngine
             view.dispatchInfo.status = RayTracingDispatchStatus::RayTracingUnsupported;
             return;
         }
-        if (asMgr_->GetBLASCount() == 0) {
-            view.dispatchInfo.status = RayTracingDispatchStatus::NoBLAS;
+        if (!asMgr_->IsTLASReady()) {
+            view.dispatchInfo.status = RayTracingDispatchStatus::NoTLAS;
             return;
         }
 
@@ -773,6 +777,16 @@ namespace CoreEngine
             return;
         }
         view.dispatchInfo.outputSrvPtr = SlotSRV(vi, lightIndex, TextureSlot::Mask).ptr;
+
+        // 別のライトがこの番号へ来たとき・前のフレームに撃っていないときは履歴を捨てる
+        const uint64_t frameNumber = dxCommon_->Frame().FrameNumber();
+        const bool continuous =
+            (frameNumber == view.lastDispatchFrame) || (frameNumber == view.lastDispatchFrame + 1);
+        if (view.lightKey != lightKey || !continuous) {
+            view.isHistoryValid = false;
+        }
+        view.lightKey = lightKey;
+        view.lastDispatchFrame = frameNumber;
 
         // フレームを 1 つ進める（履歴の書き込み先を入れ替え、サンプル位置を巡回させる）
         // カウンタは view × light ごと（共有だと 2x2 巡回が欠ける。ShadowView 側コメント参照）

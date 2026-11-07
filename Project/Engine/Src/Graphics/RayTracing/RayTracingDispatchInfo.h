@@ -10,7 +10,7 @@ namespace CoreEngine
         None = 0,                ///< 今フレームまだ呼ばれていない
         NotInitialized,          ///< マネージャが未初期化
         RayTracingUnsupported,   ///< DXR 非対応 GPU
-        NoBLAS,                  ///< BLAS が 1 つも無い（TLAS が空）
+        NoTLAS,                  ///< 撃てる TLAS が組めていない
         InvalidCommandList,      ///< コマンドリストが null
         CommandList4Unavailable, ///< ID3D12GraphicsCommandList4 が取得できない
         OutputAllocationFailed,  ///< 出力テクスチャの確保に失敗

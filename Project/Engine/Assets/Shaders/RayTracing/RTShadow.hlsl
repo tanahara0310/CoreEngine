@@ -244,12 +244,13 @@ void RTShadowRayGen()
     // 時間方向は R2 列で層化し、空間方向はピクセル固有の回転で無相関にする。
     // 旧実装は「ピクセル座標とフレーム番号を混ぜたハッシュ」＝完全なホワイトノイズで、
     // 蓄積 N フレームぶんのサンプルが偏って固まりやすく収束が遅かった。
+    // 列の番号はフレームごとに kMaxSamples 個ずつ割り当て、本数が変わっても前のフレームと重ねない
     uint2 rotation = SampleRotation(launchIndex);
 
     [loop]
     for (int s = 0; s < numSamples; ++s)
     {
-        uint2 fixedPoint = R2SequenceFixed(gFrameIndex * uint(numSamples) + uint(s)) + rotation;
+        uint2 fixedPoint = R2SequenceFixed(gFrameIndex * uint(kMaxSamples) + uint(s)) + rotation;
         float r1 = float(fixedPoint.x) * (1.0f / 4294967296.0f);
         float r2 = float(fixedPoint.y) * (1.0f / 4294967296.0f);
 
@@ -266,9 +267,10 @@ void RTShadowRayGen()
         ShadowPayload payload;
         payload.shadowFactor = 0.0f;
 
+        // 当たれば遮られているので、最初の当たりで止めて closest-hit も呼ばない（payload は 0 のまま）
         TraceRay(
             gScene,
-            RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,
+            RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER,
             0xFF,
             0,
             1,
@@ -295,8 +297,7 @@ void RTShadowMiss(inout ShadowPayload payload)
 
 // ============================================================
 // Closest Hit シェーダー（遮蔽物あり → 影）
-// RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH により最初のヒットで即終了するため
-// 通常は呼ばれないが、State Object の完全性のために定義
+// RayGen は RAY_FLAG_SKIP_CLOSEST_HIT_SHADER で撃つので呼ばれない。ヒットグループを組むために置く
 // ============================================================
 [shader("closesthit")]
 void RTShadowClosestHit(inout ShadowPayload payload, in BuiltInTriangleIntersectionAttributes attr)

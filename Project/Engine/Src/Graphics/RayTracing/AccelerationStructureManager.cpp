@@ -182,8 +182,10 @@ namespace CoreEngine
         }
         staticSolidSignature_ = signature;
 
-        if (!isSupported_ || instances.empty()) {
-            tlasInstanceCount_ = 0;
+        // 組み終えたときだけ撃てる状態に戻す
+        tlasInstanceCount_ = 0;
+        tlasReady_ = false;
+        if (!isSupported_ || !cmdList) {
             return;
         }
 
@@ -191,10 +193,9 @@ namespace CoreEngine
         Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> cmdList4;
         if (FAILED(cmdList->QueryInterface(IID_PPV_ARGS(&cmdList4)))) return;
 
-        tlasInstanceCount_ = static_cast<UINT>(instances.size());
-
+        // 物が 0 個のフレームも空の TLAS を組む（どのレイも外れる）
         const UINT64 instanceBufferSize =
-            sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * instances.size();
+            sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * (std::max)(instances.size(), size_t{ 1 });
 
         // ===== 今フレームぶんのインスタンスバッファをリングから選ぶ =====
         //   このバッファは UPLOAD ヒープにあり、GPU は「コマンドを実行する時点」で
@@ -247,7 +248,11 @@ namespace CoreEngine
 
         // インスタンスデータの書き込み
         D3D12_RAYTRACING_INSTANCE_DESC* mapped = nullptr;
-        instanceDescBuffer->Map(0, nullptr, reinterpret_cast<void**>(&mapped));
+        if (FAILED(instanceDescBuffer->Map(0, nullptr, reinterpret_cast<void**>(&mapped))) || !mapped) {
+            Logger::GetInstance().Logf(
+                LogLevel::Error, LogCategory::Graphics, "BuildTLAS: Failed to map TLAS instance buffer.");
+            return;
+        }
         for (UINT i = 0; i < static_cast<UINT>(instances.size()); ++i) {
             mapped[i] = {};
             memcpy(mapped[i].Transform, instances[i].transform, sizeof(mapped[i].Transform));
@@ -327,8 +332,14 @@ namespace CoreEngine
         const D3D12_GPU_VIRTUAL_ADDRESS previousAddress =
             tlasResult ? tlasResult->GetGPUVirtualAddress() : 0;
 
-        ensureASBuffer(tlasResult, prebuild.ResultDataMaxSizeInBytes);
-        ensureScratchBuffer(tlasScratch_, prebuild.ScratchDataSizeInBytes);
+        constexpr UINT64 kMinASBufferBytes = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT;
+        ensureASBuffer(tlasResult, (std::max)(prebuild.ResultDataMaxSizeInBytes, kMinASBufferBytes));
+        ensureScratchBuffer(tlasScratch_, (std::max)(prebuild.ScratchDataSizeInBytes, kMinASBufferBytes));
+        if (!tlasResult || !tlasScratch_) {
+            Logger::GetInstance().Logf(
+                LogLevel::Error, LogCategory::Graphics, "BuildTLAS: Failed to create TLAS result or scratch buffer.");
+            return;
+        }
 
         // TLAS のビルド
         D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc{};
@@ -363,6 +374,9 @@ namespace CoreEngine
                 descriptorAllocator_->WriteSRV(tlasSRVDescriptor, nullptr, srvDesc);
             }
         }
+
+        tlasInstanceCount_ = static_cast<UINT>(instances.size());
+        tlasReady_ = tlasSRVDescriptor.IsValid();
     }
 
     bool AccelerationStructureManager::BuildBLASFromModelResource(

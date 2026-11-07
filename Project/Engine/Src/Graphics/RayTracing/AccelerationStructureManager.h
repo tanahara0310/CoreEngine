@@ -130,6 +130,9 @@ namespace CoreEngine
             return tlasSRVDescriptors_[tlasInstanceRingIndex_].gpuHandle;
         }
 
+        /// @brief 直近の BuildTLAS が組み終えていて GetTLASSRVHandle() へ撃てるか（物が 0 個の空の TLAS も含む）
+        bool IsTLASReady() const { return tlasReady_; }
+
         /// @brief DXR がサポートされているか
         bool IsSupported() const { return isSupported_; }
 
@@ -315,6 +318,7 @@ namespace CoreEngine
         // デバッグ表示用の統計
         UINT raytracingTier_ = 0;       ///< D3D12_RAYTRACING_TIER の生値
         UINT tlasInstanceCount_ = 0;    ///< 直近の BuildTLAS のインスタンス数
+        bool tlasReady_ = false;        ///< 直近の BuildTLAS が組み終えたか
 
         bool isSupported_ = false;
     };

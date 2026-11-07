@@ -9,7 +9,7 @@ namespace CoreEngine
         case RayTracingDispatchStatus::None:                    return "None";
         case RayTracingDispatchStatus::NotInitialized:          return "NotInitialized";
         case RayTracingDispatchStatus::RayTracingUnsupported:   return "RayTracingUnsupported";
-        case RayTracingDispatchStatus::NoBLAS:                  return "NoBLAS";
+        case RayTracingDispatchStatus::NoTLAS:                  return "NoTLAS";
         case RayTracingDispatchStatus::InvalidCommandList:      return "InvalidCommandList";
         case RayTracingDispatchStatus::CommandList4Unavailable: return "CommandList4Unavailable";
         case RayTracingDispatchStatus::OutputAllocationFailed:  return "OutputAllocationFailed";

@@ -3,6 +3,7 @@
 
 #include <cassert>
 
+#include "Graphics/RHI/Command/DeferredReleaseQueue.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/Logger/Logger.h"
@@ -26,8 +27,8 @@ namespace CoreEngine
             return true;
         }
 
-        // ディスクリプタハンドルは保持したまま再利用する（リサイズ毎の確保はスロットリークになる）
-        slot.texture.Release();
+        // 前のテクスチャとビューは、記録中のフレームまでの GPU 作業が終わってから手放す
+        RetireSlot(dxCommon, descriptorAllocator, slot);
         slot.width = width;
         slot.height = height;
         slot.format = options.format;
@@ -99,7 +100,12 @@ namespace CoreEngine
         return true;
     }
 
-    void RayTracingOutputViewSet::ReleaseIfSizeMismatch(UINT width, UINT height, uint32_t slotIndex)
+    void RayTracingOutputViewSet::ReleaseIfSizeMismatch(
+        GraphicsCore* dxCommon,
+        DescriptorAllocator* descriptorAllocator,
+        UINT width,
+        UINT height,
+        uint32_t slotIndex)
     {
         assert(slotIndex < kMaxSlotCount && "RayTracingOutputViewSet: slot index out of range");
 
@@ -108,9 +114,25 @@ namespace CoreEngine
             return;
         }
 
-        // テクスチャのみ解放し、ディスクリプタハンドルは次回 EnsureTexture() で再利用する
-        slot.texture.Release();
+        RetireSlot(dxCommon, descriptorAllocator, slot);
         slot.width = width;
         slot.height = height;
+    }
+
+    void RayTracingOutputViewSet::RetireSlot(
+        GraphicsCore* dxCommon, DescriptorAllocator* descriptorAllocator, Slot& slot)
+    {
+        if (!slot.texture && !slot.uavHandle.IsValid() && !slot.srvHandle.IsValid()) {
+            return;
+        }
+        assert(dxCommon && descriptorAllocator && "RayTracingOutputViewSet: slot owns resources without a device");
+
+        DeferredReleaseQueue& deferredRelease = dxCommon->DeferredRelease();
+        if (slot.texture) {
+            deferredRelease.PushForCurrentFrame(Microsoft::WRL::ComPtr<ID3D12Resource>(slot.texture.Get()));
+            slot.texture.Release();
+        }
+        deferredRelease.PushForCurrentFrame(*descriptorAllocator, slot.uavHandle);
+        deferredRelease.PushForCurrentFrame(*descriptorAllocator, slot.srvHandle);
     }
 }

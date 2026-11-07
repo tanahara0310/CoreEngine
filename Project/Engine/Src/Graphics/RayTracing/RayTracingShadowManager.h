@@ -156,6 +156,7 @@ namespace CoreEngine
         /// @param sceneDepthSRV WorldPosition ターゲット廃止に伴い深度から復元する
         /// @param invViewProj 深度復元用 View*Projection の逆行列
         /// @param width,height フル解像度。ハーフ解像度時のトレース解像度はここから導出する
+        /// @param lightKey ライトを見分ける値（前のフレームと違えば履歴を捨てる）
         /// @param waterSurface 水中の受光点を屈折した経路で調べるための水面
         void Dispatch(ID3D12GraphicsCommandList* cmdList,
             D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
@@ -165,6 +166,7 @@ namespace CoreEngine
             UINT width, UINT height,
             ViewID viewId = ViewID::GameView,
             uint32_t lightIndex = 0,
+            const void* lightKey = nullptr,
             const RayTracingShadowWaterSurface& waterSurface = {});
 
         /// @brief 空間前処理＋テンポラル蓄積パスを実行する（Dispatch の直後に呼ぶ）
@@ -312,6 +314,8 @@ namespace CoreEngine
             bool dispatchedThisFrame = false;
             bool isHistoryValid = false;   ///< 履歴テクスチャが初回フレーム書き込み済みか
             uint32_t historyParity = 0;    ///< 今フレームの書き込み先（0 = HistoryA / 1 = HistoryB）
+            const void* lightKey = nullptr; ///< 履歴を作ったライトを見分ける値
+            uint64_t lastDispatchFrame = 0; ///< 最後に撃ったフレームの番号
 
             /// @brief この view × light のディスパッチ回数（2x2 サンプル位相・レイジッターの種）
             uint32_t frameCount = 0;

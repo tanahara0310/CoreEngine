@@ -150,8 +150,8 @@ namespace CoreEngine
         }
 
         ImGui::TextDisabled("  ※TLAS はフラスタム非依存（画面外の遮蔽物も影を落とす）");
-        ImGui::TextDisabled("  ※現状 TLAS に入るのは不透明なメッシュ描画コンポーネントのみ");
-        ImGui::TextDisabled("    （スキンメッシュ・半透明・FFT海面は未対応 = Stage 4）");
+        ImGui::TextDisabled("  ※TLAS に入るのは不透明なメッシュとパーティクル（スキンと揺れる植物は形を毎フレーム更新）");
+        ImGui::TextDisabled("    （半透明は入らない。水面は TLAS に入れず、レイの側で式から求める）");
     }
 
     // -------------------------------------------------------------------------
@@ -373,7 +373,7 @@ namespace CoreEngine
         ImGui::SliderInt("対象ライト", &selectedLightIndex_, 0,
             static_cast<int>(RayTracingShadowManager::kMaxDirectionalLights) - 1);
 
-        // マスクは R8_UNORM の 1 チャンネルなので、ImGui では赤成分のみで表示される
+        // マスクは R16_FLOAT の 1 チャンネルなので、ImGui では赤成分のみで表示される
         // （0=影, 1=光 → 赤いほど光が当たっている）
         ImGui::TextDisabled("  1ch テクスチャのため赤で表示される（赤 = 非遮蔽 / 黒 = 影）");
 
