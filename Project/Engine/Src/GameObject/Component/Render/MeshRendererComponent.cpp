@@ -53,6 +53,13 @@ REFLECT_DEFINE_BEGIN(CoreEngine::MeshRendererComponent, "メッシュ描画")
     REFLECT_ACCESSOR("boundsPadding", "境界の余白", GetBoundsPadding, SetBoundsPadding,
         p.range = Range(0.0f, 1000.0f, 0.01f),
         p.tooltip = "画面の外かを決める箱を各向きへ広げる量（m）。マテリアルで頂点を大きく動かして画面の端で消えるときに増やす")
+    REFLECT_ACCESSOR("rayTracing", "レイトレーシング", IsRayTracingEnabled, SetRayTracingEnabled,
+        p.tooltip = "オフにすると、影・水面の反射と屈折・海底の高さのどれにも出ない")
+    REFLECT_ENUM_ACCESSOR("castShadows", "影を落とす", GetCastShadows, SetCastShadows, ::CoreEngine::kRTCastShadowNames,
+        p.tooltip = "自動は、ブレンドがなしなら落とし、それ以外なら落とさない")
+    REFLECT_ENUM_ACCESSOR("visibleInReflections", "反射・屈折に映る", GetVisibleInReflections, SetVisibleInReflections,
+        ::CoreEngine::kRTReflectedNames,
+        p.tooltip = "水面の反射と屈折に映るか。自動は、ブレンドがなしなら映り、それ以外なら映らない")
     REFLECT_METHOD("SetMaterialFloat", "マテリアルの値を上書き（数）", SetMaterialFloat)
     REFLECT_METHOD("SetMaterialInt", "マテリアルの値を上書き（整数）", SetMaterialInt)
     REFLECT_METHOD("SetMaterialVector", "マテリアルの値を上書き（ベクトル）", SetMaterialVector)

@@ -5,6 +5,7 @@
 
 #include "../Include/Common/DepthReconstruction.hlsli"
 #include "../Include/Common/ShaderMath.hlsli" // PI / TWO_PI
+#include "../Include/RayTracing/RTInstanceMask.hlsli"
 
 // 出力: R = シャドウ値（0=影, 1=光）, G = このピクセルに撃ったレイ本数。
 // トレース解像度（ハーフ解像度時はフルの半分）。
@@ -271,7 +272,7 @@ void RTShadowRayGen()
         TraceRay(
             gScene,
             RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER,
-            0xFF,
+            kRTInstanceMaskShadowCaster,
             0,
             1,
             0,

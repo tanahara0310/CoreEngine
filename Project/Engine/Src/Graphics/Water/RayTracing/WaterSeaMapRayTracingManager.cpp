@@ -7,6 +7,7 @@
 #include <cstring>
 
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
+#include "Graphics/RayTracing/RTInstanceMask.h"
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/RHI/Command/DeferredReleaseQueue.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
@@ -158,7 +159,7 @@ namespace CoreEngine
         constants.texelSize = key.texelSize;
         constants.maxValue = WaterSeaMapBuilder::kMaxValue;
         constants.upProbeDistance = kUpProbeDistance;
-        constants.instanceMask = RayTracingInstanceMask::kSolid;
+        constants.instanceMask = RTInstanceMask::kStaticSolid;
 
         const SurfaceConstantsUpload surface = UploadSurfaceDataForDispatch(dispatchSurfaceData, FFTOceanInput{});
         BindAndDispatchRays(

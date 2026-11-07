@@ -637,6 +637,9 @@
     <ClCompile Include="Engine\Src\EngineSystem\Subsystem\RayTracingSubsystem.cpp">
       <Filter>Engine\Src\EngineSystem\Subsystem</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\EngineSystem\Subsystem\RTSceneSources.cpp">
+      <Filter>Engine\Src\EngineSystem\Subsystem</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\EngineSystem\Framework.cpp">
       <Filter>Engine\Src\EngineSystem</Filter>
     </ClCompile>
@@ -788,6 +791,9 @@
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingDispatchInfo.cpp">
+      <Filter>Engine\Src\Graphics\RayTracing</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\RTScene.cpp">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingPassBase.cpp">
@@ -2737,6 +2743,15 @@
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingDispatchInfo.h">
+      <Filter>Engine\Src\Graphics\RayTracing</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\RTInstanceMask.h">
+      <Filter>Engine\Src\Graphics\RayTracing</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\RTObjectSettings.h">
+      <Filter>Engine\Src\Graphics\RayTracing</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\RTScene.h">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingOutputViewSet.h">

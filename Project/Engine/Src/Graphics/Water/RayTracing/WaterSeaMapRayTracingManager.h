@@ -30,7 +30,7 @@ namespace CoreEngine
 
     /// @brief 水面の範囲全体の水深・上の物までの高さ・海とのつながりをレイトレーシングで測り、
     ///        波の変位を弱める地図（海の範囲マップ）を作るマネージャ
-    /// @details 測るのは止まっている形の決まった物（RayTracingInstanceMask::kSolid）だけ。
+    /// @details 測るのは止まっている形の決まった物（RTInstanceMask::kStaticSolid）だけ。
     ///          測る物・水面の範囲・水面の高さ・細かさが変わって kStableFrames 続いたら測り直す。
     ///          測った値は読み戻して別スレッドで地図にし、できたら GPU へ送って差し替える
     class WaterSeaMapRayTracingManager : public WaterRayTracingPassBase {
@@ -50,7 +50,7 @@ namespace CoreEngine
         /// @brief 測り直しの判断・測定・読み戻し・できた地図の転送を進める（フレームに 1 回）
         /// @param cmdList 今フレームの記録先
         /// @param surfaceData 今フレームの水面（水面が無ければ nullptr。地図を捨てる）
-        /// @param staticSceneSignature 止まっている形の決まった物の並びを表す値（AccelerationStructureManager::GetStaticSolidSignature）
+        /// @param staticSceneSignature 止まっている形の決まった物の並びを表す値（RTScene::GetStaticSolidSignature）
         void Update(
             ID3D12GraphicsCommandList* cmdList,
             const WaterSurfaceData* surfaceData,

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.66.1">
+<meta name="engine-version" content="0.67.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -9467,7 +9467,7 @@ kbd {
   </div>
 </article>
 
-<article class="page" id="guide-3d" data-group="ゲームの作り方" data-title="3D ゲームの作り方" data-nav="3D ゲーム" data-keywords="3D 作り方 浮力 浮かべる 船 ボート ブイ 水面の高さ アクション 三人称 TPS FPS モデル gltf obj fbx マテリアル ライト 太陽 昼 夜 カメラ 追従 回転 キャラクタコントローラ 歩く 剛体 投げる 当たり判定 クリック 光線 レイキャスト アニメーション 爆発 パーティクル サンプルコード">
+<article class="page" id="guide-3d" data-group="ゲームの作り方" data-title="3D ゲームの作り方" data-nav="3D ゲーム" data-keywords="3D 作り方 浮力 浮かべる 船 ボート ブイ 水面の高さ アクション 三人称 TPS FPS モデル gltf obj fbx マテリアル ライト 太陽 昼 夜 カメラ 追従 回転 キャラクタコントローラ 歩く 剛体 投げる 当たり判定 クリック 光線 レイキャスト アニメーション 爆発 パーティクル サンプルコード 影 影を落とさない 映り込み 反射 屈折 レイトレーシング">
   <h1>3D ゲームの作り方</h1>
   <p class="lead">3D のゲームは、モデルを置き、ライトで照らし、透視投影のカメラで映して、スクリプトで動かします。このページでは、3D のゲームで使うものを機能ごとに、サンプルコードで説明します。当たり判定・プレハブ・UI・音は 2D と同じ部品です。</p>
 
@@ -9606,6 +9606,19 @@ kbd {
     }
   </script>
   <p>置けるライトの数には上限があります（平行光源 4・点光源 16・スポット 16・エリア 8）。空・雲・霧の設定は <a href="#api-SkyBox">空と大気散乱</a> にあります。</p>
+  <h3 id="g3d-shadow">影と映り込み</h3>
+  <p>影は、平行光源からレイトレーシングで落とします（DXR に対応した GPU だけ。点光源・スポット・エリアライトは影を落としません）。水面の反射と屈折も、レイトレーシングで映る物を調べます。どの物が影を落とし、水面に映るかは、<a href="#api-MeshRenderer">メッシュ描画</a> と <a href="#api-ParticleSystem">パーティクル</a>（モデルの粒）の 3 つの項目で物ごとに決めます。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>項目</th><th>選べる値</th><th>使い道</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">レイトレーシング</span></td><td>オン・オフ</td><td>オフにすると、影にも水面の反射・屈折にも出ません。海底の高さ（水の深さ・波打ち際）を測るときも無いものとして扱います</td></tr>
+      <tr><td><span class="ui">影を落とす</span></td><td>自動・落とす・落とさない</td><td>影だけ消したい物（光る看板・目印など）を <span class="ui">落とさない</span> にします</td></tr>
+      <tr><td><span class="ui">反射・屈折に映る</span></td><td>自動・映る・映らない</td><td>水面に映したくない物を <span class="ui">映らない</span> にします</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p><span class="ui">自動</span> は、<span class="ui">ブレンド</span> が <span class="ui">なし</span> の物なら影を落として水面に映り、それ以外（半透明・加算など）の物なら落とさず映りません。半透明の物を <span class="ui">落とす</span> にすると、不透明な物と同じ濃さの影を落とします。</p>
 
   <h2 id="g3d-move">動かす</h2>
   <div class="table-wrap">
@@ -10114,6 +10127,7 @@ kbd {
       <tr><td>カメラを動かしても元に戻る</td><td><code>Scene::GetGameCamera()</code> ではなく、カメラのオブジェクトの <code>transform</code> を書き換えているか</td></tr>
       <tr><td>モデルが裏返って見える・穴があく</td><td>モデルの面の向き（書き出すときの設定）。.obj は面の巻き順が逆のことがあります</td></tr>
       <tr><td>暗い・明るすぎる</td><td>ライトの <span class="ui">強さ</span> の単位（平行光源は lx、点光源は cd）。種類を変えると強さは前の値のまま</td></tr>
+      <tr><td>物の影が出ない・水面に映らない</td><td>メッシュ描画の <span class="ui">影を落とす</span>・<span class="ui">反射・屈折に映る</span>。<span class="ui">ブレンド</span> が <span class="ui">なし</span> 以外の物は、<span class="ui">自動</span> のままだと影を落とさず映りません（<a href="#g3d-shadow">影と映り込み</a>）</td></tr>
       <tr><td>キャラクターが落ちない・動かない</td><td>スクリプトから毎フレーム <code>SimpleMove</code> を呼んでいるか</td></tr>
       <tr><td>キャラクターや物が床を突き抜ける</td><td>コライダーの <span class="ui">トリガー</span> を外したか</td></tr>
       <tr><td>アニメーションが切り替わらない</td><td>クリップの名前が JSON の <code>clips</code> と同じか。<code>SwitchWithBlend</code> を毎フレーム呼んでいないか</td></tr>
@@ -11320,6 +11334,15 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-67-0">v0.67.0 <span class="dim">（2026-11-08）</span></h3>
+  <p>物ごとに、影を落とすか・水面に映るかを選べるようにした版です。あわせて、レイトレーシングの加速構造（TLAS）に載せる物を集める処理を 1 か所にまとめました。設定を変えなければ、見た目は前と同じです。</p>
+  <ul>
+    <li><strong>物ごとの設定</strong>：<a href="#api-MeshRenderer">メッシュ描画</a> と <a href="#api-ParticleSystem">パーティクル</a>（モデルの粒）に、<span class="ui">レイトレーシング</span>（スクリプトでは <code>rayTracing</code>）・<span class="ui">影を落とす</span>（<code>castShadows</code>）・<span class="ui">反射・屈折に映る</span>（<code>visibleInReflections</code>）を足しました。<span class="ui">自動</span> は、ブレンドがなしの物なら影を落として映り、それ以外の物なら落とさず映りません（前と同じ）。半透明の物も <span class="ui">落とす</span> にすれば影を落とします（<a href="#g3d-shadow">影と映り込み</a>）。</li>
+    <li><strong>TLAS の印</strong>：インスタンスの印（InstanceMask）を、物の種類（植物・魚・粒）ではなく、どのレイが当たるか（影を落とす・反射と屈折に映る）と、形の決まった不透明な物（止まっている・動いている）で付けるようにしました。影と水面のレイは全部の印（<code>0xFF</code>）ではなく目的の印へ撃ち、海底の高さと SeaMap は形の決まった物の印へ撃ちます。</li>
+    <li><strong>RTScene</strong>：シーンの物を集め、動く形の BLAS をまとめて作り、TLAS と材質の表を組む処理を、<code>RayTracingSubsystem</code> と <code>AccelerationStructureManager</code> から <code>RTScene</code> へ移しました。新しい種類の物は、C++ の .cpp で <code>RT_SCENE_SOURCE_REGISTER</code> に物を足す関数を登録すれば載せられます。</li>
+    <li><strong>デバッグ表示</strong>：<span class="ui">Ray Tracing</span> のパネルの加速構造に、出どころ（メッシュ描画・パーティクル）ごとの物の数を出しました。</li>
+  </ul>
 
   <h3 id="changelog-v0-66-1">v0.66.1 <span class="dim">（2026-11-08）</span></h3>
   <p>レイトレーシング（影・水面）の不具合をまとめて直した版です。見た目は、影の縁のざらつきの模様が変わるほかは変わりません。</p>
@@ -16687,7 +16710,7 @@ void Update()
   {
     id: "MeshRenderer", kind: "component", cat: "描画", display: "メッシュ描画", type: "MeshRenderer",
     accessor: "owner.meshRenderer", title: "メッシュ描画（MeshRenderer）", brief: "3D モデルを描く",
-    keywords: "モデル 描画 表示 見た目 メッシュ gltf obj fbx 立方体 球 ブレンド 半透明 マテリアル シェーダ surface",
+    keywords: "モデル 描画 表示 見た目 メッシュ gltf obj fbx 立方体 球 ブレンド 半透明 マテリアル シェーダ surface 影 映り込み レイトレーシング",
     summary: "3D モデルを読み込んで描きます。見た目を持つ 3D のオブジェクトの中心になるコンポーネントです。",
     requires: "トランスフォーム（無ければ自動で足します）",
     props: [
@@ -16695,7 +16718,10 @@ void Update()
       ["テクスチャ", "texture", "string（テクスチャ）", "なし", "すべての面の基本色のテクスチャを差し替えます。空ならモデルのテクスチャ。"],
       ["ブレンド", "blendMode", "int", "0", "0 = なし、1 = アルファ、2 = 加算、3 = 減算、4 = 乗算、5 = スクリーン"],
       ["マテリアル", "material", "string（マテリアル）", "なし", "描き方を決めるシェーダ（名前.Surface.hlsl）と値（.mat）。指さなければモデルのテクスチャとマテリアルの値で描く（<a href=\"#script-material-3d\">3D のマテリアル</a>）。"],
-      ["境界の余白", "boundsPadding", "float", "0", "画面の外かを決める箱を各向きへ広げる量（m）。マテリアルで頂点を大きく動かして、画面の端で消えるときに増やす。"]
+      ["境界の余白", "boundsPadding", "float", "0", "画面の外かを決める箱を各向きへ広げる量（m）。マテリアルで頂点を大きく動かして、画面の端で消えるときに増やす。"],
+      ["レイトレーシング", "rayTracing", "bool", "true", "false にすると、影・水面の反射と屈折・海底の高さのどれにも出ない（<a href=\"#g3d-shadow\">影と映り込み</a>）。"],
+      ["影を落とす", "castShadows", "int", "0", "0 = 自動（ブレンドがなしなら落とす）、1 = 落とす、2 = 落とさない"],
+      ["反射・屈折に映る", "visibleInReflections", "int", "0", "水面の反射と屈折に映るか。0 = 自動（ブレンドがなしなら映る）、1 = 映る、2 = 映らない"]
     ],
     sections: [
       {
@@ -17506,14 +17532,17 @@ void Update()
   {
     id: "ParticleSystem", kind: "component", cat: "エフェクト", display: "パーティクル", type: "ParticleSystem",
     accessor: "owner.particleSystem", title: "パーティクル（ParticleSystem）", brief: "炎・煙・火花",
-    keywords: "パーティクル 粒子 エフェクト 爆発 火花 煙 炎 放出 emit",
+    keywords: "パーティクル 粒子 エフェクト 爆発 火花 煙 炎 放出 emit 影 映り込み レイトレーシング",
     summary: "小さな粒をたくさん出して、炎・煙・火花・爆発などを作ります（CPU で計算。1 つで最大 1028 粒）。",
     propsText: "<p>インスペクタでは、下の項目のほかに「メイン」「放出（レート・バースト）」「形状（放出範囲）」「初速方向」「色の変化」「サイズの変化」「回転」「ノイズ（揺らぎ）」「外力（重力・風）」「床との衝突」のモジュールを調整できます。<span class=\"ui\">再生</span>・<span class=\"ui\">停止</span>・<span class=\"ui\">クリア</span> で編集中に確かめられ、プリセットは <span class=\"path\">Application/Assets/Presets/Particle/</span> に保存できます。</p>",
     props: [
       ["テクスチャ", "texture", "string（テクスチャ）", "circle.png", "粒の画像。"],
       ["モデル", "model", "string（モデル）", "なし", "指定すると、板の代わりにこのモデルを粒として描く。"],
       ["ブレンド", "blendMode", "int", "2", "0 = なし、1 = アルファ、2 = 加算、3 = 減算、4 = 乗算、5 = スクリーン（炎や光は加算、煙はアルファ）"],
-      ["ビルボード", "billboard", "int", "1", "0 = なし、1 = カメラの正面、2 = Y 軸だけ回す、3 = 画面と平行"]
+      ["ビルボード", "billboard", "int", "1", "0 = なし、1 = カメラの正面、2 = Y 軸だけ回す、3 = 画面と平行"],
+      ["レイトレーシング", "rayTracing", "bool", "true", "モデルの粒だけ。false にすると、影にも水面の反射と屈折にも出ない。"],
+      ["影を落とす", "castShadows", "int", "0", "モデルの粒だけ。0 = 自動（ブレンドがなしなら落とす）、1 = 落とす、2 = 落とさない"],
+      ["反射・屈折に映る", "visibleInReflections", "int", "0", "モデルの粒だけ。0 = 自動（ブレンドがなしなら映る）、1 = 映る、2 = 映らない"]
     ],
     sections: [
       {

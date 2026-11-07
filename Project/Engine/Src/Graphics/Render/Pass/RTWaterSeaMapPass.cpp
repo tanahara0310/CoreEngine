@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "RTWaterSeaMapPass.h"
 
-#include "Graphics/RayTracing/AccelerationStructureManager.h"
+#include "Graphics/RayTracing/RTScene.h"
 #include "Graphics/Water/RayTracing/WaterSeaMapRayTracingManager.h"
 
 namespace CoreEngine
@@ -17,8 +17,7 @@ namespace CoreEngine
         const WaterSurfaceData* surface =
             (context.waterSurfaceState && context.waterSurfaceState->regionValid != 0)
             ? context.waterSurfaceState : nullptr;
-        const uint64_t signature = context.accelerationStructureManager
-            ? context.accelerationStructureManager->GetStaticSolidSignature() : 0;
+        const uint64_t signature = context.rtScene ? context.rtScene->GetStaticSolidSignature() : 0;
         seaMap->Update(context.cmdList, surface, signature);
     }
 }

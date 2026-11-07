@@ -2,13 +2,11 @@
 #include "RayTracingSubsystem.h"
 #include <algorithm>
 #include <cmath>
-#include <cstddef>
 #include <utility>
 #include <vector>
 
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
-#include "Graphics/Model/Model.h"
 #include "Graphics/Model/ModelResource.h"
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
@@ -21,238 +19,17 @@
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Cloud/VolumetricCloudManager.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
-#include "Graphics/RayTracing/VertexAnimationDeformer.h"
-#include "Graphics/Render/Model/VertexAnimation.h"
-#include "Graphics/Material/MaterialInstance.h"
-#include "Graphics/Material/SurfaceMaterialPipeline.h"
-#include "Graphics/Model/VertexData.h"
+#include "Graphics/RayTracing/RTScene.h"
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
 #include "Graphics/Render/Pass/RenderPass.h"
-#include "GameObject/Component/Render/MeshRendererComponent.h"
-#include "GameObject/GameObjectManager.h"
-#include "Particle/ParticleSystemComponent.h"
 #include "Camera/View/ViewInfo.h"
 #include "Math/MathCore.h"
 #include "Scene/SceneManager.h"
-#include "Utility/CVar/CVar.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
 {
-    namespace
-    {
-        CVar<bool> cvDynamicGeometry{ "r.RT.DynamicGeometry", true,
-            "揺れる植物・海草とスキニングモデルの今の形を、レイトレーシング（影・水面の反射・コースティクス）へ"
-            "毎フレーム反映する（off なら静止形の BLAS を使う）" };
-
-        CVar<float> cvDynamicGeometryDistance{ "r.RT.DynamicGeometry.Distance", 50.0f,
-            "揺れる植物・海草の揺れをレイトレーシングへ反映する、カメラからの距離 [m]。"
-            "これより遠い物は静止形の BLAS を使う（0 なら距離によらずすべて反映する）",
-            CVarRange{ 0.0f, 2000.0f } };
-
-        /// @brief 反映をやめる距離 = 反映を始める距離 × この倍率（反映中の物はこの距離まで反映を続ける）
-        constexpr float kDynamicGeometryKeepScale = 1.1f;
-
-        /// @brief カメラからモデルの外接球の表面までの距離 [m]（カメラが球の中なら 0 以下）
-        float DistanceToBounds(const ModelResource& resource, const Matrix4x4& world, const Vector3& cameraPosition)
-        {
-            const BoundingBox& box = resource.GetLocalBoundingBox();
-            if (!box.IsValid()) {
-                return 0.0f;
-            }
-            const Vector3 localCenter = {
-                (box.min.x + box.max.x) * 0.5f, (box.min.y + box.max.y) * 0.5f, (box.min.z + box.max.z) * 0.5f };
-            const Vector3 half = { (box.max.x - box.min.x) * 0.5f, (box.max.y - box.min.y) * 0.5f,
-                (box.max.z - box.min.z) * 0.5f };
-            const auto& m = world.m;
-            // 行ベクトル規約（p' = p * M）で中心をワールドへ移し、半径は各軸の拡大の最大で広げる
-            const Vector3 center = {
-                localCenter.x * m[0][0] + localCenter.y * m[1][0] + localCenter.z * m[2][0] + m[3][0],
-                localCenter.x * m[0][1] + localCenter.y * m[1][1] + localCenter.z * m[2][1] + m[3][1],
-                localCenter.x * m[0][2] + localCenter.y * m[1][2] + localCenter.z * m[2][2] + m[3][2] };
-            const float scale = (std::max)({
-                std::sqrt(m[0][0] * m[0][0] + m[0][1] * m[0][1] + m[0][2] * m[0][2]),
-                std::sqrt(m[1][0] * m[1][0] + m[1][1] * m[1][1] + m[1][2] * m[1][2]),
-                std::sqrt(m[2][0] * m[2][0] + m[2][1] * m[2][1] + m[2][2] * m[2][2]) });
-            const float radius = std::sqrt(half.x * half.x + half.y * half.y + half.z * half.z) * scale;
-            const float dx = center.x - cameraPosition.x;
-            const float dy = center.y - cameraPosition.y;
-            const float dz = center.z - cameraPosition.z;
-            return std::sqrt(dx * dx + dy * dy + dz * dz) - radius;
-        }
-
-        /// @brief 今フレーム風や波で揺れる（植物・海草の）マテリアルを持つか
-        /// @note 魚の泳ぎは 1 cm ほどしか動かないので、影は静止形（共有の BLAS）で足りる
-        bool SwaysWithWindOrWater(const Model& model, const VertexAnimationParams& params)
-        {
-            const ModelResource* resource = model.GetModelResource();
-            if (!resource || !resource->HasVertexAnimationData()) {
-                return false;
-            }
-            for (size_t i = 0; i < model.GetMaterialCount(); ++i) {
-                const MaterialInstance* material = model.GetMaterial(i);
-                if (!material || material->GetVertexAnimStrength() <= 0.0f) {
-                    continue;
-                }
-                const VertexAnimationType type = material->GetVertexAnimation();
-                if ((type == VertexAnimationType::Plant && params.windStrength > 0.0f)
-                    || (type == VertexAnimationType::Seagrass && params.waterStrength > 0.0f)) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        /// @brief メッシュのインスタンスの種類の印（材質の頂点の動きで決める）
-        UINT ClassifyMeshInstanceMask(const Model& model)
-        {
-            for (size_t i = 0; i < model.GetMaterialCount(); ++i) {
-                const MaterialInstance* material = model.GetMaterial(i);
-                if (!material) {
-                    continue;
-                }
-                switch (material->GetVertexAnimation()) {
-                case VertexAnimationType::Plant:
-                case VertexAnimationType::Seagrass:
-                    return RayTracingInstanceMask::kVegetation;
-                case VertexAnimationType::Fish:
-                    return RayTracingInstanceMask::kCreature;
-                default:
-                    break;
-                }
-            }
-            return RayTracingInstanceMask::kSolid;
-        }
-
-        /// @brief サブメッシュ 1 つぶんの材質をヒットシェーディングのサブメッシュ表の行へ詰める
-        /// @param material          そのスロットの材質（無ければ既定値）
-        /// @param baseColorOverride 全サブメッシュのベースカラーを差し替えるテクスチャ（無ければ ptr = 0）
-        RTHitSubMesh MakeHitSubMesh(
-            const SubMeshData& subMesh,
-            const MaterialInstance* material,
-            const ModelResource& resource,
-            D3D12_GPU_DESCRIPTOR_HANDLE baseColorOverride,
-            const DescriptorAllocator& descriptors)
-        {
-            RTHitSubMesh row{};
-            row.firstTriangle = subMesh.startIndex / 3;
-            row.triangleCount = subMesh.indexCount / 3;
-            row.baseColorTextureIndex = kRTHitNoTexture;
-            row.emissiveTextureIndex = kRTHitNoTexture;
-            row.metallicRoughnessTextureIndex = kRTHitNoTexture;
-            row.normalTextureIndex = kRTHitNoTexture;
-            row.occlusionTextureIndex = kRTHitNoTexture;
-            row.occlusionStrength = 0.0f;
-
-            D3D12_GPU_DESCRIPTOR_HANDLE baseColorTexture = baseColorOverride;
-            D3D12_GPU_DESCRIPTOR_HANDLE normalTexture{};
-            if (subMesh.materialIndex < resource.GetMaterials().size()) {
-                const ModelResource::PBRTextureHandles& textures = resource.GetMaterialTextures(subMesh.materialIndex);
-                if (baseColorTexture.ptr == 0) {
-                    baseColorTexture = textures.baseColor;
-                }
-                if (textures.hasEmissive && textures.emissive.ptr != 0) {
-                    row.emissiveTextureIndex = descriptors.GetSRVHeapIndex(textures.emissive);
-                }
-                if (textures.hasMetallicRoughness && textures.metallicRoughness.ptr != 0) {
-                    row.metallicRoughnessTextureIndex = descriptors.GetSRVHeapIndex(textures.metallicRoughness);
-                }
-                if (textures.hasNormal) {
-                    normalTexture = textures.normal;
-                }
-                if (textures.hasOcclusion && textures.occlusion.ptr != 0) {
-                    row.occlusionTextureIndex = descriptors.GetSRVHeapIndex(textures.occlusion);
-                }
-            }
-            if (baseColorTexture.ptr != 0) {
-                row.baseColorTextureIndex = descriptors.GetSRVHeapIndex(baseColorTexture);
-            }
-
-            row.baseColor = { 1.0f, 1.0f, 1.0f, 1.0f };
-            row.uvTransformU = { 1.0f, 0.0f, 0.0f, 0.0f };
-            row.uvTransformV = { 0.0f, 1.0f, 0.0f, 0.0f };
-            row.roughness = 0.5f;
-            row.alphaCutoff = 0.5f;
-            row.flags = kRTHitSubMeshFlagLit;
-            if (material) {
-                // HLSL 側は mul(float4(uv, 0, 1), uvTransform)
-                const Matrix4x4 uvTransform = material->GetUVTransform();
-                row.baseColor = material->GetColor();
-                row.uvTransformU = { uvTransform.m[0][0], uvTransform.m[1][0], uvTransform.m[3][0], 0.0f };
-                row.uvTransformV = { uvTransform.m[0][1], uvTransform.m[1][1], uvTransform.m[3][1], 0.0f };
-                row.emissive = material->GetEmissiveFactor();
-                row.metallic = material->GetMetallic();
-                row.roughness = material->GetRoughness();
-                row.alphaCutoff = material->GetAlphaCutoff();
-                row.occlusionStrength = material->GetOcclusionStrength();
-                row.flags = (material->IsLightingEnabled() ? kRTHitSubMeshFlagLit : 0u)
-                    | (material->IsDitheringEnabled() ? kRTHitSubMeshFlagDither : 0u);
-                // 法線テクスチャは材質が法線マップを使うときだけ（GBuffer.PS と同じ）
-                if (material->IsNormalMapEnabled() && normalTexture.ptr != 0) {
-                    row.normalTextureIndex = descriptors.GetSRVHeapIndex(normalTexture);
-                }
-            }
-            return row;
-        }
-
-        // ヒットシェーディング（Include/RayTracing/RTHitShading.hlsli）は頂点を VertexData の並びで読む
-        static_assert(sizeof(VertexData) == 64 && offsetof(VertexData, texcoord) == 16
-            && offsetof(VertexData, normal) == 24 && offsetof(VertexData, tangent) == 36,
-            "RTHitShading.hlsli の kRTHitVertexStride / kRTHitVertex*Offset と一致させること");
-
-        /// @brief TLAS のインスタンス 1 つぶんの行と、そのサブメッシュの行を足す
-        /// @param model 材質の持ち主（無ければモデルリソースの既定の材質）
-        /// @param vertexBufferIndexOverride 頂点バッファのヒープ内インデックス（UINT32_MAX = BLAS の静止形の頂点）
-        void AppendHitInstance(
-            const AccelerationStructureManager& asMgr,
-            const AccelerationStructureManager::InstanceDesc& instance,
-            const ModelResource& resource,
-            const Model* model,
-            D3D12_GPU_DESCRIPTOR_HANDLE baseColorOverride,
-            const DescriptorAllocator& descriptors,
-            std::vector<RTHitInstance>& outInstances,
-            std::vector<RTHitSubMesh>& outSubMeshes,
-            uint32_t vertexBufferIndexOverride = UINT32_MAX)
-        {
-            RTHitInstance row{};
-            for (int r = 0; r < 3; ++r) {
-                row.objectToWorld[r] = {
-                    instance.transform[r][0], instance.transform[r][1],
-                    instance.transform[r][2], instance.transform[r][3] };
-            }
-            // 動く形（スキニング・揺れる植物）は、BLAS と同じ変形後の頂点を読む
-            row.vertexBufferIndex = (vertexBufferIndexOverride != UINT32_MAX)
-                ? vertexBufferIndexOverride
-                : asMgr.GetBLASVertexBufferIndex(instance.blasIndex);
-            row.indexBufferIndex = asMgr.GetBLASIndexBufferIndex(instance.blasIndex);
-            row.firstSubMesh = static_cast<uint32_t>(outSubMeshes.size());
-
-            for (const SubMeshData& subMesh : resource.GetSubMeshes()) {
-                const MaterialInstance* material = model
-                    ? model->GetMaterial(subMesh.materialIndex)
-                    : resource.GetDefaultMaterial(subMesh.materialIndex);
-                outSubMeshes.push_back(MakeHitSubMesh(subMesh, material, resource, baseColorOverride, descriptors));
-            }
-            if (outSubMeshes.size() == row.firstSubMesh) {
-                // サブメッシュを持たないモデルは全三角形を 1 行で覆う
-                SubMeshData whole{};
-                whole.startIndex = 0;
-                whole.indexCount = resource.GetIndexCount();
-                whole.materialIndex = 0;
-                outSubMeshes.push_back(MakeHitSubMesh(
-                    whole, resource.GetDefaultMaterial(0), resource, baseColorOverride, descriptors));
-            }
-            if (model && model->HasSkinCluster()) {
-                for (size_t i = row.firstSubMesh; i < outSubMeshes.size(); ++i) {
-                    outSubMeshes[i].flags |= kRTHitSubMeshFlagMoving;
-                }
-            }
-            row.subMeshCount = static_cast<uint32_t>(outSubMeshes.size()) - row.firstSubMesh;
-            outInstances.push_back(row);
-        }
-    }
-
     void RayTracingSubsystem::BuildAccelerationStructures(
         const RenderContext& context,
         GraphicsCore* dx,
@@ -260,7 +37,8 @@ namespace CoreEngine
         SceneManager* sceneManager)
     {
         auto* asMgr = context.accelerationStructureManager;
-        if (!asMgr || !asMgr->IsSupported() || !dx) {
+        auto* rtScene = context.rtScene;
+        if (!asMgr || !asMgr->IsSupported() || !rtScene || !dx) {
             return;
         }
 
@@ -277,221 +55,17 @@ namespace CoreEngine
                 });
         }
 
-        // DXR TLAS 構築（シーン内のメッシュを持つコンポーネントからインスタンスを収集）
-        auto* objMgr = sceneManager ? sceneManager->GetCurrentGameObjectManager() : nullptr;
-        if (!objMgr) {
-            // シーンが無いフレームも空の TLAS を組み、前のシーンの TLAS とヒットの表を使わせない
-            asMgr->BuildTLAS(dx->GetCommandList(), {});
-            return;
+        // シーンの物を集めて TLAS を組む（シーンが無いフレームも空の TLAS を組み、前のシーンの TLAS とヒットの表を使わせない）
+        RTScene::FrameInput input;
+        input.objects = sceneManager ? sceneManager->GetCurrentGameObjectManager() : nullptr;
+        input.cmdList = dx->GetCommandList();
+        input.frame = context.frameNumber;
+        input.hasCamera = context.frameViews && context.frameViews->GameView().isValid;
+        if (input.hasCamera) {
+            input.cameraPosition = context.frameViews->GameView().position;
         }
-
-        std::vector<AccelerationStructureManager::InstanceDesc> tlasInstances;
-
-        // ヒットシェーディングの表（TLAS のインスタンスと同じ並び）
-        std::vector<RTHitInstance> hitInstances;
-        std::vector<RTHitSubMesh> hitSubMeshes;
-        const DescriptorAllocator* descriptors = dx->GetDescriptorAllocator();
-
-        // ===== 動く形（スキニング・揺れる植物）は持ち主ごとの BLAS を毎フレーム更新する =====
-        // 静止形の BLAS のままだと、影が揺れに付いてこないうえ、揺れた面から出たレイが
-        // 動く前の自分の面に当たって縞状の影（セルフシャドウ）が出る。
-        // 変形は描画と同じ時間・同じ式なので、今フレームの画面の形と一致する。
-        // 水面の映り込みのヒットシェーディングにも変形後の頂点（VertexData の並び）を読ませるので、
-        // 当たった点の位置・法線（そこから撃つ影のレイ）も画面の形と一致する。
-        // 揺れはカメラから r.RT.DynamicGeometry.Distance 以内の物だけ反映し、それより遠い物は静止形の BLAS を使う。
-        // 変形と BLAS の構築・更新は、シーンの物を集め終えてからまとめて積む。
-        ID3D12GraphicsCommandList* asCmdList = dx->GetCommandList();
-        const uint64_t frame = context.frameNumber;
-        const bool dynamicGeometry = cvDynamicGeometry.Get();
-        VertexAnimationDeformer* deformer = context.vertexAnimationDeformer;
-        const VertexAnimationParams animParams = VertexAnimationParams::Build();
-        const bool swaying = dynamicGeometry && deformer;
-        const float swayDistance = cvDynamicGeometryDistance.Get();
-        const bool hasCamera = context.frameViews && context.frameViews->GameView().isValid;
-        const Vector3 cameraPosition = hasCamera ? context.frameViews->GameView().position : Vector3{ 0.0f, 0.0f, 0.0f };
-
-        /// 今フレーム動く形にする物（TLAS とヒットシェーディングの表の行へ、後から BLAS と頂点を入れる）
-        struct DynamicTarget {
-            size_t row = 0;                          ///< tlasInstances / hitInstances の行
-            const void* owner = nullptr;
-            const ModelResource* resource = nullptr;
-            ID3D12Resource* vertices = nullptr;      ///< 動いた頂点（揺れる物は変形の後に入る）
-            uint32_t vertexBufferIndex = UINT32_MAX; ///< その頂点の SRV（ヒットシェーディングが読む）
-            bool changed = true;                     ///< 前フレームから頂点が動いたか
-            int deformIndex = -1;                    ///< deformRequests の番号（揺れる物・頂点を動かすマテリアルの物だけ）
-        };
-        std::vector<DynamicTarget> dynamicTargets;
-        std::vector<VertexAnimationDeformer::Request> deformRequests;
-
-        /// 揺れを反映する距離の内にあるか（反映中の物は kDynamicGeometryKeepScale 倍の距離まで反映を続ける）
-        auto withinSwayDistance = [&](const void* owner, const ModelResource& resource, const Matrix4x4& world,
-                                      float boundsPadding) {
-            if (swayDistance <= 0.0f || !hasCamera) {
-                return true;
-            }
-            const float limit = asMgr->HasDynamicBLAS(owner) ? swayDistance * kDynamicGeometryKeepScale : swayDistance;
-            return DistanceToBounds(resource, world, cameraPosition) - boundsPadding <= limit;
-        };
-
-        // 「メッシュを持つか」はコンポーネントの有無で決まるので、具象クラスを知る必要はない。
-        // 非アクティブ／削除マーク済みのスキップは ForEachComponent が行う。
-        objMgr->ForEachComponent<MeshRendererComponent>(
-            [&](MeshRendererComponent& renderer) {
-                // 半透明オブジェクト（水面など）は RT シャドウのキャスターから除外する
-                if (renderer.GetBlendMode() != BlendMode::kBlendModeNone) return;
-
-                // 材質は const の取得口で読む（書き込み用の取得口は材質を複製する）。
-                // 書き込み用のモデルは、スキニングを今フレームぶん済ませるためだけに使う
-                Model* mutableModel = renderer.GetModel();
-                const Model* model = std::as_const(renderer).GetModel();
-                if (!model || !mutableModel) return;
-
-                const ModelResource* resource = model->GetModelResource();
-                if (!resource || !resource->HasBLAS()) return;
-
-                auto* transform = renderer.GetTransformComponent();
-                if (!transform) return;
-
-                const Matrix4x4& world = transform->Get().GetWorldMatrix();
-                AccelerationStructureManager::InstanceDesc inst;
-                inst.blasIndex = resource->GetBLASIndex();
-                inst.SetTransform(world);
-                inst.instanceMask = ClassifyMeshInstanceMask(*model);
-                // 形の決まった物のうち、少し前まで動いていた物とスキニングの物は動く物の印にする
-                if (inst.instanceMask == RayTracingInstanceMask::kSolid
-                    && (asMgr->TrackSolidMotion(&renderer, world, frame) || model->HasSkinCluster())) {
-                    inst.instanceMask = RayTracingInstanceMask::kMovable;
-                }
-                if (dynamicGeometry) {
-                    DynamicTarget target;
-                    target.row = tlasInstances.size();
-                    target.owner = &renderer;
-                    target.resource = resource;
-                    // 頂点を動かすマテリアル（`#define SURFACE_VERTEX`）は、揺れと同じ距離の内で同じ式の CS を掛ける
-                    SurfaceMaterialPipeline* const surface = model->GetSurfacePipeline();
-                    const bool surfaceMoves = deformer && surface && surface->HasVertexFunction()
-                        && withinSwayDistance(&renderer, *resource, world, renderer.GetBoundsPadding());
-                    if (model->HasSkinCluster()) {
-                        target.vertices = mutableModel->PrepareSkinnedVerticesForRayTracing(asCmdList, target.changed);
-                        target.vertexBufferIndex = model->GetSkinnedVertexBufferHeapIndex();
-                        if (target.vertices) {
-                            if (surfaceMoves) {
-                                // スキン済みの頂点にもう 1 回掛ける（作れなければスキン済みの頂点のまま）
-                                target.deformIndex = static_cast<int>(deformRequests.size());
-                                VertexAnimationDeformer::Request request{ &renderer, model, world };
-                                request.sourceVertices = target.vertices;
-                                request.surface = surface;
-                                request.slot = model->GetSurfaceSlot();
-                                request.applyVertexAnimation = false;
-                                deformRequests.push_back(request);
-                            }
-                            dynamicTargets.push_back(target);
-                        }
-                    } else if (surfaceMoves || (swaying && SwaysWithWindOrWater(*model, animParams)
-                        && withinSwayDistance(&renderer, *resource, world, renderer.GetBoundsPadding()))) {
-                        target.deformIndex = static_cast<int>(deformRequests.size());
-                        VertexAnimationDeformer::Request request{ &renderer, model, world };
-                        if (surfaceMoves) {
-                            request.surface = surface;
-                            request.slot = model->GetSurfaceSlot();
-                        }
-                        deformRequests.push_back(request);
-                        dynamicTargets.push_back(target);
-                    }
-                }
-                // BLAS（動く形なら後で差し替える）と静止形の頂点で行を足す
-                tlasInstances.push_back(inst);
-                if (descriptors) {
-                    AppendHitInstance(*asMgr, inst, *resource, model, renderer.GetTextureOverrideHandle(),
-                        *descriptors, hitInstances, hitSubMeshes);
-                }
-            });
-
-        // ===== 揺れる物をまとめて変形し、動く形の BLAS をまとめて構築・更新する =====
-        if (!dynamicTargets.empty()) {
-            const std::vector<VertexAnimationDeformer::Output> deformed = (deformer && !deformRequests.empty())
-                ? deformer->DeformBatch(asCmdList, deformRequests, animParams, frame)
-                : std::vector<VertexAnimationDeformer::Output>(deformRequests.size());
-            if (asMgr->BeginDynamicBLASBatch(asCmdList)) {
-                for (DynamicTarget& target : dynamicTargets) {
-                    if (target.deformIndex >= 0) {
-                        const VertexAnimationDeformer::Output& output = deformed[static_cast<size_t>(target.deformIndex)];
-                        if (output.vertices) {
-                            target.vertices = output.vertices;
-                            target.vertexBufferIndex = output.vertexBufferIndex;
-                            target.changed = true;
-                        }
-                    }
-                    // 作れなければ静止形の BLAS のまま
-                    if (!target.vertices) {
-                        continue;
-                    }
-                    AccelerationStructureManager::BLASDesc desc{};
-                    desc.vertexBuffer = target.vertices;
-                    desc.vertexCount = target.resource->GetVertexCount();
-                    desc.vertexStride = sizeof(VertexData);  // スキニングの出力も頂点変形の出力も VertexData の並び（位置が先頭）
-                    desc.vertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
-                    desc.indexBuffer = target.resource->GetIndexBuffer();
-                    desc.indexCount = target.resource->GetIndexCount();  // 静止形の BLAS と同じく LOD0 全体
-                    desc.indexFormat = DXGI_FORMAT_R32_UINT;
-                    const D3D12_GPU_VIRTUAL_ADDRESS blas =
-                        asMgr->BuildOrUpdateDynamicBLAS(target.owner, desc, frame, target.changed);
-                    if (!blas) {
-                        continue;
-                    }
-                    tlasInstances[target.row].blasAddress = blas;
-                    if (descriptors && target.vertexBufferIndex != UINT32_MAX) {
-                        hitInstances[target.row].vertexBufferIndex = target.vertexBufferIndex;
-                    }
-                }
-                asMgr->EndDynamicBLASBatch();
-            }
-        }
-
-        // ===== モデルの粒もキャスターとして載せる =====
-        // BLAS はモデル単位で構築済みなので、ここで足すのはインスタンスだけ。
-        std::vector<Matrix4x4> particleMatrices;
-        objMgr->ForEachComponent<ParticleSystemComponent>(
-            [&](ParticleSystemComponent& particleSystem) {
-                // 加算・半透明の粒が真っ黒な影を落とすと不自然なので、不透明のものだけ。
-                // メッシュ側の除外条件と揃えている。
-                if (particleSystem.GetBlendMode() != BlendMode::kBlendModeNone) return;
-
-                auto* resource = particleSystem.GetModelResource();
-                if (!resource || !resource->HasBLAS()) return;
-
-                const uint32_t particleCount = particleSystem.GetParticleCount();
-                if (particleCount == 0) return;
-
-                particleMatrices.resize(particleCount);
-                const uint32_t written =
-                    particleSystem.CollectWorldMatrices(particleMatrices.data(), particleCount);
-
-                for (uint32_t i = 0; i < written; ++i) {
-                    AccelerationStructureManager::InstanceDesc inst;
-                    inst.blasIndex = resource->GetBLASIndex();
-                    inst.SetTransform(particleMatrices[i]);
-                    inst.instanceMask = RayTracingInstanceMask::kParticle;
-                    tlasInstances.push_back(inst);
-                    if (descriptors) {
-                        AppendHitInstance(*asMgr, inst, *resource, nullptr, D3D12_GPU_DESCRIPTOR_HANDLE{},
-                            *descriptors, hitInstances, hitSubMeshes);
-                    }
-                }
-            });
-
-        // 物が 0 個のフレームも組む（下で回収する動的 BLAS を前の TLAS から撃たせない）
-        asMgr->BuildTLAS(dx->GetCommandList(), tlasInstances);
-        if (!tlasInstances.empty()) {
-            asMgr->UploadHitShadingTables(hitInstances, hitSubMeshes);
-        }
-
-        // 消えた・動かなくなった持ち主の動的 BLAS と頂点バッファを捨てる（GPU が使い終わってから解放）
-        asMgr->RetireUnusedDynamicBLAS(frame);
-        asMgr->RetireUnusedSolidMotion(frame);
-        if (deformer) {
-            deformer->RetireUnused(frame);
-        }
+        input.deformer = context.vertexAnimationDeformer;
+        rtScene->Build(input, *dx, *asMgr);
     }
 
     bool RayTracingSubsystem::BuildShadowStageContext(
@@ -793,12 +367,12 @@ namespace CoreEngine
     {
         WaterHitShadingInput input{};
         const DescriptorAllocator* descriptors = dx ? dx->GetDescriptorAllocator() : nullptr;
-        const AccelerationStructureManager* asMgr = context.accelerationStructureManager;
-        if (!descriptors || !asMgr || !asMgr->HasHitShadingTables()) {
+        const RTScene* rtScene = context.rtScene;
+        if (!descriptors || !rtScene || !rtScene->HasHitShadingTables()) {
             return input;
         }
-        input.instanceTableIndex = asMgr->GetHitInstanceTableIndex();
-        input.subMeshTableIndex = asMgr->GetHitSubMeshTableIndex();
+        input.instanceTableIndex = rtScene->GetHitInstanceTableIndex();
+        input.subMeshTableIndex = rtScene->GetHitSubMeshTableIndex();
         input.enabled = (input.instanceTableIndex != UINT32_MAX && input.subMeshTableIndex != UINT32_MAX);
 
         // DeferredLighting と同じライトの配列（0 番がメインライト）

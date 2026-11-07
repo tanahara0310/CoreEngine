@@ -9,6 +9,7 @@
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/RayTracing/RayTracingDispatchInfo.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
+#include "Graphics/RayTracing/RTScene.h"
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterReflectionRayTracingManager.h"
@@ -85,7 +86,7 @@ namespace CoreEngine
         AccelerationStructureManager* asMgr = domain->GetAccelerationStructureManager();
         RayTracingShadowManager* shadowMgr = domain->GetRayTracingShadowManager();
 
-        DrawAccelerationStructureSection(asMgr);
+        DrawAccelerationStructureSection(asMgr, domain->GetRTScene());
         ImGui::Spacing();
         DrawShadowSection(shadowMgr);
         ImGui::Spacing();
@@ -101,7 +102,7 @@ namespace CoreEngine
     // -------------------------------------------------------------------------
     // 加速構造セクション
     // -------------------------------------------------------------------------
-    void RayTracingDebugPanel::DrawAccelerationStructureSection(AccelerationStructureManager* asMgr)
+    void RayTracingDebugPanel::DrawAccelerationStructureSection(AccelerationStructureManager* asMgr, const RTScene* scene)
     {
         SectionHeader("加速構造 (BLAS / TLAS)");
 
@@ -135,6 +136,12 @@ namespace CoreEngine
 
             row("BLAS 数", std::to_string(asMgr->GetBLASCount()));
             row("TLAS インスタンス数", std::to_string(asMgr->GetTLASInstanceCount()));
+            if (scene) {
+                // 出どころごとの数（RT_SCENE_SOURCE_REGISTER で足した順）
+                for (const RTScene::SourceStats& source : scene->GetSourceStats()) {
+                    row((std::string("  ") + source.name).c_str(), std::to_string(source.instanceCount));
+                }
+            }
             row("BLAS 合計サイズ", FormatBytes(asMgr->GetBLASTotalBytes()));
             row("TLAS サイズ", FormatBytes(asMgr->GetTLASResultBytes()));
             row("スクラッチ合計", FormatBytes(asMgr->GetScratchTotalBytes()));

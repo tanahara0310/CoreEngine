@@ -10,6 +10,7 @@ namespace CoreEngine
     class EngineSystem;
     class GpuTimestampProfiler;
     class AccelerationStructureManager;
+    class RTScene;
     class RayTracingShadowManager;
     struct RayTracingDispatchInfo;
 
@@ -32,7 +33,7 @@ namespace CoreEngine
         static constexpr float kThumbLarge = 480.0f;
 
         // ---- セクション ----
-        void DrawAccelerationStructureSection(AccelerationStructureManager* asMgr);
+        void DrawAccelerationStructureSection(AccelerationStructureManager* asMgr, const RTScene* scene);
         void DrawShadowSection(RayTracingShadowManager* shadowMgr);
         void DrawShadowSettingsSection(RayTracingShadowManager* shadowMgr);
         void DrawIntermediateBufferSection(RayTracingShadowManager* shadowMgr);

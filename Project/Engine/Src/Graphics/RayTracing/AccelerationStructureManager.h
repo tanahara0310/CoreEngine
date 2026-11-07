@@ -3,7 +3,6 @@
 #include <d3d12.h>
 #include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include "Graphics/RHI/Command/FrameSync.h" // kMaxFramesInFlight（インスタンスバッファのリング段数）
-#include "Graphics/RayTracing/RayTracingHitData.h"
 #include <wrl.h>
 #include <array>
 #include <unordered_map>
@@ -16,17 +15,6 @@ namespace CoreEngine
     class DescriptorAllocator;
     class ModelResource;
     class DeferredReleaseQueue;
-
-    /// @brief TLAS インスタンスの種類の印（InstanceMask のビット）
-    /// @details レイは当てたい種類の印の OR を TraceRay の InstanceInclusionMask に渡す（全部なら kAll）
-    namespace RayTracingInstanceMask {
-        inline constexpr UINT kSolid = 0x01;      ///< 形の決まった物（地形・岩・建物など、下の 3 つ以外のメッシュ）
-        inline constexpr UINT kVegetation = 0x02; ///< 風や波で揺れる材質（植物・海草）を持つメッシュ
-        inline constexpr UINT kParticle = 0x04;   ///< モデルの粒
-        inline constexpr UINT kCreature = 0x08;   ///< 泳ぐ生き物（魚の動きの材質を持つメッシュ）
-        inline constexpr UINT kMovable = 0x10;    ///< 動いている形の決まった物（スキニングと、少し前まで動いていた物）
-        inline constexpr UINT kAll = 0xFF;
-    }
 
     /// @brief BLAS/TLAS を管理するクラス（DXR レイトレーシング用）
     /// @note ID3D12Device5 が必須。非対応 GPU では Initialize() が false を返す
@@ -50,7 +38,7 @@ namespace CoreEngine
             /// @brief 0 以外なら blasIndex の代わりにこの BLAS を使う（BuildOrUpdateDynamicBLAS の戻り値）
             D3D12_GPU_VIRTUAL_ADDRESS blasAddress = 0;
             float transform[3][4] = {};   ///< DXR 準拠の行優先 3×4 アフィン行列
-            UINT instanceMask = 0xFF;
+            UINT instanceMask = 0xFF;     ///< RTInstanceMask の OR
 
             /// @brief Matrix4x4 からDXR用 3×4 行列に変換してセットする
             /// @note DXR の D3D12_RAYTRACING_INSTANCE_DESC は行優先 3×4 で
@@ -113,18 +101,6 @@ namespace CoreEngine
         /// @brief 動的 BLAS の数
         UINT GetDynamicBLASCount() const { return static_cast<UINT>(dynamicBlas_.size()); }
 
-        /// @brief 形の決まった物が少し前まで動いていたかを、持ち主ごとに行列を覚えて返す
-        /// @param owner 持ち主の識別子（コンポーネントのアドレスなど）
-        /// @param world 今フレームのワールド行列
-        /// @param frame 今フレームの番号
-        /// @return 前に見たときから行列が変わったフレームから kSolidMotionKeepFrames 以内なら true（初めて見た物は false）
-        bool TrackSolidMotion(const void* owner, const Matrix4x4& world, uint64_t frame);
-        /// @brief 今フレーム見なかった持ち主の行列の記録を捨てる（BuildTLAS の後に呼ぶ）
-        void RetireUnusedSolidMotion(uint64_t frame);
-        /// @brief 直近の BuildTLAS の、印が kSolid のインスタンス（BLAS と行列）から求めた値
-        /// @details 止まっている形の決まった物が増えた・減った・置き直されたときに値が変わる
-        uint64_t GetStaticSolidSignature() const { return staticSolidSignature_; }
-
         /// @brief TLAS の SRV GPU ハンドルを取得
         D3D12_GPU_DESCRIPTOR_HANDLE GetTLASSRVHandle() const {
             return tlasSRVDescriptors_[tlasInstanceRingIndex_].gpuHandle;
@@ -152,26 +128,13 @@ namespace CoreEngine
         UINT GetBLASCount() const { return static_cast<UINT>(blasList_.size()); }
 
         // ──────────────────────────────────────────────────────────
-        // ヒットシェーディング（当たった三角形の頂点と材質をシェーダーから引く）
+        // ヒットシェーディング（当たった三角形の頂点をシェーダーから引く）
         // ──────────────────────────────────────────────────────────
 
         /// @brief BLAS の頂点バッファ（ByteAddressBuffer）のヒープ内インデックス（無ければ UINT32_MAX）
         uint32_t GetBLASVertexBufferIndex(UINT blasIndex) const;
         /// @brief BLAS の索引バッファ（ByteAddressBuffer）のヒープ内インデックス（無ければ UINT32_MAX）
         uint32_t GetBLASIndexBufferIndex(UINT blasIndex) const;
-
-        /// @brief TLAS のインスタンスと同じ並びの表を送る（BuildTLAS の直後に、同じインスタンスの並びで呼ぶ）
-        /// @param instances TLAS のインスタンスと 1:1 の行
-        /// @param subMeshes instances の firstSubMesh / subMeshCount が指すサブメッシュの行
-        void UploadHitShadingTables(
-            const std::vector<RTHitInstance>& instances, const std::vector<RTHitSubMesh>& subMeshes);
-
-        /// @brief 今フレームの表が送られているか
-        bool HasHitShadingTables() const { return hitTablesValid_; }
-        /// @brief 今フレームのインスタンス表（StructuredBuffer）のヒープ内インデックス
-        uint32_t GetHitInstanceTableIndex() const;
-        /// @brief 今フレームのサブメッシュ表（StructuredBuffer）のヒープ内インデックス
-        uint32_t GetHitSubMeshTableIndex() const;
 
         // ──────────────────────────────────────────────────────────
         // デバッグ表示用の統計（Stage 0: RayTracingDebugPanel が参照する）
@@ -217,20 +180,6 @@ namespace CoreEngine
             DescriptorHandle indexBufferSrv;    ///< 索引バッファの ByteAddressBuffer SRV
         };
         std::vector<BLASEntry> blasList_;
-
-        /// @brief ヒットシェーディングの表 1 本分（フレームインフライトぶんのリング）
-        struct HitTableRing {
-            std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kMaxFramesInFlight> buffers{};
-            std::array<DescriptorHandle, kMaxFramesInFlight> srvs{};
-            std::array<UINT, kMaxFramesInFlight> capacities{};
-        };
-        HitTableRing hitInstanceTables_;
-        HitTableRing hitSubMeshTables_;
-        bool hitTablesValid_ = false;
-
-        /// @brief 表の 1 本を今のリングスロットへ書き、SRV を張る
-        bool UploadHitTable(HitTableRing& ring, const void* data, UINT elementCount, UINT elementStride,
-            const char* debugName);
 
         // TLAS リソース
         /// @brief TLAS 結果バッファと、その SRV（フレームインフライトぶんのリング）
@@ -282,18 +231,6 @@ namespace CoreEngine
         static constexpr uint32_t kDynamicRebuildInterval = 120;
         /// @brief このフレーム数使われなかった動的 BLAS を捨てる
         static constexpr uint64_t kDynamicKeepFrames = 2;
-
-        /// @brief 形の決まった物 1 つぶんの行列の記録
-        struct SolidMotionEntry {
-            Matrix4x4 world{};
-            uint64_t lastMovedFrame = 0;
-            uint64_t lastSeenFrame = 0;
-            bool moved = false; ///< 一度でも行列が変わったか
-        };
-        std::unordered_map<const void*, SolidMotionEntry> solidMotion_;
-        /// @brief 行列が変わってからこのフレーム数は動いている物として扱う
-        static constexpr uint64_t kSolidMotionKeepFrames = 90;
-        uint64_t staticSolidSignature_ = 0;
 
         /// @brief 動的 BLAS のスクラッチから len バイトを切り出す（足りなければ前の構築を待って先頭へ戻る）
         D3D12_GPU_VIRTUAL_ADDRESS AllocateDynamicScratch(UINT64 len);

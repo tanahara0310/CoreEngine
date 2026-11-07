@@ -7,6 +7,7 @@
 // 水面を通って受光点へ届く日光の計算（RTWaterRefraction と共有）
 #include "RTWaterCausticsCommon.hlsli"
 #include "../../Include/Common/DepthReconstruction.hlsli"
+#include "../../Include/RayTracing/RTInstanceMask.hlsli"
 #include "ColorSpace.hlsli" // Luminance
 
 RWTexture2D<float4> gCausticsOutput : register(u0);
@@ -194,10 +195,11 @@ void RTWaterCausticsRayGen()
     payload.hitT = 0.0f;
     payload.hitFlag = 0.0f;
 
+    // 日光が水面から受光点まで届くか（遮る物は影を落とす物）
     TraceRay(
         gScene,
         0,
-        0xFF,
+        kRTInstanceMaskShadowCaster,
         0,
         1,
         0,
