@@ -309,6 +309,7 @@ namespace CoreEngine
         surfaceConstants.shoreMeshSize = surfaceData.shoreMeshSize;
         surfaceConstants.shoreMeshCellSize = surfaceData.shoreMeshCellSize;
         surfaceConstants.shoreMeshBlendWidth = surfaceData.shoreMeshBlendWidth;
+        surfaceConstants.shoreMeshDisplacementSrvIndex = surfaceData.shoreMeshDisplacementSrvIndex;
         const WaterSeaMapBinding& seaMap = surfaceData.seaMap;
         for (int c = 0; c < 2; ++c) {
             surfaceConstants.seaMapOriginXZ[c] = seaMap.originXZ[c];

@@ -15,6 +15,7 @@
 #include "Graphics/Water/Foam/WaterShoreFoam.h"
 #include "Graphics/Water/Foam/WaterWhitecapFoam.h"
 #include "Graphics/Water/Query/WaterHeightQueryManager.h"
+#include "Graphics/Water/Surface/WaterShoreMeshDisplacement.h"
 #include "Graphics/Water/Query/WaterQuery.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Cloud/VolumetricCloudManager.h"
@@ -177,6 +178,13 @@ namespace CoreEngine
             }
         }
 
+        waterShoreMeshDisplacement_ = std::make_unique<WaterShoreMeshDisplacement>();
+        if (fftOceanManager_->IsInitialized()
+            && waterShoreMeshDisplacement_->Initialize(dxCommon, descriptorAllocator, shaderProgramCache)) {
+            Logger::GetInstance().Infof(LogCategory::Graphics,
+                "RenderDomainContext: WaterShoreMeshDisplacement 初期化完了\n");
+        }
+
         waterHeightQueryManager_ = std::make_unique<WaterHeightQueryManager>();
         if (waterHeightQueryManager_->Initialize(dxCommon, descriptorAllocator, shaderProgramCache, waterQuery_.get())) {
             Logger::GetInstance().Infof(LogCategory::Graphics,
@@ -222,6 +230,7 @@ namespace CoreEngine
         rtWaterRefractionManager_.reset();
         rtShadowManager_.reset();
         waterHeightQueryManager_.reset();
+        waterShoreMeshDisplacement_.reset();
         waterShoreFoam_.reset();
         waterWhitecapFoam_.reset();
         fftOceanManager_.reset();
@@ -268,6 +277,7 @@ namespace CoreEngine
         context.fftOceanManager = fftOceanManager_.get();
         context.waterWhitecapFoam = waterWhitecapFoam_.get();
         context.waterShoreFoam = waterShoreFoam_.get();
+        context.waterShoreMeshDisplacement = waterShoreMeshDisplacement_.get();
         context.waterHeightQueryManager = waterHeightQueryManager_.get();
         context.atmosphereManager = atmosphereManager_.get();
         context.volumetricCloudManager = volumetricCloudManager_.get();

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <d3d12.h>
+#include <cstdint>
 
 namespace CoreEngine
 {
@@ -30,6 +31,8 @@ namespace CoreEngine
             float originXZ[2] = { 0.0f, 0.0f }; ///< 範囲の XZ の最小の角 [m]
             float size = 0.0f;                  ///< 範囲の一辺の長さ [m]
             bool shoreMeshEnabled = false;      ///< 範囲を岸の細かい格子で描くか
+            bool shoreMeshDisplacementReady = false;     ///< 岸の格子の頂点の変位を書けるか
+            uint32_t shoreMeshDisplacementSrvIndex = 0;  ///< 岸の格子の頂点の変位の SRV のヒープの中の番号
             D3D12_GPU_DESCRIPTOR_HANDLE seabedSRV{};
             D3D12_GPU_DESCRIPTOR_HANDLE shoreFoamSRV{};
         };
