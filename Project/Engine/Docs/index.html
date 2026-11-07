@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.64.0">
+<meta name="engine-version" content="0.64.1">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11316,6 +11316,13 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-64-1">v0.64.1 <span class="dim">（2026-11-06）</span></h3>
+  <p>不透明なモデルを照らす処理で、そのフレームに無い機能の入力を差さずに描いていた不具合を直した版です。普段の設定では見た目は変わりません。</p>
+  <ul>
+    <li><strong>差していなかった入力</strong>：不透明なモデルを照らす処理（遅延ライティング）は、レイトレーシングの影・SSAO・水中のコースティクス・雲の影が無いフレームに、その入力を何も差さずに描いていました。そのとき何を読むかは GPU とドライバ次第で、起動直後・SSAO を切ったとき・水や雲の無いシーンで、無いはずの影や暗がりが出るおそれがありました。無いときは 1×1 の白（影も暗がりも無し）と、強さ 0 の雲の影の値を差すようにしました。</li>
+    <li><strong>差し忘れの検査</strong>：この入力も、描く前の差し忘れの検査（Debug と Development でログにエラーを出す）の対象にしました。</li>
+  </ul>
 
   <h3 id="changelog-v0-64-0">v0.64.0 <span class="dim">（2026-11-06）</span></h3>
   <p>シェーダーグラフに、物体の空間・頂点の色・Triplanar・Parallax・画面の深度のノードを足した版です。今までのグラフが保存で書くシェーダは、前の版と 1 文字も変わりません（<a href="#sg-nodes">ノードの一覧</a>）。</p>

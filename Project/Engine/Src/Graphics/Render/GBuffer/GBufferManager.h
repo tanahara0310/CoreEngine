@@ -13,14 +13,10 @@ namespace CoreEngine
     class SceneDepth;
 
     /// @brief G-Buffer管理クラス
-    /// @note Deferred/Hybrid Rendering への移行基盤。
-    ///       移行完了までは従来の OffScreenRenderTarget 系も互換経路として並存する。
+    /// @note 遅延ライティングが読む 4 枚の MRT を持つ。ワールド座標は SceneDepth から復元する
     class GBufferManager {
     public:
         /// @brief G-Bufferのターゲットタイプ
-        /// @note WorldPosition ターゲットは廃止済み（2026-07-21）。DeferredLighting 等は
-        ///       SceneDepth + View*Projection の逆行列からワールド座標を復元する
-        ///       （MRT 5枚→4枚・36B/px→20B/px の帯域削減が目的）。
         enum class Target : uint32_t {
             AlbedoAO = 0,       ///< PBR: rgb=アルベド,a=AO
             NormalRoughness,    ///< PBR: rgb=ワールド法線(encoded),a=ラフネス（0=アンリット）
@@ -32,8 +28,8 @@ namespace CoreEngine
         // ターゲット数の定数
         static constexpr uint32_t kTargetCount = static_cast<uint32_t>(Target::Count);
 
-        /// @brief GBuffer レンダーターゲットのフォーマット定義
-        /// PSO 作成時と GBufferManager 初期化時の唯一の定義場所
+        /// @brief GBuffer レンダーターゲットのフォーマット
+        /// @note 実体・RTV・SRV の作成と、GBuffer へ描く PSO の両方がこの表を読む
         static constexpr DXGI_FORMAT kRenderTargetFormats[kTargetCount] = {
                 DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,  // AlbedoAO
                 DXGI_FORMAT_R16G16B16A16_FLOAT,   // NormalRoughness

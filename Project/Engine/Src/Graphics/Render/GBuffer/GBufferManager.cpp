@@ -14,13 +14,6 @@ namespace
 {
     using CoreEngine::GBufferManager;
 
-    constexpr std::array<DXGI_FORMAT, GBufferManager::kTargetCount> kGBufferFormats = {
-        DXGI_FORMAT_R8G8B8A8_UNORM_SRGB,    // AlbedoAO
-        DXGI_FORMAT_R16G16B16A16_FLOAT,      // NormalRoughness
-        DXGI_FORMAT_R8G8B8A8_UNORM,          // EmissiveMetallic
-        DXGI_FORMAT_R16G16B16A16_FLOAT,      // MotionVector
-    };
-
     constexpr std::array<std::array<float, 4>, GBufferManager::kTargetCount> kGBufferClearColors = {
         std::array<float, 4>{ 0.0f, 0.0f, 0.0f, 1.0f },  // AlbedoAO
         std::array<float, 4>{ 0.0f, 0.0f, 1.0f, 1.0f },  // NormalRoughness
@@ -44,7 +37,7 @@ namespace
 
 namespace CoreEngine
 {
-    // G-Buffer 一式を作る。フォーマットは kGBufferFormats 固定で、実行時には変えない
+    // G-Buffer 一式を作る。フォーマットは kRenderTargetFormats 固定で、実行時には変えない
     void GBufferManager::Initialize(ID3D12Device* device, DescriptorAllocator* descriptorAllocator, int32_t width, int32_t height)
     {
         device_ = device;
@@ -64,7 +57,7 @@ namespace CoreEngine
         Logger::GetInstance().Logf(
             LogLevel::INFO,
             LogCategory::Graphics,
-            "GBufferManager initialized ({}x{}, {} targets). Legacy OffScreenRenderTarget geometry path remains active until GBufferPass migration is complete.",
+            "GBufferManager initialized ({}x{}, {} targets).",
             currentWidth_,
             currentHeight_,
             kTargetCount);
@@ -145,12 +138,12 @@ namespace CoreEngine
 
     DXGI_FORMAT GBufferManager::GetFormat(Target target) const
     {
-        return kGBufferFormats[ToIndex(target)];
+        return kRenderTargetFormats[ToIndex(target)];
     }
 
     const DXGI_FORMAT* GBufferManager::GetFormats() const
     {
-        return kGBufferFormats.data();
+        return kRenderTargetFormats;
     }
 
     GpuResource& GBufferManager::Resource(Target target)
@@ -161,7 +154,7 @@ namespace CoreEngine
 
     void GBufferManager::CreateOrResizeTarget(Target target)
     {
-        // フォーマットはターゲットごとに固定（kGBufferFormats）。
+        // フォーマットはターゲットごとに固定（kRenderTargetFormats）。
         // 既存があれば作り直しになるので、RTV / SRV も同じスロットへ張り直す
         ValidateState();
 
@@ -174,7 +167,7 @@ namespace CoreEngine
         texDesc.Height = static_cast<UINT>(currentHeight_);
         texDesc.DepthOrArraySize = 1;
         texDesc.MipLevels = 1;
-        texDesc.Format = kGBufferFormats[index];
+        texDesc.Format = kRenderTargetFormats[index];
         texDesc.SampleDesc.Count = 1;
         texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
         texDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
@@ -214,11 +207,11 @@ namespace CoreEngine
         const uint32_t index = ToIndex(target);
 
         D3D12_RENDER_TARGET_VIEW_DESC rtvDesc{};
-        rtvDesc.Format = kGBufferFormats[index];
+        rtvDesc.Format = kRenderTargetFormats[index];
         rtvDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
 
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-        srvDesc.Format = kGBufferFormats[index];
+        srvDesc.Format = kRenderTargetFormats[index];
         srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
         srvDesc.Texture2D.MipLevels = 1;
         srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;

@@ -10,14 +10,21 @@
 #include "Graphics/Render/Pass/RenderPass.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/Cloud/VolumetricCloudManager.h"
+#include "Graphics/Cloud/Shader/CloudShaderConstants.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/RootSignature/ShaderBinder.h"
+#include "Graphics/Texture/TextureManager.h"
 #include "Utility/Logger/Logger.h"
 #include <cassert>
 
 namespace CoreEngine
 {
+    namespace
+    {
+        constexpr const char* kFallbackTexture = "white1x1.png";
+    }
+
     // -------------------------------------------------------------------------
     // ピクセルシェーダーパスを返す
     // -------------------------------------------------------------------------
@@ -139,21 +146,27 @@ namespace CoreEngine
             );
         }
 
+        // ===== 無いときは 1×1 の白を差す SRV =====
+        // シェーダは寸法が 1×1 のテクスチャを「このフレームは無し」として扱う
+        D3D12_GPU_DESCRIPTOR_HANDLE fallbackTexture{};
+        auto orFallback = [&fallbackTexture](D3D12_GPU_DESCRIPTOR_HANDLE handle) {
+            if (handle.ptr != 0) {
+                return handle;
+            }
+            if (fallbackTexture.ptr == 0) {
+                fallbackTexture = TextureManager::GetInstance().Load(kFallbackTexture).gpuHandle;
+            }
+            return fallbackTexture;
+        };
+
         // ===== RT シャドウマスク SRV（ライトごとに個別バインド） =====
         for (uint32_t li = 0; li < kMaxRTShadowLights; ++li) {
-            if (rtShadowHandles_[li].ptr != 0) {
-                binder.Set(bindings_[DeferredLightingBind::gRTShadowMask0 + li], rtShadowHandles_[li]);
-            }
+            binder.Set(bindings_[DeferredLightingBind::gRTShadowMask0 + li], orFallback(rtShadowHandles_[li]));
         }
 
-        // ===== SSAO SRV =====
-        if (ssaoHandle_.ptr != 0) {
-            binder.Set(bindings_[DeferredLightingBind::gSSAO], ssaoHandle_);
-        }
-
-        if (waterCausticsHandle_.ptr != 0) {
-            binder.Set(bindings_[DeferredLightingBind::gWaterCaustics], waterCausticsHandle_);
-        }
+        // ===== SSAO・水中コースティクス SRV =====
+        binder.Set(bindings_[DeferredLightingBind::gSSAO], orFallback(ssaoHandle_));
+        binder.Set(bindings_[DeferredLightingBind::gWaterCaustics], orFallback(waterCausticsHandle_));
 
         binder.Set(bindings_[DeferredLightingBind::gWaterCausticsDebug], waterCausticsDebug_.Address());
         binder.Set(bindings_[DeferredLightingBind::gWetSurface], wetSurface_.Address());
@@ -191,18 +204,25 @@ namespace CoreEngine
             }
         }
 
-        // ===== 雲シャドウ（CloudShadowMapPass が生成済みのフレームのみ） =====
-        // マップと CB は必ず対で差す。片方だけだとシェーダーが寸法で有効と判定した上で
-        // 前フレームの範囲パラメータを読み、影が別の場所に出る
-        if (context.volumetricCloudManager && context.volumetricCloudManager->AreCloudsActive()) {
+        // ===== 雲シャドウ =====
+        // マップと CB は必ず対で差す。CloudShadowMapPass が生成していないフレームは、
+        // 1×1 の白と強さ 0 の CB を差して雲の影を無しにする
+        {
             D3D12_GPU_DESCRIPTOR_HANDLE shadowHandle{};
-            const D3D12_GPU_VIRTUAL_ADDRESS shadowCbv =
-                context.volumetricCloudManager->GetCloudShadowConstantsAddress();
-            if (shadowCbv != 0 && context.frameBlackboard
-                && context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::CloudShadowMap, shadowHandle)) {
-                binder.Set(bindings_[DeferredLightingBind::gCloudShadowMap], shadowHandle);
-                binder.Set(bindings_[DeferredLightingBind::gCloudShadow], shadowCbv);
+            D3D12_GPU_VIRTUAL_ADDRESS shadowCbv = 0;
+            if (context.volumetricCloudManager && context.volumetricCloudManager->AreCloudsActive()) {
+                shadowCbv = context.volumetricCloudManager->GetCloudShadowConstantsAddress();
+                if (shadowCbv == 0 || !context.frameBlackboard
+                    || !context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::CloudShadowMap, shadowHandle)) {
+                    shadowHandle = {};
+                    shadowCbv = 0;
+                }
             }
+            if (shadowCbv == 0) {
+                shadowCbv = context.dxCommon->GetUploadRing().AllocateConstants(CloudShadowShaderConstants{});
+            }
+            binder.Set(bindings_[DeferredLightingBind::gCloudShadowMap], orFallback(shadowHandle));
+            binder.Set(bindings_[DeferredLightingBind::gCloudShadow], shadowCbv);
         }
 
         // 必須リソースの差し忘れをここで捕まえる（Dev のみ）。

@@ -55,25 +55,25 @@ namespace CoreEngine::DeferredLightingBind
         { "gSpotLights",          ShaderBindingType::SRV, BindingUsage::Required    },
         { "gAreaLights",          ShaderBindingType::SRV, BindingUsage::Required    },
 
-        // RT シャドウマスク（レイトレ OFF・ライト数不足のフレームは差さない）
-        { "gRTShadowMask0",       ShaderBindingType::SRV, BindingUsage::Conditional },
-        { "gRTShadowMask1",       ShaderBindingType::SRV, BindingUsage::Conditional },
-        { "gRTShadowMask2",       ShaderBindingType::SRV, BindingUsage::Conditional },
-        { "gRTShadowMask3",       ShaderBindingType::SRV, BindingUsage::Conditional },
+        // RT シャドウマスク（無いフレームは 1×1 の白を差す）
+        { "gRTShadowMask0",       ShaderBindingType::SRV, BindingUsage::Required    },
+        { "gRTShadowMask1",       ShaderBindingType::SRV, BindingUsage::Required    },
+        { "gRTShadowMask2",       ShaderBindingType::SRV, BindingUsage::Required    },
+        { "gRTShadowMask3",       ShaderBindingType::SRV, BindingUsage::Required    },
 
-        // SSAO・水中コースティクス（機能トグル）
-        { "gSSAO",                ShaderBindingType::SRV, BindingUsage::Conditional },
-        { "gWaterCaustics",       ShaderBindingType::SRV, BindingUsage::Conditional },
-        { "gWaterCausticsDebug",  ShaderBindingType::CBV, BindingUsage::Conditional },
+        // SSAO・水中コースティクス（無いフレームは 1×1 の白を差す）
+        { "gSSAO",                ShaderBindingType::SRV, BindingUsage::Required    },
+        { "gWaterCaustics",       ShaderBindingType::SRV, BindingUsage::Required    },
+        { "gWaterCausticsDebug",  ShaderBindingType::CBV, BindingUsage::Required    },
 
         // 空アンビエント／空スペキュラ（大気の LUT 生成待ちのフレームは差さない）
         { "gSkyAmbient",          ShaderBindingType::CBV, BindingUsage::Conditional },
         { "gSkyIrradianceSH",     ShaderBindingType::SRV, BindingUsage::Conditional },
         { "gSkySpecularMap",      ShaderBindingType::SRV, BindingUsage::Conditional },
 
-        // 雲シャドウ（雲を使わないシーン・LUT 未生成のフレームは差さない）
-        { "gCloudShadowMap",      ShaderBindingType::SRV, BindingUsage::Conditional },
-        { "gCloudShadow",         ShaderBindingType::CBV, BindingUsage::Conditional },
+        // 雲シャドウ（雲の無いフレームは 1×1 の白と強さ 0 の CB を差す）
+        { "gCloudShadowMap",      ShaderBindingType::SRV, BindingUsage::Required    },
+        { "gCloudShadow",         ShaderBindingType::CBV, BindingUsage::Required    },
 
         // 濡れ跡（動く物の印を読む G-Buffer のモーションベクターと、高さごとの濡れ具合の表）。毎フレーム差す
         { "gGBufferMotion",       ShaderBindingType::SRV, BindingUsage::Required    },
