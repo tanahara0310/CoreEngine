@@ -34,7 +34,6 @@ struct WaterVSOutput
     float  waveHeight       : TEXCOORD2; ///< 静止水面からの波の高さ [m]
     float3 normal           : NORMAL0;
     float3 worldPosition    : POSITION0;
-    float4 lightSpacePos    : POSITION1;
     float3 tangent          : TANGENT0;
     float3 bitangent        : BINORMAL0;
     float4 clipPosCurrent   : POSITION2;
@@ -117,7 +116,6 @@ WaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     output.bitangent = binormal;
 
     output.worldPosition = worldPos;
-    output.lightSpacePos = mul(float4(worldPos, 1.0f), mtx.LightViewProjection);
     output.clipPosCurrent = output.position;
     // 前フレーム位置にも同じ変位を載せる（理由は FFTWater.VS.hlsl の同じ箇所を参照）
     float4 basePrevClip = mul(input.position, mtx.PrevWVP);

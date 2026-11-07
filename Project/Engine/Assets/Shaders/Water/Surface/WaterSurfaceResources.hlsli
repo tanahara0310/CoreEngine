@@ -73,7 +73,6 @@ struct WaterPSInput
     float waveHeight : TEXCOORD2;
     float3 normal : NORMAL0;
     float3 worldPosition : POSITION0;
-    float4 lightSpacePos : POSITION1;
     float3 tangent : TANGENT0;
     float3 bitangent : BINORMAL0;
     float4 clipPosCurrent : POSITION2;

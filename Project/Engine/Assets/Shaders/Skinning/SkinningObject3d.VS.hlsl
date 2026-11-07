@@ -34,8 +34,5 @@ VertexShaderOutput main(VertexShaderInput input)
     float4 worldPos = mul(input.position, gTransformationMatrix.World);
     output.worldPosition = worldPos.xyz;
 
-    // ライト空間座標を計算（シャドウマップ用）
-    output.lightSpacePos = mul(worldPos, gTransformationMatrix.LightViewProjection);
-
     return output;
 }
