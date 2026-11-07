@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.64.2">
+<meta name="engine-version" content="0.64.3">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11316,6 +11316,14 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-64-3">v0.64.3 <span class="dim">（2026-11-07）</span></h3>
+  <p>強い発光と、半透明の物の照らし方を直した版です。不透明な物と半透明の物で、同じ材質が同じ明るさに見えるようにしました。</p>
+  <ul>
+    <li><strong>強い発光</strong>：不透明な物のエミッシブとアンリットの色が 1 までで切られ、1 を超える値（2・4・8 など）がどれも同じ明るさになっていました。1 を超える値もそのまま光るようにしました。半透明の物は前から切られていません。GBuffer の 1 枚が 16 ビットの浮動小数になり、1920×1080 で約 8 MB 増えます。</li>
+    <li><strong>半透明の物の環境光</strong>：半透明の物（前方描画）は空の環境光と空の映り込みを受けておらず、太陽の当たらない側が黒く沈んでいました。不透明な物と同じ空の光と映り込みを足しました。大気の無いシーンでは、不透明な物と同じ代わりの環境光（ライトの向きから作る半球ランバート）を使います。</li>
+    <li><strong>半透明の物と水面の影</strong>：影の中の太陽の拡散光を 3 割残していたのをやめ、0 にしました。影の中の明るさは空の環境光が受け持ちます。</li>
+  </ul>
 
   <h3 id="changelog-v0-64-2">v0.64.2 <span class="dim">（2026-11-07）</span></h3>
   <p>影の中の明るさの出し方を直した版です。影は太陽の光だけをさえぎり、空の光は影の中にも届くようにしたので、影は前より明るく、空の色（昼は青み・夕方は橙）を帯びます。</p>

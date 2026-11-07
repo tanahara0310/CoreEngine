@@ -29,6 +29,7 @@ namespace CoreEngine::Editor::ShaderGraph
             "gCamera", "gLightCounts", "gDirectionalLights", "gPointLights", "gSpotLights", "gAreaLights",
             "gRTShadowMask", "gFog", "gVertexAnim", "gInstanceData", "gTransformationMatrix", "gSurfacePreview",
             "gSourceVertices", "gIndices", "gOutputVertices", "gDeform",
+            "gSkyAmbient", "gSkyIrradianceSH", "gSkySpecularMap",
         };
 
         bool ParseTarget(const std::string& text, Target& target)

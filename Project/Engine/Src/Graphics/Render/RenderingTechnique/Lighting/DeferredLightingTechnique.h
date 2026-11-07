@@ -14,6 +14,7 @@
 
 namespace CoreEngine
 {
+    class AtmosphereManager;
     class LightManager;
 
     /// @brief Deferred Lighting レンダリング技術
@@ -50,6 +51,24 @@ namespace CoreEngine
             float regionHalfExtentXZ[2] = {};///< 水面の範囲の半分の幅
             Vector4 wetness[16] = {};        ///< 下端から上へ並べた濡れ具合（4 つずつ詰める）
         };
+
+        /// @brief 空の環境光（Sky Irradiance SH / 空スペキュラ IBL）の有効状態と強度（HLSL 側 SkyAmbientParams と一致させること）
+        struct SkyAmbientParams {
+            uint32_t enabled = 0;
+            float scale = 0.0f;
+            uint32_t specularEnabled = 0; ///< 1 = 空スペキュラIBL（空＋雲キューブマップの環境反射）有効
+            float padding = 0.0f;
+        };
+
+        /// @brief 空の環境光を差すための値（DeferredLighting と前方描画で共有する）
+        struct SkyAmbientBinding {
+            SkyAmbientParams params;
+            D3D12_GPU_DESCRIPTOR_HANDLE irradianceSH{}; ///< 0 = 差さない
+            D3D12_GPU_DESCRIPTOR_HANDLE specularMap{};  ///< 0 = 差さない
+        };
+
+        /// @brief 今フレームの空の環境光の値を大気から決める（大気が無ければ無効）
+        static SkyAmbientBinding ResolveSkyAmbient(AtmosphereManager* atmosphere);
 
         DeferredLightingTechnique() = default;
         ~DeferredLightingTechnique() override = default;
@@ -174,14 +193,6 @@ namespace CoreEngine
 
         // ===== 空アンビエント（大気散乱 SH。Sky Light 相当） =====
         // 有効フラグ・スケールは AtmosphereManager が持ち、Execute で毎フレーム UploadRing に置く
-        /// @brief 空アンビエント（Sky Irradiance SH / 空スペキュラ IBL）の有効状態と強度
-        struct SkyAmbientParams {
-            uint32_t enabled = 0;
-            float scale = 0.0f;
-            uint32_t specularEnabled = 0; ///< 1 = 空スペキュラIBL（空＋雲キューブマップの環境反射）有効
-            float padding = 0.0f;
-        };
-
         static constexpr Cb::Field kSkyAmbientParamsFields[] = {
             CB_FIELD(SkyAmbientParams, enabled), CB_FIELD(SkyAmbientParams, scale),
             CB_FIELD(SkyAmbientParams, specularEnabled), CB_FIELD(SkyAmbientParams, padding),

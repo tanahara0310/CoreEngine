@@ -150,6 +150,16 @@ namespace CoreEngine
         if (rtShadowMaskHandle_.ptr != 0) {
             binder.Set(table[ModelBind::gRTShadowMask], rtShadowMaskHandle_);
         }
+        // 空の環境光（SH とキューブマップは、有効なフレームだけシェーダが読む）
+        if (skyAmbientCBV_ != 0) {
+            binder.Set(table[ModelBind::gSkyAmbient], skyAmbientCBV_);
+        }
+        if (skyIrradianceSHHandle_.ptr != 0) {
+            binder.Set(table[ModelBind::gSkyIrradianceSH], skyIrradianceSHHandle_);
+        }
+        if (skySpecularMapHandle_.ptr != 0) {
+            binder.Set(table[ModelBind::gSkySpecularMap], skySpecularMapHandle_);
+        }
         // フォグはブレンドモードで差すバリアントを選ぶ。
         // 不透明フォワードは全画面パス（FogPass）が深度から掛けるので、ここで掛けると二重になる。
         // 加算・スクリーンは内散乱を足すと、背後の不透明面に既に乗った分と二重に光る

@@ -30,6 +30,11 @@
 SamplerState gPointSampler : register(s1); ///< 点・繰り返し
 SamplerState gClampSampler : register(s2); ///< 線形・端で止める
 
+// ===== 前方描画の空の環境光（DeferredLighting と同じ定数・SH・キューブマップ） =====
+ConstantBuffer<SkyAmbientParams> gSkyAmbient : register(b0, space5);
+StructuredBuffer<float4> gSkyIrradianceSH : register(t0, space5); ///< 放射照度畳み込み済みの SH9 係数
+TextureCube<float4> gSkySpecularMap : register(t1, space5); ///< プリフィルタ済みの空のキューブマップ
+
 /// @brief Surface() に渡す画素ごとの値
 struct SurfaceInput
 {
@@ -62,7 +67,7 @@ struct SurfaceOutput
     float metallic;
     float roughness;
     float occlusion; ///< 1 = 遮られていない
-    float3 emission; ///< 自己発光（GBuffer では 0〜1 に収まる）
+    float3 emission; ///< 自己発光（リニア。1 を超えてよい）
 };
 
 /// @brief SurfaceVertex() に渡す頂点ごとの値
@@ -257,12 +262,13 @@ GBufferOutput SurfaceGBuffer(VertexShaderOutput input, float movingObject)
     float2 ndcPrev = input.clipPosPrev.xy / input.clipPosPrev.w;
     output.motionVector = float4(ndcCurrent - ndcPrev, 0.0f, movingObject);
 
-    // アンリット: roughness=0 の印と、emissiveMetallic.rgb の色を DeferredLighting がそのまま出す
+    // アンリット: roughness=0 の印と、emissiveMetallic.rgb の色を DeferredLighting がそのまま出す。
+    // 前方描画と同じく 1 を超える色はそのまま書く
     if (SurfaceIsUnlit())
     {
         output.albedoAO = float4(0.0f, 0.0f, 0.0f, 1.0f);
         output.normalRoughness = float4(0.5f, 0.5f, 1.0f, 0.0f);
-        output.emissiveMetallic = float4(albedo, 0.0f);
+        output.emissiveMetallic = float4(max(OUT.baseColor, 0.0f), 0.0f);
         return output;
     }
 
@@ -273,9 +279,26 @@ GBufferOutput SurfaceGBuffer(VertexShaderOutput input, float movingObject)
 
     output.albedoAO = float4(albedo, ao);
     output.normalRoughness = float4(encodedNormal, roughness);
-    output.emissiveMetallic = float4(OUT.emission, metallic);
+    output.emissiveMetallic = float4(max(OUT.emission, 0.0f), metallic);
 
     return output;
+}
+
+/// @brief 前方描画の環境光（空の環境光があれば DeferredLighting と同じ式、無ければ半球ランバート）
+/// @details 材質の値は GBuffer に書くときと同じ範囲に収めて使う
+float3 SurfaceForwardAmbient(VertexShaderOutput input, SurfaceOutput OUT, float3 toEye)
+{
+    float3 albedo = saturate(OUT.baseColor);
+    float metallic = saturate(OUT.metallic);
+    float roughness = saturate(max(OUT.roughness, 0.01f));
+    float ao = saturate(OUT.occlusion);
+    if (gSkyAmbient.enabled != 0)
+    {
+        float3 F0 = lerp(float3(DIELECTRIC_F0, DIELECTRIC_F0, DIELECTRIC_F0), albedo, metallic);
+        return EvaluateSkyAmbient(gSkyIrradianceSH, gSkySpecularMap, gClampSampler,
+            gSkyAmbient.scale, gSkyAmbient.specularEnabled, OUT.normalWS, toEye, albedo, metallic, roughness, ao, F0);
+    }
+    return CalculateFallbackAmbient(input, albedo, metallic, ao);
 }
 
 /// @brief Surface() の結果をライトで照らして色を出す
@@ -309,6 +332,7 @@ PixelShaderOutput SurfaceForward(VertexShaderOutput input)
     // PBR ライティング
     output.color.rgb = CalculateAllLighting(input, OUT.baseColor, OUT.metallic, roughness, OUT.occlusion, toEye,
         float4(OUT.baseColor, OUT.alpha));
+    output.color.rgb += SurfaceForwardAmbient(input, OUT, toEye);
     output.color.a = OUT.alpha;
 
     // エミッシブ（自己発光: ライティングの影響を受けず加算）

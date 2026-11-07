@@ -58,3 +58,12 @@ struct LightCounts
     uint spotLightCount;
     uint areaLightCount;
 };
+
+/// @brief 空の環境光の有効状態と強さ（C++ 側 DeferredLightingTechnique::SkyAmbientParams と一致させる）
+struct SkyAmbientParams
+{
+    uint enabled;          // 1 = 空の環境光で照らす（大気が有効なフレームだけ）
+    float scale;           // 空の輝度単位 → サーフェス光単位の変換係数
+    uint specularEnabled;  // 1 = 空のキューブマップの映り込みを足す
+    float padding;
+};

@@ -38,6 +38,7 @@ namespace CoreEngine
         config.SetDefaultSRVStrategy(BindingStrategy::DescriptorTable);
         config.ConfigureSampler("gShadowSampler", SamplerConfig::Shadow());
         config.ConfigureSampler("gSampler", SamplerConfig::Anisotropic());
+        config.ConfigureSampler("gClampSampler", SamplerConfig::LinearClamp());
         // 頂点アニメーションの時間・風はパスごとに差す 8 個の 32bit 値なのでルート定数にする
         config.ConfigureResource("gVertexAnim", BindingStrategy::RootConstants);
 

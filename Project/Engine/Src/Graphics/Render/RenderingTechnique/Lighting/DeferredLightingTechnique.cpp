@@ -26,6 +26,38 @@ namespace CoreEngine
     }
 
     // -------------------------------------------------------------------------
+    // 今フレームの空の環境光の値
+    // -------------------------------------------------------------------------
+    DeferredLightingTechnique::SkyAmbientBinding DeferredLightingTechnique::ResolveSkyAmbient(
+        AtmosphereManager* atmosphere)
+    {
+        SkyAmbientBinding sky{};
+        if (!atmosphere) {
+            return sky;
+        }
+
+        const bool skyAmbientUsable = atmosphere->IsAtmosphereActive()
+            && atmosphere->IsSkyAmbientEnabled()
+            && atmosphere->IsSkyAmbientReady()
+            && atmosphere->GetSkyIrradianceSHSRVHandle().ptr != 0;
+
+        // 空スペキュラ IBL はキューブマップ生成済みのフレームのみ有効
+        const bool skySpecularUsable = skyAmbientUsable
+            && atmosphere->IsSkySpecularEnabled()
+            && atmosphere->IsSkyEnvironmentReady()
+            && atmosphere->GetSkySpecularSRVHandle().ptr != 0;
+
+        sky.params.enabled = skyAmbientUsable ? 1u : 0u;
+        sky.params.scale = atmosphere->GetSkyAmbientScale();
+        sky.params.specularEnabled = skySpecularUsable ? 1u : 0u;
+        // SH バッファとキューブマップは AtmosphereManager の初期化時から常にある。
+        // 無効なフレームではシェーダーが読まないため内容は問われない
+        sky.irradianceSH = atmosphere->GetSkyIrradianceSHSRVHandle();
+        sky.specularMap = atmosphere->GetSkySpecularSRVHandle();
+        return sky;
+    }
+
+    // -------------------------------------------------------------------------
     // ピクセルシェーダーパスを返す
     // -------------------------------------------------------------------------
     const std::wstring& DeferredLightingTechnique::GetPixelShaderPath() const
@@ -173,34 +205,15 @@ namespace CoreEngine
 
         // ===== 空アンビエント（大気散乱 SH。Sky Light 相当） =====
         {
-            auto* atmosphere = context.atmosphereManager;
-            const bool skyAmbientUsable = atmosphere
-                && atmosphere->IsAtmosphereActive()
-                && atmosphere->IsSkyAmbientEnabled()
-                && atmosphere->IsSkyAmbientReady()
-                && atmosphere->GetSkyIrradianceSHSRVHandle().ptr != 0;
-
-            // 空スペキュラIBL（Phase 3b）はキューブマップ生成済みのフレームのみ有効
-            const bool skySpecularUsable = skyAmbientUsable
-                && atmosphere->IsSkySpecularEnabled()
-                && atmosphere->IsSkyEnvironmentReady()
-                && atmosphere->GetSkySpecularSRVHandle().ptr != 0;
-
             // フラグ・スケールを毎フレーム UploadRing に置く
-            SkyAmbientParams params{};
-            params.enabled = skyAmbientUsable ? 1u : 0u;
-            params.scale = atmosphere ? atmosphere->GetSkyAmbientScale() : 0.0f;
-            params.specularEnabled = skySpecularUsable ? 1u : 0u;
+            const SkyAmbientBinding sky = ResolveSkyAmbient(context.atmosphereManager);
             binder.Set(bindings_[DeferredLightingBind::gSkyAmbient],
-                context.dxCommon->GetUploadRing().AllocateConstants(params));
-            // SH バッファはバッファ自体が常に存在する（AtmosphereManager 初期化時に生成）。
-            // enabled=0 のフレームではシェーダーが読まないため内容は問われない
-            if (atmosphere && atmosphere->GetSkyIrradianceSHSRVHandle().ptr != 0) {
-                binder.Set(bindings_[DeferredLightingBind::gSkyIrradianceSH], atmosphere->GetSkyIrradianceSHSRVHandle());
+                context.dxCommon->GetUploadRing().AllocateConstants(sky.params));
+            if (sky.irradianceSH.ptr != 0) {
+                binder.Set(bindings_[DeferredLightingBind::gSkyIrradianceSH], sky.irradianceSH);
             }
-            // 空スペキュラキューブマップ（specularEnabled=0 のフレームではシェーダーが読まない）
-            if (atmosphere && atmosphere->GetSkySpecularSRVHandle().ptr != 0) {
-                binder.Set(bindings_[DeferredLightingBind::gSkySpecularMap], atmosphere->GetSkySpecularSRVHandle());
+            if (sky.specularMap.ptr != 0) {
+                binder.Set(bindings_[DeferredLightingBind::gSkySpecularMap], sky.specularMap);
             }
         }
 

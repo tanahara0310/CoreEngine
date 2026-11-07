@@ -89,21 +89,12 @@ ConstantBuffer<WaterCausticsDebug> gWaterCausticsDebug : register(b5);
 // gSkyIrradianceSH には放射照度畳み込み済みの SH9 係数が入っており、
 // Σ c_i・Y_i(N) がそのまま「法線 N に対する空からの放射照度 / π」になる。
 StructuredBuffer<float4> gSkyIrradianceSH : register(t18);
-
-struct SkyAmbientParams
-{
-    uint enabled;          // 1 = 空アンビエント有効（大気アクティブなフレームのみ）
-    float scale;           // 空の輝度単位 → サーフェス光単位の変換係数
-    uint specularEnabled;  // 1 = 空スペキュラIBL（空＋雲キューブマップの環境反射）有効
-    float padding;
-};
 ConstantBuffer<SkyAmbientParams> gSkyAmbient : register(b6);
 
-// プリフィルタ済み空スペキュラキューブマップ（空＋雲。Phase 3b: Sky Light のスペキュラ相当）
+// プリフィルタ済み空スペキュラキューブマップ（空＋雲。Sky Light のスペキュラ相当）
 // AtmosphereManager が Sky-View LUT＋雲レイマーチから毎フレーム生成する。
-// 5 ミップ（mip = roughness × 4）。輝度は空（SkyAtmosphere.PS）と同一ドメイン。
+// kSkySpecularMipCount ミップ。輝度は空（SkyAtmosphere.PS）と同一ドメイン。
 TextureCube<float4> gSkySpecularMap : register(t19);
-static const float kSkySpecularMipCount = 5.0f;
 
 // ============================================================
 // 雲シャドウ（雲が地面へ落とす影）
@@ -135,12 +126,6 @@ ConstantBuffer<WetSurfaceConstants> gWetSurface : register(b9);
 float LoadWetSurfaceSample(uint n)
 {
     return gWetSurface.wetness[n >> 2][n & 3u];
-}
-
-/// @brief SH9 係数から法線方向の空の放射照度/π を評価する
-float3 EvaluateSkyIrradiance(float3 n)
-{
-    return EvaluateSkyIrradianceSH9(gSkyIrradianceSH, n);
 }
 
 SamplerState gSampler : register(s0);
@@ -457,27 +442,11 @@ PixelShaderOutput main(PixelShaderInput input)
         if (gSkyAmbient.enabled != 0)
         {
             // ===== 空アンビエント（大気散乱由来。Sky Light 相当） =====
-            // 大気の Sky-View LUT を SH9 射影した放射照度で照らす。
+            // 大気の Sky-View LUT を SH9 射影した放射照度と、空のキューブマップの映り込みで照らす。
             // 昼は青みがかった環境光・夕方はオレンジ・夜はほぼゼロと時刻に追従する。
             // 太陽の影は掛けない（空の光のさえぎりは AO が受け持つ）
-
-            // 拡散: SH9 放射照度。金属は拡散反射しないため減衰させる
-            float3 skyIrradiance = EvaluateSkyIrradiance(N);
-            ambient = albedo * (1.0f - metallic) * skyIrradiance * gSkyAmbient.scale * ao;
-
-            // スペキュラ: プリフィルタ済み空キューブマップによる環境反射（Phase 3b）。
-            // 空・雲・太陽まわりのグレアが roughness に応じたぼけで映り込む。
-            // 拡散と同じ skyAmbientScale で空の輝度ドメインをサーフェス光単位へ変換する。
-            if (gSkyAmbient.specularEnabled != 0)
-            {
-                float3 R = reflect(-V, N);
-                float NdotV = saturate(dot(N, V));
-                float mipLevel = roughness * (kSkySpecularMipCount - 1.0f);
-                float3 prefiltered = gSkySpecularMap.SampleLevel(gSampler, R, mipLevel).rgb;
-                float2 envBRDF = EnvBRDFApprox(roughness, NdotV);
-                float3 specular = prefiltered * (F0 * envBRDF.x + envBRDF.y);
-                ambient += specular * gSkyAmbient.scale * ao;
-            }
+            ambient = EvaluateSkyAmbient(gSkyIrradianceSH, gSkySpecularMap, gSampler,
+                gSkyAmbient.scale, gSkyAmbient.specularEnabled, N, V, albedo, metallic, roughness, ao, F0);
         }
         else
         {

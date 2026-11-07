@@ -146,14 +146,21 @@ namespace CoreEngine
         // ===== フォワード描画物（葉・草・水面等）の受影用にマスクを共有 =====
         // gRTShadowMask(t6) としてバインドされる。マスク未提供フレームは white1x1 に戻し、
         // シェーダ側の寸法ガード（1x1→影なし）へ倒す（t6 未バインドを防ぐ）。
+        // 空の環境光も DeferredLighting と同じ値を差す
         if (context.renderManager) {
             if (mainLightMask.ptr == 0) {
                 mainLightMask = TextureManager::GetInstance().Load("white1x1.png").gpuHandle;
             }
+            const DeferredLightingTechnique::SkyAmbientBinding sky =
+                DeferredLightingTechnique::ResolveSkyAmbient(context.atmosphereManager);
+            const D3D12_GPU_VIRTUAL_ADDRESS skyAmbientCBV = context.dxCommon
+                ? context.dxCommon->GetUploadRing().AllocateConstants(sky.params)
+                : 0;
             for (auto passType : { RenderPassType::Model, RenderPassType::SkinnedModel }) {
                 if (auto* renderer = dynamic_cast<BaseModelRenderer*>(
                         context.renderManager->GetRenderer(passType))) {
                     renderer->SetRTShadowMask(mainLightMask);
+                    renderer->SetSkyAmbient(skyAmbientCBV, sky.irradianceSH, sky.specularMap);
                 }
             }
         }
