@@ -17,8 +17,6 @@
 #ifndef UNDERWATER_LIGHTING_INCLUDED
 #define UNDERWATER_LIGHTING_INCLUDED
 
-#include "ShadowLightFloor.hlsli"
-
 /// @brief 水中ライティング置換に必要な値一式
 struct UnderwaterContext
 {
@@ -84,7 +82,7 @@ float3 ApplyWetDarkening(float3 albedo, float underwaterFactor)
 /// @param mainLightShadow メインライトの RT シャドウマスク値（未使用時は 1.0 を渡す）。
 ///        コースティクスのレイトレースは水中区間しか遮蔽判定していないため、
 ///        水上（太陽→水面）のヤシ・岩・島の影をここで引き継ぐ。置換前の直接光と
-///        同一マスク・同じ 0.3 フロアなので水面をまたいでも影の濃さが連続する。
+///        同じマスクをそのまま掛けるので、水面をまたいでも影の濃さが連続する。
 ///        水中の受光点の RT シャドウは、屈折した光が水面へ入る点から水より上だけを
 ///        調べる（RTShadow.hlsl の TryFindWaterEntryPoint）。水中区間の遮蔽は
 ///        コースティクス側が 0 を返すので、同じ遮蔽物を 2 か所に落とさない。
@@ -99,7 +97,7 @@ float3 CompositeUnderwaterCaustics(
     // ほぼ鉛直なので Fresnel は法線入射の F0 で近似する。
     const float3 causticsKD = (1.0f.xxx - F0) * (1.0f - metallic);
     float3 result = causticsRadiance * causticsKD * albedo / PI;
-    result *= ApplyShadowLightFloor(mainLightShadow);
+    result *= mainLightShadow;
     return result;
 }
 

@@ -176,11 +176,14 @@ float4 ShadeRefractionHit(RayDesc ray, RTWaterHitPayload payload, float coneWidt
 {
     RTHitSurface surface;
     float coneWidth;
-    if (!FindOpaqueHitSurface(gScene, ray, payload, coneWidthAtOrigin, coneSpread, surface, coneWidth))
+    // FindOpaqueHitSurface にはこの関数のローカル変数を渡す（引数をそのまま inout へ渡すと -Od でコンパイルできない）
+    RayDesc hitRay = ray;
+    RTWaterHitPayload hitPayload = payload;
+    if (!FindOpaqueHitSurface(gScene, hitRay, hitPayload, coneWidthAtOrigin, coneSpread, surface, coneWidth))
     {
         return float4(0.0f, 0.0f, 0.0f, 0.0f);
     }
-    const float footprintMeters = ProjectFootprintOntoSurface(coneWidth, ray.Direction, surface.normal);
+    const float footprintMeters = ProjectFootprintOntoSurface(coneWidth, hitRay.Direction, surface.normal);
     float mainLightVisibility;
     const RTHitUnderwaterLighting lighting =
         BuildRefractionHitLighting(surface, footprintMeters, mainLightVisibility);
