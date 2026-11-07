@@ -91,28 +91,40 @@ namespace CoreEngine
 
         // シェーダー識別子を書き込む
         uint8_t* mapped = nullptr;
-        buffer_->Map(0, nullptr, reinterpret_cast<void**>(&mapped));
+        if (FAILED(buffer_->Map(0, nullptr, reinterpret_cast<void**>(&mapped))) || !mapped) {
+            Logger::GetInstance().Log(
+                "ShaderTableBuilder: Failed to map buffer",
+                LogLevel::Error, LogCategory::Graphics);
+            buffer_.Reset();
+            return false;
+        }
         std::memset(mapped, 0, static_cast<size_t>(totalSize));
 
-        // RayGen
-        void* rayGenId = props->GetShaderIdentifier(rayGenName_);
-        std::memcpy(mapped + rayGenOffset_, rayGenId, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+        // State Object に無い名前は識別子が null で返るので、その時点で作るのをやめる
+        auto writeRecord = [&](const wchar_t* name, UINT64 offset, const char* section, size_t index) {
+            const void* id = props->GetShaderIdentifier(name);
+            if (!id) {
+                Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics,
+                    "ShaderTableBuilder: shader identifier not found. section={} index={}", section, index);
+                return false;
+            }
+            std::memcpy(mapped + offset, id, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+            return true;
+        };
 
-        // Miss（複数対応）
-        for (size_t i = 0; i < missNames_.size(); ++i) {
-            void* id = props->GetShaderIdentifier(missNames_[i]);
-            std::memcpy(mapped + missOffset_ + i * recordSize_,
-                id, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+        bool written = writeRecord(rayGenName_, rayGenOffset_, "RayGen", 0);
+        for (size_t i = 0; written && i < missNames_.size(); ++i) {
+            written = writeRecord(missNames_[i], missOffset_ + i * recordSize_, "Miss", i);
         }
-
-        // HitGroup（複数対応）
-        for (size_t i = 0; i < hitGroupNames_.size(); ++i) {
-            void* id = props->GetShaderIdentifier(hitGroupNames_[i]);
-            std::memcpy(mapped + hitGroupOffset_ + i * recordSize_,
-                id, D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES);
+        for (size_t i = 0; written && i < hitGroupNames_.size(); ++i) {
+            written = writeRecord(hitGroupNames_[i], hitGroupOffset_ + i * recordSize_, "HitGroup", i);
         }
 
         buffer_->Unmap(0, nullptr);
+        if (!written) {
+            buffer_.Reset();
+            return false;
+        }
         return true;
     }
 

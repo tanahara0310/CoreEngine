@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.66.0">
+<meta name="engine-version" content="0.66.1">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11320,6 +11320,17 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-66-1">v0.66.1 <span class="dim">（2026-11-08）</span></h3>
+  <p>レイトレーシング（影・水面）の不具合をまとめて直した版です。見た目は、影の縁のざらつきの模様が変わるほかは変わりません。</p>
+  <ul>
+    <li><strong>出力テクスチャの作り直し</strong>：<code>r.RTShadow.HalfResolutionTrace</code> を切り替えたときなど、レイトレーシングの結果を書くテクスチャを作り直すとき、GPU がまだ使っている前のテクスチャをその場で捨て、同じビューを書き換えていました。前のテクスチャとビューは、そのフレームの GPU の作業が終わってから手放すようにしました。</li>
+    <li><strong>物が 1 つも無いフレーム</strong>：レイトレーシングに入る物が 0 個のフレームは加速構造（TLAS）を組まず、前のフレームの TLAS へレイを撃っていました。消えた物の形を指していることがあります。物が 0 個でも空の TLAS を組み、どのレイも外れるようにしました。TLAS が組めていないフレームは撃ちません（状態の表示は <code>NoTLAS</code>）。</li>
+    <li><strong>影の履歴</strong>：ディレクショナルライトを足した・消した・切り替えたとき、同じ番号にいた別のライトの影の履歴を引き継いでいました。番号のライトが変わったときと、前のフレームに影を撃っていないときは履歴を捨てます。</li>
+    <li><strong>影のレイ</strong>：影のレイは当たった時点で止め、closest-hit シェーダを呼ばないようにしました。ソフトシャドウのサンプルの番号を、フレームごとに 16 個ずつ割り当てるようにしました。影の縁で撃つ本数が変わっても、前のフレームと同じサンプルを撃ちません。太陽が地平線より下のときの影のレイの長さを、最大（基準の 10 倍）から基準の長さにしました。</li>
+    <li><strong>資源の状態</strong>：遅延ライティングが読む影のマスクを、ピクセルシェーダが読む状態で宣言するようにしました。レイトレーシングのコースティクスが読む法線（G-Buffer）を RenderGraph に宣言していなかったので、宣言しました。</li>
+    <li><strong>そのほか</strong>：水面の SeaMap の転送で SRV が作れなかったとき、GPU が使う転送用のバッファを捨てていたのを、フレームの作業が終わってから手放すようにしました。シェーダテーブルを作るとき、名前が State Object に無いシェーダがあると落ちていたのを、ログを出して作るのをやめるようにしました。撃てなかった理由の警告は、理由が変わったときだけ出します。</li>
+  </ul>
 
   <h3 id="changelog-v0-66-0">v0.66.0 <span class="dim">（2026-11-08）</span></h3>
   <p>ボリュメトリック雲を毎フレーム全部は描き直さず、何フレームかに分けて描き直すようにした版です。アラハビーチのシーン（1920×1080）で、雲にかかる GPU 時間が約 5.2 ms から約 2.8 ms になります。止まった画面の見た目は変わりません。</p>

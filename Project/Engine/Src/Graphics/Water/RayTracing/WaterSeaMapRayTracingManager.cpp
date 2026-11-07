@@ -302,14 +302,17 @@ namespace CoreEngine
         srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
         srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
         srvDesc.Texture2D.MipLevels = 1;
+        // 写しのコマンドが読み書きするので、転送用のバッファはこのフレームが終わってから手放す
+        DeferredReleaseQueue& deferredRelease = dxCommon_->DeferredRelease();
+        deferredRelease.PushForCurrentFrame(std::move(upload));
+
         DescriptorHandle srv = descriptorAllocator_->CreateSRV(texture.Get(), srvDesc, "WaterSeaMap");
         if (!srv.IsValid()) {
+            deferredRelease.PushForCurrentFrame(std::move(texture));
             return;
         }
 
         // 今フレームまでの描画は前の地図を読むので、前の地図はこのフレームが終わってから手放す
-        DeferredReleaseQueue& deferredRelease = dxCommon_->DeferredRelease();
-        deferredRelease.PushForCurrentFrame(std::move(upload));
         if (mapTexture_) {
             deferredRelease.PushForCurrentFrame(std::move(mapTexture_));
         }

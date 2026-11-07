@@ -339,7 +339,8 @@ namespace CoreEngine
     {
         const uint32_t viewIndex = static_cast<uint32_t>(viewId);
         ReleaseOutputIfSizeMismatchBase(width, height, viewIndex);
-        outputViews_.ReleaseIfSizeMismatch(width, height, kSunVisibilitySlotBase + viewIndex);
+        outputViews_.ReleaseIfSizeMismatch(
+            dxCommon_, descriptorAllocator_, width, height, kSunVisibilitySlotBase + viewIndex);
     }
 
     D3D12_GPU_DESCRIPTOR_HANDLE WaterReflectionRayTracingManager::GetSunVisibilitySRVHandle(ViewID viewId) const

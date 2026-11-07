@@ -95,7 +95,7 @@ namespace CoreEngine
     // 画面サイズが変わったときだけ出力テクスチャを捨てる（次の Ensure で作り直される）
     void RayTracingPassBase::ReleaseOutputIfSizeMismatchBase(UINT width, UINT height, uint32_t viewIndex)
     {
-        outputViews_.ReleaseIfSizeMismatch(width, height, viewIndex);
+        outputViews_.ReleaseIfSizeMismatch(dxCommon_, descriptorAllocator_, width, height, viewIndex);
     }
 
     D3D12_GPU_DESCRIPTOR_HANDLE RayTracingPassBase::GetOutputSRVHandleBase(uint32_t viewIndex) const
@@ -119,8 +119,8 @@ namespace CoreEngine
         if (!asMgr_ || !asMgr_->IsSupported()) {
             return DispatchGuardStatus::RayTracingUnsupported;
         }
-        if (asMgr_->GetBLASCount() == 0) {
-            return DispatchGuardStatus::NoBLAS;
+        if (!asMgr_->IsTLASReady()) {
+            return DispatchGuardStatus::NoTLAS;
         }
         if (!cmdList) {
             return DispatchGuardStatus::InvalidCommandList;
@@ -148,8 +148,7 @@ namespace CoreEngine
         return true;
     }
 
-    // ガード失敗の理由を 1 度だけ警告ログへ出す
-    // （毎フレーム同じ警告が流れると本当のエラーが埋もれるため、状態変化時のみ）
+    // ガード失敗の理由を診断情報へ書き、理由が前回と変わったときだけ警告ログへ出す
     void RayTracingPassBase::ReportDispatchGuardFailure(
         DispatchGuardStatus guardStatus,
         ID3D12GraphicsCommandList* cmdList)
@@ -161,8 +160,8 @@ namespace CoreEngine
         case DispatchGuardStatus::RayTracingUnsupported:
             lastDispatchInfo_.status = RayTracingDispatchStatus::RayTracingUnsupported;
             break;
-        case DispatchGuardStatus::NoBLAS:
-            lastDispatchInfo_.status = RayTracingDispatchStatus::NoBLAS;
+        case DispatchGuardStatus::NoTLAS:
+            lastDispatchInfo_.status = RayTracingDispatchStatus::NoTLAS;
             break;
         case DispatchGuardStatus::InvalidCommandList:
         case DispatchGuardStatus::CommandList4Unavailable:
@@ -175,6 +174,11 @@ namespace CoreEngine
             lastDispatchInfo_.status = RayTracingDispatchStatus::RayTracingUnsupported;
             break;
         }
+
+        if (guardStatus == lastReportedGuardStatus_) {
+            return;
+        }
+        lastReportedGuardStatus_ = guardStatus;
 
         Logger::GetInstance().Warnf(
             LogCategory::Graphics,
@@ -251,6 +255,7 @@ namespace CoreEngine
             ReportDispatchGuardFailure(guardStatus, cmdList);
             return false;
         }
+        lastReportedGuardStatus_ = DispatchGuardStatus::Ok;
 
         outResources.outputSrvHandle = GetOutputSRVHandleBase(viewIndex);
         outResources.outputUavHandle = outputViews_.GetUAVHandle(viewIndex);

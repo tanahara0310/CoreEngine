@@ -278,12 +278,10 @@ namespace CoreEngine
         }
 
         // DXR TLAS 構築（シーン内のメッシュを持つコンポーネントからインスタンスを収集）
-        if (!sceneManager) {
-            return;
-        }
-
-        auto* objMgr = sceneManager->GetCurrentGameObjectManager();
+        auto* objMgr = sceneManager ? sceneManager->GetCurrentGameObjectManager() : nullptr;
         if (!objMgr) {
+            // シーンが無いフレームも空の TLAS を組み、前のシーンの TLAS とヒットの表を使わせない
+            asMgr->BuildTLAS(dx->GetCommandList(), {});
             return;
         }
 
@@ -482,8 +480,9 @@ namespace CoreEngine
                 }
             });
 
+        // 物が 0 個のフレームも組む（下で回収する動的 BLAS を前の TLAS から撃たせない）
+        asMgr->BuildTLAS(dx->GetCommandList(), tlasInstances);
         if (!tlasInstances.empty()) {
-            asMgr->BuildTLAS(dx->GetCommandList(), tlasInstances);
             asMgr->UploadHitShadingTables(hitInstances, hitSubMeshes);
         }
 
@@ -565,6 +564,7 @@ namespace CoreEngine
                 stage.height,
                 viewId,
                 li,
+                &light,
                 (li == 0) ? waterSurface : RayTracingShadowWaterSurface{});
             });
 

@@ -56,9 +56,14 @@ namespace CoreEngine
         UINT GetWidth(uint32_t slotIndex) const { return slots_[slotIndex].width; }
         UINT GetHeight(uint32_t slotIndex) const { return slots_[slotIndex].height; }
 
-        /// @brief サイズが一致しない場合のみ、指定スロットのテクスチャを解放する
+        /// @brief サイズが一致しない場合のみ、指定スロットのテクスチャとビューを手放す
         /// @details 実際の再生成は次回の EnsureTexture() 呼び出しまで遅延される。
-        void ReleaseIfSizeMismatch(UINT width, UINT height, uint32_t slotIndex);
+        void ReleaseIfSizeMismatch(
+            GraphicsCore* dxCommon,
+            DescriptorAllocator* descriptorAllocator,
+            UINT width,
+            UINT height,
+            uint32_t slotIndex);
 
     private:
         /// @brief 出力テクスチャ 1 枚分（実体＋現在ステート・UAV/SRV・寸法）
@@ -70,6 +75,9 @@ namespace CoreEngine
             UINT height = 0;
             DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
         };
+
+        /// @brief スロットのテクスチャと UAV/SRV を、記録中のフレームの GPU 作業が終わってから返す予約をする
+        static void RetireSlot(GraphicsCore* dxCommon, DescriptorAllocator* descriptorAllocator, Slot& slot);
 
         Slot slots_[kMaxSlotCount]{};
     };

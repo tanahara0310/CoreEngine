@@ -42,7 +42,7 @@ namespace CoreEngine
             Ok = 0,
             NotInitialized,
             RayTracingUnsupported,
-            NoBLAS,
+            NoTLAS,
             InvalidCommandList,
             CommandList4Unavailable,
             OutputAllocationFailed,
@@ -142,6 +142,8 @@ namespace CoreEngine
 
         const char* ownerName_ = "RayTracingPassBase";
         const char* outputDebugName_ = "RTOutput";
+        /// @brief 最後に警告ログへ出したガードの結果（同じ理由を毎フレーム出さない）
+        DispatchGuardStatus lastReportedGuardStatus_ = DispatchGuardStatus::Ok;
 
         /// @brief State Object とシェーダーテーブルを作る別スレッドの仕事（作れたら true）
         /// @note 書き込む先のメンバより後に宣言し、先に破棄されて完成を待つ
