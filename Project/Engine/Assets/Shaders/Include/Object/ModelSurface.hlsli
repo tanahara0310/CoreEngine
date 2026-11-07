@@ -418,7 +418,6 @@ VertexShaderOutput SurfaceTransformVertex(float4 position, float3 normalOS, floa
 
     float4 worldPos = mul(position, mtx.World);
     output.worldPosition = worldPos.xyz;
-    output.lightSpacePos = mul(worldPos, mtx.LightViewProjection);
 
     output.clipPosCurrent = output.position;
     output.clipPosPrev = mul(prevPosition, mtx.PrevWVP);
@@ -489,7 +488,6 @@ VertexShaderOutput SurfacePreviewVertexMain(SurfaceStaticVertexAttributes input)
     mtx.WVP = mul(gSurfacePreview.world, gSurfacePreview.viewProjection);
     mtx.World = gSurfacePreview.world;
     mtx.WorldInversTranspose = gSurfacePreview.worldInverseTranspose;
-    mtx.LightViewProjection = mtx.WVP;
     mtx.PrevWVP = mtx.WVP;
 
     const float4 white = float4(1.0f, 1.0f, 1.0f, 1.0f);

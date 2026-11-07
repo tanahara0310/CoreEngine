@@ -28,7 +28,6 @@ VertexShaderOutput main(VertexShaderInput input)
 
     float4 worldPos = mul(input.position, gTransformationMatrix.World);
     output.worldPosition = worldPos.xyz;
-    output.lightSpacePos = mul(worldPos, gTransformationMatrix.LightViewProjection);
 
     // モーションベクター用: 現フレーム・前フレームのクリップ座標（前フレームは前の姿勢の位置）
     output.clipPosCurrent = mul(input.position, gTransformationMatrix.WVP);

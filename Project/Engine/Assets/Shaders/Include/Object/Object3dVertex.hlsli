@@ -55,9 +55,6 @@ VertexShaderOutput VertexMain(VertexShaderInput input, uint instanceID : SV_Inst
     float4 worldPos = mul(position, mtx.World);
     output.worldPosition = worldPos.xyz;
 
-    // ライト空間座標を計算（シャドウマップ用）
-    output.lightSpacePos = mul(worldPos, mtx.LightViewProjection);
-
     // モーションベクター用クリップ空間座標
     output.clipPosCurrent = output.position;
     output.clipPosPrev = mul(prevPosition, mtx.PrevWVP);

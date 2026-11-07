@@ -31,7 +31,6 @@ struct FFTWaterVSOutput
     float waveHeight : TEXCOORD2;
     float3 normal : NORMAL0;
     float3 worldPosition : POSITION0;
-    float4 lightSpacePos : POSITION1;
     float3 tangent : TANGENT0;
     float3 bitangent : BINORMAL0;
     float4 clipPosCurrent : POSITION2;
@@ -147,7 +146,6 @@ FFTWaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     output.tangent = normalize(mul(baseTangentLocal, (float3x3)mtx.World));
     output.bitangent = normalize(mul(baseBinormalLocal, (float3x3)mtx.World));
     output.worldPosition = worldPos;
-    output.lightSpacePos = mul(float4(worldPos, 1.0f), mtx.LightViewProjection);
     output.clipPosCurrent = output.position;
     // ★前フレーム位置にも同じ変位を載せる★
     // 変位を載せないと「今フレームだけ波の分だけ動いた」ことになり、モーションベクターが

@@ -23,7 +23,6 @@ VertexShaderOutput ToVertexShaderOutput(WaterPSInput input)
     output.texcoord = input.texcoord;
     output.normal = input.normal;
     output.worldPosition = input.worldPosition;
-    output.lightSpacePos = input.lightSpacePos;
     output.tangent = input.tangent;
     output.bitangent = input.bitangent;
     output.clipPosCurrent = input.clipPosCurrent;

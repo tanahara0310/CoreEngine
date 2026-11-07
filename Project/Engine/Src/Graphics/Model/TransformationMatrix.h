@@ -12,15 +12,13 @@ namespace CoreEngine
         Matrix4x4 WVP;                        // 64バイト
         Matrix4x4 world;                      // 64バイト
         Matrix4x4 worldInverseTranspose;      // 64バイト
-        Matrix4x4 lightViewProjection;        // 64バイト（シャドウマップ用）
         Matrix4x4 prevWVP;                    // 64バイト（モーションベクター用: 前フレームWVP）
-        // 合計320バイト（16バイトの倍数）
+        // 合計256バイト（16バイトの倍数）
     };
 
     static constexpr Cb::Field kTransformationMatrixFields[] = {
         CB_FIELD(TransformationMatrix, WVP), CB_FIELD(TransformationMatrix, world),
-        CB_FIELD(TransformationMatrix, worldInverseTranspose), CB_FIELD(TransformationMatrix, lightViewProjection),
-        CB_FIELD(TransformationMatrix, prevWVP),
+        CB_FIELD(TransformationMatrix, worldInverseTranspose), CB_FIELD(TransformationMatrix, prevWVP),
     };
     CB_VERIFY_LAYOUT(TransformationMatrix, kTransformationMatrixFields);
     // HLSL 側の照合（CB_BIND_HLSL）は入れていない。"gTransformationMatrix" という変数名を

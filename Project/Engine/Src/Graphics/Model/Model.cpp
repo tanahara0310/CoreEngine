@@ -157,10 +157,6 @@ namespace CoreEngine
         Matrix4x4 worldMatrix = transform.GetWorldMatrix();
         Matrix4x4 worldViewProjectionMatrix = worldMatrix * view.view->viewProjection;
 
-        // 従来型シャドウマップ廃止（2026-07-25）: lightViewProjection は cbuffer レイアウト
-        // 維持のためフィールドだけ残し、単位行列を書き込む（シェーダ側に読者はいない）
-        Matrix4x4 lightVP = MathCore::Matrix::Identity();
-
         // モーションベクター履歴（prevWVP）は GameView 専用。GameView 以外は MV=0 で描く
         const bool isGameView = (view.viewType == RenderViewType::GameView);
         const uint64_t frame = Time::FrameCount();
@@ -177,7 +173,6 @@ namespace CoreEngine
         mappedData->prevWVP = hasMotionHistory ? prevGameWVP_ : worldViewProjectionMatrix;
         mappedData->WVP = worldViewProjectionMatrix;
         mappedData->worldInverseTranspose = MathCore::Matrix::Transpose(MathCore::Matrix::Inverse(worldMatrix));
-        mappedData->lightViewProjection = lightVP;
         skinnedTransformAddress_ = allocation.gpuAddress;
 
         // 今フレームのWVPを次フレームの prevWVP として保存
@@ -272,8 +267,6 @@ namespace CoreEngine
         const uint32_t lodIndex = ModelVisibility::SelectLod(*resource_, worldMatrix, camera, boundsPadding_);
 
         Matrix4x4 wvp = worldMatrix * view.view->viewProjection;
-        // 従来型シャドウマップ廃止に伴い lightViewProjection はレイアウト維持のみ（単位行列）
-        Matrix4x4 lightVP = MathCore::Matrix::Identity();
 
         // モーションベクター履歴（prevWVP）は GameView 専用（UpdateTransformationMatrix と同じ規約）
         const bool isGameView = (view.viewType == RenderViewType::GameView);
@@ -284,7 +277,6 @@ namespace CoreEngine
         mtx.WVP = wvp;
         mtx.prevWVP = IsMotionHistoryUsable(isGameView, frame) ? prevGameWVP_ : wvp;
         mtx.worldInverseTranspose = MathCore::Matrix::Transpose(MathCore::Matrix::Inverse(worldMatrix));
-        mtx.lightViewProjection = lightVP;
         if (isGameView) {
             prevGameWVP_ = wvp;
             prevGameWVPFrame_ = frame;
