@@ -39,9 +39,6 @@ namespace CoreEngine
         desc.outputDebugName = "RTWaterSeabed";
         desc.shaderPath = L"Engine/Assets/Shaders/Water/RayTracing/RTWaterSeabed.hlsl";
         desc.rayGenName = L"RTWaterSeabedRayGen";
-        desc.missName = L"RTWaterSeabedMiss";
-        desc.hitGroupName = L"RTWaterSeabedHitGroup";
-        desc.closestHitName = L"RTWaterSeabedClosestHit";
         desc.outputUavName = "gSeabedHeightOutput";
         static constexpr const char* kSrvTableNames[] = { "gFFTOceanDisplacement" };
         desc.srvTableNames = kSrvTableNames;

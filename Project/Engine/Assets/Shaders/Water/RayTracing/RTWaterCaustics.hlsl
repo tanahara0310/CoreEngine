@@ -7,7 +7,7 @@
 // 水面を通って受光点へ届く日光の計算（RTWaterRefraction と共有）
 #include "RTWaterCausticsCommon.hlsli"
 #include "../../Include/Common/DepthReconstruction.hlsli"
-#include "../../Include/RayTracing/RTInstanceMask.hlsli"
+#include "../../Include/RayTracing/RTTrace.hlsli"
 #include "ColorSpace.hlsli" // Luminance
 
 RWTexture2D<float4> gCausticsOutput : register(u0);
@@ -41,6 +41,11 @@ cbuffer WaterCausticsConstants : register(b0)
     float3 gAbsorptionCoeff;
     uint gRegionValid;
     float4x4 gInvViewProj; // 深度復元用
+    // 材質の表（kRTHitNoTexture = アルファを調べず、どの物も不透明として当てる）
+    uint gHitInstanceTableIndex;
+    uint gHitSubMeshTableIndex;
+    uint gCausticsPad0;
+    uint gCausticsPad1;
 };
 
 static const uint kRTCausticsDebugNone = 0;
@@ -51,19 +56,7 @@ static const uint kRTCausticsDebugReceiverFacing = 4;
 static const uint kRTCausticsDebugFinalIntensity = 5;
 static const uint kRTCausticsDebugConcentration = 6;
 
-// ペイロード（RTWaterPayload）・失敗理由コード・波面評価は RTWaterSurfaceCommon.hlsli（共通）。
-
-#ifdef __INTELLISENSE__
-void TraceRay(
-    RaytracingAccelerationStructure scene,
-    uint rayFlags,
-    uint instanceInclusionMask,
-    uint rayContributionToHitGroupIndex,
-    uint multiplierForGeometryContributionToHitGroupIndex,
-    uint missShaderIndex,
-    RayDesc ray,
-    inout RTWaterPayload payload);
-#endif
+// 失敗理由コード・波面評価は RTWaterSurfaceCommon.hlsli（共通）。
 
 float3 VisualizeScalar(float value)
 {
@@ -191,24 +184,14 @@ void RTWaterCausticsRayGen()
         return;
     }
 
-    RTWaterPayload payload;
-    payload.hitT = 0.0f;
-    payload.hitFlag = 0.0f;
-
-    // 日光が水面から受光点まで届くか（遮る物は影を落とす物）
-    TraceRay(
-        gScene,
-        0,
-        kRTInstanceMaskShadowCaster,
-        0,
-        1,
-        0,
-        path.ray,
-        payload);
+    // 日光が水面から受光点まで届くか（遮る物は影を落とす物。葉などアルファで抜ける所は通す）
+    const RTTraceHit occluder = TraceRTClosestHit(
+        gScene, MakeRTSceneTables(gHitInstanceTableIndex, gHitSubMeshTableIndex),
+        path.ray, kRTInstanceMaskShadowCaster, receiverFootprintMeters, 0.0f);
 
     const WaterCausticsResult result = FinishWaterCaustics(
         path, params, receiverWorldPos, receiverNormal, receiverFootprintMeters,
-        payload.hitFlag >= 0.5f, payload.hitT,
+        occluder.hit, occluder.hitT,
         gFFTOceanDisplacement, gFFTOceanNormal);
 
     if (gDebugViewMode != kRTCausticsDebugNone && result.patternEvaluated)
@@ -229,20 +212,4 @@ void RTWaterCausticsRayGen()
 
     // α は波込みの水中被覆率（DeferredLighting の直接光置換率）
     gCausticsOutput[launchIndex] = float4(result.radiance, path.coverage);
-}
-
-[shader("miss")]
-void RTWaterCausticsMiss(inout RTWaterPayload payload)
-{
-    payload.hitT = 0.0f;
-    payload.hitFlag = 0.0f;
-}
-
-[shader("closesthit")]
-void RTWaterCausticsClosestHit(
-    inout RTWaterPayload payload,
-    in BuiltInTriangleIntersectionAttributes attr)
-{
-    payload.hitT = RayTCurrent();
-    payload.hitFlag = 1.0f;
 }

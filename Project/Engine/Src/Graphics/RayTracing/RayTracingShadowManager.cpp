@@ -205,8 +205,12 @@ namespace CoreEngine
         float    waterRegionHalfExtentZ; // offset 148
         int      waterEnabled;       // offset 152 1 なら水中の受光点を屈折した経路で調べる
         int      pad3;               // offset 156 → row10 終了(160)
+        uint32_t hitInstanceTableIndex; // offset 160 材質のインスタンス表（kRTHitNoTexture = アルファを調べない）
+        uint32_t hitSubMeshTableIndex;  // offset 164 材質のサブメッシュ表
+        uint32_t pad4;               // offset 168
+        uint32_t pad5;               // offset 172 → row11 終了(176)
     };
-    static_assert(sizeof(ShadowRayConstants) == 160, "ShadowRayConstants size mismatch with HLSL cbuffer");
+    static_assert(sizeof(ShadowRayConstants) == 176, "ShadowRayConstants size mismatch with HLSL cbuffer");
 
     static constexpr Cb::Field kShadowRayConstantsFields[] = {
         CB_FIELD(ShadowRayConstants, lightDir), CB_FIELD(ShadowRayConstants, shadowBias),
@@ -221,6 +225,8 @@ namespace CoreEngine
         CB_FIELD(ShadowRayConstants, waterRegionCenterX), CB_FIELD(ShadowRayConstants, waterRegionCenterZ),
         CB_FIELD(ShadowRayConstants, waterRegionHalfExtentX), CB_FIELD(ShadowRayConstants, waterRegionHalfExtentZ),
         CB_FIELD(ShadowRayConstants, waterEnabled), CB_FIELD(ShadowRayConstants, pad3),
+        CB_FIELD(ShadowRayConstants, hitInstanceTableIndex), CB_FIELD(ShadowRayConstants, hitSubMeshTableIndex),
+        CB_FIELD(ShadowRayConstants, pad4), CB_FIELD(ShadowRayConstants, pad5),
     };
     CB_VERIFY_LAYOUT(ShadowRayConstants, kShadowRayConstantsFields);
     CB_BIND_HLSL(ShadowRayConstants, kShadowRayConstantsFields, "ShadowRayConstants");
@@ -434,12 +440,15 @@ namespace CoreEngine
         // グローバルルートシグネチャをリフレクションから構築する
         // （ShadowRayConstants だけ 32bit ルート定数として明示）
         RootSignatureConfig config;
-        config.SetFlags(D3D12_ROOT_SIGNATURE_FLAG_NONE);  // DXR に入力アセンブラは無い
+        // DXR に入力アセンブラは無い。アルファで抜く判定は材質の表とテクスチャをヒープから直接引く
+        config.SetFlags(D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED);
         {
             ResourceBindingConfig rc("ShadowRayConstants", BindingStrategy::RootConstants);
             rc.rootConstantsCount = kShadowRayConstantCount;
             config.ConfigureResource(rc);
         }
+        // 物のテクスチャを繰り返して引く（Include/RayTracing/RTSceneTables.hlsli）
+        config.ConfigureSampler("gLinearWrap", SamplerConfig::Linear());
         if (!BuildGlobalRootSignature(*program, RTShadowBind::kDecls,
             RTShadowBind::Slot::Count, config)) {
             return false;
@@ -448,17 +457,14 @@ namespace CoreEngine
             LogLevel::Info, LogCategory::Graphics);
 
         // State Object とシェーダーテーブルは別スレッドで作り、最初のディスパッチの前に待つ
+        // （レイは RayGen の中から RayQuery で撃つ。ミスとヒットグループは持たない）
         RayTracingPipelineBuilder pipelineBuilder;
         pipelineBuilder
             .SetDXILLibrary(shaderBlob_)
-            .AddHitGroup({ L"RTShadowHitGroup", L"RTShadowClosestHit" })
-            .SetShaderConfig(sizeof(float))  // ShadowPayload = float 1個
             .SetGlobalRootSignature(globalRootSigMgr_.GetRootSignature())
             .SetMaxRecursionDepth(1);
         shaderTableBuilder_
-            .SetRayGenShader(L"RTShadowRayGen")
-            .AddMissShader(L"RTShadowMiss")
-            .AddHitGroup(L"RTShadowHitGroup");
+            .SetRayGenShader(L"RTShadowRayGen");
         BuildPipelineAsync(std::move(pipelineBuilder));
 
         isInitialized_ = true;
@@ -719,7 +725,8 @@ namespace CoreEngine
         ViewID viewId,
         uint32_t lightIndex,
         const void* lightKey,
-        const RayTracingShadowWaterSurface& waterSurface)
+        const RayTracingShadowWaterSurface& waterSurface,
+        const RTHitTableIndices& hitTables)
     {
         // 設定は CVar が保持する。UI・設定復元・コンソールのどの経路で変わってもここで取り込む
         SyncSettingsFromCVars();
@@ -835,6 +842,9 @@ namespace CoreEngine
         constants.waterRegionHalfExtentX = waterSurface.regionHalfExtentXZ[0];
         constants.waterRegionHalfExtentZ = waterSurface.regionHalfExtentXZ[1];
         constants.waterEnabled = waterSurface.enabled ? 1 : 0;
+        // 表がそろわないフレームはアルファを調べず、どの物も不透明として当てる
+        constants.hitInstanceTableIndex = hitTables.IsValid() ? hitTables.instanceTable : kRTHitNoTexture;
+        constants.hitSubMeshTableIndex = hitTables.IsValid() ? hitTables.subMeshTable : kRTHitNoTexture;
 
         // CommandList4 を取得
         Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> cmdList4;

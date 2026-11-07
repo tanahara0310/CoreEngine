@@ -7,7 +7,6 @@
 
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
-#include "Graphics/Model/ModelResource.h"
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/FrameBlackboard.h"
@@ -15,7 +14,6 @@
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueManager.h"
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueNames.h"
 #include "Graphics/Light/LightManager.h"
-#include "Graphics/Model/ModelManager.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Cloud/VolumetricCloudManager.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
@@ -33,7 +31,6 @@ namespace CoreEngine
     void RayTracingSubsystem::BuildAccelerationStructures(
         const RenderContext& context,
         GraphicsCore* dx,
-        ModelManager* modelManager,
         SceneManager* sceneManager)
     {
         auto* asMgr = context.accelerationStructureManager;
@@ -47,15 +44,8 @@ namespace CoreEngine
             context.rtShadowManager->ResetFrameState();
         }
 
-        // BLAS 遅延ビルド（未構築のモデルリソース全てを対象）
-        if (modelManager) {
-            auto* cmdListForBLAS = dx->GetCommandList();
-            modelManager->ForEachResource([&](ModelResource* resource) {
-                asMgr->BuildBLASFromModelResource(cmdListForBLAS, resource);
-                });
-        }
-
-        // シーンの物を集めて TLAS を組む（シーンが無いフレームも空の TLAS を組み、前のシーンの TLAS とヒットの表を使わせない）
+        // シーンの物を集め、使うモデルの BLAS を作って TLAS を組む
+        // （シーンが無いフレームも空の TLAS を組み、前のシーンの TLAS とヒットの表を使わせない）
         RTScene::FrameInput input;
         input.objects = sceneManager ? sceneManager->GetCurrentGameObjectManager() : nullptr;
         input.cmdList = dx->GetCommandList();
@@ -124,6 +114,10 @@ namespace CoreEngine
         ShadowStageContext stage;
         if (!BuildShadowStageContext(context, dx, cmdList, stage)) return;
 
+        // 葉などアルファで抜ける所は、材質の表でアルファを調べて影を通す
+        const RTHitTableIndices hitTables =
+            context.rtScene ? context.rtScene->GetHitTableIndices() : RTHitTableIndices{};
+
         // 全ライト分 DispatchRays を先に実行（GPU パイプラインを詰めるため）
         // 水中の直接光を RT コースティクスが置き換えるのはメインライト（0 番）だけなので、
         // 水面を渡すのも 0 番だけ
@@ -139,7 +133,8 @@ namespace CoreEngine
                 viewId,
                 li,
                 &light,
-                (li == 0) ? waterSurface : RayTracingShadowWaterSurface{});
+                (li == 0) ? waterSurface : RayTracingShadowWaterSurface{},
+                hitTables);
             });
 
         // GBuffer 入力の前後状態遷移は RenderGraph 側の自動遷移へ委譲する。
@@ -485,7 +480,8 @@ namespace CoreEngine
             MathCore::Matrix::Inverse(dispatchContext.viewProjection),
             dispatchContext.width,
             dispatchContext.height,
-            viewId);
+            viewId,
+            context.rtScene ? context.rtScene->GetHitTableIndices() : RTHitTableIndices{});
     }
 
     void RayTracingSubsystem::DispatchWaterSeabed(

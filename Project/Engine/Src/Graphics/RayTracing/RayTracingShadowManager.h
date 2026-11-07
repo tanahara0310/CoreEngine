@@ -8,6 +8,7 @@
 #include "Math/Vector/Vector3.h"
 #include "Math/Matrix/Matrix4x4.h"
 #include "RayTracingDispatchInfo.h"
+#include "RayTracingHitData.h"
 #include "RayTracingOutputViewSet.h"
 #include "RayTracingPassBase.h"
 #include "RayTracingPipelineBuilder.h"
@@ -167,7 +168,8 @@ namespace CoreEngine
             ViewID viewId = ViewID::GameView,
             uint32_t lightIndex = 0,
             const void* lightKey = nullptr,
-            const RayTracingShadowWaterSurface& waterSurface = {});
+            const RayTracingShadowWaterSurface& waterSurface = {},
+            const RTHitTableIndices& hitTables = {});
 
         /// @brief 空間前処理＋テンポラル蓄積パスを実行する（Dispatch の直後に呼ぶ）
         /// @param projection 投影行列。深度重みの線形化にのみ使う（Stage 1 で invViewProj から変更）

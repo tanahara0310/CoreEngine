@@ -61,9 +61,6 @@ namespace CoreEngine
         desc.outputDebugName = "RTWaterSeaMap";
         desc.shaderPath = L"Engine/Assets/Shaders/Water/RayTracing/RTWaterSeaMap.hlsl";
         desc.rayGenName = L"RTWaterSeaMapRayGen";
-        desc.missName = L"RTWaterSeaMapMiss";
-        desc.hitGroupName = L"RTWaterSeaMapHitGroup";
-        desc.closestHitName = L"RTWaterSeaMapClosestHit";
         desc.outputUavName = "gSeaMapOutput";
         desc.constantsName = "WaterSeaMapConstants";
         desc.constantsBytes = sizeof(WaterSeaMapConstants);

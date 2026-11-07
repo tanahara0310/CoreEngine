@@ -155,17 +155,14 @@ namespace CoreEngine
         }
 
         // State Object とシェーダーテーブルは別スレッドで作り、最初のディスパッチの前に待つ
+        // （レイは RayGen の中から RayQuery で撃つ。ミスとヒットグループは持たない）
         RayTracingPipelineBuilder pipelineBuilder;
         pipelineBuilder
             .SetDXILLibrary(shaderBlob)
-            .AddHitGroup({ desc.hitGroupName, desc.closestHitName })
-            .SetShaderConfig(desc.payloadBytes)
             .SetGlobalRootSignature(globalRootSigMgr_.GetRootSignature())
             .SetMaxRecursionDepth(1);
         shaderTableBuilder_
-            .SetRayGenShader(desc.rayGenName)
-            .AddMissShader(desc.missName)
-            .AddHitGroup(desc.hitGroupName);
+            .SetRayGenShader(desc.rayGenName);
         BuildPipelineAsync(std::move(pipelineBuilder));
 
         outputUavName_ = desc.outputUavName;

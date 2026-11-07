@@ -19,6 +19,7 @@ namespace CoreEngine
     /// @brief DXR レイトレーシングパイプライン（State Object）ビルダー
     /// @details DXIL Library / Hit Group / Shader Config / Root Signature / Pipeline Config を
     ///          宣言的に追加し、Build() で ID3D12StateObject を生成する。
+    ///          レイを RayQuery だけで撃つライブラリは、ヒットグループもシェーダーの設定も足さなくてよい。
     class RayTracingPipelineBuilder {
     public:
         /// @brief DXILライブラリ（コンパイル済みシェーダーバイトコード）を設定する
@@ -27,7 +28,7 @@ namespace CoreEngine
         /// @brief ヒットグループを追加する
         RayTracingPipelineBuilder& AddHitGroup(const DXRHitGroupDesc& desc);
 
-        /// @brief ペイロードサイズと交差属性サイズを設定する
+        /// @brief ペイロードサイズと交差属性サイズを設定する（TraceRay を撃つライブラリだけ）
         /// @param maxPayloadSizeInBytes    ペイロード最大バイト数
         /// @param maxAttributeSizeInBytes  交差属性最大バイト数（デフォルト: float2 = 8 bytes）
         RayTracingPipelineBuilder& SetShaderConfig(
@@ -53,7 +54,7 @@ namespace CoreEngine
     private:
         IDxcBlob* shaderBlob_ = nullptr;
         ID3D12RootSignature* globalRootSig_ = nullptr;
-        UINT maxPayloadSize_ = 0;
+        UINT maxPayloadSize_ = sizeof(float);
         UINT maxAttributeSize_ = sizeof(float) * 2;
         UINT maxRecursionDepth_ = 1;
 

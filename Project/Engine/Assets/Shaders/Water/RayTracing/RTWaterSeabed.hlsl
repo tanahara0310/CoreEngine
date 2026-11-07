@@ -3,6 +3,7 @@
 // ============================================================
 
 #include "RTWaterSurfaceCommon.hlsli"
+#include "../../Include/RayTracing/RTTrace.hlsli"
 
 RWTexture2D<float> gSeabedHeightOutput : register(u0);
 RaytracingAccelerationStructure gScene : register(t0);
@@ -17,26 +18,6 @@ cbuffer WaterSeabedConstants : register(b0)
     float3 gSeabedPad;
 };
 
-/// @brief 海底のレイのペイロード
-struct RTSeabedPayload
-{
-    float hitT;
-    float hitKind; // 0 = 当たらない / 1 = 表から当たった / 2 = 裏から当たった
-};
-
-#ifdef __INTELLISENSE__
-#define RAY_FLAG_NONE 0x0
-void TraceRay(
-    RaytracingAccelerationStructure scene,
-    uint rayFlags,
-    uint instanceInclusionMask,
-    uint rayContributionToHitGroupIndex,
-    uint multiplierForGeometryContributionToHitGroupIndex,
-    uint missShaderIndex,
-    RayDesc ray,
-    inout RTSeabedPayload payload);
-#endif
-
 /// @brief レイの出発点の、水面からの高さ [m]
 static const float kStartAboveSurface = 0.02f;
 /// @brief 水面の位置が物の中で上の面が見つからないとき、海底の代わりに書く水面からの高さ [m]
@@ -44,19 +25,15 @@ static const float kOccupiedHeightAboveSurface = 0.5f;
 /// @brief 陸や物の上の面を探す上向きのレイの長さ [m]
 static const float kDryLandProbeDistance = 20.0f;
 
-RTSeabedPayload TraceSeabedRay(float3 origin, float3 direction, float maxDistance)
+/// @brief 真下か真上へレイを撃ち、最も近い当たりを返す（どの物も不透明として当てる）
+RTTraceHit TraceSeabedRay(float3 origin, float3 direction, float maxDistance)
 {
     RayDesc ray;
     ray.Origin = origin;
     ray.Direction = direction;
     ray.TMin = 0.0f;
     ray.TMax = maxDistance;
-
-    RTSeabedPayload payload;
-    payload.hitT = 0.0f;
-    payload.hitKind = 0.0f;
-    TraceRay(gScene, RAY_FLAG_NONE, gInstanceMask, 0, 1, 0, ray, payload);
-    return payload;
+    return TraceRTOpaqueClosestHit(gScene, ray, gInstanceMask);
 }
 
 /// @brief テクセルごとに、今の水面のすぐ上から真下へレイを撃ち、水面より下で最初に当たる面
@@ -74,8 +51,8 @@ void RTWaterSeabedRayGen()
     // 範囲内に何も無ければ深い海
     float seabedY = waterY - gMaxDepth;
 
-    const RTSeabedPayload down = TraceSeabedRay(origin, float3(0.0f, -1.0f, 0.0f), gMaxDepth + kStartAboveSurface);
-    if (down.hitKind == 1.0f)
+    const RTTraceHit down = TraceSeabedRay(origin, float3(0.0f, -1.0f, 0.0f), gMaxDepth + kStartAboveSurface);
+    if (down.hit && down.frontFace)
     {
         seabedY = origin.y - down.hitT;
     }
@@ -83,32 +60,16 @@ void RTWaterSeabedRayGen()
     {
         // 物の中（下へ撃って裏に当たった）か、下に何も無く上に地面の裏がある（陸の下）とき、
         // 上の面の高さを書く
-        const RTSeabedPayload up = TraceSeabedRay(origin, float3(0.0f, 1.0f, 0.0f), kDryLandProbeDistance);
-        if (up.hitKind == 2.0f)
+        const RTTraceHit up = TraceSeabedRay(origin, float3(0.0f, 1.0f, 0.0f), kDryLandProbeDistance);
+        if (up.hit && !up.frontFace)
         {
             seabedY = origin.y + up.hitT;
         }
-        else if (down.hitKind == 2.0f)
+        else if (down.hit && !down.frontFace)
         {
             seabedY = waterY + kOccupiedHeightAboveSurface;
         }
     }
 
     gSeabedHeightOutput[launchIndex] = seabedY;
-}
-
-[shader("miss")]
-void RTWaterSeabedMiss(inout RTSeabedPayload payload)
-{
-    payload.hitT = 0.0f;
-    payload.hitKind = 0.0f;
-}
-
-[shader("closesthit")]
-void RTWaterSeabedClosestHit(
-    inout RTSeabedPayload payload,
-    in BuiltInTriangleIntersectionAttributes attr)
-{
-    payload.hitT = RayTCurrent();
-    payload.hitKind = (HitKind() == HIT_KIND_TRIANGLE_FRONT_FACE) ? 1.0f : 2.0f;
 }

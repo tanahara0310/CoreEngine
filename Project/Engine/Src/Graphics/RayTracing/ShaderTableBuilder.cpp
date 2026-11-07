@@ -39,8 +39,6 @@ namespace CoreEngine
         assert(device);
         assert(props);
         assert(rayGenName_);
-        assert(!missNames_.empty());
-        assert(!hitGroupNames_.empty());
 
         // 1 レコード = ShaderIdentifier（32 bytes）をレコードアライメントに切り上げ
         recordSize_ = Align(
@@ -143,13 +141,17 @@ namespace CoreEngine
         desc.RayGenerationShaderRecord.StartAddress = base + rayGenOffset_;
         desc.RayGenerationShaderRecord.SizeInBytes = recordSize_;
 
-        desc.MissShaderTable.StartAddress = base + missOffset_;
-        desc.MissShaderTable.SizeInBytes = missTableSize_;
-        desc.MissShaderTable.StrideInBytes = recordSize_;
-
-        desc.HitGroupTable.StartAddress = base + hitGroupOffset_;
-        desc.HitGroupTable.SizeInBytes = hitGroupTableSize_;
-        desc.HitGroupTable.StrideInBytes = recordSize_;
+        // 空の表は番地も 0 にする
+        if (missTableSize_ > 0) {
+            desc.MissShaderTable.StartAddress = base + missOffset_;
+            desc.MissShaderTable.SizeInBytes = missTableSize_;
+            desc.MissShaderTable.StrideInBytes = recordSize_;
+        }
+        if (hitGroupTableSize_ > 0) {
+            desc.HitGroupTable.StartAddress = base + hitGroupOffset_;
+            desc.HitGroupTable.SizeInBytes = hitGroupTableSize_;
+            desc.HitGroupTable.StrideInBytes = recordSize_;
+        }
 
         desc.Width = width;
         desc.Height = height;

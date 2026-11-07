@@ -66,9 +66,6 @@ namespace CoreEngine
         desc.outputDebugName = "RTWaterRefraction";
         desc.shaderPath = L"Engine/Assets/Shaders/Water/RayTracing/RTWaterRefraction.hlsl";
         desc.rayGenName = L"RTWaterRefractionRayGen";
-        desc.missName = L"RTWaterRefractionMiss";
-        desc.hitGroupName = L"RTWaterRefractionHitGroup";
-        desc.closestHitName = L"RTWaterRefractionClosestHit";
         desc.outputUavName = "gRefractionOutput";
         static constexpr const char* kSrvTableNames[] = {
             "gSceneDepth", "gSceneColor", "gFFTOceanDisplacement", "gFFTOceanNormal" };
@@ -76,7 +73,6 @@ namespace CoreEngine
         desc.constantsName = "WaterRefractionConstants";
         desc.constantsBytes = sizeof(WaterRefractionConstants);
         // RTRefractionPayload {hitT, hitFlag, instanceIndex, primitiveIndex, barycentrics}
-        desc.payloadBytes = sizeof(float) * 2 + sizeof(uint32_t) * 2 + sizeof(float) * 2;
         // 隠れた屈折先で当たった点を照らすときに表・テクスチャ・ライトをヒープから番号で引く
         desc.extraConstantBufferName = "RTHitShadingConstants";
         desc.directlyIndexedHeap = true;

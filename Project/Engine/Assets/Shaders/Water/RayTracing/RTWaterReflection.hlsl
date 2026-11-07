@@ -207,38 +207,30 @@ float FindHitColorNearby(float2 uv, float hitViewDistance, float tolerance, out 
 /// @brief 点から光源が見えるかを返す（1=日向 / 0=遮蔽物の影）
 /// @param position 調べる点
 /// @param normal   面の法線（自己交差を避けるずらしに使う）
-/// @param bias     法線方向へのずらし幅（m）
-float TraceSunVisibility(float3 position, float3 normal, float bias)
+/// @param bias      法線方向へのずらし幅（m）
+/// @param coneWidth 点でのレイの広がりの幅（m）
+float TraceSunVisibility(float3 position, float3 normal, float bias, float coneWidth)
 {
     const float3 toSun = -gSunDirection;
     if (gSunShadowEnabled == 0 || toSun.y <= 0.0f)
     {
         return 1.0f;
     }
-    return TraceVisibility(gScene, position + normal * bias, toSun, gMaxRayDistance);
+    return TraceVisibility(gScene, position + normal * bias, toSun, gMaxRayDistance, coneWidth);
 }
 
 /// @brief 反射レイが当たった物を、当たった点の材質と光で照らした色を返す
 /// @param ray               反射レイ
-/// @param payload           反射レイの結果（当たっていること）
+/// @param hit               反射レイの結果（当たっていること）
 /// @param coneWidthAtOrigin レイの始点での広がりの幅（m）
 /// @param coneSpread        レイの広がりの角度（rad。距離に比例して幅が増える）
-/// @return rgb = 照らした色、a = 1（抜ける材質の先で何にも当たらなかったときは 0）
-/// @details 抜ける材質（アルファ）に当たったときは、その先へ撃ち直す
-float4 ShadeReflectionHit(RayDesc ray, RTWaterHitPayload payload, float coneWidthAtOrigin, float coneSpread)
+float3 ShadeReflectionHit(RayDesc ray, RTTraceHit hit, float coneWidthAtOrigin, float coneSpread)
 {
-    RTHitSurface surface;
-    float coneWidth;
-    // FindOpaqueHitSurface にはこの関数のローカル変数を渡す（引数をそのまま inout へ渡すと -Od でコンパイルできない）
-    RayDesc hitRay = ray;
-    RTWaterHitPayload hitPayload = payload;
-    if (!FindOpaqueHitSurface(gScene, hitRay, hitPayload, coneWidthAtOrigin, coneSpread, surface, coneWidth))
-    {
-        return float4(0.0f, 0.0f, 0.0f, 0.0f);
-    }
-    const float bias = max(0.02f, hitPayload.hitT * 1.0e-4f);
-    const float visibility = TraceSunVisibility(surface.position, surface.normal, bias);
-    return float4(ShadeHitSurface(surface, -hitRay.Direction, visibility, AboveWaterLighting()), 1.0f);
+    const float coneWidth = coneWidthAtOrigin + coneSpread * hit.hitT;
+    const RTHitSurface surface = FetchHitSurface(hit.primitive, ray.Direction, coneWidth);
+    const float bias = max(0.02f, hit.hitT * 1.0e-4f);
+    const float visibility = TraceSunVisibility(surface.position, surface.normal, bias, coneWidth);
+    return ShadeHitSurface(surface, -ray.Direction, visibility, AboveWaterLighting());
 }
 
 [shader("raygeneration")]
@@ -251,7 +243,7 @@ void RTWaterReflectionRayGen()
     float2 screenUV = (float2(launchIndex) + 0.5f.xx) / float2(gScreenWidth, gScreenHeight);
 
     // 背景（水面の後ろに不透明ジオメトリが無い外洋）でも反射を計算する。
-    // 地平線より上を向く画素は下の tRefined 判定が TraceRay の前に弾く
+    // 地平線より上を向く画素は下の tRefined 判定がレイを撃つ前に弾く
     const bool hasBackground = IsBackgroundDepth(ndcDepth);
 
     // 画素を通る視線は深度に依存しない（同じ直線）ので、背景でも向きは求まる。
@@ -334,7 +326,7 @@ void RTWaterReflectionRayGen()
     const float horizontalReflectionSpread = 2.0f * sqrt(slopeVariance) * saturate(-primaryDir.y);
 
     // この水面の点がヤシや岩の影に入っているか（Water.PS がメインライトの項へ掛ける）
-    gSunVisibilityOutput[launchIndex] = TraceSunVisibility(waterPos, waterNormal, gSurfaceBias);
+    gSunVisibilityOutput[launchIndex] = TraceSunVisibility(waterPos, waterNormal, gSurfaceBias, pixelAngle * tRefined);
 
     // 反射に使う法線は、見えている面の平均の傾きだけカメラの方へ倒す
     float3 reflectionNormal = waterNormal;
@@ -363,12 +355,14 @@ void RTWaterReflectionRayGen()
     ray.TMin = 0.001f;
     ray.TMax = gMaxRayDistance;
 
-    RTWaterHitPayload payload = MakeEmptyHitPayload();
+    // 反射レイの広がり。始点の幅は水面の 1 画素ぶん、角度は視線の 1 画素ぶんと荒さのばらつき
+    const float coneWidthAtOrigin = pixelAngle * tRefined;
+    const float coneSpread = pixelAngle + verticalReflectionSpread;
 
-    // 反射は最も近い交差面の色が必要なため最近接ヒット（RAY_FLAG_NONE）。
-    TraceRay(gScene, RAY_FLAG_NONE, kRTInstanceMaskReflected, 0, 1, 0, ray, payload);
+    // 反射は最も近い交差面の色が必要なため最近接の当たり。葉などアルファで抜ける所は通り抜ける
+    const RTTraceHit hit = TraceWaterHit(gScene, ray, coneWidthAtOrigin, coneSpread);
 
-    if (payload.hitFlag < 0.5f)
+    if (!hit.hit)
     {
         // 反射レイが何にも当たらず空へ抜けた。トレースした向きそのもので空を引き、
         // ばらつきの範囲はその向きが画面に写る位置のまわりから物の色と割合を引く
@@ -389,12 +383,9 @@ void RTWaterReflectionRayGen()
         return;
     }
 
-    // 反射レイの広がり。始点の幅は水面の 1 画素ぶん、角度は視線の 1 画素ぶんと荒さのばらつき
-    const float coneWidthAtOrigin = pixelAngle * tRefined;
-    const float coneSpread = pixelAngle + verticalReflectionSpread;
     const bool hitShadingEnabled = (gHitShadingEnabled != 0);
 
-    float3 hitWorldPos = ray.Origin + ray.Direction * payload.hitT;
+    float3 hitWorldPos = ray.Origin + ray.Direction * hit.hitT;
     const float2 screenSize = float2(gScreenWidth, gScreenHeight);
     float3 ndc = float3(0.0f, 0.0f, 0.0f);
     float2 uv = float2(0.0f, 0.0f);
@@ -404,12 +395,9 @@ void RTWaterReflectionRayGen()
         // 当たった点が画面に写っていない（画面の外・カメラの後ろ）ときは、当たった点を照らして色を決める
         if (hitShadingEnabled)
         {
-            const float4 shaded = ShadeReflectionHit(ray, payload, coneWidthAtOrigin, coneSpread);
-            if (shaded.a > 0.5f)
-            {
-                gReflectionOutput[launchIndex] = float4(shaded.rgb, MakeSuccessAlpha(1.0f));
-                return;
-            }
+            gReflectionOutput[launchIndex] = float4(
+                ShadeReflectionHit(ray, hit, coneWidthAtOrigin, coneSpread), MakeSuccessAlpha(1.0f));
+            return;
         }
         gReflectionOutput[launchIndex] = MakeSkyResolvedOutput(ray.Direction, kRTReasonInvalidClip, skyRoughness);
         return;
@@ -464,8 +452,7 @@ void RTWaterReflectionRayGen()
     float3 tracedColor = skyAlongRay;
     if (hitShadingEnabled && sceneWeight < 0.999f)
     {
-        const float4 shaded = ShadeReflectionHit(ray, payload, coneWidthAtOrigin, coneSpread);
-        tracedColor = (shaded.a > 0.5f) ? shaded.rgb : skyAlongRay;
+        tracedColor = ShadeReflectionHit(ray, hit, coneWidthAtOrigin, coneSpread);
     }
     float3 resolvedColor = lerp(tracedColor, hitColor, sceneWeight);
 
@@ -473,25 +460,11 @@ void RTWaterReflectionRayGen()
     // 写っている物の色と割合で置き換え、範囲の残りを同じレイ向きの空（荒さに合ったミップ）で埋める
     const float hitPixelMeters = ComputePixelPerpendicularWidth(
         reflectedUV, saturate(ndc.z), float2(gScreenWidth, gScreenHeight), gInvViewProjection);
-    const float pixelsPerRadian = payload.hitT / max(hitPixelMeters, 1.0e-4f);
+    const float pixelsPerRadian = hit.hitT / max(hitPixelMeters, 1.0e-4f);
     resolvedColor = ApplyReflectionSpread(
         resolvedColor, tracedColor, skyAlongRay, sceneWeight, reflectedUV,
         verticalReflectionSpread, horizontalReflectionSpread, pixelsPerRadian);
 
     // Water.PS へは常に「解決済みの 1 枚」を渡す（alpha は成功固定）。
     gReflectionOutput[launchIndex] = float4(resolvedColor, MakeSuccessAlpha(1.0f));
-}
-
-[shader("miss")]
-void RTWaterReflectionMiss(inout RTWaterHitPayload payload)
-{
-    RecordWaterTraceMiss(payload);
-}
-
-[shader("closesthit")]
-void RTWaterReflectionClosestHit(
-    inout RTWaterHitPayload payload,
-    in BuiltInTriangleIntersectionAttributes attr)
-{
-    RecordWaterTraceHit(payload, attr);
 }

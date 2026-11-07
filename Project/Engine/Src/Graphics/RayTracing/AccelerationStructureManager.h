@@ -2,9 +2,11 @@
 
 #include <d3d12.h>
 #include "Graphics/RHI/Descriptor/DescriptorHandle.h"
+#include "Graphics/RHI/Descriptor/UniqueDescriptor.h"
 #include "Graphics/RHI/Command/FrameSync.h" // kMaxFramesInFlight（インスタンスバッファのリング段数）
 #include <wrl.h>
 #include <array>
+#include <span>
 #include <unordered_map>
 #include <vector>
 #include <cstdint>
@@ -20,6 +22,24 @@ namespace CoreEngine
     /// @note ID3D12Device5 が必須。非対応 GPU では Initialize() が false を返す
     class AccelerationStructureManager {
     public:
+        /// @brief サブメッシュを持たないモデルの全体を表す GeometryRange::subMeshIndex
+        static constexpr uint32_t kWholeMesh = UINT32_MAX;
+
+        /// @brief BLAS の形 1 つ（サブメッシュ 1 つ）が使う索引の範囲
+        /// @details 並びは HLSL の GeometryIndex() と、RTScene のサブメッシュ表の並び
+        struct GeometryRange {
+            UINT startIndex = 0;                 ///< 索引バッファ内の開始位置
+            UINT indexCount = 0;                 ///< 索引の数（3 以上）
+            uint32_t subMeshIndex = kWholeMesh;  ///< サブメッシュの番号（kWholeMesh = サブメッシュを持たないモデルの全体）
+
+            bool operator==(const GeometryRange&) const = default;
+        };
+
+        /// @brief モデルの BLAS の形の並びを作る（索引が 3 未満のサブメッシュは除く）
+        /// @param lod 使う LOD の段（サブメッシュが持つ段数を超えるときは最後の段）
+        /// @param out 形の並び（モデルに三角形が無ければ空）
+        static void CollectGeometryRanges(const ModelResource& resource, uint32_t lod, std::vector<GeometryRange>& out);
+
         /// @brief BLAS 構築に必要なメッシュ情報
         struct BLASDesc {
             ID3D12Resource* vertexBuffer = nullptr;
@@ -28,17 +48,25 @@ namespace CoreEngine
             DXGI_FORMAT vertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
             UINT vertexPositionOffset = 0;
             ID3D12Resource* indexBuffer = nullptr;
-            UINT indexCount = 0;
             DXGI_FORMAT indexFormat = DXGI_FORMAT_R32_UINT;
+            std::span<const GeometryRange> geometries;  ///< 形の並び（1 つ以上）
+        };
+
+        /// @brief モデルの静止形の BLAS
+        struct StaticBLAS {
+            D3D12_GPU_VIRTUAL_ADDRESS address = 0;
+            uint32_t vertexBufferIndex = UINT32_MAX;  ///< 頂点バッファ（ByteAddressBuffer）のヒープ内インデックス
+            uint32_t indexBufferIndex = UINT32_MAX;   ///< 索引バッファ（ByteAddressBuffer）のヒープ内インデックス
         };
 
         /// @brief TLAS インスタンス情報
         struct InstanceDesc {
-            UINT blasIndex = 0;
-            /// @brief 0 以外なら blasIndex の代わりにこの BLAS を使う（BuildOrUpdateDynamicBLAS の戻り値）
+            /// @brief 撃つ BLAS（AcquireStaticBLAS か BuildOrUpdateDynamicBLAS の戻り値）
             D3D12_GPU_VIRTUAL_ADDRESS blasAddress = 0;
             float transform[3][4] = {};   ///< DXR 準拠の行優先 3×4 アフィン行列
             UINT instanceMask = 0xFF;     ///< RTInstanceMask の OR
+            /// @brief FORCE_OPAQUE なら、どの形もアルファで抜かずに当てる
+            D3D12_RAYTRACING_INSTANCE_FLAGS flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
 
             /// @brief Matrix4x4 からDXR用 3×4 行列に変換してセットする
             /// @note DXR の D3D12_RAYTRACING_INSTANCE_DESC は行優先 3×4 で
@@ -55,19 +83,24 @@ namespace CoreEngine
 
         /// @brief 初期化（DXR サポート確認を含む）
         /// @return DXR 非対応の場合 false
+        /// @note シェーダーは RayQuery を使うので、レイトレーシングティア 1.1 未満は非対応として扱う
         bool Initialize(ID3D12Device* device, DescriptorAllocator* descriptorAllocator);
-
-        /// @brief BLAS を構築して登録する
-        /// @return BLAS インデックス（BuildTLAS の InstanceDesc::blasIndex で使う）
-        UINT BuildBLAS(ID3D12GraphicsCommandList* cmdList, const BLASDesc& desc);
 
         /// @brief 全インスタンスから TLAS を構築する（毎フレーム呼び出し可能）
         void BuildTLAS(ID3D12GraphicsCommandList* cmdList,
             const std::vector<InstanceDesc>& instances);
 
-        /// @brief ModelResource から BLAS を構築し、インデックスを ModelResource に設定する
-        /// @return 成功した場合 true（既に構築済みの場合も true）
-        bool BuildBLASFromModelResource(ID3D12GraphicsCommandList* cmdList, ModelResource* resource);
+        /// @brief モデルの静止形の BLAS を返す（無いときと、形・バッファが前と変わったときは積んで作る）
+        /// @param cmdList    構築を積む先
+        /// @param resource   形の持ち主
+        /// @param geometries 形の並び（CollectGeometryRanges の結果。1 つ以上）
+        /// @param frame      今フレームの番号（使われなくなった BLAS の解放に使う）
+        /// @return 作れなければ nullptr（次に Acquire するまで有効）
+        const StaticBLAS* AcquireStaticBLAS(ID3D12GraphicsCommandList* cmdList, const ModelResource& resource,
+            std::span<const GeometryRange> geometries, uint64_t frame);
+
+        /// @brief kStaticKeepFrames フレーム使われなかった静止形の BLAS を退避リストへ回す（BuildTLAS の後に呼ぶ）
+        void RetireUnusedStaticBLAS(uint64_t frame);
 
         /// @brief 動的 BLAS の構築・更新を積み始める（EndDynamicBLASBatch と組で、フレームに 1 回）
         /// @param cmdList 積み先
@@ -78,12 +111,12 @@ namespace CoreEngine
 
         /// @brief 形が毎フレーム変わるメッシュの BLAS を構築・更新する（揺れる植物・スキニングモデル）
         /// @param owner   持ち主の識別子（コンポーネントのアドレスなど。持ち主ごとに 1 本持つ）
-        /// @param desc    頂点とインデックス。頂点バッファは NON_PIXEL_SHADER_RESOURCE を含む状態にしておくこと
+        /// @param desc    頂点・インデックス・形の並び。頂点バッファは NON_PIXEL_SHADER_RESOURCE を含む状態にしておくこと
         /// @param frame   今フレームの番号（使われなくなった BLAS の回収に使う）
         /// @param geometryChanged 前フレームから頂点が動いたか（false なら作り直さずに前の BLAS を使う）
         /// @return BLAS の GPU 仮想アドレス（InstanceDesc::blasAddress へ入れる）。作れなければ 0
         /// @details BeginDynamicBLASBatch と EndDynamicBLASBatch の間で呼ぶ。
-        ///          初回と形（頂点数・インデックス数・バッファ）が変わったときは ALLOW_UPDATE 付きで構築し、
+        ///          初回と形（頂点数・形の並び・バッファ）が変わったときは ALLOW_UPDATE 付きで構築し、
         ///          以後は前回の結果をその場で更新（refit）する。kDynamicRebuildInterval 回に 1 回は
         ///          構築し直す（持ち主ごとにずらす）。
         D3D12_GPU_VIRTUAL_ADDRESS BuildOrUpdateDynamicBLAS(const void* owner, const BLASDesc& desc, uint64_t frame,
@@ -124,17 +157,8 @@ namespace CoreEngine
         /// @brief 退避リソースがあるか
         bool HasRetiredResources() const { return !retiredResources_.empty(); }
 
-        /// @brief 登録済み BLAS 数を取得
-        UINT GetBLASCount() const { return static_cast<UINT>(blasList_.size()); }
-
-        // ──────────────────────────────────────────────────────────
-        // ヒットシェーディング（当たった三角形の頂点をシェーダーから引く）
-        // ──────────────────────────────────────────────────────────
-
-        /// @brief BLAS の頂点バッファ（ByteAddressBuffer）のヒープ内インデックス（無ければ UINT32_MAX）
-        uint32_t GetBLASVertexBufferIndex(UINT blasIndex) const;
-        /// @brief BLAS の索引バッファ（ByteAddressBuffer）のヒープ内インデックス（無ければ UINT32_MAX）
-        uint32_t GetBLASIndexBufferIndex(UINT blasIndex) const;
+        /// @brief 今持っている静止形の BLAS の数
+        UINT GetBLASCount() const { return static_cast<UINT>(staticBlas_.size()); }
 
         // ──────────────────────────────────────────────────────────
         // デバッグ表示用の統計（Stage 0: RayTracingDebugPanel が参照する）
@@ -146,8 +170,11 @@ namespace CoreEngine
         /// @brief 直近の BuildTLAS に渡したインスタンス数
         UINT GetTLASInstanceCount() const { return tlasInstanceCount_; }
 
-        /// @brief 全 BLAS の結果バッファ合計バイト数
+        /// @brief 静止形の BLAS の結果バッファ合計バイト数
         UINT64 GetBLASTotalBytes() const;
+
+        /// @brief 使われなくなって解放した静止形の BLAS の数（起動からの合計）
+        uint64_t GetReleasedBLASCount() const { return releasedStaticBlasCount_; }
 
         /// @brief TLAS 結果バッファのバイト数（未構築なら 0）
         UINT64 GetTLASResultBytes() const;
@@ -164,8 +191,9 @@ namespace CoreEngine
         /// @brief スクラッチ用のバッファ（DEFAULT・UAV）を作る
         Microsoft::WRL::ComPtr<ID3D12Resource> CreateScratch(UINT64 size) const;
 
-        /// @brief BLASDesc から三角形ジオメトリの記述子を作る（BuildBLAS と動的 BLAS で共通）
-        static D3D12_RAYTRACING_GEOMETRY_DESC MakeGeometryDesc(const BLASDesc& desc);
+        /// @brief BLASDesc から形ごとの三角形ジオメトリの記述子を作る（静止形と動的 BLAS で共通）
+        /// @details 形はアルファで抜く判定をシェーダーへ任せる（不透明にするかは TLAS のインスタンスで決める）
+        static void MakeGeometryDescs(const BLASDesc& desc, std::vector<D3D12_RAYTRACING_GEOMETRY_DESC>& out);
 
         /// @brief 結果バッファ（DEFAULT・UAV・加速構造ステート）を作る
         Microsoft::WRL::ComPtr<ID3D12Resource> CreateASBuffer(UINT64 size) const;
@@ -173,13 +201,34 @@ namespace CoreEngine
         Microsoft::WRL::ComPtr<ID3D12Device5> device5_;
         DescriptorAllocator* descriptorAllocator_ = nullptr;
 
-        /// @brief BLAS 1 本分の GPU リソース
-        struct BLASEntry {
+        /// @brief 静止形の BLAS 1 本分（モデルごと）
+        struct StaticBLASEntry {
+            StaticBLAS view;
             Microsoft::WRL::ComPtr<ID3D12Resource> result;
-            DescriptorHandle vertexBufferSrv;   ///< 頂点バッファの ByteAddressBuffer SRV
-            DescriptorHandle indexBufferSrv;    ///< 索引バッファの ByteAddressBuffer SRV
+            // 作ったときの形（変わったら作り直す）。SRV が指している間はバッファを持っておく
+            Microsoft::WRL::ComPtr<ID3D12Resource> vertexBuffer;
+            Microsoft::WRL::ComPtr<ID3D12Resource> indexBuffer;
+            UINT vertexCount = 0;
+            std::vector<GeometryRange> geometries;
+            UniqueDescriptor vertexBufferSrv;   ///< 頂点バッファの ByteAddressBuffer SRV
+            UniqueDescriptor indexBufferSrv;    ///< 索引バッファの ByteAddressBuffer SRV
+            uint64_t lastUsedFrame = 0;
         };
-        std::vector<BLASEntry> blasList_;
+        std::unordered_map<const ModelResource*, StaticBLASEntry> staticBlas_;
+
+        /// @brief このフレーム数使われなかった静止形の BLAS を捨てる
+        static constexpr uint64_t kStaticKeepFrames = 300;
+
+        /// @brief 静止形の BLAS を積んで作り、entry の結果と SRV を差し替える
+        bool BuildStaticBLAS(ID3D12GraphicsCommandList* cmdList, const BLASDesc& desc, StaticBLASEntry& entry);
+
+        /// @brief entry の結果・バッファを退避リストへ回し、SRV を手放す
+        void RetireStaticBLAS(StaticBLASEntry& entry);
+
+        uint64_t releasedStaticBlasCount_ = 0;
+
+        /// @brief MakeGeometryDescs の書き込み先（構築のたびに使い回す）
+        std::vector<D3D12_RAYTRACING_GEOMETRY_DESC> geometryDescScratch_;
 
         // TLAS リソース
         /// @brief TLAS 結果バッファと、その SRV（フレームインフライトぶんのリング）
@@ -219,7 +268,7 @@ namespace CoreEngine
             UINT vertexCount = 0;
             UINT vertexStride = 0;
             D3D12_GPU_VIRTUAL_ADDRESS indexAddress = 0;
-            UINT indexCount = 0;
+            std::vector<GeometryRange> geometries;
             UINT64 buildScratchSize = 0;     ///< 構築に要るスクラッチ（形が変わったときに問い合わせた値）
             UINT64 updateScratchSize = 0;    ///< 更新に要るスクラッチ
             uint32_t updatesSinceBuild = 0;  ///< 最後に構築し直してからの更新回数
@@ -245,7 +294,7 @@ namespace CoreEngine
         /// @brief 動的 BLAS のスクラッチの上限（これを超える組は途中で前の構築を待って使い回す）
         static constexpr UINT64 kDynamicScratchMaxBytes = 64ull << 20;
 
-        // BLAS 構築用スクラッチ（再利用）
+        // 静止形の BLAS 構築用スクラッチ（再利用）
         Microsoft::WRL::ComPtr<ID3D12Resource> blasScratch_;
         UINT64 blasScratchSize_ = 0;
 

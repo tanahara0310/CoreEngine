@@ -108,9 +108,6 @@ namespace CoreEngine
         desc.outputDebugName = "RTWaterReflection";
         desc.shaderPath = L"Engine/Assets/Shaders/Water/RayTracing/RTWaterReflection.hlsl";
         desc.rayGenName = L"RTWaterReflectionRayGen";
-        desc.missName = L"RTWaterReflectionMiss";
-        desc.hitGroupName = L"RTWaterReflectionHitGroup";
-        desc.closestHitName = L"RTWaterReflectionClosestHit";
         desc.outputUavName = "gReflectionOutput";
         // gSkyEnvironmentMap は t5。空をこのパス内で解決するために追加した
         // （Water.PS 側で平面法線の空と混ぜると二重像になるため）。
@@ -122,7 +119,6 @@ namespace CoreEngine
         desc.constantsBytes = sizeof(WaterReflectionConstants);
         desc.secondaryOutputUavName = "gSunVisibilityOutput";
         // RTReflectionPayload {hitT, hitFlag, instanceIndex, primitiveIndex, barycentrics}
-        desc.payloadBytes = sizeof(float) * 2 + sizeof(uint32_t) * 2 + sizeof(float) * 2;
         // 当たった点を照らすときに表・テクスチャ・ライトをヒープから番号で引く
         desc.extraConstantBufferName = "RTHitShadingConstants";
         desc.directlyIndexedHeap = true;

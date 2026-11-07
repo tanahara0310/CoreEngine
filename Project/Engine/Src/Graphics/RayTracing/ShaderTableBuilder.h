@@ -9,6 +9,7 @@ namespace CoreEngine
     /// @brief DXR シェーダーテーブルビルダー
     /// @details RayGen / Miss / HitGroup を登録して Build() で GPU バッファを生成し、
     ///          以降は BuildDispatchDesc() で DispatchRays 記述子を得る。
+    ///          レイを RayQuery だけで撃つパスは Miss と HitGroup を足さなくてよい（表は空になる）。
     class ShaderTableBuilder {
     public:
         /// @brief RayGen シェーダーを設定する（1 パスにつき 1 つ）

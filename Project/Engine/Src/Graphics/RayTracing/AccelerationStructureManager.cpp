@@ -37,6 +37,14 @@ namespace CoreEngine
                 LogLevel::Warn, LogCategory::Graphics);
             return false;
         }
+        // シェーダーはレイを RayQuery で撃つ
+        if (opts5.RaytracingTier < D3D12_RAYTRACING_TIER_1_1) {
+            isSupported_ = false;
+            raytracingTier_ = static_cast<UINT>(opts5.RaytracingTier);
+            logger.Log("AccelerationStructureManager: Raytracing tier 1.1 (RayQuery) not supported",
+                LogLevel::Warn, LogCategory::Graphics);
+            return false;
+        }
 
         isSupported_ = true;
         raytracingTier_ = static_cast<UINT>(opts5.RaytracingTier);
@@ -51,7 +59,7 @@ namespace CoreEngine
     UINT64 AccelerationStructureManager::GetBLASTotalBytes() const
     {
         UINT64 total = 0;
-        for (const BLASEntry& entry : blasList_) {
+        for (const auto& [resource, entry] : staticBlas_) {
             if (entry.result) {
                 total += entry.result->GetDesc().Width;
             }
@@ -76,53 +84,105 @@ namespace CoreEngine
         return total;
     }
 
-    UINT AccelerationStructureManager::BuildBLAS(
-        ID3D12GraphicsCommandList* cmdList, const BLASDesc& desc)
+    void AccelerationStructureManager::CollectGeometryRanges(
+        const ModelResource& resource, uint32_t lod, std::vector<GeometryRange>& out)
     {
-        assert(isSupported_ && "DXR not supported");
-        assert(desc.vertexBuffer && "Vertex buffer is required");
+        out.clear();
+        const std::vector<SubMeshData>& subMeshes = resource.GetSubMeshes();
+        for (uint32_t i = 0; i < static_cast<uint32_t>(subMeshes.size()); ++i) {
+            const SubMeshData& subMesh = subMeshes[i];
+            const uint32_t lodCount = std::clamp(subMesh.lodCount, 1u, SubMeshData::kMaxLodCount);
+            const uint32_t level = (std::min)(lod, lodCount - 1u);
+            UINT startIndex = subMesh.startIndex;
+            UINT indexCount = subMesh.indexCount;
+            if (level > 0) {
+                startIndex = subMesh.lods[level].startIndex;
+                indexCount = subMesh.lods[level].indexCount;
+            }
+            indexCount -= indexCount % 3u;
+            if (indexCount >= 3u) {
+                out.push_back(GeometryRange{ startIndex, indexCount, i });
+            }
+        }
+        if (subMeshes.empty() && resource.GetIndexCount() >= 3u) {
+            out.push_back(GeometryRange{ 0, resource.GetIndexCount() - resource.GetIndexCount() % 3u, kWholeMesh });
+        }
+    }
 
-        // ID3D12GraphicsCommandList4 を取得
-        Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> cmdList4;
-        HRESULT hr = cmdList->QueryInterface(IID_PPV_ARGS(&cmdList4));
-        if (FAILED(hr)) {
-            Logger::GetInstance().Log("BuildBLAS: CommandList4 not available",
-                LogLevel::Error, LogCategory::Graphics);
-            return UINT_MAX;
+    const AccelerationStructureManager::StaticBLAS* AccelerationStructureManager::AcquireStaticBLAS(
+        ID3D12GraphicsCommandList* cmdList, const ModelResource& resource,
+        std::span<const GeometryRange> geometries, uint64_t frame)
+    {
+        if (!isSupported_ || !resource.IsLoaded() || geometries.empty()
+            || !resource.GetVertexBuffer() || !resource.GetIndexBuffer()) {
+            return nullptr;
         }
 
-        // ジオメトリ記述子の設定
-        const D3D12_RAYTRACING_GEOMETRY_DESC geomDesc = MakeGeometryDesc(desc);
+        StaticBLASEntry& entry = staticBlas_[&resource];
+        entry.lastUsedFrame = frame;
+        const bool upToDate = entry.result
+            && entry.vertexBuffer.Get() == resource.GetVertexBuffer()
+            && entry.indexBuffer.Get() == resource.GetIndexBuffer()
+            && entry.vertexCount == resource.GetVertexCount()
+            && std::ranges::equal(entry.geometries, geometries);
+        if (upToDate) {
+            return &entry.view;
+        }
 
-        // プレビルド情報の取得
+        BLASDesc desc{};
+        desc.vertexBuffer = resource.GetVertexBuffer();
+        desc.vertexCount = resource.GetVertexCount();
+        desc.vertexStride = sizeof(VertexData);
+        desc.vertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
+        desc.vertexPositionOffset = 0;  // VertexData::position は先頭メンバ（Vector4 だが xyz のみ使用）
+        desc.indexBuffer = resource.GetIndexBuffer();
+        desc.indexFormat = DXGI_FORMAT_R32_UINT;
+        desc.geometries = geometries;
+        if (!BuildStaticBLAS(cmdList, desc, entry)) {
+            RetireStaticBLAS(entry);
+            staticBlas_.erase(&resource);
+            return nullptr;
+        }
+        return &entry.view;
+    }
+
+    bool AccelerationStructureManager::BuildStaticBLAS(
+        ID3D12GraphicsCommandList* cmdList, const BLASDesc& desc, StaticBLASEntry& entry)
+    {
+        Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> cmdList4;
+        if (!cmdList || FAILED(cmdList->QueryInterface(IID_PPV_ARGS(&cmdList4)))) {
+            Logger::GetInstance().Log("BuildStaticBLAS: CommandList4 not available",
+                LogLevel::Error, LogCategory::Graphics);
+            return false;
+        }
+
+        MakeGeometryDescs(desc, geometryDescScratch_);
+
         D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs{};
         inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
         inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
-        inputs.NumDescs = 1;
+        inputs.NumDescs = static_cast<UINT>(geometryDescScratch_.size());
         inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
-        inputs.pGeometryDescs = &geomDesc;
+        inputs.pGeometryDescs = geometryDescScratch_.data();
 
         D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO prebuild{};
         device5_->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &prebuild);
 
         // スクラッチバッファの確保（既存のものが小さければ拡張）
         EnsureScratchBuffer(prebuild.ScratchDataSizeInBytes);
+        Microsoft::WRL::ComPtr<ID3D12Resource> result = CreateASBuffer(prebuild.ResultDataMaxSizeInBytes);
+        if (!result || !blasScratch_) {
+            return false;
+        }
 
-        // BLAS 結果バッファの作成
-        BLASEntry entry;
-        entry.result = CreateASBuffer(prebuild.ResultDataMaxSizeInBytes);
-        assert(entry.result);
-
-        // BLAS のビルド
         D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC buildDesc{};
-        buildDesc.DestAccelerationStructureData = entry.result->GetGPUVirtualAddress();
+        buildDesc.DestAccelerationStructureData = result->GetGPUVirtualAddress();
         buildDesc.Inputs = inputs;
         buildDesc.ScratchAccelerationStructureData = blasScratch_->GetGPUVirtualAddress();
-
         cmdList4->BuildRaytracingAccelerationStructure(&buildDesc, 0, nullptr);
 
         // UAV バリア（BLAS 構築完了を保証）
-        Barrier::UAVRaw(cmdList, entry.result.Get());
+        Barrier::UAVRaw(cmdList, result.Get());
 
         // スクラッチバッファは全 BLAS で 1 枚を使い回している。リソースを指定した
         // UAV バリアは「そのリソースへのアクセス」しか順序付けないので、結果バッファ側の
@@ -131,30 +191,68 @@ namespace CoreEngine
         // 実際に 10 個以上の BLAS が連続で積まれるため、ここでスクラッチも直列化する。
         Barrier::UAVRaw(cmdList, blasScratch_.Get());
 
+        // 前の結果は GPU が使い終わってから解放し、新しい結果へ差し替える
+        RetireStaticBLAS(entry);
+        entry.result = std::move(result);
+        entry.vertexBuffer = desc.vertexBuffer;
+        entry.indexBuffer = desc.indexBuffer;
+        entry.vertexCount = desc.vertexCount;
+        entry.geometries.assign(desc.geometries.begin(), desc.geometries.end());
+        entry.view = {};
+        entry.view.address = entry.result->GetGPUVirtualAddress();
+
         // ヒットシェーディングが頂点と索引を読むための ByteAddressBuffer SRV
-        auto createRawBufferSrv = [this](ID3D12Resource* buffer, const char* debugName) {
-            D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-            srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
-            srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-            srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-            srvDesc.Buffer.FirstElement = 0;
-            srvDesc.Buffer.NumElements = static_cast<UINT>(buffer->GetDesc().Width / sizeof(uint32_t));
-            srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
-            return descriptorAllocator_->CreateSRV(buffer, srvDesc, debugName);
-            };
-        if (descriptorAllocator_ && desc.indexBuffer && desc.indexFormat == DXGI_FORMAT_R32_UINT) {
+        if (descriptorAllocator_ && desc.indexFormat == DXGI_FORMAT_R32_UINT) {
+            auto createRawBufferSrv = [this](ID3D12Resource* buffer, const char* debugName) {
+                D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+                srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+                srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+                srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+                srvDesc.Buffer.FirstElement = 0;
+                srvDesc.Buffer.NumElements = static_cast<UINT>(buffer->GetDesc().Width / sizeof(uint32_t));
+                srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
+                return UniqueDescriptor(*descriptorAllocator_, descriptorAllocator_->CreateSRV(buffer, srvDesc, debugName));
+                };
             entry.vertexBufferSrv = createRawBufferSrv(desc.vertexBuffer, "BLASVertexBufferSRV");
             entry.indexBufferSrv = createRawBufferSrv(desc.indexBuffer, "BLASIndexBufferSRV");
+            if (entry.vertexBufferSrv.IsValid() && entry.indexBufferSrv.IsValid()) {
+                entry.view.vertexBufferIndex = entry.vertexBufferSrv.Index();
+                entry.view.indexBufferIndex = entry.indexBufferSrv.Index();
+            }
         }
 
-        UINT blasIndex = static_cast<UINT>(blasList_.size());
-        blasList_.push_back(std::move(entry));
-
         Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Graphics,
-            "BLAS[{}] built ({} vertices, {} indices)",
-            blasIndex, desc.vertexCount, desc.indexCount);
+            "BLAS built ({} vertices, {} geometries)", desc.vertexCount, desc.geometries.size());
+        return true;
+    }
 
-        return blasIndex;
+    void AccelerationStructureManager::RetireStaticBLAS(StaticBLASEntry& entry)
+    {
+        if (entry.result) {
+            retiredResources_.push_back(std::move(entry.result));
+        }
+        if (entry.vertexBuffer) {
+            retiredResources_.push_back(std::move(entry.vertexBuffer));
+        }
+        if (entry.indexBuffer) {
+            retiredResources_.push_back(std::move(entry.indexBuffer));
+        }
+        entry.vertexBufferSrv.Reset();
+        entry.indexBufferSrv.Reset();
+        entry.view = {};
+    }
+
+    void AccelerationStructureManager::RetireUnusedStaticBLAS(uint64_t frame)
+    {
+        for (auto it = staticBlas_.begin(); it != staticBlas_.end();) {
+            if (it->second.lastUsedFrame + kStaticKeepFrames < frame) {
+                RetireStaticBLAS(it->second);
+                ++releasedStaticBlasCount_;
+                it = staticBlas_.erase(it);
+            } else {
+                ++it;
+            }
+        }
     }
 
     void AccelerationStructureManager::BuildTLAS(
@@ -238,11 +336,8 @@ namespace CoreEngine
             mapped[i].InstanceID = i;
             mapped[i].InstanceMask = instances[i].instanceMask;
             mapped[i].InstanceContributionToHitGroupIndex = 0;
-            mapped[i].Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
-            // 動的 BLAS（揺れる植物・スキニング）は持ち主ごとの BLAS を直接指す
-            mapped[i].AccelerationStructure = (instances[i].blasAddress != 0)
-                ? instances[i].blasAddress
-                : blasList_[instances[i].blasIndex].result->GetGPUVirtualAddress();
+            mapped[i].Flags = instances[i].flags;
+            mapped[i].AccelerationStructure = instances[i].blasAddress;
         }
         instanceDescBuffer->Unmap(0, nullptr);
 
@@ -358,53 +453,28 @@ namespace CoreEngine
         tlasReady_ = tlasSRVDescriptor.IsValid();
     }
 
-    bool AccelerationStructureManager::BuildBLASFromModelResource(
-        ID3D12GraphicsCommandList* cmdList, ModelResource* resource)
+    void AccelerationStructureManager::MakeGeometryDescs(
+        const BLASDesc& desc, std::vector<D3D12_RAYTRACING_GEOMETRY_DESC>& out)
     {
-        if (!isSupported_ || !resource || !resource->IsLoaded()) return false;
-
-        // 既に構築済みならスキップ
-        if (resource->HasBLAS()) return true;
-
-        BLASDesc desc{};
-        desc.vertexBuffer = resource->GetVertexBuffer();
-        desc.vertexCount = resource->GetVertexCount();
-        desc.vertexStride = sizeof(VertexData);
-        desc.vertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
-        desc.vertexPositionOffset = 0;  // VertexData::position は先頭メンバ（Vector4 だが xyz のみ使用）
-        desc.indexBuffer = resource->GetIndexBuffer();
-        desc.indexCount = resource->GetIndexCount();
-        desc.indexFormat = DXGI_FORMAT_R32_UINT;
-
-        UINT blasIndex = BuildBLAS(cmdList, desc);
-        if (blasIndex == UINT_MAX) return false;
-
-        resource->SetBLASIndex(blasIndex);
-        return true;
-    }
-
-    D3D12_RAYTRACING_GEOMETRY_DESC AccelerationStructureManager::MakeGeometryDesc(const BLASDesc& desc)
-    {
-        D3D12_RAYTRACING_GEOMETRY_DESC geomDesc{};
-        geomDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
-        geomDesc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
-
-        geomDesc.Triangles.VertexBuffer.StartAddress =
+        out.clear();
+        out.reserve(desc.geometries.size());
+        const D3D12_GPU_VIRTUAL_ADDRESS vertexAddress =
             desc.vertexBuffer->GetGPUVirtualAddress() + desc.vertexPositionOffset;
-        geomDesc.Triangles.VertexBuffer.StrideInBytes = desc.vertexStride;
-        geomDesc.Triangles.VertexCount = desc.vertexCount;
-        geomDesc.Triangles.VertexFormat = desc.vertexFormat;
-
-        if (desc.indexBuffer && desc.indexCount > 0) {
-            geomDesc.Triangles.IndexBuffer = desc.indexBuffer->GetGPUVirtualAddress();
-            geomDesc.Triangles.IndexCount = desc.indexCount;
+        const D3D12_GPU_VIRTUAL_ADDRESS indexAddress = desc.indexBuffer->GetGPUVirtualAddress();
+        const UINT64 indexBytes = (desc.indexFormat == DXGI_FORMAT_R16_UINT) ? 2u : 4u;
+        for (const GeometryRange& range : desc.geometries) {
+            D3D12_RAYTRACING_GEOMETRY_DESC geomDesc{};
+            geomDesc.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
+            geomDesc.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_NONE;
+            geomDesc.Triangles.VertexBuffer.StartAddress = vertexAddress;
+            geomDesc.Triangles.VertexBuffer.StrideInBytes = desc.vertexStride;
+            geomDesc.Triangles.VertexCount = desc.vertexCount;
+            geomDesc.Triangles.VertexFormat = desc.vertexFormat;
+            geomDesc.Triangles.IndexBuffer = indexAddress + static_cast<UINT64>(range.startIndex) * indexBytes;
+            geomDesc.Triangles.IndexCount = range.indexCount;
             geomDesc.Triangles.IndexFormat = desc.indexFormat;
-        } else {
-            geomDesc.Triangles.IndexBuffer = 0;
-            geomDesc.Triangles.IndexCount = 0;
-            geomDesc.Triangles.IndexFormat = DXGI_FORMAT_UNKNOWN;
+            out.push_back(geomDesc);
         }
-        return geomDesc;
     }
 
     Microsoft::WRL::ComPtr<ID3D12Resource> AccelerationStructureManager::CreateASBuffer(UINT64 size) const
@@ -491,14 +561,14 @@ namespace CoreEngine
     D3D12_GPU_VIRTUAL_ADDRESS AccelerationStructureManager::BuildOrUpdateDynamicBLAS(
         const void* owner, const BLASDesc& desc, uint64_t frame, bool geometryChanged)
     {
-        if (!dynamicCmdList_ || !owner || !desc.vertexBuffer || desc.vertexCount == 0) {
+        if (!dynamicCmdList_ || !owner || !desc.vertexBuffer || desc.vertexCount == 0
+            || !desc.indexBuffer || desc.geometries.empty()) {
             return 0;
         }
 
         const D3D12_GPU_VIRTUAL_ADDRESS vertexAddress =
             desc.vertexBuffer->GetGPUVirtualAddress() + desc.vertexPositionOffset;
-        const D3D12_GPU_VIRTUAL_ADDRESS indexAddress =
-            (desc.indexBuffer && desc.indexCount > 0) ? desc.indexBuffer->GetGPUVirtualAddress() : 0;
+        const D3D12_GPU_VIRTUAL_ADDRESS indexAddress = desc.indexBuffer->GetGPUVirtualAddress();
 
         const bool isNew = (dynamicBlas_.find(owner) == dynamicBlas_.end());
         DynamicBLASEntry& entry = dynamicBlas_[owner];
@@ -512,23 +582,23 @@ namespace CoreEngine
         const bool shapeChanged = !entry.result
             || entry.vertexAddress != vertexAddress || entry.vertexCount != desc.vertexCount
             || entry.vertexStride != desc.vertexStride
-            || entry.indexAddress != indexAddress || entry.indexCount != desc.indexCount;
+            || entry.indexAddress != indexAddress || !std::ranges::equal(entry.geometries, desc.geometries);
 
         // 頂点が動いていなければ前の BLAS をそのまま使う（停止中のスキニングなど）
         if (!shapeChanged && !geometryChanged) {
             return entry.result->GetGPUVirtualAddress();
         }
 
-        const D3D12_RAYTRACING_GEOMETRY_DESC geomDesc = MakeGeometryDesc(desc);
+        MakeGeometryDescs(desc, geometryDescScratch_);
 
         D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS inputs{};
         inputs.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL;
         // 更新（refit）を許可して構築する。更新時も同じフラグ（+ PERFORM_UPDATE）でなければならない
         inputs.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE
             | D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PREFER_FAST_TRACE;
-        inputs.NumDescs = 1;
+        inputs.NumDescs = static_cast<UINT>(geometryDescScratch_.size());
         inputs.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
-        inputs.pGeometryDescs = &geomDesc;
+        inputs.pGeometryDescs = geometryDescScratch_.data();
 
         // 必要な大きさは形が変わったときだけ問い合わせる
         if (shapeChanged) {
@@ -579,7 +649,7 @@ namespace CoreEngine
         entry.vertexCount = desc.vertexCount;
         entry.vertexStride = desc.vertexStride;
         entry.indexAddress = indexAddress;
-        entry.indexCount = desc.indexCount;
+        entry.geometries.assign(desc.geometries.begin(), desc.geometries.end());
         return entry.result->GetGPUVirtualAddress();
     }
 
@@ -606,22 +676,6 @@ namespace CoreEngine
                 ++it;
             }
         }
-    }
-
-    uint32_t AccelerationStructureManager::GetBLASVertexBufferIndex(UINT blasIndex) const
-    {
-        if (blasIndex >= blasList_.size() || !blasList_[blasIndex].vertexBufferSrv.IsValid()) {
-            return UINT32_MAX;
-        }
-        return blasList_[blasIndex].vertexBufferSrv.index;
-    }
-
-    uint32_t AccelerationStructureManager::GetBLASIndexBufferIndex(UINT blasIndex) const
-    {
-        if (blasIndex >= blasList_.size() || !blasList_[blasIndex].indexBufferSrv.IsValid()) {
-            return UINT32_MAX;
-        }
-        return blasList_[blasIndex].indexBufferSrv.index;
     }
 
     void AccelerationStructureManager::EnsureScratchBuffer(UINT64 requiredSize)
