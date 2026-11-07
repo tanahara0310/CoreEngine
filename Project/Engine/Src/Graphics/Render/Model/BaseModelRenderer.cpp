@@ -88,8 +88,8 @@ namespace CoreEngine
         if (packet.occlusionSRV.ptr != 0) {
             binder.Set(slotOf(ModelBind::gAOMap), packet.occlusionSRV);
         }
-        if (packet.isSkinned && packet.matrixPaletteSRV.ptr != 0) {
-            binder.Set(slotOf(ModelBind::gMatrixPalette), packet.matrixPaletteSRV);
+        if (packet.isSkinned && packet.prevSkinnedPositionSRV.ptr != 0) {
+            binder.Set(slotOf(ModelBind::gPrevSkinnedPositions), packet.prevSkinnedPositionSRV);
         }
         if (packet.vertexColorSRV.ptr != 0) {
             binder.Set(slotOf(ModelBind::gVertexColors), packet.vertexColorSRV);

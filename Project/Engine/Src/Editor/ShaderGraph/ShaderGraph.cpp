@@ -28,6 +28,7 @@ namespace CoreEngine::Editor::ShaderGraph
             "gGraph", "OUT", "Surface", "SurfaceVertex", "gNormalMap", "gMetallicRoughnessMap", "gEmissiveMap", "gAOMap",
             "gCamera", "gLightCounts", "gDirectionalLights", "gPointLights", "gSpotLights", "gAreaLights",
             "gRTShadowMask", "gFog", "gVertexAnim", "gInstanceData", "gTransformationMatrix", "gSurfacePreview",
+            "gPrevSkinnedPositions", "LoadPrevSkinnedPosition",
             "gSourceVertices", "gIndices", "gOutputVertices", "gDeform",
             "gSkyAmbient", "gSkyIrradianceSH", "gSkySpecularMap",
         };

@@ -54,6 +54,11 @@ struct SkinCluster {
     UniqueDescriptor influenceSrvHandle; // InfluenceのSRV（CS読み取り用）
 
     PerFrameStructuredBuffer<WellForGPU> palette; // Palette（Joint数分。GPU へは SRV を引いたフレームの置き場へ写す）
+    PerFrameStructuredBuffer<WellForGPU> prevPalette; // 1 フレーム前に描いた姿勢の Palette（前のフレームの位置を作る）
+
+    std::vector<WellForGPU> lastPose;    // 最後に Update した姿勢の Palette
+    uint64_t lastPoseFrame = UINT64_MAX; // 最後に Update したフレームの番号
+    bool prevPoseStale = false;          // prevPalette が lastPose と違う（姿勢が止まったら 1 回だけ揃える）
 
     // ===== GPUスキニング（ComputeShader）関連 =====
 
@@ -63,6 +68,10 @@ struct SkinCluster {
     D3D12_VERTEX_BUFFER_VIEW outputVertexBufferView; // 上記をそのまま描画時の頂点バッファとして使う
     UniqueDescriptor outputUavHandle;                // 出力バッファのUAV
     UniqueDescriptor outputRawSrvHandle;             // 出力バッファの ByteAddressBuffer SRV（レイトレーシングのヒットシェーディングが読む）
+
+    GpuResource prevPositionResource;       // CSが書く 1 フレーム前の姿勢の位置（float4・頂点の番号で引く）
+    UniqueDescriptor prevPositionUavHandle; // 上記のUAV
+    UniqueDescriptor prevPositionSrvHandle; // 上記の StructuredBuffer<float4> SRV（頂点シェーダがモーションベクターに使う）
 
     Microsoft::WRL::ComPtr<ID3D12Resource> skinningParamsCB; // SkinningParams（頂点数）用定数バッファ
 

@@ -49,7 +49,9 @@ namespace CoreEngine
         int sourceVerticesIdx_ = -1;
         int influencesIdx_ = -1;
         int matrixPaletteIdx_ = -1;
+        int prevMatrixPaletteIdx_ = -1;
         int outputVerticesIdx_ = -1;
+        int prevPositionsIdx_ = -1;
         int skinningParamsIdx_ = -1;
     };
 }

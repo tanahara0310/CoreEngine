@@ -5,6 +5,7 @@
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Math/MathCore.h"
+#include "Utility/FrameRate/Time.h"
 #include <algorithm>
 #include <cassert>
 
@@ -20,6 +21,8 @@ namespace {
         "VertexData を変えたら Skinning.CS.hlsl の SkinnedVertexGPU も合わせること");
     // GPUスキニング用Influence1つ分のバイトサイズ（Skinning.CS.hlsl の InfluenceGPU と一致）
     constexpr size_t kInfluenceStride = sizeof(VertexInfluence);
+    // 前のフレームの姿勢の位置 1 つ分のバイトサイズ（Skinning.CS.hlsl の gPrevPositions の float4）
+    constexpr size_t kPrevPositionStride = sizeof(float) * 4;
 }
 
 CoreEngine::SkinCluster SkinClusterGenerator::CreateSkinCluster(
@@ -36,6 +39,7 @@ CoreEngine::SkinCluster SkinClusterGenerator::CreateSkinCluster(
 
     // palette（StructuredBuffer）。姿勢は毎フレーム変わるので、フレームスロットごとに置き場を持つ
     skinCluster.palette.Initialize(graphics, UINT(skeleton.joints.size()), "SkinCluster Palette");
+    skinCluster.prevPalette.Initialize(graphics, UINT(skeleton.joints.size()), "SkinCluster PrevPalette");
 
     // influence用のResourceを確保。頂点ごとにinfluence情報を追加できるようにする
     skinCluster.influenceResource = ResourceFactory::CreateBufferResource(device, sizeof(VertexInfluence) * modelData.vertices.size());
@@ -119,6 +123,45 @@ CoreEngine::SkinCluster SkinClusterGenerator::CreateSkinCluster(
         skinCluster.outputVertexBufferView.StrideInBytes = UINT(kSkinnedVertexStride);
     }
 
+    // 前のフレームの姿勢の位置（CS が UAV で書き、頂点シェーダが StructuredBuffer<float4> で読む）
+    {
+        D3D12_RESOURCE_DESC prevDesc{};
+        prevDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        prevDesc.Width = kPrevPositionStride * vertexCount;
+        prevDesc.Height = 1;
+        prevDesc.DepthOrArraySize = 1;
+        prevDesc.MipLevels = 1;
+        prevDesc.Format = DXGI_FORMAT_UNKNOWN;
+        prevDesc.SampleDesc.Count = 1;
+        prevDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        prevDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+        skinCluster.prevPositionResource.Reset(
+            ResourceFactory::CreateTextureResource(device, prevDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS),
+            D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
+        D3D12_UNORDERED_ACCESS_VIEW_DESC prevUavDesc{};
+        prevUavDesc.Format = DXGI_FORMAT_UNKNOWN;
+        prevUavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+        prevUavDesc.Buffer.FirstElement = 0;
+        prevUavDesc.Buffer.NumElements = vertexCount;
+        prevUavDesc.Buffer.StructureByteStride = UINT(kPrevPositionStride);
+        prevUavDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
+        skinCluster.prevPositionUavHandle = UniqueDescriptor(*descriptorAllocator,
+            descriptorAllocator->CreateUAV(skinCluster.prevPositionResource.Get(), prevUavDesc, "SkinCluster PrevPositionUAV"));
+
+        D3D12_SHADER_RESOURCE_VIEW_DESC prevSrvDesc{};
+        prevSrvDesc.Format = DXGI_FORMAT_UNKNOWN;
+        prevSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+        prevSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+        prevSrvDesc.Buffer.FirstElement = 0;
+        prevSrvDesc.Buffer.NumElements = vertexCount;
+        prevSrvDesc.Buffer.StructureByteStride = UINT(kPrevPositionStride);
+        prevSrvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+        skinCluster.prevPositionSrvHandle = UniqueDescriptor(*descriptorAllocator,
+            descriptorAllocator->CreateSRV(skinCluster.prevPositionResource.Get(), prevSrvDesc, "SkinCluster PrevPositionSRV"));
+    }
+
     // SkinningParams（頂点数）用の定数バッファを作成（頂点数はモデル固有で不変のため一度だけ書き込む）
     {
         struct SkinningParamsCB {
@@ -178,7 +221,32 @@ void SkinClusterGenerator::Update(SkinCluster& skinCluster, const Skeleton& skel
             CoreEngine::MathCore::Matrix::Transpose(CoreEngine::MathCore::Matrix::Inverse(palette[jointIndex].skeletonSpaceMatrix));
     }
 
+    // そのフレームで最初の更新なら、最後に更新した姿勢（前のフレームに描いた姿勢）を前の姿勢にする。
+    // 最初の 1 回は前の姿勢が無いので今の姿勢を使う
+    const uint64_t frame = Time::FrameCount();
+    if (skinCluster.lastPoseFrame != frame) {
+        if (skinCluster.lastPose.empty()) {
+            skinCluster.prevPalette.Set(palette);
+        } else {
+            skinCluster.prevPalette.Set(skinCluster.lastPose);
+        }
+        skinCluster.lastPoseFrame = frame;
+    }
+    skinCluster.lastPose.assign(palette.begin(), palette.end());
+    skinCluster.prevPoseStale = true;
+
     // パレットが更新されたので、次回描画前にGPUスキニング(CS)の再実行が必要
     skinCluster.needsGPUSkinning = true;
+}
+
+bool SkinClusterGenerator::SettlePrevPose(SkinCluster& skinCluster)
+{
+    if (!skinCluster.prevPoseStale || skinCluster.lastPose.empty() || skinCluster.lastPoseFrame == Time::FrameCount()) {
+        return false;
+    }
+    skinCluster.prevPalette.Set(skinCluster.lastPose);
+    skinCluster.prevPoseStale = false;
+    skinCluster.needsGPUSkinning = true;
+    return true;
 }
 }

@@ -361,9 +361,7 @@ struct SurfaceSkinnedVertexAttributes
     float2 texcoord : TEXCOORD0;
     float3 normal : NORMAL0;
     float3 tangent : TANGENT0;
-#ifdef SURFACE_VERTEX_COLOR
     uint vertexID : SV_VertexID;
-#endif
 };
 
 #ifdef SURFACE_VERTEX_COLOR
@@ -538,6 +536,8 @@ float4 SurfacePreviewMain(VertexShaderOutput input) : SV_TARGET
 // ===== 自分の頂点シェーダの入口（SURFACE_VERTEX・SURFACE_OBJECT_SPACE・SURFACE_VERTEX_COLOR のどれかのとき） =====
 #ifdef SURFACE_OWN_VERTEX_SHADER
 
+#include "SkinnedMotion.hlsli"
+
 StructuredBuffer<TransformationMatrix> gInstanceData : register(t0, space1);
 ConstantBuffer<TransformationMatrix> gTransformationMatrix : register(b0);
 
@@ -566,7 +566,7 @@ VertexShaderOutput SurfaceStaticVertexMain(SurfaceStaticVertexAttributes input, 
     return output;
 }
 
-/// @brief スキンのモデルの頂点シェーダ（GBuffer と前方描画。前のフレームは今の姿勢を前の時間で動かす）
+/// @brief スキンのモデルの頂点シェーダ（GBuffer と前方描画。前のフレームは前の姿勢の位置を前の時間で動かす）
 VertexShaderOutput SurfaceSkinnedVertexMain(SurfaceSkinnedVertexAttributes input)
 {
     const TransformationMatrix mtx = gTransformationMatrix;
@@ -576,9 +576,10 @@ VertexShaderOutput SurfaceSkinnedVertexMain(SurfaceSkinnedVertexAttributes input
 #else
     const float4 vertexColor = float4(1.0f, 1.0f, 1.0f, 1.0f);
 #endif
+    const float3 prevSkinnedPos = LoadPrevSkinnedPosition(input.vertexID).xyz;
     const SurfaceVertexOutput current = SurfaceCallVertex(input.position.xyz, input.normal, input.tangent,
         input.texcoord, gVertexAnim.time, mtx.World, mtx.WorldInversTranspose, vertexColor);
-    const SurfaceVertexOutput previous = SurfaceCallVertex(input.position.xyz, input.normal, input.tangent,
+    const SurfaceVertexOutput previous = SurfaceCallVertex(prevSkinnedPos, input.normal, input.tangent,
         input.texcoord, gVertexAnim.prevTime, mtx.World, mtx.WorldInversTranspose, vertexColor);
     VertexShaderOutput output = SurfaceTransformVertex(float4(current.positionOS, input.position.w), current.normalOS,
         input.tangent, input.texcoord, float4(previous.positionOS, input.position.w), mtx);

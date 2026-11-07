@@ -34,8 +34,9 @@ namespace CoreEngine
         // 頂点の色（StructuredBuffer<uint>。色の無いモデルは白 1 つだけの配列）
         D3D12_GPU_DESCRIPTOR_HANDLE vertexColorSRV = {};
 
-        // スキニング専用 (isSkinned == false のとき matrixPaletteSRV は未使用)
+        // スキニング専用 (isSkinned == false のとき prevSkinnedPositionSRV は未使用)
         bool isSkinned = false;
-        D3D12_GPU_DESCRIPTOR_HANDLE matrixPaletteSRV = {};
+        /// @brief 前のフレームの姿勢で変形した位置（StructuredBuffer<float4>。モーションベクター用）
+        D3D12_GPU_DESCRIPTOR_HANDLE prevSkinnedPositionSRV = {};
     };
 }

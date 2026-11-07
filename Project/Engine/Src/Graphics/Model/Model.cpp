@@ -36,6 +36,8 @@ namespace CoreEngine
             graphics->DeferRelease(std::move(cluster.influenceResource));
             graphics->DeferRelease(cluster.outputVertexResource.Get());
             cluster.outputVertexResource.Release();
+            graphics->DeferRelease(cluster.prevPositionResource.Get());
+            cluster.prevPositionResource.Release();
             graphics->DeferRelease(std::move(cluster.skinningParamsCB));
         }
     }
@@ -88,7 +90,11 @@ namespace CoreEngine
     }
 
     void Model::EnsureGPUSkinning(ID3D12GraphicsCommandList* cmdList, ID3D12PipelineState* restorePSO) {
-        if (!skinCluster_ || !skinCluster_->needsGPUSkinning) {
+        if (!skinCluster_) {
+            return;
+        }
+        SkinClusterGenerator::SettlePrevPose(*skinCluster_);
+        if (!skinCluster_->needsGPUSkinning) {
             return;
         }
         assert(renderContext_.skinningDispatcher);
@@ -364,6 +370,7 @@ ModelDrawPacket Model::BuildSkinningDrawPacket(
     packet.emissiveSRV = emissiveTexture;
     packet.vertexColorSRV = resource_->GetVertexColorSRV();
     packet.isSkinned = true;
+    packet.prevSkinnedPositionSRV = skinCluster_->prevPositionSrvHandle.Gpu();
     return packet;
 }
 

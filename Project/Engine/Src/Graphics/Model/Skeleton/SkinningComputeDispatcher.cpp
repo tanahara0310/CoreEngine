@@ -41,7 +41,9 @@ namespace CoreEngine
         sourceVerticesIdx_ = reflectionData_->GetRootParameterIndexByName("gSourceVertices");
         influencesIdx_ = reflectionData_->GetRootParameterIndexByName("gInfluences");
         matrixPaletteIdx_ = reflectionData_->GetRootParameterIndexByName("gMatrixPalette");
+        prevMatrixPaletteIdx_ = reflectionData_->GetRootParameterIndexByName("gPrevMatrixPalette");
         outputVerticesIdx_ = reflectionData_->GetRootParameterIndexByName("gOutputVertices");
+        prevPositionsIdx_ = reflectionData_->GetRootParameterIndexByName("gPrevPositions");
         skinningParamsIdx_ = reflectionData_->GetRootParameterIndexByName("SkinningParams");
     }
 
@@ -60,8 +62,11 @@ namespace CoreEngine
         (void)srvHeap;
 
         // 出力バッファを前フレームの状態からUAVへ戻す（初回はUNORDERED_ACCESSのままなので無発行）
-        Barrier::Transition(cmdList, skinCluster.outputVertexResource,
-            D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        {
+            BarrierBatch toUav(cmdList);
+            toUav.Transition(skinCluster.outputVertexResource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            toUav.Transition(skinCluster.prevPositionResource, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        }
 
         cmdList->SetComputeRootSignature(rootSignatureMg_->GetRootSignature());
         cmdList->SetPipelineState(computePso_.Get());
@@ -75,8 +80,14 @@ namespace CoreEngine
         if (matrixPaletteIdx_ >= 0) {
             cmdList->SetComputeRootDescriptorTable(matrixPaletteIdx_, skinCluster.palette.Srv());
         }
+        if (prevMatrixPaletteIdx_ >= 0) {
+            cmdList->SetComputeRootDescriptorTable(prevMatrixPaletteIdx_, skinCluster.prevPalette.Srv());
+        }
         if (outputVerticesIdx_ >= 0) {
             cmdList->SetComputeRootDescriptorTable(outputVerticesIdx_, skinCluster.outputUavHandle.Gpu());
+        }
+        if (prevPositionsIdx_ >= 0) {
+            cmdList->SetComputeRootDescriptorTable(prevPositionsIdx_, skinCluster.prevPositionUavHandle.Gpu());
         }
         if (skinningParamsIdx_ >= 0) {
             cmdList->SetComputeRootConstantBufferView(skinningParamsIdx_, skinCluster.skinningParamsCB->GetGPUVirtualAddress());
@@ -85,10 +96,13 @@ namespace CoreEngine
         const UINT groupCount = (vertexCount + 63) / 64;
         cmdList->Dispatch(groupCount, 1, 1);
 
-        // 出力バッファを頂点バッファとして読めるように遷移
+        // 出力バッファを頂点バッファとして、前の姿勢の位置を頂点シェーダの SRV として読めるように遷移
         BarrierBatch batch(cmdList);
         batch.UAV(skinCluster.outputVertexResource);
+        batch.UAV(skinCluster.prevPositionResource);
         batch.Transition(skinCluster.outputVertexResource,
             D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+        batch.Transition(skinCluster.prevPositionResource,
+            D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     }
 }
