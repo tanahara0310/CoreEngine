@@ -283,6 +283,16 @@ namespace CoreEngine
             "履歴を棄却しはじめる透過率の食い違い量。小さいほど動きに敏感",
             CVarRange{ 0.01f, 1.0f } };
 
+        CVar<int> TraceInterleave{
+            "r.Cloud.TraceInterleave", 2,
+            "1 フレームにレイを撃つ間隔。2 = 2x2 画素のうち 1 画素だけ撃ち、残りは前フレームの雲から埋める。1 で全画素",
+            CVarRange{ 1.0f, 2.0f } };
+
+        CVar<int> CubemapFacesPerFrame{
+            "r.Cloud.CubemapFacesPerFrame", 1,
+            "映り込み用の空キューブマップで 1 フレームに雲を描き直す面の数。6 で毎フレーム全面",
+            CVarRange{ 1.0f, 6.0f } };
+
         // ---- 巻雲シェル ----
         CVar<float> CirrusAltitudeM{
             "r.Cloud.CirrusAltitude", 8000.0f,
@@ -348,6 +358,11 @@ namespace CoreEngine
             "r.Cloud.SceneShadowStrength", 1.0f,
             "シーンへ落とす雲影の強さ。0 で地面に雲影が出なくなる",
             CVarRange{ 0.0f, 1.0f } };
+
+        CVar<int> ShadowMapSlices{
+            "r.Cloud.ShadowMapSlices", 4,
+            "雲シャドウマップを何フレームに分けて描き直すか。1 で毎フレーム全体",
+            CVarRange{ 1.0f, 8.0f } };
 
         namespace
         {
@@ -426,6 +441,9 @@ namespace CoreEngine
                 { &ResolutionDivisor, &VolumetricCloudParameters::resolutionDivisor },
                 { &GodRayStepCount,   &VolumetricCloudParameters::godRayStepCount },
                 { &Style,             &VolumetricCloudParameters::styleIndex },
+                { &TraceInterleave,   &VolumetricCloudParameters::traceInterleave },
+                { &CubemapFacesPerFrame, &VolumetricCloudParameters::cubemapFacesPerFrame },
+                { &ShadowMapSlices,   &VolumetricCloudParameters::shadowMapSlices },
             };
 
             constexpr Binding<CVar<bool>, bool> kBoolBindings[] = {

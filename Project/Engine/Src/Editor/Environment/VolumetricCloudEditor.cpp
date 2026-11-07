@@ -312,6 +312,9 @@ namespace CoreEngine {
             &CloudCVars::ReprojectEnabled,
             &CloudCVars::ReprojectBlendMin,
             &CloudCVars::ReprojectTolerance,
+            &CloudCVars::TraceInterleave,
+            &CloudCVars::CubemapFacesPerFrame,
+            &CloudCVars::ShadowMapSlices,
         };
 
         ICVar* const kCirrusGroup[] = {

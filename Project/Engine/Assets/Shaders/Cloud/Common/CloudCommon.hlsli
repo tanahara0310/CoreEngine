@@ -1,6 +1,6 @@
 /// @file CloudCommon.hlsli
 /// @brief ボリューメトリック雲の共通定数バッファ・ジオメトリ・密度関数
-/// @details C++ 側 VolumetricCloudShaderConstants（432 バイト）と一致させること。
+/// @details C++ 側 VolumetricCloudShaderConstants（464 バイト）と一致させること。
 ///          座標系は 1unit=1m。惑星中心はカメラ基準で下方 planetRadiusM に置く。
 
 #ifndef CLOUD_COMMON_HLSLI
@@ -48,8 +48,8 @@ struct CloudConstants
     float paintEdgeFade;        uint styleIndex;                         // 416 スタイル（CloudBlocky.hlsli）
     float voxelSizeM;           float voxelHeightSizeM;
     float densityThreshold;     float voxelFaceBrightness;               // 432
-    float voxelFaceShadeMin;    float pad7;
-    float pad8;                 float pad9;                              // 448
+    float voxelFaceShadeMin;    uint traceInterleave;                    //     レイを撃つセルの一辺（1 か 2）
+    uint cubeCaptureFaceFirst;  uint cubeCaptureFaceCount;               // 448 空キューブで雲をマーチする面
 };                                                                       // = 464
 
 // ===== 雲層ジオメトリ =====
@@ -141,6 +141,21 @@ float InterleavedGradientNoise(float2 pixel, uint frame)
 {
     float ign = frac(52.9829189f * frac(0.06711056f * pixel.x + 0.00583715f * pixel.y));
     return frac(ign + float(frame % 64u) * 0.6180339887f);
+}
+
+/// @brief セル cell の中で今フレームにレイを撃つ半解像度画素
+/// @details セルは traceInterleave 四方。2 のときはセル内の 4 画素を対角から順に巡る。
+///          画面端で欠けたセルは、はみ出した分を端の画素へ寄せる。
+uint2 CloudTracedPixel(uint2 cell, CloudConstants c)
+{
+    uint n = max(c.traceInterleave, 1u);
+    uint2 offset = uint2(0u, 0u);
+    if (n == 2u)
+    {
+        static const uint2 kOrder[4] = { uint2(0u, 0u), uint2(1u, 1u), uint2(1u, 0u), uint2(0u, 1u) };
+        offset = kOrder[c.frameIndex & 3u];
+    }
+    return min(cell * n + offset, uint2(c.outputWidth - 1u, c.outputHeight - 1u));
 }
 
 // スタイル（ブロック雲）の量子化。CloudHeightFraction を使うのでジオメトリの後に置く

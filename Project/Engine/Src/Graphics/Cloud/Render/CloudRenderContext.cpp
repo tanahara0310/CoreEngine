@@ -14,6 +14,14 @@ namespace CoreEngine
             1);
     }
 
+    void CloudRenderContext::DispatchTraceCells() const
+    {
+        const uint32_t n = traceInterleave > 0 ? traceInterleave : 1;
+        const uint32_t cellsX = (resources->TargetsWidth() + n - 1) / n;
+        const uint32_t cellsY = (resources->TargetsHeight() + n - 1) / n;
+        cmdList->Dispatch((cellsX + 7) / 8, (cellsY + 7) / 8, 1);
+    }
+
     void CloudRenderContext::DispatchCompositeInPlace(GpuResource& sceneColor) const
     {
         const D3D12_RESOURCE_DESC desc = sceneColor.Desc();

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.65.3">
+<meta name="engine-version" content="0.66.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11321,6 +11321,15 @@ python Tools/OkinawaBeach/bake_araha_walk.py
 
   <h2 id="changelog-history">更新履歴</h2>
 
+  <h3 id="changelog-v0-66-0">v0.66.0 <span class="dim">（2026-11-08）</span></h3>
+  <p>ボリュメトリック雲を毎フレーム全部は描き直さず、何フレームかに分けて描き直すようにした版です。アラハビーチのシーン（1920×1080）で、雲にかかる GPU 時間が約 5.2 ms から約 2.8 ms になります。止まった画面の見た目は変わりません。</p>
+  <ul>
+    <li><strong>雲のレイマーチ</strong>：雲のバッファ（画面の半分の解像度）の全画素にレイを撃っていたのを、2×2 画素のうち 1 画素だけにし、4 フレームで全画素を一巡するようにしました。撃たなかった画素は、前のフレームの雲をカメラの動きに合わせてずらして埋めます。画面の端から入ってきた所と、手前の物との前後が変わった所は、近くの今のフレームで撃った画素から補間します。<code>r.Cloud.TraceInterleave</code> を 1 にすると、前と同じく全画素に撃ちます。</li>
+    <li><strong>映り込みの雲</strong>：空のキューブマップ（空の映り込み・水面に映る雲）へ雲を焼き込むとき、毎フレーム 6 面とも雲をマーチしていたのを、1 フレームに 1 面だけにしました。ほかの面は前に描いた雲を合成します。面の数は <code>r.Cloud.CubemapFacesPerFrame</code> で変えられます。</li>
+    <li><strong>雲の影</strong>：地面に落とす雲の影のマップ（1024×1024）を毎フレーム全体描き直していたのを、横の帯 4 本に分けて 1 フレームに 1 本ずつ描き直すようにしました。影の範囲がカメラについて動いたときと、太陽が大きく動いたときは全体を描き直します。分ける数は <code>r.Cloud.ShadowMapSlices</code> で変えられます。</li>
+    <li><strong>設定</strong>：3 つの CVar は、雲の設定の「品質・負荷（マーチング）」にあります。カメラを速く回したときの雲の縁のにじみなどが気になるときは、<a href="#api-VolumetricCloud">ボリュメトリック雲</a>の注意を見てください。</li>
+  </ul>
+
   <h3 id="changelog-v0-65-3">v0.65.3 <span class="dim">（2026-11-07）</span></h3>
   <p>重くなっていた水面のレイトレーシングと、レイトレーシングの加速構造を作り直す CPU の処理を軽くした版です。見た目は変わりません。</p>
   <ul>
@@ -17048,6 +17057,7 @@ void LateUpdate()   // 追いかける相手が動いた後に動かす
     keywords: "雲 空 天候 天気",
     summary: "立体的な雲を描きます。インスペクタの「スタイル」「天候」で雰囲気を選び、「配置ペイント（ウェザーマップ）」で雲を置く場所を塗れます。",
     intro: "<p>値は CVar <code>r.Cloud.*</code> としてシーンの <span class=\"path\">_environment.json</span> に、塗った配置は <span class=\"path\">_cloudPaint.bin</span> に保存されます。雲を消すには <code>r.Cloud.Enabled</code> をオフにします（見本の倉庫番のシーンも雲を切っています）。</p>",
+    notes: "<ul><li>雲は毎フレーム全部を描き直さず、分けて描き直します。<code>r.Cloud.TraceInterleave</code>（既定 2）は、雲のバッファの 2×2 画素のうち 1 画素だけにレイを撃ち、残りは前のフレームの雲をカメラの動きに合わせてずらして埋めます。<code>r.Cloud.CubemapFacesPerFrame</code>（既定 1）は、映り込み用の空のキューブマップで 1 フレームに雲を描き直す面の数です。<code>r.Cloud.ShadowMapSlices</code>（既定 4）は、地面に落とす雲の影のマップを何フレームに分けて描き直すかです。</li><li>カメラを速く回したときの雲の縁のにじみや、映り込み・雲の影の遅れが気になるときは、それぞれ 1・6・1 にすると毎フレーム全部を描き直します（そのぶん重くなります）。</li><li>太陽が 1 フレームで大きく動いたとき（時刻の早送りなど）と、雲の影の範囲がカメラについて動いたときは、映り込みの雲と雲の影を全部描き直します。</li></ul>",
     see: [["api-SkyBox", "空と大気散乱"]]
   },
 

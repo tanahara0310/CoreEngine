@@ -106,6 +106,9 @@ namespace CoreEngine
         uint32_t maxSteps;              ///< 反復回数の予算（実際の上限は 2 倍）
         uint32_t resolutionDivisor;     ///< レイマーチの解像度分割数（1=フル解像度, 2=半解像度）
         float upsampleDepthTolerance;   ///< アップサンプルでタップを棄却しはじめる相対距離差（0 で深度非考慮）
+        uint32_t traceInterleave;       ///< 1 フレームにレイを撃つセルの一辺（2 = 2x2 のうち 1 画素。1 で全画素）
+        uint32_t cubemapFacesPerFrame;  ///< 空キューブマップで 1 フレームに雲をマーチする面の数（6 で全面）
+        uint32_t shadowMapSlices;       ///< 雲シャドウマップを描き直す行の帯の数（1 で毎フレーム全体）
 
         // ===== 時間再投影 =====
         bool reprojectEnabled;          ///< 前フレームの結果を混ぜる

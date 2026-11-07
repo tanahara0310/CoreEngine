@@ -3,7 +3,7 @@
 /// @details 各テクセル = 雲底面（shadowAnchorWorldY）上のワールド XZ から太陽方向へ
 ///          雲層を貫いたときの透過率。カメラ XZ 追従の正方形領域（テクセルスナップ済み）を
 ///          上面図としてカバーする。GodRayMarch.CS がマーチ中の各点の太陽遮蔽として引く。
-///          雲がアクティブなフレームは毎回再生成される（風・太陽・カメラで常に変わるため）。
+///          1 回のディスパッチで書くのは rowOffset 行目からディスパッチの高さ分の行だけ。
 
 #include "Common/CloudCommon.hlsli"
 #include "Common/CloudShadowCommon.hlsli"
@@ -19,12 +19,13 @@ RWTexture2D<float> gCloudShadowMap : register(u0);
 [numthreads(8, 8, 1)]
 void main(uint3 dtid : SV_DispatchThreadID)
 {
-    if (dtid.x >= CLOUD_SHADOW_MAP_SIZE || dtid.y >= CLOUD_SHADOW_MAP_SIZE)
+    uint2 texel = uint2(dtid.x, dtid.y + gCloudShadow.rowOffset);
+    if (texel.x >= CLOUD_SHADOW_MAP_SIZE || texel.y >= CLOUD_SHADOW_MAP_SIZE)
     {
         return;
     }
 
-    float2 uv = (float2(dtid.xy) + 0.5f) / CLOUD_SHADOW_MAP_SIZE;
+    float2 uv = (float2(texel) + 0.5f) / CLOUD_SHADOW_MAP_SIZE;
     float2 worldXZ = float2(gCloudShadow.regionCenterX, gCloudShadow.regionCenterZ)
                    + (uv - 0.5f) * gCloudShadow.regionSizeM;
 
@@ -34,7 +35,7 @@ void main(uint3 dtid : SV_DispatchThreadID)
     // 消えるため「遮蔽なし」を書いておけば ΔL = 0 になり無害。
     if (toSun.y <= 0.0f)
     {
-        gCloudShadowMap[dtid.xy] = 1.0f;
+        gCloudShadowMap[texel] = 1.0f;
         return;
     }
 
@@ -62,5 +63,5 @@ void main(uint3 dtid : SV_DispatchThreadID)
             * gCloud.densityScale * dt;
     }
 
-    gCloudShadowMap[dtid.xy] = exp(-min(tau, 20.0f));
+    gCloudShadowMap[texel] = exp(-min(tau, 20.0f));
 }

@@ -326,7 +326,7 @@ float SampleHitCloudShadow(float3 position, float3 toLight)
     cloudShadow.anchorWorldY = gCloudShadowAnchorY;
     cloudShadow.edgeFadeStart = gCloudShadowEdgeFadeStart;
     cloudShadow.sceneStrength = gCloudShadowStrength;
-    cloudShadow.pad0 = 0.0f;
+    cloudShadow.rowOffset = 0u;
     cloudShadow.pad1 = 0.0f;
     return lerp(1.0f, SampleCloudShadow(cloudShadowMap, gLinearWrap, position, toLight, cloudShadow), gCloudShadowStrength);
 }

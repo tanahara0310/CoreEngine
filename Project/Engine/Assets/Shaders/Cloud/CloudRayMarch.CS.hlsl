@@ -1,29 +1,32 @@
 /// @file CloudRayMarch.CS.hlsl
-/// @brief 雲の半解像度レイマーチと時間再投影
-/// @details 各ピクセル 1 レイ。球殻交差でマーチ区間を求め、SceneDepth で不透明遮蔽をクランプし、
-///          MarchClouds へ渡す。出力は前乗算アルファ形式（rgb=前乗算輝度, a=透過率）。
-///          サンプル位相をフレームごとに回し、前フレームの結果と混ぜることで
-///          1 フレームあたりの反復数を増やさずに実効サンプル数を稼ぐ。
+/// @brief 雲の間引きレイマーチ
+/// @details 半解像度の画面を traceInterleave 四方のセルに分け、各セルで 1 画素だけレイを撃つ。
+///          球殻交差でマーチ区間を求め、SceneDepth で不透明遮蔽をクランプし、MarchClouds へ渡す。
+///          出力はセル単位で、色は前乗算アルファ（rgb=前乗算輝度, a=透過率）、
+///          距離は x=雲の代表距離（雲なし = -1）, y=マーチの終端距離。
+///          半解像度の雲バッファへの組み立てと時間再投影は CloudReconstruct.CS が行う。
 
 #include "Common/CloudCirrus.hlsli"
 
 Texture2D<float> gSceneDepth : register(t3);
-Texture2D<float4> gCloudHistory : register(t6);
 Texture3D<float4> gCameraVolumeLUT : register(t7);
-RWTexture2D<float4> gCloudOutput : register(u0);
+RWTexture2D<float4> gTraceColor : register(u0);
+RWTexture2D<float2> gTraceDepth : register(u1);
 
 [numthreads(8, 8, 1)]
 void main(uint3 dtid : SV_DispatchThreadID)
 {
     uint w = gCloud.outputWidth;
     uint h = gCloud.outputHeight;
-    if (dtid.x >= w || dtid.y >= h)
+    uint n = max(gCloud.traceInterleave, 1u);
+    if (dtid.x >= (w + n - 1u) / n || dtid.y >= (h + n - 1u) / n)
     {
         return;
     }
 
-    // ===== レイ生成（半解像度ピクセル → NDC → ワールド方向） =====
-    float2 uv = (float2(dtid.xy) + 0.5f) / float2(w, h);
+    // ===== レイ生成（セルの中で今フレーム撃つ半解像度ピクセル → NDC → ワールド方向） =====
+    uint2 pixel = CloudTracedPixel(dtid.xy, gCloud);
+    float2 uv = (float2(pixel) + 0.5f) / float2(w, h);
     float2 ndc = float2(uv.x * 2.0f - 1.0f, (1.0f - uv.y) * 2.0f - 1.0f);
 
     float4 farH = mul(float4(ndc, 1.0f, 1.0f), gCloud.invViewProj);
@@ -53,14 +56,15 @@ void main(uint3 dtid : SV_DispatchThreadID)
 
     // 画面空間 IGN でサンプル位相をジッタし、等距離サンプル面が作る
     // 放射状のバンディングをノイズへ分散させる。再投影が有効なときだけ
-    // フレームで位相を回す（無効なら毎フレーム同じ模様＝静止画ではちらつかない）
+    // フレームで位相を回す（無効なら毎フレーム同じ模様＝静止画ではちらつかない）。
+    // 1 つの画素は n×n フレームに 1 回撃つので、位相は n×n フレームごとに 1 つ進める。
     // ブロック雲は密度が二値なので、画素ごとに位相をずらしても縞がノイズへ分散せず、
     // 面の縁が 1 ステップ分ばらけて汚れるだけになる。全画素を同位相にして
     // ワールド固定のサンプル面を共有させ、縁を揃える
     bool reproject = gCloud.reprojectEnabled > 0.5f;
-    uint jitterFrame = reproject ? gCloud.frameIndex : 0u;
+    uint jitterFrame = reproject ? gCloud.frameIndex / (n * n) : 0u;
     float ign = (gCloud.styleIndex == CLOUD_STYLE_REALISTIC)
-        ? InterleavedGradientNoise(float2(dtid.xy), jitterFrame)
+        ? InterleavedGradientNoise(float2(pixel), jitterFrame)
         : 0.0f;
 
     CloudMarchResult cloud = MarchClouds(rayOrigin, rayDir, marchStart, marchEnd,
@@ -73,33 +77,6 @@ void main(uint3 dtid : SV_DispatchThreadID)
     ApplyCloudAerialPerspective(cirrus, uv, gCameraVolumeLUT, gLUTSampler);
     cloud = CompositeCloudLayers(cloud, cirrus);
 
-    float4 current = float4(cloud.luminance, cloud.transmittance);
-
-    // ===== 時間再投影 =====
-    // 雲の代表距離のワールド点を前フレームのビュー射影へ投げて履歴 UV を得る。
-    // 雲は風で動くが、10km 先の雲が 8m/s で流れても 1 フレームの画面移動は
-    // 半解像度 1 画素に遠く届かないので、カメラ運動だけの再投影で足りる。
-    if (reproject && cloud.distance > 0.0f)
-    {
-        float3 worldPos = rayOrigin + rayDir * cloud.distance;
-        float4 prevClip = mul(float4(worldPos, 1.0f), gCloud.prevViewProj);
-        if (prevClip.w > 0.0f)
-        {
-            float2 prevNdc = prevClip.xy / prevClip.w;
-            float2 prevUv = float2(prevNdc.x * 0.5f + 0.5f, 0.5f - prevNdc.y * 0.5f);
-            if (all(prevUv >= 0.0f) && all(prevUv <= 1.0f))
-            {
-                float4 history = gCloudHistory.SampleLevel(gLUTSampler, prevUv, 0);
-
-                // 履歴と現フレームの透過率が食い違う画素は、雲の縁が動いた・
-                // 別の雲を掴んだということなので現フレーム寄りへ倒す。
-                // 固定の混合率だけだと動きの速い縁がゴーストになる
-                float disagree = saturate(abs(history.a - current.a) / gCloud.reprojectTolerance);
-                float alpha = lerp(gCloud.reprojectBlendMin, 1.0f, disagree);
-                current = lerp(history, current, alpha);
-            }
-        }
-    }
-
-    gCloudOutput[dtid.xy] = current;
+    gTraceColor[dtid.xy] = float4(cloud.luminance, cloud.transmittance);
+    gTraceDepth[dtid.xy] = float2(cloud.distance, marchEnd);
 }

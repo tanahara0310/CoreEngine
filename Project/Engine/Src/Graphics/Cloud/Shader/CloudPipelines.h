@@ -17,6 +17,7 @@ namespace CoreEngine
         WeatherMap,
         NoiseMip3D,
         RayMarch,
+        Reconstruct,
         VoxelRayMarch,
         Composite,
         CubemapCapture,

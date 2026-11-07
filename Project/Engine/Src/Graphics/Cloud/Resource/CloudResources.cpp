@@ -218,6 +218,40 @@ namespace CoreEngine
             "CloudShadowMap");
     }
 
+    bool CloudResources::CreateCloudCube(ID3D12Device* device, DescriptorAllocator* descriptorAllocator,
+                                         uint32_t faceSize)
+    {
+        if (!device || !descriptorAllocator || faceSize == 0) {
+            return false;
+        }
+
+        // 6 面の配列。読み書きとも CloudCubemapCapture.CS だけなので UAV しか作らない
+        D3D12_RESOURCE_DESC desc = MakeTextureDesc(faceSize, faceSize, 1, DXGI_FORMAT_R16G16B16A16_FLOAT);
+        desc.DepthOrArraySize = 6;
+
+        Microsoft::WRL::ComPtr<ID3D12Device> deviceRef = device;
+        try {
+            cloudCube.Reset(
+                ResourceFactory::CreateTextureResource(
+                    deviceRef, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS),
+                D3D12_RESOURCE_STATE_UNORDERED_ACCESS, 1);
+        }
+        catch (const std::exception&) {
+            Logger::GetInstance().Warnf(LogCategory::Graphics,
+                "CloudResources: テクスチャ(CloudCube)の生成に失敗");
+            return false;
+        }
+
+        D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
+        uavDesc.Format = desc.Format;
+        uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+        uavDesc.Texture2DArray.MipSlice = 0;
+        uavDesc.Texture2DArray.FirstArraySlice = 0;
+        uavDesc.Texture2DArray.ArraySize = 6;
+        descriptorAllocator->EnsureUAV(cloudCube.uav, cloudCube.Get(), uavDesc, "CloudCubeUAV");
+        return true;
+    }
+
     bool CloudResources::EnsureFrameTargets(ID3D12Device* device,
                                             DescriptorAllocator* descriptorAllocator,
                                             GraphicsCore* graphicsCore,
@@ -245,6 +279,7 @@ namespace CoreEngine
 
         // 現在の SceneColor サイズと分割数で確保済みなら再利用する
         if (godRayBuffer && cloudBuffers[0] && cloudBuffers[1] &&
+            cloudDepthBuffers[0] && cloudDepthBuffers[1] && traceColor && traceDepth &&
             cloudBuffers[0].Desc().Width == halfW &&
             cloudBuffers[0].Desc().Height == halfH) {
             return true;
@@ -264,6 +299,17 @@ namespace CoreEngine
             return false;
         }
         if (!CreateTexture(device, descriptorAllocator, godRayBuffer, halfDesc, "GodRayBuffer")) {
+            return false;
+        }
+
+        // 雲の距離と、間引きレイマーチのセルごとの結果。
+        // セルの数は間引き方で変わるので、間引かないときの半解像度で確保しておく
+        const D3D12_RESOURCE_DESC depthDesc =
+            MakeTextureDesc(halfW, halfH, 1, DXGI_FORMAT_R32G32_FLOAT);
+        if (!CreateTexture(device, descriptorAllocator, cloudDepthBuffers[0], depthDesc, "CloudDepthBuffer0")
+            || !CreateTexture(device, descriptorAllocator, cloudDepthBuffers[1], depthDesc, "CloudDepthBuffer1")
+            || !CreateTexture(device, descriptorAllocator, traceColor, halfDesc, "CloudTraceColor")
+            || !CreateTexture(device, descriptorAllocator, traceDepth, depthDesc, "CloudTraceDepth")) {
             return false;
         }
 
