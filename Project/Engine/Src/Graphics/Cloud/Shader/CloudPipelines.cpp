@@ -47,6 +47,7 @@ namespace CoreEngine
             MakeDesc(L"CloudWeatherMap.CS.hlsl",     CloudNoiseBind::kDecls,           "WeatherMap"),
             MakeDesc(L"CloudNoiseMip3D.CS.hlsl",     CloudNoiseMipBind::kDecls,        "NoiseMip3D"),
             MakeDesc(L"CloudRayMarch.CS.hlsl",       CloudRayMarchBind::kDecls,        "RayMarch"),
+            MakeDesc(L"CloudReconstruct.CS.hlsl",    CloudReconstructBind::kDecls,     "Reconstruct"),
             MakeDesc(L"CloudVoxelMarch.CS.hlsl",     CloudVoxelMarchBind::kDecls,      "VoxelRayMarch"),
             MakeDesc(L"CloudComposite.CS.hlsl",      CloudCompositeBind::kDecls,       "Composite"),
             MakeDesc(L"CloudCubemapCapture.CS.hlsl", CloudCubemapCaptureBind::kDecls,  "CloudCubemapCapture"),

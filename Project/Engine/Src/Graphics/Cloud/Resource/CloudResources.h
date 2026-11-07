@@ -50,6 +50,10 @@ namespace CoreEngine
         /// @brief 雲シャドウマップを確保する（ゴッドレイ用）
         bool CreateCloudShadowMap(ID3D12Device* device, DescriptorAllocator* descriptorAllocator);
 
+        /// @brief 空キューブマップへ合成する雲だけのキューブを確保する
+        /// @param faceSize 1 面の一辺（空キューブマップと同じ）
+        bool CreateCloudCube(ID3D12Device* device, DescriptorAllocator* descriptorAllocator, uint32_t faceSize);
+
         /// @brief SceneColor のサイズと分割数に追従してフレームターゲットを確保する
         /// @param graphicsCore 作り直す前の GPU 完了待ちに使う（nullptr でも動くが待たない）
         /// @param sceneColor サイズとフォーマットの基準
@@ -68,6 +72,8 @@ namespace CoreEngine
         CloudGpuTexture detailNoise;
         CloudGpuTexture weatherMap;
         CloudGpuTexture cloudShadowMap;
+        /// 空キューブマップの雲だけを残す 6 面（rgb=前乗算輝度, a=透過率）。UAV だけを持つ
+        CloudGpuTexture cloudCube;
 
         // ===== 配置ペイント =====
         // ワールド固定の矩形領域を 1 枚で覆う（天候マップと違いタイルしない）。
@@ -86,14 +92,23 @@ namespace CoreEngine
         DescriptorHandle paintChannelSrvs[3]{};
 
         // ===== フレームターゲット（EnsureFrameTargets が確保する） =====
-        CloudGpuTexture cloudBuffers[2];  ///< 半解像度レイマーチ結果（時間再投影の ping-pong）
-        CloudGpuTexture godRayBuffer;     ///< 半解像度ゴッドレイ結果
+        CloudGpuTexture cloudBuffers[2];      ///< 半解像度の雲（時間再投影の ping-pong）
+        CloudGpuTexture cloudDepthBuffers[2]; ///< cloudBuffers と対の距離（x=雲の代表距離, y=マーチの終端距離）
+        CloudGpuTexture traceColor;           ///< 今フレームにレイを撃ったセルごとの雲
+        CloudGpuTexture traceDepth;           ///< traceColor と対の距離
+        CloudGpuTexture godRayBuffer;         ///< 半解像度ゴッドレイ結果
 
         /// @brief 今フレームの書き込み先
         CloudGpuTexture& CurrentCloudBuffer() { return cloudBuffers[writeIndex_]; }
 
-        /// @brief 前フレームのレイマーチ結果（履歴）
+        /// @brief 前フレームの雲（履歴）
         CloudGpuTexture& HistoryCloudBuffer() { return cloudBuffers[writeIndex_ ^ 1]; }
+
+        /// @brief 今フレームの距離の書き込み先
+        CloudGpuTexture& CurrentCloudDepthBuffer() { return cloudDepthBuffers[writeIndex_]; }
+
+        /// @brief 前フレームの距離（履歴）
+        CloudGpuTexture& HistoryCloudDepthBuffer() { return cloudDepthBuffers[writeIndex_ ^ 1]; }
 
         /// @brief 書き込み先をフレーム番号の偶奇で決める（純粋関数。累積状態を持たない）
         void SetFrameIndex(uint32_t frameIndex) { writeIndex_ = frameIndex & 1u; }

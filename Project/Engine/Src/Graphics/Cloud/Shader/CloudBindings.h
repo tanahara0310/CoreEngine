@@ -56,10 +56,10 @@ namespace CoreEngine::CloudRayMarchBind
         gSceneDepth,
         gTransmittanceLUT,
         gSkyViewLUT,
-        gCloudHistory,
         gCameraVolumeLUT,
         gCloudPaintMap,
-        gCloudOutput,
+        gTraceColor,
+        gTraceDepth,
         Count
     };
 
@@ -72,10 +72,39 @@ namespace CoreEngine::CloudRayMarchBind
         { "gSceneDepth",       ShaderBindingType::SRV, BindingUsage::Required },  // t3
         { "gTransmittanceLUT", ShaderBindingType::SRV, BindingUsage::Required },  // t4
         { "gSkyViewLUT",       ShaderBindingType::SRV, BindingUsage::Required },  // t5
-        { "gCloudHistory",     ShaderBindingType::SRV, BindingUsage::Required },  // t6
         { "gCameraVolumeLUT",  ShaderBindingType::SRV, BindingUsage::Required },  // t7
         { "gCloudPaintMap",    ShaderBindingType::SRV, BindingUsage::Required },  // t8
-        { "gCloudOutput",      ShaderBindingType::UAV, BindingUsage::Required },  // u0
+        { "gTraceColor",       ShaderBindingType::UAV, BindingUsage::Required },  // u0
+        { "gTraceDepth",       ShaderBindingType::UAV, BindingUsage::Required },  // u1
+    };
+
+    static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
+}
+
+namespace CoreEngine::CloudReconstructBind
+{
+    /// @brief CloudReconstruct.CS.hlsl の契約
+    enum Slot : size_t {
+        gCloud,
+        gSceneDepth,
+        gTraceColor,
+        gTraceDepth,
+        gCloudHistory,
+        gCloudDepthHistory,
+        gCloudOutput,
+        gCloudDepthOutput,
+        Count
+    };
+
+    inline constexpr ShaderBindingDecl kDecls[] = {
+        { "gCloud",             ShaderBindingType::CBV, BindingUsage::Required },  // b0
+        { "gSceneDepth",        ShaderBindingType::SRV, BindingUsage::Required },  // t0
+        { "gTraceColor",        ShaderBindingType::SRV, BindingUsage::Required },  // t1
+        { "gTraceDepth",        ShaderBindingType::SRV, BindingUsage::Required },  // t2
+        { "gCloudHistory",      ShaderBindingType::SRV, BindingUsage::Required },  // t3
+        { "gCloudDepthHistory", ShaderBindingType::SRV, BindingUsage::Required },  // t4
+        { "gCloudOutput",       ShaderBindingType::UAV, BindingUsage::Required },  // u0
+        { "gCloudDepthOutput",  ShaderBindingType::UAV, BindingUsage::Required },  // u1
     };
 
     static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
@@ -153,6 +182,7 @@ namespace CoreEngine::CloudCubemapCaptureBind
         gSkyViewLUT,
         gCloudPaintMap,
         gSkyCubemap,
+        gCloudCube,
         Count
     };
 
@@ -166,6 +196,7 @@ namespace CoreEngine::CloudCubemapCaptureBind
         { "gSkyViewLUT",       ShaderBindingType::SRV, BindingUsage::Required },  // t5
         { "gCloudPaintMap",    ShaderBindingType::SRV, BindingUsage::Required },  // t8
         { "gSkyCubemap",       ShaderBindingType::UAV, BindingUsage::Required },  // u0
+        { "gCloudCube",        ShaderBindingType::UAV, BindingUsage::Required },  // u1
     };
 
     static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");

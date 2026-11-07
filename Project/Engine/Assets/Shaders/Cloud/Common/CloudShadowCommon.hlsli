@@ -11,7 +11,7 @@ struct CloudShadowConstants
     float regionCenterX;    float regionCenterZ;
     float regionSizeM;      float anchorWorldY;     // 0
     float edgeFadeStart;    float sceneStrength;
-    float pad0;             float pad1;             // 16 (= 32)
+    uint rowOffset;         float pad1;             // 16 (= 32) rowOffset = 生成 CS が書く先頭の行
 };
 
 // C++ 側 CloudResources::kCloudShadowMapSize と一致させること

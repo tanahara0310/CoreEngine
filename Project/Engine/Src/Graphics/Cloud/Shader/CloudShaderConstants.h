@@ -10,7 +10,7 @@ namespace CoreEngine
 {
 
     /// @brief 雲シェーダーへ渡す定数バッファレイアウト
-    /// @details HLSL 側 CloudCommon.hlsli の CloudConstants と一致させること（416 バイト）。
+    /// @details HLSL 側 CloudCommon.hlsli の CloudConstants と一致させること（464 バイト）。
     ///          距離はメートル基準。sunDirection は「光の進行方向」（大気散乱と同じ規約）。
     struct VolumetricCloudShaderConstants {
         Matrix4x4 invViewProj;                                              // 0
@@ -56,8 +56,8 @@ namespace CoreEngine
         float paintEdgeFade;         uint32_t styleIndex;                   // 416
         float voxelSizeM;            float voxelHeightSizeM;
         float densityThreshold;      float voxelFaceBrightness;             // 432
-        float voxelFaceShadeMin;     float pad7;
-        float pad8;                  float pad9;                            // 448 (= 464)
+        float voxelFaceShadeMin;     uint32_t traceInterleave;              //     レイを撃つセルの一辺（1 か 2）
+        uint32_t cubeCaptureFaceFirst; uint32_t cubeCaptureFaceCount;       // 448 (= 464) 空キューブで雲をマーチする面
     };
     static_assert(sizeof(VolumetricCloudShaderConstants) == 464,
         "VolumetricCloudShaderConstants は HLSL 側 CloudConstants の 464 バイトレイアウトと一致させること");
@@ -131,9 +131,9 @@ namespace CoreEngine
         CB_FIELD(VolumetricCloudShaderConstants, densityThreshold),
         CB_FIELD(VolumetricCloudShaderConstants, voxelFaceBrightness),
         CB_FIELD(VolumetricCloudShaderConstants, voxelFaceShadeMin),
-        CB_FIELD(VolumetricCloudShaderConstants, pad7),
-        CB_FIELD(VolumetricCloudShaderConstants, pad8),
-        CB_FIELD(VolumetricCloudShaderConstants, pad9),
+        CB_FIELD(VolumetricCloudShaderConstants, traceInterleave),
+        CB_FIELD(VolumetricCloudShaderConstants, cubeCaptureFaceFirst),
+        CB_FIELD(VolumetricCloudShaderConstants, cubeCaptureFaceCount),
     };
     CB_VERIFY_LAYOUT(VolumetricCloudShaderConstants, kVolumetricCloudShaderConstantsFields);
     CB_BIND_HLSL(VolumetricCloudShaderConstants, kVolumetricCloudShaderConstantsFields, "gCloud");
@@ -145,7 +145,7 @@ namespace CoreEngine
         float regionCenterX;         float regionCenterZ;
         float regionSizeM;           float anchorWorldY;            // 0
         float edgeFadeStart;         float sceneStrength;
-        float pad0;                  float pad1;                    // 16 (= 32)
+        uint32_t rowOffset;          float pad1;                    // 16 (= 32) rowOffset = 生成 CS が書く先頭の行
     };
     static_assert(sizeof(CloudShadowShaderConstants) == 32,
         "CloudShadowShaderConstants は HLSL 側 CloudShadowConstants の 32 バイトレイアウトと一致させること");
@@ -154,7 +154,7 @@ namespace CoreEngine
         CB_FIELD(CloudShadowShaderConstants, regionCenterX), CB_FIELD(CloudShadowShaderConstants, regionCenterZ),
         CB_FIELD(CloudShadowShaderConstants, regionSizeM), CB_FIELD(CloudShadowShaderConstants, anchorWorldY),
         CB_FIELD(CloudShadowShaderConstants, edgeFadeStart), CB_FIELD(CloudShadowShaderConstants, sceneStrength),
-        CB_FIELD(CloudShadowShaderConstants, pad0), CB_FIELD(CloudShadowShaderConstants, pad1),
+        CB_FIELD(CloudShadowShaderConstants, rowOffset), CB_FIELD(CloudShadowShaderConstants, pad1),
     };
     CB_VERIFY_LAYOUT(CloudShadowShaderConstants, kCloudShadowShaderConstantsFields);
     CB_BIND_HLSL(CloudShadowShaderConstants, kCloudShadowShaderConstantsFields, "gCloudShadow");

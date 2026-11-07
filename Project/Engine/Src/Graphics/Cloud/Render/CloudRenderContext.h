@@ -31,8 +31,17 @@ namespace CoreEngine
         /// 雲のスタイル（CloudStyle）。マーチのパスを選ぶのに使う
         uint32_t styleIndex = 0;
 
+        /// レイを撃つセルの一辺（gCloud.traceInterleave と同じ値）
+        uint32_t traceInterleave = 1;
+
+        /// 雲シャドウマップをこのフレームに書く行数
+        uint32_t cloudShadowRowCount = 0;
+
         /// @brief 半解像度バッファの実サイズで 8x8 スレッドグループをディスパッチする
         void DispatchHalfRes() const;
+
+        /// @brief 間引きレイマーチのセルの数で 8x8 スレッドグループをディスパッチする
+        void DispatchTraceCells() const;
 
         /// @brief SceneColor へ合成 CS を in-place で走らせる
         /// @details SceneColor を UAV 状態にしてディスパッチし、後続パスの想定状態へ戻す。

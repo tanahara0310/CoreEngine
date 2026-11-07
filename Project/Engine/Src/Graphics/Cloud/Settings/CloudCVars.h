@@ -82,6 +82,8 @@ namespace CoreEngine
         extern CVar<bool> ReprojectEnabled;
         extern CVar<float> ReprojectBlendMin;
         extern CVar<float> ReprojectTolerance;
+        extern CVar<int> TraceInterleave;
+        extern CVar<int> CubemapFacesPerFrame;
 
         // ---- 巻雲シェル ----
         extern CVar<float> CirrusAltitudeM;
@@ -99,6 +101,7 @@ namespace CoreEngine
         extern CVar<int> GodRayStepCount;
         extern CVar<float> CloudShadowRegionSizeM;
         extern CVar<float> SceneShadowStrength;
+        extern CVar<int> ShadowMapSlices;
 
         /// @brief CVar の現在値をパラメータ構造体へ取り込む
         void LoadInto(VolumetricCloudParameters& params);

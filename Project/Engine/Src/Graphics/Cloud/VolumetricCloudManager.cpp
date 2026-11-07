@@ -29,6 +29,10 @@ namespace CoreEngine
             uint32_t size;          ///< 一辺のテクセル数
         };
         constexpr uint32_t kWeatherPaintFileVersion = 2;
+
+        /// @brief 太陽方向が 1 フレームでこの cos（約 0.1°）より大きく動いたら、
+        ///        分けて描き直している雲シャドウマップと空キューブマップの雲を全部描き直す
+        constexpr float kSunStepFullUpdateCos = 0.9999985f;
     }
 
     void VolumetricCloudManager::Initialize(GraphicsCore* graphicsCore, DescriptorAllocator* descriptorAllocator)
@@ -54,7 +58,7 @@ namespace CoreEngine
         godRayConstants_.Initialize(uploadRing);
         cloudShadowConstants_.Initialize(uploadRing);
         UpdateConstants();
-        UpdateCloudShadowConstants();
+        UpdateCloudShadowConstants(true);
 
         // ノイズテクスチャ・配置ペイントと生成パイプライン
         const bool noiseResourcesReady = resources_.CreateNoiseTextures(device, descriptorAllocator)
@@ -65,6 +69,10 @@ namespace CoreEngine
         // シーンを開くときに SetWeatherPaintPath で読み込む
         weatherPaintCpu_.assign(kWeatherPaintBytes, 0);
         pipelinesReady_ = pipelines_.BuildRenderPasses(device);
+
+        // 空キューブマップへ焼く雲だけを面ごとに残しておくキューブ
+        cloudCubeReady_ = resources_.CreateCloudCube(device, descriptorAllocator,
+            AtmosphereManager::kSkyCubemapSize);
 
         // ゴッドレイ（失敗しても雲本体は無効化しない）
         const bool godRayResourcesReady = resources_.CreateCloudShadowMap(device, descriptorAllocator);
@@ -136,8 +144,15 @@ namespace CoreEngine
             groundLevelY_ = atmosphereManager->GetParameters().groundLevelY;
         }
 
+        const float sunStepCos = sunDirection_.x * prevSunDirection_.x
+            + sunDirection_.y * prevSunDirection_.y
+            + sunDirection_.z * prevSunDirection_.z;
+        const bool sunJumped = sunStepCos < kSunStepFullUpdateCos;
+        prevSunDirection_ = sunDirection_;
+
+        SelectCubeCaptureFaces(sunJumped);
         UpdateConstants();
-        UpdateCloudShadowConstants();
+        UpdateCloudShadowConstants(sunJumped);
     }
 
     void VolumetricCloudManager::PaintWeather(const WeatherPaintStamp& stamp)
@@ -428,7 +443,10 @@ namespace CoreEngine
         // 起動直後とターゲット再確保直後は履歴が未初期化なので混ぜない。
         // ブロック雲は縁が硬いぶんジッタ位相の回転が面の位置を 1 ステップ揺らし、
         // 輪郭がちらつくので再投影ごと切る（CloudRayMarch.CS がジッタも同時に止める）
-        c.reprojectEnabled = (parameters_.reprojectEnabled && historyValid_ && !blocky) ? 1.0f : 0.0f;
+        const bool reproject = parameters_.reprojectEnabled && historyValid_ && !blocky;
+        c.reprojectEnabled = reproject ? 1.0f : 0.0f;
+        // 前フレームの雲を混ぜない間は全画素にレイを撃つ
+        traceInterleave_ = reproject ? std::clamp(parameters_.traceInterleave, 1u, 2u) : 1u;
         c.reprojectBlendMin = parameters_.reprojectBlendMin;
         c.reprojectTolerance = std::max(parameters_.reprojectTolerance, 1e-4f);
         c.cloudTopVariation = parameters_.cloudTopVariation;
@@ -458,9 +476,11 @@ namespace CoreEngine
         c.densityThreshold = parameters_.densityThreshold;
         c.voxelFaceBrightness = parameters_.voxelFaceBrightness;
         c.voxelFaceShadeMin = parameters_.voxelFaceShadeMin;
-        c.pad7 = 0.0f;
-        c.pad8 = 0.0f;
-        c.pad9 = 0.0f;
+
+        // ===== 間引き =====
+        c.traceInterleave = traceInterleave_;
+        c.cubeCaptureFaceFirst = cubeFaceFirst_;
+        c.cubeCaptureFaceCount = cubeFaceCount_;
 
         constants_.Set(c);
     }
@@ -483,20 +503,61 @@ namespace CoreEngine
         godRayConstants_.Set(g);
     }
 
-    void VolumetricCloudManager::UpdateCloudShadowConstants()
+    void VolumetricCloudManager::SelectCubeCaptureFaces(bool forceAll)
     {
+        // 前フレームに雲だけのキューブを書いていなければ、残っている面は使わずに 6 面を描く
+        const bool cubeCurrent = cloudCubeWritten_ && lastCubeCaptureFrame_ + 1u == frameCounter_;
+        const uint32_t facesPerFrame = std::clamp(parameters_.cubemapFacesPerFrame, 1u, 6u);
+        if (forceAll || !cubeCurrent || facesPerFrame >= 6u) {
+            cubeFaceFirst_ = 0;
+            cubeFaceCount_ = 6;
+            cubeFaceCursor_ = 0;
+            return;
+        }
+
+        cubeFaceFirst_ = cubeFaceCursor_;
+        cubeFaceCount_ = facesPerFrame;
+        cubeFaceCursor_ = (cubeFaceCursor_ + facesPerFrame) % 6u;
+    }
+
+    void VolumetricCloudManager::UpdateCloudShadowConstants(bool forceFullUpdate)
+    {
+        const CloudShadowShaderConstants prev = cloudShadowConstants_.Get();
         CloudShadowShaderConstants s{};
 
         // 範囲の中心はテクセルサイズへスナップする（カメラ移動での泳ぎ防止）
-        const float texelM = parameters_.cloudShadowRegionSizeM
-            / static_cast<float>(CloudResources::kCloudShadowMapSize);
+        constexpr uint32_t kMapSize = CloudResources::kCloudShadowMapSize;
+        const float texelM = parameters_.cloudShadowRegionSizeM / static_cast<float>(kMapSize);
         s.regionCenterX = std::floor(cameraWorldPos_.x / texelM) * texelM;
         s.regionCenterZ = std::floor(cameraWorldPos_.z / texelM) * texelM;
         s.regionSizeM = parameters_.cloudShadowRegionSizeM;
         s.anchorWorldY = groundLevelY_ + parameters_.layerBottomAltitudeM;
         s.edgeFadeStart = 0.8f;
         s.sceneStrength = parameters_.sceneShadowStrength;
-        s.pad0 = 0.0f;
+
+        // 範囲が前フレームと同じで前フレームにもマップを書いていれば、行の帯を 1 本ずつ順に描き直す。
+        // それ以外は全体を描き直す
+        const bool sameRegion = prev.regionCenterX == s.regionCenterX
+            && prev.regionCenterZ == s.regionCenterZ
+            && prev.regionSizeM == s.regionSizeM
+            && prev.anchorWorldY == s.anchorWorldY;
+        const bool mapCurrent = cloudShadowWritten_ && lastCloudShadowFrame_ + 1u == frameCounter_;
+        const uint32_t slices = std::clamp(parameters_.shadowMapSlices, 1u, 8u);
+        if (forceFullUpdate || !sameRegion || !mapCurrent || slices == 1u) {
+            shadowRowOffset_ = 0;
+            shadowRowCount_ = kMapSize;
+            shadowSliceCursor_ = 0;
+        } else {
+            // 帯の行数は生成 CS のスレッドグループの高さ（8）の倍数にそろえる
+            const uint32_t rowsPerSlice = ((kMapSize + slices - 1u) / slices + 7u) & ~7u;
+            if (shadowSliceCursor_ * rowsPerSlice >= kMapSize) {
+                shadowSliceCursor_ = 0;
+            }
+            shadowRowOffset_ = shadowSliceCursor_ * rowsPerSlice;
+            shadowRowCount_ = std::min(rowsPerSlice, kMapSize - shadowRowOffset_);
+            ++shadowSliceCursor_;
+        }
+        s.rowOffset = shadowRowOffset_;
         s.pad1 = 0.0f;
 
         cloudShadowConstants_.Set(s);
@@ -516,6 +577,8 @@ namespace CoreEngine
         ctx.godRayConstants = godRayConstants_.Address();
         ctx.cloudShadowConstants = cloudShadowConstants_.Address();
         ctx.styleIndex = ClampCloudStyleIndex(parameters_.styleIndex);
+        ctx.traceInterleave = traceInterleave_;
+        ctx.cloudShadowRowCount = shadowRowCount_;
         return ctx;
     }
 
@@ -549,6 +612,8 @@ namespace CoreEngine
             return;
         }
         cloudShadowMapRenderer_.Render(MakeRenderContext(cmdList, atmosphereManager, profiler));
+        lastCloudShadowFrame_ = frameCounter_;
+        cloudShadowWritten_ = true;
     }
 
     void VolumetricCloudManager::RenderClouds(
@@ -572,8 +637,9 @@ namespace CoreEngine
         cloudRenderer_.Render(MakeRenderContext(cmdList, atmosphereManager, profiler),
             sceneColor, sceneColorUavHandle, depthSrvHandle);
 
-        // 今フレームの書き込みで履歴が揃った（次フレームから混ぜられる）
-        historyValid_ = true;
+        // 今フレームの書き込みで履歴が揃った（次フレームから混ぜられる）。
+        // ボクセルのマーチは雲までの距離を書かないので、次フレームは履歴を混ぜない
+        historyValid_ = !CloudStyleUsesVoxelMarch(ClampCloudStyleIndex(parameters_.styleIndex));
     }
 
     void VolumetricCloudManager::RenderCloudsToSkyCubemap(
@@ -581,10 +647,13 @@ namespace CoreEngine
         const AtmosphereManager* atmosphereManager,
         GpuTimestampProfiler* profiler)
     {
-        if (!cmdList || !pipelinesReady_ || !noiseBaker_.IsReady() || !atmosphereManager) {
+        if (!cmdList || !pipelinesReady_ || !cloudCubeReady_ || !noiseBaker_.IsReady() || !atmosphereManager) {
             return;
         }
-        skyCubemapBaker_.Bake(MakeRenderContext(cmdList, atmosphereManager, profiler));
+        if (skyCubemapBaker_.Bake(MakeRenderContext(cmdList, atmosphereManager, profiler))) {
+            lastCubeCaptureFrame_ = frameCounter_;
+            cloudCubeWritten_ = true;
+        }
     }
 
     void VolumetricCloudManager::RenderGodRays(

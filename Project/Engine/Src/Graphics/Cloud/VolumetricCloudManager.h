@@ -185,8 +185,13 @@ namespace CoreEngine
         /// @brief 現在のカメラ・パラメータからゴッドレイの定数を作る
         void UpdateGodRayConstants();
 
-        /// @brief カメラ追従の範囲をスナップして雲シャドウの定数を作る
-        void UpdateCloudShadowConstants();
+        /// @brief カメラ追従の範囲をスナップして雲シャドウの定数を作り、このフレームに描き直す行を決める
+        /// @param forceFullUpdate true なら行の帯に分けずに全体を描き直す
+        void UpdateCloudShadowConstants(bool forceFullUpdate);
+
+        /// @brief 空キューブマップでこのフレームに雲をマーチする面を決める
+        /// @param forceAll true なら 6 面すべて
+        void SelectCubeCaptureFaces(bool forceAll);
 
         /// @brief フレームターゲットを現在の SceneColor サイズと分割数で確保する
         bool EnsureFrameTargets(GpuResource& sceneColor);
@@ -217,7 +222,26 @@ namespace CoreEngine
         uint32_t frameCounter_ = 0;
         /// フレームターゲットを作り直した直後は履歴が未初期化なので 1 フレーム再投影を止める
         bool historyValid_ = false;
+        /// このフレームに実際にレイを撃つセルの一辺（再投影を止めている間は 1）
+        uint32_t traceInterleave_ = 1;
+
+        // 空キューブマップで雲をマーチする面（cubeFaceFirst_ から cubeFaceCount_ 面）
+        uint32_t cubeFaceFirst_ = 0;
+        uint32_t cubeFaceCount_ = 6;
+        uint32_t cubeFaceCursor_ = 0;
+        uint32_t lastCubeCaptureFrame_ = 0;
+        bool cloudCubeWritten_ = false;
+        bool cloudCubeReady_ = false;
+
+        // 雲シャドウマップをこのフレームに描き直す行（shadowRowOffset_ 行目から shadowRowCount_ 行）
+        uint32_t shadowRowOffset_ = 0;
+        uint32_t shadowRowCount_ = CloudResources::kCloudShadowMapSize;
+        uint32_t shadowSliceCursor_ = 0;
+        uint32_t lastCloudShadowFrame_ = 0;
+        bool cloudShadowWritten_ = false;
+
         Vector3 sunDirection_ = { 0.0f, -1.0f, 0.0f };
+        Vector3 prevSunDirection_ = { 0.0f, -1.0f, 0.0f };
         Vector3 sunColor_ = { 1.0f, 1.0f, 1.0f };
         float sunIntensity_ = 1.0f;
         Vector3 moonDirection_ = { 0.0f, -1.0f, 0.0f };

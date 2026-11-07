@@ -15,8 +15,11 @@ namespace CoreEngine
         ID3D12GraphicsCommandList* cmdList = ctx.cmdList;
         CloudResources& res = *ctx.resources;
 
-        // 風の移流・太陽移動・カメラ追従で毎フレーム変わるため、雲アクティブ中は毎回焼き直す
-        // （1024²×24 サンプルの cheap 密度で Transmittance LUT 生成より軽い）。
+        // 書くのは gCloudShadow.rowOffset 行目から ctx.cloudShadowRowCount 行だけ
+        // （行の分け方と範囲の決め方は VolumetricCloudManager::UpdateCloudShadowConstants）
+        if (ctx.cloudShadowRowCount == 0) {
+            return;
+        }
         CloudStageScope stage(ctx, "Cloud ShadowMap");
 
         Barrier::Transition(cmdList, res.cloudShadowMap, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -36,7 +39,7 @@ namespace CoreEngine
 
         cmdList->Dispatch(
             (CloudResources::kCloudShadowMapSize + 7) / 8,
-            (CloudResources::kCloudShadowMapSize + 7) / 8,
+            (ctx.cloudShadowRowCount + 7) / 8,
             1);
 
         // Deferred ライティングとゴッドレイが SRV として読む
