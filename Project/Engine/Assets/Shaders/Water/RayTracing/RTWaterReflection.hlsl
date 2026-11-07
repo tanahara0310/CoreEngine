@@ -366,7 +366,7 @@ void RTWaterReflectionRayGen()
     RTWaterHitPayload payload = MakeEmptyHitPayload();
 
     // 反射は最も近い交差面の色が必要なため最近接ヒット（RAY_FLAG_NONE）。
-    TraceRay(gScene, RAY_FLAG_NONE, 0xFF, 0, 1, 0, ray, payload);
+    TraceRay(gScene, RAY_FLAG_NONE, kRTInstanceMaskReflected, 0, 1, 0, ray, payload);
 
     if (payload.hitFlag < 0.5f)
     {

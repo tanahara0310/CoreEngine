@@ -142,7 +142,7 @@ RTHitUnderwaterLighting BuildRefractionHitLighting(
             {
                 // 日光が水面へ入る点から当たった点まで届くか（水中の区間の遮蔽）と集光率
                 RTWaterHitPayload payload = MakeEmptyHitPayload();
-                TraceRay(gScene, RAY_FLAG_NONE, 0xFF, 0, 1, 0, path.ray, payload);
+                TraceRay(gScene, RAY_FLAG_NONE, kRTInstanceMaskShadowCaster, 0, 1, 0, path.ray, payload);
                 lighting.transmittedMainLight = FinishWaterCaustics(
                     path, params, surface.position, surface.normal, footprintMeters,
                     payload.hitFlag >= 0.5f, payload.hitT,
@@ -333,7 +333,7 @@ void RTWaterRefractionRayGen()
     TraceRay(
         gScene,
         RAY_FLAG_NONE,
-        0xFF,
+        kRTInstanceMaskReflected,
         0,
         1,
         0,

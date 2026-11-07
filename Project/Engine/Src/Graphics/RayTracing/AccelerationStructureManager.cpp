@@ -161,27 +161,6 @@ namespace CoreEngine
         ID3D12GraphicsCommandList* cmdList,
         const std::vector<InstanceDesc>& instances)
     {
-        // ヒットシェーディングの表は BuildTLAS のたびに同じ並びで送り直す
-        hitTablesValid_ = false;
-
-        // 止まっている形の決まった物の並びと置き場所を 1 つの値にまとめる（FNV-1a）
-        uint64_t signature = 14695981039346656037ull;
-        auto mixSignature = [&signature](const void* data, size_t bytes) {
-            const auto* p = static_cast<const unsigned char*>(data);
-            for (size_t i = 0; i < bytes; ++i) {
-                signature = (signature ^ p[i]) * 1099511628211ull;
-            }
-        };
-        for (const InstanceDesc& inst : instances) {
-            if (inst.instanceMask != RayTracingInstanceMask::kSolid) {
-                continue;
-            }
-            mixSignature(&inst.blasIndex, sizeof(inst.blasIndex));
-            mixSignature(&inst.blasAddress, sizeof(inst.blasAddress));
-            mixSignature(inst.transform, sizeof(inst.transform));
-        }
-        staticSolidSignature_ = signature;
-
         // 組み終えたときだけ撃てる状態に戻す
         tlasInstanceCount_ = 0;
         tlasReady_ = false;
@@ -629,34 +608,6 @@ namespace CoreEngine
         }
     }
 
-    bool AccelerationStructureManager::TrackSolidMotion(const void* owner, const Matrix4x4& world, uint64_t frame)
-    {
-        auto [it, inserted] = solidMotion_.try_emplace(owner);
-        SolidMotionEntry& entry = it->second;
-        entry.lastSeenFrame = frame;
-        if (inserted) {
-            entry.world = world;
-            return false;
-        }
-        if (std::memcmp(&entry.world, &world, sizeof(Matrix4x4)) != 0) {
-            entry.world = world;
-            entry.lastMovedFrame = frame;
-            entry.moved = true;
-        }
-        return entry.moved && frame - entry.lastMovedFrame <= kSolidMotionKeepFrames;
-    }
-
-    void AccelerationStructureManager::RetireUnusedSolidMotion(uint64_t frame)
-    {
-        for (auto it = solidMotion_.begin(); it != solidMotion_.end();) {
-            if (it->second.lastSeenFrame != frame) {
-                it = solidMotion_.erase(it);
-            } else {
-                ++it;
-            }
-        }
-    }
-
     uint32_t AccelerationStructureManager::GetBLASVertexBufferIndex(UINT blasIndex) const
     {
         if (blasIndex >= blasList_.size() || !blasList_[blasIndex].vertexBufferSrv.IsValid()) {
@@ -671,90 +622,6 @@ namespace CoreEngine
             return UINT32_MAX;
         }
         return blasList_[blasIndex].indexBufferSrv.index;
-    }
-
-    void AccelerationStructureManager::UploadHitShadingTables(
-        const std::vector<RTHitInstance>& instances, const std::vector<RTHitSubMesh>& subMeshes)
-    {
-        hitTablesValid_ = false;
-        if (!isSupported_ || !descriptorAllocator_ || instances.empty() || subMeshes.empty()
-            || instances.size() != tlasInstanceCount_) {
-            return;
-        }
-        hitTablesValid_ =
-            UploadHitTable(hitInstanceTables_, instances.data(), static_cast<UINT>(instances.size()),
-                sizeof(RTHitInstance), "RTHitInstanceTableSRV") &&
-            UploadHitTable(hitSubMeshTables_, subMeshes.data(), static_cast<UINT>(subMeshes.size()),
-                sizeof(RTHitSubMesh), "RTHitSubMeshTableSRV");
-    }
-
-    uint32_t AccelerationStructureManager::GetHitInstanceTableIndex() const
-    {
-        const DescriptorHandle& srv = hitInstanceTables_.srvs[tlasInstanceRingIndex_];
-        return (hitTablesValid_ && srv.IsValid()) ? srv.index : UINT32_MAX;
-    }
-
-    uint32_t AccelerationStructureManager::GetHitSubMeshTableIndex() const
-    {
-        const DescriptorHandle& srv = hitSubMeshTables_.srvs[tlasInstanceRingIndex_];
-        return (hitTablesValid_ && srv.IsValid()) ? srv.index : UINT32_MAX;
-    }
-
-    bool AccelerationStructureManager::UploadHitTable(
-        HitTableRing& ring, const void* data, UINT elementCount, UINT elementStride, const char* debugName)
-    {
-        // TLAS と同じリングスロットを使う（実行待ちのフレームが読んでいる表を書き換えない）
-        const uint32_t slot = tlasInstanceRingIndex_;
-        auto& buffer = ring.buffers[slot];
-        if (!buffer || ring.capacities[slot] < elementCount) {
-            if (buffer) {
-                retiredResources_.push_back(std::move(buffer));
-            }
-            const UINT capacity = (std::max)(elementCount + elementCount / 2, 64u);
-
-            D3D12_HEAP_PROPERTIES heapProps{};
-            heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
-
-            D3D12_RESOURCE_DESC resDesc{};
-            resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-            resDesc.Width = static_cast<UINT64>(capacity) * elementStride;
-            resDesc.Height = 1;
-            resDesc.DepthOrArraySize = 1;
-            resDesc.MipLevels = 1;
-            resDesc.SampleDesc.Count = 1;
-            resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-
-            HRESULT hr = device5_->CreateCommittedResource(
-                &heapProps, D3D12_HEAP_FLAG_NONE, &resDesc,
-                D3D12_RESOURCE_STATE_GENERIC_READ,
-                nullptr, IID_PPV_ARGS(&buffer));
-            if (FAILED(hr)) {
-                ring.capacities[slot] = 0;
-                Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics,
-                    "UploadHitTable: failed to create {} buffer. hr=0x{:08X}",
-                    debugName, static_cast<unsigned int>(hr));
-                return false;
-            }
-            ring.capacities[slot] = capacity;
-
-            D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-            srvDesc.Format = DXGI_FORMAT_UNKNOWN;
-            srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-            srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-            srvDesc.Buffer.FirstElement = 0;
-            srvDesc.Buffer.NumElements = capacity;
-            srvDesc.Buffer.StructureByteStride = elementStride;
-            srvDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
-            descriptorAllocator_->EnsureSRV(ring.srvs[slot], buffer.Get(), srvDesc, debugName);
-        }
-
-        void* mapped = nullptr;
-        if (FAILED(buffer->Map(0, nullptr, &mapped)) || !mapped) {
-            return false;
-        }
-        memcpy(mapped, data, static_cast<size_t>(elementCount) * elementStride);
-        buffer->Unmap(0, nullptr);
-        return true;
     }
 
     void AccelerationStructureManager::EnsureScratchBuffer(UINT64 requiredSize)

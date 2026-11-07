@@ -7,6 +7,7 @@
 #include "Graphics/Material/ShaderMaterialSlot.h"
 #include "Graphics/Model/Model.h"
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
+#include "Graphics/RayTracing/RTObjectSettings.h"
 #include "Graphics/Primitive/IPrimitiveMeshGenerator.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Math/Geometry/Shapes.h"
@@ -129,6 +130,17 @@ public:
     float GetBoundsPadding() const { return boundsPadding_; }
     void SetBoundsPadding(float padding);
 
+    // ===== レイトレーシング =====
+
+    /// @brief レイトレーシングの設定（TLAS に載せるか・影を落とすか・反射と屈折に映るか）
+    const RTObjectSettings& GetRayTracingSettings() const { return rayTracing_; }
+    bool IsRayTracingEnabled() const { return rayTracing_.enabled; }
+    void SetRayTracingEnabled(bool enabled) { rayTracing_.enabled = enabled; }
+    RTVisibility GetCastShadows() const { return rayTracing_.castShadows; }
+    void SetCastShadows(RTVisibility value) { rayTracing_.castShadows = value; }
+    RTVisibility GetVisibleInReflections() const { return rayTracing_.reflected; }
+    void SetVisibleInReflections(RTVisibility value) { rayTracing_.reflected = value; }
+
     /// @brief カスタムシェーダーを使う場合のプロバイダを登録する（所有権は移さない）
     void SetCustomShaderProvider(ICustomShaderProvider* provider) { customShaderProvider_ = provider; }
 
@@ -209,6 +221,7 @@ private:
     std::string pendingTexturePath_;
     BlendMode blendMode_ = BlendMode::kBlendModeNone;
     float boundsPadding_ = 0.0f;
+    RTObjectSettings rayTracing_;
 
     json pendingMaterials_;  ///< メッシュを読み込むまで控えるマテリアル（`materials` の配列）
 

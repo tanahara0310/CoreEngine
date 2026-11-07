@@ -59,6 +59,13 @@ REFLECT_DEFINE_BEGIN(CoreEngine::ParticleSystemComponent, "パーティクル")
         p.tooltip = "背景との合成のしかた。炎や光は「加算」、煙は「アルファ」が向く")
     REFLECT_ENUM_ACCESSOR("billboard", "ビルボード", GetBillboardType, SetBillboardType, kBillboardNames,
         p.tooltip = "板ポリの向き。草や炎の柱のように立てたいものは「Y 軸だけ回す」。モデルの粒では使わない")
+    REFLECT_ACCESSOR("rayTracing", "レイトレーシング", IsRayTracingEnabled, SetRayTracingEnabled,
+        p.tooltip = "モデルの粒だけ。オフにすると、影にも水面の反射と屈折にも出ない")
+    REFLECT_ENUM_ACCESSOR("castShadows", "影を落とす", GetCastShadows, SetCastShadows, ::CoreEngine::kRTCastShadowNames,
+        p.tooltip = "モデルの粒だけ。自動は、ブレンドがなしなら落とし、それ以外なら落とさない")
+    REFLECT_ENUM_ACCESSOR("visibleInReflections", "反射・屈折に映る", GetVisibleInReflections, SetVisibleInReflections,
+        ::CoreEngine::kRTReflectedNames,
+        p.tooltip = "モデルの粒だけ。水面の反射と屈折に映るか。自動は、ブレンドがなしなら映り、それ以外なら映らない")
     REFLECT_METHOD("Play", "再生", Play)
     REFLECT_METHOD("Stop", "停止", Stop)
     REFLECT_METHOD("IsPlaying", "再生中か", IsPlaying)

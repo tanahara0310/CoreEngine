@@ -31,6 +31,7 @@ namespace CoreEngine
     class RenderTargetManager;
     class GBufferManager;
     class AccelerationStructureManager;
+    class RTScene;
     class VertexAnimationDeformer;
     class RayTracingShadowManager;
     class WaterCausticsRayTracingManager;
@@ -68,6 +69,7 @@ namespace CoreEngine
         RenderTargetManager* renderTargetManager = nullptr;
         GBufferManager* gBufferManager = nullptr;  ///< G-Buffer管理（Deferred）
         AccelerationStructureManager* accelerationStructureManager = nullptr; ///< DXR 加速構造管理
+        RTScene* rtScene = nullptr; ///< レイトレーシングのシーン（TLAS に載せた物と材質の表）
         VertexAnimationDeformer* vertexAnimationDeformer = nullptr; ///< 揺れる植物の形を BLAS 用に作る CS
         RayTracingShadowManager* rtShadowManager = nullptr; ///< DXR レイトレーシングシャドウ
         WaterCausticsRayTracingManager* rtWaterCausticsManager = nullptr; ///< DXR 水面コースティクス

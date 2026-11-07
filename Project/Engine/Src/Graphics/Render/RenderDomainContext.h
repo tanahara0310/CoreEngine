@@ -15,6 +15,7 @@ namespace CoreEngine
     class SceneDepth;
     class GBufferManager;
     class AccelerationStructureManager;
+    class RTScene;
     class VertexAnimationDeformer;
     class RayTracingShadowManager;
     class WaterRefractionRayTracingManager;
@@ -91,6 +92,7 @@ namespace CoreEngine
         GBufferManager* GetGBufferManager() { return gBufferManager_.get(); }
         const GBufferManager* GetGBufferManager()         const { return gBufferManager_.get(); }
         AccelerationStructureManager* GetAccelerationStructureManager() { return accelerationStructureManager_.get(); }
+        RTScene* GetRTScene() { return rtScene_.get(); }
         RayTracingShadowManager* GetRayTracingShadowManager() { return rtShadowManager_.get(); }
         WaterRefractionRayTracingManager* GetWaterRefractionRayTracingManager() { return rtWaterRefractionManager_.get(); }
         WaterReflectionRayTracingManager* GetWaterReflectionRayTracingManager() { return rtWaterReflectionManager_.get(); }
@@ -131,6 +133,7 @@ namespace CoreEngine
         std::unique_ptr<SceneDepth>                   sceneDepth_;
         std::unique_ptr<GBufferManager>               gBufferManager_;
         std::unique_ptr<AccelerationStructureManager> accelerationStructureManager_;
+        std::unique_ptr<RTScene>                      rtScene_;  ///< TLAS に載せる物と材質の表
         std::unique_ptr<VertexAnimationDeformer>      vertexAnimationDeformer_;  ///< 揺れる植物の BLAS 用の頂点変形
         std::unique_ptr<RayTracingShadowManager>      rtShadowManager_;
         std::unique_ptr<WaterRefractionRayTracingManager> rtWaterRefractionManager_;

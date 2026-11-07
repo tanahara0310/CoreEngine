@@ -415,6 +415,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\EngineSystem\Subsystem\DebugSubsystem.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Subsystem\EngineProfileScope.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Subsystem\RayTracingSubsystem.cpp" />
+    <ClCompile Include="Engine\Src\EngineSystem\Subsystem\RTSceneSources.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Framework.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Startup\SplashScreen.cpp" />
     <ClCompile Include="Engine\Src\Utility\Profiler\CpuProfiler.cpp" />
@@ -466,6 +467,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Graphics\RayTracing\AccelerationStructureManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\VertexAnimationDeformer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingDispatchInfo.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\RTScene.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingPassBase.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingPipelineBuilder.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingShadowManager.cpp" />
@@ -1652,6 +1654,9 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\VertexAnimationDeformer.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingHitData.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingDispatchInfo.h" />
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\RTInstanceMask.h" />
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\RTObjectSettings.h" />
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\RTScene.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingOutputViewSet.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingPassBase.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingPipelineBuilder.h" />

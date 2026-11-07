@@ -956,6 +956,12 @@ class MeshRenderer {
 	void set_material(const string&in) property;
 	float get_boundsPadding() const property;
 	void set_boundsPadding(float) property;
+	bool get_rayTracing() const property;
+	void set_rayTracing(bool) property;
+	int get_castShadows() const property;
+	void set_castShadows(int) property;
+	int get_visibleInReflections() const property;
+	void set_visibleInReflections(int) property;
 	void SetMaterialFloat(const string&in, float);
 	void SetMaterialInt(const string&in, int);
 	void SetMaterialVector(const string&in, const CoreEngine::Vector4&in);
@@ -977,6 +983,12 @@ class ParticleSystem {
 	void set_blendMode(int) property;
 	int get_billboard() const property;
 	void set_billboard(int) property;
+	bool get_rayTracing() const property;
+	void set_rayTracing(bool) property;
+	int get_castShadows() const property;
+	void set_castShadows(int) property;
+	int get_visibleInReflections() const property;
+	void set_visibleInReflections(int) property;
 	void Play();
 	void Stop();
 	bool IsPlaying();

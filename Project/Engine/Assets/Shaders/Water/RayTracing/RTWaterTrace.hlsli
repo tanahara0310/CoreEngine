@@ -8,6 +8,7 @@
 
 #include "RTWaterSurfaceCommon.hlsli"
 #include "../../Include/RayTracing/RTHitShading.hlsli"
+#include "../../Include/RayTracing/RTInstanceMask.hlsli"
 
 /// @brief 反射・屈折のペイロード（主のレイと影のレイで共通）
 struct RTWaterHitPayload
@@ -64,7 +65,7 @@ float TraceVisibility(RaytracingAccelerationStructure scene, float3 origin, floa
     TraceRay(
         scene,
         RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER,
-        0xFF, 0, 1, 0, ray, payload);
+        kRTInstanceMaskShadowCaster, 0, 1, 0, ray, payload);
     return 1.0f - payload.hitFlag;
 }
 
@@ -108,7 +109,7 @@ bool FindOpaqueHitSurface(
         RTWaterHitPayload retracePayload = payload;
         retracePayload.hitT = 0.0f;
         retracePayload.hitFlag = 0.0f;
-        TraceRay(scene, RAY_FLAG_NONE, 0xFF, 0, 1, 0, retraceRay, retracePayload);
+        TraceRay(scene, RAY_FLAG_NONE, kRTInstanceMaskReflected, 0, 1, 0, retraceRay, retracePayload);
         payload = retracePayload;
         if (payload.hitFlag < 0.5f)
         {

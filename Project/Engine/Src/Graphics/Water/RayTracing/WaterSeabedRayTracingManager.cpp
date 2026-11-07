@@ -4,6 +4,7 @@
 #include <cmath>
 
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
+#include "Graphics/RayTracing/RTInstanceMask.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 
@@ -88,7 +89,7 @@ namespace CoreEngine
         constants.windowOriginXZ[1] = window_.originZ;
         constants.texelSize = kTexelSize;
         constants.maxDepth = kMaxDepth;
-        constants.instanceMask = RayTracingInstanceMask::kSolid | RayTracingInstanceMask::kMovable;
+        constants.instanceMask = RTInstanceMask::kStaticSolid | RTInstanceMask::kMovingSolid;
 
         const SurfaceConstantsUpload surface = UploadSurfaceDataForDispatch(surfaceData, fftOceanInput);
 
