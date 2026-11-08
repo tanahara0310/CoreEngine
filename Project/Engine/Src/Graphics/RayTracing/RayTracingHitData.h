@@ -9,13 +9,13 @@
 namespace CoreEngine
 {
     /// @brief ヒットシェーディングのインスタンス表の 1 行（TLAS のインスタンスと同じ並び）
-    /// @details HLSL 側 Include/RayTracing/RTHitShading.hlsli の RTHitInstance と 1:1
+    /// @details HLSL 側 Include/RayTracing/RTSceneTables.hlsli の RTHitInstance と 1:1
     struct RTHitInstance {
         Vector4 objectToWorld[3];      ///< TLAS と同じ行優先 3×4
         uint32_t vertexBufferIndex;    ///< 頂点バッファ（ByteAddressBuffer）のヒープ内インデックス
         uint32_t indexBufferIndex;     ///< 索引バッファ（ByteAddressBuffer）のヒープ内インデックス
-        uint32_t firstSubMesh;         ///< サブメッシュ表の先頭
-        uint32_t subMeshCount;         ///< サブメッシュ数
+        uint32_t firstSubMesh;         ///< サブメッシュ表の先頭（BLAS の形 GeometryIndex() の 0 番）
+        uint32_t subMeshCount;         ///< サブメッシュ数（BLAS の形の数）
     };
     static constexpr Cb::Field kRTHitInstanceFields[] = {
         CB_FIELD(RTHitInstance, objectToWorld), CB_FIELD(RTHitInstance, vertexBufferIndex),
@@ -24,10 +24,10 @@ namespace CoreEngine
     };
     CB_VERIFY_STRIDE(RTHitInstance, kRTHitInstanceFields);
 
-    /// @brief ヒットシェーディングのサブメッシュ表の 1 行（材質を含む）
-    /// @details HLSL 側 Include/RayTracing/RTHitShading.hlsli の RTHitSubMesh と 1:1
+    /// @brief ヒットシェーディングのサブメッシュ表の 1 行（BLAS の形 1 つと、その材質）
+    /// @details HLSL 側 Include/RayTracing/RTSceneTables.hlsli の RTHitSubMesh と 1:1
     struct RTHitSubMesh {
-        uint32_t firstTriangle;          ///< 索引バッファ内の先頭の三角形
+        uint32_t firstTriangle;          ///< 索引バッファ内の先頭の三角形（PrimitiveIndex() の 0 番）
         uint32_t triangleCount;          ///< 三角形の数
         uint32_t baseColorTextureIndex;  ///< ベースカラーテクスチャのヒープ内インデックス（kRTHitNoTexture = 無し）
         uint32_t emissiveTextureIndex;   ///< エミッシブテクスチャのヒープ内インデックス（kRTHitNoTexture = 無し）
@@ -66,4 +66,15 @@ namespace CoreEngine
     inline constexpr uint32_t kRTHitSubMeshFlagDither = 1u << 1;
     /// @brief 動く物（スキンメッシュ）。濡れ跡を付けない
     inline constexpr uint32_t kRTHitSubMeshFlagMoving = 1u << 2;
+    /// @brief アルファで抜ける所がありうる（ベースカラーのテクスチャが透明を持ちうるか、色のアルファがしきい値以下）
+    inline constexpr uint32_t kRTHitSubMeshFlagAlphaTest = 1u << 3;
+
+    /// @brief 材質の表 2 本のヒープ内インデックス（シェーダーの RTSceneTables へ渡す）
+    struct RTHitTableIndices {
+        uint32_t instanceTable = kRTHitNoTexture;  ///< StructuredBuffer<RTHitInstance>
+        uint32_t subMeshTable = kRTHitNoTexture;   ///< StructuredBuffer<RTHitSubMesh>
+
+        /// @brief 2 本ともそろっているか
+        bool IsValid() const { return instanceTable != kRTHitNoTexture && subMeshTable != kRTHitNoTexture; }
+    };
 }

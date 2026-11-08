@@ -21,7 +21,6 @@ namespace CoreEngine
         context.rayTracingSubsystem->BuildAccelerationStructures(
             context,
             context.dxCommon,
-            context.modelManager,
             context.sceneManager);
     }
 }

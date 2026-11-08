@@ -31,6 +31,44 @@ namespace CoreEngine
 
     namespace
     {
+        /// @brief テクスチャの形式が透明を持ちうるか
+        /// @details BC1 はインポートで全画素が不透明な画像にだけ選ぶので、透明を持たない形式として扱う
+        bool FormatMayHaveAlpha(DXGI_FORMAT format)
+        {
+            switch (format) {
+            case DXGI_FORMAT_BC1_TYPELESS:
+            case DXGI_FORMAT_BC1_UNORM:
+            case DXGI_FORMAT_BC1_UNORM_SRGB:
+            case DXGI_FORMAT_BC4_TYPELESS:
+            case DXGI_FORMAT_BC4_UNORM:
+            case DXGI_FORMAT_BC4_SNORM:
+            case DXGI_FORMAT_BC5_TYPELESS:
+            case DXGI_FORMAT_BC5_UNORM:
+            case DXGI_FORMAT_BC5_SNORM:
+            case DXGI_FORMAT_BC6H_TYPELESS:
+            case DXGI_FORMAT_BC6H_UF16:
+            case DXGI_FORMAT_BC6H_SF16:
+            case DXGI_FORMAT_B8G8R8X8_TYPELESS:
+            case DXGI_FORMAT_B8G8R8X8_UNORM:
+            case DXGI_FORMAT_B8G8R8X8_UNORM_SRGB:
+            case DXGI_FORMAT_B5G6R5_UNORM:
+            case DXGI_FORMAT_R11G11B10_FLOAT:
+            case DXGI_FORMAT_R9G9B9E5_SHAREDEXP:
+            case DXGI_FORMAT_R8_UNORM:
+            case DXGI_FORMAT_R8G8_UNORM:
+            case DXGI_FORMAT_R16_FLOAT:
+            case DXGI_FORMAT_R16_UNORM:
+            case DXGI_FORMAT_R16G16_FLOAT:
+            case DXGI_FORMAT_R16G16_UNORM:
+            case DXGI_FORMAT_R32_FLOAT:
+            case DXGI_FORMAT_R32G32_FLOAT:
+            case DXGI_FORMAT_R32G32B32_FLOAT:
+                return false;
+            default:
+                return true;
+            }
+        }
+
         /// @brief 頂点アニメーションで頂点が元の位置から動きうる距離の目安 [m]
         /// @details VertexAnimation.hlsli の式の各項の振幅の上限を、風の強さ 2（VertexAnimationParams の上限）・
         ///          マテリアルの強さ 1 で見積もる（カリング用の箱を広げる量なので大きめでよい）。
@@ -334,9 +372,13 @@ namespace CoreEngine
 
             // BaseColor（Albedo）テクスチャ
             if (!material.baseColorTexture.empty()) {
-                handles.baseColor = textureManager_->Load(material.baseColorTexture).gpuHandle;
+                const TextureManager::LoadedTexture baseColor = textureManager_->Load(material.baseColorTexture);
+                handles.baseColor = baseColor.gpuHandle;
+                handles.baseColorMayHaveAlpha =
+                    !baseColor.texture || FormatMayHaveAlpha(baseColor.texture->GetDesc().Format);
             } else {
                 handles.baseColor = defaultWhiteTexture;
+                handles.baseColorMayHaveAlpha = false;
             }
 
             // MetallicRoughnessテクスチャ (G=Roughness, B=Metallic)

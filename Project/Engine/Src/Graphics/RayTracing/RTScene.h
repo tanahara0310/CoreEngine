@@ -32,12 +32,13 @@ namespace CoreEngine
     /// @details 毎フレーム Build で、登録された出どころに物を足させ、動く形の BLAS をまとめて作り、
     ///          TLAS を組み、材質の表（RTHitInstance・RTHitSubMesh）を送る。
     ///          表の行は TLAS のインスタンスと同じ並びで、InstanceID() で引ける。
+    ///          サブメッシュの行は BLAS の形と同じ並びで、firstSubMesh + GeometryIndex() で引ける。
     ///          出どころは RT_SCENE_SOURCE_REGISTER で .cpp から足す。
     class RTScene {
     public:
         /// @brief TLAS に載せる物 1 つ
         struct Instance {
-            const ModelResource* resource = nullptr;          ///< 形とサブメッシュ（BLAS を作り終えていること）
+            const ModelResource* resource = nullptr;          ///< 形とサブメッシュ（読み込み済みであること）
             const Model* model = nullptr;                     ///< 材質の持ち主（nullptr ならリソースの既定の材質）
             Matrix4x4 world{};                                ///< ワールド行列
             UINT mask = 0;                                    ///< RTInstanceMask の OR（0 なら載せない）
@@ -74,8 +75,8 @@ namespace CoreEngine
             /// @brief 今フレームの頂点アニメーションの値（風・波の強さと時間）
             const VertexAnimationParams& GetVertexAnimationParams() const { return animParams_; }
 
-            /// @brief 物を静止形の BLAS で足す
-            /// @return 行の番号（SetDynamicShape に渡す）。mask が 0 か BLAS が無ければ載せずに kNoRow
+            /// @brief 物を静止形の BLAS で足す（モデルの BLAS が無ければ積んで作る）
+            /// @return 行の番号（SetDynamicShape に渡す）。mask が 0 か BLAS を作れなければ載せずに kNoRow
             size_t Add(const Instance& instance);
 
             /// @brief 足した物の形を、毎フレーム作る BLAS に差し替える（作れなければ静止形のまま）
@@ -97,6 +98,11 @@ namespace CoreEngine
             AccelerationStructureManager& asMgr_;
             const FrameInput& frame_;
             const VertexAnimationParams& animParams_;
+
+            // 直前に足した物のモデル（同じモデルが続くときは形の並びと BLAS を引き直さない）
+            const ModelResource* lastResource_ = nullptr;
+            const AccelerationStructureManager::StaticBLAS* lastBLAS_ = nullptr;
+            std::vector<AccelerationStructureManager::GeometryRange> lastGeometries_;
         };
 
         /// @brief 物を足す関数（Build のたびに、登録した順に呼ばれる）
@@ -131,6 +137,11 @@ namespace CoreEngine
         uint32_t GetHitInstanceTableIndex() const;
         /// @brief 今フレームのサブメッシュ表（StructuredBuffer<RTHitSubMesh>）のヒープ内インデックス
         uint32_t GetHitSubMeshTableIndex() const;
+        /// @brief 今フレームの表 2 本（送られていなければ両方 kRTHitNoTexture）
+        RTHitTableIndices GetHitTableIndices() const;
+
+        /// @brief 直近の Build で BLAS の形に使った LOD の段（r.RT.GeometryLod）
+        uint32_t GetGeometryLod() const { return geometryLod_; }
 
         /// @brief 直近の Build の、kStaticSolid の物（BLAS と行列）から求めた値
         /// @details 止まっている形の決まった物が増えた・減った・置き直されたときに値が変わる
@@ -196,6 +207,9 @@ namespace CoreEngine
         HitTableRing hitSubMeshTables_;
         uint32_t ringIndex_ = 0;
         bool hitTablesValid_ = false;
+
+        uint32_t geometryLod_ = 0;
+        std::vector<AccelerationStructureManager::GeometryRange> geometryScratch_;
 
         std::unordered_map<const void*, SolidMotionEntry> solidMotion_;
         uint64_t staticSolidSignature_ = 0;

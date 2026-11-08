@@ -15,6 +15,8 @@
 // 水が引いたあとの濡れ跡（DeferredLighting と同じ式）
 #include "../Lighting/WetSurface.hlsli"
 #include "../../Cloud/Common/CloudShadowCommon.hlsli"
+// 材質の表・頂点・テクスチャの引き方
+#include "RTSceneTables.hlsli"
 
 // 表・テクスチャ・ライトは ResourceDescriptorHeap からヒープ内インデックスで引く
 // （ルートシグネチャに CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED が要る）
@@ -50,54 +52,7 @@ float LoadWetSurfaceSample(uint n)
     return gWetSurfaceTable[n >> 2][n & 3u];
 }
 
-// テクスチャを繰り返して引くサンプラ
-SamplerState gLinearWrap : register(s1);
-
-static const uint kRTHitNoTexture = 0xFFFFFFFFu;
-static const uint kRTHitSubMeshFlagLit = 1u << 0;
-static const uint kRTHitSubMeshFlagDither = 1u << 1;
-static const uint kRTHitSubMeshFlagMoving = 1u << 2;
-
-// 頂点の並び（C++ 側 VertexData: 位置 16 + UV 8 + 法線 12 + 接線 12 + 頂点アニメーションの値 16。
-// RayTracingSubsystem.cpp の static_assert と一致させる）
-static const uint kRTHitVertexStride = 64u;
-static const uint kRTHitVertexTexcoordOffset = 16u;
-static const uint kRTHitVertexNormalOffset = 24u;
-static const uint kRTHitVertexTangentOffset = 36u;
-
 static const float kRTHitSkySpecularMipCount = 5.0f;
-
-/// @brief インスタンス表の 1 行（C++ 側 RTHitInstance と 1:1）
-struct RTHitInstance
-{
-    float4 objectToWorld[3];
-    uint vertexBufferIndex;
-    uint indexBufferIndex;
-    uint firstSubMesh;
-    uint subMeshCount;
-};
-
-/// @brief サブメッシュ表の 1 行（C++ 側 RTHitSubMesh と 1:1）
-struct RTHitSubMesh
-{
-    uint firstTriangle;
-    uint triangleCount;
-    uint baseColorTextureIndex;
-    uint emissiveTextureIndex;
-    float4 baseColor;
-    float4 uvTransformU;
-    float4 uvTransformV;
-    float3 emissive;
-    float metallic;
-    float roughness;
-    float alphaCutoff;
-    uint flags;
-    uint metallicRoughnessTextureIndex;  // 金属性（B）・粗さ（G）テクスチャ（kRTHitNoTexture = 無し）
-    uint normalTextureIndex;             // 法線テクスチャ（kRTHitNoTexture = 使わない）
-    uint occlusionTextureIndex;          // AO テクスチャ（R。kRTHitNoTexture = 無し）
-    float occlusionStrength;             // AO の強さ
-    float pad;
-};
 
 /// @brief 当たった点の面の情報
 struct RTHitSurface
@@ -110,165 +65,80 @@ struct RTHitSurface
     float roughness;
     float ao;          // 環境光に掛ける AO（1 = 遮蔽なし）
     bool lit;          // false ならアンリット
-    bool cutout;       // アルファで抜ける所に当たった
     bool moving;       // 動く物（スキンメッシュ）。濡れ跡を付けない
 };
 
-/// @brief 頂点位置をワールドへ移す
-float3 TransformHitPosition(RTHitInstance instance, float3 position)
+/// @brief この定数の材質の表（表がそろっていなければ表なし）
+RTSceneTables GetHitShadingTables()
 {
-    return float3(
-        dot(instance.objectToWorld[0].xyz, position) + instance.objectToWorld[0].w,
-        dot(instance.objectToWorld[1].xyz, position) + instance.objectToWorld[1].w,
-        dot(instance.objectToWorld[2].xyz, position) + instance.objectToWorld[2].w);
+    if (gHitShadingEnabled == 0)
+    {
+        return NoRTSceneTables();
+    }
+    return MakeRTSceneTables(gHitInstanceTableIndex, gHitSubMeshTableIndex);
 }
 
-/// @brief 向き（接線）をワールドへ移す（3×3 部分を掛ける。長さは正規化しない）
-float3 TransformHitDirection(RTHitInstance instance, float3 direction)
+/// @brief 当たった三角形の頂点と材質から面の情報を組み立てる（表がそろっていること）
+/// @param hit          当たった三角形
+/// @param rayDirection レイの向き（正規化済み）
+/// @param coneWidth    交点でのレイの広がりの幅（m。テクスチャのミップの選択に使う）
+RTHitSurface FetchHitSurface(RTHitPrimitive hit, float3 rayDirection, float coneWidth)
 {
-    return float3(
-        dot(instance.objectToWorld[0].xyz, direction),
-        dot(instance.objectToWorld[1].xyz, direction),
-        dot(instance.objectToWorld[2].xyz, direction));
-}
+    const RTHitTriangle tri = LoadRTHitTriangle(GetHitShadingTables(), hit, rayDirection);
+    const RTHitSubMesh subMesh = tri.subMesh;
+    ByteAddressBuffer vertexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(tri.instance.vertexBufferIndex)];
 
-/// @brief 法線をワールドへ移す（3×3 部分の余因子行列を掛ける。長さは正規化しない）
-float3 TransformHitNormal(RTHitInstance instance, float3 normal)
-{
-    const float3 column0 = float3(instance.objectToWorld[0].x, instance.objectToWorld[1].x, instance.objectToWorld[2].x);
-    const float3 column1 = float3(instance.objectToWorld[0].y, instance.objectToWorld[1].y, instance.objectToWorld[2].y);
-    const float3 column2 = float3(instance.objectToWorld[0].z, instance.objectToWorld[1].z, instance.objectToWorld[2].z);
-    return cross(column1, column2) * normal.x + cross(column2, column0) * normal.y + cross(column0, column1) * normal.z;
-}
-
-/// @brief テクスチャのミップを、三角形のテクセル密度とレイの広がりから決める
-/// @param uvPerMeterLog2 三角形の「UV の長さ / ワールドの長さ」の log2
-/// @param footprintLog2  交点でレイが面に落とす幅（m）の log2
-float ComputeHitTextureLod(Texture2D<float4> texture, float uvPerMeterLog2, float footprintLog2)
-{
-    uint width = 1;
-    uint height = 1;
-    uint levels = 1;
-    texture.GetDimensions(0, width, height, levels);
-    const float texelsPerUvLog2 = 0.5f * log2(float(width) * float(height));
-    return clamp(uvPerMeterLog2 + texelsPerUvLog2 + footprintLog2, 0.0f, float(levels) - 1.0f);
-}
-
-/// @brief 当たった三角形の頂点と材質から面の情報を組み立てる
-/// @param instanceIndex  InstanceID()（TLAS の並び＝表の並び）
-/// @param primitiveIndex PrimitiveIndex()
-/// @param barycentrics   交点の重心座標
-/// @param rayDirection   レイの向き（正規化済み）
-/// @param coneWidth      交点でのレイの広がりの幅（m。テクスチャのミップの選択に使う）
-RTHitSurface FetchHitSurface(
-    uint instanceIndex, uint primitiveIndex, float2 barycentrics, float3 rayDirection, float coneWidth)
-{
-    StructuredBuffer<RTHitInstance> instances = ResourceDescriptorHeap[gHitInstanceTableIndex];
-    StructuredBuffer<RTHitSubMesh> subMeshes = ResourceDescriptorHeap[gHitSubMeshTableIndex];
-    const RTHitInstance instance = instances[instanceIndex];
-    ByteAddressBuffer indexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(instance.indexBufferIndex)];
-    ByteAddressBuffer vertexBuffer = ResourceDescriptorHeap[NonUniformResourceIndex(instance.vertexBufferIndex)];
-
-    const uint3 triangleIndices = indexBuffer.Load3(primitiveIndex * 12u);
-    float3 positions[3];
-    float2 texcoords[3];
     float3 normals[3];
     float3 tangents[3];
     [unroll]
     for (uint v = 0; v < 3; ++v)
     {
-        const uint vertexOffset = triangleIndices[v] * kRTHitVertexStride;
-        positions[v] = TransformHitPosition(instance, asfloat(vertexBuffer.Load3(vertexOffset)));
-        texcoords[v] = asfloat(vertexBuffer.Load2(vertexOffset + kRTHitVertexTexcoordOffset));
-        normals[v] = asfloat(vertexBuffer.Load3(vertexOffset + kRTHitVertexNormalOffset));
-        tangents[v] = asfloat(vertexBuffer.Load3(vertexOffset + kRTHitVertexTangentOffset));
+        normals[v] = asfloat(vertexBuffer.Load3(tri.vertexOffsets[v] + kRTHitVertexNormalOffset));
+        tangents[v] = asfloat(vertexBuffer.Load3(tri.vertexOffsets[v] + kRTHitVertexTangentOffset));
     }
-    const float3 weights = float3(1.0f - barycentrics.x - barycentrics.y, barycentrics.x, barycentrics.y);
-
-    // 三角形の番号からサブメッシュ（材質）を探す
-    RTHitSubMesh subMesh = subMeshes[instance.firstSubMesh];
-    for (uint s = 0; s < instance.subMeshCount; ++s)
-    {
-        const RTHitSubMesh candidate = subMeshes[instance.firstSubMesh + s];
-        if (primitiveIndex - candidate.firstTriangle < candidate.triangleCount)
-        {
-            subMesh = candidate;
-            break;
-        }
-    }
+    const float3 weights = tri.weights;
 
     RTHitSurface surface;
-    surface.position = positions[0] * weights.x + positions[1] * weights.y + positions[2] * weights.z;
+    surface.position = tri.positions[0] * weights.x + tri.positions[1] * weights.y + tri.positions[2] * weights.z;
 
-    // 面の向きをレイが来た側へそろえ、補間した法線も同じ側へ向ける
-    float3 faceNormal = cross(positions[1] - positions[0], positions[2] - positions[0]);
-    const float faceArea2 = length(faceNormal);
-    faceNormal = (faceArea2 > 1.0e-12f) ? faceNormal / faceArea2 : -rayDirection;
-    if (dot(faceNormal, rayDirection) > 0.0f)
-    {
-        faceNormal = -faceNormal;
-    }
+    // 補間した法線を、レイが来た側を向く面の法線と同じ側へ向ける
     float3 normal = TransformHitNormal(
-        instance, normals[0] * weights.x + normals[1] * weights.y + normals[2] * weights.z);
-    normal = (dot(normal, normal) > 1.0e-12f) ? normalize(normal) : faceNormal;
-    if (dot(normal, faceNormal) < 0.0f)
+        tri.instance, normals[0] * weights.x + normals[1] * weights.y + normals[2] * weights.z);
+    normal = (dot(normal, normal) > 1.0e-12f) ? normalize(normal) : tri.faceNormal;
+    if (dot(normal, tri.faceNormal) < 0.0f)
     {
         normal = -normal;
     }
     surface.normal = normal;
 
-    // 材質の UV 変換を掛けた UV
-    float2 uvs[3];
-    [unroll]
-    for (uint t = 0; t < 3; ++t)
-    {
-        const float3 uv1 = float3(texcoords[t], 1.0f);
-        uvs[t] = float2(dot(subMesh.uvTransformU.xyz, uv1), dot(subMesh.uvTransformV.xyz, uv1));
-    }
-    const float2 uv = uvs[0] * weights.x + uvs[1] * weights.y + uvs[2] * weights.z;
+    // レイが面に落とす幅（テクスチャのミップの選択に使う）
+    const float footprintLog2 = RTHitFootprintLog2(tri, rayDirection, coneWidth);
 
-    // テクセル密度（三角形の UV の面積とワールドの面積の比）と、レイが面に落とす幅
-    const float2 edgeUv1 = uvs[1] - uvs[0];
-    const float2 edgeUv2 = uvs[2] - uvs[0];
-    const float uvArea2 = abs(edgeUv1.x * edgeUv2.y - edgeUv2.x * edgeUv1.y);
-    const float uvPerMeterLog2 = 0.5f * log2(max(uvArea2, 1.0e-20f) / max(faceArea2, 1.0e-20f));
-    const float footprintLog2 =
-        log2(max(coneWidth, 1.0e-6f) / max(abs(dot(faceNormal, rayDirection)), 0.05f));
-
-    float4 baseColor = subMesh.baseColor;
-    if (subMesh.baseColorTextureIndex != kRTHitNoTexture)
-    {
-        Texture2D<float4> baseColorTexture = ResourceDescriptorHeap[NonUniformResourceIndex(subMesh.baseColorTextureIndex)];
-        baseColor *= baseColorTexture.SampleLevel(
-            gLinearWrap, uv, ComputeHitTextureLod(baseColorTexture, uvPerMeterLog2, footprintLog2));
-    }
+    const float4 baseColor = SampleRTHitBaseColor(tri, footprintLog2);
     float3 emissive = subMesh.emissive;
     if (subMesh.emissiveTextureIndex != kRTHitNoTexture)
     {
-        Texture2D<float4> emissiveTexture = ResourceDescriptorHeap[NonUniformResourceIndex(subMesh.emissiveTextureIndex)];
-        emissive *= emissiveTexture.SampleLevel(
-            gLinearWrap, uv, ComputeHitTextureLod(emissiveTexture, uvPerMeterLog2, footprintLog2)).rgb;
+        emissive *= SampleRTHitTexture(subMesh.emissiveTextureIndex, tri, footprintLog2).rgb;
     }
 
     // 法線マップ（GBuffer.PS と同じ。接線を法線に直交させ、従法線は三角形の UV から画像の上へ向ける）
     if (subMesh.normalTextureIndex != kRTHitNoTexture)
     {
         float3 tangent = TransformHitDirection(
-            instance, tangents[0] * weights.x + tangents[1] * weights.y + tangents[2] * weights.z);
+            tri.instance, tangents[0] * weights.x + tangents[1] * weights.y + tangents[2] * weights.z);
         tangent -= dot(tangent, normal) * normal;
         if (dot(tangent, tangent) > 1.0e-12f)
         {
             tangent = normalize(tangent);
             const float bitangentSign = NormalMapBitangentSign(normal, tangent,
-                positions[1] - positions[0], positions[2] - positions[0], edgeUv1, edgeUv2);
-            Texture2D<float4> normalTexture = ResourceDescriptorHeap[NonUniformResourceIndex(subMesh.normalTextureIndex)];
-            const float3 tangentSpaceNormal = UnpackNormalMap(normalTexture.SampleLevel(
-                gLinearWrap, uv, ComputeHitTextureLod(normalTexture, uvPerMeterLog2, footprintLog2)));
+                tri.positions[1] - tri.positions[0], tri.positions[2] - tri.positions[0], tri.edgeUv1, tri.edgeUv2);
+            const float3 tangentSpaceNormal =
+                UnpackNormalMap(SampleRTHitTexture(subMesh.normalTextureIndex, tri, footprintLog2));
             const float3 mappedNormal = normalize(
                 tangent * tangentSpaceNormal.x + cross(normal, tangent) * (bitangentSign * tangentSpaceNormal.y)
                 + normal * tangentSpaceNormal.z);
             // 面の裏へ回り込んだ法線は使わない
-            if (dot(mappedNormal, faceNormal) > 0.0f)
+            if (dot(mappedNormal, tri.faceNormal) > 0.0f)
             {
                 surface.normal = mappedNormal;
             }
@@ -280,10 +150,8 @@ RTHitSurface FetchHitSurface(
     float roughness = subMesh.roughness;
     if (subMesh.metallicRoughnessTextureIndex != kRTHitNoTexture)
     {
-        Texture2D<float4> metallicRoughnessTexture =
-            ResourceDescriptorHeap[NonUniformResourceIndex(subMesh.metallicRoughnessTextureIndex)];
-        const float4 metallicRoughnessSample = metallicRoughnessTexture.SampleLevel(
-            gLinearWrap, uv, ComputeHitTextureLod(metallicRoughnessTexture, uvPerMeterLog2, footprintLog2));
+        const float4 metallicRoughnessSample =
+            SampleRTHitTexture(subMesh.metallicRoughnessTextureIndex, tri, footprintLog2);
         metallic *= metallicRoughnessSample.b;
         roughness *= metallicRoughnessSample.g;
     }
@@ -292,14 +160,10 @@ RTHitSurface FetchHitSurface(
     surface.ao = 1.0f;
     if (subMesh.occlusionTextureIndex != kRTHitNoTexture)
     {
-        Texture2D<float4> occlusionTexture = ResourceDescriptorHeap[NonUniformResourceIndex(subMesh.occlusionTextureIndex)];
-        const float occlusion = occlusionTexture.SampleLevel(
-            gLinearWrap, uv, ComputeHitTextureLod(occlusionTexture, uvPerMeterLog2, footprintLog2)).r;
+        const float occlusion = SampleRTHitTexture(subMesh.occlusionTextureIndex, tri, footprintLog2).r;
         surface.ao = saturate(lerp(1.0f, occlusion, subMesh.occlusionStrength));
     }
 
-    const float alphaThreshold = ((subMesh.flags & kRTHitSubMeshFlagDither) != 0) ? 0.5f : subMesh.alphaCutoff;
-    surface.cutout = (baseColor.a <= alphaThreshold);
     surface.albedo = saturate(baseColor.rgb);
     surface.emissive = emissive;
     surface.metallic = saturate(metallic);

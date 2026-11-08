@@ -148,7 +148,7 @@ namespace CoreEngine
                     if (!model || !mutableModel) return;
 
                     const ModelResource* resource = model->GetModelResource();
-                    if (!resource || !resource->HasBLAS()) return;
+                    if (!resource || !resource->IsLoaded()) return;
 
                     auto* transform = renderer.GetTransformComponent();
                     if (!transform) return;
@@ -203,7 +203,7 @@ namespace CoreEngine
                 });
         }
 
-        /// @brief モデルの粒を載せる（BLAS はモデル単位で作ってあるので、足すのはインスタンスだけ）
+        /// @brief モデルの粒を載せる（BLAS はモデル単位なので、粒ごとに足すのはインスタンスだけ）
         void CollectParticleSystems(RTScene::Builder& builder)
         {
             const RTScene::FrameInput& frame = builder.GetFrame();
@@ -221,7 +221,7 @@ namespace CoreEngine
                     if (mask == 0) return;
 
                     const ModelResource* resource = particleSystem.GetModelResource();
-                    if (!resource || !resource->HasBLAS()) return;
+                    if (!resource || !resource->IsLoaded()) return;
 
                     const uint32_t particleCount = particleSystem.GetParticleCount();
                     if (particleCount == 0) return;

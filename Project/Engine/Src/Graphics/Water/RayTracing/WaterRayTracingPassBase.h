@@ -136,15 +136,11 @@ namespace CoreEngine
             const char* ownerName = nullptr;         ///< ログ・診断に出す所有者名
             const char* outputDebugName = nullptr;   ///< 出力テクスチャのデバッグ名接頭辞
             const wchar_t* shaderPath = nullptr;     ///< DXR ライブラリ（lib_6_6）のパス
-            const wchar_t* rayGenName = nullptr;
-            const wchar_t* missName = nullptr;
-            const wchar_t* hitGroupName = nullptr;
-            const wchar_t* closestHitName = nullptr;
+            const wchar_t* rayGenName = nullptr;     ///< レイ生成シェーダー（レイは中から RayQuery で撃つ）
             const char* outputUavName = nullptr;     ///< u0 の UAV テーブル名
             std::span<const char* const> srvTableNames; ///< t1〜 の SRV テーブル名（t0 は常に gScene・静的配列を渡すこと）
             const char* constantsName = nullptr;     ///< 32bit root constants の名前
             uint32_t constantsBytes = 0;             ///< root constants のサイズ（4 の倍数）
-            uint32_t payloadBytes = sizeof(float) * 2; ///< RTWaterPayload {hitT, hitFlag}
             const char* secondaryOutputUavName = nullptr; ///< u1 の UAV テーブル名（2 枚目の出力を持つパスだけ）
             const char* extraConstantBufferName = nullptr; ///< 追加の CBV 名（持つパスだけ。ディスパッチ時にアドレスを渡す）
             bool directlyIndexedHeap = false;         ///< シェーダーが ResourceDescriptorHeap でヒープを直接引く

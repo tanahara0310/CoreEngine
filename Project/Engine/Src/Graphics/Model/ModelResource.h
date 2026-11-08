@@ -130,6 +130,9 @@ namespace CoreEngine
             D3D12_GPU_DESCRIPTOR_HANDLE occlusion = {};
             D3D12_GPU_DESCRIPTOR_HANDLE emissive = {};
 
+            /// @brief ベースカラーのテクスチャが透明を持ちうるか（白テクスチャと透明の無い形式なら false）
+            bool baseColorMayHaveAlpha = false;
+
             /// @brief 実テクスチャが存在するか（falseの場合はフォールバック白テクスチャ）
             bool hasMetallicRoughness = false;
             bool hasNormal = false;
@@ -177,15 +180,6 @@ namespace CoreEngine
         /// @brief 頂点の色を持つか
         bool HasVertexColors() const { return vertexColorBuffer_.Get() != nullptr; }
 
-        /// @brief BLAS インデックスを設定
-        void SetBLASIndex(UINT index) { blasIndex_ = index; }
-
-        /// @brief BLAS インデックスを取得（UINT_MAX = 未構築）
-        UINT GetBLASIndex() const { return blasIndex_; }
-
-        /// @brief BLAS が構築済みか
-        bool HasBLAS() const { return blasIndex_ != UINT_MAX; }
-
     private:
         /// @brief modelData_.vertices/indices からVB/IB・バッファビュー・ローカルAABBを構築する
         /// LoadFromFile/LoadFromModelDataの共通処理（呼び出し前に modelData_ が設定済みで、LOD の生成と並べ替えが済んでいること）
@@ -221,9 +215,6 @@ namespace CoreEngine
 
         std::string filePath_;
         bool isLoaded_ = false;
-
-        // DXR BLAS インデックス（UINT_MAX = 未構築）
-        UINT blasIndex_ = UINT_MAX;
 
         // ローカル空間のバウンディングボックス（頂点データから算出）
         BoundingBox localBoundingBox_;

@@ -32,6 +32,11 @@ namespace CoreEngine
             float absorptionCoeff[3];
             uint32_t regionValid;
             Matrix4x4 invViewProj; // 深度復元用
+            // 材質の表（kRTHitNoTexture = アルファを調べず、どの物も不透明として当てる）
+            uint32_t hitInstanceTableIndex;
+            uint32_t hitSubMeshTableIndex;
+            uint32_t pad0;
+            uint32_t pad1;
         };
 
         static constexpr Cb::Field kWaterCausticsConstantsFields[] = {
@@ -44,6 +49,8 @@ namespace CoreEngine
             CB_FIELD(WaterCausticsConstants, regionCenterXZ), CB_FIELD(WaterCausticsConstants, regionHalfExtentXZ),
             CB_FIELD(WaterCausticsConstants, absorptionCoeff), CB_FIELD(WaterCausticsConstants, regionValid),
             CB_FIELD(WaterCausticsConstants, invViewProj),
+            CB_FIELD(WaterCausticsConstants, hitInstanceTableIndex), CB_FIELD(WaterCausticsConstants, hitSubMeshTableIndex),
+            CB_FIELD(WaterCausticsConstants, pad0), CB_FIELD(WaterCausticsConstants, pad1),
         };
         CB_VERIFY_LAYOUT(WaterCausticsConstants, kWaterCausticsConstantsFields);
         CB_BIND_HLSL(WaterCausticsConstants, kWaterCausticsConstantsFields, "WaterCausticsConstants");
@@ -51,7 +58,7 @@ namespace CoreEngine
 
     static_assert(sizeof(WaterWaveParam) == 32,
         "WaterWaveParam size mismatch with HLSL wave struct");
-    static_assert(sizeof(WaterCausticsConstants) == 160,
+    static_assert(sizeof(WaterCausticsConstants) == 176,
         "WaterCausticsConstants size mismatch with HLSL cbuffer");
     // 個別フィールドの境界チェックはフィールド表（下）が全フィールド分やるので不要
 
@@ -69,9 +76,6 @@ namespace CoreEngine
         desc.outputDebugName = "RTWaterCaustics";
         desc.shaderPath = L"Engine/Assets/Shaders/Water/RayTracing/RTWaterCaustics.hlsl";
         desc.rayGenName = L"RTWaterCausticsRayGen";
-        desc.missName = L"RTWaterCausticsMiss";
-        desc.hitGroupName = L"RTWaterCausticsHitGroup";
-        desc.closestHitName = L"RTWaterCausticsClosestHit";
         desc.outputUavName = "gCausticsOutput";
         static constexpr const char* kSrvTableNames[] = {
             "gSceneDepth", "gNormalRoughness", "gFFTOceanDisplacement", "gFFTOceanNormal" };
@@ -94,7 +98,8 @@ namespace CoreEngine
         const Matrix4x4& invViewProj,
         UINT width,
         UINT height,
-        ViewID viewId)
+        ViewID viewId,
+        const RTHitTableIndices& hitTables)
     {
         const uint32_t viewIndex = static_cast<uint32_t>(viewId);
         BeginDiagnostics(viewIndex, width, height, surfaceData, sceneDepthSRV, {});
@@ -130,6 +135,8 @@ namespace CoreEngine
         constants.absorptionCoeff[1] = settings_.absorptionCoeff[1];
         constants.absorptionCoeff[2] = settings_.absorptionCoeff[2];
         constants.invViewProj = invViewProj;
+        constants.hitInstanceTableIndex = hitTables.IsValid() ? hitTables.instanceTable : kRTHitNoTexture;
+        constants.hitSubMeshTableIndex = hitTables.IsValid() ? hitTables.subMeshTable : kRTHitNoTexture;
 
         const D3D12_GPU_DESCRIPTOR_HANDLE fftDisplacementSRV =
             (fftOceanInput.displacementSRV.ptr != 0) ? fftOceanInput.displacementSRV : normalRoughnessSRV;

@@ -5,7 +5,7 @@
 
 #include "../Include/Common/DepthReconstruction.hlsli"
 #include "../Include/Common/ShaderMath.hlsli" // PI / TWO_PI
-#include "../Include/RayTracing/RTInstanceMask.hlsli"
+#include "../Include/RayTracing/RTTrace.hlsli" // RayQuery と材質の表
 
 // 出力: R = シャドウ値（0=影, 1=光）, G = このピクセルに撃ったレイ本数。
 // トレース解像度（ハーフ解像度時はフルの半分）。
@@ -58,14 +58,11 @@ cbuffer ShadowRayConstants : register(b0)
     float gWaterRegionHalfExtentZ;
     int gWaterEnabled; // 1 なら水中の受光点を屈折した経路で調べる
     int gPad3_;
-};
-
-// ============================================================
-// ペイロード（シャドウレイでは最小限）
-// ============================================================
-struct ShadowPayload
-{
-    float shadowFactor; // 0=遮蔽, 1=非遮蔽
+    // 材質の表（kRTHitNoTexture = アルファを調べず、どの物も不透明として当てる）
+    uint gHitInstanceTableIndex;
+    uint gHitSubMeshTableIndex;
+    uint gPad4_;
+    uint gPad5_;
 };
 
 // ============================================================
@@ -240,6 +237,12 @@ void RTShadowRayGen()
         }
     }
 
+    // 受光点で 1 画素が覆う幅（アルファで抜ける所を調べるテクスチャのミップの選択に使う）
+    const float2 neighborUV = screenUV + float2(float(gTraceScale) / gScreenWidth, 0.0f);
+    const float pixelFootprint = length(
+        ReconstructWorldPosition(ScreenUVToNDC(neighborUV), ndcDepth, gInvViewProj) - worldPos);
+    const RTSceneTables tables = MakeRTSceneTables(gHitInstanceTableIndex, gHitSubMeshTableIndex);
+
     float shadowSum = 0.0f;
 
     // 時間方向は R2 列で層化し、空間方向はピクセル固有の回転で無相関にする。
@@ -265,43 +268,11 @@ void RTShadowRayGen()
         ray.TMin = 0.001f;
         ray.TMax = gMaxRayDistance;
 
-        ShadowPayload payload;
-        payload.shadowFactor = 0.0f;
-
-        // 当たれば遮られているので、最初の当たりで止めて closest-hit も呼ばない（payload は 0 のまま）
-        TraceRay(
-            gScene,
-            RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER,
-            kRTInstanceMaskShadowCaster,
-            0,
-            1,
-            0,
-            ray,
-            payload
-        );
-
-        shadowSum += payload.shadowFactor;
+        // 最初の当たりで止める。葉などアルファで抜ける所は通す
+        shadowSum += TraceRTOcclusion(gScene, tables, ray, kRTInstanceMaskShadowCaster, pixelFootprint, 0.0f)
+            ? 0.0f : 1.0f;
     }
 
     // 生値とレイ本数を出力（履歴参照は Temporal パスで行う）
     gShadowOutput[launchIndex] = float2(shadowSum / float(numSamples), float(numSamples));
-}
-
-// ============================================================
-// Miss シェーダー（遮蔽物なし → 光が届く）
-// ============================================================
-[shader("miss")]
-void RTShadowMiss(inout ShadowPayload payload)
-{
-    payload.shadowFactor = 1.0f;
-}
-
-// ============================================================
-// Closest Hit シェーダー（遮蔽物あり → 影）
-// RayGen は RAY_FLAG_SKIP_CLOSEST_HIT_SHADER で撃つので呼ばれない。ヒットグループを組むために置く
-// ============================================================
-[shader("closesthit")]
-void RTShadowClosestHit(inout ShadowPayload payload, in BuiltInTriangleIntersectionAttributes attr)
-{
-    payload.shadowFactor = 0.0f;
 }

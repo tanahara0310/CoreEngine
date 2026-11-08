@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.67.0">
+<meta name="engine-version" content="0.68.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -9607,7 +9607,7 @@ kbd {
   </script>
   <p>置けるライトの数には上限があります（平行光源 4・点光源 16・スポット 16・エリア 8）。空・雲・霧の設定は <a href="#api-SkyBox">空と大気散乱</a> にあります。</p>
   <h3 id="g3d-shadow">影と映り込み</h3>
-  <p>影は、平行光源からレイトレーシングで落とします（DXR に対応した GPU だけ。点光源・スポット・エリアライトは影を落としません）。水面の反射と屈折も、レイトレーシングで映る物を調べます。どの物が影を落とし、水面に映るかは、<a href="#api-MeshRenderer">メッシュ描画</a> と <a href="#api-ParticleSystem">パーティクル</a>（モデルの粒）の 3 つの項目で物ごとに決めます。</p>
+  <p>影は、平行光源からレイトレーシングで落とします（DXR 1.1 に対応した GPU だけ。点光源・スポット・エリアライトは影を落としません）。水面の反射と屈折も、レイトレーシングで映る物を調べます。どの物が影を落とし、水面に映るかは、<a href="#api-MeshRenderer">メッシュ描画</a> と <a href="#api-ParticleSystem">パーティクル</a>（モデルの粒）の 3 つの項目で物ごとに決めます。</p>
   <div class="table-wrap">
   <table>
     <thead><tr><th>項目</th><th>選べる値</th><th>使い道</th></tr></thead>
@@ -9619,6 +9619,7 @@ kbd {
   </table>
   </div>
   <p><span class="ui">自動</span> は、<span class="ui">ブレンド</span> が <span class="ui">なし</span> の物なら影を落として水面に映り、それ以外（半透明・加算など）の物なら落とさず映りません。半透明の物を <span class="ui">落とす</span> にすると、不透明な物と同じ濃さの影を落とします。</p>
+  <p>葉や柵のように、ベースカラーのアルファで抜く材質（アルファのしきい値 <code>alphaCutoff</code>。ディザの材質は 0.5）は、抜けた所を影のレイも水面の反射・屈折のレイも通ります。抜ける所は画面に描く形と同じなので、木の影は葉の形になります。</p>
 
   <h2 id="g3d-move">動かす</h2>
   <div class="table-wrap">
@@ -11334,6 +11335,16 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-68-0">v0.68.0 <span class="dim">（2026-11-08）</span></h3>
+  <p>葉など、アルファで抜く材質の影を、板ではなく葉の形で落とすようにした版です。あわせて、影と水面のレイを撃つシェーダを共通の HLSL にまとめ、RayQuery で撃つようにしました。抜く材質の無い物の見た目は前と同じです。</p>
+  <ul>
+    <li><strong>抜ける材質</strong>：ベースカラーのアルファで抜く材質（アルファのしきい値 <code>alphaCutoff</code>・ディザ）は、レイトレーシングでも抜けた所を通すようにしました。木の影が葉の形になり、水面の反射・屈折も、抜けた所の先の物を映します（<a href="#g3d-shadow">影と映り込み</a>）。テクスチャが透明を持たない形式（BC1 など）で材質の色も不透明な物は、アルファを調べずに不透明な物として当てます。</li>
+    <li><strong>RayQuery</strong>：影・水面の反射と屈折・コースティクス・海底の高さ・SeaMap のレイを、TraceRay ではなく RayQuery（インラインレイトレーシング）で撃つようにしました。ミスシェーダとヒットグループは無くなりました。DXR の Tier 1.1 に対応していない GPU では、レイトレーシングを使いません。共通の処理は <span class="path">Include/RayTracing/RTSceneTables.hlsli</span>（材質の表と、当たった三角形の引き方）と <span class="path">Include/RayTracing/RTTrace.hlsli</span>（レイを撃つ関数）にあります。</li>
+    <li><strong>サブメッシュごとの形</strong>：モデルの BLAS を、サブメッシュごとの形に分けました。当たった所の材質は、形の番号（GeometryIndex）でサブメッシュの表から引きます。</li>
+    <li><strong>BLAS を作る物と手放す物</strong>：読み込んだモデル全部に BLAS を作っていたのを、レイトレーシングに載せた物のモデルだけに作るようにしました。300 フレーム使われなかったモデルの BLAS は手放します。<span class="ui">Ray Tracing</span> のパネルの加速構造に、BLAS の数（モデル・動く形）と、手放した BLAS の数を出しました。</li>
+    <li><strong>形の LOD</strong>：<code>r.RT.GeometryLod</code> で、レイトレーシングの形に使うモデルの LOD の段を選べるようにしました（既定は 0 ＝元の形）。変えると BLAS を作り直します。</li>
+  </ul>
 
   <h3 id="changelog-v0-67-0">v0.67.0 <span class="dim">（2026-11-08）</span></h3>
   <p>物ごとに、影を落とすか・水面に映るかを選べるようにした版です。あわせて、レイトレーシングの加速構造（TLAS）に載せる物を集める処理を 1 か所にまとめました。設定を変えなければ、見た目は前と同じです。</p>

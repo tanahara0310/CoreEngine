@@ -134,7 +134,12 @@ namespace CoreEngine
                 ImGui::TextUnformatted(value.c_str());
                 };
 
-            row("BLAS 数", std::to_string(asMgr->GetBLASCount()));
+            row("BLAS 数（モデル）", std::to_string(asMgr->GetBLASCount()));
+            row("BLAS 数（動く形）", std::to_string(asMgr->GetDynamicBLASCount()));
+            row("解放した BLAS（合計）", std::to_string(asMgr->GetReleasedBLASCount()));
+            if (scene) {
+                row("形の LOD", std::to_string(scene->GetGeometryLod()));
+            }
             row("TLAS インスタンス数", std::to_string(asMgr->GetTLASInstanceCount()));
             if (scene) {
                 // 出どころごとの数（RT_SCENE_SOURCE_REGISTER で足した順）
@@ -157,8 +162,10 @@ namespace CoreEngine
         }
 
         ImGui::TextDisabled("  ※TLAS はフラスタム非依存（画面外の遮蔽物も影を落とす）");
-        ImGui::TextDisabled("  ※TLAS に入るのは不透明なメッシュとパーティクル（スキンと揺れる植物は形を毎フレーム更新）");
-        ImGui::TextDisabled("    （半透明は入らない。水面は TLAS に入れず、レイの側で式から求める）");
+        ImGui::TextDisabled("  ※TLAS に入るのはメッシュとパーティクル（スキンと揺れる植物は形を毎フレーム更新）");
+        ImGui::TextDisabled("    （半透明は影を落とす・映るにした物だけ。水面は TLAS に入れず、レイの側で式から求める）");
+        ImGui::TextDisabled("  ※BLAS は使うモデルの分だけ作り、使われなくなって 300 フレームで解放する");
+        ImGui::TextDisabled("  ※アルファで抜ける材質は、抜ける所をどのレイも通り抜ける");
     }
 
     // -------------------------------------------------------------------------

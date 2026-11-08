@@ -10,6 +10,7 @@
 #include "Graphics/Water/WaterSurfaceData.h"
 #include "Math/Vector/Vector3.h"
 #include "Math/Matrix/Matrix4x4.h"
+#include "Graphics/RayTracing/RayTracingHitData.h"
 #include "Graphics/RayTracing/RayTracingOutputViewSet.h"
 #include "WaterRayTracingPassBase.h"
 
@@ -74,7 +75,8 @@ namespace CoreEngine
             const Matrix4x4& invViewProj,
             UINT width,
             UINT height,
-            ViewID viewId = ViewID::GameView);
+            ViewID viewId = ViewID::GameView,
+            const RTHitTableIndices& hitTables = {});
 
         /// @brief 出力テクスチャを指定サイズで作り直す
         void Resize(UINT width, UINT height, ViewID viewId = ViewID::GameView);
