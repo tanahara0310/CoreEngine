@@ -23,6 +23,7 @@
 // 【入出力レイアウト】RTShadowTemporal.CS.hlsl と共通
 //   .x = シャドウ値 / .y = 推定分散 / .z = 蓄積フレーム数 N / .w = 線形ビュー深度
 //   .z .w はこのパスでは加工せず素通しする（デバッグ表示と後段の一貫性のため）。
+//   .z = 0 はライトの光が届かない画素（点光源・スポット・エリア）。そのまま通し、近傍にも使わない。
 // ============================================================
 
 #include "../Include/Common/DepthReconstruction.hlsli"
@@ -77,7 +78,7 @@ void main(uint3 dispatchID : SV_DispatchThreadID)
     float4 center = gInputShadow.Load(int3(coord, 0));
 
     float centerNdcDepth = gSceneDepth.Load(int3(TraceToFull(coord), 0));
-    if (IsBackgroundDepth(centerNdcDepth))
+    if (IsBackgroundDepth(centerNdcDepth) || center.z <= 0.0f)
     {
         gOutputShadow[coord] = center;
         return;
@@ -133,6 +134,8 @@ void main(uint3 dispatchID : SV_DispatchThreadID)
             float3 sampleNormal = normalize(gNormalRoughness.Load(int3(sampleFull, 0)).rgb * 2.0f - 1.0f);
             float sampleDepth = LinearizeViewDepth(sampleNdcDepth, projZW);
             float4 sampleValue = gInputShadow.Load(int3(sampleCoord, 0));
+            if (sampleValue.z <= 0.0f)
+                continue; // 光が届かない画素
 
             float w = kKernel1D[dy + 2] * kKernel1D[dx + 2];
 

@@ -90,6 +90,11 @@ namespace CoreEngine
         /// @return ライトへのポインタ（範囲外の場合はnullptr）
         const Light* GetDirectionalLight(size_t index) const;
 
+        /// @brief 点光源・スポット・エリアのライトを、種類ごとの GPU の配列の順に列挙する
+        /// @details gpuIndex は種類ごとの番号で、シェーダー側のライトの配列（gPointLights など）の添字と同じ
+        void ForEachLocalLight(
+            const std::function<void(LightType type, uint32_t gpuIndex, LightHandle handle, const Light& light)>& body) const;
+
         /// @brief 大気散乱の太陽として使用するディレクショナルライトのハンドル
         /// @return isAtmosphereSun が立っている最初のライト。
         ///         無ければ最初のディレクショナルライトへフォールバック、それも無ければ無効ハンドル

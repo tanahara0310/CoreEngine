@@ -17,6 +17,7 @@
 #include "../Include/Common/DepthReconstruction.hlsli"
 
 // 入力: RayGen の生出力（x=シャドウ値, y=そのピクセルに撃ったレイ本数）※トレース解像度
+//       y = 0 はライトの光が届かない画素（点光源・スポット・エリア）。蓄積せずに蓄積数 0 で返す
 Texture2D<float2> gRawShadow : register(t0);
 
 // G-Buffer: 法線（空間前処理の幾何ガイド用）※フル解像度
@@ -108,9 +109,17 @@ void main(uint3 dispatchID : SV_DispatchThreadID)
         return;
     }
 
-    float3 cNormal = normalize(gGBufferNormal.Load(int3(TraceToFull(coord), 0)).rgb * 2.0f - 1.0f);
     // 深度差しか使わないので線形ビュー深度で足りる
     float cDepth = EncodeHistoryDepth(LinearizeViewDepth(cNdcDepth, projZW));
+
+    // 光が届かない画素: 影なし・蓄積数 0（次に光が届いたフレームは履歴を使わずに始め直す）
+    if (gRawShadow.Load(int3(coord, 0)).y <= 0.0f)
+    {
+        gOutputShadow[coord] = float4(1.0f, 0.0f, 0.0f, cDepth);
+        return;
+    }
+
+    float3 cNormal = normalize(gGBufferNormal.Load(int3(TraceToFull(coord), 0)).rgb * 2.0f - 1.0f);
 
     // ===== 5×5 幾何ガイド空間前処理 =====
     //   バイナリを準連続値に変換する。3×3（実効 9 サンプル）から 5×5（実効 25 サンプル）へ
@@ -151,6 +160,8 @@ void main(uint3 dispatchID : SV_DispatchThreadID)
             // レイ本数 n のタップは分散が 1/n なので、最適重みは幾何重み × n。
             // 実効サンプル数（下）も本数込みで正しく数えられる。
             float2 raw = gRawShadow.Load(int3(nc, 0));
+            if (raw.y <= 0.0f)
+                continue; // 光が届かない画素
             float rayCount = max(raw.y, 1.0f);
             float w = wNormal * wDepth * rayCount;
 
@@ -245,7 +256,8 @@ void main(uint3 dispatchID : SV_DispatchThreadID)
 
         float4 h = gHistoryShadow.Load(int3(tap, 0));
         // .w には書き込み時点の線形深度が入っている。背景だったテクセルは負値。
-        if (h.w < 0.0f || abs(h.w - cDepth) > depthTolerance)
+        // 蓄積数 0 は光が届かなかった画素
+        if (h.w < 0.0f || h.z <= 0.0f || abs(h.w - cDepth) > depthTolerance)
             continue;
 
         float w = bilinearWeights[t];

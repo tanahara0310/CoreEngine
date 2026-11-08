@@ -4,6 +4,7 @@
 #include <dxcapi.h>
 #include <wrl.h>
 #include <cstdint>
+#include "Graphics/Light/Light.h"
 #include "Graphics/Water/WaterPhysics.h"
 #include "Math/Vector/Vector3.h"
 #include "Math/Matrix/Matrix4x4.h"
@@ -20,6 +21,8 @@ namespace CoreEngine
     class GraphicsCore;
     class DescriptorAllocator;
     class AccelerationStructureManager;
+    class LightManager;
+    struct ViewInfo;
 
     /// @brief DXR レイトレーシングシャドウを管理するクラス
     /// @details State Object / Shader Table / UAV テクスチャの作成と DispatchRays を担当
@@ -133,6 +136,21 @@ namespace CoreEngine
         float regionHalfExtentXZ[2] = { 0.0f, 0.0f }; ///< 水域の半径（XZ）
     };
 
+    /// @brief 影を落とすライトの形（RTShadow.hlsl の ShadowRayConstants に詰める）
+    struct RTShadowLightShape {
+        LightType type = LightType::Directional;
+        Vector3 direction = { 0.0f, -1.0f, 0.0f }; ///< 平行光源・スポットは光の進む向き、エリアは発光面の法線
+        Vector3 position = { 0.0f, 0.0f, 0.0f };   ///< 点光源・スポット・エリアの位置
+        float range = 0.0f;                        ///< 点光源・スポット・エリアの届く距離 [m]
+        float sourceRadius = 0.0f;                 ///< 点光源・スポットの光る球の半径 [m]
+        float cosOuterCone = -1.0f;                ///< スポットの外角の余弦
+        Vector3 areaRight = { 1.0f, 0.0f, 0.0f };  ///< エリアの発光面の右向き
+        Vector3 areaUp = { 0.0f, 0.0f, 1.0f };     ///< エリアの発光面の上向き
+        float areaHalfWidth = 0.0f;                ///< エリアの発光面の半分の幅 [m]
+        float areaHalfHeight = 0.0f;               ///< エリアの発光面の半分の高さ [m]
+        uint64_t key = 0;                          ///< ライトを見分ける値（枠の前のフレームの値と違えば履歴を捨てる）
+    };
+
     /// @brief DXR レイトレーシングシャドウ
     /// @details 出力テクスチャ・ガード判定・DXR オブジェクトは基盤 RayTracingPassBase 側が持つ。
     ///          ここに残るのは RayGen / テンポラル / A-Trous の 3 ステージと、view × ライトの状態だけ。
@@ -146,6 +164,22 @@ namespace CoreEngine
 
         static constexpr uint32_t kViewCount = static_cast<uint32_t>(ViewID::Count);
         static constexpr uint32_t kMaxDirectionalLights = 4; ///< LightManager::MAX_DIRECTIONAL_LIGHTS と合わせる
+        static constexpr uint32_t kMaxLocalLights = 4;       ///< 同時に影を落とす点光源・スポット・エリアの数の上限
+        static constexpr uint32_t kLocalSlotBegin = kMaxDirectionalLights; ///< 局所ライトの最初の影の枠
+        /// @brief 影の枠の数（0〜3 は平行光源の正準順、4〜7 は局所ライト）
+        static constexpr uint32_t kMaxShadowSlots = kMaxDirectionalLights + kMaxLocalLights;
+        /// @brief 局所ライトの枠にライトが無いときの LocalShadowSlot::shaderKey
+        static constexpr uint32_t kNoLocalShadowKey = 0xFFFFFFFFu;
+
+        /// @brief 局所ライトの影の枠 1 つに割り当てたライト
+        struct LocalShadowSlot {
+            bool active = false;
+            LightType type = LightType::Point;
+            uint32_t gpuIndex = 0;                  ///< 種類ごとの GPU のライトの配列の番号
+            LightHandle handle{};
+            uint32_t shaderKey = kNoLocalShadowKey; ///< DeferredLighting がライトと枠を突き合わせる値（種類 << 16 | gpuIndex）
+            RTShadowLightShape shape{};
+        };
 
         /// @brief 初期化（State Object / Shader Table / UAV テクスチャの構築）
         /// @return 成功した場合 true
@@ -154,22 +188,29 @@ namespace CoreEngine
         /// @brief 別スレッドで作っているパイプラインの完成を待つ
         bool WaitForPipelines() override { return WaitForPipeline(); }
 
+        /// @brief 影を落とす点光源・スポット・エリアを選び、局所ライトの枠へ割り当てる（フレームの頭で 1 回呼ぶ）
+        /// @details 影を落とす設定で、届く範囲が視錐台に入っているライトから、カメラに近い順に
+        ///          r.RTShadow.MaxLocalLights 灯まで選ぶ。前のフレームと同じライトは同じ枠に残す。
+        void SelectLocalShadowLights(const LightManager& lights, const ViewInfo& view);
+
+        /// @brief 局所ライトの枠（0〜kMaxLocalLights-1）に割り当てたライト
+        const LocalShadowSlot& GetLocalShadowSlot(uint32_t localIndex) const;
+
         /// @brief シャドウレイをディスパッチする（3 ステージの最初。ここで解像度が確定する）
-        /// @param lightIndex ディレクショナルライトのインデックス（0〜kMaxDirectionalLights-1）
         /// @param sceneDepthSRV WorldPosition ターゲット廃止に伴い深度から復元する
+        /// @param light 影を落とすライトの形
         /// @param invViewProj 深度復元用 View*Projection の逆行列
         /// @param width,height フル解像度。ハーフ解像度時のトレース解像度はここから導出する
-        /// @param lightKey ライトを見分ける値（前のフレームと違えば履歴を捨てる）
+        /// @param shadowSlot 影の枠（0〜kMaxShadowSlots-1）
         /// @param waterSurface 水中の受光点を屈折した経路で調べるための水面
         void Dispatch(ID3D12GraphicsCommandList* cmdList,
             D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
             D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
-            const Vector3& lightDirection,
+            const RTShadowLightShape& light,
             const Matrix4x4& invViewProj,
             UINT width, UINT height,
             ViewID viewId = ViewID::GameView,
-            uint32_t lightIndex = 0,
-            const void* lightKey = nullptr,
+            uint32_t shadowSlot = 0,
             const RayTracingShadowWaterSurface& waterSurface = {},
             const RTHitTableIndices& hitTables = {});
 
@@ -182,7 +223,7 @@ namespace CoreEngine
             D3D12_GPU_DESCRIPTOR_HANDLE motionVectorSRV,
             const Matrix4x4& projection,
             ViewID viewId = ViewID::GameView,
-            uint32_t lightIndex = 0);
+            uint32_t shadowSlot = 0);
 
         /// @brief A-Trous デノイズ＋フル解像度への解決を実行する（ApplyTemporal の直後に呼ぶ）
         /// @param projection 投影行列。深度重みの線形化にのみ使う（Stage 1 で invViewProj から変更）
@@ -192,11 +233,11 @@ namespace CoreEngine
             D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
             const Matrix4x4& projection,
             ViewID viewId = ViewID::GameView,
-            uint32_t lightIndex = 0);
+            uint32_t shadowSlot = 0);
 
         /// @brief 指定ビュー・ライトのシャドウ結果テクスチャの SRV を取得
         D3D12_GPU_DESCRIPTOR_HANDLE GetShadowSRVHandle(ViewID viewId = ViewID::GameView,
-            uint32_t lightIndex = 0) const;
+            uint32_t shadowSlot = 0) const;
 
         // ──────────────────────────────────────────────────────────
         // デバッグ表示用（レイトレーシングのデバッグ窓が参照する）
@@ -205,21 +246,21 @@ namespace CoreEngine
         /// @brief RayGen が書いた生マスク（デノイズ前）の SRV を取得
         /// @details 専用の Raw スロットなので、A-Trous を何パス回しても上書きされない。
         D3D12_GPU_DESCRIPTOR_HANDLE GetRawShadowSRVHandle(ViewID viewId = ViewID::GameView,
-            uint32_t lightIndex = 0) const;
+            uint32_t shadowSlot = 0) const;
 
         /// @brief RayGen が書いた生マスクの実体（ステート追跡つき）
-        GpuResource& GetRawShadowResource(ViewID viewId = ViewID::GameView, uint32_t lightIndex = 0);
+        GpuResource& GetRawShadowResource(ViewID viewId = ViewID::GameView, uint32_t shadowSlot = 0);
 
         /// @brief テンポラル蓄積の履歴テクスチャ（今フレームの書き込み先）の SRV を取得
         D3D12_GPU_DESCRIPTOR_HANDLE GetHistorySRVHandle(ViewID viewId = ViewID::GameView,
-            uint32_t lightIndex = 0) const;
+            uint32_t shadowSlot = 0) const;
 
         /// @brief テンポラル蓄積の履歴テクスチャ（今フレームの書き込み先）の実体（ステート追跡つき）
-        GpuResource& GetHistoryResource(ViewID viewId = ViewID::GameView, uint32_t lightIndex = 0);
+        GpuResource& GetHistoryResource(ViewID viewId = ViewID::GameView, uint32_t shadowSlot = 0);
 
         /// @brief 直近のディスパッチ診断情報を取得（全 RT パス共通の型）
         const RayTracingDispatchInfo& GetDispatchInfo(ViewID viewId = ViewID::GameView,
-            uint32_t lightIndex = 0) const;
+            uint32_t shadowSlot = 0) const;
 
         /// @brief 実際に適用される A-Trous パス数（0〜kMaxAtrousPassCount へのクランプ後）
         int GetEffectiveAtrousPassCount() const;
@@ -229,22 +270,22 @@ namespace CoreEngine
 
         /// @brief 指定ビュー・ライトのシャドウ結果テクスチャを取得する
         /// @param viewId 参照するビュー ID
-        /// @param lightIndex 参照するディレクショナルライト番号
+        /// @param shadowSlot 参照する影の枠
         /// @return シャドウ結果テクスチャ（実体＋現在ステート）。未確保なら実体は nullptr
         GpuResource& GetShadowResource(
             ViewID viewId = ViewID::GameView,
-            uint32_t lightIndex = 0);
+            uint32_t shadowSlot = 0);
 
         /// @brief 指定ビュー・ライトで今フレームにディスパッチ済みか
         bool IsDispatchedThisFrame(ViewID viewId = ViewID::GameView,
-            uint32_t lightIndex = 0) const;
+            uint32_t shadowSlot = 0) const;
 
         /// @brief フレーム開始時に全ビュー・全ライトの状態をリセット
         void BeginFrame() override;
 
         /// @brief 出力テクスチャを指定サイズで確保する
         void Resize(UINT width, UINT height, ViewID viewId = ViewID::GameView,
-            uint32_t lightIndex = 0);
+            uint32_t shadowSlot = 0);
 
         /// @brief 生成済みの全ビュー・全ライトの出力テクスチャを新サイズで作り直す（GPU は止まっている）
         void OnResize(uint32_t width, uint32_t height) override;
@@ -264,7 +305,7 @@ namespace CoreEngine
         /// @param traceWidth,traceHeight トレース解像度（Mask 以外のサイズ）
         /// @param traceScale             フル / トレースの比
         bool EnsureOutputTexture(UINT width, UINT height, UINT traceWidth, UINT traceHeight,
-            UINT traceScale, uint32_t viewIndex, uint32_t lightIndex);
+            UINT traceScale, uint32_t viewIndex, uint32_t shadowSlot);
 
         // dxCommon_ / descriptorAllocator_ / asMgr_ / globalRootSigMgr_ / stateObject_ /
         // stateObjectProperties_ / shaderTableBuilder_ / outputViews_ / isInitialized_ は
@@ -289,12 +330,12 @@ namespace CoreEngine
         static constexpr uint32_t kTextureSlotCount = static_cast<uint32_t>(TextureSlot::Count);
 
         /// @brief (view, light, 用途) を RayTracingOutputViewSet の平坦なスロット番号へ写す
-        static constexpr uint32_t MakeSlotIndex(uint32_t viewIndex, uint32_t lightIndex, TextureSlot slot)
+        static constexpr uint32_t MakeSlotIndex(uint32_t viewIndex, uint32_t shadowSlot, TextureSlot slot)
         {
-            return ((viewIndex * kMaxDirectionalLights) + lightIndex) * kTextureSlotCount
+            return ((viewIndex * kMaxShadowSlots) + shadowSlot) * kTextureSlotCount
                 + static_cast<uint32_t>(slot);
         }
-        static_assert(kViewCount * kMaxDirectionalLights * kTextureSlotCount
+        static_assert(kViewCount * kMaxShadowSlots * kTextureSlotCount
             <= RayTracingOutputViewSet::kMaxSlotCount,
             "RayTracingOutputViewSet::kMaxSlotCount が RT シャドウの必要数に足りていない");
 
@@ -310,7 +351,7 @@ namespace CoreEngine
             bool dispatchedThisFrame = false;
             bool isHistoryValid = false;   ///< 履歴テクスチャが初回フレーム書き込み済みか
             uint32_t historyParity = 0;    ///< 今フレームの書き込み先（0 = HistoryA / 1 = HistoryB）
-            const void* lightKey = nullptr; ///< 履歴を作ったライトを見分ける値
+            uint64_t lightKey = 0;          ///< 履歴を作ったライトを見分ける値
             uint64_t lastDispatchFrame = 0; ///< 最後に撃ったフレームの番号
 
             /// @brief この view × light のディスパッチ回数（2x2 サンプル位相・レイジッターの種）
@@ -326,7 +367,8 @@ namespace CoreEngine
                 return (historyParity == 0) ? TextureSlot::HistoryB : TextureSlot::HistoryA;
             }
         };
-        ShadowView views_[kViewCount][kMaxDirectionalLights]{};
+        ShadowView views_[kViewCount][kMaxShadowSlots]{};
+        LocalShadowSlot localSlots_[kMaxLocalLights]{}; ///< 局所ライトの枠に割り当てたライト
 
         // ---- スロットアクセスの短縮ヘルパー（実体は基盤の outputViews_） ----
         D3D12_GPU_DESCRIPTOR_HANDLE SlotSRV(uint32_t vi, uint32_t li, TextureSlot s) const {
@@ -406,7 +448,7 @@ namespace CoreEngine
             D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
             const Matrix4x4& projection,
             uint32_t viewIndex,
-            uint32_t lightIndex,
+            uint32_t shadowSlot,
             TextureSlot sourceSlot);
 
         /// @brief コンピュートパス（RS + PSO + 解決済みバインド表）をリフレクションから構築する

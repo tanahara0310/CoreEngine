@@ -140,9 +140,22 @@ namespace CoreEngine
                     }
                 }
             }
+            // 局所ライトは、今フレームに撃った枠だけマスクとライトの対応を渡す
+            for (uint32_t local = 0; local < RayTracingShadowManager::kMaxLocalLights; ++local) {
+                const uint32_t slot = RayTracingShadowManager::kLocalSlotBegin + local;
+                const RayTracingShadowManager::LocalShadowSlot& localSlot = rtShadow->GetLocalShadowSlot(local);
+                D3D12_GPU_DESCRIPTOR_HANDLE srvHandle{};
+                if (localSlot.active && rtShadow->IsDispatchedThisFrame(viewId, slot)) {
+                    srvHandle = rtShadow->GetShadowSRVHandle(viewId, slot);
+                }
+                deferredLighting->SetRTLocalShadow(local, srvHandle, localSlot.shaderKey);
+            }
         } else {
             for (uint32_t li = 0; li < RayTracingShadowManager::kMaxDirectionalLights; ++li) {
                 deferredLighting->SetRTShadowHandle({}, li);
+            }
+            for (uint32_t local = 0; local < RayTracingShadowManager::kMaxLocalLights; ++local) {
+                deferredLighting->SetRTLocalShadow(local, {}, DeferredLightingTechnique::kNoRTLocalShadowKey);
             }
         }
 

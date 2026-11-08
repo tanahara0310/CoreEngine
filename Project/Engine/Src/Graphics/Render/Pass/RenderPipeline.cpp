@@ -477,13 +477,16 @@ namespace CoreEngine
             }
         }
 
-        // RT 影のマスクはライトごとにここで登録する
+        // 影を落とす局所ライトをこのフレームの枠へ割り当ててから、影の枠ごとのマスクを登録する
         if (RayTracingShadowManager* rtShadow = FindRTEffect<RayTracingShadowManager>(context)) {
-            for (uint32_t li = 0; li < RayTracingShadowManager::kMaxDirectionalLights; ++li) {
+            if (context.lightManager && context.frameViews) {
+                rtShadow->SelectLocalShadowLights(*context.lightManager, context.frameViews->GameView());
+            }
+            for (uint32_t slot = 0; slot < RayTracingShadowManager::kMaxShadowSlots; ++slot) {
                 context.frameBlackboard->SetResource(
-                    FrameBlackboard::RTShadowMaskOf(li),
-                    rtShadow->GetShadowSRVHandle(RayTracingShadowManager::ViewID::GameView, li),
-                    &rtShadow->GetShadowResource(RayTracingShadowManager::ViewID::GameView, li));
+                    FrameBlackboard::RTShadowMaskOf(slot),
+                    rtShadow->GetShadowSRVHandle(RayTracingShadowManager::ViewID::GameView, slot),
+                    &rtShadow->GetShadowResource(RayTracingShadowManager::ViewID::GameView, slot));
             }
         }
 

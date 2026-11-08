@@ -85,10 +85,38 @@ namespace CoreEngine
             const uint32_t maxLights = RayTracingShadowManager::kMaxDirectionalLights;
             for (uint32_t li = 0; li < LightManager::MAX_DIRECTIONAL_LIGHTS && li < maxLights; ++li) {
                 const Light* dirLight = context.lightManager->GetDirectionalLight(li);
-                if (!dirLight || !dirLight->enabled) continue;
+                if (!dirLight || !dirLight->enabled || !dirLight->castShadows) continue;
                 body(li, *dirLight);
             }
         }
+
+        /// @brief 平行光源の影の形（履歴はライトの実体のアドレスで見分ける）
+        RTShadowLightShape MakeDirectionalShadowShape(const Light& light)
+        {
+            RTShadowLightShape shape{};
+            shape.type = LightType::Directional;
+            shape.direction = light.direction;
+            shape.key = static_cast<uint64_t>(reinterpret_cast<uintptr_t>(&light));
+            return shape;
+        }
+
+#ifdef CORE_EDITOR
+        /// @brief 影の枠の表示名（平行光源は正準順の番号、局所ライトは種類と GPU の配列の番号）
+        std::string ShadowSlotLabel(const RTDebugQuery& query, const RayTracingShadowManager& shadow, uint32_t shadowSlot)
+        {
+            if (shadowSlot < RayTracingShadowManager::kLocalSlotBegin) {
+                const Light* light = query.lights ? query.lights->GetDirectionalLight(shadowSlot) : nullptr;
+                return light ? std::format("ライト {}：{}", shadowSlot, light->name) : std::format("ライト {}", shadowSlot);
+            }
+            const RayTracingShadowManager::LocalShadowSlot& local =
+                shadow.GetLocalShadowSlot(shadowSlot - RayTracingShadowManager::kLocalSlotBegin);
+            static constexpr const char* kTypeNames[] = { "平行光源", "点光源", "スポット", "エリア" };
+            const char* typeName = kTypeNames[static_cast<uint32_t>(local.type) & 3u];
+            const Light* light = (query.lights && local.active) ? query.lights->GetLight(local.handle) : nullptr;
+            return light ? std::format("{} {}：{}", typeName, local.gpuIndex, light->name)
+                : std::format("局所ライトの枠 {}", shadowSlot - RayTracingShadowManager::kLocalSlotBegin);
+        }
+#endif
 
         /// @brief 水中の受光点を屈折した経路で調べるための水面を作る
         /// @details RT コースティクスが水中の直接光を置き換えるときだけ有効にする
@@ -125,13 +153,12 @@ namespace CoreEngine
             if (!shadow || !shadow->IsInitialized()) {
                 return;
             }
-            for (uint32_t li = 0; li < RayTracingShadowManager::kMaxDirectionalLights; ++li) {
-                const RayTracingDispatchInfo& info = shadow->GetDispatchInfo(kShadowView, li);
+            for (uint32_t slot = 0; slot < RayTracingShadowManager::kMaxShadowSlots; ++slot) {
+                const RayTracingDispatchInfo& info = shadow->GetDispatchInfo(kShadowView, slot);
                 if (info.status == RayTracingDispatchStatus::None) {
                     continue;
                 }
-                const Light* light = query.lights ? query.lights->GetDirectionalLight(li) : nullptr;
-                rows.push_back({ light ? std::format("ライト {}：{}", li, light->name) : std::format("ライト {}", li), info });
+                rows.push_back({ ShadowSlotLabel(query, *shadow, slot), info });
             }
         });
 
@@ -145,7 +172,7 @@ namespace CoreEngine
         bool ResolveShadowImage(const RenderContext& context, uint32_t light, ShadowDebugImage image, RTDebugSource& out)
         {
             RayTracingShadowManager* shadow = FindRTEffect<RayTracingShadowManager>(context);
-            if (!shadow || !shadow->IsInitialized() || light >= RayTracingShadowManager::kMaxDirectionalLights
+            if (!shadow || !shadow->IsInitialized() || light >= RayTracingShadowManager::kMaxShadowSlots
                 || !shadow->IsDispatchedThisFrame(kShadowView, light)) {
                 return false;
             }
@@ -178,7 +205,7 @@ namespace CoreEngine
         .rangeMin = 0.0f,
         .rangeMax = 1.0f,
         .viewMode = RTDebugViewMode::Mono,
-        .variantCount = RayTracingShadowManager::kMaxDirectionalLights,
+        .variantCount = RayTracingShadowManager::kMaxShadowSlots,
         .variantLabel = "ライト",
         .resolve = [](const RenderContext& context, uint32_t variant, RTDebugSource& out) {
             return ResolveShadowImage(context, variant, ShadowDebugImage::Raw, out);
@@ -194,7 +221,7 @@ namespace CoreEngine
         .rangeMin = 0.0f,
         .rangeMax = 1.0f,
         .viewMode = RTDebugViewMode::Mono,
-        .variantCount = RayTracingShadowManager::kMaxDirectionalLights,
+        .variantCount = RayTracingShadowManager::kMaxShadowSlots,
         .variantLabel = "ライト",
         .resolve = [](const RenderContext& context, uint32_t variant, RTDebugSource& out) {
             return ResolveShadowImage(context, variant, ShadowDebugImage::History, out);
@@ -209,7 +236,7 @@ namespace CoreEngine
         .rangeMin = 0.0f,
         .rangeMax = 1.0f,
         .viewMode = RTDebugViewMode::Mono,
-        .variantCount = RayTracingShadowManager::kMaxDirectionalLights,
+        .variantCount = RayTracingShadowManager::kMaxShadowSlots,
         .variantLabel = "ライト",
         .resolve = [](const RenderContext& context, uint32_t variant, RTDebugSource& out) {
             return ResolveShadowImage(context, variant, ShadowDebugImage::Mask, out);
@@ -217,23 +244,36 @@ namespace CoreEngine
 
     void DeclareRTShadowMasks(RenderGraphBuilder& builder, const RenderContext& context, bool write)
     {
-        static_assert(RayTracingShadowManager::kMaxDirectionalLights <= FrameBlackboard::kRTShadowMaskCount,
-            "RT 影のマスクの論理名をライトの数だけ用意する");
-        for (uint32_t li = 0; li < RayTracingShadowManager::kMaxDirectionalLights; ++li) {
-            // メインライトのマスクはいつも宣言し、補助ライトのマスクは点いているライトの分だけ宣言する
-            if (li != 0) {
-                const Light* light = (context.lightManager && li < LightManager::MAX_DIRECTIONAL_LIGHTS)
-                    ? context.lightManager->GetDirectionalLight(li) : nullptr;
-                if (!light || !light->enabled) {
-                    continue;
-                }
-            }
+        static_assert(RayTracingShadowManager::kMaxShadowSlots <= FrameBlackboard::kRTShadowMaskCount,
+            "RT 影のマスクの論理名を影の枠の数だけ用意する");
+        const auto declare = [&](uint32_t shadowSlot) {
             // マスクはデノイズの最後にピクセルシェーダの読み取りの状態へ移る
-            const char* name = FrameBlackboard::RTShadowMaskOf(li);
+            const char* name = FrameBlackboard::RTShadowMaskOf(shadowSlot);
             if (write) {
                 builder.Write(name, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
             } else {
                 builder.Read(name, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+            }
+        };
+
+        // メインライトのマスクはいつも宣言し、補助ライトのマスクは影を落とす点いているライトの分だけ宣言する
+        for (uint32_t li = 0; li < RayTracingShadowManager::kMaxDirectionalLights; ++li) {
+            if (li != 0) {
+                const Light* light = (context.lightManager && li < LightManager::MAX_DIRECTIONAL_LIGHTS)
+                    ? context.lightManager->GetDirectionalLight(li) : nullptr;
+                if (!light || !light->enabled || !light->castShadows) {
+                    continue;
+                }
+            }
+            declare(li);
+        }
+
+        // 局所ライトのマスクは、このフレームに枠へ割り当てたライトの分だけ宣言する
+        if (const RayTracingShadowManager* rtShadow = FindRTEffect<RayTracingShadowManager>(context)) {
+            for (uint32_t local = 0; local < RayTracingShadowManager::kMaxLocalLights; ++local) {
+                if (rtShadow->GetLocalShadowSlot(local).active) {
+                    declare(RayTracingShadowManager::kLocalSlotBegin + local);
+                }
             }
         }
     }
@@ -271,16 +311,35 @@ namespace CoreEngine
                 stage.cmdList,
                 stage.sceneDepthSRV,
                 stage.normalSRV,
-                light.direction,
+                MakeDirectionalShadowShape(light),
                 stage.invViewProj,
                 stage.width,
                 stage.height,
                 kShadowView,
                 li,
-                &light,
                 (li == 0) ? waterSurface : RayTracingShadowWaterSurface{},
                 hitTables);
             });
+
+        // 局所ライトは、SelectLocalShadowLights が枠へ割り当てたライトだけ撃つ
+        for (uint32_t local = 0; local < RayTracingShadowManager::kMaxLocalLights; ++local) {
+            const RayTracingShadowManager::LocalShadowSlot& localSlot = stage.rtShadow->GetLocalShadowSlot(local);
+            if (!localSlot.active) {
+                continue;
+            }
+            stage.rtShadow->Dispatch(
+                stage.cmdList,
+                stage.sceneDepthSRV,
+                stage.normalSRV,
+                localSlot.shape,
+                stage.invViewProj,
+                stage.width,
+                stage.height,
+                kShadowView,
+                RayTracingShadowManager::kLocalSlotBegin + local,
+                RayTracingShadowWaterSurface{},
+                hitTables);
+        }
     }
 
     void RTShadowTemporalPass::DeclareResources(RenderGraphBuilder& builder, const RenderContext& context)
@@ -299,8 +358,11 @@ namespace CoreEngine
             return;
         }
 
-        // 全ライト分 テンポラル蓄積パス（空間前処理+再投影+Variance Clamping）
-        ForEachShadowCastingLight(context, [&](uint32_t li, const Light&) {
+        // 今フレームに撃った影の枠ごとに テンポラル蓄積パス（空間前処理+再投影+Variance Clamping）
+        for (uint32_t slot = 0; slot < RayTracingShadowManager::kMaxShadowSlots; ++slot) {
+            if (!stage.rtShadow->IsDispatchedThisFrame(kShadowView, slot)) {
+                continue;
+            }
             stage.rtShadow->ApplyTemporal(
                 stage.cmdList,
                 stage.normalSRV,
@@ -308,8 +370,8 @@ namespace CoreEngine
                 stage.motionVectorSRV,
                 stage.projection,
                 kShadowView,
-                li);
-            });
+                slot);
+        }
     }
 
     void RTShadowDenoisePass::DeclareResources(RenderGraphBuilder& builder, const RenderContext& context)
@@ -327,16 +389,19 @@ namespace CoreEngine
             return;
         }
 
-        // 全ライト分 A-Trous デノイズをまとめて実行
-        ForEachShadowCastingLight(context, [&](uint32_t li, const Light&) {
+        // 今フレームに撃った影の枠ごとに A-Trous デノイズをまとめて実行
+        for (uint32_t slot = 0; slot < RayTracingShadowManager::kMaxShadowSlots; ++slot) {
+            if (!stage.rtShadow->IsDispatchedThisFrame(kShadowView, slot)) {
+                continue;
+            }
             stage.rtShadow->Denoise(
                 stage.cmdList,
                 stage.normalSRV,
                 stage.sceneDepthSRV,
                 stage.projection,
                 kShadowView,
-                li);
-            });
+                slot);
+        }
 
         // RTShadowMask の Blackboard 登録は RegisterFrameResources が行うため、
         // 実行中の再登録は不要（パス分離契約 3）。

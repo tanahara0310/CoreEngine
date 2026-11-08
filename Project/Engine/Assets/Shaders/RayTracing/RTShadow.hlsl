@@ -34,10 +34,10 @@ Texture2D<float4> gShadowHistory : register(t3);
 // （2026-07-25 に影が全消失した原因がこれ）。
 cbuffer ShadowRayConstants : register(b0)
 {
-    float3 gLightDirection; // 正規化済みライト方向（光源→シーン）
+    float3 gLightDirection; // 正規化済み。平行光源・スポットは光の進む向き（光源→シーン）、エリアは発光面の法線
     float gShadowBias; // シャドウバイアス
-    float gMaxRayDistance; // レイの最大距離
-    float gLightRadius; // 光源の角半径（ラジアン）：ペナンブラ幅を制御
+    float gMaxRayDistance; // レイの最大距離（平行光源）
+    float gLightRadius; // ペナンブラ幅：平行光源は角半径 [rad]、点光源・スポットは光る球の半径 [m]
     int gSoftShadowSamples; // ソフトシャドウのサンプル数（1=ハードシャドウ）
     uint gFrameIndex; // フレームカウンタ（ノイズのテンポラル変化用）
     float gScreenWidth; // フル解像度の幅（ピクセル）
@@ -63,7 +63,28 @@ cbuffer ShadowRayConstants : register(b0)
     uint gHitSubMeshTableIndex;
     uint gPad4_;
     uint gPad5_;
+    // 点光源・スポット・エリア（平行光源では使わない）
+    int gLightType; // 0 = 平行光源 / 1 = 点光源 / 2 = スポット / 3 = エリア
+    float gLightPositionX; // 光源の位置
+    float gLightPositionY;
+    float gLightPositionZ;
+    float gLightRange; // 届く距離 [m]
+    float gSpotCosOuterCone; // スポットの外角の余弦
+    float gAreaHalfWidth; // エリアの発光面の半分の幅 [m]
+    float gAreaHalfHeight; // エリアの発光面の半分の高さ [m]
+    float gAreaRightX; // エリアの発光面の右向き
+    float gAreaRightY;
+    float gAreaRightZ;
+    float gPad6_;
+    float gAreaUpX; // エリアの発光面の上向き
+    float gAreaUpY;
+    float gAreaUpZ;
+    float gPad7_;
 };
+
+static const int kLightTypeDirectional = 0;
+static const int kLightTypeSpot = 2;
+static const int kLightTypeArea = 3;
 
 // ============================================================
 // ソフトシャドウ用ユーティリティ
@@ -122,6 +143,18 @@ float3 SampleConeDirection(float3 dir, float coneAngle, float r1, float r2)
     float3 bitan = cross(dir, tangent);
 
     return normalize(lx * tangent + ly * bitan + lz * dir);
+}
+
+/// @brief axis に垂直な半径 radius の円板の上に一様に散らした点の、中心からのずれ
+/// @param r1, r2 [0,1) 一様乱数 2 つ
+float3 SampleDiskOffset(float3 axis, float radius, float r1, float r2)
+{
+    float r = radius * sqrt(r1);
+    float phi = r2 * TWO_PI;
+    float3 up = (abs(axis.y) < 0.99f) ? float3(0.0f, 1.0f, 0.0f) : float3(1.0f, 0.0f, 0.0f);
+    float3 tangent = normalize(cross(up, axis));
+    float3 bitan = cross(axis, tangent);
+    return (tangent * cos(phi) + bitan * sin(phi)) * r;
 }
 
 /// @brief 水中の受光点へ屈折して届く光が、平らな水面へ入る点を求める
@@ -185,8 +218,42 @@ void RTShadowRayGen()
     float4 normalSample = gNormalRoughness.Load(int3(fullCoord, 0));
     float3 N = normalize(normalSample.rgb * 2.0f - 1.0f);
 
-    // ライト方向の逆（光源へ向かう方向）
+    // 光源へ向かう方向。点光源・スポット・エリアは光源の中心（エリアは発光面の最も近い点）へ向ける
+    const bool isLocalLight = (gLightType != kLightTypeDirectional);
+    const float3 lightPosition = float3(gLightPositionX, gLightPositionY, gLightPositionZ);
+    const float3 areaRight = float3(gAreaRightX, gAreaRightY, gAreaRightZ);
+    const float3 areaUp = float3(gAreaUpX, gAreaUpY, gAreaUpZ);
     float3 rayDir = normalize(-gLightDirection);
+    if (isLocalLight)
+    {
+        float3 target = lightPosition;
+        if (gLightType == kLightTypeArea)
+        {
+            const float3 offset = worldPos - lightPosition;
+            target += areaRight * clamp(dot(offset, areaRight), -gAreaHalfWidth, gAreaHalfWidth)
+                    + areaUp * clamp(dot(offset, areaUp), -gAreaHalfHeight, gAreaHalfHeight);
+        }
+        const float3 toTarget = target - worldPos;
+        const float targetDistance = length(toTarget);
+        rayDir = toTarget / max(targetDistance, 1.0e-4f);
+
+        // DeferredLighting がこのライトで照らさない画素（届く距離の外・裏向き・スポットのコーンの外・
+        // エリアの発光面の裏）は、レイを撃たずに「光・0 本」を返す。後段は 0 本の画素を蓄積しない
+        bool lit = (targetDistance < gLightRange) && (dot(N, rayDir) > 0.0f);
+        if (gLightType == kLightTypeSpot)
+        {
+            lit = lit && (dot(-rayDir, gLightDirection) >= gSpotCosOuterCone);
+        }
+        else if (gLightType == kLightTypeArea)
+        {
+            lit = lit && (dot(worldPos - lightPosition, gLightDirection) > 0.0f);
+        }
+        if (!lit)
+        {
+            gShadowOutput[launchIndex] = float2(1.0f, 0.0f);
+            return;
+        }
+    }
 
     // ===== セルフシャドウ防止バイアス（深度復元の誤差に追従させる） =====
     // ワールド座標は深度バッファ（D24_UNORM）から復元しているため、深度 1 コード分の
@@ -258,15 +325,34 @@ void RTShadowRayGen()
         float r1 = float(fixedPoint.x) * (1.0f / 4294967296.0f);
         float r2 = float(fixedPoint.y) * (1.0f / 4294967296.0f);
 
-        float3 jitteredDir = (gLightRadius > 0.0f)
-            ? SampleConeDirection(rayDir, gLightRadius, r1, r2)
-            : rayDir;
-
         RayDesc ray;
         ray.Origin = origin;
-        ray.Direction = jitteredDir;
         ray.TMin = 0.001f;
-        ray.TMax = gMaxRayDistance;
+        if (isLocalLight)
+        {
+            // 光る球（点光源・スポット）か発光面（エリア）の上の 1 点へ向け、その点の手前で止める
+            float3 samplePoint = lightPosition;
+            if (gLightType == kLightTypeArea)
+            {
+                samplePoint += areaRight * ((r1 * 2.0f - 1.0f) * gAreaHalfWidth)
+                             + areaUp * ((r2 * 2.0f - 1.0f) * gAreaHalfHeight);
+            }
+            else if (gLightRadius > 0.0f)
+            {
+                samplePoint += SampleDiskOffset(rayDir, gLightRadius, r1, r2);
+            }
+            const float3 toSample = samplePoint - origin;
+            const float sampleDistance = length(toSample);
+            ray.Direction = toSample / max(sampleDistance, 1.0e-4f);
+            ray.TMax = max(sampleDistance - 0.01f, ray.TMin);
+        }
+        else
+        {
+            ray.Direction = (gLightRadius > 0.0f)
+                ? SampleConeDirection(rayDir, gLightRadius, r1, r2)
+                : rayDir;
+            ray.TMax = gMaxRayDistance;
+        }
 
         // 最初の当たりで止める。葉などアルファで抜ける所は通す
         shadowSum += TraceRTOcclusion(gScene, tables, ray, kRTInstanceMaskShadowCaster, pixelFootprint, 0.0f)

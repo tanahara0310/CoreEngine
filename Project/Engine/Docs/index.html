@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.70.1">
+<meta name="engine-version" content="0.71.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -9605,9 +9605,10 @@ kbd {
         }
     }
   </script>
-  <p>置けるライトの数には上限があります（平行光源 4・点光源 16・スポット 16・エリア 8）。空・雲・霧の設定は <a href="#api-SkyBox">空と大気散乱</a> にあります。</p>
+  <p>置けるライトの数には上限があります（平行光源 4・点光源 16・スポット 16・エリア 8）。点光源・スポット・エリアの影は 4 灯までです（<a href="#g3d-shadow">影と映り込み</a>）。空・雲・霧の設定は <a href="#api-SkyBox">空と大気散乱</a> にあります。</p>
   <h3 id="g3d-shadow">影と映り込み</h3>
-  <p>影は、平行光源からレイトレーシングで落とします（DXR 1.1 に対応した GPU だけ。点光源・スポット・エリアライトは影を落としません）。水面の反射と屈折も、レイトレーシングで映る物を調べます。どの物が影を落とし、水面に映るかは、<a href="#api-MeshRenderer">メッシュ描画</a> と <a href="#api-ParticleSystem">パーティクル</a>（モデルの粒）の 3 つの項目で物ごとに決めます。</p>
+  <p>影は、ライトからレイトレーシングで落とします（DXR 1.1 に対応した GPU だけ）。平行光源は 4 灯とも影を落とします。点光源・スポット・エリアライトは、画面に光が届くライトのうち、カメラに近い 4 灯までが影を落とします（数は <code>r.RTShadow.MaxLocalLights</code> で 0〜4）。影を落とさせたくないライトは、<a href="#api-Light">ライト</a> の <span class="ui">影を落とす</span> を外します。点光源とスポットは <span class="ui">光源の大きさ</span> が大きいほど、エリアライトは発光面が大きいほど、影の縁がぼけます。影を落とすライトが 1 灯増えるごとに、影のレイ・履歴との混ぜ合わせ・ノイズ取りが 1 回ずつ増えます。</p>
+  <p>水面の反射と屈折も、レイトレーシングで映る物を調べます。どの物が影を落とし、水面に映るかは、<a href="#api-MeshRenderer">メッシュ描画</a> と <a href="#api-ParticleSystem">パーティクル</a>（モデルの粒）の 3 つの項目で物ごとに決めます。</p>
   <div class="table-wrap">
   <table>
     <thead><tr><th>項目</th><th>選べる値</th><th>使い道</th></tr></thead>
@@ -11363,6 +11364,16 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-71-0">v0.71.0 <span class="dim">（2026-11-09）</span></h3>
+  <p>点光源・スポットライト・エリアライトもレイトレーシングの影を落とすようにした版です（<a href="#g3d-shadow">影と映り込み</a>）。</p>
+  <ul>
+    <li><strong>局所ライトの影</strong>：影を落とす設定の点光源・スポット・エリアのうち、画面に光が届くライトから、カメラに近い順に 4 灯まで影を落とします。数は <code>r.RTShadow.MaxLocalLights</code>（0〜4。0 で局所ライトの影を撃たない）で変えられます。前のフレームと同じライトは同じ枠に残るので、選ぶライトが入れ替わらない限り影の履歴は続きます。光が届かない画素（届く距離の外・裏向きの面・スポットのコーンの外・エリアの発光面の裏）にはレイを撃ちません。</li>
+    <li><strong>ライトの項目</strong>：<a href="#api-Light">ライト</a> に <code>castShadows</code>（影を落とす。既定はオン）と <code>sourceRadius</code>（光源の大きさ。点光源・スポットの光る球の半径 [m]。既定は 0.05）を足しました。平行光源も <code>castShadows</code> を外すと影を撃ちません。スクリプトからは <code>owner.light.castShadows</code> のように読み書きできます。</li>
+    <li><strong>影を受ける物</strong>：局所ライトの影を受けるのは、遅延ライティングで描く不透明な物です。半透明の物が受ける影は、今までどおりメインの平行光源の影だけです。</li>
+    <li><strong>レイトレーシングの窓</strong>：影の行に、局所ライトの行（<code>点光源 0：ライトの名前</code> など）も出ます。</li>
+    <li><strong>試験用のプロジェクト</strong>：エンジンの機能を 1 つずつ確かめるためのプロジェクト <span class="path">Projects/EngineTests</span> を足しました。最初のシーン <code>RTShadow_LocalLights</code> で、5 灯の局所ライトの影を確かめられます。確かめ方はプロジェクトの <span class="path">README.md</span> にあります。</li>
+  </ul>
 
   <h3 id="changelog-v0-70-1">v0.70.1 <span class="dim">（2026-11-09）</span></h3>
   <p>レイトレーシングの効果が読む資源を RenderGraph に宣言し、レイが当たった点を照らす処理を水面の外へ出した版です。ゲームの見た目と設定は変わりません（<a href="#g3d-shadow-debug">影や映り込みがおかしいとき</a>）。</p>
@@ -17119,6 +17130,8 @@ void LateUpdate()   // 追いかける相手が動いた後に動かす
       ["届く距離", "range", "float", "10", "0〜1000 m（点光源・スポット）。"],
       ["内側の角度 ／ 外側の角度", "innerConeAngleDeg ／ outerConeAngleDeg", "float", "30 ／ 45", "スポットの広がり（度）。"],
       ["発光面の幅 ／ 高さ", "areaWidth ／ areaHeight", "float", "2 ／ 2", "エリアライトの大きさ（m）。"],
+      ["影を落とす", "castShadows", "bool", "オン", "レイトレーシングの影を落とす（DXR 1.1 に対応した GPU だけ）。点光源・スポット・エリアは、画面に光が届くライトのうちカメラに近い 4 灯まで。"],
+      ["光源の大きさ", "sourceRadius", "float", "0.05", "点光源・スポットの光る球の半径（m）。大きいほど影の縁がぼける。0 でくっきり。"],
       ["大気の太陽 ／ 大気の月", "isAtmosphereSun ／ isAtmosphereMoon", "bool", "オフ", "空の太陽・月と連動させる（平行光源）。"],
       ["空の明るさ", "atmosphereIntensity", "float", "0", "空・雲の明るさ（太陽の目安 20。0 なら照度から自動）。"]
     ],

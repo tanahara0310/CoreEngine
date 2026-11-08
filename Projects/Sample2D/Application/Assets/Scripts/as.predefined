@@ -883,6 +883,10 @@ class Light {
 	void set_areaWidth(float) property;
 	float get_areaHeight() const property;
 	void set_areaHeight(float) property;
+	bool get_castShadows() const property;
+	void set_castShadows(bool) property;
+	float get_sourceRadius() const property;
+	void set_sourceRadius(float) property;
 	bool get_isAtmosphereSun() const property;
 	void set_isAtmosphereSun(bool) property;
 	bool get_isAtmosphereMoon() const property;

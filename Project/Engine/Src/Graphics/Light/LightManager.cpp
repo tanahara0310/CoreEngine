@@ -53,6 +53,8 @@ namespace CoreEngine
         light.type = type;
         light.enabled = true;
         light.color = { 1.0f, 1.0f, 1.0f };
+        light.castShadows = true;
+        light.sourceRadius = 0.05f;
 
         // 生成位置は床（y=0）より上に置く。床面上（y=0）ぴったりに生成すると
         // 床への入射がかすめ角（NdotL≈0）になり、逆二乗減衰も相まって
@@ -268,6 +270,22 @@ namespace CoreEngine
             return nullptr;
         }
         return &slots_[indices[index]].light;
+    }
+
+    void LightManager::ForEachLocalLight(
+        const std::function<void(LightType type, uint32_t gpuIndex, LightHandle handle, const Light& light)>& body) const
+    {
+        // UpdateAll が点・スポット・エリアを GPU の配列へ詰める順（生成順）に数える
+        uint32_t counts[4] = {};
+        for (size_t i = 0; i < slots_.size(); ++i) {
+            const Slot& slot = slots_[i];
+            if (!slot.alive || slot.light.type == LightType::Directional) {
+                continue;
+            }
+            const uint32_t typeIndex = static_cast<uint32_t>(slot.light.type);
+            body(slot.light.type, counts[typeIndex]++,
+                LightHandle{ static_cast<uint16_t>(i), slot.generation }, slot.light);
+        }
     }
 
     LightHandle LightManager::GetAtmosphereSunHandle() const
