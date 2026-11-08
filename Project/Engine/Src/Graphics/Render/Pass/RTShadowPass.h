@@ -47,4 +47,8 @@ namespace CoreEngine
 
         void Execute(const RenderContext& context) override;
     };
+
+    /// @brief RT 影のマスクの読み書きを RenderGraph に宣言する（メインライトのマスクと、点いている補助ライトのマスク）
+    /// @param write true なら書き込み、false なら読み取りとして宣言する
+    void DeclareRTShadowMasks(RenderGraphBuilder& builder, const RenderContext& context, bool write);
 }

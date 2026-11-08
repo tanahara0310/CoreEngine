@@ -102,6 +102,9 @@ namespace CoreEngine
     {
         builder.Read(FrameBlackboard::SceneDepth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         builder.Read(FrameBlackboard::GBufferNormalRoughness, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        // 水面の波（FFT の波面と、波を弱める海の範囲マップ）
+        builder.Read(FrameBlackboard::FFTOceanDisplacement, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        builder.Read(FrameBlackboard::WaterSeaMap, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         builder.Write(FrameBlackboard::RTWaterCaustics, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     }
 

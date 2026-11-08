@@ -215,13 +215,36 @@ namespace CoreEngine
             return ResolveShadowImage(context, variant, ShadowDebugImage::Mask, out);
         })
 
-    void RTShadowPass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
+    void DeclareRTShadowMasks(RenderGraphBuilder& builder, const RenderContext& context, bool write)
+    {
+        static_assert(RayTracingShadowManager::kMaxDirectionalLights <= FrameBlackboard::kRTShadowMaskCount,
+            "RT 影のマスクの論理名をライトの数だけ用意する");
+        for (uint32_t li = 0; li < RayTracingShadowManager::kMaxDirectionalLights; ++li) {
+            // メインライトのマスクはいつも宣言し、補助ライトのマスクは点いているライトの分だけ宣言する
+            if (li != 0) {
+                const Light* light = (context.lightManager && li < LightManager::MAX_DIRECTIONAL_LIGHTS)
+                    ? context.lightManager->GetDirectionalLight(li) : nullptr;
+                if (!light || !light->enabled) {
+                    continue;
+                }
+            }
+            // マスクはデノイズの最後にピクセルシェーダの読み取りの状態へ移る
+            const char* name = FrameBlackboard::RTShadowMaskOf(li);
+            if (write) {
+                builder.Write(name, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+            } else {
+                builder.Read(name, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+            }
+        }
+    }
+
+    void RTShadowPass::DeclareResources(RenderGraphBuilder& builder, const RenderContext& context)
     {
         // GBuffer を読み取り、ライトごとのレイトレース結果を生成する。
         builder.Read(FrameBlackboard::SceneDepth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         builder.Read(FrameBlackboard::GBufferNormalRoughness, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         builder.Read(FrameBlackboard::GBufferMotionVector, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        builder.Write(FrameBlackboard::RTShadowMask, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        DeclareRTShadowMasks(builder, context, true);
     }
 
     void RTShadowPass::Execute(const RenderContext& context)
@@ -260,13 +283,13 @@ namespace CoreEngine
             });
     }
 
-    void RTShadowTemporalPass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
+    void RTShadowTemporalPass::DeclareResources(RenderGraphBuilder& builder, const RenderContext& context)
     {
         // レイトレース結果（RTShadowMask）へ再投影と Variance Clamping を適用する。
         builder.Read(FrameBlackboard::SceneDepth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         builder.Read(FrameBlackboard::GBufferNormalRoughness, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         builder.Read(FrameBlackboard::GBufferMotionVector, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        builder.Write(FrameBlackboard::RTShadowMask, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        DeclareRTShadowMasks(builder, context, true);
     }
 
     void RTShadowTemporalPass::Execute(const RenderContext& context)
@@ -289,12 +312,12 @@ namespace CoreEngine
             });
     }
 
-    void RTShadowDenoisePass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
+    void RTShadowDenoisePass::DeclareResources(RenderGraphBuilder& builder, const RenderContext& context)
     {
         // テンポラル蓄積済みの RTShadowMask へ A-Trous デノイズを適用する。
         builder.Read(FrameBlackboard::SceneDepth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         builder.Read(FrameBlackboard::GBufferNormalRoughness, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        builder.Write(FrameBlackboard::RTShadowMask, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        DeclareRTShadowMasks(builder, context, true);
     }
 
     void RTShadowDenoisePass::Execute(const RenderContext& context)

@@ -100,7 +100,7 @@ namespace CoreEngine
         const Vector3& cameraPosition,
         const WaterSurfaceData& surfaceData,
         const FFTOceanInput& fftOceanInput,
-        const WaterHitShadingInput& hitShading,
+        const RTHitShadingInput& hitShading,
         const WaterUnderwaterLightingInput& underwaterLighting,
         UINT width,
         UINT height,
@@ -188,6 +188,6 @@ namespace CoreEngine
             height,
             D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
             {},
-            UploadHitShadingConstants(hitShading));
+            UploadRTHitShadingConstants(*dxCommon_, hitShading));
     }
 }

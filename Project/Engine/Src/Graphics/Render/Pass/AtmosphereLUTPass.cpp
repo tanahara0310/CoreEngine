@@ -4,9 +4,16 @@
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Cloud/VolumetricCloudManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/Render/RenderGraph.h"
 
 namespace CoreEngine
 {
+    void AtmosphereLUTPass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
+    {
+        // 空のスペキュラは作り直した後、ピクセルとそれ以外のシェーダが読む状態へ戻る
+        builder.Write(FrameBlackboard::SkySpecular, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    }
+
     void AtmosphereLUTPass::Execute(const RenderContext& context)
     {
         if (!context.dxCommon || !context.atmosphereManager) {

@@ -79,6 +79,11 @@ namespace CoreEngine
         builder.Read(FrameBlackboard::SceneColorSnapshot, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         // 当たった点を照らすときの雲の影（雲を使わないシーンでは登録されない）
         builder.Read(FrameBlackboard::CloudShadowMap, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        // 水面の波（FFT の波面と、波を弱める海の範囲マップ）
+        builder.Read(FrameBlackboard::FFTOceanDisplacement, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        builder.Read(FrameBlackboard::WaterSeaMap, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        // 当たった点と、空へ抜けたレイが映す空のスペキュラ
+        builder.Read(FrameBlackboard::SkySpecular, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         builder.Write(FrameBlackboard::RTWaterRefractionColor, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     }
 
@@ -139,7 +144,7 @@ namespace CoreEngine
                 frame.cameraPosition,
                 surfaceData,
                 frame.fftOceanInput,
-                WaterRayTracingPassBase::BuildHitShadingInput(context),
+                BuildRTHitShadingInput(context),
                 BuildUnderwaterLightingInput(context),
                 frame.width,
                 frame.height,

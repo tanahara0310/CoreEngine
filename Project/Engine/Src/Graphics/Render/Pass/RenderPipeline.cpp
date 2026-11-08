@@ -13,6 +13,8 @@
 #include "Camera/View/ViewInfo.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
 #include "Graphics/RayTracing/Effect/RTEffectSet.h"
+#include "Graphics/Water/FFT/FFTOceanManager.h"
+#include "Graphics/Water/RayTracing/WaterSeaMapRayTracingManager.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/RenderTarget/BackBufferRenderTarget.h"
@@ -475,12 +477,36 @@ namespace CoreEngine
             }
         }
 
-        // RTShadowMask はメインライトのマスクをここで登録する
+        // RT 影のマスクはライトごとにここで登録する
         if (RayTracingShadowManager* rtShadow = FindRTEffect<RayTracingShadowManager>(context)) {
+            for (uint32_t li = 0; li < RayTracingShadowManager::kMaxDirectionalLights; ++li) {
+                context.frameBlackboard->SetResource(
+                    FrameBlackboard::RTShadowMaskOf(li),
+                    rtShadow->GetShadowSRVHandle(RayTracingShadowManager::ViewID::GameView, li),
+                    &rtShadow->GetShadowResource(RayTracingShadowManager::ViewID::GameView, li));
+            }
+        }
+
+        // 作った側が持ち続ける資源（RenderGraph が読み書きの順と状態を知るために登録する）
+        if (FFTOceanManager* fftOcean = context.fftOceanManager; fftOcean && fftOcean->IsInitialized()) {
             context.frameBlackboard->SetResource(
-                FrameBlackboard::RTShadowMask,
-                rtShadow->GetShadowSRVHandle(RayTracingShadowManager::ViewID::GameView, 0),
-                &rtShadow->GetShadowResource(RayTracingShadowManager::ViewID::GameView, 0));
+                FrameBlackboard::FFTOceanDisplacement,
+                fftOcean->GetDisplacementSRVHandle(),
+                &fftOcean->GetDisplacementResource());
+        }
+        if (AtmosphereManager* atmosphere = context.atmosphereManager;
+            atmosphere && atmosphere->GetSkySpecularSRVHandle().ptr != 0) {
+            context.frameBlackboard->SetResource(
+                FrameBlackboard::SkySpecular,
+                atmosphere->GetSkySpecularSRVHandle(),
+                &atmosphere->GetSkySpecularResource());
+        }
+        if (WaterSeaMapRayTracingManager* seaMap = FindRTEffect<WaterSeaMapRayTracingManager>(context);
+            seaMap && seaMap->GetView().valid) {
+            context.frameBlackboard->SetResource(
+                FrameBlackboard::WaterSeaMap,
+                seaMap->GetView().srvHandle,
+                &seaMap->GetMapResource());
         }
 
         if (context.gBufferManager) {

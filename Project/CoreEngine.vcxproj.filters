@@ -796,6 +796,9 @@
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingDispatchInfo.cpp">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\RTHitShading.cpp">
+      <Filter>Engine\Src\Graphics\RayTracing</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RTScene.cpp">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClCompile>
@@ -2767,6 +2770,9 @@
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RTObjectSettings.h">
+      <Filter>Engine\Src\Graphics\RayTracing</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\RTHitShading.h">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RTScene.h">

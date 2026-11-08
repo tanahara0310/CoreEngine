@@ -308,11 +308,11 @@ namespace CoreEngine
 
         // 今フレームまでの描画は前の地図を読むので、前の地図はこのフレームが終わってから手放す
         if (mapTexture_) {
-            deferredRelease.PushForCurrentFrame(std::move(mapTexture_));
+            deferredRelease.PushForCurrentFrame(Microsoft::WRL::ComPtr<ID3D12Resource>(mapTexture_.Get()));
         }
         deferredRelease.PushForCurrentFrame(*descriptorAllocator_, mapSrv_);
 
-        mapTexture_ = std::move(texture);
+        mapTexture_ = std::move(uploaded);
         mapSrv_ = srv;
         mapKey_ = key;
         view_.srvHandle = mapSrv_.gpuHandle;
@@ -343,7 +343,8 @@ namespace CoreEngine
 
         DeferredReleaseQueue& deferredRelease = dxCommon_->DeferredRelease();
         if (mapTexture_) {
-            deferredRelease.PushForCurrentFrame(std::move(mapTexture_));
+            deferredRelease.PushForCurrentFrame(Microsoft::WRL::ComPtr<ID3D12Resource>(mapTexture_.Get()));
+            mapTexture_.Release();
         }
         deferredRelease.PushForCurrentFrame(*descriptorAllocator_, mapSrv_);
         if (readback_) {

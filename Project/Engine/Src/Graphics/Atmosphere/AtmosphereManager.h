@@ -317,6 +317,9 @@ namespace CoreEngine
         ///          α には雲の透過率が入っている（水面が平面反射との合成不透明度に使う）。
         D3D12_GPU_DESCRIPTOR_HANDLE GetSkySpecularSRVHandle() const { return skySpecularSrvHandle_.gpuHandle; }
 
+        /// @brief 空のスペキュラキューブマップの資源（作り直した後はピクセルとそれ以外のシェーダが読む状態）
+        GpuResource& GetSkySpecularResource() { return skySpecularMap_; }
+
         /// @brief 空キューブマップ（mip0・雲合成前後の作業面）の UAV ハンドルを取得
         /// @details VolumetricCloudManager が雲を前乗算合成する際のバインド先。
         D3D12_GPU_DESCRIPTOR_HANDLE GetSkyCubemapUAVHandle() const { return skyCubemapUavHandles_[0].gpuHandle; }

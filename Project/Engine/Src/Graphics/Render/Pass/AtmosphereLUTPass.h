@@ -16,6 +16,8 @@ namespace CoreEngine
         /// @brief パス名を取得
         const char* GetName() const override { return "AtmosphereLUT"; }
 
+        void DeclareResources(RenderGraphBuilder& builder, const RenderContext& context) override;
+
         /// @brief パスの実行
         /// @param context レンダリングコンテキスト
         void Execute(const RenderContext& context) override;
