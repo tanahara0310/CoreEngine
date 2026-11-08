@@ -24,6 +24,7 @@
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/RayTracing/RTInstanceMask.h"
 #include "Graphics/RayTracing/RTScene.h"
+#include "Graphics/RayTracing/Effect/RTEffectSet.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
 #include "Graphics/Render/FrameBlackboard.h"
 #include "Graphics/Render/Pass/RenderPass.h"
@@ -583,9 +584,9 @@ namespace CoreEngine
         }
         constants.shadowBias = 0.05f;
         constants.shadowDistance = 1000.0f;
-        if (context.rtShadowManager) {
-            constants.shadowBias = context.rtShadowManager->GetSettings().shadowBias;
-            constants.shadowDistance = context.rtShadowManager->GetSettings().maxRayDistance;
+        if (const RayTracingShadowManager* rtShadow = FindRTEffect<RayTracingShadowManager>(context)) {
+            constants.shadowBias = rtShadow->GetSettings().shadowBias;
+            constants.shadowDistance = rtShadow->GetSettings().maxRayDistance;
         }
         constants.reflectionDistance = 1000.0f;
         constants.coneSpread = 2.0f / ((std::max)(std::abs(view.projection.m[1][1]), 1.0e-4f) * static_cast<float>(height));

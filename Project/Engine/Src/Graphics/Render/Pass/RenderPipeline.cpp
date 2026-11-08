@@ -12,6 +12,7 @@
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Camera/View/ViewInfo.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
+#include "Graphics/RayTracing/Effect/RTEffectSet.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/RenderTarget/BackBufferRenderTarget.h"
@@ -475,11 +476,11 @@ namespace CoreEngine
         }
 
         // RTShadowMask はメインライトのマスクをここで登録する
-        if (context.rtShadowManager) {
+        if (RayTracingShadowManager* rtShadow = FindRTEffect<RayTracingShadowManager>(context)) {
             context.frameBlackboard->SetResource(
                 FrameBlackboard::RTShadowMask,
-                context.rtShadowManager->GetShadowSRVHandle(RayTracingShadowManager::ViewID::GameView, 0),
-                &context.rtShadowManager->GetShadowResource(RayTracingShadowManager::ViewID::GameView, 0));
+                rtShadow->GetShadowSRVHandle(RayTracingShadowManager::ViewID::GameView, 0),
+                &rtShadow->GetShadowResource(RayTracingShadowManager::ViewID::GameView, 0));
         }
 
         if (context.gBufferManager) {

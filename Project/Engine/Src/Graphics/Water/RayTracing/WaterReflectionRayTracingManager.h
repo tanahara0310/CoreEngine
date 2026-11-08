@@ -53,11 +53,8 @@ namespace CoreEngine
         static_assert(kSunVisibilitySlotBase + kViewCount <= RayTracingOutputViewSet::kMaxSlotCount,
             "WaterReflectionRayTracingManager: slot count exceeds RayTracingOutputViewSet::kMaxSlotCount");
 
-        bool Initialize(
-            GraphicsCore* dxCommon,
-            DescriptorAllocator* descriptorAllocator,
-            AccelerationStructureManager* asMgr,
-            ShaderProgramCache* shaderProgramCache);
+        /// @brief パイプラインを作り始める（完成は別スレッド）
+        bool Initialize(const RTEffectInitContext& init) override;
 
         void Dispatch(
             ID3D12GraphicsCommandList* cmdList,

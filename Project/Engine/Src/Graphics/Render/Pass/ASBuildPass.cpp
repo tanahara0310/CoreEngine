@@ -12,7 +12,7 @@ namespace CoreEngine
             return;
         }
 
-        // TLAS 構築と RT シャドウ状態リセットはフレーム内 1 回だけ行う
+        // TLAS 構築とレイトレの効果のフレーム開始はフレーム内 1 回だけ行う
         if (lastBuiltFrame_ == context.frameNumber) {
             return;
         }

@@ -1,12 +1,18 @@
 #include "pch.h"
 #include "RTShadowPass.h"
 
-#include "EngineSystem/Subsystem/RayTracingSubsystem.h"
 #include <format>
+#include <functional>
 
+#include "Camera/View/ViewInfo.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RayTracing/Debug/RTDebugRegistry.h"
+#include "Graphics/RayTracing/Effect/RTEffectRegistry.h"
+#include "Graphics/RayTracing/Effect/RTEffectSet.h"
+#include "Graphics/RayTracing/RTScene.h"
+#include "Graphics/Render/FrameBlackboard.h"
+#include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
 #include "Graphics/Render/Pass/RTWaterCausticsPass.h"
@@ -16,19 +22,72 @@
 
 namespace CoreEngine
 {
+    RT_EFFECT_REGISTER(RayTracingShadowManager,
+        .id = "RTShadow",
+        .group = nullptr,
+        .passes = {
+            RTEffectPassDesc::Of<RTShadowPass>(RenderPassPhase::PreLighting, 10),
+            RTEffectPassDesc::Of<RTShadowTemporalPass>(RenderPassPhase::PreLighting, 11),
+            RTEffectPassDesc::Of<RTShadowDenoisePass>(RenderPassPhase::PreLighting, 12),
+        })
+
     namespace {
         constexpr RayTracingShadowManager::ViewID kShadowView = RayTracingShadowManager::ViewID::GameView;
 
-        /// @brief RT シャドウ各ステージ共通の実行前提を検証してコマンドリストを返す
-        ID3D12GraphicsCommandList* ResolveRTShadowCommandList(const RenderContext& context)
+        /// @brief 影の 3 段で共通の入力一式
+        struct ShadowStageInput {
+            RayTracingShadowManager* rtShadow = nullptr;
+            ID3D12GraphicsCommandList* cmdList = nullptr;
+            D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV{};
+            D3D12_GPU_DESCRIPTOR_HANDLE normalSRV{};
+            D3D12_GPU_DESCRIPTOR_HANDLE motionVectorSRV{};
+            Matrix4x4 projection{};   ///< 深度線形化用（Temporal / Denoise）
+            Matrix4x4 invViewProj{};  ///< ワールド座標復元用（RayGen のみ）
+            UINT width = 0;
+            UINT height = 0;
+        };
+
+        /// @brief 影の各段の共通の前処理
+        /// @return 前提が揃ったか。false のときは撃ってはいけない。
+        bool BuildShadowStageInput(const RenderContext& context, ShadowStageInput& out)
         {
-            if (!context.rayTracingSubsystem || !context.dxCommon || !context.rtShadowManager) {
-                return nullptr;
+            RayTracingShadowManager* rtShadow = FindRTEffect<RayTracingShadowManager>(context);
+            if (!rtShadow || !rtShadow->IsInitialized()) return false;
+            if (!context.gBufferManager || !context.lightManager || !context.sceneManager) return false;
+            if (!context.dxCommon || !context.cmdList) return false;
+
+            // 実行中のビューの ViewInfo を使う
+            if (!context.frameViews) return false;
+            const ViewInfo& view = context.frameViews->Get(context.viewSettings.viewType);
+            if (!view.isValid) return false;
+
+            out.rtShadow = rtShadow;
+            out.cmdList = context.cmdList;
+
+            // ワールド座標は深度から復元する（FrameBlackboard 経由）
+            if (context.frameBlackboard) {
+                context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneDepth, out.sceneDepthSRV);
             }
-            if (!context.rtShadowManager->IsInitialized()) {
-                return nullptr;
+            out.projection = view.projection;
+            out.invViewProj = view.invViewProjection;
+            out.normalSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness);
+            out.motionVectorSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::MotionVector);
+            out.width = static_cast<UINT>(context.dxCommon->GetClientWidth());
+            out.height = static_cast<UINT>(context.dxCommon->GetClientHeight());
+            return true;
+        }
+
+        /// @brief 影を落とす有効なディレクショナルライトを列挙する
+        void ForEachShadowCastingLight(
+            const RenderContext& context,
+            const std::function<void(uint32_t lightIndex, const Light& light)>& body)
+        {
+            const uint32_t maxLights = RayTracingShadowManager::kMaxDirectionalLights;
+            for (uint32_t li = 0; li < LightManager::MAX_DIRECTIONAL_LIGHTS && li < maxLights; ++li) {
+                const Light* dirLight = context.lightManager->GetDirectionalLight(li);
+                if (!dirLight || !dirLight->enabled) continue;
+                body(li, *dirLight);
             }
-            return context.cmdList;
         }
 
         /// @brief 水中の受光点を屈折した経路で調べるための水面を作る
@@ -37,16 +96,15 @@ namespace CoreEngine
         RayTracingShadowWaterSurface BuildShadowWaterSurface(const RenderContext& context)
         {
             RayTracingShadowWaterSurface water{};
-            if (!IsRayTracedWaterCausticsSelected(context)
-                || !context.rtWaterCausticsManager
-                || !context.rtWaterCausticsManager->IsInitialized()) {
+            const WaterCausticsRayTracingManager* caustics = FindRTEffect<WaterCausticsRayTracingManager>(context);
+            if (!IsRayTracedWaterCausticsSelected(context) || !caustics || !caustics->IsInitialized()) {
                 return water;
             }
 
             const WaterSurfaceData& surface = *context.waterSurfaceState;
             water.enabled = true;
             water.height = surface.waterHeight;
-            water.refractiveIndex = context.rtWaterCausticsManager->GetSettings().refractiveIndex;
+            water.refractiveIndex = caustics->GetSettings().refractiveIndex;
             water.regionCenterXZ[0] = surface.regionCenterXZ[0];
             water.regionCenterXZ[1] = surface.regionCenterXZ[1];
             water.regionHalfExtentXZ[0] = surface.regionHalfExtentXZ[0];
@@ -62,7 +120,8 @@ namespace CoreEngine
         .passNames = { "RTShadowTrace", "RTShadowTemporal", "RTShadowDenoise" },
         .stageLabels = { "トレース", "時間の蓄積", "デノイズと仕上げ" },
         .collect = [](const RTDebugQuery& query, std::vector<RTDebugEffectRow>& rows) {
-            RayTracingShadowManager* shadow = query.domain ? query.domain->GetRayTracingShadowManager() : nullptr;
+            RayTracingShadowManager* shadow = query.domain
+                ? query.domain->GetRTEffects().Find<RayTracingShadowManager>() : nullptr;
             if (!shadow || !shadow->IsInitialized()) {
                 return;
             }
@@ -85,7 +144,7 @@ namespace CoreEngine
         /// @brief 今フレームに撃ったライトの影の中間結果を引く
         bool ResolveShadowImage(const RenderContext& context, uint32_t light, ShadowDebugImage image, RTDebugSource& out)
         {
-            RayTracingShadowManager* shadow = context.rtShadowManager;
+            RayTracingShadowManager* shadow = FindRTEffect<RayTracingShadowManager>(context);
             if (!shadow || !shadow->IsInitialized() || light >= RayTracingShadowManager::kMaxDirectionalLights
                 || !shadow->IsDispatchedThisFrame(kShadowView, light)) {
                 return false;
@@ -171,13 +230,34 @@ namespace CoreEngine
         if (!kShadowEffect.IsActive()) {
             return;
         }
-        ID3D12GraphicsCommandList* cmdList = ResolveRTShadowCommandList(context);
-        if (!cmdList) {
+        ShadowStageInput stage;
+        if (!BuildShadowStageInput(context, stage)) {
             return;
         }
 
-        context.rayTracingSubsystem->DispatchRTShadowTrace(
-            context, context.dxCommon, cmdList, kShadowView, BuildShadowWaterSurface(context));
+        // 葉などアルファで抜ける所は、材質の表でアルファを調べて影を通す
+        const RTHitTableIndices hitTables =
+            context.rtScene ? context.rtScene->GetHitTableIndices() : RTHitTableIndices{};
+
+        // 全ライト分 DispatchRays を先に実行（GPU パイプラインを詰めるため）
+        // 水中の直接光を RT コースティクスが置き換えるのはメインライト（0 番）だけなので、
+        // 水面を渡すのも 0 番だけ
+        const RayTracingShadowWaterSurface waterSurface = BuildShadowWaterSurface(context);
+        ForEachShadowCastingLight(context, [&](uint32_t li, const Light& light) {
+            stage.rtShadow->Dispatch(
+                stage.cmdList,
+                stage.sceneDepthSRV,
+                stage.normalSRV,
+                light.direction,
+                stage.invViewProj,
+                stage.width,
+                stage.height,
+                kShadowView,
+                li,
+                &light,
+                (li == 0) ? waterSurface : RayTracingShadowWaterSurface{},
+                hitTables);
+            });
     }
 
     void RTShadowTemporalPass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
@@ -191,13 +271,22 @@ namespace CoreEngine
 
     void RTShadowTemporalPass::Execute(const RenderContext& context)
     {
-        ID3D12GraphicsCommandList* cmdList = ResolveRTShadowCommandList(context);
-        if (!cmdList) {
+        ShadowStageInput stage;
+        if (!BuildShadowStageInput(context, stage)) {
             return;
         }
 
-        context.rayTracingSubsystem->DispatchRTShadowTemporal(
-            context, context.dxCommon, cmdList, kShadowView);
+        // 全ライト分 テンポラル蓄積パス（空間前処理+再投影+Variance Clamping）
+        ForEachShadowCastingLight(context, [&](uint32_t li, const Light&) {
+            stage.rtShadow->ApplyTemporal(
+                stage.cmdList,
+                stage.normalSRV,
+                stage.sceneDepthSRV,
+                stage.motionVectorSRV,
+                stage.projection,
+                kShadowView,
+                li);
+            });
     }
 
     void RTShadowDenoisePass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
@@ -210,13 +299,21 @@ namespace CoreEngine
 
     void RTShadowDenoisePass::Execute(const RenderContext& context)
     {
-        ID3D12GraphicsCommandList* cmdList = ResolveRTShadowCommandList(context);
-        if (!cmdList) {
+        ShadowStageInput stage;
+        if (!BuildShadowStageInput(context, stage)) {
             return;
         }
 
-        context.rayTracingSubsystem->DispatchRTShadowDenoise(
-            context, context.dxCommon, cmdList, kShadowView);
+        // 全ライト分 A-Trous デノイズをまとめて実行
+        ForEachShadowCastingLight(context, [&](uint32_t li, const Light&) {
+            stage.rtShadow->Denoise(
+                stage.cmdList,
+                stage.normalSRV,
+                stage.sceneDepthSRV,
+                stage.projection,
+                kShadowView,
+                li);
+            });
 
         // RTShadowMask の Blackboard 登録は RegisterFrameResources が行うため、
         // 実行中の再登録は不要（パス分離契約 3）。

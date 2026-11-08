@@ -1,19 +1,32 @@
 #include "pch.h"
 #include "RTWaterCausticsPass.h"
 
-#include "EngineSystem/Subsystem/RayTracingSubsystem.h"
+#include "Graphics/Light/LightManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RayTracing/Debug/RTDebugRegistry.h"
+#include "Graphics/RayTracing/Effect/RTEffectRegistry.h"
+#include "Graphics/RayTracing/Effect/RTEffectSet.h"
+#include "Graphics/RayTracing/RTScene.h"
+#include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Graphics/Render/RenderingTechnique/Lighting/WaterCausticsTechnique.h"
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueManager.h"
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueNames.h"
+#include "Math/MathCore.h"
 #include "Utility/Logger/Logger.h"
 #include "Graphics/Render/RenderGraph.h"
 
 namespace CoreEngine
 {
+    RT_EFFECT_REGISTER(WaterCausticsRayTracingManager,
+        .id = "RTWaterCaustics",
+        .group = kWaterRTEffectGroup,
+        .passes = {
+            // 実行順の都合で PreLighting だが、コストの分類は水面
+            RTEffectPassDesc::Of<RTWaterCausticsPass>(RenderPassPhase::PreLighting, 20, GpuTimingCategory::Water),
+        })
+
     bool IsRayTracedWaterCausticsSelected(const RenderContext& context)
     {
         // 水面が存在しない・非表示のフレーム（regionValid=0 = 有効な水域なし）
@@ -42,7 +55,7 @@ namespace CoreEngine
         .passNames = { "RTWaterCausticsPass" },
         .stageLabels = { "トレース" },
         .collect = [](const RTDebugQuery& query, std::vector<RTDebugEffectRow>& rows) {
-            if (auto* manager = query.domain ? query.domain->GetWaterCausticsRayTracingManager() : nullptr) {
+            if (auto* manager = query.domain ? query.domain->GetRTEffects().Find<WaterCausticsRayTracingManager>() : nullptr) {
                 rows.push_back({ "ゲームの画面", manager->GetDispatchInfo() });
             }
         });
@@ -60,6 +73,31 @@ namespace CoreEngine
             return ResolveFrameBlackboardImage(context, FrameBlackboard::RTWaterCaustics, out);
         })
 
+    namespace {
+        /// @brief シーンのメインライト（0 番）の方向・色・強度・有効フラグを集める
+        WaterCausticsRayTracingManager::LightInput BuildCausticsLightInput(const RenderContext& context)
+        {
+            WaterCausticsRayTracingManager::LightInput lightInput{};
+            lightInput.enabled = false;
+            if (!context.lightManager) {
+                return lightInput;
+            }
+            const Light* mainLight = context.lightManager->GetDirectionalLight(0);
+            if (!mainLight || !mainLight->enabled) {
+                return lightInput;
+            }
+            lightInput.direction = CoreEngine::Normalize(mainLight->direction);
+            // 大気透過率適用済みの実効色（DeferredLighting・SS版コースティクスと同一基準）。
+            // 生の color を渡すと日没時に置換前後で輝度が食い違い水面線が不連続になる
+            const Vector3 effectiveColor = context.lightManager->GetEffectiveLightColorRGB(*mainLight);
+            lightInput.color = { effectiveColor.x, effectiveColor.y, effectiveColor.z };
+            // オーサリングは照度 [lx]。シェーダーが期待する従来単位へ換算する
+            lightInput.intensity = LightUnits::LuxToShader(mainLight->intensity);
+            lightInput.enabled = true;
+            return lightInput;
+        }
+    }
+
     void RTWaterCausticsPass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
     {
         builder.Read(FrameBlackboard::SceneDepth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -73,17 +111,16 @@ namespace CoreEngine
         if (!kCausticsEffect.IsActive()) {
             return;
         }
-        // マネージャは水面のあるシーンで作られる（水面の無いシーンでは何もしない）
-        if (!context.rtWaterCausticsManager) {
+        // 効果は水面のあるシーンで作られる（水面の無いシーンでは何もしない）
+        WaterCausticsRayTracingManager* caustics = FindRTEffect<WaterCausticsRayTracingManager>(context);
+        if (!caustics) {
             return;
         }
-        if (!context.rayTracingSubsystem || !context.dxCommon) {
+        if (!context.dxCommon) {
             Logger::GetInstance().Warnf(
                 LogCategory::Graphics,
                 LogSubCategory::Pipeline,
-                "RTWaterCausticsPass: skipped. rayTracingSubsystem={} dxCommon={}",
-                context.rayTracingSubsystem != nullptr,
-                context.dxCommon != nullptr);
+                "RTWaterCausticsPass: skipped. dxCommon is null.");
             return;
         }
 
@@ -94,7 +131,7 @@ namespace CoreEngine
             return;
         }
 
-        if (!context.rtWaterCausticsManager->IsInitialized()) {
+        if (!caustics->IsInitialized()) {
             Logger::GetInstance().Warnf(
                 LogCategory::Graphics,
                 LogSubCategory::Pipeline,
@@ -102,8 +139,7 @@ namespace CoreEngine
             return;
         }
 
-        ID3D12GraphicsCommandList* cmdList = context.cmdList;
-        if (!cmdList) {
+        if (!context.cmdList) {
             Logger::GetInstance().Warnf(
                 LogCategory::Graphics,
                 LogSubCategory::Command,
@@ -115,26 +151,36 @@ namespace CoreEngine
         const WaterCausticsRayTracingManager::ViewID viewId =
             WaterCausticsRayTracingManager::ViewID::GameView;
 
-        const WaterSurfaceData& dispatchSurfaceData = *context.waterSurfaceState;
+        const WaterSurfaceData& surfaceData = *context.waterSurfaceState;
 
-        context.rayTracingSubsystem->DispatchWaterCaustics(
-            context,
-            context.dxCommon,
-            cmdList,
-            viewId,
-            dispatchSurfaceData);
+        // コースティクスは屈折・反射と違い SceneColor へ再投影しないので必須ではない
+        WaterRayTracingPassBase::FrameInput frame;
+        if (WaterRayTracingPassBase::BuildFrameInput(context, surfaceData, "water caustics", false, frame)) {
+            caustics->Dispatch(
+                context.cmdList,
+                frame.sceneDepthSRV,
+                context.gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness),
+                BuildCausticsLightInput(context),
+                surfaceData,
+                frame.fftOceanInput,
+                MathCore::Matrix::Inverse(frame.viewProjection),
+                frame.width,
+                frame.height,
+                viewId,
+                context.rtScene ? context.rtScene->GetHitTableIndices() : RTHitTableIndices{});
+        }
 
-        // 診断ログは UI の「RTログを有効にする」でのみ出す（以前は毎フレーム無条件だった）
-        if (context.rtWaterCausticsManager->GetSettings().debugLogEnabled != 0) {
-            const auto& diagnostics = context.rtWaterCausticsManager->GetDispatchInfo();
+        // 診断ログは UI の「RTログを有効にする」でのみ出す
+        if (caustics->GetSettings().debugLogEnabled != 0) {
+            const auto& diagnostics = caustics->GetDispatchInfo();
             Logger::GetInstance().Infof(
                 LogCategory::Graphics,
                 LogSubCategory::Pipeline,
                 "RTWaterCausticsPass: status={} viewIndex={} waterHeight={:.3f} activeWaveCount={} size={}x{} blasCount={} outputSRV=0x{:X}",
                 ToString(diagnostics.status),
                 diagnostics.viewIndex,
-                context.rtWaterCausticsManager->GetLastWaterHeight(),
-                context.rtWaterCausticsManager->GetLastActiveWaveCount(),
+                caustics->GetLastWaterHeight(),
+                caustics->GetLastActiveWaveCount(),
                 diagnostics.width,
                 diagnostics.height,
                 diagnostics.blasCount,
@@ -142,11 +188,11 @@ namespace CoreEngine
         }
 
         if (context.frameBlackboard) {
-            D3D12_GPU_DESCRIPTOR_HANDLE handle = context.rtWaterCausticsManager->GetCausticsSRVHandle(viewId);
+            D3D12_GPU_DESCRIPTOR_HANDLE handle = caustics->GetCausticsSRVHandle(viewId);
             context.frameBlackboard->SetResource(
                 FrameBlackboard::RTWaterCaustics,
                 handle,
-                &context.rtWaterCausticsManager->GetCausticsResource(viewId));
+                &caustics->GetCausticsResource(viewId));
         }
     }
 }

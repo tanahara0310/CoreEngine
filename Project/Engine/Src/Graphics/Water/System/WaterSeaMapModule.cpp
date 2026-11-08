@@ -21,7 +21,7 @@ namespace CoreEngine
         WaterSurfaceData& snapshot) const
     {
         snapshot.seaMap = {};
-        const WaterSeaMapRayTracingManager* const seaMapManager = domain.GetWaterSeaMapRayTracingManager();
+        const WaterSeaMapRayTracingManager* const seaMapManager = domain.GetRTEffects().Find<WaterSeaMapRayTracingManager>();
         if (!seaMapManager || snapshot.regionValid == 0 || !settings.seaMapEnabled) {
             return;
         }
@@ -48,7 +48,7 @@ namespace CoreEngine
         if (snapshot.seaMap.resolution[0] == 0) {
             return;
         }
-        if (const WaterSeaMapRayTracingManager* const seaMapManager = domain.GetWaterSeaMapRayTracingManager()) {
+        if (const WaterSeaMapRayTracingManager* const seaMapManager = domain.GetRTEffects().Find<WaterSeaMapRayTracingManager>()) {
             binding.resources.seaMapSRV = seaMapManager->GetView().srvHandle;
             binding.seaMap = snapshot.seaMap;
         }

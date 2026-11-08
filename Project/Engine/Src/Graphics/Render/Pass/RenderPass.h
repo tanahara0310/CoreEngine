@@ -34,12 +34,7 @@ namespace CoreEngine
     class RTScene;
     class RTDebugSystem;
     class VertexAnimationDeformer;
-    class RayTracingShadowManager;
-    class WaterCausticsRayTracingManager;
-    class WaterSeabedRayTracingManager;
-    class WaterSeaMapRayTracingManager;
-    class WaterRefractionRayTracingManager;
-    class WaterReflectionRayTracingManager;
+    class RTEffectSet;
     class FFTOceanManager;
     class WaterShoreFoam;
     class WaterShoreMeshDisplacement;
@@ -73,12 +68,7 @@ namespace CoreEngine
         RTScene* rtScene = nullptr; ///< レイトレーシングのシーン（TLAS に載せた物と材質の表）
         RTDebugSystem* rtDebug = nullptr; ///< レイトレーシングのデバッグ表示（エディタ版だけ。ほかは nullptr）
         VertexAnimationDeformer* vertexAnimationDeformer = nullptr; ///< 揺れる植物の形を BLAS 用に作る CS
-        RayTracingShadowManager* rtShadowManager = nullptr; ///< DXR レイトレーシングシャドウ
-        WaterCausticsRayTracingManager* rtWaterCausticsManager = nullptr; ///< DXR 水面コースティクス
-        WaterRefractionRayTracingManager* rtWaterRefractionManager = nullptr; ///< DXR 水面屈折
-        WaterReflectionRayTracingManager* rtWaterReflectionManager = nullptr; ///< DXR 水面反射（鏡像カメラ置き換え）
-        WaterSeabedRayTracingManager* rtWaterSeabedManager = nullptr; ///< DXR 海底の高さ（カメラの周りの範囲）
-        WaterSeaMapRayTracingManager* rtWaterSeaMapManager = nullptr; ///< DXR 海の範囲マップ（水面の範囲全体の水深と陸）
+        RTEffectSet* rtEffects = nullptr; ///< レイトレーシングの効果（影・水面など。FindRTEffect で型で引く）
         FFTOceanManager* fftOceanManager = nullptr; ///< FFT Ocean 波面生成マネージャー
         WaterWhitecapFoam* waterWhitecapFoam = nullptr; ///< 沖の白波の泡（FFT の参照格子の上の蓄積）
         WaterShoreFoam* waterShoreFoam = nullptr; ///< 岸の泡（カメラの周りの範囲）

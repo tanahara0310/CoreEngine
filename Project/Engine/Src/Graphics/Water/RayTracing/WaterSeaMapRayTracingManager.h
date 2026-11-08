@@ -41,11 +41,8 @@ namespace CoreEngine
         WaterSeaMapRayTracingManager(const WaterSeaMapRayTracingManager&) = delete;
         WaterSeaMapRayTracingManager& operator=(const WaterSeaMapRayTracingManager&) = delete;
 
-        bool Initialize(
-            GraphicsCore* dxCommon,
-            DescriptorAllocator* descriptorAllocator,
-            AccelerationStructureManager* asMgr,
-            ShaderProgramCache* shaderProgramCache);
+        /// @brief パイプラインを作り始める（完成は別スレッド）
+        bool Initialize(const RTEffectInitContext& init) override;
 
         /// @brief 測り直しの判断・測定・読み戻し・できた地図の転送を進める（フレームに 1 回）
         /// @param cmdList 今フレームの記録先

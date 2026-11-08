@@ -7,8 +7,16 @@
 
 #include <dxcapi.h>
 
+#include "Camera/View/ViewInfo.h"
+#include "Graphics/Atmosphere/AtmosphereManager.h"
+#include "Graphics/Cloud/VolumetricCloudManager.h"
+#include "Graphics/Light/LightManager.h"
+#include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
+#include "Graphics/RayTracing/RTScene.h"
+#include "Graphics/Render/FrameBlackboard.h"
+#include "Graphics/Render/Pass/RenderPass.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/RayTracing/RayTracingPipelineBuilder.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
@@ -72,16 +80,11 @@ namespace CoreEngine
 
     // 構成データ 1 つから DXR パイプライン・シェーダーテーブル・出力ビューを丸ごと組む。
     // 屈折・反射・コースティクスの 3 マネージャはこの関数への引数だけが違う
-    bool WaterRayTracingPassBase::InitializeFromDesc(
-        GraphicsCore* dxCommon,
-        DescriptorAllocator* descriptorAllocator,
-        AccelerationStructureManager* asMgr,
-        ShaderProgramCache* shaderProgramCache,
-        const RTWaterPipelineDesc& desc)
+    bool WaterRayTracingPassBase::InitializeFromDesc(const RTEffectInitContext& init, const RTWaterPipelineDesc& desc)
     {
         Logger& log = Logger::GetInstance();
 
-        if (!InitializeBase(dxCommon, descriptorAllocator, asMgr, shaderProgramCache,
+        if (!InitializeBase(init.dxCommon, init.descriptorAllocator, init.asMgr, init.shaderProgramCache,
             desc.ownerName, desc.outputDebugName)) {
             log.Warnf(
                 LogCategory::Graphics,
@@ -362,5 +365,135 @@ namespace CoreEngine
             "濡れ跡の表の標本数を C++ と HLSL でそろえる");
         std::memcpy(constants.wetSurfaceTable, input.wetSurface.wetness, sizeof(constants.wetSurfaceTable));
         return dxCommon_->GetUploadRing().AllocateConstants(constants);
+    }
+
+    bool WaterRayTracingPassBase::BuildFrameInput(
+        const RenderContext& context,
+        const WaterSurfaceData& surfaceData,
+        const char* debugLabel,
+        bool requireSceneColor,
+        FrameInput& out)
+    {
+        if (!context.gBufferManager || !context.sceneManager || !context.dxCommon || !context.cmdList) {
+            Logger::GetInstance().Warnf(
+                LogCategory::Graphics,
+                LogSubCategory::Pipeline,
+                "WaterRayTracingPassBase: {} dispatch skipped. gBuffer={} sceneManager={} dx={} cmdList={}",
+                debugLabel,
+                context.gBufferManager != nullptr,
+                context.sceneManager != nullptr,
+                context.dxCommon != nullptr,
+                context.cmdList != nullptr);
+            return false;
+        }
+
+        if (!context.frameViews || !context.frameViews->Get(context.viewSettings.viewType).isValid) {
+            Logger::GetInstance().Warnf(
+                LogCategory::Graphics,
+                LogSubCategory::Pipeline,
+                "WaterRayTracingPassBase: {} dispatch skipped. view is invalid.",
+                debugLabel);
+            return false;
+        }
+        const ViewInfo& view = context.frameViews->Get(context.viewSettings.viewType);
+
+        if (context.frameBlackboard) {
+            context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneDepth, out.sceneDepthSRV);
+
+            // カラーソースは水面合成前の SceneColor スナップショット
+            // （空・雲・ゴッドレイ・島すべてを含み、水面のみ未合成）。
+            if (!context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneColorSnapshot, out.sceneColorSRV)) {
+                context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneColor, out.sceneColorSRV);
+            }
+        }
+
+        if (requireSceneColor && out.sceneColorSRV.ptr == 0) {
+            Logger::GetInstance().Warnf(
+                LogCategory::Graphics,
+                LogSubCategory::RenderTarget,
+                "WaterRayTracingPassBase: {} dispatch skipped. SceneColorSnapshot/SceneColor SRV is invalid.",
+                debugLabel);
+            return false;
+        }
+
+        out.viewProjection = view.viewProjection;
+        out.cameraPosition = view.position;
+        out.width = static_cast<UINT>(context.dxCommon->GetClientWidth());
+        out.height = static_cast<UINT>(context.dxCommon->GetClientHeight());
+
+        // FFT の海で描いているときだけ波面テクスチャを接続する（それ以外は enabled = 0）
+        out.fftOceanInput = surfaceData.fftOcean;
+        return true;
+    }
+
+    WaterHitShadingInput WaterRayTracingPassBase::BuildHitShadingInput(const RenderContext& context)
+    {
+        WaterHitShadingInput input{};
+        const DescriptorAllocator* descriptors = context.dxCommon ? context.dxCommon->GetDescriptorAllocator() : nullptr;
+        const RTScene* rtScene = context.rtScene;
+        if (!descriptors || !rtScene || !rtScene->HasHitShadingTables()) {
+            return input;
+        }
+        input.instanceTableIndex = rtScene->GetHitInstanceTableIndex();
+        input.subMeshTableIndex = rtScene->GetHitSubMeshTableIndex();
+        input.enabled = (input.instanceTableIndex != UINT32_MAX && input.subMeshTableIndex != UINT32_MAX);
+
+        // DeferredLighting と同じライトの配列（0 番がメインライト）
+        if (context.lightManager) {
+            input.directionalLightsIndex =
+                descriptors->GetSRVHeapIndex(context.lightManager->GetDirectionalLightsSRVHandle());
+            if (input.directionalLightsIndex != UINT32_MAX) {
+                input.directionalLightCount = (std::min)(
+                    context.lightManager->GetLightCount(LightType::Directional),
+                    LightManager::GetMaxLightCount(LightType::Directional));
+            }
+        }
+
+        // 空の光（DeferredLighting と同じ有効条件）
+        if (auto* atmosphere = context.atmosphereManager) {
+            const bool skyAmbientUsable = atmosphere->IsAtmosphereActive()
+                && atmosphere->IsSkyAmbientEnabled()
+                && atmosphere->IsSkyAmbientReady()
+                && atmosphere->GetSkyIrradianceSHSRVHandle().ptr != 0;
+            if (skyAmbientUsable) {
+                input.skyIrradianceSHIndex = descriptors->GetSRVHeapIndex(atmosphere->GetSkyIrradianceSHSRVHandle());
+                input.skyAmbientEnabled = (input.skyIrradianceSHIndex != UINT32_MAX);
+                input.skyAmbientScale = atmosphere->GetSkyAmbientScale();
+
+                const bool skySpecularUsable = atmosphere->IsSkySpecularEnabled()
+                    && atmosphere->IsSkyEnvironmentReady()
+                    && atmosphere->GetSkySpecularSRVHandle().ptr != 0;
+                if (skySpecularUsable) {
+                    input.skySpecularMapIndex = descriptors->GetSRVHeapIndex(atmosphere->GetSkySpecularSRVHandle());
+                    input.skySpecularEnabled = (input.skySpecularMapIndex != UINT32_MAX);
+                }
+            }
+        }
+
+        // 雲の影（DeferredLighting と同じマップと範囲）
+        if (auto* clouds = context.volumetricCloudManager; clouds && clouds->AreCloudsActive() && context.frameBlackboard) {
+            D3D12_GPU_DESCRIPTOR_HANDLE cloudShadowMap{};
+            if (context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::CloudShadowMap, cloudShadowMap)) {
+                const CloudShadowShaderConstants& cloudShadow = clouds->GetCloudShadowConstants();
+                input.cloudShadowMapIndex = descriptors->GetSRVHeapIndex(cloudShadowMap);
+                input.cloudShadowStrength = cloudShadow.sceneStrength;
+                input.cloudShadowRegionCenterXZ[0] = cloudShadow.regionCenterX;
+                input.cloudShadowRegionCenterXZ[1] = cloudShadow.regionCenterZ;
+                input.cloudShadowRegionSize = cloudShadow.regionSizeM;
+                input.cloudShadowAnchorY = cloudShadow.anchorWorldY;
+                input.cloudShadowEdgeFadeStart = cloudShadow.edgeFadeStart;
+            }
+        }
+
+        // 濡れ跡（DeferredLighting と同じ表と範囲）
+        if (const WaterSurfaceData* surface = context.waterSurfaceState;
+            surface && surface->regionValid != 0 && surface->wetness.enabled != 0) {
+            input.wetSurface = surface->wetness;
+            input.wetSurfaceRegionCenterXZ[0] = surface->regionCenterXZ[0];
+            input.wetSurfaceRegionCenterXZ[1] = surface->regionCenterXZ[1];
+            input.wetSurfaceRegionHalfExtentXZ[0] = surface->regionHalfExtentXZ[0];
+            input.wetSurfaceRegionHalfExtentXZ[1] = surface->regionHalfExtentXZ[1];
+        }
+        return input;
     }
 }

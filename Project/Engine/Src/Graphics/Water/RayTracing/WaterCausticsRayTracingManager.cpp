@@ -62,11 +62,7 @@ namespace CoreEngine
         "WaterCausticsConstants size mismatch with HLSL cbuffer");
     // 個別フィールドの境界チェックはフィールド表（下）が全フィールド分やるので不要
 
-    bool WaterCausticsRayTracingManager::Initialize(
-        GraphicsCore* dxCommon,
-        DescriptorAllocator* descriptorAllocator,
-        AccelerationStructureManager* asMgr,
-        ShaderProgramCache* shaderProgramCache)
+    bool WaterCausticsRayTracingManager::Initialize(const RTEffectInitContext& init)
     {
         // パイプラインの差分（シェーダー・エントリ名・SRV 名・定数サイズ）だけを記述する。
         // ルートシグネチャ構築〜シェーダーテーブルまでの手順は 3 マネージャ共通で
@@ -84,7 +80,7 @@ namespace CoreEngine
         desc.constantsBytes = sizeof(WaterCausticsConstants);
         // 水面の共通関数（RTWaterSurfaceCommon.hlsli）が海の範囲マップをヒープから引く
         desc.directlyIndexedHeap = true;
-        return InitializeFromDesc(dxCommon, descriptorAllocator, asMgr, shaderProgramCache, desc);
+        return InitializeFromDesc(init, desc);
     }
 
 

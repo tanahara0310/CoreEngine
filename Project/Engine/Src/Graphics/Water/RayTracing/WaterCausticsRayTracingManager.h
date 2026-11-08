@@ -57,11 +57,8 @@ namespace CoreEngine
         static_assert(kViewCount <= RayTracingOutputViewSet::kMaxSlotCount,
             "WaterCausticsRayTracingManager: ViewID::Count exceeds RayTracingOutputViewSet::kMaxSlotCount");
 
-        bool Initialize(
-            GraphicsCore* dxCommon,
-            DescriptorAllocator* descriptorAllocator,
-            AccelerationStructureManager* asMgr,
-            ShaderProgramCache* shaderProgramCache);
+        /// @brief パイプラインを作り始める（完成は別スレッド）
+        bool Initialize(const RTEffectInitContext& init) override;
 
         /// @param sceneDepthSRV WorldPosition ターゲット廃止に伴い深度から復元する
         /// @param invViewProj 深度復元用 View*Projection の逆行列

@@ -36,11 +36,8 @@ namespace CoreEngine
         /// @brief 海底を探す水面からの深さの上限 [m]
         static constexpr float kMaxDepth = 50.0f;
 
-        bool Initialize(
-            GraphicsCore* dxCommon,
-            DescriptorAllocator* descriptorAllocator,
-            AccelerationStructureManager* asMgr,
-            ShaderProgramCache* shaderProgramCache);
+        /// @brief パイプラインを作り始める（完成は別スレッド）
+        bool Initialize(const RTEffectInitContext& init) override;
 
         /// @brief 範囲をカメラの真下を中心に置き直す（範囲の角は kWindowSnapMeters の格子に揃える）
         /// @return 置き直した範囲（初期化されていなければ valid = false）

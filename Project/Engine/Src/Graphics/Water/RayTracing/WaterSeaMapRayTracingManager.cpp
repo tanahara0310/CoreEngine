@@ -50,11 +50,7 @@ namespace CoreEngine
         buildTask_ = {};
     }
 
-    bool WaterSeaMapRayTracingManager::Initialize(
-        GraphicsCore* dxCommon,
-        DescriptorAllocator* descriptorAllocator,
-        AccelerationStructureManager* asMgr,
-        ShaderProgramCache* shaderProgramCache)
+    bool WaterSeaMapRayTracingManager::Initialize(const RTEffectInitContext& init)
     {
         RTWaterPipelineDesc desc{};
         desc.ownerName = "WaterSeaMapRayTracingManager";
@@ -66,7 +62,7 @@ namespace CoreEngine
         desc.constantsBytes = sizeof(WaterSeaMapConstants);
         // 水面の共通関数（RTWaterSurfaceCommon.hlsli）が海の範囲マップをヒープから引く
         desc.directlyIndexedHeap = true;
-        return InitializeFromDesc(dxCommon, descriptorAllocator, asMgr, shaderProgramCache, desc);
+        return InitializeFromDesc(init, desc);
     }
 
     WaterSeaMapRayTracingManager::BakeKey WaterSeaMapRayTracingManager::MakeKey(

@@ -2,6 +2,7 @@
 #include "DefaultRenderPipelineBuilder.h"
 
 #include "Graphics/Render/Pass/RenderPipeline.h"
+#include "Graphics/RayTracing/Effect/RTEffectRegistry.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 
 // レンダーパス（具象型を知るのはこの翻訳単位だけ）
@@ -12,13 +13,7 @@
 #include "Graphics/Render/Pass/TAAPass.h"
 #include "Graphics/Render/Pass/CASPass.h"
 #include "Graphics/Render/Pass/DeferredLightingPass.h"
-#include "Graphics/Render/Pass/RTShadowPass.h"
-#include "Graphics/Render/Pass/RTWaterCausticsPass.h"
-#include "Graphics/Render/Pass/RTWaterSeabedPass.h"
-#include "Graphics/Render/Pass/RTWaterSeaMapPass.h"
 #include "Graphics/Render/Pass/WaterShoreFoamPass.h"
-#include "Graphics/Render/Pass/RTWaterRefractionPass.h"
-#include "Graphics/Render/Pass/RTWaterReflectionPass.h"
 #include "Graphics/Render/Pass/FFTOceanPass.h"
 #include "Graphics/Render/Pass/WaterHeightQueryPass.h"
 #include "Graphics/Render/Pass/WaterShoreMeshDisplacementPass.h"
@@ -84,23 +79,21 @@ namespace CoreEngine
         // 結果はフレームリング一巡後の Model::Draw が Submit スキップに使う）
         pipeline.AddPass(std::make_unique<HiZOcclusionPass>(hiZOcclusion), RenderPassPhase::PreLighting, 5);
 
-        // ライティング前処理: SSAO / RT シャドウ / コースティクス
+        // レイトレーシングの効果のパス（RT_EFFECT_REGISTER で申告したフェーズと優先度へ入る）
+        // 影は PreLighting の 10〜12、RT コースティクスは PreLighting の 20、
+        // 海の範囲マップ・海底の高さ・RT 屈折・RT 反射は Water の 3・5・10・15
+        RTEffectRegistry::Get().AddPasses(pipeline);
+
+        // ライティング前処理: SSAO / コースティクス
         auto ssaoPass = std::make_unique<SSAOPass>();
         ssaoPass->SetSSAOTargetName(RenderTargetNames::SSAOBuffer);
         ssaoPass->SetSSAOBlurTargetName(RenderTargetNames::SSAOBlurBuffer);
         pipeline.AddPass(std::move(ssaoPass), RenderPassPhase::PreLighting, 0);
-        pipeline.AddPass(std::make_unique<RTShadowPass>(), RenderPassPhase::PreLighting, 10);
-        pipeline.AddPass(std::make_unique<RTShadowTemporalPass>(), RenderPassPhase::PreLighting, 11);
-        pipeline.AddPass(std::make_unique<RTShadowDenoisePass>(), RenderPassPhase::PreLighting, 12);
 #ifdef CORE_EDITOR
         // レイトレーシングのデバッグ窓が頼んだフレームだけ、RT から見たシーンとレイの追跡を撃つ
         pipeline.AddPass(std::make_unique<RTDebugScenePass>(), RenderPassPhase::PreLighting, 15);
 #endif
-        // コースティクスは実行順の都合で PreLighting だが、コストの分類は水面。
-        // ここを Water へ寄せないと「水面がフレームに占める割合」から集光分が抜け落ちる。
-        pipeline.AddPass(
-            std::make_unique<RTWaterCausticsPass>(), RenderPassPhase::PreLighting, 20,
-            GpuTimingCategory::Water);
+        // スクリーンスペースのコースティクスは実行順の都合で PreLighting だが、コストの分類は水面
         pipeline.AddPass(
             std::make_unique<WaterCausticsPass>(), RenderPassPhase::PreLighting, 30,
             GpuTimingCategory::Water);
@@ -130,13 +123,10 @@ namespace CoreEngine
         pipeline.AddPass(std::make_unique<SceneDepthCopyPass>(), RenderPassPhase::Transparent, -10);
         pipeline.AddPass(std::make_unique<TransparentQueuePass>(), RenderPassPhase::Transparent, 0);
 
-        // 水面: 背景 SceneColor の複製 → 海の範囲マップ → 海底の高さ → 岸の泡 → RT 屈折 → RT 反射 → 水面合成（データフロー順）
+        // 水面: 背景 SceneColor の複製(0) → 海の範囲マップ(3) → 海底の高さ(5) → 岸の泡(7)
+        //       → RT 屈折(10) → RT 反射(15) → 水面合成(20)（データフロー順。RT の 4 つは効果の申告から入る）
         pipeline.AddPass(std::make_unique<SceneColorCopyPass>(), RenderPassPhase::Water, 0);
-        pipeline.AddPass(std::make_unique<RTWaterSeaMapPass>(), RenderPassPhase::Water, 3);
-        pipeline.AddPass(std::make_unique<RTWaterSeabedPass>(), RenderPassPhase::Water, 5);
         pipeline.AddPass(std::make_unique<WaterShoreFoamPass>(), RenderPassPhase::Water, 7);
-        pipeline.AddPass(std::make_unique<RTWaterRefractionPass>(), RenderPassPhase::Water, 10);
-        pipeline.AddPass(std::make_unique<RTWaterReflectionPass>(), RenderPassPhase::Water, 15);
         pipeline.AddPass(std::make_unique<WaterSurfacePass>(), RenderPassPhase::Water, 20);
         // 水面が SceneColor へ合成された後でラインを重ねる。通常の Geometry で描くと
         // 水面に上書きされ、水面の上のラインだけ消えてしまう。

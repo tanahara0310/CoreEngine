@@ -97,11 +97,7 @@ namespace CoreEngine
     static_assert(sizeof(WaterReflectionConstants) == 192,
         "WaterReflectionConstants size mismatch with HLSL cbuffer");
 
-    bool WaterReflectionRayTracingManager::Initialize(
-        GraphicsCore* dxCommon,
-        DescriptorAllocator* descriptorAllocator,
-        AccelerationStructureManager* asMgr,
-        ShaderProgramCache* shaderProgramCache)
+    bool WaterReflectionRayTracingManager::Initialize(const RTEffectInitContext& init)
     {
         RTWaterPipelineDesc desc{};
         desc.ownerName = "WaterReflectionRayTracingManager";
@@ -122,7 +118,7 @@ namespace CoreEngine
         // 当たった点を照らすときに表・テクスチャ・ライトをヒープから番号で引く
         desc.extraConstantBufferName = "RTHitShadingConstants";
         desc.directlyIndexedHeap = true;
-        if (!InitializeFromDesc(dxCommon, descriptorAllocator, asMgr, shaderProgramCache, desc)) {
+        if (!InitializeFromDesc(init, desc)) {
             return false;
         }
 

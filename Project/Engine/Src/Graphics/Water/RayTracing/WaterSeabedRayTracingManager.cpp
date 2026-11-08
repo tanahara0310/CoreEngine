@@ -28,11 +28,7 @@ namespace CoreEngine
         CB_BIND_HLSL(WaterSeabedConstants, kWaterSeabedConstantsFields, "WaterSeabedConstants");
     }
 
-    bool WaterSeabedRayTracingManager::Initialize(
-        GraphicsCore* dxCommon,
-        DescriptorAllocator* descriptorAllocator,
-        AccelerationStructureManager* asMgr,
-        ShaderProgramCache* shaderProgramCache)
+    bool WaterSeabedRayTracingManager::Initialize(const RTEffectInitContext& init)
     {
         RTWaterPipelineDesc desc{};
         desc.ownerName = "WaterSeabedRayTracingManager";
@@ -46,7 +42,7 @@ namespace CoreEngine
         desc.constantsBytes = sizeof(WaterSeabedConstants);
         // 水面の共通関数（RTWaterSurfaceCommon.hlsli）が海の範囲マップをヒープから引く
         desc.directlyIndexedHeap = true;
-        return InitializeFromDesc(dxCommon, descriptorAllocator, asMgr, shaderProgramCache, desc);
+        return InitializeFromDesc(init, desc);
     }
 
     const WaterSeabedWindow& WaterSeabedRayTracingManager::UpdateWindow(float cameraX, float cameraZ)
