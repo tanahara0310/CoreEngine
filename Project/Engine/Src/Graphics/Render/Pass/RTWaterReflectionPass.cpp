@@ -1,16 +1,26 @@
 #include "pch.h"
 #include "RTWaterReflectionPass.h"
 
-#include "EngineSystem/Subsystem/RayTracingSubsystem.h"
+#include "Graphics/Atmosphere/AtmosphereManager.h"
+#include "Graphics/Light/LightManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RayTracing/Debug/RTDebugRegistry.h"
+#include "Graphics/RayTracing/Effect/RTEffectRegistry.h"
+#include "Graphics/RayTracing/Effect/RTEffectSet.h"
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Water/RayTracing/WaterReflectionRayTracingManager.h"
-#include "Utility/Logger/Logger.h"
+#include "Math/MathCore.h"
 #include "Graphics/Render/RenderGraph.h"
 
 namespace CoreEngine
 {
+    RT_EFFECT_REGISTER(WaterReflectionRayTracingManager,
+        .id = "RTWaterReflection",
+        .group = kWaterRTEffectGroup,
+        .passes = {
+            RTEffectPassDesc::Of<RTWaterReflectionPass>(RenderPassPhase::Water, 15),
+        })
+
     RT_DEBUG_EFFECT_REGISTER(kReflectionEffect,
         .id = "RTWaterReflection",
         .label = "水の反射",
@@ -18,7 +28,7 @@ namespace CoreEngine
         .passNames = { "RTWaterReflectionPass" },
         .stageLabels = { "トレース" },
         .collect = [](const RTDebugQuery& query, std::vector<RTDebugEffectRow>& rows) {
-            if (auto* manager = query.domain ? query.domain->GetWaterReflectionRayTracingManager() : nullptr) {
+            if (auto* manager = query.domain ? query.domain->GetRTEffects().Find<WaterReflectionRayTracingManager>() : nullptr) {
                 rows.push_back({ "ゲームの画面", manager->GetDispatchInfo() });
             }
         });
@@ -49,6 +59,35 @@ namespace CoreEngine
             return ResolveFrameBlackboardImage(context, FrameBlackboard::RTWaterSunVisibility, out);
         })
 
+    namespace {
+        /// @brief 空キューブマップ（空＋雲）を引く
+        /// @details レイが空へ抜けたときの色を、実際にトレースした向きでこのパスの中で決めるために使う
+        ///          （Water.PS 側で平面法線の空と混ぜると二重像になる）
+        D3D12_GPU_DESCRIPTOR_HANDLE ResolveSkyEnvironment(const RenderContext& context)
+        {
+            if (auto* atmosphere = context.atmosphereManager) {
+                if (atmosphere->IsSkySpecularEnabled() && atmosphere->IsSkyEnvironmentReady()) {
+                    return atmosphere->GetSkySpecularSRVHandle();
+                }
+            }
+            return {};
+        }
+
+        /// @brief 水面の影を調べるメインライト（0 番。Water.PS が掛けるのも 0 番の項だけ）
+        WaterSunShadowInput BuildSunShadowInput(const RenderContext& context)
+        {
+            WaterSunShadowInput sunShadow{};
+            if (context.lightManager) {
+                if (const Light* mainLight = context.lightManager->GetDirectionalLight(0);
+                    mainLight && mainLight->enabled) {
+                    sunShadow.direction = CoreEngine::Normalize(mainLight->direction);
+                    sunShadow.enabled = true;
+                }
+            }
+            return sunShadow;
+        }
+    }
+
     void RTWaterReflectionPass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
     {
         builder.Read(FrameBlackboard::SceneDepth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -65,45 +104,48 @@ namespace CoreEngine
         if (!kReflectionEffect.IsActive()) {
             return;
         }
-        if (!context.rayTracingSubsystem || !context.dxCommon || !context.rtWaterReflectionManager) {
+        WaterReflectionRayTracingManager* reflection = FindRTEffect<WaterReflectionRayTracingManager>(context);
+        if (!context.dxCommon || !reflection || !reflection->IsInitialized() || !context.cmdList) {
             return;
         }
 
-        if (!context.rtWaterReflectionManager->IsInitialized()) {
-            return;
-        }
-
-        ID3D12GraphicsCommandList* cmdList = context.cmdList;
-        if (!cmdList) {
-            return;
-        }
-
-        // 水面が存在しない・非表示のフレームはディスパッチしない（RTWaterCausticsPass と同じガード）。
+        // 水面が存在しない・非表示のフレームはディスパッチしない。
         // 出力を Blackboard へ登録しないため、Water.PS の反射合成も自動的に無効化される。
         if (!context.waterSurfaceState
             || context.waterSurfaceState->regionValid == 0) {
             return;
         }
 
-        const WaterSurfaceData& dispatchSurfaceData = *context.waterSurfaceState;
+        constexpr auto kView = WaterReflectionRayTracingManager::ViewID::GameView;
+        const WaterSurfaceData& surfaceData = *context.waterSurfaceState;
 
-        context.rayTracingSubsystem->DispatchWaterReflection(
-            context,
-            context.dxCommon,
-            cmdList,
-            WaterReflectionRayTracingManager::ViewID::GameView,
-            dispatchSurfaceData);
+        WaterRayTracingPassBase::FrameInput frame;
+        if (WaterRayTracingPassBase::BuildFrameInput(context, surfaceData, "water reflection", true, frame)) {
+            reflection->Dispatch(
+                context.cmdList,
+                frame.sceneDepthSRV,
+                frame.sceneColorSRV,
+                frame.viewProjection,
+                frame.cameraPosition,
+                surfaceData,
+                frame.fftOceanInput,
+                ResolveSkyEnvironment(context),
+                BuildSunShadowInput(context),
+                WaterRayTracingPassBase::BuildHitShadingInput(context),
+                frame.width,
+                frame.height,
+                kView);
+        }
 
         if (context.frameBlackboard) {
-            constexpr auto kView = WaterReflectionRayTracingManager::ViewID::GameView;
             context.frameBlackboard->SetResource(
                 FrameBlackboard::RTWaterReflectionColor,
-                context.rtWaterReflectionManager->GetReflectionSRVHandle(kView),
-                &context.rtWaterReflectionManager->GetReflectionResource(kView));
+                reflection->GetReflectionSRVHandle(kView),
+                &reflection->GetReflectionResource(kView));
             context.frameBlackboard->SetResource(
                 FrameBlackboard::RTWaterSunVisibility,
-                context.rtWaterReflectionManager->GetSunVisibilitySRVHandle(kView),
-                &context.rtWaterReflectionManager->GetSunVisibilityResource(kView));
+                reflection->GetSunVisibilitySRVHandle(kView),
+                &reflection->GetSunVisibilityResource(kView));
         }
     }
 }

@@ -802,6 +802,12 @@
     <ClCompile Include="Engine\Src\Graphics\RayTracing\Debug\RTDebugRegistry.cpp">
       <Filter>Engine\Src\Graphics\RayTracing\Debug</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\Effect\RTEffectRegistry.cpp">
+      <Filter>Engine\Src\Graphics\RayTracing\Effect</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\Effect\RTEffectSet.cpp">
+      <Filter>Engine\Src\Graphics\RayTracing\Effect</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RayTracing\Debug\RTDebugSystem.cpp">
       <Filter>Engine\Src\Graphics\RayTracing\Debug</Filter>
     </ClCompile>
@@ -2768,6 +2774,15 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\Debug\RTDebugRegistry.h">
       <Filter>Engine\Src\Graphics\RayTracing\Debug</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\Effect\RTEffect.h">
+      <Filter>Engine\Src\Graphics\RayTracing\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\Effect\RTEffectRegistry.h">
+      <Filter>Engine\Src\Graphics\RayTracing\Effect</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\Effect\RTEffectSet.h">
+      <Filter>Engine\Src\Graphics\RayTracing\Effect</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\Debug\RTDebugSystem.h">
       <Filter>Engine\Src\Graphics\RayTracing\Debug</Filter>
@@ -4738,6 +4753,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\RayTracing\Debug">
       <UniqueIdentifier>{875890DF-483F-42AB-AC50-945B943F0F3E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\RayTracing\Effect">
+      <UniqueIdentifier>{3FF02CB9-66E7-4A15-A7A0-DD257A44AA96}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Render">
       <UniqueIdentifier>{914A25D2-E4AB-4015-82E8-D55EC9CA375E}</UniqueIdentifier>

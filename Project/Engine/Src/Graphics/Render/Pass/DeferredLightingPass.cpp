@@ -14,6 +14,7 @@
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
+#include "Graphics/RayTracing/Effect/RTEffectSet.h"
 #include "Graphics/Render/RenderingTechnique/Lighting/WaterCausticsTechnique.h"
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Utility/Logger/Logger.h"
@@ -120,15 +121,16 @@ namespace CoreEngine
 
         // ===== RT シャドウマスクの設定（ライトごとに独立） =====
         D3D12_GPU_DESCRIPTOR_HANDLE mainLightMask{}; // フォワード受影用（メインライトのマスク）
-        if (context.rtShadowManager && context.rtShadowManager->IsInitialized()) {
+        RayTracingShadowManager* rtShadow = FindRTEffect<RayTracingShadowManager>(context);
+        if (rtShadow && rtShadow->IsInitialized()) {
             constexpr auto viewId = RayTracingShadowManager::ViewID::GameView;
             // 全ライト分のハンドルをリセットしてから有効なものをセット
             for (uint32_t li = 0; li < RayTracingShadowManager::kMaxDirectionalLights; ++li) {
                 deferredLighting->SetRTShadowHandle({}, li);
             }
             for (uint32_t li = 0; li < RayTracingShadowManager::kMaxDirectionalLights; ++li) {
-                if (context.rtShadowManager->IsDispatchedThisFrame(viewId, li)) {
-                    auto srvHandle = context.rtShadowManager->GetShadowSRVHandle(viewId, li);
+                if (rtShadow->IsDispatchedThisFrame(viewId, li)) {
+                    auto srvHandle = rtShadow->GetShadowSRVHandle(viewId, li);
                     if (srvHandle.ptr != 0) {
                         deferredLighting->SetRTShadowHandle(srvHandle, li);
                         if (li == 0) {
@@ -228,9 +230,9 @@ namespace CoreEngine
             // 水中ピクセルのメインライト直接光を置換しアンビエントを Beer–Lambert で減衰させる。
             // スクリーンスペース版は透過直接光の全量を持たない（模様のみ）ため置換しない。
             const WaterSurfaceData* surface = context.waterSurfaceState;
-            if (usingRT && surface && surface->regionValid != 0 && context.rtWaterCausticsManager) {
-                const WaterCausticsRayTracingSettings& rtSettings =
-                    context.rtWaterCausticsManager->GetSettings();
+            const WaterCausticsRayTracingManager* rtCaustics = FindRTEffect<WaterCausticsRayTracingManager>(context);
+            if (usingRT && surface && surface->regionValid != 0 && rtCaustics) {
+                const WaterCausticsRayTracingSettings& rtSettings = rtCaustics->GetSettings();
                 debugSettings.waterVolumeEnabled = 1;
                 debugSettings.waterHeight = surface->waterHeight;
                 debugSettings.regionCenterXZ[0] = surface->regionCenterXZ[0];

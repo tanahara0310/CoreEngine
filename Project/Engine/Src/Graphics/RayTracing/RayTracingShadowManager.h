@@ -11,6 +11,7 @@
 #include "RayTracingHitData.h"
 #include "RayTracingOutputViewSet.h"
 #include "RayTracingPassBase.h"
+#include "Graphics/RayTracing/Effect/RTEffect.h"
 #include "RayTracingPipelineBuilder.h"
 #include "ShaderTableBuilder.h"
 
@@ -135,7 +136,7 @@ namespace CoreEngine
     /// @brief DXR レイトレーシングシャドウ
     /// @details 出力テクスチャ・ガード判定・DXR オブジェクトは基盤 RayTracingPassBase 側が持つ。
     ///          ここに残るのは RayGen / テンポラル / A-Trous の 3 ステージと、view × ライトの状態だけ。
-    class RayTracingShadowManager : public RayTracingPassBase {
+    class RayTracingShadowManager : public RayTracingPassBase, public RTEffect {
     public:
         /// @brief ビュー識別子
         enum class ViewID : uint32_t {
@@ -148,9 +149,10 @@ namespace CoreEngine
 
         /// @brief 初期化（State Object / Shader Table / UAV テクスチャの構築）
         /// @return 成功した場合 true
-        bool Initialize(GraphicsCore* dxCommon, DescriptorAllocator* descriptorAllocator,
-            AccelerationStructureManager* asMgr,
-            ShaderProgramCache* shaderProgramCache);
+        bool Initialize(const RTEffectInitContext& init) override;
+
+        /// @brief 別スレッドで作っているパイプラインの完成を待つ
+        bool WaitForPipelines() override { return WaitForPipeline(); }
 
         /// @brief シャドウレイをディスパッチする（3 ステージの最初。ここで解像度が確定する）
         /// @param lightIndex ディレクショナルライトのインデックス（0〜kMaxDirectionalLights-1）
@@ -238,18 +240,14 @@ namespace CoreEngine
             uint32_t lightIndex = 0) const;
 
         /// @brief フレーム開始時に全ビュー・全ライトの状態をリセット
-        void ResetFrameState();
+        void BeginFrame() override;
 
         /// @brief 出力テクスチャを指定サイズで確保する
         void Resize(UINT width, UINT height, ViewID viewId = ViewID::GameView,
             uint32_t lightIndex = 0);
 
-        /// @brief 生成済みの全ビュー・全ライトの出力テクスチャを新サイズで再作成する
-        /// @details ウィンドウリサイズ時に呼ぶ。Dispatch 中の遅延再作成に任せると、
-        ///          フレーム先頭で Blackboard に登録済みの旧リソースポインタが
-        ///          グラフ実行中に解放され、後続パスのバリアが解放済みリソースを
-        ///          参照してしまう（D3D12 ERROR #524）
-        void ResizeAllExisting(UINT width, UINT height);
+        /// @brief 生成済みの全ビュー・全ライトの出力テクスチャを新サイズで作り直す（GPU は止まっている）
+        void OnResize(uint32_t width, uint32_t height) override;
 
         /// @brief シャドウパラメータを設定する
         /// @brief 設定を一括で反映する

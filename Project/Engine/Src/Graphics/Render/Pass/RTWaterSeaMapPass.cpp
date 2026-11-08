@@ -3,11 +3,20 @@
 
 #include "Graphics/RayTracing/RTScene.h"
 #include "Graphics/RayTracing/Debug/RTDebugRegistry.h"
+#include "Graphics/RayTracing/Effect/RTEffectRegistry.h"
+#include "Graphics/RayTracing/Effect/RTEffectSet.h"
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Water/RayTracing/WaterSeaMapRayTracingManager.h"
 
 namespace CoreEngine
 {
+    RT_EFFECT_REGISTER(WaterSeaMapRayTracingManager,
+        .id = "RTWaterSeaMap",
+        .group = kWaterRTEffectGroup,
+        .passes = {
+            RTEffectPassDesc::Of<RTWaterSeaMapPass>(RenderPassPhase::Water, 3),
+        })
+
     RT_DEBUG_EFFECT_REGISTER(kSeaMapEffect,
         .id = "RTWaterSeaMap",
         .label = "海の範囲",
@@ -15,7 +24,7 @@ namespace CoreEngine
         .passNames = { "RTWaterSeaMapPass" },
         .stageLabels = { "トレース" },
         .collect = [](const RTDebugQuery& query, std::vector<RTDebugEffectRow>& rows) {
-            if (auto* manager = query.domain ? query.domain->GetWaterSeaMapRayTracingManager() : nullptr) {
+            if (auto* manager = query.domain ? query.domain->GetRTEffects().Find<WaterSeaMapRayTracingManager>() : nullptr) {
                 rows.push_back({ "ゲームの画面", manager->GetDispatchInfo() });
             }
         });
@@ -26,7 +35,7 @@ namespace CoreEngine
         if (!kSeaMapEffect.IsActive()) {
             return;
         }
-        auto* seaMap = context.rtWaterSeaMapManager;
+        auto* seaMap = FindRTEffect<WaterSeaMapRayTracingManager>(context);
         if (!context.cmdList || !seaMap || !seaMap->IsInitialized()) {
             return;
         }

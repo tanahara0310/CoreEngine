@@ -55,11 +55,7 @@ namespace CoreEngine
         "WaterWaveParam size mismatch with HLSL wave struct");
 
     // 屈折固有の構成（シェーダーパス・バインド名・出力フォーマット）を基盤へ渡す
-    bool WaterRefractionRayTracingManager::Initialize(
-        GraphicsCore* dxCommon,
-        DescriptorAllocator* descriptorAllocator,
-        AccelerationStructureManager* asMgr,
-        ShaderProgramCache* shaderProgramCache)
+    bool WaterRefractionRayTracingManager::Initialize(const RTEffectInitContext& init)
     {
         RTWaterPipelineDesc desc{};
         desc.ownerName = "WaterRefractionRayTracingManager";
@@ -76,7 +72,7 @@ namespace CoreEngine
         // 隠れた屈折先で当たった点を照らすときに表・テクスチャ・ライトをヒープから番号で引く
         desc.extraConstantBufferName = "RTHitShadingConstants";
         desc.directlyIndexedHeap = true;
-        return InitializeFromDesc(dxCommon, descriptorAllocator, asMgr, shaderProgramCache, desc);
+        return InitializeFromDesc(init, desc);
     }
 
     void WaterRefractionRayTracingManager::Resize(UINT width, UINT height, ViewID viewId)

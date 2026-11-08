@@ -12,7 +12,7 @@ namespace CoreEngine
 {
     void WaterRayTracingModule::ApplySettings(const WaterFrameContext& frame) const
     {
-        if (auto* refraction = frame.domain.GetWaterRefractionRayTracingManager()) {
+        if (auto* refraction = frame.domain.GetRTEffects().Find<WaterRefractionRayTracingManager>()) {
             WaterRefractionRayTracingSettings settings = refraction->GetSettings();
             settings.maxRefractionOffsetPixels = frame.settings.refractionMaxOffsetPixels;
             settings.waterRefractiveIndex = frame.settings.surface.refractiveIndex;
@@ -22,12 +22,12 @@ namespace CoreEngine
 
     void WaterRayTracingModule::Bind(RenderDomainContext& domain, WaterFrameBinding& binding) const
     {
-        if (auto* refraction = domain.GetWaterRefractionRayTracingManager()) {
+        if (auto* refraction = domain.GetRTEffects().Find<WaterRefractionRayTracingManager>()) {
             binding.resources.refractionColorSRV = refraction->GetRefractionSRVHandle(
                 WaterRefractionRayTracingManager::ViewID::GameView);
         }
 
-        if (auto* reflection = domain.GetWaterReflectionRayTracingManager()) {
+        if (auto* reflection = domain.GetRTEffects().Find<WaterReflectionRayTracingManager>()) {
             binding.resources.reflectionSRV = reflection->GetReflectionSRVHandle(
                 WaterReflectionRayTracingManager::ViewID::GameView);
             // 同じパスが書く水面の日向率（ヤシや岩の影を水面の太陽の項へ掛ける）

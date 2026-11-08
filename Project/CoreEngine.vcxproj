@@ -470,6 +470,8 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingDispatchInfo.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RTScene.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\Debug\RTDebugRegistry.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\Effect\RTEffectRegistry.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\Effect\RTEffectSet.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\Debug\RTDebugSystem.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingPassBase.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingPipelineBuilder.cpp" />
@@ -1662,6 +1664,9 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RTObjectSettings.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RTScene.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\Debug\RTDebugRegistry.h" />
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\Effect\RTEffect.h" />
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\Effect\RTEffectRegistry.h" />
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\Effect\RTEffectSet.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\Debug\RTDebugSystem.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingOutputViewSet.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingPassBase.h" />

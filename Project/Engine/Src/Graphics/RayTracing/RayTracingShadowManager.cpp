@@ -414,16 +414,12 @@ namespace CoreEngine
     // =========================================================================
     // Initialize
     // =========================================================================
-    bool RayTracingShadowManager::Initialize(
-        GraphicsCore* dxCommon,
-        DescriptorAllocator* descriptorAllocator,
-        AccelerationStructureManager* asMgr,
-        ShaderProgramCache* shaderProgramCache)
+    bool RayTracingShadowManager::Initialize(const RTEffectInitContext& init)
     {
         Logger& log = Logger::GetInstance();
 
         // 共通基盤へ委譲（ポインタ保持と DXR サポート判定・警告ログまで面倒を見る）
-        if (!InitializeBase(dxCommon, descriptorAllocator, asMgr, shaderProgramCache,
+        if (!InitializeBase(init.dxCommon, init.descriptorAllocator, init.asMgr, init.shaderProgramCache,
             "RayTracingShadowManager", "RTShadow")) {
             return false;
         }
@@ -572,7 +568,7 @@ namespace CoreEngine
             static_cast<uint32_t>(viewId), lightIndex);
     }
 
-    void RayTracingShadowManager::ResizeAllExisting(UINT width, UINT height)
+    void RayTracingShadowManager::OnResize(uint32_t width, uint32_t height)
     {
         if (!isInitialized_ || width == 0 || height == 0) {
             return;
@@ -683,7 +679,7 @@ namespace CoreEngine
         return views_[static_cast<uint32_t>(viewId)][lightIndex].dispatchedThisFrame;
     }
 
-    void RayTracingShadowManager::ResetFrameState()
+    void RayTracingShadowManager::BeginFrame()
     {
         for (auto& viewRow : views_) {
             for (auto& v : viewRow) {

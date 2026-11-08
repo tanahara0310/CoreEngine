@@ -6,13 +6,8 @@
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/RayTracing/RTScene.h"
 #include "Graphics/RayTracing/Debug/RTDebugSystem.h"
-#include "Graphics/RayTracing/RayTracingShadowManager.h"
 #include "Graphics/RayTracing/VertexAnimationDeformer.h"
-#include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
-#include "Graphics/Water/RayTracing/WaterSeabedRayTracingManager.h"
-#include "Graphics/Water/RayTracing/WaterSeaMapRayTracingManager.h"
-#include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
-#include "Graphics/Water/RayTracing/WaterReflectionRayTracingManager.h"
+#include "Graphics/Water/RayTracing/WaterRayTracingPassBase.h"
 #include "Graphics/Water/FFT/FFTOceanManager.h"
 #include "Graphics/Water/Foam/WaterShoreFoam.h"
 #include "Graphics/Water/Foam/WaterWhitecapFoam.h"
@@ -83,14 +78,11 @@ namespace CoreEngine
             vertexAnimationDeformer_->Initialize(dxCommon);
         }
 
-        // レイトレーシングシャドウマネージャーの初期化（DXR対応時のみ）
-        rtShadowManager_ = std::make_unique<RayTracingShadowManager>();
-        if (accelerationStructureManager_->IsSupported()) {
-            rtShadowManager_->Initialize(dxCommon, descriptorAllocator,
-                accelerationStructureManager_.get(), shaderProgramCache);
-            Logger::GetInstance().Infof(LogCategory::Graphics,
-                "RenderDomainContext: RayTracingShadowManager 初期化完了\n");
-        }
+        // レイトレーシングの効果（RT_EFFECT_REGISTER で申告したもの）。起動時の組をここで作る（DXR 非対応なら初期化しない）
+        rtEffects_.Initialize(
+            { dxCommon, descriptorAllocator, accelerationStructureManager_.get(), shaderProgramCache },
+            accelerationStructureManager_->IsSupported());
+        rtEffects_.EnsureGroup(nullptr);
 
 #ifdef CORE_EDITOR
         // デバッグ表示のパイプラインは初めて頼まれたときに作る
@@ -114,7 +106,7 @@ namespace CoreEngine
                 "RenderDomainContext: FogManager 初期化完了\n");
         }
 
-        // ウィンドウリサイズ通知を受ける（シーン深度 / GBuffer / RT シャドウの作り直し）
+        // ウィンドウリサイズ通知を受ける（シーン深度 / GBuffer / レイトレの効果の作り直し）
         dxCommon->RegisterResizable(this);
 
         Logger::GetInstance().Infof(LogCategory::Graphics,
@@ -131,45 +123,8 @@ namespace CoreEngine
         ShaderProgramCache* shaderProgramCache = shaderProgramCache_;
         auto* descriptorAllocator = dxCommon->GetDescriptorAllocator();
 
-        rtWaterRefractionManager_ = std::make_unique<WaterRefractionRayTracingManager>();
-        if (accelerationStructureManager_->IsSupported()) {
-            rtWaterRefractionManager_->Initialize(dxCommon, descriptorAllocator,
-                accelerationStructureManager_.get(), shaderProgramCache);
-            Logger::GetInstance().Infof(LogCategory::Graphics,
-                "RenderDomainContext: WaterRefractionRayTracingManager 初期化完了\n");
-        }
-
-        rtWaterReflectionManager_ = std::make_unique<WaterReflectionRayTracingManager>();
-        if (accelerationStructureManager_->IsSupported()) {
-            rtWaterReflectionManager_->Initialize(dxCommon, descriptorAllocator,
-                accelerationStructureManager_.get(), shaderProgramCache);
-            Logger::GetInstance().Infof(LogCategory::Graphics,
-                "RenderDomainContext: WaterReflectionRayTracingManager 初期化完了\n");
-        }
-
-        rtWaterCausticsManager_ = std::make_unique<WaterCausticsRayTracingManager>();
-        if (accelerationStructureManager_->IsSupported()) {
-            rtWaterCausticsManager_->Initialize(dxCommon, descriptorAllocator,
-                accelerationStructureManager_.get(), shaderProgramCache);
-            Logger::GetInstance().Infof(LogCategory::Graphics,
-                "RenderDomainContext: WaterCausticsRayTracingManager 初期化完了\n");
-        }
-
-        rtWaterSeabedManager_ = std::make_unique<WaterSeabedRayTracingManager>();
-        if (accelerationStructureManager_->IsSupported()) {
-            rtWaterSeabedManager_->Initialize(dxCommon, descriptorAllocator,
-                accelerationStructureManager_.get(), shaderProgramCache);
-            Logger::GetInstance().Infof(LogCategory::Graphics,
-                "RenderDomainContext: WaterSeabedRayTracingManager 初期化完了\n");
-        }
-
-        rtWaterSeaMapManager_ = std::make_unique<WaterSeaMapRayTracingManager>();
-        if (accelerationStructureManager_->IsSupported()) {
-            rtWaterSeaMapManager_->Initialize(dxCommon, descriptorAllocator,
-                accelerationStructureManager_.get(), shaderProgramCache);
-            Logger::GetInstance().Infof(LogCategory::Graphics,
-                "RenderDomainContext: WaterSeaMapRayTracingManager 初期化完了\n");
-        }
+        // 水面の組のレイトレの効果（屈折・反射・コースティクス・海底の高さ・海の範囲）
+        rtEffects_.EnsureGroup(kWaterRTEffectGroup);
 
         fftOceanManager_ = std::make_unique<FFTOceanManager>();
         if (fftOceanManager_->Initialize(dxCommon, descriptorAllocator)) {
@@ -206,19 +161,7 @@ namespace CoreEngine
 
     void RenderDomainContext::WaitForRayTracingPipelines()
     {
-        RayTracingPassBase* const passes[] = {
-            rtShadowManager_.get(),
-            rtWaterRefractionManager_.get(),
-            rtWaterReflectionManager_.get(),
-            rtWaterCausticsManager_.get(),
-            rtWaterSeabedManager_.get(),
-            rtWaterSeaMapManager_.get(),
-        };
-        for (RayTracingPassBase* pass : passes) {
-            if (pass) {
-                pass->WaitForPipeline();
-            }
-        }
+        rtEffects_.WaitForPipelines();
     }
 
     void RenderDomainContext::Shutdown()
@@ -235,15 +178,10 @@ namespace CoreEngine
         fogManager_.reset();
         volumetricCloudManager_.reset();
         atmosphereManager_.reset();
-        rtWaterSeaMapManager_.reset();
-        rtWaterSeabedManager_.reset();
-        rtWaterCausticsManager_.reset();
-        rtWaterReflectionManager_.reset();
-        rtWaterRefractionManager_.reset();
 #ifdef CORE_EDITOR
         rtDebug_.reset();
 #endif
-        rtShadowManager_.reset();
+        rtEffects_.Shutdown();
         waterHeightQueryManager_.reset();
         waterShoreMeshDisplacement_.reset();
         waterShoreFoam_.reset();
@@ -266,13 +204,8 @@ namespace CoreEngine
             gBufferManager_->Resize(width, height);
         }
 
-        // RTシャドウ出力はフレーム先頭で Blackboard に登録されるため、
-        // Dispatch 中の遅延再作成に任せず、この時点（GPU アイドル保証済み）で
-        // 新サイズへ再作成しておく（旧リソースへのバリア発行を防ぐ）
-        if (rtShadowManager_) {
-            rtShadowManager_->ResizeAllExisting(
-                static_cast<UINT>(width), static_cast<UINT>(height));
-        }
+        // レイトレの効果の出力を、GPU が止まっているこの時点で新しい大きさへ作り直す
+        rtEffects_.OnResize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
 
         Logger::GetInstance().Infof(LogCategory::Graphics,
             "RenderDomainContext::OnWindowResize: %dx%d にリサイズ完了\n", width, height);
@@ -288,12 +221,7 @@ namespace CoreEngine
         context.rtDebug = rtDebug_.get();
 #endif
         context.vertexAnimationDeformer = vertexAnimationDeformer_.get();
-        context.rtShadowManager = rtShadowManager_.get();
-        context.rtWaterCausticsManager = rtWaterCausticsManager_.get();
-        context.rtWaterRefractionManager = rtWaterRefractionManager_.get();
-        context.rtWaterReflectionManager = rtWaterReflectionManager_.get();
-        context.rtWaterSeabedManager = rtWaterSeabedManager_.get();
-        context.rtWaterSeaMapManager = rtWaterSeaMapManager_.get();
+        context.rtEffects = &rtEffects_;
         context.fftOceanManager = fftOceanManager_.get();
         context.waterWhitecapFoam = waterWhitecapFoam_.get();
         context.waterShoreFoam = waterShoreFoam_.get();

@@ -2,6 +2,7 @@
 #include "WaterShoreFoamPass.h"
 
 #include "Graphics/Render/RenderGraph.h"
+#include "Graphics/RayTracing/Effect/RTEffectSet.h"
 #include "Graphics/Water/FFT/FFTOceanManager.h"
 #include "Graphics/Water/Foam/WaterShoreFoam.h"
 #include "Graphics/Water/RayTracing/WaterSeabedRayTracingManager.h"
@@ -27,7 +28,7 @@ namespace CoreEngine
             return;
         }
         auto* foam = context.waterShoreFoam;
-        auto* seabed = context.rtWaterSeabedManager;
+        auto* seabed = FindRTEffect<WaterSeabedRayTracingManager>(context);
         auto* fftOcean = context.fftOceanManager;
         if (!foam || !foam->IsActive() || !seabed || !seabed->IsInitialized()
             || !fftOcean || !fftOcean->IsInitialized()) {

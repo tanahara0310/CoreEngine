@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.69.0">
+<meta name="engine-version" content="0.70.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -9647,7 +9647,7 @@ kbd {
   </table>
   </div>
   <div class="callout note"><p>窓を閉じると、帯のスイッチと <span class="ui">概要</span> の <span class="ui">ON</span> は元に戻ります（凍結や止めたままにはなりません）。ゲームの書き出し（Release 版）には、この窓も切り分けのスイッチも入りません。</p></div>
-  <p>エンジンに新しいレイトレーシングの効果を足すときは、その効果の .cpp に <code>RT_DEBUG_EFFECT_REGISTER</code>（概要の行）・<code>RT_DEBUG_CHANNEL_REGISTER</code>（中間結果）・<code>RT_DEBUG_CHECK_REGISTER</code>（チェック）を書けば窓に並びます。窓のコードは変えなくて構いません。効果のパスの <code>Execute</code> の頭で、取り口の <code>IsActive()</code> が false なら撃たずに戻ります。</p>
+  <p>エンジンに新しいレイトレーシングの効果を足すときは、その効果の .cpp だけを書きます。効果の本体（<code>RTEffect</code> を継いだクラス）とパスを <code>RT_EFFECT_REGISTER</code> で申告すれば、効果が作られ、パスはパイプラインの申告したフェーズと優先度へ入ります。パスの中では <code>FindRTEffect&lt;T&gt;(context)</code> で効果を引きます。窓には、同じ .cpp に <code>RT_DEBUG_EFFECT_REGISTER</code>（概要の行）・<code>RT_DEBUG_CHANNEL_REGISTER</code>（中間結果）・<code>RT_DEBUG_CHECK_REGISTER</code>（チェック）を書けば並びます。パイプラインの組み立ても窓のコードも変えなくて構いません。効果のパスの <code>Execute</code> の頭で、取り口の <code>IsActive()</code> が false なら撃たずに戻ります。</p>
 
   <h2 id="g3d-move">動かす</h2>
   <div class="table-wrap">
@@ -11363,6 +11363,15 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-70-0">v0.70.0 <span class="dim">（2026-11-08）</span></h3>
+  <p>レイトレーシングの影と、水面の 5 つの効果を、共通の効果の枠組み（<code>RTEffect</code>）に載せ替えた版です。ゲームの見た目と設定は変わりません（<a href="#g3d-shadow-debug">影や映り込みがおかしいとき</a>）。</p>
+  <ul>
+    <li><strong>効果の申告</strong>：効果の本体（<code>RTEffect</code> を継いだクラス）とそのパスを、効果の .cpp に書く <code>RT_EFFECT_REGISTER</code> で申告するようにしました。申告した効果は <code>RenderDomainContext</code> の <code>RTEffectSet</code> が作り、パスは申告したフェーズと優先度でパイプラインへ入ります。新しい効果を足すときに、その効果の .cpp のほかを変えなくて済みます。</li>
+    <li><strong>作る時期</strong>：影は起動時に作り、水面の 5 つ（屈折・反射・コースティクス・海底の高さ・海の範囲）は水面のあるシーンで作ります。DXR に対応していない GPU では、作るだけで初期化しません。</li>
+    <li><strong>効果の引き方</strong>：<code>RenderContext</code> の効果ごとの 6 つの欄と、<code>RenderDomainContext</code> の 6 つの <code>Get〜RayTracingManager</code> を、<code>rtEffects</code> と <code>GetRTEffects()</code> にまとめました。パスからは <code>FindRTEffect&lt;T&gt;(context)</code>、それ以外からは <code>GetRTEffects().Find&lt;T&gt;()</code> で型で引きます。</li>
+    <li><strong>RayTracingSubsystem</strong>：影と水面を撃つ処理を各効果のパスへ移し、<code>RayTracingSubsystem</code> は加速構造を作るだけにしました。水面の効果が共通で使うフレームの入力と、当たった点を照らすための入力は <code>WaterRayTracingPassBase</code> にまとめました。</li>
+  </ul>
 
   <h3 id="changelog-v0-69-0">v0.69.0 <span class="dim">（2026-11-08）</span></h3>
   <p>レイトレーシングのデバッグ窓（<span class="ui">Window ▸ Rendering ▸ Ray Tracing</span>）を、6 つのタブの窓に作り直した版です。ゲームの見た目は変わりません（<a href="#g3d-shadow-debug">影や映り込みがおかしいとき</a>）。</p>

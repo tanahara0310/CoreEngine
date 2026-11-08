@@ -40,7 +40,7 @@ namespace CoreEngine
         }
 
         // 水面の描画と同じ屈折率と波長ごとの吸収係数 σa
-        if (auto* rtCaustics = frame.domain.GetWaterCausticsRayTracingManager()) {
+        if (auto* rtCaustics = frame.domain.GetRTEffects().Find<WaterCausticsRayTracingManager>()) {
             WaterCausticsRayTracingSettings settings = rtCaustics->GetSettings();
             settings.refractiveIndex = refractiveIndex;
             const Vector3& absorption = frame.settings.surface.absorption;

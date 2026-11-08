@@ -83,14 +83,14 @@ WaterRefractionRayTracingManager* WaterEditorFacade::GetWaterRefractionManager()
     if (!engine_ || !engine_->GetRenderDomainContext()) {
         return nullptr;
     }
-    return engine_->GetRenderDomainContext()->GetWaterRefractionRayTracingManager();
+    return engine_->GetRenderDomainContext()->GetRTEffects().Find<WaterRefractionRayTracingManager>();
 }
 
 WaterCausticsRayTracingManager* WaterEditorFacade::GetWaterCausticsManager() const {
     if (!engine_ || !engine_->GetRenderDomainContext()) {
         return nullptr;
     }
-    return engine_->GetRenderDomainContext()->GetWaterCausticsRayTracingManager();
+    return engine_->GetRenderDomainContext()->GetRTEffects().Find<WaterCausticsRayTracingManager>();
 }
 
 WaterCausticsTechnique* WaterEditorFacade::GetWaterCausticsTechnique() const {

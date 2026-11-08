@@ -25,7 +25,7 @@ namespace CoreEngine
     void WaterShoreModule::UpdateWindow(const WaterFrameContext& frame, const WaterWaveCapabilities& waves)
     {
         window_ = {};
-        WaterSeabedRayTracingManager* const seabed = frame.domain.GetWaterSeabedRayTracingManager();
+        WaterSeabedRayTracingManager* const seabed = frame.domain.GetRTEffects().Find<WaterSeabedRayTracingManager>();
         Camera* const camera = frame.scene.gameViewCamera3D;
         if (!seabed || !camera) {
             return;

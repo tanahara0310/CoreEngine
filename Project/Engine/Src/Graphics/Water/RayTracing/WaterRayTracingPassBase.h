@@ -13,9 +13,17 @@
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Graphics/Water/WaterSurfaceData.h"
 #include "Graphics/RayTracing/RayTracingPassBase.h"
+#include "Graphics/RayTracing/Effect/RTEffect.h"
+#include "Math/Matrix/Matrix4x4.h"
+#include "Math/Vector/Vector3.h"
 
 namespace CoreEngine
 {
+
+    struct RenderContext;
+
+    /// @brief 水面のレイトレの効果を作る組の名前（RenderDomainContext::EnsureWaterInitialized が作る）
+    inline constexpr const char* kWaterRTEffectGroup = "Water";
 
     /// @brief DXR 水面パス共通のビュー識別子
     enum class RTWaterViewID : uint32_t {
@@ -48,8 +56,11 @@ namespace CoreEngine
 
     /// @brief DXR 水面パス（屈折・反射・コースティクス）の共通基盤
     /// @details 水面固有の要素だけを持つ。水面に限らない部分は RayTracingPassBase 側にある。
-    class WaterRayTracingPassBase : public RayTracingPassBase {
+    class WaterRayTracingPassBase : public RayTracingPassBase, public RTEffect {
     public:
+        /// @brief 別スレッドで作っているパイプラインの完成を待つ
+        bool WaitForPipelines() override { return WaitForPipeline(); }
+
         /// @brief FFT の海の波面のテクスチャ入力（WaterSurfaceData::fftOcean）
         using FFTOceanInput = WaterFFTOceanInput;
 
@@ -128,6 +139,31 @@ namespace CoreEngine
             const WaterSurfaceData& surfaceData,
             const FFTOceanInput& fftOceanInput);
 
+        /// @brief 水面のレイトレのパスが撃つ前に集める、このフレームの入力
+        struct FrameInput {
+            D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV{};
+            D3D12_GPU_DESCRIPTOR_HANDLE sceneColorSRV{};  ///< 水面を合成する前の SceneColor
+            Matrix4x4 viewProjection{};
+            Vector3 cameraPosition{};
+            UINT width = 0;
+            UINT height = 0;
+            FFTOceanInput fftOceanInput{};
+        };
+
+        /// @brief このフレームの入力を集める
+        /// @param debugLabel 撃たなかったときの警告ログに出す名前
+        /// @param requireSceneColor SceneColor が無ければ撃たないか（屈折・反射は再投影に使うので必須）
+        /// @return 前提が揃ったか。false のときは撃ってはいけない（理由は警告ログ済み）
+        static bool BuildFrameInput(
+            const RenderContext& context,
+            const WaterSurfaceData& surfaceData,
+            const char* debugLabel,
+            bool requireSceneColor,
+            FrameInput& out);
+
+        /// @brief 反射・屈折レイが当たった点を照らすための入力を集める（表が無いフレームは enabled = false）
+        static WaterHitShadingInput BuildHitShadingInput(const RenderContext& context);
+
     protected:
         /// @brief パイプライン 1 本分の構成（差分はこれだけ。残りは全パス同型）
         /// @warning 文字列・配列とも静的記憶域のものを渡すこと。
@@ -160,12 +196,7 @@ namespace CoreEngine
 
         /// @brief 構成データからルートシグネチャ・ステートオブジェクト・シェーダーテーブルを構築する
         /// @details 失敗時はエラーログ済み。成功時は isInitialized_ = true。
-        bool InitializeFromDesc(
-            GraphicsCore* dxCommon,
-            DescriptorAllocator* descriptorAllocator,
-            AccelerationStructureManager* asMgr,
-            ShaderProgramCache* shaderProgramCache,
-            const RTWaterPipelineDesc& desc);
+        bool InitializeFromDesc(const RTEffectInitContext& init, const RTWaterPipelineDesc& desc);
 
         /// @brief ディスパッチ末尾の共通処理（バインド → DispatchRays → 出力ステート遷移）
         /// @details gScene（TLAS）は内部でバインドする。

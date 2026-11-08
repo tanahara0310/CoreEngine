@@ -5,6 +5,7 @@
 #include <span>
 
 #include "Graphics/RHI/IResizable.h"
+#include "Graphics/RayTracing/Effect/RTEffectSet.h"
 
 namespace CoreEngine
 {
@@ -18,12 +19,6 @@ namespace CoreEngine
     class RTScene;
     class RTDebugSystem;
     class VertexAnimationDeformer;
-    class RayTracingShadowManager;
-    class WaterRefractionRayTracingManager;
-    class WaterReflectionRayTracingManager;
-    class WaterCausticsRayTracingManager;
-    class WaterSeabedRayTracingManager;
-    class WaterSeaMapRayTracingManager;
     class FFTOceanManager;
     class WaterShoreFoam;
     class WaterShoreMeshDisplacement;
@@ -53,12 +48,12 @@ namespace CoreEngine
         void Initialize(GraphicsCore* dxCommon, int32_t width, int32_t height,
             ShaderProgramCache* shaderProgramCache);
 
-        /// @brief 水面の描画に使うマネージャ（水面のレイトレ 4 つ・FFT の海・泡・高さの問い合わせ）を、まだなら作る
-        /// @details 水面のあるシーン（WaterSystem の初期化）が呼ぶ。作るまでは各 Get が nullptr を返す。
+        /// @brief 水面の描画に使うもの（水面のレイトレの効果の組・FFT の海・泡・高さの問い合わせ）を、まだなら作る
+        /// @details 水面のあるシーン（WaterSystem の初期化）が呼ぶ。作るまでは各 Get と RTEffectSet::Find が nullptr を返す。
         ///          一度作ったら Shutdown まで持つ。
         void EnsureWaterInitialized();
 
-        /// @brief レイトレの State Object（影と水面）を別スレッドで作っていれば、全部の完成を待つ
+        /// @brief 作ったレイトレの効果の State Object を別スレッドで作っていれば、全部の完成を待つ
         /// @details 起動の最後（窓を出す前）に呼ぶ。呼ばなくても最初のディスパッチの前に待つ。
         void WaitForRayTracingPipelines();
 
@@ -94,16 +89,12 @@ namespace CoreEngine
         const GBufferManager* GetGBufferManager()         const { return gBufferManager_.get(); }
         AccelerationStructureManager* GetAccelerationStructureManager() { return accelerationStructureManager_.get(); }
         RTScene* GetRTScene() { return rtScene_.get(); }
-        RayTracingShadowManager* GetRayTracingShadowManager() { return rtShadowManager_.get(); }
+        /// @brief レイトレーシングの効果（型で引く）
+        RTEffectSet& GetRTEffects() { return rtEffects_; }
 #ifdef CORE_EDITOR
         /// @brief レイトレーシングのデバッグ表示の GPU 側
         RTDebugSystem* GetRTDebugSystem() { return rtDebug_.get(); }
 #endif
-        WaterRefractionRayTracingManager* GetWaterRefractionRayTracingManager() { return rtWaterRefractionManager_.get(); }
-        WaterReflectionRayTracingManager* GetWaterReflectionRayTracingManager() { return rtWaterReflectionManager_.get(); }
-        WaterCausticsRayTracingManager* GetWaterCausticsRayTracingManager() { return rtWaterCausticsManager_.get(); }
-        WaterSeabedRayTracingManager* GetWaterSeabedRayTracingManager() { return rtWaterSeabedManager_.get(); }
-        WaterSeaMapRayTracingManager* GetWaterSeaMapRayTracingManager() { return rtWaterSeaMapManager_.get(); }
         FFTOceanManager* GetFFTOceanManager() { return fftOceanManager_.get(); }
         WaterWhitecapFoam* GetWaterWhitecapFoam() { return waterWhitecapFoam_.get(); }
         WaterShoreFoam* GetWaterShoreFoam() { return waterShoreFoam_.get(); }
@@ -140,15 +131,10 @@ namespace CoreEngine
         std::unique_ptr<AccelerationStructureManager> accelerationStructureManager_;
         std::unique_ptr<RTScene>                      rtScene_;  ///< TLAS に載せる物と材質の表
         std::unique_ptr<VertexAnimationDeformer>      vertexAnimationDeformer_;  ///< 揺れる植物の BLAS 用の頂点変形
-        std::unique_ptr<RayTracingShadowManager>      rtShadowManager_;
+        RTEffectSet                                   rtEffects_;  ///< レイトレーシングの効果（影・水面など）
 #ifdef CORE_EDITOR
         std::unique_ptr<RTDebugSystem>                rtDebug_;  ///< レイトレーシングのデバッグ表示
 #endif
-        std::unique_ptr<WaterRefractionRayTracingManager> rtWaterRefractionManager_;
-        std::unique_ptr<WaterReflectionRayTracingManager> rtWaterReflectionManager_;
-        std::unique_ptr<WaterCausticsRayTracingManager> rtWaterCausticsManager_;
-        std::unique_ptr<WaterSeabedRayTracingManager> rtWaterSeabedManager_;
-        std::unique_ptr<WaterSeaMapRayTracingManager> rtWaterSeaMapManager_;
         std::unique_ptr<FFTOceanManager> fftOceanManager_;
         std::unique_ptr<WaterWhitecapFoam> waterWhitecapFoam_;
         std::unique_ptr<WaterShoreFoam> waterShoreFoam_;

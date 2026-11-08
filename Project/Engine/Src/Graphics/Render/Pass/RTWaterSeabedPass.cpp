@@ -1,14 +1,22 @@
 #include "pch.h"
 #include "RTWaterSeabedPass.h"
 
-#include "EngineSystem/Subsystem/RayTracingSubsystem.h"
 #include "Graphics/Render/RenderGraph.h"
 #include "Graphics/RayTracing/Debug/RTDebugRegistry.h"
+#include "Graphics/RayTracing/Effect/RTEffectRegistry.h"
+#include "Graphics/RayTracing/Effect/RTEffectSet.h"
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Water/RayTracing/WaterSeabedRayTracingManager.h"
 
 namespace CoreEngine
 {
+    RT_EFFECT_REGISTER(WaterSeabedRayTracingManager,
+        .id = "RTWaterSeabed",
+        .group = kWaterRTEffectGroup,
+        .passes = {
+            RTEffectPassDesc::Of<RTWaterSeabedPass>(RenderPassPhase::Water, 5),
+        })
+
     RT_DEBUG_EFFECT_REGISTER(kSeabedEffect,
         .id = "RTWaterSeabed",
         .label = "海底の高さ",
@@ -16,7 +24,7 @@ namespace CoreEngine
         .passNames = { "RTWaterSeabedPass" },
         .stageLabels = { "トレース" },
         .collect = [](const RTDebugQuery& query, std::vector<RTDebugEffectRow>& rows) {
-            if (auto* manager = query.domain ? query.domain->GetWaterSeabedRayTracingManager() : nullptr) {
+            if (auto* manager = query.domain ? query.domain->GetRTEffects().Find<WaterSeabedRayTracingManager>() : nullptr) {
                 rows.push_back({ "ゲームの画面", manager->GetDispatchInfo() });
             }
         });
@@ -50,19 +58,22 @@ namespace CoreEngine
         if (!context.waterSurfaceState || context.waterSurfaceState->regionValid == 0) {
             return;
         }
-        auto* seabed = context.rtWaterSeabedManager;
-        if (!context.rayTracingSubsystem || !context.dxCommon || !context.cmdList
-            || !seabed || !seabed->IsInitialized()) {
+        WaterSeabedRayTracingManager* seabed = FindRTEffect<WaterSeabedRayTracingManager>(context);
+        if (!context.dxCommon || !context.cmdList || !seabed || !seabed->IsInitialized()) {
             return;
         }
 
         constexpr auto kView = WaterSeabedRayTracingManager::ViewID::GameView;
-        context.rayTracingSubsystem->DispatchWaterSeabed(
-            context,
-            context.dxCommon,
-            context.cmdList,
-            kView,
-            *context.waterSurfaceState);
+        const WaterSurfaceData& surfaceData = *context.waterSurfaceState;
+
+        WaterRayTracingPassBase::FrameInput frame;
+        if (WaterRayTracingPassBase::BuildFrameInput(context, surfaceData, "water seabed", false, frame)) {
+            // Gerstner 経路では変位テクスチャを読まないが、宣言されたスロットには何かを差す
+            if (frame.fftOceanInput.displacementSRV.ptr == 0) {
+                frame.fftOceanInput.displacementSRV = frame.sceneDepthSRV;
+            }
+            seabed->Dispatch(context.cmdList, surfaceData, frame.fftOceanInput, kView);
+        }
 
         if (context.frameBlackboard && seabed->GetSeabedSRVHandle(kView).ptr != 0) {
             context.frameBlackboard->SetResource(
