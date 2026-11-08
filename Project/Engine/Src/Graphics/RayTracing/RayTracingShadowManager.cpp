@@ -14,6 +14,9 @@
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/CVar/CVar.h"
+#include "Camera/View/ViewInfo.h"
+#include "Graphics/Light/LightManager.h"
+#include "Graphics/RHI/Resource/UploadRing.h"
 
 #include <d3d12.h>
 #include <algorithm>
@@ -124,6 +127,11 @@ namespace CoreEngine
             "大きいほど深度が近い結果しか採用しない（輪郭はシャープだがエイリアスが出る）",
             CVarRange{ 0.5f, 40.0f } };
 
+        CVar<int> cvMaxLocalLights{
+            "r.RTShadow.MaxLocalLights", 4,
+            "同時に影を落とす点光源・スポット・エリアの数。影を落とす設定で画面に届くライトから、"
+            "カメラに近い順に選ぶ。0 で局所ライトの影を撃たない",
+            CVarRange{ 0.0f, 4.0f } };
         // 残像・ゴーストの切り分け用の切り替え（保存しない）
         CVar<bool> cvHistoryEnabled{
             "r.RTShadow.HistoryEnabled", true,
@@ -210,8 +218,24 @@ namespace CoreEngine
         uint32_t hitSubMeshTableIndex;  // offset 164 材質のサブメッシュ表
         uint32_t pad4;               // offset 168
         uint32_t pad5;               // offset 172 → row11 終了(176)
+        int      lightType;          // offset 176 0 = 平行光源 / 1 = 点光源 / 2 = スポット / 3 = エリア（LightType の並び）
+        float    lightPositionX;     // offset 180 点光源・スポット・エリアの位置
+        float    lightPositionY;     // offset 184
+        float    lightPositionZ;     // offset 188 → row12 終了(192)
+        float    lightRange;         // offset 192 届く距離 [m]
+        float    spotCosOuterCone;   // offset 196 スポットの外角の余弦
+        float    areaHalfWidth;      // offset 200 エリアの発光面の半分の幅
+        float    areaHalfHeight;     // offset 204 → row13 終了(208)
+        float    areaRightX;         // offset 208 エリアの発光面の右向き
+        float    areaRightY;         // offset 212
+        float    areaRightZ;         // offset 216
+        float    pad6;               // offset 220 → row14 終了(224)
+        float    areaUpX;            // offset 224 エリアの発光面の上向き
+        float    areaUpY;            // offset 228
+        float    areaUpZ;            // offset 232
+        float    pad7;               // offset 236 → row15 終了(240)
     };
-    static_assert(sizeof(ShadowRayConstants) == 176, "ShadowRayConstants size mismatch with HLSL cbuffer");
+    static_assert(sizeof(ShadowRayConstants) == 240, "ShadowRayConstants size mismatch with HLSL cbuffer");
 
     static constexpr Cb::Field kShadowRayConstantsFields[] = {
         CB_FIELD(ShadowRayConstants, lightDir), CB_FIELD(ShadowRayConstants, shadowBias),
@@ -228,10 +252,17 @@ namespace CoreEngine
         CB_FIELD(ShadowRayConstants, waterEnabled), CB_FIELD(ShadowRayConstants, pad3),
         CB_FIELD(ShadowRayConstants, hitInstanceTableIndex), CB_FIELD(ShadowRayConstants, hitSubMeshTableIndex),
         CB_FIELD(ShadowRayConstants, pad4), CB_FIELD(ShadowRayConstants, pad5),
+        CB_FIELD(ShadowRayConstants, lightType), CB_FIELD(ShadowRayConstants, lightPositionX),
+        CB_FIELD(ShadowRayConstants, lightPositionY), CB_FIELD(ShadowRayConstants, lightPositionZ),
+        CB_FIELD(ShadowRayConstants, lightRange), CB_FIELD(ShadowRayConstants, spotCosOuterCone),
+        CB_FIELD(ShadowRayConstants, areaHalfWidth), CB_FIELD(ShadowRayConstants, areaHalfHeight),
+        CB_FIELD(ShadowRayConstants, areaRightX), CB_FIELD(ShadowRayConstants, areaRightY),
+        CB_FIELD(ShadowRayConstants, areaRightZ), CB_FIELD(ShadowRayConstants, pad6),
+        CB_FIELD(ShadowRayConstants, areaUpX), CB_FIELD(ShadowRayConstants, areaUpY),
+        CB_FIELD(ShadowRayConstants, areaUpZ), CB_FIELD(ShadowRayConstants, pad7),
     };
     CB_VERIFY_LAYOUT(ShadowRayConstants, kShadowRayConstantsFields);
     CB_BIND_HLSL(ShadowRayConstants, kShadowRayConstantsFields, "ShadowRayConstants");
-    static constexpr UINT kShadowRayConstantCount = sizeof(ShadowRayConstants) / sizeof(uint32_t);
 
     /// @brief A-Trous デノイズ（RTShadowDenoise.hlsl）の DenoiseConstants
     struct DenoiseConstants {
@@ -435,15 +466,10 @@ namespace CoreEngine
         shaderBlob_ = program->GetCS();
 
         // グローバルルートシグネチャをリフレクションから構築する
-        // （ShadowRayConstants だけ 32bit ルート定数として明示）
+        // （ShadowRayConstants は記録中のフレームの UploadRing に置き、ルート CBV で差す）
         RootSignatureConfig config;
         // DXR に入力アセンブラは無い。アルファで抜く判定は材質の表とテクスチャをヒープから直接引く
         config.SetFlags(D3D12_ROOT_SIGNATURE_FLAG_CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED);
-        {
-            ResourceBindingConfig rc("ShadowRayConstants", BindingStrategy::RootConstants);
-            rc.rootConstantsCount = kShadowRayConstantCount;
-            config.ConfigureResource(rc);
-        }
         // 物のテクスチャを繰り返して引く（Include/RayTracing/RTSceneTables.hlsli）
         config.ConfigureSampler("gLinearWrap", SamplerConfig::Linear());
         if (!BuildGlobalRootSignature(*program, RTShadowBind::kDecls,
@@ -492,10 +518,10 @@ namespace CoreEngine
     // =========================================================================
     bool RayTracingShadowManager::EnsureOutputTexture(
         UINT width, UINT height, UINT traceWidth, UINT traceHeight, UINT traceScale,
-        uint32_t viewIndex, uint32_t lightIndex)
+        uint32_t viewIndex, uint32_t shadowSlot)
     {
-        auto& view = views_[viewIndex][lightIndex];
-        const uint32_t maskSlot = MakeSlotIndex(viewIndex, lightIndex, TextureSlot::Mask);
+        auto& view = views_[viewIndex][shadowSlot];
+        const uint32_t maskSlot = MakeSlotIndex(viewIndex, shadowSlot, TextureSlot::Mask);
         if (width == view.width && height == view.height
             && traceWidth == view.traceWidth && traceHeight == view.traceHeight
             && outputViews_.HasTexture(maskSlot)) {
@@ -510,7 +536,7 @@ namespace CoreEngine
         // サイズ変更時は履歴を無効化（古いサイズの履歴を引き継がない）
         view.isHistoryValid = false;
 
-        const std::string suffix = "_v" + std::to_string(viewIndex) + "_l" + std::to_string(lightIndex);
+        const std::string suffix = "_v" + std::to_string(viewIndex) + "_l" + std::to_string(shadowSlot);
 
         RayTracingOutputViewSet::TextureOptions options{};
         options.format = kShadowTextureFormat;
@@ -538,7 +564,7 @@ namespace CoreEngine
         for (const TraceSlot& traceSlot : kTraceSlots) {
             options.format = traceSlot.format;
             if (!outputViews_.EnsureTexture(dxCommon_, descriptorAllocator_, traceWidth, traceHeight,
-                MakeSlotIndex(viewIndex, lightIndex, traceSlot.slot),
+                MakeSlotIndex(viewIndex, shadowSlot, traceSlot.slot),
                 "RayTracingShadowManager", traceSlot.name + suffix, options)) {
                 return false;
             }
@@ -546,7 +572,7 @@ namespace CoreEngine
 
         Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Graphics,
             "RayTracingShadowManager: Output texture[view={} light={}] created (mask {}x{} / trace {}x{})",
-            viewIndex, lightIndex, width, height, traceWidth, traceHeight);
+            viewIndex, shadowSlot, width, height, traceWidth, traceHeight);
 
         return true;
     }
@@ -559,13 +585,13 @@ namespace CoreEngine
         return settings_.halfResolutionTrace ? 2u : 1u;
     }
 
-    void RayTracingShadowManager::Resize(UINT width, UINT height, ViewID viewId, uint32_t lightIndex)
+    void RayTracingShadowManager::Resize(UINT width, UINT height, ViewID viewId, uint32_t shadowSlot)
     {
-        lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
+        shadowSlot = (std::min)(shadowSlot, kMaxShadowSlots - 1);
         const UINT scale = GetTraceScale();
         EnsureOutputTexture(width, height,
             (width + scale - 1) / scale, (height + scale - 1) / scale, scale,
-            static_cast<uint32_t>(viewId), lightIndex);
+            static_cast<uint32_t>(viewId), shadowSlot);
     }
 
     void RayTracingShadowManager::OnResize(uint32_t width, uint32_t height)
@@ -579,54 +605,54 @@ namespace CoreEngine
         const UINT traceHeight = (height + scale - 1) / scale;
 
         for (uint32_t viewIndex = 0; viewIndex < kViewCount; ++viewIndex) {
-            for (uint32_t lightIndex = 0; lightIndex < kMaxDirectionalLights; ++lightIndex) {
-                if (outputViews_.HasTexture(MakeSlotIndex(viewIndex, lightIndex, TextureSlot::Mask))) {
-                    EnsureOutputTexture(width, height, traceWidth, traceHeight, scale, viewIndex, lightIndex);
+            for (uint32_t shadowSlot = 0; shadowSlot < kMaxShadowSlots; ++shadowSlot) {
+                if (outputViews_.HasTexture(MakeSlotIndex(viewIndex, shadowSlot, TextureSlot::Mask))) {
+                    EnsureOutputTexture(width, height, traceWidth, traceHeight, scale, viewIndex, shadowSlot);
                 }
             }
         }
     }
 
     D3D12_GPU_DESCRIPTOR_HANDLE RayTracingShadowManager::GetShadowSRVHandle(
-        ViewID viewId, uint32_t lightIndex) const
+        ViewID viewId, uint32_t shadowSlot) const
     {
-        lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
-        return SlotSRV(static_cast<uint32_t>(viewId), lightIndex, TextureSlot::Mask);
+        shadowSlot = (std::min)(shadowSlot, kMaxShadowSlots - 1);
+        return SlotSRV(static_cast<uint32_t>(viewId), shadowSlot, TextureSlot::Mask);
     }
 
     D3D12_GPU_DESCRIPTOR_HANDLE RayTracingShadowManager::GetRawShadowSRVHandle(
-        ViewID viewId, uint32_t lightIndex) const
+        ViewID viewId, uint32_t shadowSlot) const
     {
-        lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
-        return SlotSRV(static_cast<uint32_t>(viewId), lightIndex, TextureSlot::Raw);
+        shadowSlot = (std::min)(shadowSlot, kMaxShadowSlots - 1);
+        return SlotSRV(static_cast<uint32_t>(viewId), shadowSlot, TextureSlot::Raw);
     }
 
     D3D12_GPU_DESCRIPTOR_HANDLE RayTracingShadowManager::GetHistorySRVHandle(
-        ViewID viewId, uint32_t lightIndex) const
+        ViewID viewId, uint32_t shadowSlot) const
     {
-        lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
+        shadowSlot = (std::min)(shadowSlot, kMaxShadowSlots - 1);
         const uint32_t vi = static_cast<uint32_t>(viewId);
-        return SlotSRV(vi, lightIndex, views_[vi][lightIndex].CurrentHistorySlot());
+        return SlotSRV(vi, shadowSlot, views_[vi][shadowSlot].CurrentHistorySlot());
     }
 
-    GpuResource& RayTracingShadowManager::GetRawShadowResource(ViewID viewId, uint32_t lightIndex)
+    GpuResource& RayTracingShadowManager::GetRawShadowResource(ViewID viewId, uint32_t shadowSlot)
     {
-        lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
-        return Slot(static_cast<uint32_t>(viewId), lightIndex, TextureSlot::Raw);
+        shadowSlot = (std::min)(shadowSlot, kMaxShadowSlots - 1);
+        return Slot(static_cast<uint32_t>(viewId), shadowSlot, TextureSlot::Raw);
     }
 
-    GpuResource& RayTracingShadowManager::GetHistoryResource(ViewID viewId, uint32_t lightIndex)
+    GpuResource& RayTracingShadowManager::GetHistoryResource(ViewID viewId, uint32_t shadowSlot)
     {
-        lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
+        shadowSlot = (std::min)(shadowSlot, kMaxShadowSlots - 1);
         const uint32_t vi = static_cast<uint32_t>(viewId);
-        return Slot(vi, lightIndex, views_[vi][lightIndex].CurrentHistorySlot());
+        return Slot(vi, shadowSlot, views_[vi][shadowSlot].CurrentHistorySlot());
     }
 
     const RayTracingDispatchInfo& RayTracingShadowManager::GetDispatchInfo(
-        ViewID viewId, uint32_t lightIndex) const
+        ViewID viewId, uint32_t shadowSlot) const
     {
-        lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
-        return views_[static_cast<uint32_t>(viewId)][lightIndex].dispatchInfo;
+        shadowSlot = (std::min)(shadowSlot, kMaxShadowSlots - 1);
+        return views_[static_cast<uint32_t>(viewId)][shadowSlot].dispatchInfo;
     }
 
     int RayTracingShadowManager::GetEffectiveAtrousPassCount() const
@@ -665,18 +691,18 @@ namespace CoreEngine
 
     GpuResource& RayTracingShadowManager::GetShadowResource(
         ViewID viewId,
-        uint32_t lightIndex)
+        uint32_t shadowSlot)
     {
         // 指定ビュー・ライトの現在のシャドウ出力テクスチャを返す。
-        lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
-        return Slot(static_cast<uint32_t>(viewId), lightIndex, TextureSlot::Mask);
+        shadowSlot = (std::min)(shadowSlot, kMaxShadowSlots - 1);
+        return Slot(static_cast<uint32_t>(viewId), shadowSlot, TextureSlot::Mask);
     }
 
     bool RayTracingShadowManager::IsDispatchedThisFrame(
-        ViewID viewId, uint32_t lightIndex) const
+        ViewID viewId, uint32_t shadowSlot) const
     {
-        lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
-        return views_[static_cast<uint32_t>(viewId)][lightIndex].dispatchedThisFrame;
+        shadowSlot = (std::min)(shadowSlot, kMaxShadowSlots - 1);
+        return views_[static_cast<uint32_t>(viewId)][shadowSlot].dispatchedThisFrame;
     }
 
     void RayTracingShadowManager::BeginFrame()
@@ -688,6 +714,128 @@ namespace CoreEngine
         }
     }
 
+    namespace
+    {
+        /// @brief 球が視錐台の完全に外側にあるか
+        bool IsSphereOutsideFrustum(const Frustum& frustum, const Vector3& center, float radius)
+        {
+            for (const auto& plane : frustum.planes) {
+                if (plane.DistanceTo(center) < -radius) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// @brief 局所ライトの影の形を作る（向きと発光面の基底は LightManager::UpdateAll と同じ求め方）
+        RTShadowLightShape MakeLocalShadowShape(LightType type, LightHandle handle, const Light& light)
+        {
+            RTShadowLightShape shape{};
+            shape.type = type;
+            shape.position = light.position;
+            const float lengthSq = Dot(light.direction, light.direction);
+            shape.direction = (lengthSq > 1.0e-12f) ? Normalize(light.direction) : Vector3{ 0.0f, -1.0f, 0.0f };
+            shape.range = light.range;
+            shape.sourceRadius = (std::max)(light.sourceRadius, 0.0f);
+            if (type == LightType::Spot) {
+                const float outerDeg = (std::max)(light.outerConeAngleDeg, 0.1f);
+                shape.cosOuterCone = std::cos(outerDeg * MathCore::Constants::kDegToRad);
+            }
+            if (type == LightType::Area) {
+                LightManager::ComputeAreaLightBasis(light.direction, shape.areaRight, shape.areaUp);
+                shape.areaHalfWidth = light.areaWidth * 0.5f;
+                shape.areaHalfHeight = light.areaHeight * 0.5f;
+            }
+            // 種類・世代・スロットの番号で見分ける（同じスロットを別のライトが使い直しても履歴を引き継がない）
+            shape.key = (1ull << 63)
+                | (static_cast<uint64_t>(type) << 40)
+                | (static_cast<uint64_t>(handle.generation) << 16)
+                | static_cast<uint64_t>(handle.index);
+            return shape;
+        }
+    }
+
+    void RayTracingShadowManager::SelectLocalShadowLights(const LightManager& lights, const ViewInfo& view)
+    {
+        struct Candidate {
+            LightType type;
+            uint32_t gpuIndex;
+            LightHandle handle;
+            const Light* light;
+            float score;
+        };
+        std::vector<Candidate> candidates;
+        const uint32_t maxLocal = view.isValid
+            ? static_cast<uint32_t>(std::clamp(cvMaxLocalLights.Get(), 0, static_cast<int>(kMaxLocalLights)))
+            : 0u;
+        if (maxLocal > 0) {
+            lights.ForEachLocalLight([&](LightType type, uint32_t gpuIndex, LightHandle handle, const Light& light) {
+                if (!light.enabled || !light.castShadows || light.intensity <= 0.0f || light.range <= 0.0f) {
+                    return;
+                }
+                // 光が届く範囲を囲む球（エリアは発光面の端から届く距離ぶん広げる）
+                float reach = light.range;
+                if (type == LightType::Area) {
+                    reach += 0.5f * std::sqrt(light.areaWidth * light.areaWidth + light.areaHeight * light.areaHeight);
+                }
+                if (IsSphereOutsideFrustum(view.frustum, light.position, reach)) {
+                    return;
+                }
+                // カメラから球の表面までの距離を届く距離で割った値が小さいほど先に選ぶ（中にいれば 0）
+                const float distance = Length(light.position - view.position);
+                candidates.push_back({ type, gpuIndex, handle, &light, (std::max)(distance - reach, 0.0f) / reach });
+            });
+            std::stable_sort(candidates.begin(), candidates.end(),
+                [](const Candidate& a, const Candidate& b) { return a.score < b.score; });
+            if (candidates.size() > maxLocal) {
+                candidates.resize(maxLocal);
+            }
+        }
+
+        // 前のフレームと同じライトは同じ枠に残し、残りのライトを空いた枠へ順に入れる
+        LocalShadowSlot next[kMaxLocalLights]{};
+        bool taken[kMaxLocalLights] = {};
+        std::vector<bool> placed(candidates.size(), false);
+        const auto assign = [&](uint32_t local, const Candidate& candidate) {
+            LocalShadowSlot& slot = next[local];
+            slot.active = true;
+            slot.type = candidate.type;
+            slot.gpuIndex = candidate.gpuIndex;
+            slot.handle = candidate.handle;
+            slot.shaderKey = (static_cast<uint32_t>(candidate.type) << 16) | candidate.gpuIndex;
+            slot.shape = MakeLocalShadowShape(candidate.type, candidate.handle, *candidate.light);
+            taken[local] = true;
+        };
+        for (size_t c = 0; c < candidates.size(); ++c) {
+            for (uint32_t local = 0; local < kMaxLocalLights; ++local) {
+                const LocalShadowSlot& previous = localSlots_[local];
+                if (!taken[local] && previous.active
+                    && previous.handle == candidates[c].handle && previous.type == candidates[c].type) {
+                    assign(local, candidates[c]);
+                    placed[c] = true;
+                    break;
+                }
+            }
+        }
+        for (size_t c = 0; c < candidates.size(); ++c) {
+            if (placed[c]) {
+                continue;
+            }
+            for (uint32_t local = 0; local < kMaxLocalLights; ++local) {
+                if (!taken[local]) {
+                    assign(local, candidates[c]);
+                    break;
+                }
+            }
+        }
+        std::copy(std::begin(next), std::end(next), std::begin(localSlots_));
+    }
+
+    const RayTracingShadowManager::LocalShadowSlot& RayTracingShadowManager::GetLocalShadowSlot(uint32_t localIndex) const
+    {
+        return localSlots_[(std::min)(localIndex, kMaxLocalLights - 1)];
+    }
+
     // =========================================================================
     // Dispatch（毎フレーム呼び出し）
     //   RayGen はトレース解像度で Raw スロットへ書き出す。
@@ -696,21 +844,20 @@ namespace CoreEngine
         ID3D12GraphicsCommandList* cmdList,
         D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
         D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
-        const Vector3& lightDirection,
+        const RTShadowLightShape& light,
         const Matrix4x4& invViewProj,
         UINT width, UINT height,
         ViewID viewId,
-        uint32_t lightIndex,
-        const void* lightKey,
+        uint32_t shadowSlot,
         const RayTracingShadowWaterSurface& waterSurface,
         const RTHitTableIndices& hitTables)
     {
         // 設定は CVar が保持する。UI・設定復元・コンソールのどの経路で変わってもここで取り込む
         SyncSettingsFromCVars();
 
-        lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
+        shadowSlot = (std::min)(shadowSlot, kMaxShadowSlots - 1);
         const uint32_t vi = static_cast<uint32_t>(viewId);
-        auto& view = views_[vi][lightIndex];
+        auto& view = views_[vi][shadowSlot];
 
         const UINT traceScale = GetTraceScale();
         const UINT traceWidth = (width + traceScale - 1) / traceScale;
@@ -718,11 +865,13 @@ namespace CoreEngine
 
         // 診断情報を毎回リセットしてから埋める（失敗経路でも状態が UI に出るようにする）
         const int numSamples = std::clamp(settings_.softShadowSamples, 1, 16);
-        const float effectiveRayDistance = ResolveEffectiveRayDistance(lightDirection);
+        // 平行光源は太陽の高さで射程を伸ばし、局所ライトはライトまでの距離で止める
+        const bool isDirectional = (light.type == LightType::Directional);
+        const float effectiveRayDistance = isDirectional ? ResolveEffectiveRayDistance(light.direction) : light.range;
         view.dispatchInfo = {};
         view.dispatchInfo.passName = "RTShadow";
         view.dispatchInfo.viewIndex = vi;
-        view.dispatchInfo.slotIndex = lightIndex;
+        view.dispatchInfo.slotIndex = shadowSlot;
         view.dispatchInfo.width = traceWidth;
         view.dispatchInfo.height = traceHeight;
         view.dispatchInfo.blasCount = asMgr_ ? asMgr_->GetBLASCount() : 0;
@@ -730,7 +879,12 @@ namespace CoreEngine
         view.dispatchInfo.AddExtra("samples/px", static_cast<float>(numSamples));
         view.dispatchInfo.AddExtra("penumbraSpp", static_cast<float>(std::clamp(settings_.penumbraSamples, 1, 16)));
         view.dispatchInfo.AddExtra("atrousPasses", static_cast<float>(GetEffectiveAtrousPassCount()));
-        view.dispatchInfo.AddExtra("lightRadius", settings_.lightRadius);
+        view.dispatchInfo.AddExtra("lightType", static_cast<float>(light.type));
+        if (isDirectional) {
+            view.dispatchInfo.AddExtra("lightRadius", settings_.lightRadius);
+        } else {
+            view.dispatchInfo.AddExtra("sourceRadius[m]", light.sourceRadius);
+        }
         view.dispatchInfo.AddExtra("rayDist(実効)", effectiveRayDistance);
 
         if (!WaitForPipeline()) {
@@ -748,28 +902,28 @@ namespace CoreEngine
 
         if (dispatchLogCount_ < 10) {
             Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Graphics,
-                "RTShadow::Dispatch START viewId={} lightIndex={} size={}x{} trace={}x{} BLAS={} "
+                "RTShadow::Dispatch START viewId={} shadowSlot={} size={}x{} trace={}x{} BLAS={} "
                 "samples={} rayDist={:.1f} lightDir=({:.3f},{:.3f},{:.3f})",
-                vi, lightIndex, width, height, traceWidth, traceHeight, asMgr_->GetBLASCount(),
+                vi, shadowSlot, width, height, traceWidth, traceHeight, asMgr_->GetBLASCount(),
                 numSamples, effectiveRayDistance,
-                lightDirection.x, lightDirection.y, lightDirection.z);
+                light.direction.x, light.direction.y, light.direction.z);
         }
 
         // 出力テクスチャの確保（リサイズ・解像度モード変更に対応）
-        if (!EnsureOutputTexture(width, height, traceWidth, traceHeight, traceScale, vi, lightIndex)) {
+        if (!EnsureOutputTexture(width, height, traceWidth, traceHeight, traceScale, vi, shadowSlot)) {
             view.dispatchInfo.status = RayTracingDispatchStatus::OutputAllocationFailed;
             return;
         }
-        view.dispatchInfo.outputSrvPtr = SlotSRV(vi, lightIndex, TextureSlot::Mask).ptr;
+        view.dispatchInfo.outputSrvPtr = SlotSRV(vi, shadowSlot, TextureSlot::Mask).ptr;
 
         // 別のライトがこの番号へ来たとき・前のフレームに撃っていないときは履歴を捨てる
         const uint64_t frameNumber = dxCommon_->Frame().FrameNumber();
         const bool continuous =
             (frameNumber == view.lastDispatchFrame) || (frameNumber == view.lastDispatchFrame + 1);
-        if (view.lightKey != lightKey || !continuous) {
+        if (view.lightKey != light.key || !continuous) {
             view.isHistoryValid = false;
         }
-        view.lightKey = lightKey;
+        view.lightKey = light.key;
         view.lastDispatchFrame = frameNumber;
 
         // フレームを 1 つ進める（履歴の書き込み先を入れ替え、サンプル位置を巡回させる）
@@ -795,12 +949,13 @@ namespace CoreEngine
 
         // 定数データを構築
         ShadowRayConstants constants{};
-        constants.lightDir[0] = lightDirection.x;
-        constants.lightDir[1] = lightDirection.y;
-        constants.lightDir[2] = lightDirection.z;
+        constants.lightDir[0] = light.direction.x;
+        constants.lightDir[1] = light.direction.y;
+        constants.lightDir[2] = light.direction.z;
         constants.shadowBias = settings_.shadowBias;
         constants.maxRayDistance = effectiveRayDistance;
-        constants.lightRadius = settings_.lightRadius;
+        // 平行光源は角半径 [rad]、点光源・スポットは光る球の半径 [m]
+        constants.lightRadius = isDirectional ? settings_.lightRadius : (std::max)(light.sourceRadius, 0.0f);
         constants.softShadowSamples = numSamples;
         constants.frameIndex = RTDebug::NoiseFrame(view.frameCount++);
         constants.screenWidth = static_cast<float>(width);
@@ -822,6 +977,20 @@ namespace CoreEngine
         // 表がそろわないフレームはアルファを調べず、どの物も不透明として当てる
         constants.hitInstanceTableIndex = hitTables.IsValid() ? hitTables.instanceTable : kRTHitNoTexture;
         constants.hitSubMeshTableIndex = hitTables.IsValid() ? hitTables.subMeshTable : kRTHitNoTexture;
+        constants.lightType = static_cast<int>(light.type);
+        constants.lightPositionX = light.position.x;
+        constants.lightPositionY = light.position.y;
+        constants.lightPositionZ = light.position.z;
+        constants.lightRange = light.range;
+        constants.spotCosOuterCone = light.cosOuterCone;
+        constants.areaHalfWidth = light.areaHalfWidth;
+        constants.areaHalfHeight = light.areaHalfHeight;
+        constants.areaRightX = light.areaRight.x;
+        constants.areaRightY = light.areaRight.y;
+        constants.areaRightZ = light.areaRight.z;
+        constants.areaUpX = light.areaUp.x;
+        constants.areaUpY = light.areaUp.y;
+        constants.areaUpZ = light.areaUp.z;
 
         // CommandList4 を取得
         Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> cmdList4;
@@ -836,21 +1005,21 @@ namespace CoreEngine
 
         {
             BarrierBatch batch(cmdList);
-            batch.Transition(Slot(vi, lightIndex, TextureSlot::Raw),
+            batch.Transition(Slot(vi, shadowSlot, TextureSlot::Raw),
                 D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             // 前フレームの履歴（ペナンブラ適応サンプリングの判定に読む）
-            batch.Transition(Slot(vi, lightIndex, view.PreviousHistorySlot()),
+            batch.Transition(Slot(vi, shadowSlot, view.PreviousHistorySlot()),
                 D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         }
 
         // 差し方は RootSlot の種別から ShaderBinder が決める（番号を直接触らない）
         ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
-        binder.Set(bindings_[RTShadowBind::gShadowOutput], SlotUAV(vi, lightIndex, TextureSlot::Raw));
+        binder.Set(bindings_[RTShadowBind::gShadowOutput], SlotUAV(vi, shadowSlot, TextureSlot::Raw));
         binder.Set(bindings_[RTShadowBind::gScene], asMgr_->GetTLASSRVHandle());
         binder.Set(bindings_[RTShadowBind::gSceneDepth], sceneDepthSRV);
         binder.Set(bindings_[RTShadowBind::gNormalRoughness], normalRoughnessSRV);
-        binder.Set(bindings_[RTShadowBind::gShadowHistory], SlotSRV(vi, lightIndex, view.PreviousHistorySlot()));
-        binder.SetConstants(bindings_[RTShadowBind::ShadowRayConstants], constants);
+        binder.Set(bindings_[RTShadowBind::gShadowHistory], SlotSRV(vi, shadowSlot, view.PreviousHistorySlot()));
+        binder.Set(bindings_[RTShadowBind::ShadowRayConstants], dxCommon_->GetUploadRing().AllocateConstants(constants));
         binder.ValidateBeforeDraw(bindings_);
 
         // DispatchRays はトレース解像度で行う（ハーフ解像度ならレイ本数は 1/4）
@@ -859,8 +1028,8 @@ namespace CoreEngine
 
         // ApplyTemporal の読み取り前に完了を保証してから SRV 状態へ
         BarrierBatch rawToSrv(cmdList);
-        rawToSrv.UAV(Slot(vi, lightIndex, TextureSlot::Raw));
-        rawToSrv.Transition(Slot(vi, lightIndex, TextureSlot::Raw),
+        rawToSrv.UAV(Slot(vi, shadowSlot, TextureSlot::Raw));
+        rawToSrv.Transition(Slot(vi, shadowSlot, TextureSlot::Raw),
             D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         rawToSrv.Flush();
 
@@ -872,8 +1041,8 @@ namespace CoreEngine
 
         if (dispatchLogCount_ < 10) {
             Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Graphics,
-                "RTShadow::Dispatch complete viewId={} lightIndex={} srvHandle=0x{:X}",
-                vi, lightIndex, SlotSRV(vi, lightIndex, TextureSlot::Mask).ptr);
+                "RTShadow::Dispatch complete viewId={} shadowSlot={} srvHandle=0x{:X}",
+                vi, shadowSlot, SlotSRV(vi, shadowSlot, TextureSlot::Mask).ptr);
             ++dispatchLogCount_;
         }
     }
@@ -889,21 +1058,21 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE motionVectorSRV,
         const Matrix4x4& projection,
         ViewID viewId,
-        uint32_t lightIndex)
+        uint32_t shadowSlot)
     {
         if (!isInitialized_ || !temporalPass_.initialized) return;
 
-        lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
+        shadowSlot = (std::min)(shadowSlot, kMaxShadowSlots - 1);
         const uint32_t vi = static_cast<uint32_t>(viewId);
-        auto& view = views_[vi][lightIndex];
+        auto& view = views_[vi][shadowSlot];
         if (!view.dispatchedThisFrame) return;
 
         const TextureSlot currentHistory = view.CurrentHistorySlot();
         const TextureSlot previousHistory = view.PreviousHistorySlot();
 
-        GpuResource& rawRes = Slot(vi, lightIndex, TextureSlot::Raw);
-        GpuResource& prevRes = Slot(vi, lightIndex, previousHistory);
-        GpuResource& curRes = Slot(vi, lightIndex, currentHistory);
+        GpuResource& rawRes = Slot(vi, shadowSlot, TextureSlot::Raw);
+        GpuResource& prevRes = Slot(vi, shadowSlot, previousHistory);
+        GpuResource& curRes = Slot(vi, shadowSlot, currentHistory);
         if (!rawRes.IsValid() || !prevRes.IsValid() || !curRes.IsValid()) return;
 
         // 入出力の状態遷移（3リソースを一括バリア）
@@ -921,12 +1090,12 @@ namespace CoreEngine
         const BindingTable& table = temporalPass_.bindings;
         ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
 
-        binder.Set(table[Bind::gRawShadow], SlotSRV(vi, lightIndex, TextureSlot::Raw));
+        binder.Set(table[Bind::gRawShadow], SlotSRV(vi, shadowSlot, TextureSlot::Raw));
         binder.Set(table[Bind::gGBufferNormal], normalRoughnessSRV);
         binder.Set(table[Bind::gGBufferDepth], sceneDepthSRV);
-        binder.Set(table[Bind::gHistoryShadow], SlotSRV(vi, lightIndex, previousHistory));
+        binder.Set(table[Bind::gHistoryShadow], SlotSRV(vi, shadowSlot, previousHistory));
         binder.Set(table[Bind::gMotionVector], motionVectorSRV);
-        binder.Set(table[Bind::gOutputShadow], SlotUAV(vi, lightIndex, currentHistory));
+        binder.Set(table[Bind::gOutputShadow], SlotUAV(vi, shadowSlot, currentHistory));
 
         TemporalConstants tc{};
         tc.traceWidth = static_cast<int>(view.traceWidth);
@@ -970,13 +1139,13 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
         const Matrix4x4& projection,
         ViewID viewId,
-        uint32_t lightIndex)
+        uint32_t shadowSlot)
     {
         if (!isInitialized_) return;
 
-        lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
+        shadowSlot = (std::min)(shadowSlot, kMaxShadowSlots - 1);
         const uint32_t vi = static_cast<uint32_t>(viewId);
-        auto& view = views_[vi][lightIndex];
+        auto& view = views_[vi][shadowSlot];
         if (!view.dispatchedThisFrame) return;
 
         // A-Trous: ステップ幅 1 → 2 → 4 → 8
@@ -1009,8 +1178,8 @@ namespace CoreEngine
                 const TextureSlot inSlot = lastSlot;
                 const TextureSlot outSlot = (pass % 2 == 0) ? TextureSlot::DenoiseA : TextureSlot::DenoiseB;
 
-                GpuResource& inputRes = Slot(vi, lightIndex, inSlot);
-                GpuResource& outputRes = Slot(vi, lightIndex, outSlot);
+                GpuResource& inputRes = Slot(vi, shadowSlot, inSlot);
+                GpuResource& outputRes = Slot(vi, shadowSlot, outSlot);
                 if (!inputRes.IsValid() || !outputRes.IsValid()) return;
 
                 // 入力: SRV へ、出力: UAV へ（2リソースを一括バリア）
@@ -1022,10 +1191,10 @@ namespace CoreEngine
 
                 // 差し忘れ検出のビットをパス単位で見るため、バインダーはパスごとに作り直す
                 ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
-                binder.Set(table[Bind::gInputShadow], SlotSRV(vi, lightIndex, inSlot));
+                binder.Set(table[Bind::gInputShadow], SlotSRV(vi, shadowSlot, inSlot));
                 binder.Set(table[Bind::gNormalRoughness], normalRoughnessSRV);
                 binder.Set(table[Bind::gSceneDepth], sceneDepthSRV);
-                binder.Set(table[Bind::gOutputShadow], SlotUAV(vi, lightIndex, outSlot));
+                binder.Set(table[Bind::gOutputShadow], SlotUAV(vi, shadowSlot, outSlot));
 
                 DenoiseConstants dc{};
                 dc.stepSize = kSteps[pass];
@@ -1053,10 +1222,10 @@ namespace CoreEngine
         // トレース解像度の最終結果をフル解像度の Mask へ解決する
         // （等倍のときは解決パスが 1:1 の写しになる）。
         ResolveToFullResolution(cmdList, normalRoughnessSRV, sceneDepthSRV, projection,
-            vi, lightIndex, lastSlot);
+            vi, shadowSlot, lastSlot);
 
         // 後段（DeferredLighting）はピクセルシェーダから読む
-        Barrier::Transition(cmdList, Slot(vi, lightIndex, TextureSlot::Mask),
+        Barrier::Transition(cmdList, Slot(vi, shadowSlot, TextureSlot::Mask),
             D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     }
 
@@ -1069,15 +1238,15 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
         const Matrix4x4& projection,
         uint32_t viewIndex,
-        uint32_t lightIndex,
+        uint32_t shadowSlot,
         TextureSlot sourceSlot)
     {
         // ハーフ解像度で解いた影を、法線と深度をガイドにフル解像度へバイラテラルアップサンプルする
         if (!resolvePass_.initialized) return;
 
-        auto& view = views_[viewIndex][lightIndex];
-        GpuResource& sourceRes = Slot(viewIndex, lightIndex, sourceSlot);
-        GpuResource& maskRes = Slot(viewIndex, lightIndex, TextureSlot::Mask);
+        auto& view = views_[viewIndex][shadowSlot];
+        GpuResource& sourceRes = Slot(viewIndex, shadowSlot, sourceSlot);
+        GpuResource& maskRes = Slot(viewIndex, shadowSlot, TextureSlot::Mask);
         if (!sourceRes.IsValid() || !maskRes.IsValid()) return;
 
         {
@@ -1093,10 +1262,10 @@ namespace CoreEngine
         const BindingTable& table = resolvePass_.bindings;
         ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
 
-        binder.Set(table[Bind::gTraceShadow], SlotSRV(viewIndex, lightIndex, sourceSlot));
+        binder.Set(table[Bind::gTraceShadow], SlotSRV(viewIndex, shadowSlot, sourceSlot));
         binder.Set(table[Bind::gSceneDepth], sceneDepthSRV);
         binder.Set(table[Bind::gNormalRoughness], normalRoughnessSRV);
-        binder.Set(table[Bind::gOutputShadow], SlotUAV(viewIndex, lightIndex, TextureSlot::Mask));
+        binder.Set(table[Bind::gOutputShadow], SlotUAV(viewIndex, shadowSlot, TextureSlot::Mask));
 
         ResolveConstants rc{};
         rc.fullWidth = static_cast<int>(view.width);

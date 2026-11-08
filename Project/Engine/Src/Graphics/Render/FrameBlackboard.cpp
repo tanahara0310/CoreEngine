@@ -35,12 +35,13 @@ namespace CoreEngine
     const char* const FrameBlackboard::SkySpecular = "SkySpecular";
     const char* const FrameBlackboard::WaterSeaMap = "WaterSeaMap";
 
-    const char* FrameBlackboard::RTShadowMaskOf(uint32_t lightIndex)
+    const char* FrameBlackboard::RTShadowMaskOf(uint32_t shadowSlot)
     {
         static const char* const kNames[kRTShadowMaskCount] = {
             RTShadowMask, "RTShadowMask1", "RTShadowMask2", "RTShadowMask3",
+            "RTShadowMaskLocal0", "RTShadowMaskLocal1", "RTShadowMaskLocal2", "RTShadowMaskLocal3",
         };
-        return lightIndex < kRTShadowMaskCount ? kNames[lightIndex] : nullptr;
+        return shadowSlot < kRTShadowMaskCount ? kNames[shadowSlot] : nullptr;
     }
 
     std::string FrameBlackboard::MakePostEffectIntermediateName(size_t index)

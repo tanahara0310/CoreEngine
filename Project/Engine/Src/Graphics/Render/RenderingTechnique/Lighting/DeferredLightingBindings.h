@@ -24,6 +24,11 @@ namespace CoreEngine::DeferredLightingBind
         gRTShadowMask1,
         gRTShadowMask2,
         gRTShadowMask3,
+        gRTLocalShadowMask0,
+        gRTLocalShadowMask1,
+        gRTLocalShadowMask2,
+        gRTLocalShadowMask3,
+        gRTLocalShadow,
         gSSAO,
         gWaterCaustics,
         gWaterCausticsDebug,
@@ -60,6 +65,13 @@ namespace CoreEngine::DeferredLightingBind
         { "gRTShadowMask1",       ShaderBindingType::SRV, BindingUsage::Required    },
         { "gRTShadowMask2",       ShaderBindingType::SRV, BindingUsage::Required    },
         { "gRTShadowMask3",       ShaderBindingType::SRV, BindingUsage::Required    },
+
+        // 局所ライトの RT シャドウマスク（無いフレームは 1×1 の白を差す）と、どの枠がどのライトか
+        { "gRTLocalShadowMask0",  ShaderBindingType::SRV, BindingUsage::Required    },
+        { "gRTLocalShadowMask1",  ShaderBindingType::SRV, BindingUsage::Required    },
+        { "gRTLocalShadowMask2",  ShaderBindingType::SRV, BindingUsage::Required    },
+        { "gRTLocalShadowMask3",  ShaderBindingType::SRV, BindingUsage::Required    },
+        { "gRTLocalShadow",       ShaderBindingType::CBV, BindingUsage::Required    },
 
         // SSAO・水中コースティクス（無いフレームは 1×1 の白を差す）
         { "gSSAO",                ShaderBindingType::SRV, BindingUsage::Required    },

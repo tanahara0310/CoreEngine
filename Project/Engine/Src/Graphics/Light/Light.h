@@ -64,6 +64,8 @@ namespace CoreEngine
         float outerConeAngleDeg = 45.0f;   ///< スポット外角（半頂角）[deg]
         float areaWidth = 2.0f;            ///< エリア発光面の幅 [m]
         float areaHeight = 2.0f;           ///< エリア発光面の高さ [m]
+        bool castShadows = true;           ///< レイトレーシングの影を落とす
+        float sourceRadius = 0.05f;        ///< 点光源・スポットの光る球の半径 [m]（大きいほど影の縁がぼける。0 でくっきり）
 
         // ---- CPU 専用の役割フラグ（GPU には転送されない）----
         bool isAtmosphereSun = false;      ///< 大気散乱の太陽として扱う

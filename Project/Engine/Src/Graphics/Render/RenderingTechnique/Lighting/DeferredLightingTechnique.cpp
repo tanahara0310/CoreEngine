@@ -196,6 +196,13 @@ namespace CoreEngine
             binder.Set(bindings_[DeferredLightingBind::gRTShadowMask0 + li], orFallback(rtShadowHandles_[li]));
         }
 
+        // ===== 局所ライトの RT シャドウマスク SRV と、どの枠がどのライトか =====
+        for (uint32_t local = 0; local < kMaxRTLocalShadowLights; ++local) {
+            binder.Set(bindings_[DeferredLightingBind::gRTLocalShadowMask0 + local], orFallback(localShadowHandles_[local]));
+        }
+        binder.Set(bindings_[DeferredLightingBind::gRTLocalShadow],
+            context.dxCommon->GetUploadRing().AllocateConstants(localShadowSlots_));
+
         // ===== SSAO・水中コースティクス SRV =====
         binder.Set(bindings_[DeferredLightingBind::gSSAO], orFallback(ssaoHandle_));
         binder.Set(bindings_[DeferredLightingBind::gWaterCaustics], orFallback(waterCausticsHandle_));

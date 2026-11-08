@@ -55,6 +55,38 @@ Texture2D<float> gRTShadowMask1 : register(t13);
 Texture2D<float> gRTShadowMask2 : register(t14);
 Texture2D<float> gRTShadowMask3 : register(t15);
 
+// 点光源・スポット・エリアの RT シャドウマスク（影を落とす 4 灯まで。撃っていない枠は 1x1 の白）
+Texture2D<float> gRTLocalShadowMask0 : register(t22);
+Texture2D<float> gRTLocalShadowMask1 : register(t23);
+Texture2D<float> gRTLocalShadowMask2 : register(t24);
+Texture2D<float> gRTLocalShadowMask3 : register(t25);
+
+// 局所ライトの影の枠に割り当てたライト（C++ 側 DeferredLightingTechnique::RTLocalShadowSlots と一致させること）
+// 値は「ライトの種類 << 16 | 種類ごとのライトの番号」。0xFFFFFFFF の枠は使わない
+struct RTLocalShadowSlots
+{
+    uint key0;
+    uint key1;
+    uint key2;
+    uint key3;
+};
+ConstantBuffer<RTLocalShadowSlots> gRTLocalShadow : register(b10);
+
+static const uint kRTLocalShadowPoint = 1u;
+static const uint kRTLocalShadowSpot = 2u;
+static const uint kRTLocalShadowArea = 3u;
+
+/// @brief 局所ライトの影（影の枠が無いライトは 1 = 影なし）
+float LoadRTLocalShadow(uint lightType, uint lightIndex, int3 loadCoord)
+{
+    const uint key = (lightType << 16) | lightIndex;
+    if (gRTLocalShadow.key0 == key) return gRTLocalShadowMask0.Load(loadCoord).r;
+    if (gRTLocalShadow.key1 == key) return gRTLocalShadowMask1.Load(loadCoord).r;
+    if (gRTLocalShadow.key2 == key) return gRTLocalShadowMask2.Load(loadCoord).r;
+    if (gRTLocalShadow.key3 == key) return gRTLocalShadowMask3.Load(loadCoord).r;
+    return 1.0f;
+}
+
 // ============================================================
 // SSAO テクスチャ（スクリーンスペース AO）
 // ============================================================
@@ -360,7 +392,8 @@ PixelShaderOutput main(PixelShaderInput input)
         float distRatio = d / pL.radius;
         float rangeFactor = saturate(1.0f - distRatio * distRatio * distRatio * distRatio);
         attenuation *= rangeFactor * rangeFactor;
-        Lo += CalculatePBRLighting(N, V, L, pL.color.rgb, pL.intensity * attenuation, albedo, metallic, roughness, ao);
+        Lo += CalculatePBRLighting(N, V, L, pL.color.rgb, pL.intensity * attenuation, albedo, metallic, roughness, ao)
+            * LoadRTLocalShadow(kRTLocalShadowPoint, pi, loadCoord);
     }
 
     // スポットライト（PBR: 逆二乗則 + コーン減衰）
@@ -384,7 +417,8 @@ PixelShaderOutput main(PixelShaderInput input)
             continue;
         float spotFactor = saturate((cosTheta - sL.cosAngle) / (sL.cosFalloffStart - sL.cosAngle));
         attenuation *= spotFactor;
-        Lo += CalculatePBRLighting(N, V, L, sL.color.rgb, sL.intensity * attenuation, albedo, metallic, roughness, ao);
+        Lo += CalculatePBRLighting(N, V, L, sL.color.rgb, sL.intensity * attenuation, albedo, metallic, roughness, ao)
+            * LoadRTLocalShadow(kRTLocalShadowSpot, si, loadCoord);
     }
 
     // エリアライト（PBR: 最近接点計算 + PBR ライティング）
@@ -432,7 +466,8 @@ PixelShaderOutput main(PixelShaderInput input)
         float facingFactor = max(0.0f, dot(aL.normal, -L));
         float finalAttenuation = distAttenuation * shapeFactor * facingFactor;
 
-        Lo += CalculatePBRLighting(N, V, L, aL.color.rgb, aL.intensity * finalAttenuation, albedo, metallic, roughness, ao);
+        Lo += CalculatePBRLighting(N, V, L, aL.color.rgb, aL.intensity * finalAttenuation, albedo, metallic, roughness, ao)
+            * LoadRTLocalShadow(kRTLocalShadowArea, ai, loadCoord);
     }
 
     // アンビエント

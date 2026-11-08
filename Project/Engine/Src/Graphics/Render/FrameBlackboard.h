@@ -57,11 +57,11 @@ namespace CoreEngine
         static const char* const SkySpecular;          ///< 空のスペキュラキューブマップ（AtmosphereLUTPass が作り直す）
         static const char* const WaterSeaMap;          ///< 海の範囲マップ（RTWaterSeaMapPass が作り直す）
 
-        /// @brief RT 影のマスクの数（影を落とすディレクショナルライトの数）
-        static constexpr uint32_t kRTShadowMaskCount = 4;
+        /// @brief RT 影のマスクの数（影の枠の数。0〜3 は平行光源、4〜7 は局所ライト）
+        static constexpr uint32_t kRTShadowMaskCount = 8;
 
-        /// @brief ライトの番号の RT 影のマスクの論理名（0 番は RTShadowMask。範囲外は nullptr）
-        static const char* RTShadowMaskOf(uint32_t lightIndex);
+        /// @brief 影の枠の RT 影のマスクの論理名（0 番は RTShadowMask。範囲外は nullptr）
+        static const char* RTShadowMaskOf(uint32_t shadowSlot);
 
         /// @brief PostEffect の中間論理リソース名を生成する
         /// @param index 中間段インデックス

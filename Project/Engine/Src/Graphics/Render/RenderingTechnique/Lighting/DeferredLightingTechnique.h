@@ -23,6 +23,17 @@ namespace CoreEngine
     class DeferredLightingTechnique : public RenderingTechniqueBase {
     public:
         static constexpr uint32_t kMaxRTShadowLights = 4;
+        static constexpr uint32_t kMaxRTLocalShadowLights = 4;
+        static constexpr uint32_t kNoRTLocalShadowKey = 0xFFFFFFFFu;
+
+        /// @brief 局所ライトの影の枠に割り当てたライト（HLSL 側 RTLocalShadowSlots と一致させること）
+        /// @details 値は「ライトの種類 << 16 | 種類ごとのライトの番号」。kNoRTLocalShadowKey の枠は使わない
+        struct RTLocalShadowSlots {
+            uint32_t key0 = kNoRTLocalShadowKey;
+            uint32_t key1 = kNoRTLocalShadowKey;
+            uint32_t key2 = kNoRTLocalShadowKey;
+            uint32_t key3 = kNoRTLocalShadowKey;
+        };
 
         /// @brief コースティクスのデバッグ表示＋水中ライティング設定（HLSL 側 WaterCausticsDebug と一致させること）
         /// @details waterVolumeEnabled=1 のとき、水中ピクセルのメインライト直接光を
@@ -123,6 +134,20 @@ namespace CoreEngine
             }
         }
 
+        /// @brief 局所ライトの影の枠を設定する
+        /// @param localIndex 局所ライトの枠（0〜3）
+        /// @param handle マスクの SRV（無効時は {}）
+        /// @param key 枠に割り当てたライト（種類 << 16 | 種類ごとのライトの番号。無いときは kNoRTLocalShadowKey）
+        void SetRTLocalShadow(uint32_t localIndex, D3D12_GPU_DESCRIPTOR_HANDLE handle, uint32_t key) {
+            if (localIndex >= kMaxRTLocalShadowLights) {
+                return;
+            }
+            localShadowHandles_[localIndex] = handle;
+            uint32_t* keys[] = { &localShadowSlots_.key0, &localShadowSlots_.key1,
+                &localShadowSlots_.key2, &localShadowSlots_.key3 };
+            *keys[localIndex] = (handle.ptr != 0) ? key : kNoRTLocalShadowKey;
+        }
+
         /// @brief 出力先レンダーターゲット名を設定
         void SetRenderTargetName(const std::string& name) { targetName_ = name; }
 
@@ -171,6 +196,16 @@ namespace CoreEngine
 
         // ===== RT Shadow =====
         D3D12_GPU_DESCRIPTOR_HANDLE rtShadowHandles_[kMaxRTShadowLights]{};
+
+        static constexpr Cb::Field kRTLocalShadowSlotsFields[] = {
+            CB_FIELD(RTLocalShadowSlots, key0), CB_FIELD(RTLocalShadowSlots, key1),
+            CB_FIELD(RTLocalShadowSlots, key2), CB_FIELD(RTLocalShadowSlots, key3),
+        };
+        CB_VERIFY_LAYOUT(RTLocalShadowSlots, kRTLocalShadowSlotsFields);
+        CB_BIND_HLSL(RTLocalShadowSlots, kRTLocalShadowSlotsFields, "gRTLocalShadow");
+
+        D3D12_GPU_DESCRIPTOR_HANDLE localShadowHandles_[kMaxRTLocalShadowLights]{};
+        RTLocalShadowSlots localShadowSlots_{};
 
         // ===== SSAO =====
         D3D12_GPU_DESCRIPTOR_HANDLE ssaoHandle_{};

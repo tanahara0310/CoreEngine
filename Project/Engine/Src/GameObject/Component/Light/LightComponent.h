@@ -41,6 +41,11 @@ namespace CoreEngine
             REFLECT_PROPERTY(light_.outerConeAngleDeg, "外側の角度", p.range = Range(0.0f, 90.0f, 0.5f))
             REFLECT_PROPERTY(light_.areaWidth, "発光面の幅", p.range = Range(0.0f, 100.0f, 0.1f))
             REFLECT_PROPERTY(light_.areaHeight, "発光面の高さ", p.range = Range(0.0f, 100.0f, 0.1f))
+            REFLECT_PROPERTY(light_.castShadows, "影を落とす",
+                p.tooltip = "レイトレーシングの影を落とす（DXR 1.1 に対応した GPU だけ）。"
+                    "点光源・スポット・エリアは、画面に届くライトのうちカメラに近い 4 灯まで")
+            REFLECT_PROPERTY(light_.sourceRadius, "光源の大きさ", p.range = Range(0.0f, 5.0f, 0.01f),
+                p.tooltip = "点光源とスポットの光る球の半径 [m]。大きいほど影の縁がぼける。0 でくっきり")
             REFLECT_PROPERTY(light_.isAtmosphereSun, "大気の太陽")
             REFLECT_PROPERTY(light_.isAtmosphereMoon, "大気の月")
             REFLECT_PROPERTY(light_.atmosphereIntensity, "空の明るさ", p.range = Range(0.0f, 100.0f, 0.1f),
