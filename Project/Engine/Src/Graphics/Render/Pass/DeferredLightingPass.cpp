@@ -15,6 +15,7 @@
 #include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
 #include "Graphics/RayTracing/Effect/RTEffectSet.h"
+#include "Graphics/Render/Pass/RTShadowPass.h"
 #include "Graphics/Render/RenderingTechnique/Lighting/WaterCausticsTechnique.h"
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Utility/Logger/Logger.h"
@@ -65,7 +66,7 @@ namespace CoreEngine
         builder.Read(FrameBlackboard::WaterCaustics, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         builder.Read(FrameBlackboard::RTWaterCaustics, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         if (context.viewSettings.enableRTShadow) {
-            builder.Read(FrameBlackboard::RTShadowMask, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+            DeclareRTShadowMasks(builder, context, false);
         }
         // 雲シャドウ（CloudShadowMapPass が生成。雲を使わないシーンでは登録されない）
         builder.Read(FrameBlackboard::CloudShadowMap, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);

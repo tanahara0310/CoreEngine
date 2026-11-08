@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "Graphics/RHI/Descriptor/DescriptorHandle.h"
+#include "Graphics/RHI/Resource/GpuResource.h"
 #include "Graphics/Water/WaterSurfaceData.h"
 #include "WaterRayTracingPassBase.h"
 #include "WaterSeaMapBuilder.h"
@@ -55,6 +56,9 @@ namespace CoreEngine
 
         /// @brief 今の地図（まだ無ければ valid = false）
         const WaterSeaMapView& GetView() const { return view_; }
+
+        /// @brief 今の地図の資源（送った後は読み取りの状態のまま。まだ無ければ無効）
+        GpuResource& GetMapResource() { return mapTexture_; }
 
     private:
         /// @brief 測った条件（どれかが変わったら測り直す）
@@ -106,7 +110,7 @@ namespace CoreEngine
         void Discard();
 
         WaterSeaMapView view_{};
-        Microsoft::WRL::ComPtr<ID3D12Resource> mapTexture_;
+        GpuResource mapTexture_;
         DescriptorHandle mapSrv_{};
         BakeKey mapKey_{};
 

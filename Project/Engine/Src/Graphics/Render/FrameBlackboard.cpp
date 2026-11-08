@@ -31,6 +31,17 @@ namespace CoreEngine
     const char* const FrameBlackboard::TAAHistory = "TAAHistory";
     const char* const FrameBlackboard::TAAOutput = "TAAOutput";
     const char* const FrameBlackboard::CASOutput = "CASOutput";
+    const char* const FrameBlackboard::FFTOceanDisplacement = "FFTOceanDisplacement";
+    const char* const FrameBlackboard::SkySpecular = "SkySpecular";
+    const char* const FrameBlackboard::WaterSeaMap = "WaterSeaMap";
+
+    const char* FrameBlackboard::RTShadowMaskOf(uint32_t lightIndex)
+    {
+        static const char* const kNames[kRTShadowMaskCount] = {
+            RTShadowMask, "RTShadowMask1", "RTShadowMask2", "RTShadowMask3",
+        };
+        return lightIndex < kRTShadowMaskCount ? kNames[lightIndex] : nullptr;
+    }
 
     std::string FrameBlackboard::MakePostEffectIntermediateName(size_t index)
     {

@@ -16,6 +16,7 @@ namespace CoreEngine
             return view.viewType == RenderViewType::GameView;
         }
 
+        void DeclareResources(RenderGraphBuilder& builder, const RenderContext& context) override;
         void Execute(const RenderContext& context) override;
     };
 }

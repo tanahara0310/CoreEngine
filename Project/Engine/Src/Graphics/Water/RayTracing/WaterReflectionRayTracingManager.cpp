@@ -365,7 +365,7 @@ namespace CoreEngine
         const FFTOceanInput& fftOceanInput,
         D3D12_GPU_DESCRIPTOR_HANDLE skyEnvironmentSRV,
         const WaterSunShadowInput& sunShadow,
-        const WaterHitShadingInput& hitShading,
+        const RTHitShadingInput& hitShading,
         UINT width,
         UINT height,
         ViewID viewId)
@@ -454,6 +454,6 @@ namespace CoreEngine
             height,
             D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
             { &outputViews_.Resource(sunVisibilitySlot), outputViews_.GetUAVHandle(sunVisibilitySlot) },
-            UploadHitShadingConstants(hitShading));
+            UploadRTHitShadingConstants(*dxCommon_, hitShading));
     }
 }

@@ -45,6 +45,9 @@ namespace CoreEngine
 
     void RTWaterSeabedPass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
     {
+        // 水面の波（FFT の波面と、波を弱める海の範囲マップ）
+        builder.Read(FrameBlackboard::FFTOceanDisplacement, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        builder.Read(FrameBlackboard::WaterSeaMap, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         builder.Write(FrameBlackboard::RTWaterSeabedHeight, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     }
 

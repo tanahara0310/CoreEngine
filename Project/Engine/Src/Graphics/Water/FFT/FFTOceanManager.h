@@ -56,6 +56,9 @@ namespace CoreEngine
         /// @return 変位SRVのGPUディスクリプタハンドル
         D3D12_GPU_DESCRIPTOR_HANDLE GetDisplacementSRVHandle() const { return displacementMap_.srv.gpuHandle; }
 
+        /// @brief 変位テクスチャの資源（計算の後は NON_PIXEL_SHADER_RESOURCE）
+        GpuResource& GetDisplacementResource() { return displacementMap_; }
+
         /// @brief 法線テクスチャのSRVハンドルを返す
         /// @return 法線SRVのGPUディスクリプタハンドル
         D3D12_GPU_DESCRIPTOR_HANDLE GetNormalSRVHandle() const { return normalMap_.srv.gpuHandle; }

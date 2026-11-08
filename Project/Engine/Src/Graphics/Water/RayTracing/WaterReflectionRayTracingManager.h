@@ -68,7 +68,7 @@ namespace CoreEngine
             /// ptr==0 なら空を解決せず理由コードを返し、Water.PS の保険が動く。
             D3D12_GPU_DESCRIPTOR_HANDLE skyEnvironmentSRV,
             const WaterSunShadowInput& sunShadow,
-            const WaterHitShadingInput& hitShading,
+            const RTHitShadingInput& hitShading,
             UINT width,
             UINT height,
             ViewID viewId = ViewID::GameView);

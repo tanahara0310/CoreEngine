@@ -3,12 +3,19 @@
 
 #include "Graphics/RHI/Debug/GpuStageScope.h"
 #include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/Render/RenderGraph.h"
 #include "Graphics/Water/FFT/FFTOceanManager.h"
 #include "Graphics/Water/Foam/WaterWhitecapFoam.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
 {
+    void FFTOceanPass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
+    {
+        // 波面の変位は計算の最後に VS と DXR が読む状態へ戻る
+        builder.Write(FrameBlackboard::FFTOceanDisplacement, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    }
+
     void FFTOceanPass::Execute(const RenderContext& context)
     {
         if (!context.dxCommon || !context.fftOceanManager) {

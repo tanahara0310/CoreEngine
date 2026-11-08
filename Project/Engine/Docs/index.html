@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.70.0">
+<meta name="engine-version" content="0.70.1">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11363,6 +11363,14 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-70-1">v0.70.1 <span class="dim">（2026-11-09）</span></h3>
+  <p>レイトレーシングの効果が読む資源を RenderGraph に宣言し、レイが当たった点を照らす処理を水面の外へ出した版です。ゲームの見た目と設定は変わりません（<a href="#g3d-shadow-debug">影や映り込みがおかしいとき</a>）。</p>
+  <ul>
+    <li><strong>当たった点の照らし方</strong>：反射・屈折のレイが当たった点を照らすための入力（<code>RTHitShadingInput</code>）と、その定数を送る処理を、<code>WaterRayTracingPassBase</code> から <code>Graphics/RayTracing/RTHitShading.h</code> の <code>BuildRTHitShadingInput</code> と <code>UploadRTHitShadingConstants</code> へ移しました。水面のほかのレイトレーシングの効果からも使えます。</li>
+    <li><strong>RenderGraph の宣言</strong>：補助のディレクショナルライト（1〜3 番）の影のマスク（<code>RTShadowMask1</code>〜<code>RTShadowMask3</code>）、FFT の海の波面（<code>FFTOceanDisplacement</code>）、空のスペキュラ（<code>SkySpecular</code>）、海の範囲マップ（<code>WaterSeaMap</code>）を <code>FrameBlackboard</code> に登録し、作るパスと、読むレイトレーシングのパスで宣言しました。RenderGraph の窓に、これらの読み書きのつながりが出ます。パスの順は変わりません。</li>
+    <li><strong>影のマスクの状態</strong>：影のパスが影のマスクを書く状態を、デノイズの後の状態（ピクセルシェーダが読む状態）で宣言するようにしました。影のパスの前に入っていた余分なバリアが無くなります。</li>
+  </ul>
 
   <h3 id="changelog-v0-70-0">v0.70.0 <span class="dim">（2026-11-08）</span></h3>
   <p>レイトレーシングの影と、水面の 5 つの効果を、共通の効果の枠組み（<code>RTEffect</code>）に載せ替えた版です。ゲームの見た目と設定は変わりません（<a href="#g3d-shadow-debug">影や映り込みがおかしいとき</a>）。</p>

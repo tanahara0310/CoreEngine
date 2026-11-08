@@ -34,7 +34,7 @@ namespace CoreEngine
         static const char* const ReflectionDepth;
         static const char* const SSAO;
         static const char* const ShadowMask;
-        static const char* const RTShadowMask;
+        static const char* const RTShadowMask; ///< メインライト（0 番）の RT 影のマスク。ほかのライトは RTShadowMaskOf
         static const char* const CloudBuffer;    ///< 半解像度の雲レイマーチ結果（rgb=前乗算輝度, a=透過率）
         static const char* const CloudShadowMap; ///< 太陽方向の雲透過率の上面図
         static const char* const WaterCaustics;
@@ -53,6 +53,15 @@ namespace CoreEngine
         static const char* const TAAHistory; ///< 前フレームの TAA 出力（読み取り側）
         static const char* const TAAOutput;  ///< 今フレームの TAA 出力（書き込み側 = 次フレームの履歴）
         static const char* const CASOutput;  ///< CAS（シャープ化）の出力
+        static const char* const FFTOceanDisplacement; ///< FFT の海の波面の変位（FFTOceanPass が毎フレーム作る）
+        static const char* const SkySpecular;          ///< 空のスペキュラキューブマップ（AtmosphereLUTPass が作り直す）
+        static const char* const WaterSeaMap;          ///< 海の範囲マップ（RTWaterSeaMapPass が作り直す）
+
+        /// @brief RT 影のマスクの数（影を落とすディレクショナルライトの数）
+        static constexpr uint32_t kRTShadowMaskCount = 4;
+
+        /// @brief ライトの番号の RT 影のマスクの論理名（0 番は RTShadowMask。範囲外は nullptr）
+        static const char* RTShadowMaskOf(uint32_t lightIndex);
 
         /// @brief PostEffect の中間論理リソース名を生成する
         /// @param index 中間段インデックス

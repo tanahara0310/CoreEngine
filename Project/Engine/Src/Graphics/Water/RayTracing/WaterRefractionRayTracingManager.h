@@ -61,7 +61,7 @@ namespace CoreEngine
             const Vector3& cameraPosition,
             const WaterSurfaceData& surfaceData,
             const FFTOceanInput& fftOceanInput,
-            const WaterHitShadingInput& hitShading,
+            const RTHitShadingInput& hitShading,
             const WaterUnderwaterLightingInput& underwaterLighting,
             UINT width,
             UINT height,

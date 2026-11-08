@@ -6,6 +6,7 @@
 #include "Graphics/RayTracing/Effect/RTEffectRegistry.h"
 #include "Graphics/RayTracing/Effect/RTEffectSet.h"
 #include "Graphics/Render/RenderDomainContext.h"
+#include "Graphics/Render/RenderGraph.h"
 #include "Graphics/Water/RayTracing/WaterSeaMapRayTracingManager.h"
 
 namespace CoreEngine
@@ -28,6 +29,12 @@ namespace CoreEngine
                 rows.push_back({ "ゲームの画面", manager->GetDispatchInfo() });
             }
         });
+
+    void RTWaterSeaMapPass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
+    {
+        // 地図は送った後、読み取りの状態のまま置かれる
+        builder.Write(FrameBlackboard::WaterSeaMap, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    }
 
     void RTWaterSeaMapPass::Execute(const RenderContext& context)
     {
