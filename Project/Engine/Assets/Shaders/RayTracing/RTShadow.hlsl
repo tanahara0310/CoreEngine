@@ -22,7 +22,7 @@ Texture2D<float> gSceneDepth : register(t1);
 // G-Buffer: 法線（セルフシャドウバイアス用）
 Texture2D<float4> gNormalRoughness : register(t2);
 
-// 前フレームのテンポラル履歴（RTShadowTemporal.CS.hlsl 出力。x=シャドウ値, z=蓄積N）
+// 前フレームのテンポラル履歴（RTDenoiseTemporal.CS.hlsl 出力。x=シャドウ値, z=蓄積N）
 // ペナンブラ適応サンプリングの判定に使う。再投影はせず同座標を読む
 // （カメラが動いた直後は判定が 1 フレームずれるだけで実害がない）。
 Texture2D<float4> gShadowHistory : register(t3);
@@ -188,7 +188,7 @@ bool TryFindWaterEntryPoint(float3 worldPos, float3 toLight, out float3 entryPoi
 
 // ============================================================
 // Ray Generation シェーダー：生シャドウ値を出力するのみ。
-// テンポラル蓄積は RTShadowTemporal.CS.hlsl で行う。
+// テンポラル蓄積は RTDenoiseTemporal.CS.hlsl で行う。
 // ============================================================
 [shader("raygeneration")]
 void RTShadowRayGen()

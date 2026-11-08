@@ -796,6 +796,9 @@
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingDispatchInfo.cpp">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\Denoise\RTDenoiser.cpp">
+      <Filter>Engine\Src\Graphics\RayTracing\Denoise</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RTHitShading.cpp">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClCompile>
@@ -2771,6 +2774,12 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RTObjectSettings.h">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\Denoise\RTDenoiseBindings.h">
+      <Filter>Engine\Src\Graphics\RayTracing\Denoise</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\Denoise\RTDenoiser.h">
+      <Filter>Engine\Src\Graphics\RayTracing\Denoise</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RTHitShading.h">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
@@ -4759,6 +4768,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\RayTracing\Debug">
       <UniqueIdentifier>{875890DF-483F-42AB-AC50-945B943F0F3E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\RayTracing\Denoise">
+      <UniqueIdentifier>{F8F77EE3-4921-4DDF-8E31-A1FE82019556}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\RayTracing\Effect">
       <UniqueIdentifier>{3FF02CB9-66E7-4A15-A7A0-DD257A44AA96}</UniqueIdentifier>

@@ -38,11 +38,8 @@ namespace CoreEngine
         struct ShadowStageInput {
             RayTracingShadowManager* rtShadow = nullptr;
             ID3D12GraphicsCommandList* cmdList = nullptr;
-            D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV{};
-            D3D12_GPU_DESCRIPTOR_HANDLE normalSRV{};
-            D3D12_GPU_DESCRIPTOR_HANDLE motionVectorSRV{};
-            Matrix4x4 projection{};   ///< 深度線形化用（Temporal / Denoise）
-            Matrix4x4 invViewProj{};  ///< ワールド座標復元用（RayGen のみ）
+            RTDenoiseGuides guides{};  ///< 深度・法線・モーションベクター・投影行列
+            Matrix4x4 invViewProj{};   ///< ワールド座標復元用（RayGen のみ）
             UINT width = 0;
             UINT height = 0;
         };
@@ -56,22 +53,13 @@ namespace CoreEngine
             if (!context.gBufferManager || !context.lightManager || !context.sceneManager) return false;
             if (!context.dxCommon || !context.cmdList) return false;
 
-            // 実行中のビューの ViewInfo を使う
-            if (!context.frameViews) return false;
-            const ViewInfo& view = context.frameViews->Get(context.viewSettings.viewType);
-            if (!view.isValid) return false;
+            // 実行中のビューの深度・法線・モーションベクター・投影行列
+            if (!BuildRTDenoiseGuides(context, out.guides)) return false;
 
             out.rtShadow = rtShadow;
             out.cmdList = context.cmdList;
-
-            // ワールド座標は深度から復元する（FrameBlackboard 経由）
-            if (context.frameBlackboard) {
-                context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneDepth, out.sceneDepthSRV);
-            }
-            out.projection = view.projection;
-            out.invViewProj = view.invViewProjection;
-            out.normalSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness);
-            out.motionVectorSRV = context.gBufferManager->GetSRVHandle(GBufferManager::Target::MotionVector);
+            // ワールド座標は深度から復元する
+            out.invViewProj = context.frameViews->Get(context.viewSettings.viewType).invViewProjection;
             out.width = static_cast<UINT>(context.dxCommon->GetClientWidth());
             out.height = static_cast<UINT>(context.dxCommon->GetClientHeight());
             return true;
@@ -176,18 +164,20 @@ namespace CoreEngine
                 || !shadow->IsDispatchedThisFrame(kShadowView, light)) {
                 return false;
             }
+            RTDenoiser& denoiser = shadow->GetDenoiser();
+            const uint32_t channel = RayTracingShadowManager::GetDenoiseChannel(kShadowView, light);
             switch (image) {
             case ShadowDebugImage::Raw:
-                out.resource = &shadow->GetRawShadowResource(kShadowView, light);
-                out.srv = shadow->GetRawShadowSRVHandle(kShadowView, light);
+                out.resource = &denoiser.GetInput(channel);
+                out.srv = denoiser.GetInputSRV(channel);
                 break;
             case ShadowDebugImage::History:
-                out.resource = &shadow->GetHistoryResource(kShadowView, light);
-                out.srv = shadow->GetHistorySRVHandle(kShadowView, light);
+                out.resource = &denoiser.GetHistory(channel);
+                out.srv = denoiser.GetHistorySRV(channel);
                 break;
             default:
-                out.resource = &shadow->GetShadowResource(kShadowView, light);
-                out.srv = shadow->GetShadowSRVHandle(kShadowView, light);
+                out.resource = &denoiser.GetOutput(channel);
+                out.srv = denoiser.GetOutputSRV(channel);
                 break;
             }
             return out.resource->IsValid() && out.srv.ptr != 0;
@@ -309,8 +299,8 @@ namespace CoreEngine
         ForEachShadowCastingLight(context, [&](uint32_t li, const Light& light) {
             stage.rtShadow->Dispatch(
                 stage.cmdList,
-                stage.sceneDepthSRV,
-                stage.normalSRV,
+                stage.guides.sceneDepthSRV,
+                stage.guides.normalRoughnessSRV,
                 MakeDirectionalShadowShape(light),
                 stage.invViewProj,
                 stage.width,
@@ -329,8 +319,8 @@ namespace CoreEngine
             }
             stage.rtShadow->Dispatch(
                 stage.cmdList,
-                stage.sceneDepthSRV,
-                stage.normalSRV,
+                stage.guides.sceneDepthSRV,
+                stage.guides.normalRoughnessSRV,
                 localSlot.shape,
                 stage.invViewProj,
                 stage.width,
@@ -358,19 +348,12 @@ namespace CoreEngine
             return;
         }
 
-        // 今フレームに撃った影の枠ごとに テンポラル蓄積パス（空間前処理+再投影+Variance Clamping）
+        // 今フレームに撃った影の枠ごとに時間方向の蓄積
         for (uint32_t slot = 0; slot < RayTracingShadowManager::kMaxShadowSlots; ++slot) {
             if (!stage.rtShadow->IsDispatchedThisFrame(kShadowView, slot)) {
                 continue;
             }
-            stage.rtShadow->ApplyTemporal(
-                stage.cmdList,
-                stage.normalSRV,
-                stage.sceneDepthSRV,
-                stage.motionVectorSRV,
-                stage.projection,
-                kShadowView,
-                slot);
+            stage.rtShadow->ApplyTemporal(stage.cmdList, stage.guides, kShadowView, slot);
         }
     }
 
@@ -389,18 +372,12 @@ namespace CoreEngine
             return;
         }
 
-        // 今フレームに撃った影の枠ごとに A-Trous デノイズをまとめて実行
+        // 今フレームに撃った影の枠ごとに A-Trous とマスクへの仕上げ
         for (uint32_t slot = 0; slot < RayTracingShadowManager::kMaxShadowSlots; ++slot) {
             if (!stage.rtShadow->IsDispatchedThisFrame(kShadowView, slot)) {
                 continue;
             }
-            stage.rtShadow->Denoise(
-                stage.cmdList,
-                stage.normalSRV,
-                stage.sceneDepthSRV,
-                stage.projection,
-                kShadowView,
-                slot);
+            stage.rtShadow->Denoise(stage.cmdList, stage.guides, kShadowView, slot);
         }
 
         // RTShadowMask の Blackboard 登録は RegisterFrameResources が行うため、

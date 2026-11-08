@@ -13,6 +13,7 @@
 #include "RayTracingOutputViewSet.h"
 #include "RayTracingPassBase.h"
 #include "Graphics/RayTracing/Effect/RTEffect.h"
+#include "Graphics/RayTracing/Denoise/RTDenoiser.h"
 #include "RayTracingPipelineBuilder.h"
 #include "ShaderTableBuilder.h"
 
@@ -152,8 +153,7 @@ namespace CoreEngine
     };
 
     /// @brief DXR レイトレーシングシャドウ
-    /// @details 出力テクスチャ・ガード判定・DXR オブジェクトは基盤 RayTracingPassBase 側が持つ。
-    ///          ここに残るのは RayGen / テンポラル / A-Trous の 3 ステージと、view × ライトの状態だけ。
+    /// @details 影の枠ごとに RayGen が光の届いた割合を撃ち、RTDenoiser のチャンネル（枠 1 つに 1 つ）がデノイズする。
     class RayTracingShadowManager : public RayTracingPassBase, public RTEffect {
     public:
         /// @brief ビュー識別子
@@ -197,7 +197,7 @@ namespace CoreEngine
         const LocalShadowSlot& GetLocalShadowSlot(uint32_t localIndex) const;
 
         /// @brief シャドウレイをディスパッチする（3 ステージの最初。ここで解像度が確定する）
-        /// @param sceneDepthSRV WorldPosition ターゲット廃止に伴い深度から復元する
+        /// @param sceneDepthSRV ワールド座標を復元する深度
         /// @param light 影を落とすライトの形
         /// @param invViewProj 深度復元用 View*Projection の逆行列
         /// @param width,height フル解像度。ハーフ解像度時のトレース解像度はここから導出する
@@ -214,24 +214,15 @@ namespace CoreEngine
             const RayTracingShadowWaterSurface& waterSurface = {},
             const RTHitTableIndices& hitTables = {});
 
-        /// @brief 空間前処理＋テンポラル蓄積パスを実行する（Dispatch の直後に呼ぶ）
-        /// @param projection 投影行列。深度重みの線形化にのみ使う（Stage 1 で invViewProj から変更）
-        /// @note 解像度は Dispatch が確定させたものを使うので受け取らない
+        /// @brief 時間方向の蓄積を実行する（Dispatch の直後に呼ぶ）
         void ApplyTemporal(ID3D12GraphicsCommandList* cmdList,
-            D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
-            D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
-            D3D12_GPU_DESCRIPTOR_HANDLE motionVectorSRV,
-            const Matrix4x4& projection,
+            const RTDenoiseGuides& guides,
             ViewID viewId = ViewID::GameView,
             uint32_t shadowSlot = 0);
 
-        /// @brief A-Trous デノイズ＋フル解像度への解決を実行する（ApplyTemporal の直後に呼ぶ）
-        /// @param projection 投影行列。深度重みの線形化にのみ使う（Stage 1 で invViewProj から変更）
-        /// @note 解像度は Dispatch が確定させたものを使うので受け取らない
+        /// @brief A-Trous とフル解像度のマスクへの仕上げを実行する（ApplyTemporal の直後に呼ぶ）
         void Denoise(ID3D12GraphicsCommandList* cmdList,
-            D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
-            D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
-            const Matrix4x4& projection,
+            const RTDenoiseGuides& guides,
             ViewID viewId = ViewID::GameView,
             uint32_t shadowSlot = 0);
 
@@ -239,30 +230,20 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE GetShadowSRVHandle(ViewID viewId = ViewID::GameView,
             uint32_t shadowSlot = 0) const;
 
-        // ──────────────────────────────────────────────────────────
-        // デバッグ表示用（レイトレーシングのデバッグ窓が参照する）
-        // ──────────────────────────────────────────────────────────
+        /// @brief 影の枠のデノイザ（デバッグ窓が中間結果を引く）
+        RTDenoiser& GetDenoiser() { return denoiser_; }
 
-        /// @brief RayGen が書いた生マスク（デノイズ前）の SRV を取得
-        /// @details 専用の Raw スロットなので、A-Trous を何パス回しても上書きされない。
-        D3D12_GPU_DESCRIPTOR_HANDLE GetRawShadowSRVHandle(ViewID viewId = ViewID::GameView,
-            uint32_t shadowSlot = 0) const;
-
-        /// @brief RayGen が書いた生マスクの実体（ステート追跡つき）
-        GpuResource& GetRawShadowResource(ViewID viewId = ViewID::GameView, uint32_t shadowSlot = 0);
-
-        /// @brief テンポラル蓄積の履歴テクスチャ（今フレームの書き込み先）の SRV を取得
-        D3D12_GPU_DESCRIPTOR_HANDLE GetHistorySRVHandle(ViewID viewId = ViewID::GameView,
-            uint32_t shadowSlot = 0) const;
-
-        /// @brief テンポラル蓄積の履歴テクスチャ（今フレームの書き込み先）の実体（ステート追跡つき）
-        GpuResource& GetHistoryResource(ViewID viewId = ViewID::GameView, uint32_t shadowSlot = 0);
+        /// @brief ビューと影の枠に対応するデノイザのチャンネル
+        static constexpr uint32_t GetDenoiseChannel(ViewID viewId, uint32_t shadowSlot)
+        {
+            return static_cast<uint32_t>(viewId) * kMaxShadowSlots + shadowSlot;
+        }
 
         /// @brief 直近のディスパッチ診断情報を取得（全 RT パス共通の型）
         const RayTracingDispatchInfo& GetDispatchInfo(ViewID viewId = ViewID::GameView,
             uint32_t shadowSlot = 0) const;
 
-        /// @brief 実際に適用される A-Trous パス数（0〜kMaxAtrousPassCount へのクランプ後）
+        /// @brief 実際に適用される A-Trous パス数（0〜RTDenoiser::kMaxAtrousPassCount）
         int GetEffectiveAtrousPassCount() const;
 
         /// @brief トレース解像度の縮小率（1 = フル解像度 / 2 = ハーフ解像度）
@@ -283,10 +264,6 @@ namespace CoreEngine
         /// @brief フレーム開始時に全ビュー・全ライトの状態をリセット
         void BeginFrame() override;
 
-        /// @brief 出力テクスチャを指定サイズで確保する
-        void Resize(UINT width, UINT height, ViewID viewId = ViewID::GameView,
-            uint32_t shadowSlot = 0);
-
         /// @brief 生成済みの全ビュー・全ライトの出力テクスチャを新サイズで作り直す（GPU は止まっている）
         void OnResize(uint32_t width, uint32_t height) override;
 
@@ -300,108 +277,27 @@ namespace CoreEngine
         const RayTracingShadowSettings& GetSettings() const { return settings_; }
 
     private:
-        /// @brief (view, light) の全テクスチャを確保する
-        /// @param width,height           フル解像度（Mask のサイズ）
-        /// @param traceWidth,traceHeight トレース解像度（Mask 以外のサイズ）
-        /// @param traceScale             フル / トレースの比
-        bool EnsureOutputTexture(UINT width, UINT height, UINT traceWidth, UINT traceHeight,
-            UINT traceScale, uint32_t viewIndex, uint32_t shadowSlot);
-
-        // dxCommon_ / descriptorAllocator_ / asMgr_ / globalRootSigMgr_ / stateObject_ /
-        // stateObjectProperties_ / shaderTableBuilder_ / outputViews_ / isInitialized_ は
-        // 全て RayTracingPassBase が持つ（Stage 2c で重複を削除した）。
-
         // シェーダーバイトコード（State Object 構築後に解放するのでここに置く）
         IDxcBlob* shaderBlob_ = nullptr;  ///< 所有者は ShaderProgramCache
 
-        /// @brief 1 つの (view, light) が持つテクスチャの用途
-        /// @details 実体は共通基盤の RayTracingOutputViewSet が持ち、
-        ///          ここではスロット番号への写像だけを定義する（Stage 2c）。
-        ///          Mask 以外は「トレース解像度」（ハーフ解像度時はフルの半分）で確保する。
-        enum class TextureSlot : uint32_t {
-            Mask = 0,        ///< 最終シャドウマスク（フル解像度・DeferredLighting が読む）
-            Raw = 1,         ///< RayGen の生出力（デバッグ表示用に温存する）
-            DenoiseA = 2,    ///< A-Trous の ping
-            DenoiseB = 3,    ///< A-Trous の pong
-            HistoryA = 4,    ///< テンポラル履歴（偶数フレーム）
-            HistoryB = 5,    ///< テンポラル履歴（奇数フレーム）
-            Count
-        };
-        static constexpr uint32_t kTextureSlotCount = static_cast<uint32_t>(TextureSlot::Count);
+        static_assert(kViewCount * kMaxShadowSlots <= RTDenoiser::kMaxChannels,
+            "RTDenoiser のチャンネルの数が影の枠の数に足りていない");
 
-        /// @brief (view, light, 用途) を RayTracingOutputViewSet の平坦なスロット番号へ写す
-        static constexpr uint32_t MakeSlotIndex(uint32_t viewIndex, uint32_t shadowSlot, TextureSlot slot)
-        {
-            return ((viewIndex * kMaxShadowSlots) + shadowSlot) * kTextureSlotCount
-                + static_cast<uint32_t>(slot);
-        }
-        static_assert(kViewCount * kMaxShadowSlots * kTextureSlotCount
-            <= RayTracingOutputViewSet::kMaxSlotCount,
-            "RayTracingOutputViewSet::kMaxSlotCount が RT シャドウの必要数に足りていない");
-
-        /// @brief ビュー × ライトごとの、テクスチャ以外の状態
+        /// @brief ビュー × 影の枠ごとの、RayGen の状態
         struct ShadowView {
-            UINT width = 0;          ///< フル解像度（Mask のサイズ）
-            UINT height = 0;
-            UINT traceWidth = 0;     ///< トレース解像度（Mask 以外のサイズ）
-            UINT traceHeight = 0;
-            UINT traceScale = 1;     ///< フル / トレースの比（1 or 2）
             UINT traceOffsetX = 0;   ///< 今フレームの 2x2 サンプル位置（ハーフ解像度時のみ非ゼロ）
             UINT traceOffsetY = 0;
             bool dispatchedThisFrame = false;
-            bool isHistoryValid = false;   ///< 履歴テクスチャが初回フレーム書き込み済みか
-            uint32_t historyParity = 0;    ///< 今フレームの書き込み先（0 = HistoryA / 1 = HistoryB）
-            uint64_t lightKey = 0;          ///< 履歴を作ったライトを見分ける値
-            uint64_t lastDispatchFrame = 0; ///< 最後に撃ったフレームの番号
 
             /// @brief この view × light のディスパッチ回数（2x2 サンプル位相・レイジッターの種）
             uint32_t frameCount = 0;
             RayTracingDispatchInfo dispatchInfo{}; ///< デバッグ表示用（Dispatch のたびに更新）
-
-            /// @brief 今フレームのテンポラル出力先（次フレームの履歴）
-            TextureSlot CurrentHistorySlot() const {
-                return (historyParity == 0) ? TextureSlot::HistoryA : TextureSlot::HistoryB;
-            }
-            /// @brief 前フレームのテンポラル出力（今フレームが読む履歴）
-            TextureSlot PreviousHistorySlot() const {
-                return (historyParity == 0) ? TextureSlot::HistoryB : TextureSlot::HistoryA;
-            }
         };
         ShadowView views_[kViewCount][kMaxShadowSlots]{};
         LocalShadowSlot localSlots_[kMaxLocalLights]{}; ///< 局所ライトの枠に割り当てたライト
 
-        // ---- スロットアクセスの短縮ヘルパー（実体は基盤の outputViews_） ----
-        D3D12_GPU_DESCRIPTOR_HANDLE SlotSRV(uint32_t vi, uint32_t li, TextureSlot s) const {
-            return outputViews_.GetSRVHandle(MakeSlotIndex(vi, li, s));
-        }
-        D3D12_GPU_DESCRIPTOR_HANDLE SlotUAV(uint32_t vi, uint32_t li, TextureSlot s) const {
-            return outputViews_.GetUAVHandle(MakeSlotIndex(vi, li, s));
-        }
-        /// @brief スロットをステート追跡つきで返す（バリア発行はこれを渡す）
-        GpuResource& Slot(uint32_t vi, uint32_t li, TextureSlot s) {
-            return outputViews_.Resource(MakeSlotIndex(vi, li, s));
-        }
-
-        /// @brief A-Trous デノイズの最大パス数（kSteps / kPhi* テーブルの要素数）
-        static constexpr int kMaxAtrousPassCount = 4;
-
-        /// @brief RayGen 生出力のフォーマット（R = シャドウ値, G = レイ本数）
-        /// @details レイ本数はペナンブラ適応サンプリングでピクセルごとに変わるため、
-        ///          テンポラルパスが分散を正しく数えられるよう値と一緒に持ち歩く。
-        static constexpr DXGI_FORMAT kShadowRawFormat = DXGI_FORMAT_R16G16_FLOAT;
-
-        /// @brief 単チャンネルのシャドウテクスチャ（Mask）のフォーマット
-        /// @details R8_UNORM だと量子化幅が 1/255。適応ブレンド α=1/N は N が大きいほど
-        ///          1 フレームあたりの更新量が小さくなるので、8bit では収束しきる前に
-        ///          丸めで更新が消える（＝残差が固定ディザとして残る）。R16_FLOAT にする。
-        static constexpr DXGI_FORMAT kShadowTextureFormat = DXGI_FORMAT_R16_FLOAT;
-
-        /// @brief デノイズ経路を流れる信号のフォーマット（HistoryA/B・DenoiseA/B 共通）
-        /// @details チャンネル定義は RTShadowTemporal.CS.hlsl の先頭コメントと共通:
-        ///          R = シャドウ値 / G = 推定分散 / B = 蓄積フレーム数 N / A = 線形ビュー深度。
-        ///          A-Trous も同じレイアウトで読み書きするので、テンポラル出力と
-        ///          ping-pong バッファを同一宣言（float4）で扱える。
-        static constexpr DXGI_FORMAT kShadowSignalFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
+        /// @brief 光の届いた割合をデノイズする部品（影の枠 1 つに 1 チャンネル）
+        RTDenoiser denoiser_;
 
         /// @brief 太陽高度による射程距離の最大倍率（高度 ~5.7° 相当で頭打ち）
         /// @details 際限なく伸ばすと地平線近くでトラバースが爆発するため上限を設ける。
@@ -415,56 +311,12 @@ namespace CoreEngine
         ///          Dispatch の先頭で毎フレーム同期する（同期を怠ると設定復元が描画に反映されない）
         void SyncSettingsFromCVars();
 
+        /// @brief settings_ からデノイザの調整値を作る
+        RTDenoiseSettings MakeDenoiseSettings() const;
+
         // パラメータ
         RayTracingShadowSettings settings_;
 
         uint32_t dispatchLogCount_ = 0;
-        // isInitialized_ は基底 RayTracingPassBase が持つ。ここで再宣言すると基底のものを
-        // 隠してしまい、Initialize() が派生側を true にする一方で
-        // IsInitialized()（基底の実装）が false を返し続ける（Stage 2c で実際に踏んだ）。
-
-        /// @brief レイの後段コンピュートパス 1 本ぶんの実体
-        /// @details ルートシグネチャはシェーダーのリフレクションから作り、bindings で
-        ///          「宣言表の添字 → ルートスロット」を引く。呼び出し側にレジスタ番号も
-        ///          ルートパラメータ番号も出てこないのが要点。
-        struct ComputePass {
-            RootSignatureManager rootSigMgr;                          ///< リフレクション由来の RS
-            Microsoft::WRL::ComPtr<ID3D12PipelineState> pipelineState;
-            BindingTable bindings;                                    ///< 解決済みスロット表
-            bool initialized = false;
-
-            ID3D12RootSignature* GetRootSignature() { return rootSigMgr.GetRootSignature(); }
-        };
-
-        ComputePass denoisePass_;   ///< A-Trous 空間デノイズ
-        ComputePass temporalPass_;  ///< テンポラル蓄積
-        ComputePass resolvePass_;   ///< トレース解像度 → フル解像度のバイラテラルアップサンプル
-
-        /// @brief トレース解像度の結果をフル解像度 Mask へ書き出す
-        /// @param sourceSlot 解決元（A-Trous の最終出力、またはパス数 0 なら履歴）
-        void ResolveToFullResolution(
-            ID3D12GraphicsCommandList* cmdList,
-            D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
-            D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
-            const Matrix4x4& projection,
-            uint32_t viewIndex,
-            uint32_t shadowSlot,
-            TextureSlot sourceSlot);
-
-        /// @brief コンピュートパス（RS + PSO + 解決済みバインド表）をリフレクションから構築する
-        /// @param shaderPath       CS のパス
-        /// @param decls            バインド契約（そのシェーダーが持つリソースの宣言表）
-        /// @param declCount        宣言数
-        /// @param rootConstantName ルート定数にする cbuffer 名（dword 数はリフレクションが決める）
-        /// @param debugLabel       ログ・PSO 名に使う識別名
-        /// @param outPass          構築先
-        /// @return 成功したら true。コンパイル失敗・契約違反はログ済み
-        bool CreateComputePass(
-            const wchar_t* shaderPath,
-            const ShaderBindingDecl* decls,
-            size_t declCount,
-            const char* rootConstantName,
-            const char* debugLabel,
-            ComputePass& outPass);
     };
 }
