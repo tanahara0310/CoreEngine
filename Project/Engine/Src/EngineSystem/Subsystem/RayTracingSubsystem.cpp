@@ -18,6 +18,7 @@
 #include "Graphics/Cloud/VolumetricCloudManager.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/RayTracing/RTScene.h"
+#include "Graphics/RayTracing/Debug/RTDebugRegistry.h"
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
 #include "Graphics/Render/Pass/RenderPass.h"
@@ -55,6 +56,10 @@ namespace CoreEngine
             input.cameraPosition = context.frameViews->GameView().position;
         }
         input.deformer = context.vertexAnimationDeformer;
+        // 凍結中は、同じシーンのままなら前の TLAS と材質の表を撃ち続ける
+        if (RTDebug::IsSceneFrozen() && rtScene->IsSameSceneAsLastBuild(input)) {
+            return;
+        }
         rtScene->Build(input, *dx, *asMgr);
     }
 
@@ -181,11 +186,6 @@ namespace CoreEngine
                 viewId,
                 li);
             });
-
-        // RT シャドウの全ステージが終わったので、デバッグパネルが中間バッファ
-        // （生マスク・履歴）を ImGui で表示できる状態へ整える。
-        // パネルが要求していないフレームは何もしない。
-        stage.rtShadow->PrepareDebugViews(cmdList);
     }
 
     bool RayTracingSubsystem::BuildWaterDispatchContext(

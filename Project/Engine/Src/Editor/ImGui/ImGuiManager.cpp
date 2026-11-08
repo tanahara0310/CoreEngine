@@ -10,6 +10,7 @@
 #include "Editor/Camera/EditorCameraInput.h"
 #include "Editor/Scene/SceneDebugEditor.h"
 #include "Editor/ImGui/GameDebugUI.h"
+#include "Editor/ImGui/GameViewportOverlay.h"
 #include "Launch/AppResource.h"
 #include "WinApp/WinApp.h"
 #include <ImGuizmo.h>
@@ -349,6 +350,10 @@ namespace CoreEngine
         ImGui::SetCursorScreenPos(ImVec2(contentPos.x + offsetX, contentPos.y + offsetY));
         ImGui::Image((ImTextureID)textureHandle.ptr, ImVec2(drawW, drawH));
 
+        // デバッグ窓が中間結果や印を重ねる（クリックを使ったら、ギズモと物の選択へ渡さない）
+        const bool overlayUsedClick = Editor::GameViewportOverlay::DrawAll(
+            { ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), ImGui::IsItemHovered() });
+
         // 再生モードの間は、編集が停止で戻ることを映像の外周で知らせる
         DrawPlayModeOverlay(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), dockingUI_->GetStatus());
 
@@ -369,7 +374,7 @@ namespace CoreEngine
             sceneDebugEditor->UpdateGameViewportInteraction(
                 imageMin,
                 imageSize,
-                isImageHovered);
+                isImageHovered && !overlayUsedClick);
         }
 
         ImGui::End();
@@ -419,6 +424,8 @@ namespace CoreEngine
                 origin.x + (available.x - drawW) * 0.5f,
                 origin.y + (available.y - drawH) * 0.5f));
             ImGui::Image((ImTextureID)textureHandle.ptr, ImVec2(drawW, drawH));
+            Editor::GameViewportOverlay::DrawAll(
+                { ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), ImGui::IsItemHovered() });
 
             // 戻し方が分からなくならないよう、復帰キーだけ隅に出しておく
             ImGui::SetCursorScreenPos(ImVec2(origin.x + 8.0f, origin.y + 6.0f));

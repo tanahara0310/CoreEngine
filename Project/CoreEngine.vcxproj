@@ -319,6 +319,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\WaterHeightQueryPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\ASBuildPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTShadowPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTDebugPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterCausticsPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterSeabedPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterSeaMapPass.cpp" />
@@ -468,6 +469,8 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Graphics\RayTracing\VertexAnimationDeformer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingDispatchInfo.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RTScene.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\Debug\RTDebugRegistry.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\Debug\RTDebugSystem.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingPassBase.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingPipelineBuilder.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingShadowManager.cpp" />
@@ -638,6 +641,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Graphics\RHI\Debug\PixCapture.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\ProjectView.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\RayTracingDebugPanel.cpp" />
+    <ClCompile Include="Engine\Src\Editor\ImGui\GameViewportOverlay.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\RenderGraphEditorPanel.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\GameOutputWindow.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\RenderPassDebugPanel.cpp" />
@@ -1657,6 +1661,8 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RTInstanceMask.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RTObjectSettings.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RTScene.h" />
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\Debug\RTDebugRegistry.h" />
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\Debug\RTDebugSystem.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingOutputViewSet.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingPassBase.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingPipelineBuilder.h" />
@@ -1722,6 +1728,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RenderPipeline.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\ASBuildPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTShadowPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTDebugPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterCausticsPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterSeabedPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterSeaMapPass.h" />
@@ -1952,6 +1959,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\RHI\Debug\PixCapture.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\ProjectView.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\RayTracingDebugPanel.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\GameViewportOverlay.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\RenderGraphEditorPanel.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\GameOutputWindow.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\RenderPassDebugPanel.h" />

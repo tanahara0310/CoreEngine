@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.68.0">
+<meta name="engine-version" content="0.69.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -9621,6 +9621,34 @@ kbd {
   <p><span class="ui">自動</span> は、<span class="ui">ブレンド</span> が <span class="ui">なし</span> の物なら影を落として水面に映り、それ以外（半透明・加算など）の物なら落とさず映りません。半透明の物を <span class="ui">落とす</span> にすると、不透明な物と同じ濃さの影を落とします。</p>
   <p>葉や柵のように、ベースカラーのアルファで抜く材質（アルファのしきい値 <code>alphaCutoff</code>。ディザの材質は 0.5）は、抜けた所を影のレイも水面の反射・屈折のレイも通ります。抜ける所は画面に描く形と同じなので、木の影は葉の形になります。</p>
 
+  <h3 id="g3d-shadow-debug">影や映り込みがおかしいとき</h3>
+  <p>エディタ（Debug・Development 版）の <span class="ui">Window ▸ Rendering ▸ Ray Tracing</span> の窓で、影と水面のレイがどう撃たれ、何に当たったかを調べられます。窓の上の帯には、DXR の Tier、TLAS に載った物の数と作り直しの様子、レイトレーシングにかかる GPU 時間の合計、チェックの誤りと警告の数が、どのタブでも出ます。誤りと警告の数を押すと <span class="ui">チェック</span> のタブへ移ります。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>タブ</th><th>見られるもの</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">概要</span></td><td>効果（影・水のコースティクス・屈折・反射・海底の高さ・海の範囲）ごとの状態・解像度・レイの数・GPU 時間。行を開くと、段ごとの時間と、その効果の設定（CVar）が出ます。<span class="ui">ON</span> を外すと、その効果だけ撃ちません</td></tr>
+      <tr><td><span class="ui">中間結果</span></td><td>効果の途中の画像（影の生の値・履歴・マスク、水面の映り込みの色など）。色の付け方・成分・範囲を選び、この窓・ゲーム画面いっぱい・ゲーム画面の左半分のどこに出すかを選べます。画像の上にマウスを置くと、その画素の生の値が出ます。NaN は紫、+Inf は白、−Inf は水色で出ます</td></tr>
+      <tr><td><span class="ui">見え方</span></td><td>カメラから撃ったレイが何に当たったか（物・サブメッシュ・三角形・距離・法線・ベースカラー・印・表か裏か・動くか・ラスタの深度との差・調べた三角形の候補の数・アルファを調べた数）。当てる印と、アルファで抜ける所を通すかを選べます。マウスの下の画素で当たった物の名前とモデルが出ます</td></tr>
+      <tr><td><span class="ui">レイの追跡</span></td><td>1 画素から撃つカメラのレイ・影のレイ・映り込みのレイの、当たった物・距離・三角形・表か裏か。<span class="ui">ゲーム画面で選ぶ</span> を押してゲーム画面をクリックするか、<span class="ui">マウスの下を追う</span> を入れて画素を決めます。レイはゲーム画面に線で描きます（白 = カメラ、黄 = 影、赤 = 影のレイが当たった、水色 = 映り込み）</td></tr>
+      <tr><td><span class="ui">加速構造</span></td><td>BLAS と TLAS の数と大きさ、TLAS の行の一覧（物・モデル・出どころ・印・形・三角形の数・BLAS の大きさ）。名前・出どころ・形・印で絞り込めます。選んだ行の物の箱をゲーム画面に描きます</td></tr>
+      <tr><td><span class="ui">チェック</span></td><td>TLAS ができているか・材質の表の番号がヒープの中か・物の行列に NaN や拡大率 0 が無いか・加速構造のメモリ・中間結果の NaN と Inf（<span class="ui">中間結果を見回る</span> を入れている間だけ数えます）。<span class="ui">今の結果を記録</span> を押しておくと、後で増えた結果に「新」が付きます</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>帯のスイッチ</th><th>はたらき</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">凍結</span></td><td>TLAS と材質の表を作り直さず、入れた時点の物の位置のまま撃ちます。物が動いても影と映り込みは止まったままで、カメラは動かせます。物の数が変わったときと、シーンを替えたときは作り直します</td></tr>
+      <tr><td><span class="ui">乱数を固定</span></td><td>乱数の番号を毎フレーム同じにします。影の縁のざらつきが止まるので、画像を比べるときに使います</td></tr>
+      <tr><td><span class="ui">全 RT を止める</span></td><td>レイトレーシングの効果を全部撃ちません（影なし、水面の映り込みと屈折なし）。レイトレーシング無しの見た目と比べるときに使います</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="callout note"><p>窓を閉じると、帯のスイッチと <span class="ui">概要</span> の <span class="ui">ON</span> は元に戻ります（凍結や止めたままにはなりません）。ゲームの書き出し（Release 版）には、この窓も切り分けのスイッチも入りません。</p></div>
+  <p>エンジンに新しいレイトレーシングの効果を足すときは、その効果の .cpp に <code>RT_DEBUG_EFFECT_REGISTER</code>（概要の行）・<code>RT_DEBUG_CHANNEL_REGISTER</code>（中間結果）・<code>RT_DEBUG_CHECK_REGISTER</code>（チェック）を書けば窓に並びます。窓のコードは変えなくて構いません。効果のパスの <code>Execute</code> の頭で、取り口の <code>IsActive()</code> が false なら撃たずに戻ります。</p>
+
   <h2 id="g3d-move">動かす</h2>
   <div class="table-wrap">
   <table>
@@ -11335,6 +11363,16 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-69-0">v0.69.0 <span class="dim">（2026-11-08）</span></h3>
+  <p>レイトレーシングのデバッグ窓（<span class="ui">Window ▸ Rendering ▸ Ray Tracing</span>）を、6 つのタブの窓に作り直した版です。ゲームの見た目は変わりません（<a href="#g3d-shadow-debug">影や映り込みがおかしいとき</a>）。</p>
+  <ul>
+    <li><strong>タブ</strong>：<span class="ui">概要</span>（効果ごとの状態・レイの数・GPU 時間と設定）・<span class="ui">中間結果</span>（効果の途中の画像を色を付けて見る。ゲーム画面いっぱいや左右に分けても出せる）・<span class="ui">見え方</span>（カメラのレイが当たった物・三角形・距離・法線・ラスタとの深度の差・調べた候補の数など）・<span class="ui">レイの追跡</span>（1 画素のカメラ・影・映り込みのレイを表と 3D の線で見る）・<span class="ui">加速構造</span>（TLAS の行の一覧と絞り込み。選んだ物の箱を描く）・<span class="ui">チェック</span>（TLAS・材質の表・行列・メモリ・中間結果の NaN と Inf）にしました。</li>
+    <li><strong>切り分けのスイッチ</strong>：どのタブにも出る帯に、<span class="ui">凍結</span>（TLAS を作り直さない）・<span class="ui">乱数を固定</span>・<span class="ui">全 RT を止める</span> を置きました。<span class="ui">概要</span> では効果を 1 つずつ止められます。窓を閉じると元に戻ります。</li>
+    <li><strong>申告の仕組み</strong>：効果・中間結果・チェックは、各効果の .cpp に書く <code>RT_DEBUG_EFFECT_REGISTER</code>・<code>RT_DEBUG_CHANNEL_REGISTER</code>・<code>RT_DEBUG_CHECK_REGISTER</code> で窓に並びます。窓は効果の種類を知りません。中間結果の色付けと数え、見え方、レイの追跡は <code>RTDebugSystem</code>（エディタ版だけ）が GPU で行います。</li>
+    <li><strong>ゲーム画面へ重ねる口</strong>：エディタのゲーム画面の画像の上に描く <code>Editor::GameViewportOverlay</code> を足しました。クリックを使った描き手があれば、そのクリックはギズモと物の選択へ渡しません。</li>
+    <li><strong>そのほか</strong>：影の中間結果を見るためだけの処理（<code>RayTracingShadowManager::RequestDebugViewTransition</code>）を消し、影の中間結果もほかの効果と同じ申告の仕組みで見るようにしました。TLAS の行に、持ち主の物と出どころを記録するようにしました。</li>
+  </ul>
 
   <h3 id="changelog-v0-68-0">v0.68.0 <span class="dim">（2026-11-08）</span></h3>
   <p>葉など、アルファで抜く材質の影を、板ではなく葉の形で落とすようにした版です。あわせて、影と水面のレイを撃つシェーダを共通の HLSL にまとめ、RayQuery で撃つようにしました。抜く材質の無い物の見た目は前と同じです。</p>

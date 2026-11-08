@@ -197,7 +197,7 @@ namespace CoreEngine
             uint32_t lightIndex = 0) const;
 
         // ──────────────────────────────────────────────────────────
-        // デバッグ表示用（Stage 0: RayTracingDebugPanel が参照する）
+        // デバッグ表示用（レイトレーシングのデバッグ窓が参照する）
         // ──────────────────────────────────────────────────────────
 
         /// @brief RayGen が書いた生マスク（デノイズ前）の SRV を取得
@@ -205,9 +205,15 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE GetRawShadowSRVHandle(ViewID viewId = ViewID::GameView,
             uint32_t lightIndex = 0) const;
 
+        /// @brief RayGen が書いた生マスクの実体（ステート追跡つき）
+        GpuResource& GetRawShadowResource(ViewID viewId = ViewID::GameView, uint32_t lightIndex = 0);
+
         /// @brief テンポラル蓄積の履歴テクスチャ（今フレームの書き込み先）の SRV を取得
         D3D12_GPU_DESCRIPTOR_HANDLE GetHistorySRVHandle(ViewID viewId = ViewID::GameView,
             uint32_t lightIndex = 0) const;
+
+        /// @brief テンポラル蓄積の履歴テクスチャ（今フレームの書き込み先）の実体（ステート追跡つき）
+        GpuResource& GetHistoryResource(ViewID viewId = ViewID::GameView, uint32_t lightIndex = 0);
 
         /// @brief 直近のディスパッチ診断情報を取得（全 RT パス共通の型）
         const RayTracingDispatchInfo& GetDispatchInfo(ViewID viewId = ViewID::GameView,
@@ -218,16 +224,6 @@ namespace CoreEngine
 
         /// @brief トレース解像度の縮小率（1 = フル解像度 / 2 = ハーフ解像度）
         UINT GetTraceScale() const;
-
-        /// @brief 中間バッファ（生マスク・履歴）を ImGui で表示することを要求する
-        /// @details そのままでは UAV / NON_PIXEL_SHADER_RESOURCE のままなので、
-        ///          要求すると PrepareDebugViews が PIXEL_SHADER_RESOURCE へ遷移させる。
-        /// @note 1 フレーム限りの要求（PrepareDebugViews が消費してクリアする）
-        void RequestDebugViewTransition() { debugViewRequested_ = true; }
-
-        /// @brief RequestDebugViewTransition の要求を消費し、中間バッファを表示可能状態へ遷移させる
-        /// @details RT シャドウの全ステージ完了後（Denoise パスの末尾）に呼ぶ。
-        void PrepareDebugViews(ID3D12GraphicsCommandList* cmdList);
 
         /// @brief 指定ビュー・ライトのシャドウ結果テクスチャを取得する
         /// @param viewId 参照するビュー ID
@@ -386,7 +382,6 @@ namespace CoreEngine
         // isInitialized_ は基底 RayTracingPassBase が持つ。ここで再宣言すると基底のものを
         // 隠してしまい、Initialize() が派生側を true にする一方で
         // IsInitialized()（基底の実装）が false を返し続ける（Stage 2c で実際に踏んだ）。
-        bool debugViewRequested_ = false; ///< 中間バッファの ImGui 表示要求（1 フレーム限り）
 
         /// @brief レイの後段コンピュートパス 1 本ぶんの実体
         /// @details ルートシグネチャはシェーダーのリフレクションから作り、bindings で

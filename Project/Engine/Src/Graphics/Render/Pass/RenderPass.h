@@ -32,6 +32,7 @@ namespace CoreEngine
     class GBufferManager;
     class AccelerationStructureManager;
     class RTScene;
+    class RTDebugSystem;
     class VertexAnimationDeformer;
     class RayTracingShadowManager;
     class WaterCausticsRayTracingManager;
@@ -70,6 +71,7 @@ namespace CoreEngine
         GBufferManager* gBufferManager = nullptr;  ///< G-Buffer管理（Deferred）
         AccelerationStructureManager* accelerationStructureManager = nullptr; ///< DXR 加速構造管理
         RTScene* rtScene = nullptr; ///< レイトレーシングのシーン（TLAS に載せた物と材質の表）
+        RTDebugSystem* rtDebug = nullptr; ///< レイトレーシングのデバッグ表示（エディタ版だけ。ほかは nullptr）
         VertexAnimationDeformer* vertexAnimationDeformer = nullptr; ///< 揺れる植物の形を BLAS 用に作る CS
         RayTracingShadowManager* rtShadowManager = nullptr; ///< DXR レイトレーシングシャドウ
         WaterCausticsRayTracingManager* rtWaterCausticsManager = nullptr; ///< DXR 水面コースティクス

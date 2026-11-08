@@ -2,6 +2,7 @@
 #include "RayTracingShadowManager.h"
 #include "Graphics/Pipeline/ComputePipelineUtil.h"
 #include "Graphics/RayTracing/RTShadowBindings.h"
+#include "Graphics/RayTracing/Debug/RTDebugRegistry.h"
 #include "Graphics/RootSignature/ShaderBinder.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "AccelerationStructureManager.h"
@@ -612,6 +613,19 @@ namespace CoreEngine
         return SlotSRV(vi, lightIndex, views_[vi][lightIndex].CurrentHistorySlot());
     }
 
+    GpuResource& RayTracingShadowManager::GetRawShadowResource(ViewID viewId, uint32_t lightIndex)
+    {
+        lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
+        return Slot(static_cast<uint32_t>(viewId), lightIndex, TextureSlot::Raw);
+    }
+
+    GpuResource& RayTracingShadowManager::GetHistoryResource(ViewID viewId, uint32_t lightIndex)
+    {
+        lightIndex = (std::min)(lightIndex, kMaxDirectionalLights - 1);
+        const uint32_t vi = static_cast<uint32_t>(viewId);
+        return Slot(vi, lightIndex, views_[vi][lightIndex].CurrentHistorySlot());
+    }
+
     const RayTracingDispatchInfo& RayTracingShadowManager::GetDispatchInfo(
         ViewID viewId, uint32_t lightIndex) const
     {
@@ -651,39 +665,6 @@ namespace CoreEngine
         const float minSin = 1.0f / kMaxRayDistanceScale;
         const float scale = 1.0f / (std::max)(sinElevation, minSin);
         return settings_.maxRayDistance * (std::min)(scale, kMaxRayDistanceScale);
-    }
-
-    void RayTracingShadowManager::PrepareDebugViews(ID3D12GraphicsCommandList* cmdList)
-    {
-        // 要求は 1 フレーム限り。ここで消費してクリアするので、パネルを閉じれば
-        // 次フレームからバリアは発行されなくなる。
-        if (!debugViewRequested_) {
-            return;
-        }
-        debugViewRequested_ = false;
-
-        if (!isInitialized_ || !cmdList) {
-            return;
-        }
-
-        // ImGui はピクセルシェーダでサンプルするため PIXEL_SHADER_RESOURCE へ揃える。
-        // Mask は各ステージ終了時点で既に PIXEL_SHADER_RESOURCE なので対象外。
-        for (uint32_t viewIndex = 0; viewIndex < kViewCount; ++viewIndex) {
-            for (uint32_t lightIndex = 0; lightIndex < kMaxDirectionalLights; ++lightIndex) {
-                const ShadowView& view = views_[viewIndex][lightIndex];
-                if (!view.dispatchedThisFrame) {
-                    continue;
-                }
-
-                const TextureSlot debugSlots[] = { TextureSlot::Raw, view.CurrentHistorySlot() };
-                // 未確保スロットは BarrierBatch 側で無視されるので null チェックは要らない
-                BarrierBatch batch(cmdList);
-                for (TextureSlot slot : debugSlots) {
-                    batch.Transition(Slot(viewIndex, lightIndex, slot),
-                        D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-                }
-            }
-        }
     }
 
     GpuResource& RayTracingShadowManager::GetShadowResource(
@@ -799,7 +780,7 @@ namespace CoreEngine
         // カウンタは view × light ごと（共有だと 2x2 巡回が欠ける。ShadowView 側コメント参照）
         view.historyParity ^= 1u;
         if (traceScale > 1 && settings_.cycleTraceOffset) {
-            const UINT phase = view.frameCount & 3u;
+            const UINT phase = RTDebug::NoiseFrame(view.frameCount) & 3u;
             view.traceOffsetX = kTraceOffsetTable[phase][0];
             view.traceOffsetY = kTraceOffsetTable[phase][1];
         } else if (traceScale > 1) {
@@ -825,7 +806,7 @@ namespace CoreEngine
         constants.maxRayDistance = effectiveRayDistance;
         constants.lightRadius = settings_.lightRadius;
         constants.softShadowSamples = numSamples;
-        constants.frameIndex = view.frameCount++;
+        constants.frameIndex = RTDebug::NoiseFrame(view.frameCount++);
         constants.screenWidth = static_cast<float>(width);
         constants.screenHeight = static_cast<float>(height);
         constants.traceOffsetX = static_cast<int>(view.traceOffsetX);

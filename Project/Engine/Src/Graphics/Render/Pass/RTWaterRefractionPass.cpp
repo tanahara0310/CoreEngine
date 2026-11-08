@@ -3,12 +3,39 @@
 
 #include "EngineSystem/Subsystem/RayTracingSubsystem.h"
 #include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RayTracing/Debug/RTDebugRegistry.h"
+#include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Water/RayTracing/WaterRefractionRayTracingManager.h"
 #include "Utility/Logger/Logger.h"
 #include "Graphics/Render/RenderGraph.h"
 
 namespace CoreEngine
 {
+    RT_DEBUG_EFFECT_REGISTER(kRefractionEffect,
+        .id = "RTWaterRefraction",
+        .label = "水の屈折",
+        .cvarPrefix = "r.Water.Refraction",
+        .passNames = { "RTWaterRefractionPass" },
+        .stageLabels = { "トレース" },
+        .collect = [](const RTDebugQuery& query, std::vector<RTDebugEffectRow>& rows) {
+            if (auto* manager = query.domain ? query.domain->GetWaterRefractionRayTracingManager() : nullptr) {
+                rows.push_back({ "ゲームの画面", manager->GetDispatchInfo() });
+            }
+        });
+
+    RT_DEBUG_CHANNEL_REGISTER(
+        .effect = "水の屈折",
+        .stage = "トレース",
+        .name = "屈折の色",
+        .description = "水面から水の中へ曲がったレイが見た色（水面が合成する）",
+        .components = { "R", "G", "B", "A" },
+        .rangeMin = 0.0f,
+        .rangeMax = 1.0f,
+        .viewMode = RTDebugViewMode::Color,
+        .resolve = [](const RenderContext& context, uint32_t, RTDebugSource& out) {
+            return ResolveFrameBlackboardImage(context, FrameBlackboard::RTWaterRefractionColor, out);
+        })
+
     void RTWaterRefractionPass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
     {
         builder.Read(FrameBlackboard::SceneDepth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -20,6 +47,10 @@ namespace CoreEngine
 
     void RTWaterRefractionPass::Execute(const RenderContext& context)
     {
+        // 止めたフレームは撃たない（出力を載せないので、水面は屈折なしで描く）
+        if (!kRefractionEffect.IsActive()) {
+            return;
+        }
         // マネージャは水面のあるシーンで作られる（水面の無いシーンでは何もしない）
         if (!context.rtWaterRefractionManager) {
             return;

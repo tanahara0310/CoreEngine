@@ -5,6 +5,7 @@
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/RayTracing/RTScene.h"
+#include "Graphics/RayTracing/Debug/RTDebugSystem.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
 #include "Graphics/RayTracing/VertexAnimationDeformer.h"
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
@@ -90,6 +91,12 @@ namespace CoreEngine
             Logger::GetInstance().Infof(LogCategory::Graphics,
                 "RenderDomainContext: RayTracingShadowManager 初期化完了\n");
         }
+
+#ifdef CORE_EDITOR
+        // デバッグ表示のパイプラインは初めて頼まれたときに作る
+        rtDebug_ = std::make_unique<RTDebugSystem>();
+        rtDebug_->Initialize(dxCommon, shaderProgramCache);
+#endif
 
         atmosphereManager_ = std::make_unique<AtmosphereManager>();
         atmosphereManager_->Initialize(device, descriptorAllocator, dxCommon->GetUploadRing());
@@ -233,6 +240,9 @@ namespace CoreEngine
         rtWaterCausticsManager_.reset();
         rtWaterReflectionManager_.reset();
         rtWaterRefractionManager_.reset();
+#ifdef CORE_EDITOR
+        rtDebug_.reset();
+#endif
         rtShadowManager_.reset();
         waterHeightQueryManager_.reset();
         waterShoreMeshDisplacement_.reset();
@@ -274,6 +284,9 @@ namespace CoreEngine
         context.gBufferManager = gBufferManager_.get();
         context.accelerationStructureManager = accelerationStructureManager_.get();
         context.rtScene = rtScene_.get();
+#ifdef CORE_EDITOR
+        context.rtDebug = rtDebug_.get();
+#endif
         context.vertexAnimationDeformer = vertexAnimationDeformer_.get();
         context.rtShadowManager = rtShadowManager_.get();
         context.rtWaterCausticsManager = rtWaterCausticsManager_.get();

@@ -5,6 +5,7 @@
 #include <cstring>
 #include <utility>
 
+#include "GameObject/GameObjectManager.h"
 #include "Graphics/Material/MaterialInstance.h"
 #include "Graphics/Model/Model.h"
 #include "Graphics/Model/ModelResource.h"
@@ -206,7 +207,7 @@ namespace CoreEngine
 
         const size_t row = scene_.tlasInstances_.size();
         scene_.tlasInstances_.push_back(desc);
-        scene_.rowResources_.push_back(instance.resource);
+        scene_.rows_.push_back(RowRecord{ instance.owner, instance.resource, nullptr, scene_.currentSource_ });
         return row;
     }
 
@@ -250,7 +251,7 @@ namespace CoreEngine
     {
         hitTablesValid_ = false;
         tlasInstances_.clear();
-        rowResources_.clear();
+        rows_.clear();
         hitInstances_.clear();
         hitSubMeshes_.clear();
         dynamicShapes_.clear();
@@ -264,6 +265,7 @@ namespace CoreEngine
         sourceStats_.resize(sources.size());
         for (size_t i = 0; i < sources.size(); ++i) {
             const size_t before = tlasInstances_.size();
+            currentSource_ = static_cast<uint32_t>(i);
             sources[i].function(builder);
             sourceStats_[i].name = sources[i].name;
             sourceStats_[i].instanceCount = static_cast<uint32_t>(tlasInstances_.size() - before);
@@ -286,6 +288,17 @@ namespace CoreEngine
         if (input.deformer) {
             input.deformer->RetireUnused(input.frame);
         }
+
+        hasLastBuild_ = true;
+        lastBuildFrame_ = input.frame;
+        lastBuildObjects_ = input.objects;
+        lastBuildObjectCount_ = input.objects ? input.objects->GetObjectCount() : 0;
+    }
+
+    bool RTScene::IsSameSceneAsLastBuild(const FrameInput& input) const
+    {
+        const size_t objectCount = input.objects ? input.objects->GetObjectCount() : 0;
+        return hasLastBuild_ && input.objects == lastBuildObjects_ && objectCount == lastBuildObjectCount_;
     }
 
     void RTScene::BuildDynamicShapes(const FrameInput& input, const VertexAnimationParams& animParams,
@@ -325,7 +338,7 @@ namespace CoreEngine
                 }
             }
             // 作れなければ静止形の BLAS のまま
-            const ModelResource* resource = rowResources_[pending.row];
+            const ModelResource* resource = rows_[pending.row].resource;
             if (!vertices || !resource) {
                 continue;
             }
@@ -345,6 +358,7 @@ namespace CoreEngine
                 continue;
             }
             tlasInstances_[pending.row].blasAddress = blas;
+            rows_[pending.row].dynamicOwner = pending.shape.owner;
             // 表の行も、BLAS と同じ変形後の頂点を読む
             if (pending.row < hitInstances_.size() && vertexBufferIndex != UINT32_MAX) {
                 hitInstances_[pending.row].vertexBufferIndex = vertexBufferIndex;

@@ -3,10 +3,38 @@
 
 #include "EngineSystem/Subsystem/RayTracingSubsystem.h"
 #include "Graphics/Render/RenderGraph.h"
+#include "Graphics/RayTracing/Debug/RTDebugRegistry.h"
+#include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Water/RayTracing/WaterSeabedRayTracingManager.h"
 
 namespace CoreEngine
 {
+    RT_DEBUG_EFFECT_REGISTER(kSeabedEffect,
+        .id = "RTWaterSeabed",
+        .label = "海底の高さ",
+        .cvarPrefix = nullptr,
+        .passNames = { "RTWaterSeabedPass" },
+        .stageLabels = { "トレース" },
+        .collect = [](const RTDebugQuery& query, std::vector<RTDebugEffectRow>& rows) {
+            if (auto* manager = query.domain ? query.domain->GetWaterSeabedRayTracingManager() : nullptr) {
+                rows.push_back({ "ゲームの画面", manager->GetDispatchInfo() });
+            }
+        });
+
+    RT_DEBUG_CHANNEL_REGISTER(
+        .effect = "海底の高さ",
+        .stage = "トレース",
+        .name = "高さ",
+        .description = "カメラの周りの範囲を真上から撃って測った海底の高さ（m）。岸の泡が読む。画面の並びではない",
+        .components = { "高さ" },
+        .rangeMin = -10.0f,
+        .rangeMax = 2.0f,
+        .viewMode = RTDebugViewMode::FalseColor,
+        .screenSpace = false,
+        .resolve = [](const RenderContext& context, uint32_t, RTDebugSource& out) {
+            return ResolveFrameBlackboardImage(context, FrameBlackboard::RTWaterSeabedHeight, out);
+        })
+
     void RTWaterSeabedPass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
     {
         builder.Write(FrameBlackboard::RTWaterSeabedHeight, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
@@ -14,6 +42,10 @@ namespace CoreEngine
 
     void RTWaterSeabedPass::Execute(const RenderContext& context)
     {
+        // 止めたフレームは測らない（出力を載せないので、岸の泡は海底を読まない）
+        if (!kSeabedEffect.IsActive()) {
+            return;
+        }
         // 水面が無いフレームは測らない（水面も描かれない）
         if (!context.waterSurfaceState || context.waterSurfaceState->regionValid == 0) {
             return;
