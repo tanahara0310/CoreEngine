@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "GameObject/Component/Render/MeshRendererComponent.h"
+#include "GameObject/GameObject.h"
 #include "GameObject/GameObjectManager.h"
 #include "Graphics/Material/MaterialInstance.h"
 #include "Graphics/Material/SurfaceMaterialPipeline.h"
@@ -161,6 +162,7 @@ namespace CoreEngine
                     instance.model = model;
                     instance.world = world;
                     instance.baseColorOverride = renderer.GetTextureOverrideHandle();
+                    instance.owner = renderer.GetOwner() ? renderer.GetOwner()->GetObjectId() : ObjectId{};
                     instance.mask = settings.ResolvePurposeMask(opaque);
                     // 形の決まった不透明な物は、少し前まで動いていた物とスキニングの物を動く物の印にする
                     if (opaque && IsSolidShape(*model)) {
@@ -233,6 +235,7 @@ namespace CoreEngine
                     RTScene::Instance instance;
                     instance.resource = resource;
                     instance.mask = mask;
+                    instance.owner = particleSystem.GetOwner() ? particleSystem.GetOwner()->GetObjectId() : ObjectId{};
                     for (uint32_t i = 0; i < written; ++i) {
                         instance.world = particleMatrices[i];
                         builder.Add(instance);

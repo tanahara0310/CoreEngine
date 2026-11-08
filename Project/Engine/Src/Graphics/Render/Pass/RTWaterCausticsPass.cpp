@@ -3,6 +3,8 @@
 
 #include "EngineSystem/Subsystem/RayTracingSubsystem.h"
 #include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RayTracing/Debug/RTDebugRegistry.h"
+#include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
 #include "Graphics/Render/RenderingTechnique/Lighting/WaterCausticsTechnique.h"
 #include "Graphics/Render/RenderingTechnique/RenderingTechniqueManager.h"
@@ -33,6 +35,31 @@ namespace CoreEngine
         return true;
     }
 
+    RT_DEBUG_EFFECT_REGISTER(kCausticsEffect,
+        .id = "RTWaterCaustics",
+        .label = "水のコースティクス",
+        .cvarPrefix = "r.Water.Caustics",
+        .passNames = { "RTWaterCausticsPass" },
+        .stageLabels = { "トレース" },
+        .collect = [](const RTDebugQuery& query, std::vector<RTDebugEffectRow>& rows) {
+            if (auto* manager = query.domain ? query.domain->GetWaterCausticsRayTracingManager() : nullptr) {
+                rows.push_back({ "ゲームの画面", manager->GetDispatchInfo() });
+            }
+        });
+
+    RT_DEBUG_CHANNEL_REGISTER(
+        .effect = "水のコースティクス",
+        .stage = "トレース",
+        .name = "集光",
+        .description = "水の底に集まる光（ライティングが足す）。止めたフレームと画面上の水が無いフレームは作らない",
+        .components = { "R", "G", "B", "A" },
+        .rangeMin = 0.0f,
+        .rangeMax = 1.0f,
+        .viewMode = RTDebugViewMode::Color,
+        .resolve = [](const RenderContext& context, uint32_t, RTDebugSource& out) {
+            return ResolveFrameBlackboardImage(context, FrameBlackboard::RTWaterCaustics, out);
+        })
+
     void RTWaterCausticsPass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
     {
         builder.Read(FrameBlackboard::SceneDepth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -42,6 +69,10 @@ namespace CoreEngine
 
     void RTWaterCausticsPass::Execute(const RenderContext& context)
     {
+        // 止めたフレームは撃たない（出力を載せないので、ライティングはスクリーンスペースの方を使う）
+        if (!kCausticsEffect.IsActive()) {
+            return;
+        }
         // マネージャは水面のあるシーンで作られる（水面の無いシーンでは何もしない）
         if (!context.rtWaterCausticsManager) {
             return;

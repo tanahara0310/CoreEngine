@@ -161,7 +161,7 @@ namespace CoreEngine
         UINT GetBLASCount() const { return static_cast<UINT>(staticBlas_.size()); }
 
         // ──────────────────────────────────────────────────────────
-        // デバッグ表示用の統計（Stage 0: RayTracingDebugPanel が参照する）
+        // デバッグ表示用の統計（レイトレーシングのデバッグ窓が参照する）
         // ──────────────────────────────────────────────────────────
 
         /// @brief D3D12_RAYTRACING_TIER の生値（非対応時は 0）
@@ -184,6 +184,12 @@ namespace CoreEngine
 
         /// @brief 解放待ちの退避リソース数（リーク調査用）
         size_t GetRetiredResourceCount() const { return retiredResources_.size(); }
+
+        /// @brief モデルの静止形の BLAS の結果バッファのバイト数（無ければ 0）
+        UINT64 GetStaticBLASBytes(const ModelResource* resource) const;
+
+        /// @brief 持ち主の動的 BLAS の結果バッファのバイト数（無ければ 0）
+        UINT64 GetDynamicBLASBytes(const void* owner) const;
 
     private:
         void EnsureScratchBuffer(UINT64 requiredSize);

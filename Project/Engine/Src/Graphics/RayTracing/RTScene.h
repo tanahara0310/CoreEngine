@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "Graphics/RHI/Command/FrameSync.h"
+#include "GameObject/ObjectId.h"
 #include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/RayTracing/RTInstanceMask.h"
@@ -43,6 +44,15 @@ namespace CoreEngine
             Matrix4x4 world{};                                ///< ワールド行列
             UINT mask = 0;                                    ///< RTInstanceMask の OR（0 なら載せない）
             D3D12_GPU_DESCRIPTOR_HANDLE baseColorOverride{};  ///< 全サブメッシュのベースカラーを差し替えるテクスチャ（無ければ ptr = 0）
+            ObjectId owner{};                                 ///< 持ち主の物（デバッグ表示の名前に使う）
+        };
+
+        /// @brief 行 1 つの出どころ（TLAS のインスタンスと同じ並び）
+        struct RowRecord {
+            ObjectId owner{};                         ///< 持ち主の物（無ければ未割り当て）
+            const ModelResource* resource = nullptr;  ///< 形のモデル
+            const void* dynamicOwner = nullptr;       ///< 毎フレーム作る BLAS の持ち主（静止形の BLAS なら nullptr）
+            uint32_t source = 0;                      ///< 出どころの番号（GetSourceStats の並び）
         };
 
         /// @brief 毎フレーム頂点が変わる形（スキニング・揺れる植物・頂点を動かすマテリアル）
@@ -150,6 +160,19 @@ namespace CoreEngine
         /// @brief 出どころごとの、直近の Build で載せた物の数（登録した順）
         const std::vector<SourceStats>& GetSourceStats() const { return sourceStats_; }
 
+        /// @brief 直近の Build の TLAS のインスタンス（行の並び）
+        const std::vector<AccelerationStructureManager::InstanceDesc>& GetInstances() const { return tlasInstances_; }
+        /// @brief 直近の Build の行の出どころ（GetInstances と同じ並び）
+        const std::vector<RowRecord>& GetRows() const { return rows_; }
+        /// @brief 直近の Build の材質のインスタンス表（GetInstances と同じ並び）
+        const std::vector<RTHitInstance>& GetHitInstances() const { return hitInstances_; }
+        /// @brief 直近の Build の材質のサブメッシュ表
+        const std::vector<RTHitSubMesh>& GetHitSubMeshes() const { return hitSubMeshes_; }
+        /// @brief 直近の Build のフレーム
+        uint64_t GetLastBuildFrame() const { return lastBuildFrame_; }
+        /// @brief 直近の Build と同じシーン・同じ物の数か（作り直さずに前の TLAS を撃ってよいかの判定）
+        bool IsSameSceneAsLastBuild(const FrameInput& input) const;
+
     private:
         /// @brief 動く形にする行
         struct PendingDynamicShape {
@@ -197,7 +220,7 @@ namespace CoreEngine
 
         // 今フレームの行（TLAS のインスタンス・表のインスタンス・形の持ち主は同じ並び）
         std::vector<AccelerationStructureManager::InstanceDesc> tlasInstances_;
-        std::vector<const ModelResource*> rowResources_;
+        std::vector<RowRecord> rows_;
         std::vector<RTHitInstance> hitInstances_;
         std::vector<RTHitSubMesh> hitSubMeshes_;
         std::vector<PendingDynamicShape> dynamicShapes_;
@@ -213,6 +236,14 @@ namespace CoreEngine
 
         std::unordered_map<const void*, SolidMotionEntry> solidMotion_;
         uint64_t staticSolidSignature_ = 0;
+
+        // Build の途中で今の出どころの番号
+        uint32_t currentSource_ = 0;
+        // 直近の Build の入力
+        bool hasLastBuild_ = false;
+        uint64_t lastBuildFrame_ = 0;
+        const GameObjectManager* lastBuildObjects_ = nullptr;
+        size_t lastBuildObjectCount_ = 0;
     };
 }
 

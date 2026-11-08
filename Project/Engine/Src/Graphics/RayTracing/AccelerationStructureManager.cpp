@@ -67,6 +67,18 @@ namespace CoreEngine
         return total;
     }
 
+    UINT64 AccelerationStructureManager::GetStaticBLASBytes(const ModelResource* resource) const
+    {
+        const auto it = staticBlas_.find(resource);
+        return (it != staticBlas_.end() && it->second.result) ? it->second.result->GetDesc().Width : 0;
+    }
+
+    UINT64 AccelerationStructureManager::GetDynamicBLASBytes(const void* owner) const
+    {
+        const auto it = dynamicBlas_.find(owner);
+        return it != dynamicBlas_.end() ? it->second.resultSize : 0;
+    }
+
     UINT64 AccelerationStructureManager::GetTLASResultBytes() const
     {
         UINT64 total = 0;

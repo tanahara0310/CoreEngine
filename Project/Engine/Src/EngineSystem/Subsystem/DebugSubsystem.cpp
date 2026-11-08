@@ -673,15 +673,15 @@ namespace CoreEngine
             .draw = []() { Editor::ShaderGraph::ShaderGraphEditor::Get().Draw(); },
             });
 
-        // レイトレーシング専用デバッグパネル（Debug メニュー > Ray Tracing）
-        // 加速構造の統計・RTシャドウのステージ別内訳・中間バッファ・設定をまとめる。
+        // レイトレーシングのデバッグ窓（Debug メニュー > Ray Tracing）
+        // 概要・中間結果・見え方・レイの追跡・加速構造・チェックの 6 つのタブ
         rayTracingDebugPanel_.Initialize(engine_, &gpuProfiler_);
         AddPanel({
             .id = "Ray Tracing",
             .placement = Editor::PanelPlacement::Window,
             .group = Editor::PanelGroup::Rendering,
-            .defaultWidth = 620.0f,
-            .defaultHeight = 620.0f,
+            .defaultWidth = 780.0f,
+            .defaultHeight = 720.0f,
             .draw = [this]() { rayTracingDebugPanel_.Draw(); },
             });
 
@@ -766,6 +766,9 @@ namespace CoreEngine
         // シェーダーグラフの窓の終了処理（imnodes の状態は ImGui より先に解放する）
         Editor::ShaderGraph::ShaderGraphEditor::Get().Finalize();
 
+        // レイトレーシングのデバッグ窓の線とゲーム画面へ重ねる口を外し、切り分けのスイッチを戻す
+        rayTracingDebugPanel_.Finalize();
+
         // プロファイラーの終了処理（ImGui より先に解放）
         gpuProfiler_.Finalize();
 
@@ -796,6 +799,9 @@ namespace CoreEngine
         // RenderGraph エディタが閉じられていればスナップショット複製を止める
         //（Draw() はウィンドウが開いている間しか呼ばれないため、止める判断はここでしかできない）
         renderGraphEditorPanel_.SyncCaptureState();
+
+        // レイトレーシングのデバッグ窓が閉じられていれば、切り分けのスイッチを戻す
+        rayTracingDebugPanel_.BeginFrame();
 
         // ゲーム映像専用ウィンドウの生成・破棄・リサイズはここで確定させる。
         // GPU 待ちを伴うため、コマンドリストへの記録が始まる前でなければならない。

@@ -358,6 +358,9 @@
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTShadowPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTDebugPass.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterCausticsPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
@@ -795,6 +798,12 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RTScene.cpp">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\Debug\RTDebugRegistry.cpp">
+      <Filter>Engine\Src\Graphics\RayTracing\Debug</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\Debug\RTDebugSystem.cpp">
+      <Filter>Engine\Src\Graphics\RayTracing\Debug</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingPassBase.cpp">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
@@ -1304,6 +1313,9 @@
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\ImGui\RayTracingDebugPanel.cpp">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\ImGui\GameViewportOverlay.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\ImGui\RenderGraphEditorPanel.cpp">
@@ -2754,6 +2766,12 @@
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RTScene.h">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\Debug\RTDebugRegistry.h">
+      <Filter>Engine\Src\Graphics\RayTracing\Debug</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\Debug\RTDebugSystem.h">
+      <Filter>Engine\Src\Graphics\RayTracing\Debug</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingOutputViewSet.h">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClInclude>
@@ -2947,6 +2965,9 @@
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTShadowPass.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTDebugPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterCausticsPass.h">
@@ -3637,6 +3658,9 @@
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\RayTracingDebugPanel.h">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ImGui\GameViewportOverlay.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\RenderGraphEditorPanel.h">
@@ -4711,6 +4735,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\RayTracing">
       <UniqueIdentifier>{72AB04C2-1629-4E5E-B23F-52EFD65FD259}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\RayTracing\Debug">
+      <UniqueIdentifier>{875890DF-483F-42AB-AC50-945B943F0F3E}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Render">
       <UniqueIdentifier>{914A25D2-E4AB-4015-82E8-D55EC9CA375E}</UniqueIdentifier>

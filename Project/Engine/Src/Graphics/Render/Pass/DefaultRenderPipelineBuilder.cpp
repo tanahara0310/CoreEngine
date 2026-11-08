@@ -36,6 +36,9 @@
 #include "Graphics/Render/Pass/WaterSurfacePass.h"
 #include "Graphics/Render/Pass/PostEffectPass.h"
 #include "Graphics/Render/Pass/BackBufferPass.h"
+#ifdef CORE_EDITOR
+#include "Graphics/Render/Pass/RTDebugPass.h"
+#endif
 
 namespace CoreEngine
 {
@@ -89,6 +92,10 @@ namespace CoreEngine
         pipeline.AddPass(std::make_unique<RTShadowPass>(), RenderPassPhase::PreLighting, 10);
         pipeline.AddPass(std::make_unique<RTShadowTemporalPass>(), RenderPassPhase::PreLighting, 11);
         pipeline.AddPass(std::make_unique<RTShadowDenoisePass>(), RenderPassPhase::PreLighting, 12);
+#ifdef CORE_EDITOR
+        // レイトレーシングのデバッグ窓が頼んだフレームだけ、RT から見たシーンとレイの追跡を撃つ
+        pipeline.AddPass(std::make_unique<RTDebugScenePass>(), RenderPassPhase::PreLighting, 15);
+#endif
         // コースティクスは実行順の都合で PreLighting だが、コストの分類は水面。
         // ここを Water へ寄せないと「水面がフレームに占める割合」から集光分が抜け落ちる。
         pipeline.AddPass(
@@ -143,6 +150,10 @@ namespace CoreEngine
 
         // ポストエフェクト（有効エフェクト列は Graph 構築時にノード分解される）
         pipeline.AddPass(std::make_unique<PostEffectPass>(), RenderPassPhase::PostProcess, 10);
+#ifdef CORE_EDITOR
+        // レイトレーシングのデバッグ窓が見ている中間結果に色を付ける（全部の効果の後）
+        pipeline.AddPass(std::make_unique<RTDebugVisualizePass>(), RenderPassPhase::PostProcess, 20);
+#endif
 
         // バックバッファへの最終出力
         auto backBufferPass = std::make_unique<BackBufferPass>();
