@@ -13,11 +13,17 @@
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/RenderGraph.h"
+#include "Graphics/Render/Pass/RTAOPass.h"
 
 namespace CoreEngine
 {
-    void SSAOPass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
+    void SSAOPass::DeclareResources(RenderGraphBuilder& builder, const RenderContext& context)
     {
+        // RTAO が環境光の遮りを作るフレームは何もしない
+        if (IsRayTracedAOSelected(context)) {
+            return;
+        }
+
         // GBuffer と深度を SRV として読み取り、AO バッファへ書き込む。
         builder.Read(FrameBlackboard::SceneDepth, D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         builder.Read(FrameBlackboard::GBufferAlbedoAO, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
@@ -29,6 +35,9 @@ namespace CoreEngine
 
     void SSAOPass::Execute(const RenderContext& context)
     {
+        if (IsRayTracedAOSelected(context)) {
+            return;
+        }
         if (!context.renderingTechniqueManager || !context.renderTargetManager
             || !context.gBufferManager || !context.dxCommon) {
             return;

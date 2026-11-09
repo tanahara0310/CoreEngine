@@ -15,6 +15,7 @@
 #include "Graphics/Render/Model/BaseModelRenderer.h"
 #include "Graphics/RayTracing/RayTracingShadowManager.h"
 #include "Graphics/RayTracing/Effect/RTEffectSet.h"
+#include "Graphics/Render/Pass/RTAOPass.h"
 #include "Graphics/Render/Pass/RTShadowPass.h"
 #include "Graphics/Render/RenderingTechnique/Lighting/WaterCausticsTechnique.h"
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
@@ -61,7 +62,8 @@ namespace CoreEngine
         // モーションベクターの a（動く物の印）を濡れ跡に使う
         builder.Read(FrameBlackboard::GBufferMotionVector, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         if (context.viewSettings.enableSSAO) {
-            builder.Read(FrameBlackboard::SSAO, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+            builder.Read(IsRayTracedAOSelected(context) ? FrameBlackboard::RTAO : FrameBlackboard::SSAO,
+                D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         }
         builder.Read(FrameBlackboard::WaterCaustics, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         builder.Read(FrameBlackboard::RTWaterCaustics, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
@@ -181,11 +183,12 @@ namespace CoreEngine
             }
         }
 
-        // ===== SSAO SRV を渡す（SSAOPass の出力が入力として届いている場合） =====
+        // ===== 環境光の遮りの SRV を渡す（RTAO を選んだフレームは RTAO、ほかは SSAOPass の出力） =====
         D3D12_GPU_DESCRIPTOR_HANDLE ssaoHandle{};
         bool hasBlackboardSSAO = false;
         if (context.frameBlackboard) {
-            hasBlackboardSSAO = context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SSAO, ssaoHandle);
+            const char* aoName = IsRayTracedAOSelected(context) ? FrameBlackboard::RTAO : FrameBlackboard::SSAO;
+            hasBlackboardSSAO = context.frameBlackboard->TryGetSrvHandle(aoName, ssaoHandle);
         }
 
         if (hasBlackboardSSAO) {

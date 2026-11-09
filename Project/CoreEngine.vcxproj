@@ -318,6 +318,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\FFTOceanPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\WaterHeightQueryPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\ASBuildPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTAOPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTShadowPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTDebugPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterCausticsPass.cpp" />
@@ -468,6 +469,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Graphics\RayTracing\AccelerationStructureManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\VertexAnimationDeformer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingDispatchInfo.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\AO\RTAmbientOcclusion.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\Denoise\RTDenoiser.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RTHitShading.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RTScene.cpp" />
@@ -1665,6 +1667,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RTInstanceMask.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RTObjectSettings.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\Denoise\RTDenoiseBindings.h" />
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\AO\RTAmbientOcclusion.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\Denoise\RTDenoiser.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RTHitShading.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RTScene.h" />
@@ -1737,6 +1740,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RenderPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RenderPipeline.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\ASBuildPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTAOPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTShadowPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTDebugPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterCausticsPass.h" />

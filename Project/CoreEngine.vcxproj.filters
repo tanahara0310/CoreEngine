@@ -355,6 +355,9 @@
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\ASBuildPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTAOPass.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTShadowPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
@@ -795,6 +798,9 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingDispatchInfo.cpp">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\AO\RTAmbientOcclusion.cpp">
+      <Filter>Engine\Src\Graphics\RayTracing\AO</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RayTracing\Denoise\RTDenoiser.cpp">
       <Filter>Engine\Src\Graphics\RayTracing\Denoise</Filter>
@@ -2778,6 +2784,9 @@
     <ClInclude Include="Engine\Src\Graphics\RayTracing\Denoise\RTDenoiseBindings.h">
       <Filter>Engine\Src\Graphics\RayTracing\Denoise</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\AO\RTAmbientOcclusion.h">
+      <Filter>Engine\Src\Graphics\RayTracing\AO</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\Denoise\RTDenoiser.h">
       <Filter>Engine\Src\Graphics\RayTracing\Denoise</Filter>
     </ClInclude>
@@ -2992,6 +3001,9 @@
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\ASBuildPass.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTAOPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTShadowPass.h">
@@ -4765,6 +4777,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\RayTracing">
       <UniqueIdentifier>{72AB04C2-1629-4E5E-B23F-52EFD65FD259}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\RayTracing\AO">
+      <UniqueIdentifier>{0B037D6B-1C02-43A5-91B6-E59AB61CE180}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\RayTracing\Debug">
       <UniqueIdentifier>{875890DF-483F-42AB-AC50-945B943F0F3E}</UniqueIdentifier>

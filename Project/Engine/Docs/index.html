@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.72.0">
+<meta name="engine-version" content="0.73.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -9622,14 +9622,32 @@ kbd {
   <p><span class="ui">自動</span> は、<span class="ui">ブレンド</span> が <span class="ui">なし</span> の物なら影を落として水面に映り、それ以外（半透明・加算など）の物なら落とさず映りません。半透明の物を <span class="ui">落とす</span> にすると、不透明な物と同じ濃さの影を落とします。</p>
   <p>葉や柵のように、ベースカラーのアルファで抜く材質（アルファのしきい値 <code>alphaCutoff</code>。ディザの材質は 0.5）は、抜けた所を影のレイも水面の反射・屈折のレイも通ります。抜ける所は画面に描く形と同じなので、木の影は葉の形になります。</p>
 
+  <h3 id="g3d-ao">物の間の暗がり（AO）</h3>
+  <p>物どうしが近い所（箱の根元・部屋の隅・机の下）は、空からの光が届きにくいので暗くします。これを AO（環境光の遮り）と呼びます。暗くなるのは空の環境光と空の映り込みだけで、ライトの直接の光は変わりません。</p>
+  <p>DXR 1.1 に対応した GPU では、画素の点から法線のまわりへ短いレイを撃って調べる <strong>RTAO</strong> で求めます。画面に映っていない物（カメラの後ろの壁・手前の物に隠れた所）も遮ります。対応していない GPU では、画面の深度から求める <strong>SSAO</strong> を使います。どちらを使うかはエンジンが決めるので、ゲームの側で切り替える必要はありません。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>CVar</th><th>既定</th><th>はたらき</th></tr></thead>
+    <tbody>
+      <tr><td><code>r.SSAO.Enabled</code></td><td>オン</td><td>AO そのもののオン・オフ（RTAO も SSAO も）</td></tr>
+      <tr><td><code>r.RTAO.Enabled</code></td><td>オン</td><td>オフにすると、レイトレーシングが使えても SSAO を使います</td></tr>
+      <tr><td><code>r.RTAO.Radius</code></td><td>1</td><td>遮る物を探す距離 [m]。長いほど広い範囲が暗くなり、重くなります</td></tr>
+      <tr><td><code>r.RTAO.Intensity</code></td><td>1</td><td>遮りの強さ（0 で遮らない）</td></tr>
+      <tr><td><code>r.RTAO.SampleCount</code></td><td>1</td><td>1 画素に撃つレイの本数。ざらつきは前のフレームとの重ね合わせとノイズ取りで消します</td></tr>
+      <tr><td><code>r.RTAO.HalfResolutionTrace</code></td><td>オン</td><td>1/2 解像度で撃ち、仕上げで画面の解像度へ戻します</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>どれもプロジェクト全体の設定で、<span class="ui">Edit<span class="arrow">▸</span>Project Settings…</span> の <span class="ui">Rendering Techniques</span>（SSAO の欄の下）にあります。葉などアルファで抜ける所は、RTAO のレイも通ります。RTAO と SSAO を見比べるときは、レイトレーシングの窓の <span class="ui">概要</span> で <span class="ui">環境光の遮り（RTAO）</span> の <span class="ui">ON</span> を外します（<a href="#g3d-shadow-debug">影や映り込みがおかしいとき</a>）。</p>
+
   <h3 id="g3d-shadow-debug">影や映り込みがおかしいとき</h3>
   <p>エディタ（Debug・Development 版）の <span class="ui">Window ▸ Rendering ▸ Ray Tracing</span> の窓で、影と水面のレイがどう撃たれ、何に当たったかを調べられます。窓の上の帯には、DXR の Tier、TLAS に載った物の数と作り直しの様子、レイトレーシングにかかる GPU 時間の合計、チェックの誤りと警告の数が、どのタブでも出ます。誤りと警告の数を押すと <span class="ui">チェック</span> のタブへ移ります。</p>
   <div class="table-wrap">
   <table>
     <thead><tr><th>タブ</th><th>見られるもの</th></tr></thead>
     <tbody>
-      <tr><td><span class="ui">概要</span></td><td>効果（影・水のコースティクス・屈折・反射・海底の高さ・海の範囲）ごとの状態・解像度・レイの数・GPU 時間。行を開くと、段ごとの時間と、その効果の設定（CVar）が出ます。<span class="ui">ON</span> を外すと、その効果だけ撃ちません</td></tr>
-      <tr><td><span class="ui">中間結果</span></td><td>効果の途中の画像（影の生の値・履歴・マスク、水面の映り込みの色など）。色の付け方・成分・範囲を選び、この窓・ゲーム画面いっぱい・ゲーム画面の左半分のどこに出すかを選べます。画像の上にマウスを置くと、その画素の生の値が出ます。NaN は紫、+Inf は白、−Inf は水色で出ます</td></tr>
+      <tr><td><span class="ui">概要</span></td><td>効果（影・環境光の遮り（RTAO）・水のコースティクス・屈折・反射・海底の高さ・海の範囲）ごとの状態・解像度・レイの数・GPU 時間。行を開くと、段ごとの時間と、その効果の設定（CVar）が出ます。<span class="ui">ON</span> を外すと、その効果だけ撃ちません</td></tr>
+      <tr><td><span class="ui">中間結果</span></td><td>効果の途中の画像（影の生の値・履歴・マスク、RTAO の生の値・履歴・AO、水面の映り込みの色など）。色の付け方・成分・範囲を選び、この窓・ゲーム画面いっぱい・ゲーム画面の左半分のどこに出すかを選べます。画像の上にマウスを置くと、その画素の生の値が出ます。NaN は紫、+Inf は白、−Inf は水色で出ます</td></tr>
       <tr><td><span class="ui">見え方</span></td><td>カメラから撃ったレイが何に当たったか（物・サブメッシュ・三角形・距離・法線・ベースカラー・印・表か裏か・動くか・ラスタの深度との差・調べた三角形の候補の数・アルファを調べた数）。当てる印と、アルファで抜ける所を通すかを選べます。マウスの下の画素で当たった物の名前とモデルが出ます</td></tr>
       <tr><td><span class="ui">レイの追跡</span></td><td>1 画素から撃つカメラのレイ・影のレイ・映り込みのレイの、当たった物・距離・三角形・表か裏か。<span class="ui">ゲーム画面で選ぶ</span> を押してゲーム画面をクリックするか、<span class="ui">マウスの下を追う</span> を入れて画素を決めます。レイはゲーム画面に線で描きます（白 = カメラ、黄 = 影、赤 = 影のレイが当たった、水色 = 映り込み）</td></tr>
       <tr><td><span class="ui">加速構造</span></td><td>BLAS と TLAS の数と大きさ、TLAS の行の一覧（物・モデル・出どころ・印・形・三角形の数・BLAS の大きさ）。名前・出どころ・形・印で絞り込めます。選んだ行の物の箱をゲーム画面に描きます</td></tr>
@@ -9656,7 +9674,7 @@ kbd {
     <li><code>Accumulate</code>：前のフレームの履歴と混ぜます。</li>
     <li><code>Filter</code>：A-Trous を掛け、フル解像度の出力（<code>GetOutputSRV</code>）へ書きます。出力はピクセルシェーダが読む状態になります。</li>
   </ol>
-  <p>手がかりにする深度・法線・モーションベクター・投影行列は <code>BuildRTDenoiseGuides(context, guides)</code> で集めます。調整値は <code>RTDenoiseSettings</code> で、効果の CVar から作って渡します。影はこの部品を使っています。</p>
+  <p>手がかりにする深度・法線・モーションベクター・投影行列は <code>BuildRTDenoiseGuides(context, guides)</code> で集めます。調整値は <code>RTDenoiseSettings</code> で、効果の CVar から作って渡します。影と RTAO はこの部品を使っています。</p>
 
   <h2 id="g3d-move">動かす</h2>
   <div class="table-wrap">
@@ -11372,6 +11390,16 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-73-0">v0.73.0 <span class="dim">（2026-11-09）</span></h3>
+  <p>物の間の暗がり（AO）をレイトレーシングで求める RTAO を足した版です（<a href="#g3d-ao">物の間の暗がり（AO）</a>）。</p>
+  <ul>
+    <li><strong>RTAO</strong>：DXR 1.1 に対応した GPU では、SSAO の代わりに、画素の点から法線のまわりへ短いレイ（既定 1m）を撃って AO を求めます。画面の外の物や、手前の物に隠れた物も遮ります。レイは 1/2 解像度で 1 画素 1 本撃ち、<code>RTDenoiser</code> でノイズを取ります。物が現れた直後の画素だけ 4 本撃ちます。葉などアルファで抜ける所はレイが通ります。対応していない GPU と、<code>r.RTAO.Enabled</code> を切ったときは、今までどおり SSAO を使います。AO そのもののオン・オフは今までどおり <code>r.SSAO.Enabled</code> です。</li>
+    <li><strong>設定</strong>：<code>r.RTAO.Radius</code>・<code>r.RTAO.Intensity</code>・<code>r.RTAO.Bias</code>・<code>r.RTAO.SampleCount</code>・<code>r.RTAO.NewPixelSampleCount</code>・<code>r.RTAO.HalfResolutionTrace</code>・<code>r.RTAO.MaxHistoryFrames</code>・<code>r.RTAO.AtrousPassCount</code>。プロジェクト全体の設定で、<span class="ui">Project Settings</span> の <span class="ui">Rendering Techniques</span>（SSAO の欄の下）と、レイトレーシングの窓の <span class="ui">概要</span> に出ます。</li>
+    <li><strong>レイトレーシングの窓</strong>：<span class="ui">概要</span> に <span class="ui">環境光の遮り（RTAO）</span> の行が出ます。<span class="ui">ON</span> を外すと SSAO に切り替わるので、見比べられます。<span class="ui">中間結果</span> で生の値・履歴・AO が見られます。</li>
+    <li><strong>シェーダ</strong>：影のシェーダにあった乱数の関数（<code>PcgHash</code>・<code>R2SequenceFixed</code>・<code>SampleRotation</code>）を <span class="path">Include/Common/Sampling.hlsli</span> へ移しました。影の計算は同じです。</li>
+    <li><strong>試験用のプロジェクト</strong>：<span class="path">Projects/EngineTests</span> に RTAO のシーンを足し、プロジェクトの SSAO（AO のオン・オフ）を入れました。</li>
+  </ul>
 
   <h3 id="changelog-v0-72-0">v0.72.0 <span class="dim">（2026-11-09）</span></h3>
   <p>レイトレーシングの影のノイズ取りを、ほかの効果からも使える部品（<code>RTDenoiser</code>）として切り出した版です。ゲームの見た目と設定は変わりません（<a href="#g3d-shadow-debug">影や映り込みがおかしいとき</a>）。</p>

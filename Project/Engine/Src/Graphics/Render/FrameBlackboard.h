@@ -33,6 +33,7 @@ namespace CoreEngine
         static const char* const ReflectionColor;
         static const char* const ReflectionDepth;
         static const char* const SSAO;
+        static const char* const RTAO; ///< レイトレーシングの環境光の遮り（RTAO を選んだフレームだけ）
         static const char* const ShadowMask;
         static const char* const RTShadowMask; ///< メインライト（0 番）の RT 影のマスク。ほかのライトは RTShadowMaskOf
         static const char* const CloudBuffer;    ///< 半解像度の雲レイマーチ結果（rgb=前乗算輝度, a=透過率）
