@@ -9,7 +9,6 @@
 #include "Light.h"
 #include "LightData.h"
 #include "LightBufferManager.h"
-#include "LightDebugVisualizer.h"
 
 namespace CoreEngine
 {
@@ -36,11 +35,6 @@ namespace CoreEngine
 
         /// @brief 全てのライトを更新（オーサリング表現 → GPU バッファへの変換・転送）
         void UpdateAll();
-
-        /// @brief 次のギズモ描画で詳細表示にするライトを指定する
-        /// @details 指定は 1 回の描画で使い切る。Inspector が選択中のライトを毎フレーム
-        ///          指し直すので、選択が外れれば次のフレームから簡略表示へ戻る。
-        void SetGizmoFocusLight(LightHandle handle) { gizmoFocus_ = handle; }
 
         // ==================== ライトの生成・破棄・参照 ====================
 
@@ -206,9 +200,5 @@ namespace CoreEngine
         Vector3 atmosphereMoonTransmittance_ = { 1.0f, 1.0f, 1.0f };
 
         LightBufferManager bufferManager_;
-        LightDebugVisualizer debugVisualizer_;
-
-        /// @brief 次のギズモ描画で詳細表示にするライト（無効ハンドルなら全て簡略表示）
-        LightHandle gizmoFocus_{};
     };
 }

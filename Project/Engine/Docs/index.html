@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.74.0">
+<meta name="engine-version" content="0.75.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2875,7 +2875,7 @@ kbd {
   </ul>
 </article>
 
-<article class="page" id="editor-viewport" data-group="エディタ" data-title="Game ビューとカメラ操作" data-nav="Game ビューとカメラ" data-keywords="シーンビュー ビューポート カメラ 視点 操作 移動 回転 ズーム ギズモ 選択 クリック フォーカス wasd 中ボタン 2d 平行投影 正面 スプライト">
+<article class="page" id="editor-viewport" data-group="エディタ" data-title="Game ビューとカメラ操作" data-nav="Game ビューとカメラ" data-keywords="シーンビュー ビューポート カメラ 視点 操作 移動 回転 ズーム ギズモ 選択 クリック フォーカス wasd 中ボタン 2d 平行投影 正面 スプライト ライト アイコン 範囲 届く距離 点光源 スポット エリア 平行光源 d.light.visualize">
   <h1>Game ビューとカメラ操作</h1>
   <p class="lead">中央の <span class="ui">Game</span> ビューで、シーンを見て、オブジェクトを選び、ギズモで動かします。エディタ用の視点とゲームのカメラの視点を、キー 1 つで切り替えられます。</p>
 
@@ -2935,6 +2935,27 @@ kbd {
     <li>選べるのは 1 つだけです（複数選択はありません）。</li>
     <li>選ぶと Hierarchy がその行までスクロールします。</li>
     <li>3D の位置を持たないもの（UI など）はクリックでは選べません。Hierarchy か Canvas タブで選びます。</li>
+  </ul>
+
+  <h2 id="viewport-light-icons">ライトのアイコンと届く範囲</h2>
+  <p>ライトを持つオブジェクトの位置に、ライトの種類ごとのアイコンが出ます。アイコンはライトの色で塗られ、物に隠れず、カメラから離れても同じ大きさです。コンポーネントを切ったライトや、止めたオブジェクトのライトは灰色になります。編集中も再生中も出ますが、書き出したゲームには出ません。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>ライト</th><th>アイコン</th><th>選んだときに出る線</th></tr></thead>
+    <tbody>
+      <tr><td>平行光源</td><td>太陽</td><td>光の進む向き（<code>direction</code>）の矢印 5 本</td></tr>
+      <tr><td>点光源</td><td>電球</td><td>届く距離（<code>range</code>）の球</td></tr>
+      <tr><td>スポットライト</td><td>照明の灯体。光の向きへ回る</td><td>外側の角度の円すいと、その先の届く距離の球面。内側の角度の縁は薄い線</td></tr>
+      <tr><td>エリアライト</td><td>板と下向きの矢印。光の向きへ回る</td><td>発光面の枠と、光が出る側の届く距離の半球</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li>アイコンにカーソルを乗せると名前が出て、クリックするとそのオブジェクトが選ばれます（Hierarchy がその行までスクロールします）。選んでいるライトのアイコンは大きくなり、黄色の輪が付きます。</li>
+    <li>範囲の線は選んでいるライトだけに出ます。インスペクタで値を変えると、線もすぐ付いてきます。</li>
+    <li>範囲の線は、床に埋まった所や物の後ろに回った所を薄く描きます（シーンの奥行きと比べます）。アイコンは物に隠れません。</li>
+    <li>届く距離（<code>range</code>）は、光がちょうど 0 になる距離です。明るさは距離の 2 乗で弱まるので、目に見えて明るい所は線よりかなり内側になります。明るく見える広さは強さ（<code>intensity</code>）で、光を切る所は届く距離で決めます。</li>
+    <li>アイコンと線は CVar <code>d.Light.Visualize</code> で消せます（Console で <code>d.Light.Visualize 0</code>）。</li>
   </ul>
 
   <h2 id="viewport-gizmo">ギズモで動かす</h2>
@@ -9576,6 +9597,7 @@ kbd {
     </tbody>
   </table>
   </div>
+  <p>エディタでは、ライトの位置に種類ごとのアイコンが出て、選んだライトの届く範囲が線で出ます（<a href="#viewport-light-icons">ライトのアイコンと届く範囲</a>）。</p>
   <p>平行光源の <span class="ui">大気の太陽</span> を入れると、空の色と太陽の位置がそのライトの向きに合わせて変わります。次は、太陽を回して昼と夜を進めるスクリプトです。平行光源の向きはオブジェクトの回転ではなく、ライトの <code>direction</code>（光の進む向き）で決まります。</p>
   <script type="text/x-code" data-lang="as" data-file="DayNightCycle.as">
     using namespace CoreEngine;
@@ -11399,6 +11421,16 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-75-0">v0.75.0 <span class="dim">（2026-11-09）</span></h3>
+  <p>エディタのシーンビューで、ライトの位置に種類ごとのアイコンを出し、選んだライトの届く範囲を線で描くようにした版です（<a href="#viewport-light-icons">ライトのアイコンと届く範囲</a>）。ゲームの見た目は変わりません。</p>
+  <ul>
+    <li><strong>ライトのアイコン</strong>：平行光源・点光源・スポットライト・エリアライトのアイコンを、ライトの色で塗ってライトの位置に出します。物に隠れず、離れても同じ大きさです。スポットライトとエリアライトのアイコンは光の向きへ回ります。切ったライトは灰色です。画像はエンジンの <span class="path">Engine/Assets/Textures/Icon/Light</span> にあります。</li>
+    <li><strong>クリックで選ぶ</strong>：アイコンに乗せると名前が出て、クリックするとそのライトのオブジェクトが選ばれます。</li>
+    <li><strong>届く範囲の線</strong>：選んだライトの範囲を線で描きます。点光源は球、スポットライトは円すい、エリアライトは発光面と半球、平行光源は向きの矢印です。床に埋まった所や物の後ろに回った所は薄く描きます。今までの範囲の線は Debug のビルドでしか出なかったので、どのビルドのエディタでも出るようにしました。</li>
+    <li><strong>シーンビューの線を奥行きで薄くする</strong>：エディタの C++ からシーンビューへ重ねる線（<code>SceneOverlay</code>）に、物に隠れた所を薄く描く区間（<code>BeginOccluded</code>〜<code>EndOccluded</code>）を足しました。スクリプトの <code>Gizmos::</code>・<code>Handles::</code> の描き方は今までどおり（隠れない）です。</li>
+    <li><strong>試験用のプロジェクト</strong>：<span class="path">Projects/EngineTests</span> に LightGizmos のシーンを足しました。</li>
+  </ul>
 
   <h3 id="changelog-v0-74-0">v0.74.0 <span class="dim">（2026-11-09）</span></h3>
   <p>レイトレーシングの窓の <span class="ui">レイの追跡</span> で、選んだ画素で各効果が実際に撃ったレイと、シェーダの途中の値を見られるようにした版です（<a href="#g3d-shadow-debug">影や映り込みがおかしいとき</a>）。ゲームの見た目と、いつものシェーダの中身は変わりません。</p>

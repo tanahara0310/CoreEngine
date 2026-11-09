@@ -102,13 +102,6 @@ namespace CoreEngine
         light_.color = { color.x, color.y, color.z };
     }
 
-    void LightComponent::FocusGizmo() const
-    {
-        if (LightManager* const manager = ResolveManager()) {
-            manager->SetGizmoFocusLight(handle_);
-        }
-    }
-
     const Light* LightComponent::GetLight() const
     {
         const LightManager* const manager = ResolveManager();

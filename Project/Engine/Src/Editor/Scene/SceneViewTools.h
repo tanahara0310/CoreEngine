@@ -76,9 +76,17 @@ namespace CoreEngine::Editor
         bool wantsMouse_ = false;
     };
 
-    /// @brief シーンビューへ重ねて描く（SceneViewTools::Draw の間だけ描ける。奥の物に隠れない）
+    /// @brief シーンビューへ重ねて描く（SceneViewTools::Draw の間だけ描ける）
+    /// @details 線と塗りは奥の物に隠れない。BeginOccluded〜EndOccluded の間の線と塗りは、物に隠れた所を薄く描く
     namespace SceneOverlay
     {
+        /// @brief ここから EndOccluded までの線と塗りは、シーンの物に隠れた所を hiddenAlpha 倍の濃さで描く
+        /// @details シーンビューがメインのウィンドウの外にあるときは、隠れた所も同じ濃さで描く
+        void BeginOccluded(float hiddenAlpha);
+
+        /// @brief BeginOccluded の前の描き方へ戻す
+        void EndOccluded();
+
         /// @brief ワールドの点のシーンビュー上の位置（ImGui の画面座標）
         /// @return カメラの後ろなら false
         bool WorldToScreen(const Vector3& world, ImVec2& screen);

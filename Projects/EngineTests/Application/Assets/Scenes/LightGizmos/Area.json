@@ -1,0 +1,59 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "areaHeight": 1.0,
+                "areaWidth": 2.0,
+                "atmosphereIntensity": 20.0,
+                "castShadows": true,
+                "color": [
+                    0.55,
+                    0.75,
+                    1.0,
+                    1.0
+                ],
+                "direction": [
+                    0.0,
+                    -0.8,
+                    -0.6
+                ],
+                "innerConeAngleDeg": 30.0,
+                "intensity": 200000.0,
+                "isAtmosphereMoon": false,
+                "isAtmosphereSun": false,
+                "outerConeAngleDeg": 45.0,
+                "range": 5.0,
+                "sourceRadius": 0.0,
+                "type": 3
+            },
+            "type": "Light"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    3.0,
+                    2.5,
+                    2.0
+                ]
+            },
+            "type": "Transform"
+        }
+    ],
+    "id": "d4e5ea9fda24b1d3",
+    "name": "Area",
+    "order": 5
+}

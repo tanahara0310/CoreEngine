@@ -1,0 +1,59 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "areaHeight": 2.0,
+                "areaWidth": 2.0,
+                "atmosphereIntensity": 20.0,
+                "castShadows": true,
+                "color": [
+                    1.0,
+                    0.7,
+                    0.4,
+                    1.0
+                ],
+                "direction": [
+                    0.0,
+                    -1.0,
+                    0.0
+                ],
+                "innerConeAngleDeg": 30.0,
+                "intensity": 400000.0,
+                "isAtmosphereMoon": false,
+                "isAtmosphereSun": false,
+                "outerConeAngleDeg": 45.0,
+                "range": 5.0,
+                "sourceRadius": 0.0,
+                "type": 1
+            },
+            "type": "Light"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    -9.0,
+                    2.0,
+                    2.0
+                ]
+            },
+            "type": "Transform"
+        }
+    ],
+    "id": "d37adc1124af0023",
+    "name": "Point",
+    "order": 3
+}

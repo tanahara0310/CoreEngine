@@ -2,9 +2,9 @@
 
 #ifdef CORE_EDITOR
 
-#include <d3d12.h>
+#include "Editor/ImGui/EditorImage.h"
+
 #include <imgui.h>
-#include <wrl/client.h>
 
 #include <array>
 
@@ -41,14 +41,12 @@ namespace CoreEngine::Editor
         /// @brief 読み込んだ絵 1 つ
         struct Image
         {
-            Microsoft::WRL::ComPtr<ID3D12Resource> texture;
-            ImTextureID id = 0;
-            float aspect = 1.0f;
+            EditorImage image;
             bool attempted = false;
         };
 
         /// @brief kind の絵（まだなら読み込む）
-        const Image& Get(Kind kind);
+        const EditorImage& Get(Kind kind);
 
         GraphicsCore& graphics_;
         std::array<Image, 3> images_{};

@@ -60,6 +60,14 @@ namespace CoreEngine
         /// @param object 選択するオブジェクト（nullptr なら選択を解除）
         void SelectObject(GameObject* object);
 
+        /// @brief シーンビューの上の操作でオブジェクトを選ぶ（Hierarchy をその行まで送る）
+        /// @param object 選択するオブジェクト（nullptr なら選択を解除）
+        void SelectFromViewport(GameObject* object)
+        {
+            SelectObject(object);
+            viewportSelection_ = object != nullptr;
+        }
+
         /// @brief 選択を解除
         void ClearSelection() { selectedObjectId_ = {}; }
 

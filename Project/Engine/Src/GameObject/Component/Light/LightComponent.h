@@ -95,10 +95,6 @@ namespace CoreEngine
         /// @brief 実体を持つコンポーネントをハンドルから引く（無ければ nullptr）
         static LightComponent* Find(LightHandle handle);
 
-        /// @brief このライトのギズモを、次の描画だけ詳細表示にする
-        /// @note 選択中のライトを目立たせるためにインスペクタから毎フレーム呼ぶ。
-        void FocusGizmo() const;
-
     private:
         /// @brief エンジンから `LightManager` を引く（一度引いたら覚える）
         LightManager* ResolveManager() const;
