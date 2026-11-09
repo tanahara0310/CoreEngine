@@ -1,0 +1,59 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": false,
+            "parameters": {
+                "areaHeight": 2.0,
+                "areaWidth": 2.0,
+                "atmosphereIntensity": 20.0,
+                "castShadows": true,
+                "color": [
+                    1.0,
+                    0.3,
+                    0.3,
+                    1.0
+                ],
+                "direction": [
+                    0.0,
+                    -1.0,
+                    0.0
+                ],
+                "innerConeAngleDeg": 30.0,
+                "intensity": 400000.0,
+                "isAtmosphereMoon": false,
+                "isAtmosphereSun": false,
+                "outerConeAngleDeg": 45.0,
+                "range": 3.0,
+                "sourceRadius": 0.0,
+                "type": 1
+            },
+            "type": "Light"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    1.5,
+                    7.0
+                ]
+            },
+            "type": "Transform"
+        }
+    ],
+    "id": "24fd1ed4dc6523ba",
+    "name": "Point_Disabled",
+    "order": 6
+}

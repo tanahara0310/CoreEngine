@@ -60,6 +60,9 @@ namespace CoreEngine
         ///          ここを通さないと「Canvas で掴んだ要素と Inspector の表示が食い違う」
         void SelectObject(GameObject* object) { objectSelector_.SelectObject(object); }
 
+        /// @brief シーンビューの上の操作でオブジェクトを選ぶ（Hierarchy をその行まで送る）
+        void SelectFromViewport(GameObject* object) { objectSelector_.SelectFromViewport(object); }
+
         bool Undo() { return undoRedoHistory_.Undo(); }
         bool Redo() { return undoRedoHistory_.Redo(); }
         bool CanUndo() const { return undoRedoHistory_.CanUndo(); }

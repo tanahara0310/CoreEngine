@@ -484,7 +484,6 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Graphics\Render\GBuffer\GBufferManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Line\GridRenderer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Light\LightBufferManager.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Light\LightDebugVisualizer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Light\LightManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Line\LineManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\AnimationLoader.cpp" />
@@ -609,6 +608,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Editor\Scene\ObjectEditing.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\ScenePicking.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\SceneViewTools.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Scene\SceneLightGizmos.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\PlayModeController.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\PrefabEditing.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\PrefabMode.cpp" />
@@ -715,6 +715,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Input\GamepadInput.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\GameDebugUI.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\EditorLogo.cpp" />
+    <ClCompile Include="Engine\Src\Editor\ImGui\EditorImage.cpp" />
     <ClCompile Include="Engine\Src\Launch\MyGame.cpp" />
     <ClCompile Include="Engine\Src\Launch\main.cpp">
       <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
@@ -1696,7 +1697,6 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\Light\Light.h" />
     <ClInclude Include="Engine\Src\Graphics\Light\LightBufferManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Light\LightData.h" />
-    <ClInclude Include="Engine\Src\Graphics\Light\LightDebugVisualizer.h" />
     <ClInclude Include="Engine\Src\Graphics\Line\Line.h" />
     <ClInclude Include="Engine\Src\Graphics\Line\LineManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Animation\Animation.h" />
@@ -1933,6 +1933,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Editor\Scene\PrefabEditing.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\PrefabMode.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\SceneDebugEditor.h" />
+    <ClInclude Include="Engine\Src\Editor\Scene\SceneLightGizmos.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\SceneResaveDialog.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\SceneFileDialogs.h" />
     <ClInclude Include="Engine\Src\Scene\PrefabSystem.h" />
@@ -2068,6 +2069,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Input\GamepadInput.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\GameDebugUI.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\EditorLogo.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\EditorImage.h" />
     <ClInclude Include="Engine\Src\Launch\AppResource.h" />
     <ClInclude Include="Engine\Src\WinApp\WinApp.h" />
     <ClInclude Include="Engine\Src\Graphics\RootSignature\RootSignatureManager.h" />

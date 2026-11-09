@@ -428,6 +428,10 @@ namespace CoreEngine
         playModeController_->Initialize(engine_, gameDebugUI_.get());
         gameDebugUI_->SetPlayModeController(playModeController_.get());
 
+        // シーンビューにライトのアイコンと、選んだライトの届く範囲を描く
+        lightGizmos_ = std::make_unique<Editor::SceneLightGizmos>();
+        lightGizmos_->Initialize(*dx);
+
         // LoggerからConsoleUIへのログ転送を接続
         if (auto* console = GetConsole()) {
             Logger::GetInstance().SetConsoleCallback(
@@ -768,6 +772,9 @@ namespace CoreEngine
 
         // レイトレーシングのデバッグ窓の線とゲーム画面へ重ねる口を外し、切り分けのスイッチを戻す
         rayTracingDebugPanel_.Finalize();
+
+        // シーンビューのライトのアイコン（画像を GPU より先に放す）
+        lightGizmos_.reset();
 
         // プロファイラーの終了処理（ImGui より先に解放）
         gpuProfiler_.Finalize();

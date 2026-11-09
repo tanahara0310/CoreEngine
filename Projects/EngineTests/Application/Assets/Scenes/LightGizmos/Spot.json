@@ -1,0 +1,59 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "areaHeight": 2.0,
+                "areaWidth": 2.0,
+                "atmosphereIntensity": 20.0,
+                "castShadows": true,
+                "color": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "direction": [
+                    0.0,
+                    -0.943858,
+                    0.33035
+                ],
+                "innerConeAngleDeg": 25.0,
+                "intensity": 800000.0,
+                "isAtmosphereMoon": false,
+                "isAtmosphereSun": false,
+                "outerConeAngleDeg": 35.0,
+                "range": 6.0,
+                "sourceRadius": 0.1,
+                "type": 2
+            },
+            "type": "Light"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    -3.0,
+                    4.0,
+                    2.0
+                ]
+            },
+            "type": "Transform"
+        }
+    ],
+    "id": "3105e5d7c2c1fae7",
+    "name": "Spot",
+    "order": 4
+}

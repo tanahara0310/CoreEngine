@@ -13,7 +13,6 @@
 #include "GameObject/Component/Core/ComponentFactory.h"
 #include "GameObject/Component/Core/IRawSavedParameters.h"
 #include "GameObject/Component/Core/MissingComponent.h"
-#include "GameObject/Component/Light/LightComponent.h"
 #include "GameObject/Component/Render/MaterialComponent.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/Component/Render/SpriteAnimatorComponent.h"
@@ -181,13 +180,6 @@ namespace CoreEngine::Editor::ComponentInspectors
         AddPermanent("RectTransform", { .shownFirst = true });
         AddPermanent("Animator", { .displayName = "アニメーション" });
         AddPermanent("SkeletonSocket", { .displayName = "ソケット追従" });
-
-        AddPermanent("Light", {
-            .drawExtra = [](IComponent& component) {
-                // 出ている＝選ばれている。ギズモを詳細表示にするライトとして毎フレーム指す
-                static_cast<LightComponent&>(component).FocusGizmo();
-            },
-            });
 
         AddPermanent("Collider", {
             .displayName = "コライダー",

@@ -844,9 +844,6 @@
     <ClCompile Include="Engine\Src\Graphics\Light\LightBufferManager.cpp">
       <Filter>Engine\Src\Graphics\Light</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Light\LightDebugVisualizer.cpp">
-      <Filter>Engine\Src\Graphics\Light</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Light\LightManager.cpp">
       <Filter>Engine\Src\Graphics\Light</Filter>
     </ClCompile>
@@ -1219,6 +1216,9 @@
     <ClCompile Include="Engine\Src\Editor\Scene\SceneViewTools.cpp">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Scene\SceneLightGizmos.cpp">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Scene\PlayModeController.cpp">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClCompile>
@@ -1535,6 +1535,9 @@
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\ImGui\EditorLogo.cpp">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\ImGui\EditorImage.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Launch\MyGame.cpp">
@@ -2871,9 +2874,6 @@
     <ClInclude Include="Engine\Src\Graphics\Light\LightData.h">
       <Filter>Engine\Src\Graphics\Light</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Light\LightDebugVisualizer.h">
-      <Filter>Engine\Src\Graphics\Light</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Line\Line.h">
       <Filter>Engine\Src\Graphics\Line</Filter>
     </ClInclude>
@@ -3582,6 +3582,9 @@
     <ClInclude Include="Engine\Src\Editor\Scene\SceneDebugEditor.h">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Scene\SceneLightGizmos.h">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Scene\SceneResaveDialog.h">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClInclude>
@@ -3985,6 +3988,9 @@
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\EditorLogo.h">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ImGui\EditorImage.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Launch\AppResource.h">
