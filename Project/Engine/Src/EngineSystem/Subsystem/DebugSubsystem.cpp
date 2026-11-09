@@ -8,6 +8,7 @@
 #include "EngineProfileScope.h"
 #include "Editor/Inspector/ComponentInspectors.h"
 #include "Editor/Scene/EditorSceneAccess.h"
+#include "Editor/Scene/SceneOverlayOcclusion.h"
 #include "../EngineConfig.h"
 #include "../Settings/EditorSettingsSubsystem.h"
 #include "Editor/ImGui/EditorSettingsPanel.h"
@@ -33,6 +34,7 @@
 #include "Graphics/Render/Render.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Diagnostics/EngineStats.h"
+#include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include "Input/InputManager.h"
 #include "Scene/SceneManager.h"
@@ -428,6 +430,10 @@ namespace CoreEngine
         playModeController_->Initialize(engine_, gameDebugUI_.get());
         gameDebugUI_->SetPlayModeController(playModeController_.get());
 
+        // シーンビューへ重ねる線を、シーンの深度と比べて描けるようにする
+        RenderDomainContext* const renderDomain = engine_->GetRenderDomainContext();
+        Editor::SceneOverlayOcclusion::Get().Initialize(*dx, renderDomain ? renderDomain->GetSceneDepth() : nullptr);
+
         // シーンビューにライトのアイコンと、選んだライトの届く範囲を描く
         lightGizmos_ = std::make_unique<Editor::SceneLightGizmos>();
         lightGizmos_->Initialize(*dx);
@@ -773,8 +779,9 @@ namespace CoreEngine
         // レイトレーシングのデバッグ窓の線とゲーム画面へ重ねる口を外し、切り分けのスイッチを戻す
         rayTracingDebugPanel_.Finalize();
 
-        // シーンビューのライトのアイコン（画像を GPU より先に放す）
+        // シーンビューのライトのアイコンと、深度と比べて描く PSO（GPU より先に放す）
         lightGizmos_.reset();
+        Editor::SceneOverlayOcclusion::Get().Finalize();
 
         // プロファイラーの終了処理（ImGui より先に解放）
         gpuProfiler_.Finalize();

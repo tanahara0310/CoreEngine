@@ -609,6 +609,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Editor\Scene\ScenePicking.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\SceneViewTools.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\SceneLightGizmos.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Scene\SceneOverlayOcclusion.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\PlayModeController.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\PrefabEditing.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\PrefabMode.cpp" />
@@ -1934,6 +1935,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Editor\Scene\PrefabMode.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\SceneDebugEditor.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\SceneLightGizmos.h" />
+    <ClInclude Include="Engine\Src\Editor\Scene\SceneOverlayOcclusion.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\SceneResaveDialog.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\SceneFileDialogs.h" />
     <ClInclude Include="Engine\Src\Scene\PrefabSystem.h" />

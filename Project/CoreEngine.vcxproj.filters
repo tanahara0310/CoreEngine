@@ -1219,6 +1219,9 @@
     <ClCompile Include="Engine\Src\Editor\Scene\SceneLightGizmos.cpp">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Scene\SceneOverlayOcclusion.cpp">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Scene\PlayModeController.cpp">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClCompile>
@@ -3583,6 +3586,9 @@
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Scene\SceneLightGizmos.h">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Scene\SceneOverlayOcclusion.h">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Scene\SceneResaveDialog.h">

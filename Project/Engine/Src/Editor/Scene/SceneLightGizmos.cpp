@@ -16,6 +16,7 @@
 #include "Utility/CVar/CVar.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <numbers>
 #include <vector>
@@ -43,7 +44,13 @@ namespace CoreEngine::Editor
         constexpr float kSelectedIconSize = 38.0f;
 
         /// 範囲の線の太さ [px]
-        constexpr float kLineThickness = 1.5f;
+        constexpr float kLineThickness = 2.0f;
+
+        /// 線の下に敷く暗い縁の、線より太い分 [px]
+        constexpr float kOutlineWidth = 2.0f;
+
+        /// 物に隠れた所の線の濃さ（隠れていない所に掛ける）
+        constexpr float kHiddenAlpha = 0.25f;
 
         /// 平行光源の矢印の長さ（カメラからの距離に掛ける）
         constexpr float kArrowLengthPerDistance = 0.15f;
@@ -59,6 +66,10 @@ namespace CoreEngine::Editor
         constexpr ImU32 kSelectedRing = IM_COL32(240, 180, 64, 255);
         constexpr ImU32 kSelectedRingFill = IM_COL32(240, 180, 64, 64);
 
+        /// 線の下に敷く暗い縁の色（主な線・薄い線）
+        constexpr ImU32 kOutline = IM_COL32(8, 10, 14, 140);
+        constexpr ImU32 kOutlineFaint = IM_COL32(8, 10, 14, 60);
+
         /// 無効のライトのアイコンと線の色（リニア）
         const Vector3 kDisabledTint{ 0.22f, 0.23f, 0.25f };
 
@@ -72,6 +83,15 @@ namespace CoreEngine::Editor
             float depth = 0.0f;
             bool selected = false;
             bool enabled = true;
+        };
+
+        /// @brief 範囲の線 1 回分の描き方（暗い縁を敷く回と、色の線を描く回）
+        struct Stroke
+        {
+            ImU32 strong = 0; ///< 主な線
+            ImU32 faint = 0;  ///< 補いの線
+            ImU32 fill = 0;   ///< 面の塗り（0 なら塗らない）
+            float thickness = kLineThickness;
         };
 
         Vector3 Direction(const Vector3& direction)
@@ -105,21 +125,21 @@ namespace CoreEngine::Editor
         }
 
         /// @brief center から axis を中心に side の側へ -angle〜+angle 振った、半径 radius の円弧
-        void Arc(const Vector3& center, const Vector3& axis, const Vector3& side, float radius, float angle, ImU32 color)
+        void Arc(const Vector3& center, const Vector3& axis, const Vector3& side, float radius, float angle,
+            ImU32 color, float thickness)
         {
-            Vector3 previous = center + (axis * std::cos(-angle) + side * std::sin(-angle)) * radius;
-            for (int i = 1; i <= kArcSegments; ++i) {
+            std::array<Vector3, kArcSegments + 1> points;
+            for (int i = 0; i <= kArcSegments; ++i) {
                 const float a = -angle + 2.0f * angle * static_cast<float>(i) / static_cast<float>(kArcSegments);
-                const Vector3 point = center + (axis * std::cos(a) + side * std::sin(a)) * radius;
-                SceneOverlay::Line(previous, point, color, kLineThickness);
-                previous = point;
+                points[i] = center + (axis * std::cos(a) + side * std::sin(a)) * radius;
             }
+            SceneOverlay::Polyline(points.data(), points.size(), false, color, thickness);
         }
 
         /// @brief 矢じり付きの矢印
-        void Arrow(const Vector3& from, const Vector3& to, ImU32 color)
+        void Arrow(const Vector3& from, const Vector3& to, ImU32 color, float thickness)
         {
-            SceneOverlay::Line(from, to, color, kLineThickness);
+            SceneOverlay::Line(from, to, color, thickness);
             const Vector3 delta = to - from;
             const float length = std::sqrt(CoreEngine::Dot(delta, delta));
             if (length < 1.0e-4f) {
@@ -132,19 +152,32 @@ namespace CoreEngine::Editor
             const float head = length * 0.2f;
             const Vector3 base = to - direction * head;
             for (const Vector3& side : { u, v }) {
-                SceneOverlay::Line(to, base + side * (head * 0.5f), color, kLineThickness);
-                SceneOverlay::Line(to, base - side * (head * 0.5f), color, kLineThickness);
+                const Vector3 points[] = { base + side * (head * 0.5f), to, base - side * (head * 0.5f) };
+                SceneOverlay::Polyline(points, 3, false, color, thickness);
             }
         }
 
-        /// @brief 点光源：届く距離の球
-        void DrawPointRange(const Vector3& position, const Light& light, ImU32 color)
+        /// @brief 点光源：届く距離の球（横の円とカメラから見た輪郭を主に、縦の円 2 本を補いに）
+        void DrawPointRange(const Vector3& position, const Light& light, const Vector3& cameraPosition, const Stroke& stroke)
         {
-            SceneOverlay::WireSphere(position, light.range, color, kLineThickness);
+            const float range = light.range;
+            SceneOverlay::WireDisc(position, Vector3(1.0f, 0.0f, 0.0f), range, stroke.faint, stroke.thickness);
+            SceneOverlay::WireDisc(position, Vector3(0.0f, 0.0f, 1.0f), range, stroke.faint, stroke.thickness);
+            SceneOverlay::WireDisc(position, Vector3(0.0f, 1.0f, 0.0f), range, stroke.strong, stroke.thickness);
+
+            // 輪郭の円は、中心からカメラへ r²/d 寄った所にある
+            const Vector3 toCamera = cameraPosition - position;
+            const float distance = std::sqrt(CoreEngine::Dot(toCamera, toCamera));
+            if (distance > range) {
+                const Vector3 n = toCamera * (1.0f / distance);
+                const float ratio = range / distance;
+                SceneOverlay::WireDisc(position + n * (range * ratio), n, range * std::sqrt(1.0f - ratio * ratio),
+                    stroke.strong, stroke.thickness);
+            }
         }
 
         /// @brief スポットライト：外側の角度の円すい（先は届く距離の球の一部）と、内側の角度の縁
-        void DrawSpotRange(const Vector3& position, const Light& light, ImU32 color, ImU32 faint)
+        void DrawSpotRange(const Vector3& position, const Light& light, const Stroke& stroke)
         {
             const Vector3 direction = Direction(light.direction);
             Vector3 u{};
@@ -156,19 +189,19 @@ namespace CoreEngine::Editor
 
             const Vector3 rimCenter = position + direction * (range * std::cos(outer));
             const float rimRadius = range * std::sin(outer);
-            SceneOverlay::WireDisc(rimCenter, direction, rimRadius, color, kLineThickness);
+            SceneOverlay::WireDisc(rimCenter, direction, rimRadius, stroke.strong, stroke.thickness);
             for (const Vector3& side : { u, v, u * -1.0f, v * -1.0f }) {
-                SceneOverlay::Line(position, rimCenter + side * rimRadius, color, kLineThickness);
+                SceneOverlay::Line(position, rimCenter + side * rimRadius, stroke.strong, stroke.thickness);
             }
-            Arc(position, direction, u, range, outer, color);
-            Arc(position, direction, v, range, outer, color);
+            Arc(position, direction, u, range, outer, stroke.strong, stroke.thickness);
+            Arc(position, direction, v, range, outer, stroke.strong, stroke.thickness);
 
             SceneOverlay::WireDisc(position + direction * (range * std::cos(inner)), direction,
-                range * std::sin(inner), faint, kLineThickness);
+                range * std::sin(inner), stroke.faint, stroke.thickness);
         }
 
         /// @brief エリアライト：発光面と、前側の届く距離の半球
-        void DrawAreaRange(const Vector3& position, const Light& light, ImU32 color, ImU32 faint, ImU32 fill)
+        void DrawAreaRange(const Vector3& position, const Light& light, const Stroke& stroke)
         {
             const Vector3 normal = Direction(light.direction);
             Vector3 right{};
@@ -182,16 +215,18 @@ namespace CoreEngine::Editor
                 position + halfRight + halfUp,
                 position - halfRight + halfUp,
             };
-            SceneOverlay::SolidQuad(corners[0], corners[1], corners[2], corners[3], fill);
-            SceneOverlay::Polyline(corners, 4, true, color, kLineThickness);
+            if (stroke.fill != 0) {
+                SceneOverlay::SolidQuad(corners[0], corners[1], corners[2], corners[3], stroke.fill);
+            }
+            SceneOverlay::Polyline(corners, 4, true, stroke.strong, stroke.thickness);
 
-            SceneOverlay::WireDisc(position, normal, light.range, faint, kLineThickness);
-            Arc(position, normal, right, light.range, kHalfPi, color);
-            Arc(position, normal, up, light.range, kHalfPi, color);
+            SceneOverlay::WireDisc(position, normal, light.range, stroke.faint, stroke.thickness);
+            Arc(position, normal, right, light.range, kHalfPi, stroke.strong, stroke.thickness);
+            Arc(position, normal, up, light.range, kHalfPi, stroke.strong, stroke.thickness);
         }
 
         /// @brief 平行光源：光の向きの平行な矢印
-        void DrawDirectionalArrows(const Vector3& position, const Light& light, const Vector3& cameraPosition, ImU32 color)
+        void DrawDirectionalArrows(const Vector3& position, const Light& light, const Vector3& cameraPosition, const Stroke& stroke)
         {
             const Vector3 direction = Direction(light.direction);
             const Vector3 toCamera = cameraPosition - position;
@@ -200,33 +235,42 @@ namespace CoreEngine::Editor
             Vector3 v{};
             Basis(direction, u, v);
 
-            Arrow(position, position + direction * length, color);
+            Arrow(position, position + direction * length, stroke.strong, stroke.thickness);
             const float spread = length * 0.35f;
             for (const Vector3& side : { u, v, u * -1.0f, v * -1.0f }) {
                 const Vector3 start = position + side * spread + direction * (length * 0.25f);
-                Arrow(start, start + direction * (length * 0.75f), color);
+                Arrow(start, start + direction * (length * 0.75f), stroke.strong, stroke.thickness);
             }
         }
 
+        void DrawShape(const Vector3& position, const Light& light, const Vector3& cameraPosition, const Stroke& stroke)
+        {
+            switch (light.type) {
+            case LightType::Directional:
+                DrawDirectionalArrows(position, light, cameraPosition, stroke);
+                break;
+            case LightType::Point:
+                DrawPointRange(position, light, cameraPosition, stroke);
+                break;
+            case LightType::Spot:
+                DrawSpotRange(position, light, stroke);
+                break;
+            case LightType::Area:
+                DrawAreaRange(position, light, stroke);
+                break;
+            }
+        }
+
+        /// @brief 範囲の線（暗い縁を敷いてから色の線を描く。物に隠れた所は薄く）
         void DrawRange(const Vector3& position, const Light& light, bool enabled, const Vector3& cameraPosition)
         {
             const Vector3 tint = enabled ? IconTint(light.color) : kDisabledTint;
-            const ImU32 color = ToColor(tint, 0.9f);
-            const ImU32 faint = ToColor(tint, 0.35f);
-            switch (light.type) {
-            case LightType::Directional:
-                DrawDirectionalArrows(position, light, cameraPosition, color);
-                break;
-            case LightType::Point:
-                DrawPointRange(position, light, color);
-                break;
-            case LightType::Spot:
-                DrawSpotRange(position, light, color, faint);
-                break;
-            case LightType::Area:
-                DrawAreaRange(position, light, color, faint, ToColor(tint, 0.12f));
-                break;
-            }
+            const Stroke outline{ kOutline, kOutlineFaint, 0, kLineThickness + kOutlineWidth };
+            const Stroke line{ ToColor(tint, 0.95f), ToColor(tint, 0.45f), ToColor(tint, 0.12f), kLineThickness };
+            SceneOverlay::BeginOccluded(kHiddenAlpha);
+            DrawShape(position, light, cameraPosition, outline);
+            DrawShape(position, light, cameraPosition, line);
+            SceneOverlay::EndOccluded();
         }
 
         /// @brief アイコンを回す角度（画像の向きを光の向きを画面へ写した向きへ合わせる）

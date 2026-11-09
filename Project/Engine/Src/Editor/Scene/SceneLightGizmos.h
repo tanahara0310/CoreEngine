@@ -19,7 +19,7 @@ namespace CoreEngine::Editor
     /// @brief シーンビューにライトのアイコンと、選んだライトの届く範囲を描く
     /// @details アイコンは種類ごとの画像（`Engine/Assets/Textures/Icon/Light`）にライトの色を掛け、
     ///          ライトを持つオブジェクトの位置へ同じ大きさで出す。アイコンをクリックするとそのオブジェクトを選ぶ。
-    ///          範囲の線は選んでいるライトだけに出す。描くかどうかは CVar `d.Light.Visualize`。
+    ///          範囲の線は選んでいるライトだけに出し、物に隠れた所は薄く描く。描くかどうかは CVar `d.Light.Visualize`。
     class SceneLightGizmos
     {
     public:

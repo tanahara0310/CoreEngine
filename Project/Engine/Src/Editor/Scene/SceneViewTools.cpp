@@ -4,12 +4,14 @@
 #ifdef CORE_EDITOR
 
 #include "Camera/Camera.h"
+#include "Editor/Scene/SceneOverlayOcclusion.h"
 #include "Math/MathCore.h"
 #include "Math/Vector/Vector4.h"
 
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <limits>
 #include <numbers>
 
 namespace CoreEngine::Editor
@@ -71,30 +73,147 @@ namespace CoreEngine::Editor
             return Vector4{ a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t, a.w + (b.w - a.w) * t };
         }
 
-        /// @brief 線分をカメラの手前で切って画面の座標にする
-        /// @return 全部カメラの後ろなら false
-        bool ProjectSegment(const SceneViewContext& context, const Vector3& from, const Vector3& to, ImVec2& a, ImVec2& b)
-        {
-            Vector4 clipA = ToClip(context, from);
-            Vector4 clipB = ToClip(context, to);
-            const bool frontA = clipA.w > kNearDepth;
-            const bool frontB = clipB.w > kNearDepth;
-            if (!frontA && !frontB) {
-                return false;
-            }
-            if (!frontA) {
-                clipA = LerpClip(clipA, clipB, (kNearDepth - clipA.w) / (clipB.w - clipA.w));
-            } else if (!frontB) {
-                clipB = LerpClip(clipA, clipB, (kNearDepth - clipA.w) / (clipB.w - clipA.w));
-            }
-            a = ClipToScreen(context, clipA);
-            b = ClipToScreen(context, clipB);
-            return true;
-        }
-
         ImDrawList* DrawList()
         {
             return ImGui::GetWindowDrawList();
+        }
+
+        /// @brief 画面の上の点と、その点の深度（0〜1）
+        struct ScreenPoint
+        {
+            ImVec2 position{};
+            float depth = 0.0f;
+        };
+
+        ScreenPoint ToScreenPoint(const SceneViewContext& context, const Vector4& clip)
+        {
+            return ScreenPoint{ ClipToScreen(context, clip), clip.z / clip.w };
+        }
+
+        /// @brief BeginOccluded の間か
+        bool g_occluding = false;
+
+        /// @brief 隠れた所の濃さ
+        float g_hiddenAlpha = 1.0f;
+
+        /// @brief BeginOccluded の前の描画リストのフラグ
+        ImDrawListFlags g_savedFlags = ImDrawListFlags_None;
+
+        /// @brief first から後に足した頂点の uv へ、いちばん近い点の深度と隠れた所の濃さを入れる
+        void TagVertices(ImDrawList& drawList, int first, const ScreenPoint* points, std::size_t count)
+        {
+            if (!g_occluding || count == 0) {
+                return;
+            }
+            for (int i = first; i < drawList.VtxBuffer.Size; ++i) {
+                ImDrawVert& vertex = drawList.VtxBuffer[i];
+                std::size_t nearest = 0;
+                float nearestDistance = std::numeric_limits<float>::max();
+                for (std::size_t p = 0; p < count; ++p) {
+                    const float dx = vertex.pos.x - points[p].position.x;
+                    const float dy = vertex.pos.y - points[p].position.y;
+                    const float distance = dx * dx + dy * dy;
+                    if (distance < nearestDistance) {
+                        nearestDistance = distance;
+                        nearest = p;
+                    }
+                }
+                vertex.uv = ImVec2(points[nearest].depth, g_hiddenAlpha);
+            }
+        }
+
+        /// @brief 画面の点を順に結んで描く
+        void StrokeScreen(const std::vector<ScreenPoint>& points, bool closed, ImU32 color, float thickness)
+        {
+            if (points.size() < 2) {
+                return;
+            }
+            std::vector<ImVec2> positions(points.size());
+            for (std::size_t i = 0; i < points.size(); ++i) {
+                positions[i] = points[i].position;
+            }
+            ImDrawList& drawList = *DrawList();
+            const int first = drawList.VtxBuffer.Size;
+            drawList.AddPolyline(positions.data(), static_cast<int>(positions.size()), color,
+                closed ? ImDrawFlags_Closed : ImDrawFlags_None, thickness);
+            TagVertices(drawList, first, points.data(), points.size());
+        }
+
+        /// @brief ワールドの点を順に結んで描く（カメラの後ろにかかる所は切る）
+        void Stroke(const SceneViewContext& context, const Vector3* points, std::size_t count, bool closed,
+            ImU32 color, float thickness)
+        {
+            if (!points || count < 2) {
+                return;
+            }
+            std::vector<Vector4> clips(count);
+            bool allFront = true;
+            for (std::size_t i = 0; i < count; ++i) {
+                clips[i] = ToClip(context, points[i]);
+                allFront = allFront && clips[i].w > kNearDepth;
+            }
+
+            std::vector<ScreenPoint> run;
+            run.reserve(count + 1);
+            if (allFront) {
+                for (const Vector4& clip : clips) {
+                    run.push_back(ToScreenPoint(context, clip));
+                }
+                StrokeScreen(run, closed, color, thickness);
+                return;
+            }
+
+            // カメラの手前にある続きごとに分けて描く
+            const auto flush = [&] {
+                StrokeScreen(run, false, color, thickness);
+                run.clear();
+            };
+            const std::size_t segments = closed ? count : count - 1;
+            for (std::size_t s = 0; s < segments; ++s) {
+                const Vector4& a = clips[s];
+                const Vector4& b = clips[(s + 1) % count];
+                const bool frontA = a.w > kNearDepth;
+                const bool frontB = b.w > kNearDepth;
+                if (!frontA && !frontB) {
+                    flush();
+                    continue;
+                }
+                if (frontA && frontB) {
+                    if (run.empty()) {
+                        run.push_back(ToScreenPoint(context, a));
+                    }
+                    run.push_back(ToScreenPoint(context, b));
+                    continue;
+                }
+                const Vector4 cut = LerpClip(a, b, (kNearDepth - a.w) / (b.w - a.w));
+                if (frontA) {
+                    if (run.empty()) {
+                        run.push_back(ToScreenPoint(context, a));
+                    }
+                    run.push_back(ToScreenPoint(context, cut));
+                    flush();
+                } else {
+                    flush();
+                    run.push_back(ToScreenPoint(context, cut));
+                    run.push_back(ToScreenPoint(context, b));
+                }
+            }
+            flush();
+        }
+
+        /// @brief 塗りの角を画面の点にする
+        /// @return どれかがカメラの後ろなら false
+        template <std::size_t N>
+        bool ProjectCorners(const SceneViewContext& context, const Vector3* const (&corners)[N], std::array<ScreenPoint, N>& points)
+        {
+            for (std::size_t i = 0; i < N; ++i) {
+                const Vector4 clip = ToClip(context, *corners[i]);
+                if (clip.w <= kNearDepth) {
+                    return false;
+                }
+                points[i] = ToScreenPoint(context, clip);
+            }
+            return true;
         }
     }
 
@@ -133,6 +252,7 @@ namespace CoreEngine::Editor
         for (const Entry& entry : entries) {
             if (entry.draw) {
                 entry.draw(frame);
+                SceneOverlay::EndOccluded();
             }
         }
 
@@ -143,6 +263,34 @@ namespace CoreEngine::Editor
 
     namespace SceneOverlay
     {
+        void BeginOccluded(float hiddenAlpha)
+        {
+            const SceneViewContext* const context = Context();
+            if (g_occluding || !context || !context->camera) {
+                return;
+            }
+            ImDrawList& drawList = *DrawList();
+            if (!SceneOverlayOcclusion::Get().Begin(drawList, context->position, context->size, *context->camera)) {
+                return;
+            }
+            g_occluding = true;
+            g_hiddenAlpha = std::clamp(hiddenAlpha, 0.0f, 1.0f);
+            // 線の縁のぼかしを頂点の色で作る（uv は深度に使う）
+            g_savedFlags = drawList.Flags;
+            drawList.Flags &= ~ImDrawListFlags_AntiAliasedLinesUseTex;
+        }
+
+        void EndOccluded()
+        {
+            if (!g_occluding) {
+                return;
+            }
+            ImDrawList& drawList = *DrawList();
+            drawList.Flags = g_savedFlags;
+            SceneOverlayOcclusion::Get().End(drawList);
+            g_occluding = false;
+        }
+
         bool WorldToScreen(const Vector3& world, ImVec2& screen)
         {
             const SceneViewContext* const context = Context();
@@ -159,24 +307,16 @@ namespace CoreEngine::Editor
 
         void Line(const Vector3& from, const Vector3& to, ImU32 color, float thickness)
         {
-            const SceneViewContext* const context = Context();
-            ImVec2 a;
-            ImVec2 b;
-            if (context && ProjectSegment(*context, from, to, a, b)) {
-                DrawList()->AddLine(a, b, color, thickness);
+            if (const SceneViewContext* const context = Context()) {
+                const Vector3 points[] = { from, to };
+                Stroke(*context, points, 2, false, color, thickness);
             }
         }
 
         void Polyline(const Vector3* points, std::size_t count, bool closed, ImU32 color, float thickness)
         {
-            if (!points || count < 2) {
-                return;
-            }
-            for (std::size_t i = 0; i + 1 < count; ++i) {
-                Line(points[i], points[i + 1], color, thickness);
-            }
-            if (closed && count > 2) {
-                Line(points[count - 1], points[0], color, thickness);
+            if (const SceneViewContext* const context = Context()) {
+                Stroke(*context, points, count, closed && count > 2, color, thickness);
             }
         }
 
@@ -203,12 +343,11 @@ namespace CoreEngine::Editor
             Vector3 u;
             Vector3 v;
             Basis(normal, u, v);
-            Vector3 previous = CirclePoint(center, u, v, radius, 0);
-            for (int i = 1; i <= kCircleSegments; ++i) {
-                const Vector3 current = CirclePoint(center, u, v, radius, i);
-                Line(previous, current, color, thickness);
-                previous = current;
+            std::array<Vector3, kCircleSegments> points;
+            for (int i = 0; i < kCircleSegments; ++i) {
+                points[i] = CirclePoint(center, u, v, radius, i);
             }
+            Polyline(points.data(), points.size(), true, color, thickness);
         }
 
         void WireSphere(const Vector3& center, float radius, ImU32 color, float thickness)
@@ -234,28 +373,41 @@ namespace CoreEngine::Editor
 
         void SolidDisc(const Vector3& center, const Vector3& normal, float radius, ImU32 color)
         {
+            const SceneViewContext* const context = Context();
+            if (!context) {
+                return;
+            }
             Vector3 u;
             Vector3 v;
             Basis(normal, u, v);
-            std::array<ImVec2, kCircleSegments> points;
+            std::array<ScreenPoint, kCircleSegments> points;
+            std::array<ImVec2, kCircleSegments> positions;
             for (int i = 0; i < kCircleSegments; ++i) {
-                if (!WorldToScreen(CirclePoint(center, u, v, radius, i), points[i])) {
+                const Vector4 clip = ToClip(*context, CirclePoint(center, u, v, radius, i));
+                if (clip.w <= kNearDepth) {
                     return;
                 }
+                points[i] = ToScreenPoint(*context, clip);
+                positions[i] = points[i].position;
             }
-            DrawList()->AddConvexPolyFilled(points.data(), kCircleSegments, color);
+            ImDrawList& drawList = *DrawList();
+            const int first = drawList.VtxBuffer.Size;
+            drawList.AddConvexPolyFilled(positions.data(), kCircleSegments, color);
+            TagVertices(drawList, first, points.data(), points.size());
         }
 
         void SolidQuad(const Vector3& a, const Vector3& b, const Vector3& c, const Vector3& d, ImU32 color)
         {
-            std::array<ImVec2, 4> points;
+            const SceneViewContext* const context = Context();
             const Vector3* const corners[] = { &a, &b, &c, &d };
-            for (int i = 0; i < 4; ++i) {
-                if (!WorldToScreen(*corners[i], points[i])) {
-                    return;
-                }
+            std::array<ScreenPoint, 4> points;
+            if (!context || !ProjectCorners(*context, corners, points)) {
+                return;
             }
-            DrawList()->AddQuadFilled(points[0], points[1], points[2], points[3], color);
+            ImDrawList& drawList = *DrawList();
+            const int first = drawList.VtxBuffer.Size;
+            drawList.AddQuadFilled(points[0].position, points[1].position, points[2].position, points[3].position, color);
+            TagVertices(drawList, first, points.data(), points.size());
         }
 
         void Dot(const Vector3& position, float size, ImU32 color)
@@ -272,10 +424,17 @@ namespace CoreEngine::Editor
             if (!WorldToScreen(position, screen) || text.empty()) {
                 return;
             }
+            // 文字はフォントの絵を使うので、深度と比べる区間を一度閉じて描く
+            const bool occluding = g_occluding;
+            const float hiddenAlpha = g_hiddenAlpha;
+            EndOccluded();
             const ImVec2 at(screen.x + 6.0f, screen.y + 4.0f);
             ImDrawList* const drawList = DrawList();
             drawList->AddText(ImVec2(at.x + 1.0f, at.y + 1.0f), IM_COL32(0, 0, 0, 200), text.c_str());
             drawList->AddText(at, color, text.c_str());
+            if (occluding) {
+                BeginOccluded(hiddenAlpha);
+            }
         }
     }
 }
