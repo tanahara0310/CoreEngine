@@ -58,6 +58,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     {
         return;
     }
+    RTRecordBeginPixel(traceCoord, gTraceScale);
 
     // トレース解像度の画素が受け持つフル解像度の画素（RTDenoiser と同じ 2x2 の中央）
     const uint2 fullCoord = min(traceCoord * gTraceScale + (gTraceScale >> 1), uint2(gFullWidth - 1, gFullHeight - 1));

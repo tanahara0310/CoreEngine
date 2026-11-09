@@ -80,6 +80,7 @@ namespace CoreEngine
         desc.constantsBytes = sizeof(WaterCausticsConstants);
         // 水面の共通関数（RTWaterSurfaceCommon.hlsli）が海の範囲マップをヒープから引く
         desc.directlyIndexedHeap = true;
+        desc.rayRecordLabel = "水のコースティクス";
         return InitializeFromDesc(init, desc);
     }
 

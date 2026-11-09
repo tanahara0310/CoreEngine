@@ -72,6 +72,7 @@ namespace CoreEngine
         // 隠れた屈折先で当たった点を照らすときに表・テクスチャ・ライトをヒープから番号で引く
         desc.extraConstantBufferName = "RTHitShadingConstants";
         desc.directlyIndexedHeap = true;
+        desc.rayRecordLabel = "水の屈折";
         return InitializeFromDesc(init, desc);
     }
 

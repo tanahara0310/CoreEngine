@@ -2,7 +2,8 @@
 // レイトレーシングのデバッグ表示：RT から見たシーン
 // 画素ごとにカメラからレイを撃ち、当たった物・サブメッシュ・三角形・距離・面の向き・材質の色・
 // インスタンスの印・動き・ラスタの深度との差・候補の数のどれか 1 つを書き出す。
-// 追跡のときは 1 画素だけ撃ち、当たった点から影と映り込みのレイも撃って記録する。
+// 追跡のときは 1 画素だけ撃ち、カメラのレイと当たった点を記録する
+// （効果が撃ったレイは、記録版のシェーダが RTRayRecord.hlsli の記録先へ書く）。
 // ============================================================
 
 #include "../Include/Common/DepthReconstruction.hlsli"
@@ -25,11 +26,6 @@ cbuffer RTDebugSceneConstants : register(b0)
     uint gTraceOnly;            // 1 なら gTraceX, gTraceY の 1 画素だけ撃って記録する
     uint gTraceX;
     uint gTraceY;
-    uint gLightCount;           // 影のレイを撃つライトの数（0〜4）
-    float gShadowBias;          // 影のレイの始点を面から離す距離
-    float4 gLightDirections[4]; // ライトの向き（光源 → シーン。正規化済み）
-    float gShadowDistance;      // 影のレイの長さ
-    float gReflectionDistance;  // 映り込みのレイの長さ
     float gConeSpread;          // 1 画素の広がりの角度（rad）
     float gPad0;
 };
@@ -62,7 +58,6 @@ static const uint kRowFlagMoving = 1u << 2;
 static const uint kDataSceneTotals = 128u;
 static const uint kDataTraceHeader = 192u;
 static const uint kDataTraceRays = 256u;
-static const uint kTraceRayStride = 64u;
 
 /// @brief 片方だけ当たったときに書く距離の差
 static const float kDepthDifferenceOneSided = 1000.0f;
@@ -165,25 +160,24 @@ float3 HitFaceNormal(RTSceneTables tables, RTTraceHit hit, float3 direction)
     return LoadRTHitTriangle(tables, hit.primitive, direction).faceNormal;
 }
 
-/// @brief 追跡したレイ 1 本を記録する
-void StoreTracedRay(uint index, uint kind, RayDesc ray, uint instanceMask, DebugTraceResult traced)
+/// @brief カメラのレイを記録する
+void StoreCameraRay(RayDesc ray, uint instanceMask, DebugTraceResult traced)
 {
-    const uint offset = kDataTraceRays + index * kTraceRayStride;
+    const uint offset = kDataTraceRays;
     gDebugData.Store4(offset, uint4(asuint(ray.Origin), asuint(ray.TMax)));
     gDebugData.Store4(offset + 16u, uint4(asuint(ray.Direction), asuint(traced.hit.hit ? traced.hit.hitT : -1.0f)));
     const uint flags = (traced.hit.hit ? 1u : 0u) | (traced.hit.frontFace ? 2u : 0u);
     gDebugData.Store4(offset + 32u, uint4(traced.hit.primitive.instanceIndex, traced.hit.primitive.geometryIndex,
         traced.hit.primitive.primitiveIndex, flags));
-    gDebugData.Store4(offset + 48u, uint4(kind, instanceMask, traced.candidates, traced.alphaTests));
+    gDebugData.Store4(offset + 48u, uint4(0u, instanceMask, traced.candidates, traced.alphaTests));
 }
 
-/// @brief 1 画素を撃ち、当たった点から影と映り込みのレイも撃って記録する
+/// @brief 1 画素を撃ち、カメラのレイと当たった点を記録する
 void TracePixel(RTSceneTables tables, uint2 pixel)
 {
     const RayDesc cameraRay = MakeCameraRay(pixel);
     const DebugTraceResult primary = TraceDebugRay(tables, cameraRay, gInstanceMask, false, 0.0f);
-    uint rayCount = 0;
-    StoreTracedRay(rayCount++, 0u, cameraRay, gInstanceMask, primary);
+    StoreCameraRay(cameraRay, gInstanceMask, primary);
 
     float3 position = float3(0.0f, 0.0f, 0.0f);
     float3 normal = float3(0.0f, 0.0f, 0.0f);
@@ -201,30 +195,9 @@ void TracePixel(RTSceneTables tables, uint2 pixel)
             const float coneWidth = gConeSpread * primary.hit.hitT;
             baseColor = SampleRTHitBaseColor(tri, RTHitFootprintLog2(tri, cameraRay.Direction, coneWidth));
         }
-
-        // ライトごとの影のレイ
-        for (uint li = 0; li < min(gLightCount, 4u); ++li)
-        {
-            RayDesc shadowRay;
-            shadowRay.Origin = position + normal * gShadowBias;
-            shadowRay.Direction = -gLightDirections[li].xyz;
-            shadowRay.TMin = 0.0f;
-            shadowRay.TMax = gShadowDistance;
-            const DebugTraceResult shadow = TraceDebugRay(tables, shadowRay, kRTInstanceMaskShadowCaster, false, 0.0f);
-            StoreTracedRay(rayCount++, 1u + li, shadowRay, kRTInstanceMaskShadowCaster, shadow);
-        }
-
-        // 映り込みのレイ
-        RayDesc reflectionRay;
-        reflectionRay.Origin = position + normal * gShadowBias;
-        reflectionRay.Direction = reflect(cameraRay.Direction, normal);
-        reflectionRay.TMin = 0.0f;
-        reflectionRay.TMax = gReflectionDistance;
-        const DebugTraceResult reflection = TraceDebugRay(tables, reflectionRay, kRTInstanceMaskReflected, false, 0.0f);
-        StoreTracedRay(rayCount++, 5u, reflectionRay, kRTInstanceMaskReflected, reflection);
     }
 
-    gDebugData.Store4(kDataTraceHeader, uint4(asuint(position), rayCount));
+    gDebugData.Store4(kDataTraceHeader, uint4(asuint(position), 1u));
     gDebugData.Store4(kDataTraceHeader + 16u, uint4(asuint(normal), primary.hit.hit ? 1u : 0u));
     gDebugData.Store4(kDataTraceHeader + 32u, asuint(baseColor));
     gDebugData.Store4(kDataTraceHeader + 48u, uint4(asuint(uv), pixel.x, pixel.y));

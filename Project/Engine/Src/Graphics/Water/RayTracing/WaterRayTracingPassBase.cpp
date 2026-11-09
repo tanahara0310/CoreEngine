@@ -109,6 +109,10 @@ namespace CoreEngine
         shaderTableBuilder_
             .SetRayGenShader(desc.rayGenName);
         BuildPipelineAsync(std::move(pipelineBuilder));
+        // 記録版はヒープの番号で記録先を引く
+        if (desc.rayRecordLabel && desc.directlyIndexedHeap) {
+            EnableRayRecord(desc.shaderPath, desc.rayGenName, desc.rayRecordLabel);
+        }
 
         outputUavName_ = desc.outputUavName;
         constantsName_ = desc.constantsName;
@@ -138,7 +142,6 @@ namespace CoreEngine
         D3D12_GPU_VIRTUAL_ADDRESS extraConstantBuffer)
     {
         resources.cmdList4->SetComputeRootSignature(globalRootSigMgr_.GetRootSignature());
-        resources.cmdList4->SetPipelineState1(stateObject_.Get());
 
         assert(surfaceConstants != 0 && "水面サーフェス定数が置かれていない");
         const bool writesSecondaryOutput = hasSecondaryOutput_ && secondaryOutput.resource;
@@ -177,7 +180,7 @@ namespace CoreEngine
         }
         binder.ValidateBeforeDraw(bindings_);
 
-        auto dispatchDesc = shaderTableBuilder_.BuildDispatchDesc(width, height);
+        const auto dispatchDesc = SetDispatchPipeline(resources.cmdList4.Get(), width, height);
         resources.cmdList4->DispatchRays(&dispatchDesc);
         lastDispatchInfo_.status = RayTracingDispatchStatus::Dispatched;
 

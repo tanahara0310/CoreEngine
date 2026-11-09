@@ -237,6 +237,7 @@ float3 ShadeReflectionHit(RayDesc ray, RTTraceHit hit, float coneWidthAtOrigin, 
 void RTWaterReflectionRayGen()
 {
     uint2 launchIndex = DispatchRaysIndex().xy;
+    RTRecordBeginPixel(launchIndex, 1u);
     // 水面ではない画素は日向のまま（水面の点が求まった後で上書きする）
     gSunVisibilityOutput[launchIndex] = 1.0f;
     float ndcDepth = gSceneDepth.Load(int3(launchIndex, 0));

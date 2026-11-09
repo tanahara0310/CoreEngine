@@ -118,6 +118,7 @@ namespace CoreEngine
         // 当たった点を照らすときに表・テクスチャ・ライトをヒープから番号で引く
         desc.extraConstantBufferName = "RTHitShadingConstants";
         desc.directlyIndexedHeap = true;
+        desc.rayRecordLabel = "水の反射";
         if (!InitializeFromDesc(init, desc)) {
             return false;
         }

@@ -5,6 +5,7 @@
 // RayQuery でシーンへレイを撃つ共通の関数
 // アルファで抜ける材質（葉など）の候補は、材質の表でアルファを調べて当たりを決める。
 // 加速構造は引数で受け取る（このヘッダーはサンプラのほかにリソースを宣言しない）。
+// 画素デバッガの記録版では、撃ったレイを RTRayRecord.hlsli の記録先へ書く。
 // ============================================================
 
 #include "RTSceneTables.hlsli"
@@ -33,6 +34,8 @@ RTTraceHit NoRTTraceHit()
     return result;
 }
 
+#include "RTRayRecord.hlsli"
+
 /// @brief レイを撃ち、アルファで抜ける所は通り抜けて当たりを返す
 /// @param tables            材質の表（表なしならアルファを調べず、どの物も不透明として当てる）
 /// @param instanceMask      当てるインスタンスの印（RTInstanceMask）
@@ -46,6 +49,10 @@ RTTraceHit TraceRTScene(
     RayQuery<RAY_FLAG_SKIP_PROCEDURAL_PRIMITIVES> query;
     const uint rayFlags = extraRayFlags | (tables.valid ? RAY_FLAG_NONE : RAY_FLAG_FORCE_OPAQUE);
     query.TraceRayInline(scene, rayFlags, instanceMask, ray);
+#ifdef RT_RAY_RECORD_HEAP_INDEX
+    uint recordAlphaTests = 0u;
+    uint recordCutouts = 0u;
+#endif
     [loop]
     while (query.Proceed())
     {
@@ -58,7 +65,12 @@ RTTraceHit TraceRTScene(
             candidate.primitiveIndex = query.CandidatePrimitiveIndex();
             candidate.barycentrics = query.CandidateTriangleBarycentrics();
             const float coneWidth = coneWidthAtOrigin + coneSpread * query.CandidateTriangleRayT();
-            if (!IsRTHitCutout(tables, candidate, ray.Direction, coneWidth))
+            const bool cutout = IsRTHitCutout(tables, candidate, ray.Direction, coneWidth);
+#ifdef RT_RAY_RECORD_HEAP_INDEX
+            ++recordAlphaTests;
+            recordCutouts += cutout ? 1u : 0u;
+#endif
+            if (!cutout)
             {
                 query.CommitNonOpaqueTriangleHit();
             }
@@ -76,6 +88,9 @@ RTTraceHit TraceRTScene(
         result.primitive.primitiveIndex = query.CommittedPrimitiveIndex();
         result.primitive.barycentrics = query.CommittedTriangleBarycentrics();
     }
+#ifdef RT_RAY_RECORD_HEAP_INDEX
+    RTRecordRay(ray, rayFlags, instanceMask, result, recordAlphaTests, recordCutouts);
+#endif
     return result;
 }
 
@@ -115,6 +130,9 @@ RTTraceHit TraceRTOpaqueClosestHit(RaytracingAccelerationStructure scene, RayDes
         result.primitive.primitiveIndex = query.CommittedPrimitiveIndex();
         result.primitive.barycentrics = query.CommittedTriangleBarycentrics();
     }
+#ifdef RT_RAY_RECORD_HEAP_INDEX
+    RTRecordRay(ray, RAY_FLAG_FORCE_OPAQUE, instanceMask, result, 0u, 0u);
+#endif
     return result;
 }
 

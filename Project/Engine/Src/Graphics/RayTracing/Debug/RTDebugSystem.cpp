@@ -7,13 +7,14 @@
 #include <cmath>
 #include <cstring>
 #include <exception>
+#include <filesystem>
 #include <format>
+#include <fstream>
 #include <iterator>
 
 #include "Camera/View/ViewInfo.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/GameObjectManager.h"
-#include "Graphics/Light/LightManager.h"
 #include "Graphics/Pipeline/ComputePipelineUtil.h"
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/RHI/Command/DeferredReleaseQueue.h"
@@ -24,8 +25,6 @@
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/RayTracing/RTInstanceMask.h"
 #include "Graphics/RayTracing/RTScene.h"
-#include "Graphics/RayTracing/Effect/RTEffectSet.h"
-#include "Graphics/RayTracing/RayTracingShadowManager.h"
 #include "Graphics/Render/FrameBlackboard.h"
 #include "Graphics/Render/Pass/RenderPass.h"
 #include "Graphics/Render/RenderDomainContext.h"
@@ -37,21 +36,46 @@
 #include "Math/Matrix/Matrix4x4.h"
 #include "Math/Vector/Vector4.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/Path/ProjectPaths.h"
 
 namespace CoreEngine
 {
     namespace
     {
-        // 数えた値を書くバッファの並び（RTDebugVisualize.CS.hlsl・RTDebugScene.CS.hlsl と同じ）
-        constexpr UINT kDataBytes = 1024;
+        // 数えた値を書くバッファの並び（RTDebugVisualize.CS.hlsl・RTDebugScene.CS.hlsl・RTRayRecord.hlsli と同じ）
         constexpr UINT kDataView = 0;
         constexpr UINT kDataScan = 64;
         constexpr UINT kDataStatsBytes = 64;
         constexpr UINT kDataSceneTotals = 128;
         constexpr UINT kDataTraceHeader = 192;
         constexpr UINT kDataTraceRays = 256;
-        constexpr UINT kTraceRayStride = 64;
         constexpr UINT kStatsMin = 12;
+        /// @brief 初期値へ戻す範囲の終わり（ここから後ろは効果のレイの記録）
+        constexpr UINT kDataResetEnd = 1024;
+
+        // 効果のレイの記録（ヘッダ・レイ・値）
+        constexpr UINT kDataRayRecord = 1024;
+        constexpr UINT kRayRecordHeaderBytes = 64;
+        constexpr UINT kRayRecordRayStride = 80;
+        constexpr uint32_t kMaxRecordedRays = 256;
+        constexpr UINT kRayRecordPrints = kRayRecordHeaderBytes + kRayRecordRayStride * kMaxRecordedRays;
+        constexpr UINT kRayRecordPrintStride = 32;
+        constexpr uint32_t kMaxRecordedPrints = 64;
+        constexpr UINT kDataBytes = kDataRayRecord + kRayRecordPrints + kRayRecordPrintStride * kMaxRecordedPrints;
+        static_assert(kDataTraceRays + 64 <= kDataResetEnd, "カメラのレイが記録の場所に重なっている");
+
+        // 記録の写し元の並び（先頭 = ヘッダの選んだ画素・名前なしの番号・数・後ろ = ディスパッチの番号）
+        constexpr UINT kRayRecordUploadHeaderBytes = 20;
+        constexpr UINT kRayRecordUploadTagWord = 2;
+        constexpr UINT kRayRecordUploadTags = 32;
+        /// @brief 1 フレームに名前を付けられるディスパッチの数
+        constexpr uint32_t kMaxRecordedDispatches = 64;
+        constexpr UINT kRayRecordUploadBytes = kRayRecordUploadTags + kMaxRecordedDispatches * sizeof(uint32_t);
+        /// @brief 名前を付けていないディスパッチの番号
+        constexpr uint32_t kNoRecordedDispatch = 0xFFFFFFFFu;
+
+        /// @brief 効果のレイを記録しているデバッグ表示（最後に記録を始めたもの）
+        RTDebugSystem* gRayRecorder = nullptr;
 
         constexpr uint32_t kViewSlot = 0;
         constexpr uint32_t kSceneSlot = 1;
@@ -108,15 +132,10 @@ namespace CoreEngine
             uint32_t traceOnly;           // offset 108
             uint32_t traceX;              // offset 112
             uint32_t traceY;              // offset 116
-            uint32_t lightCount;          // offset 120
-            float shadowBias;             // offset 124
-            Vector4 lightDirections[4];   // offset 128
-            float shadowDistance;         // offset 192
-            float reflectionDistance;     // offset 196
-            float coneSpread;             // offset 200
-            float pad0;                   // offset 204
+            float coneSpread;             // offset 120
+            float pad0;                   // offset 124
         };
-        static_assert(sizeof(SceneConstants) == 208, "SceneConstants と HLSL の cbuffer の大きさが違う");
+        static_assert(sizeof(SceneConstants) == 128, "SceneConstants と HLSL の cbuffer の大きさが違う");
 
         constexpr Cb::Field kSceneConstantsFields[] = {
             CB_FIELD(SceneConstants, invViewProj),
@@ -127,9 +146,6 @@ namespace CoreEngine
             CB_FIELD(SceneConstants, instanceTableIndex), CB_FIELD(SceneConstants, subMeshTableIndex),
             CB_FIELD(SceneConstants, rowCount), CB_FIELD(SceneConstants, traceOnly),
             CB_FIELD(SceneConstants, traceX), CB_FIELD(SceneConstants, traceY),
-            CB_FIELD(SceneConstants, lightCount), CB_FIELD(SceneConstants, shadowBias),
-            CB_FIELD(SceneConstants, lightDirections),
-            CB_FIELD(SceneConstants, shadowDistance), CB_FIELD(SceneConstants, reflectionDistance),
             CB_FIELD(SceneConstants, coneSpread), CB_FIELD(SceneConstants, pad0),
         };
         CB_VERIFY_LAYOUT(SceneConstants, kSceneConstantsFields);
@@ -253,6 +269,13 @@ namespace CoreEngine
         }
     }
 
+    RTDebugSystem::~RTDebugSystem()
+    {
+        if (gRayRecorder == this) {
+            gRayRecorder = nullptr;
+        }
+    }
+
     void RTDebugSystem::Initialize(GraphicsCore* graphics, ShaderProgramCache* shaderProgramCache)
     {
         graphics_ = graphics;
@@ -354,12 +377,12 @@ namespace CoreEngine
 
         try {
             // 初期値（最小は最大の値から始める）
-            dataInit_ = ResourceFactory::CreateBufferResource(device, kDataBytes, D3D12_HEAP_TYPE_UPLOAD);
+            dataInit_ = ResourceFactory::CreateBufferResource(device, kDataResetEnd, D3D12_HEAP_TYPE_UPLOAD);
             void* mapped = nullptr;
             if (FAILED(dataInit_->Map(0, nullptr, &mapped)) || !mapped) {
                 return false;
             }
-            std::memset(mapped, 0, kDataBytes);
+            std::memset(mapped, 0, kDataResetEnd);
             const uint32_t maxKey = 0xFFFFFFFFu;
             std::memcpy(static_cast<uint8_t*>(mapped) + kDataView + kStatsMin, &maxKey, sizeof(maxKey));
             std::memcpy(static_cast<uint8_t*>(mapped) + kDataScan + kStatsMin, &maxKey, sizeof(maxKey));
@@ -368,10 +391,25 @@ namespace CoreEngine
             for (auto& readback : readback_) {
                 readback = ResourceFactory::CreateBufferResource(device, kDataBytes, D3D12_HEAP_TYPE_READBACK);
             }
+
+            // 記録の写し元（ディスパッチの番号は前もって並べておく）
+            for (size_t i = 0; i < rayRecordUpload_.size(); ++i) {
+                rayRecordUpload_[i] = ResourceFactory::CreateBufferResource(device, kRayRecordUploadBytes, D3D12_HEAP_TYPE_UPLOAD);
+                void* uploadMapped = nullptr;
+                if (FAILED(rayRecordUpload_[i]->Map(0, nullptr, &uploadMapped)) || !uploadMapped) {
+                    return false;
+                }
+                std::memset(uploadMapped, 0, kRayRecordUploadBytes);
+                rayRecordUploadMapped_[i] = static_cast<uint32_t*>(uploadMapped);
+                for (uint32_t d = 0; d < kMaxRecordedDispatches; ++d) {
+                    rayRecordUploadMapped_[i][kRayRecordUploadTags / sizeof(uint32_t) + d] = d;
+                }
+            }
         }
         catch (const std::exception&) {
             return false;
         }
+        readbackScratch_.assign(kDataBytes / sizeof(uint32_t), 0u);
         return true;
     }
 
@@ -572,23 +610,6 @@ namespace CoreEngine
         constants.rowCount = rowCount;
         constants.traceX = traceX_;
         constants.traceY = traceY_;
-        if (context.lightManager) {
-            for (uint32_t li = 0; li < LightManager::MAX_DIRECTIONAL_LIGHTS && constants.lightCount < 4; ++li) {
-                const Light* light = context.lightManager->GetDirectionalLight(li);
-                if (!light || !light->enabled) {
-                    continue;
-                }
-                constants.lightDirections[constants.lightCount++] =
-                    Vector4{ light->direction.x, light->direction.y, light->direction.z, 1.0f };
-            }
-        }
-        constants.shadowBias = 0.05f;
-        constants.shadowDistance = 1000.0f;
-        if (const RayTracingShadowManager* rtShadow = FindRTEffect<RayTracingShadowManager>(context)) {
-            constants.shadowBias = rtShadow->GetSettings().shadowBias;
-            constants.shadowDistance = rtShadow->GetSettings().maxRayDistance;
-        }
-        constants.reflectionDistance = 1000.0f;
         constants.coneSpread = 2.0f / ((std::max)(std::abs(view.projection.m[1][1]), 1.0e-4f) * static_cast<float>(height));
 
         ID3D12GraphicsCommandList* cmdList = context.cmdList;
@@ -629,7 +650,7 @@ namespace CoreEngine
             frame.sceneMode = sceneRequest_.mode;
         }
         if (trace && traceX_ < width && traceY_ < height) {
-            ResetData(cmdList, kDataTraceHeader, kDataBytes - kDataTraceHeader);
+            ResetData(cmdList, kDataTraceHeader, kDataResetEnd - kDataTraceHeader);
             Barrier::Transition(cmdList, output, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             dispatch(true);
             Barrier::Transition(cmdList, output, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -810,13 +831,16 @@ namespace CoreEngine
         // 今フレームに積んだ分を読み戻しへ写す
         const uint32_t frameIndex = graphics_->Frame().FrameIndex();
         PendingFrame& frame = pendingFrames_[frameIndex];
-        if (frame.frame == CurrentFrame() && !frame.pending && (frame.view || frame.scan || frame.scene || frame.trace)) {
+        if (frame.frame == CurrentFrame() && !frame.pending
+            && (frame.view || frame.scan || frame.scene || frame.trace || frame.rays)) {
             Barrier::Transition(cmdList, data_, D3D12_RESOURCE_STATE_COPY_SOURCE);
             cmdList->CopyBufferRegion(readback_[frameIndex].Get(), 0, data_.Get(), 0, kDataBytes);
             Barrier::Transition(cmdList, data_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             frame.pending = true;
             frame.fenceBeforeSubmit = graphics_->Frame().FenceValueOf(frameIndex);
         }
+        // 効果のレイの記録はこのビューで終える
+        rayRecordFrame_ = 0;
     }
 
     void RTDebugSystem::CollectResults()
@@ -845,17 +869,18 @@ namespace CoreEngine
         }
         frame.pending = false;
 
-        uint32_t data[kDataBytes / sizeof(uint32_t)] = {};
+        readbackScratch_.resize(kDataBytes / sizeof(uint32_t));
         void* mapped = nullptr;
         const D3D12_RANGE readRange{ 0, kDataBytes };
         if (FAILED(readback_[frameIndex]->Map(0, &readRange, &mapped)) || !mapped) {
             return;
         }
-        std::memcpy(data, mapped, kDataBytes);
+        std::memcpy(readbackScratch_.data(), mapped, kDataBytes);
         const D3D12_RANGE writtenRange{ 0, 0 };
         readback_[frameIndex]->Unmap(0, &writtenRange);
 
-        auto word = [&data](UINT byteOffset) { return data[byteOffset / sizeof(uint32_t)]; };
+        const uint32_t* data = readbackScratch_.data();
+        auto word = [data](UINT byteOffset) { return data[byteOffset / sizeof(uint32_t)]; };
 
         if (frame.view) {
             RTDebugImageStats stats;
@@ -922,7 +947,6 @@ namespace CoreEngine
             result.frame = frame.frame;
             result.hitPosition = Vector3{ AsFloat(word(kDataTraceHeader + 0)), AsFloat(word(kDataTraceHeader + 4)),
                 AsFloat(word(kDataTraceHeader + 8)) };
-            const uint32_t rayCount = (std::min)(word(kDataTraceHeader + 12), kMaxTracedRays);
             result.hitNormal = Vector3{ AsFloat(word(kDataTraceHeader + 16)), AsFloat(word(kDataTraceHeader + 20)),
                 AsFloat(word(kDataTraceHeader + 24)) };
             result.hit = word(kDataTraceHeader + 28) != 0;
@@ -933,27 +957,210 @@ namespace CoreEngine
             result.uv[1] = AsFloat(word(kDataTraceHeader + 52));
             result.x = word(kDataTraceHeader + 56);
             result.y = word(kDataTraceHeader + 60);
+            RTDebugTracedRay& ray = result.cameraRay;
+            const UINT base = kDataTraceRays;
+            ray.origin = Vector3{ AsFloat(word(base + 0)), AsFloat(word(base + 4)), AsFloat(word(base + 8)) };
+            ray.tMax = AsFloat(word(base + 12));
+            ray.direction = Vector3{ AsFloat(word(base + 16)), AsFloat(word(base + 20)), AsFloat(word(base + 24)) };
+            ray.hitT = AsFloat(word(base + 28));
+            ray.row = word(base + 32);
+            ray.geometry = word(base + 36);
+            ray.primitive = word(base + 40);
+            const uint32_t flags = word(base + 44);
+            ray.hit = (flags & 1u) != 0;
+            ray.frontFace = (flags & 2u) != 0;
+            ray.instanceMask = word(base + 52);
+            ray.candidates = word(base + 56);
+            ray.alphaTests = word(base + 60);
+            traceResult_ = std::move(result);
+        }
+
+        if (frame.rays) {
+            RTDebugRayRecordResult result;
+            result.valid = true;
+            result.frame = frame.frame;
+            result.x = frame.rayX;
+            result.y = frame.rayY;
+            result.dispatches = std::move(frame.dispatches);
+            result.rayTotal = word(kDataRayRecord + 12);
+            result.printTotal = word(kDataRayRecord + 16);
+
+            const uint32_t rayCount = (std::min)(result.rayTotal, kMaxRecordedRays);
             result.rays.reserve(rayCount);
             for (uint32_t i = 0; i < rayCount; ++i) {
-                const UINT base = kDataTraceRays + i * kTraceRayStride;
-                RTDebugTracedRay ray;
-                ray.origin = Vector3{ AsFloat(word(base + 0)), AsFloat(word(base + 4)), AsFloat(word(base + 8)) };
-                ray.tMax = AsFloat(word(base + 12));
-                ray.direction = Vector3{ AsFloat(word(base + 16)), AsFloat(word(base + 20)), AsFloat(word(base + 24)) };
-                ray.hitT = AsFloat(word(base + 28));
-                ray.row = word(base + 32);
-                ray.geometry = word(base + 36);
-                ray.primitive = word(base + 40);
-                const uint32_t flags = word(base + 44);
+                const UINT base = kDataRayRecord + kRayRecordHeaderBytes + i * kRayRecordRayStride;
+                RTDebugRecordedRay ray;
+                ray.dispatch = word(base + 0);
+                const uint32_t flags = word(base + 4);
                 ray.hit = (flags & 1u) != 0;
                 ray.frontFace = (flags & 2u) != 0;
-                ray.kind = word(base + 48);
-                ray.instanceMask = word(base + 52);
-                ray.candidates = word(base + 56);
-                ray.alphaTests = word(base + 60);
+                ray.rayFlags = word(base + 8);
+                ray.instanceMask = word(base + 12);
+                ray.origin = Vector3{ AsFloat(word(base + 16)), AsFloat(word(base + 20)), AsFloat(word(base + 24)) };
+                ray.tMin = AsFloat(word(base + 28));
+                ray.direction = Vector3{ AsFloat(word(base + 32)), AsFloat(word(base + 36)), AsFloat(word(base + 40)) };
+                ray.tMax = AsFloat(word(base + 44));
+                ray.hitT = AsFloat(word(base + 48));
+                ray.row = word(base + 52);
+                ray.geometry = word(base + 56);
+                ray.primitive = word(base + 60);
+                ray.alphaTests = word(base + 64);
+                ray.cutouts = word(base + 68);
+                const uint32_t coord = word(base + 72);
+                ray.traceX = coord & 0xFFFFu;
+                ray.traceY = coord >> 16;
                 result.rays.push_back(ray);
             }
-            traceResult_ = std::move(result);
+
+            const uint32_t printCount = (std::min)(result.printTotal, kMaxRecordedPrints);
+            result.prints.reserve(printCount);
+            for (uint32_t i = 0; i < printCount; ++i) {
+                const UINT base = kDataRayRecord + kRayRecordPrints + i * kRayRecordPrintStride;
+                RTDebugPrintedValue value;
+                value.dispatch = word(base + 0);
+                value.line = word(base + 4);
+                const uint32_t typeAndCount = word(base + 8);
+                value.type = static_cast<RTDebugPrintType>((std::min)(typeAndCount & 0xFFu, 3u));
+                value.components = std::clamp((typeAndCount >> 8) & 0xFFu, 1u, 4u);
+                const uint32_t coord = word(base + 12);
+                value.traceX = coord & 0xFFFFu;
+                value.traceY = coord >> 16;
+                for (UINT c = 0; c < 4; ++c) {
+                    value.bits[c] = word(base + 16 + c * 4);
+                }
+                result.prints.push_back(value);
+            }
+            rayRecordResult_ = std::move(result);
+        }
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // 効果のレイの記録
+    // ──────────────────────────────────────────────────────────
+
+    void RTDebugSystem::BeginRayRecord(const RenderContext& context)
+    {
+        rayRecordFrame_ = 0;
+        if (!graphics_ || !context.cmdList || !IsRequested(traceRequestFrame_)) {
+            return;
+        }
+        AccelerationStructureManager* asMgr = context.accelerationStructureManager;
+        if (!asMgr || !asMgr->IsSupported() || !EnsureCreated()) {
+            return;
+        }
+
+        // 選んだ画素を書き、数を 0 に戻す
+        const uint32_t frameIndex = graphics_->Frame().FrameIndex();
+        uint32_t* header = rayRecordUploadMapped_[frameIndex];
+        header[0] = traceX_;
+        header[1] = traceY_;
+        header[kRayRecordUploadTagWord] = kNoRecordedDispatch;
+        header[3] = 0;
+        header[4] = 0;
+        ID3D12GraphicsCommandList* cmdList = context.cmdList;
+        Barrier::Transition(cmdList, data_, D3D12_RESOURCE_STATE_COPY_DEST);
+        cmdList->CopyBufferRegion(data_.Get(), kDataRayRecord, rayRecordUpload_[frameIndex].Get(), 0, kRayRecordUploadHeaderBytes);
+        Barrier::Transition(cmdList, data_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
+        PendingFrame& frame = BeginPendingFrame();
+        frame.rays = true;
+        frame.rayX = traceX_;
+        frame.rayY = traceY_;
+        frame.dispatches.clear();
+        rayRecordFrame_ = CurrentFrame();
+        gRayRecorder = this;
+    }
+
+    bool RTDebugSystem::IsRecordingRays() const
+    {
+        return rayRecordFrame_ != 0 && rayRecordFrame_ == CurrentFrame();
+    }
+
+    std::wstring RTDebugSystem::WriteRayRecordShader(const ShaderCompiler& compiler, const std::wstring& shaderPath) const
+    {
+        Logger& log = Logger::GetInstance();
+        if (!dataUav_.IsValid()) {
+            return {};
+        }
+        std::error_code ec;
+        const std::filesystem::path source(compiler.ResolveShaderPath(shaderPath));
+        if (!std::filesystem::exists(source, ec)) {
+            log.Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
+                "RTDebugSystem: 記録版の元のシェーダが見つかりません: {}", log.PathToUtf8(std::filesystem::path(shaderPath)));
+            return {};
+        }
+
+        // 記録先の番号を決めて元のシェーダを取り込むだけのファイル
+        std::string include = log.PathToUtf8(source);
+        std::replace(include.begin(), include.end(), '\\', '/');
+        const std::string text = std::format(
+            "// 画素デバッガの記録版（RTDebugSystem が書き出す）\n"
+            "#define RT_RAY_RECORD_HEAP_INDEX {}\n"
+            "#include \"{}\"\n",
+            dataUav_.index, include);
+
+        const std::filesystem::path directory = ProjectPaths::EngineIntermediate("RTDebug");
+        std::filesystem::create_directories(directory, ec);
+        const std::filesystem::path target =
+            directory / (source.stem().wstring() + L".Record" + source.extension().wstring());
+
+        // 同じ中身なら書き直さない
+        {
+            std::ifstream in(target, std::ios::binary);
+            if (in) {
+                const std::string current((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+                if (current == text) {
+                    return target.wstring();
+                }
+            }
+        }
+        std::ofstream out(target, std::ios::binary | std::ios::trunc);
+        out.write(text.data(), static_cast<std::streamsize>(text.size()));
+        if (!out) {
+            log.Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
+                "RTDebugSystem: 記録版のシェーダを書けませんでした: {}", log.PathToUtf8(target));
+            return {};
+        }
+        return target.wstring();
+    }
+
+    void RTDebugSystem::BeginRayRecordDispatch(ID3D12GraphicsCommandList* cmdList, std::string label, std::string shaderName)
+    {
+        if (!cmdList || !IsRecordingRays()) {
+            return;
+        }
+        const uint32_t frameIndex = graphics_->Frame().FrameIndex();
+        PendingFrame& frame = pendingFrames_[frameIndex];
+        // 名前の数の上限を超えたら「名前なし」の番号を写す
+        const bool named = frame.dispatches.size() < kMaxRecordedDispatches;
+        const UINT source = named
+            ? kRayRecordUploadTags + static_cast<UINT>(frame.dispatches.size() * sizeof(uint32_t))
+            : kRayRecordUploadTagWord * static_cast<UINT>(sizeof(uint32_t));
+        if (named) {
+            frame.dispatches.push_back({ std::move(label), std::move(shaderName) });
+        }
+        Barrier::Transition(cmdList, data_, D3D12_RESOURCE_STATE_COPY_DEST);
+        cmdList->CopyBufferRegion(data_.Get(), kDataRayRecord + kRayRecordUploadTagWord * sizeof(uint32_t),
+            rayRecordUpload_[frameIndex].Get(), source, sizeof(uint32_t));
+        Barrier::Transition(cmdList, data_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    }
+
+    namespace RTDebug {
+        bool IsRecordingRays()
+        {
+            return gRayRecorder && gRayRecorder->IsRecordingRays();
+        }
+
+        std::wstring WriteRayRecordShader(const ShaderCompiler& compiler, const std::wstring& shaderPath)
+        {
+            return gRayRecorder ? gRayRecorder->WriteRayRecordShader(compiler, shaderPath) : std::wstring();
+        }
+
+        void BeginRayRecordDispatch(ID3D12GraphicsCommandList* cmdList, std::string label, std::string shaderName)
+        {
+            if (gRayRecorder) {
+                gRayRecorder->BeginRayRecordDispatch(cmdList, std::move(label), std::move(shaderName));
+            }
         }
     }
 

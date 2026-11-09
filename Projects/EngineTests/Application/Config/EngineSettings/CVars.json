@@ -1,6 +1,5 @@
 {
     "r.CAS.Enabled": false,
-    "r.SSAO.Enabled": true,
     "r.TAA.Enabled": false,
     "version": 1
 }

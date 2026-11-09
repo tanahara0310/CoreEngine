@@ -145,6 +145,7 @@ namespace CoreEngine
         bool traceHold_ = false;        ///< 追い直さず、今の結果を残す
         bool traceActive_ = false;      ///< 追跡の線と印を出すか（追跡のタブを見ているか、止めて残している）
         bool drawTraceLines_ = true;
+        int traceDispatchFilter_ = -1;  ///< 表と線に出す効果のディスパッチ（-1 = 全部）
 
         // 加速構造タブ
         char accelFilter_[64] = {};

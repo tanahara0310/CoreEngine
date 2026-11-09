@@ -149,6 +149,7 @@ WaterCausticsParams MakeCausticsParams()
 void RTWaterCausticsRayGen()
 {
     uint2 launchIndex = DispatchRaysIndex().xy;
+    RTRecordBeginPixel(launchIndex, 1u);
 
     // ライトが無効（消灯）な場合はコースティクスも出さない。
     // 非RT版 WaterCaustics.PS.hlsl の gMainLightEnabled チェックと同じ扱い。

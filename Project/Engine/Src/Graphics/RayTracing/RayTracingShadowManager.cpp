@@ -22,6 +22,8 @@
 #include <cassert>
 #include <cmath>
 #include <cstring>
+#include <format>
+#include <string>
 #include <vector>
 
 namespace CoreEngine
@@ -269,6 +271,20 @@ namespace CoreEngine
         ///          細い遮蔽物が原理的に落ちる。4 フレームで全サブピクセルを踏み、
         ///          テンポラル蓄積で平均させる。
         constexpr UINT kTraceOffsetTable[4][2] = { {0, 0}, {1, 1}, {1, 0}, {0, 1} };
+
+#ifdef CORE_EDITOR
+        /// @brief 画素デバッガの表に出すライトの種類
+        const char* LightTypeLabel(LightType type)
+        {
+            switch (type) {
+            case LightType::Directional: return "平行光源";
+            case LightType::Point:       return "点光源";
+            case LightType::Spot:        return "スポットライト";
+            case LightType::Area:        return "エリアライト";
+            }
+            return "?";
+        }
+#endif
     }
 
     // =========================================================================
@@ -318,6 +334,7 @@ namespace CoreEngine
         shaderTableBuilder_
             .SetRayGenShader(L"RTShadowRayGen");
         BuildPipelineAsync(std::move(pipelineBuilder));
+        EnableRayRecord(L"RTShadow.hlsl", L"RTShadowRayGen", "影");
 
         isInitialized_ = true;
         shaderBlob_ = nullptr;  // State Object構築後は不要（実体はキャッシュが保持）
@@ -701,9 +718,7 @@ namespace CoreEngine
             return;
         }
 
-        // パイプライン設定
         cmdList4->SetComputeRootSignature(globalRootSigMgr_.GetRootSignature());
-        cmdList4->SetPipelineState1(stateObject_.Get());
 
         // 入力へ書き、前フレームの履歴（ペナンブラ適応サンプリングの判定）を読む
         denoiser_.BeginInputWrite(cmdList, channel);
@@ -719,7 +734,13 @@ namespace CoreEngine
         binder.ValidateBeforeDraw(bindings_);
 
         // DispatchRays はトレース解像度で行う（ハーフ解像度ならレイ本数は 1/4）
-        auto dispatchDesc = shaderTableBuilder_.BuildDispatchDesc(traceWidth, traceHeight);
+        std::string recordLabel;
+#ifdef CORE_EDITOR
+        if (RTDebug::IsRecordingRays()) {
+            recordLabel = std::format("影（{}・枠 {}）", LightTypeLabel(light.type), shadowSlot);
+        }
+#endif
+        const auto dispatchDesc = SetDispatchPipeline(cmdList4.Get(), traceWidth, traceHeight, recordLabel);
         cmdList4->DispatchRays(&dispatchDesc);
 
         // 時間の蓄積が読む前に書き込みの完了を待つ

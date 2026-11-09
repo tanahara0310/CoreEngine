@@ -87,6 +87,9 @@ namespace CoreEngine
             std::string& errorMessage,
             std::string* warningMessage = nullptr);
 
+        /// @brief AssetDatabase を使って HLSL の実パスを解決する
+        std::wstring ResolveShaderPath(const std::wstring& filePath) const;
+
     private:
         /// @brief 書き出し時にコンパイルした DXIL（CookedShader）があれば読む
         /// @return 無ければ nullptr
@@ -98,9 +101,6 @@ namespace CoreEngine
             const wchar_t* profile,
             const wchar_t* entryPoint,
             std::string* errorMessage = nullptr);
-
-        /// @brief AssetDatabase を使って HLSL の実パスを解決する
-        std::wstring ResolveShaderPath(const std::wstring& filePath) const;
 
         /// @brief AssetDatabaseからシェーダーインクルードディレクトリを収集し引数リストを構築する
         std::vector<std::wstring> BuildIncludeArgs() const;

@@ -165,6 +165,7 @@ bool TryFindWaterEntryPoint(float3 worldPos, float3 toLight, out float3 entryPoi
 void RTShadowRayGen()
 {
     uint2 launchIndex = DispatchRaysIndex().xy;
+    RTRecordBeginPixel(launchIndex, uint(gTraceScale));
 
     // ハーフ解像度時は、トレース座標に対応するフル解像度ピクセルを選ぶ。
     // オフセットはフレームごとに 2x2 を巡回するので、テンポラル蓄積が

@@ -155,6 +155,7 @@ namespace CoreEngine
             const char* secondaryOutputUavName = nullptr; ///< u1 の UAV テーブル名（2 枚目の出力を持つパスだけ）
             const char* extraConstantBufferName = nullptr; ///< 追加の CBV 名（持つパスだけ。ディスパッチ時にアドレスを渡す）
             bool directlyIndexedHeap = false;         ///< シェーダーが ResourceDescriptorHeap でヒープを直接引く
+            const char* rayRecordLabel = nullptr;     ///< 画素デバッガの表に出す名前（画面の画素ごとに撃つパスだけ）
         };
 
         /// @brief 2 枚目の出力テクスチャ（BindAndDispatchRays へ渡す）
