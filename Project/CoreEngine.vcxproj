@@ -468,6 +468,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Graphics\RayTracing\AccelerationStructureManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\VertexAnimationDeformer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingDispatchInfo.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\Denoise\RTDenoiser.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RTHitShading.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RTScene.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\Debug\RTDebugRegistry.cpp" />
@@ -1663,6 +1664,8 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingDispatchInfo.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RTInstanceMask.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RTObjectSettings.h" />
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\Denoise\RTDenoiseBindings.h" />
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\Denoise\RTDenoiser.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RTHitShading.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RTScene.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\Debug\RTDebugRegistry.h" />

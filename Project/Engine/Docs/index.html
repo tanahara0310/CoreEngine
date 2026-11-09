@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.71.0">
+<meta name="engine-version" content="0.72.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -9649,6 +9649,14 @@ kbd {
   </div>
   <div class="callout note"><p>窓を閉じると、帯のスイッチと <span class="ui">概要</span> の <span class="ui">ON</span> は元に戻ります（凍結や止めたままにはなりません）。ゲームの書き出し（Release 版）には、この窓も切り分けのスイッチも入りません。</p></div>
   <p>エンジンに新しいレイトレーシングの効果を足すときは、その効果の .cpp だけを書きます。効果の本体（<code>RTEffect</code> を継いだクラス）とパスを <code>RT_EFFECT_REGISTER</code> で申告すれば、効果が作られ、パスはパイプラインの申告したフェーズと優先度へ入ります。パスの中では <code>FindRTEffect&lt;T&gt;(context)</code> で効果を引きます。窓には、同じ .cpp に <code>RT_DEBUG_EFFECT_REGISTER</code>（概要の行）・<code>RT_DEBUG_CHANNEL_REGISTER</code>（中間結果）・<code>RT_DEBUG_CHECK_REGISTER</code>（チェック）を書けば並びます。パイプラインの組み立ても窓のコードも変えなくて構いません。効果のパスの <code>Execute</code> の頭で、取り口の <code>IsActive()</code> が false なら撃たずに戻ります。</p>
+  <p>レイで求めた 0〜1 の割合（光が届いた割合など）のざらつきは、<code>RTDenoiser</code>（<span class="path">Graphics/RayTracing/Denoise/RTDenoiser.h</span>）で取れます。効果の <code>Initialize</code> で、信号の数をチャンネルの数として渡します。毎フレーム、チャンネルごとに次の順で呼びます。</p>
+  <ol>
+    <li><code>Prepare</code>：テクスチャをそろえ、履歴の書き込み先を入れ替えます。渡す値（影ならライトを見分ける値）が前と違うときと、前のフレームに呼んでいないときは、履歴を捨てます。</li>
+    <li><code>BeginInputWrite</code> → 入力へ書く → <code>EndInputWrite</code>：入力は x = 値・y = サンプル数（<code>GetInputUAV</code>）です。サンプル数 0 の画素は「信号が無い」として、蓄積にも近傍にも使わず、出力は 1 になります。前のフレームの履歴（<code>GetPreviousHistorySRV</code>）も読めます。</li>
+    <li><code>Accumulate</code>：前のフレームの履歴と混ぜます。</li>
+    <li><code>Filter</code>：A-Trous を掛け、フル解像度の出力（<code>GetOutputSRV</code>）へ書きます。出力はピクセルシェーダが読む状態になります。</li>
+  </ol>
+  <p>手がかりにする深度・法線・モーションベクター・投影行列は <code>BuildRTDenoiseGuides(context, guides)</code> で集めます。調整値は <code>RTDenoiseSettings</code> で、効果の CVar から作って渡します。影はこの部品を使っています。</p>
 
   <h2 id="g3d-move">動かす</h2>
   <div class="table-wrap">
@@ -11364,6 +11372,14 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-72-0">v0.72.0 <span class="dim">（2026-11-09）</span></h3>
+  <p>レイトレーシングの影のノイズ取りを、ほかの効果からも使える部品（<code>RTDenoiser</code>）として切り出した版です。ゲームの見た目と設定は変わりません（<a href="#g3d-shadow-debug">影や映り込みがおかしいとき</a>）。</p>
+  <ul>
+    <li><strong>デノイザ</strong>：レイで求めた 0〜1 の割合（光が届いた割合など）を、時間方向の蓄積・A-Trous・フル解像度への仕上げの 3 段でノイズ取りする <code>RTDenoiser</code>（<span class="path">Graphics/RayTracing/Denoise/RTDenoiser.h</span>）を足しました。信号 1 つを「チャンネル」と呼び、チャンネルごとに入力・履歴・作業用・出力のテクスチャを持ちます。調整値は <code>RTDenoiseSettings</code> で効果ごとに渡します。</li>
+    <li><strong>影</strong>：影の枠 1 つを 1 チャンネルとして <code>RTDenoiser</code> を使うようにしました。影の設定（<code>r.RTShadow.MaxHistoryFrames</code>・<code>r.RTShadow.AtrousPassCount</code> など）の名前と働きは同じです。</li>
+    <li><strong>シェーダの名前</strong>：<span class="path">RTShadowTemporal.CS.hlsl</span>・<span class="path">RTShadowDenoise.hlsl</span>・<span class="path">RTShadowResolve.CS.hlsl</span> を、<span class="path">RTDenoiseTemporal.CS.hlsl</span>・<span class="path">RTDenoiseATrous.CS.hlsl</span>・<span class="path">RTDenoiseResolve.CS.hlsl</span> に改めました。計算は同じです。</li>
+  </ul>
 
   <h3 id="changelog-v0-71-0">v0.71.0 <span class="dim">（2026-11-09）</span></h3>
   <p>点光源・スポットライト・エリアライトもレイトレーシングの影を落とすようにした版です（<a href="#g3d-shadow">影と映り込み</a>）。</p>

@@ -1,6 +1,5 @@
 #include "pch.h"
 #include "RayTracingShadowManager.h"
-#include "Graphics/Pipeline/ComputePipelineUtil.h"
 #include "Graphics/RayTracing/RTShadowBindings.h"
 #include "Graphics/RayTracing/Debug/RTDebugRegistry.h"
 #include "Graphics/RootSignature/ShaderBinder.h"
@@ -264,182 +263,12 @@ namespace CoreEngine
     CB_VERIFY_LAYOUT(ShadowRayConstants, kShadowRayConstantsFields);
     CB_BIND_HLSL(ShadowRayConstants, kShadowRayConstantsFields, "ShadowRayConstants");
 
-    /// @brief A-Trous デノイズ（RTShadowDenoise.hlsl）の DenoiseConstants
-    struct DenoiseConstants {
-        int   stepSize;      // offset  0
-        float phiShadow;     // offset  4
-        float phiNormal;     // offset  8
-        float phiDepth;      // offset 12 → row1 終了(16)
-        int   traceWidth;    // offset 16
-        int   traceHeight;   // offset 20
-        float projM33;       // offset 24  proj._33 = far/(far-near)
-        float projM43;       // offset 28  proj._43 = -near*far/(far-near) → row2 終了(32)
-        int   traceScale;    // offset 32
-        int   traceOffsetX;  // offset 36
-        int   traceOffsetY;  // offset 40
-        int   fullWidth;     // offset 44 → row3 終了(48)
-        int   fullHeight;    // offset 48
-        int   pad0;          // offset 52
-        int   pad1;          // offset 56
-        int   pad2;          // offset 60 → row4 終了(64)
-    };
-    static_assert(sizeof(DenoiseConstants) == 64, "DenoiseConstants size mismatch with HLSL cbuffer");
-
-    static constexpr Cb::Field kDenoiseConstantsFields[] = {
-        CB_FIELD(DenoiseConstants, stepSize), CB_FIELD(DenoiseConstants, phiShadow),
-        CB_FIELD(DenoiseConstants, phiNormal), CB_FIELD(DenoiseConstants, phiDepth),
-        CB_FIELD(DenoiseConstants, traceWidth), CB_FIELD(DenoiseConstants, traceHeight),
-        CB_FIELD(DenoiseConstants, projM33), CB_FIELD(DenoiseConstants, projM43),
-        CB_FIELD(DenoiseConstants, traceScale), CB_FIELD(DenoiseConstants, traceOffsetX),
-        CB_FIELD(DenoiseConstants, traceOffsetY), CB_FIELD(DenoiseConstants, fullWidth),
-        CB_FIELD(DenoiseConstants, fullHeight), CB_FIELD(DenoiseConstants, pad0), CB_FIELD(DenoiseConstants, pad1),
-        CB_FIELD(DenoiseConstants, pad2),
-    };
-    CB_VERIFY_LAYOUT(DenoiseConstants, kDenoiseConstantsFields);
-    CB_BIND_HLSL(DenoiseConstants, kDenoiseConstantsFields, "DenoiseConstants");
-
-    /// @brief テンポラル蓄積（RTShadowTemporal.CS.hlsl）の TemporalConstants
-    struct TemporalConstants {
-        int   traceWidth;     // offset  0
-        int   traceHeight;    // offset  4
-        float maxHistoryFrames; // offset 8  適応ブレンドの蓄積上限（α の下限 = 1/この値）
-        float disableHistory; // offset 12 → row1 終了(16)
-        float projM33;        // offset 16
-        float projM43;        // offset 20
-        int   traceScale;     // offset 24
-        int   traceOffsetX;   // offset 28 → row2 終了(32)
-        int   traceOffsetY;   // offset 32
-        int   fullWidth;      // offset 36
-        int   fullHeight;     // offset 40
-        float clampSigmaScale;// offset 44 → row3 終了(48)
-        float clampMargin;    // offset 48  クランプ帯の固定下駄
-        float depthTolerance; // offset 52  再投影を採用する相対深度しきい値
-        float stillnessSigma; // offset 56  静止化しきい値（σ の倍数、0 で無効）
-        int   pad1;           // offset 60 → row4 終了(64)
-    };
-    static_assert(sizeof(TemporalConstants) == 64, "TemporalConstants size mismatch with HLSL cbuffer");
-
-    static constexpr Cb::Field kTemporalConstantsFields[] = {
-        CB_FIELD(TemporalConstants, traceWidth), CB_FIELD(TemporalConstants, traceHeight),
-        CB_FIELD(TemporalConstants, maxHistoryFrames), CB_FIELD(TemporalConstants, disableHistory),
-        CB_FIELD(TemporalConstants, projM33), CB_FIELD(TemporalConstants, projM43),
-        CB_FIELD(TemporalConstants, traceScale), CB_FIELD(TemporalConstants, traceOffsetX),
-        CB_FIELD(TemporalConstants, traceOffsetY), CB_FIELD(TemporalConstants, fullWidth),
-        CB_FIELD(TemporalConstants, fullHeight), CB_FIELD(TemporalConstants, clampSigmaScale),
-        CB_FIELD(TemporalConstants, clampMargin), CB_FIELD(TemporalConstants, depthTolerance),
-        CB_FIELD(TemporalConstants, stillnessSigma), CB_FIELD(TemporalConstants, pad1),
-    };
-    CB_VERIFY_LAYOUT(TemporalConstants, kTemporalConstantsFields);
-    CB_BIND_HLSL(TemporalConstants, kTemporalConstantsFields, "TemporalConstants");
-
-    /// @brief 解決＝バイラテラルアップサンプル（RTShadowResolve.CS.hlsl）の ResolveConstants
-    struct ResolveConstants {
-        int   fullWidth;      // offset  0
-        int   fullHeight;     // offset  4
-        int   traceWidth;     // offset  8
-        int   traceHeight;    // offset 12 → row1 終了(16)
-        float projM33;        // offset 16
-        float projM43;        // offset 20
-        int   traceScale;     // offset 24
-        int   traceOffsetX;   // offset 28 → row2 終了(32)
-        int   traceOffsetY;   // offset 32
-        float phiDepth;       // offset 36
-        int   pad0;           // offset 40
-        int   pad1;           // offset 44 → row3 終了(48)
-    };
-    static_assert(sizeof(ResolveConstants) == 48, "ResolveConstants size mismatch with HLSL cbuffer");
-
-    static constexpr Cb::Field kResolveConstantsFields[] = {
-        CB_FIELD(ResolveConstants, fullWidth), CB_FIELD(ResolveConstants, fullHeight),
-        CB_FIELD(ResolveConstants, traceWidth), CB_FIELD(ResolveConstants, traceHeight),
-        CB_FIELD(ResolveConstants, projM33), CB_FIELD(ResolveConstants, projM43),
-        CB_FIELD(ResolveConstants, traceScale), CB_FIELD(ResolveConstants, traceOffsetX),
-        CB_FIELD(ResolveConstants, traceOffsetY), CB_FIELD(ResolveConstants, phiDepth),
-        CB_FIELD(ResolveConstants, pad0), CB_FIELD(ResolveConstants, pad1),
-    };
-    CB_VERIFY_LAYOUT(ResolveConstants, kResolveConstantsFields);
-    CB_BIND_HLSL(ResolveConstants, kResolveConstantsFields, "ResolveConstants");
-
     namespace {
-        /// @brief 投影行列から線形深度復元用の 2 要素を取り出す
-        /// @details 行ベクトル規約の透視投影では ndcZ = _33 + _43/viewZ。
-        ///          MathCore::Matrix::PerspectiveFov の構成に対応する。
-        inline void ExtractProjectionZW(const Matrix4x4& projection, float& outM33, float& outM43)
-        {
-            outM33 = projection.m[2][2];
-            outM43 = projection.m[3][2];
-        }
-
-        /// @brief 8x8 スレッドグループでの必要グループ数
-        inline UINT DispatchGroupCount(UINT pixels) { return (pixels + 7) / 8; }
-
         /// @brief ハーフ解像度時に巡回させる 2x2 サンプル位置
         /// @details 固定オフセットだと常に同じサブピクセルしか見ないため、
         ///          細い遮蔽物が原理的に落ちる。4 フレームで全サブピクセルを踏み、
         ///          テンポラル蓄積で平均させる。
         constexpr UINT kTraceOffsetTable[4][2] = { {0, 0}, {1, 1}, {1, 0}, {0, 1} };
-    }
-
-    // =========================================================================
-    // コンピュートパス（RS + PSO + バインド表）の共通構築
-    // デノイズ / テンポラル / 解決の 3 本が全く同じ形なのでまとめてある
-    // =========================================================================
-    bool RayTracingShadowManager::CreateComputePass(
-        const wchar_t* shaderPath,
-        const ShaderBindingDecl* decls,
-        size_t declCount,
-        const char* rootConstantName,
-        const char* debugLabel,
-        ComputePass& outPass)
-    {
-        Logger& log = Logger::GetInstance();
-
-        // プロファイルはキャッシュのキーに含まれるので cs_6_0 の他パスとは衝突しない
-        const ShaderProgram* program =
-            shaderProgramCache_->GetOrCreateCompute(shaderPath, debugLabel, L"cs_6_6");
-        if (!program) {
-            log.Logf(LogLevel::Warn, LogCategory::Graphics,
-                "RayTracingShadowManager: {} shader compile failed", debugLabel);
-            return false;
-        }
-
-        // 定数だけルート定数にする。dword 数はリフレクションが cbuffer サイズから決める
-        RootSignatureConfig config;
-        config.SetFlags(D3D12_ROOT_SIGNATURE_FLAG_NONE);  // コンピュートに入力アセンブラは無い
-        config.ConfigureResource(
-            ResourceBindingConfig(rootConstantName, BindingStrategy::RootConstants));
-
-        const auto buildResult = outPass.rootSigMgr.Build(
-            dxCommon_->GetDevice(), program->GetReflection(), config);
-        if (!buildResult.success) {
-            log.Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
-                "RayTracingShadowManager: {} のルートシグネチャ構築に失敗: {}",
-                debugLabel, buildResult.errorMessage);
-            return false;
-        }
-
-        // 宣言表とシェーダー実体を突き合わせる（改名・削除・種別違いはここで検出される）
-        try {
-            outPass.bindings = BindingTable::Resolve(
-                program->GetReflection(), decls, declCount, debugLabel);
-        }
-        catch (const std::exception& e) {
-            log.Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
-                "RayTracingShadowManager: {} のバインド契約違反: {}", debugLabel, e.what());
-            return false;
-        }
-
-        outPass.pipelineState = ComputePipelineUtil::Create(
-            dxCommon_->GetDevice(), outPass.GetRootSignature(), program->GetCS(),
-            std::string("RTShadow_") + debugLabel);
-        if (!outPass.pipelineState) {
-            return false;
-        }
-
-        outPass.initialized = true;
-        log.Logf(LogLevel::Info, LogCategory::Graphics,
-            "RayTracingShadowManager: {} pipeline created", debugLabel);
-        return true;
     }
 
     // =========================================================================
@@ -493,87 +322,11 @@ namespace CoreEngine
         isInitialized_ = true;
         shaderBlob_ = nullptr;  // State Object構築後は不要（実体はキャッシュが保持）
 
-        // 後段の 3 本はどれも「SRV n 枚 + UAV 1 枚 + ルート定数」なので共通構築
-        CreateComputePass(
-            L"RTShadowDenoise.hlsl",
-            RTShadowDenoiseBind::kDecls, RTShadowDenoiseBind::Slot::Count,
-            "DenoiseConstants", "A-Trous denoise", denoisePass_);
-        CreateComputePass(
-            L"RTShadowTemporal.CS.hlsl",
-            RTShadowTemporalBind::kDecls, RTShadowTemporalBind::Slot::Count,
-            "TemporalConstants", "Temporal accumulation", temporalPass_);
-        CreateComputePass(
-            L"RTShadowResolve.CS.hlsl",
-            RTShadowResolveBind::kDecls, RTShadowResolveBind::Slot::Count,
-            "ResolveConstants", "Bilateral resolve", resolvePass_);
+        // 光の届いた割合は影の枠ごとに 1 チャンネルでデノイズする
+        denoiser_.Initialize(init, "RTShadow", kViewCount * kMaxShadowSlots);
 
         log.Log("RayTracingShadowManager: Initialized successfully",
             LogLevel::Info, LogCategory::Graphics);
-        return true;
-    }
-
-    // =========================================================================
-    // 出力テクスチャの確保（リサイズ対応、ビュー × ライトごと）
-    //   Mask だけがフル解像度、それ以外はトレース解像度。
-    // =========================================================================
-    bool RayTracingShadowManager::EnsureOutputTexture(
-        UINT width, UINT height, UINT traceWidth, UINT traceHeight, UINT traceScale,
-        uint32_t viewIndex, uint32_t shadowSlot)
-    {
-        auto& view = views_[viewIndex][shadowSlot];
-        const uint32_t maskSlot = MakeSlotIndex(viewIndex, shadowSlot, TextureSlot::Mask);
-        if (width == view.width && height == view.height
-            && traceWidth == view.traceWidth && traceHeight == view.traceHeight
-            && outputViews_.HasTexture(maskSlot)) {
-            return true;  // サイズ変更なし
-        }
-
-        view.width = width;
-        view.height = height;
-        view.traceWidth = traceWidth;
-        view.traceHeight = traceHeight;
-        view.traceScale = traceScale;
-        // サイズ変更時は履歴を無効化（古いサイズの履歴を引き継がない）
-        view.isHistoryValid = false;
-
-        const std::string suffix = "_v" + std::to_string(viewIndex) + "_l" + std::to_string(shadowSlot);
-
-        RayTracingOutputViewSet::TextureOptions options{};
-        options.format = kShadowTextureFormat;
-        options.allowUAV = true;
-        options.initialState = D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
-
-        // 最終シャドウマスク（フル解像度。DeferredLighting がフル解像度座標で Load する）
-        if (!outputViews_.EnsureTexture(dxCommon_, descriptorAllocator_, width, height,
-            maskSlot, "RayTracingShadowManager", "RTShadow_Mask" + suffix, options)) {
-            return false;
-        }
-
-        // 残りはすべてトレース解像度。
-        // Raw は RayGen の生バイナリなので 1 チャンネル。
-        // 履歴と A-Trous の ping-pong は「シャドウ値 / 推定分散 / 蓄積数 N / 線形深度」の
-        // 4 チャンネルを同じレイアウトで運ぶ（詳細は RTShadowTemporal.CS.hlsl の先頭）。
-        struct TraceSlot { TextureSlot slot; const char* name; DXGI_FORMAT format; };
-        static constexpr TraceSlot kTraceSlots[] = {
-            { TextureSlot::Raw,      "RTShadow_Raw",      kShadowRawFormat },
-            { TextureSlot::DenoiseA, "RTShadow_DenoiseA", kShadowSignalFormat },
-            { TextureSlot::DenoiseB, "RTShadow_DenoiseB", kShadowSignalFormat },
-            { TextureSlot::HistoryA, "RTShadow_HistoryA", kShadowSignalFormat },
-            { TextureSlot::HistoryB, "RTShadow_HistoryB", kShadowSignalFormat },
-        };
-        for (const TraceSlot& traceSlot : kTraceSlots) {
-            options.format = traceSlot.format;
-            if (!outputViews_.EnsureTexture(dxCommon_, descriptorAllocator_, traceWidth, traceHeight,
-                MakeSlotIndex(viewIndex, shadowSlot, traceSlot.slot),
-                "RayTracingShadowManager", traceSlot.name + suffix, options)) {
-                return false;
-            }
-        }
-
-        Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Graphics,
-            "RayTracingShadowManager: Output texture[view={} light={}] created (mask {}x{} / trace {}x{})",
-            viewIndex, shadowSlot, width, height, traceWidth, traceHeight);
-
         return true;
     }
 
@@ -585,67 +338,19 @@ namespace CoreEngine
         return settings_.halfResolutionTrace ? 2u : 1u;
     }
 
-    void RayTracingShadowManager::Resize(UINT width, UINT height, ViewID viewId, uint32_t shadowSlot)
-    {
-        shadowSlot = (std::min)(shadowSlot, kMaxShadowSlots - 1);
-        const UINT scale = GetTraceScale();
-        EnsureOutputTexture(width, height,
-            (width + scale - 1) / scale, (height + scale - 1) / scale, scale,
-            static_cast<uint32_t>(viewId), shadowSlot);
-    }
-
     void RayTracingShadowManager::OnResize(uint32_t width, uint32_t height)
     {
-        if (!isInitialized_ || width == 0 || height == 0) {
+        if (!isInitialized_) {
             return;
         }
-
-        const UINT scale = GetTraceScale();
-        const UINT traceWidth = (width + scale - 1) / scale;
-        const UINT traceHeight = (height + scale - 1) / scale;
-
-        for (uint32_t viewIndex = 0; viewIndex < kViewCount; ++viewIndex) {
-            for (uint32_t shadowSlot = 0; shadowSlot < kMaxShadowSlots; ++shadowSlot) {
-                if (outputViews_.HasTexture(MakeSlotIndex(viewIndex, shadowSlot, TextureSlot::Mask))) {
-                    EnsureOutputTexture(width, height, traceWidth, traceHeight, scale, viewIndex, shadowSlot);
-                }
-            }
-        }
+        denoiser_.OnResize(width, height, GetTraceScale());
     }
 
     D3D12_GPU_DESCRIPTOR_HANDLE RayTracingShadowManager::GetShadowSRVHandle(
         ViewID viewId, uint32_t shadowSlot) const
     {
         shadowSlot = (std::min)(shadowSlot, kMaxShadowSlots - 1);
-        return SlotSRV(static_cast<uint32_t>(viewId), shadowSlot, TextureSlot::Mask);
-    }
-
-    D3D12_GPU_DESCRIPTOR_HANDLE RayTracingShadowManager::GetRawShadowSRVHandle(
-        ViewID viewId, uint32_t shadowSlot) const
-    {
-        shadowSlot = (std::min)(shadowSlot, kMaxShadowSlots - 1);
-        return SlotSRV(static_cast<uint32_t>(viewId), shadowSlot, TextureSlot::Raw);
-    }
-
-    D3D12_GPU_DESCRIPTOR_HANDLE RayTracingShadowManager::GetHistorySRVHandle(
-        ViewID viewId, uint32_t shadowSlot) const
-    {
-        shadowSlot = (std::min)(shadowSlot, kMaxShadowSlots - 1);
-        const uint32_t vi = static_cast<uint32_t>(viewId);
-        return SlotSRV(vi, shadowSlot, views_[vi][shadowSlot].CurrentHistorySlot());
-    }
-
-    GpuResource& RayTracingShadowManager::GetRawShadowResource(ViewID viewId, uint32_t shadowSlot)
-    {
-        shadowSlot = (std::min)(shadowSlot, kMaxShadowSlots - 1);
-        return Slot(static_cast<uint32_t>(viewId), shadowSlot, TextureSlot::Raw);
-    }
-
-    GpuResource& RayTracingShadowManager::GetHistoryResource(ViewID viewId, uint32_t shadowSlot)
-    {
-        shadowSlot = (std::min)(shadowSlot, kMaxShadowSlots - 1);
-        const uint32_t vi = static_cast<uint32_t>(viewId);
-        return Slot(vi, shadowSlot, views_[vi][shadowSlot].CurrentHistorySlot());
+        return denoiser_.GetOutputSRV(GetDenoiseChannel(viewId, shadowSlot));
     }
 
     const RayTracingDispatchInfo& RayTracingShadowManager::GetDispatchInfo(
@@ -657,8 +362,22 @@ namespace CoreEngine
 
     int RayTracingShadowManager::GetEffectiveAtrousPassCount() const
     {
-        // Stage 3 で ping/pong 専用スクラッチを持たせたため偶数制約は無い
-        return std::clamp(settings_.atrousPassCount, 0, kMaxAtrousPassCount);
+        return RTDenoiser::ClampAtrousPassCount(settings_.atrousPassCount);
+    }
+
+    RTDenoiseSettings RayTracingShadowManager::MakeDenoiseSettings() const
+    {
+        RTDenoiseSettings denoise{};
+        denoise.maxHistoryFrames = settings_.maxHistoryFrames;
+        denoise.historyClampSigma = settings_.historyClampSigma;
+        denoise.historyDepthTolerance = settings_.historyDepthTolerance;
+        denoise.stillnessSigma = settings_.stillnessSigma;
+        denoise.atrousPassCount = settings_.atrousPassCount;
+        denoise.atrousPhiValue = settings_.denoisePhiShadow;
+        denoise.atrousPhiDepth = settings_.denoisePhiDepth;
+        denoise.upsamplePhiDepth = settings_.upsamplePhiDepth;
+        denoise.useHistory = !settings_.disableHistory;
+        return denoise;
     }
 
     float RayTracingShadowManager::ResolveEffectiveRayDistance(const Vector3& lightDirection) const
@@ -693,9 +412,8 @@ namespace CoreEngine
         ViewID viewId,
         uint32_t shadowSlot)
     {
-        // 指定ビュー・ライトの現在のシャドウ出力テクスチャを返す。
         shadowSlot = (std::min)(shadowSlot, kMaxShadowSlots - 1);
-        return Slot(static_cast<uint32_t>(viewId), shadowSlot, TextureSlot::Mask);
+        return denoiser_.GetOutput(GetDenoiseChannel(viewId, shadowSlot));
     }
 
     bool RayTracingShadowManager::IsDispatchedThisFrame(
@@ -909,37 +627,21 @@ namespace CoreEngine
                 light.direction.x, light.direction.y, light.direction.z);
         }
 
-        // 出力テクスチャの確保（リサイズ・解像度モード変更に対応）
-        if (!EnsureOutputTexture(width, height, traceWidth, traceHeight, traceScale, vi, shadowSlot)) {
+        // 入力・履歴・マスクをそろえる（別のライトがこの枠へ来たとき・前のフレームに撃っていないときは履歴を捨てる）
+        const uint32_t channel = GetDenoiseChannel(viewId, shadowSlot);
+        if (!denoiser_.Prepare(channel, width, height, traceScale, light.key)) {
             view.dispatchInfo.status = RayTracingDispatchStatus::OutputAllocationFailed;
             return;
         }
-        view.dispatchInfo.outputSrvPtr = SlotSRV(vi, shadowSlot, TextureSlot::Mask).ptr;
+        view.dispatchInfo.outputSrvPtr = denoiser_.GetOutputSRV(channel).ptr;
 
-        // 別のライトがこの番号へ来たとき・前のフレームに撃っていないときは履歴を捨てる
-        const uint64_t frameNumber = dxCommon_->Frame().FrameNumber();
-        const bool continuous =
-            (frameNumber == view.lastDispatchFrame) || (frameNumber == view.lastDispatchFrame + 1);
-        if (view.lightKey != light.key || !continuous) {
-            view.isHistoryValid = false;
-        }
-        view.lightKey = light.key;
-        view.lastDispatchFrame = frameNumber;
-
-        // フレームを 1 つ進める（履歴の書き込み先を入れ替え、サンプル位置を巡回させる）
-        // カウンタは view × light ごと（共有だと 2x2 巡回が欠ける。ShadowView 側コメント参照）
-        view.historyParity ^= 1u;
+        // サンプル位置を巡回させる（カウンタは view × light ごと）
         if (traceScale > 1 && settings_.cycleTraceOffset) {
             const UINT phase = RTDebug::NoiseFrame(view.frameCount) & 3u;
             view.traceOffsetX = kTraceOffsetTable[phase][0];
             view.traceOffsetY = kTraceOffsetTable[phase][1];
         } else if (traceScale > 1) {
-            // 巡回しない: 常に 2x2 の中央代表点を撃つ。
-            // 後段（Temporal / A-Trous / Resolve）の TraceToFull と完全に一致するので、
-            // 「トレースした点」と「幾何ガイドを読んだ点」がずれない。
-            // 巡回させると、影の縁ではフレームごとに別のサブピクセル（＝別の遮蔽率）を
-            // 撃つことになり、テンポラル蓄積の入力が 4 フレーム周期で 0↔1 近く振動する。
-            // クランプ棄却で蓄積カウントが落ち、縁が這うように動く主因だった。
+            // 巡回しない：デノイザが G-Buffer を読む 2x2 の中央の代表点を撃つ
             view.traceOffsetX = traceScale >> 1;
             view.traceOffsetY = traceScale >> 1;
         } else {
@@ -965,7 +667,7 @@ namespace CoreEngine
         constants.traceScale = static_cast<int>(traceScale);
         constants.penumbraSamples = std::clamp(settings_.penumbraSamples, 1, 16);
         // 初回フレームや履歴無効化中は適応サンプリングの判定材料が無いので基本本数で撃つ
-        constants.historyValid = (view.isHistoryValid && !settings_.disableHistory) ? 1 : 0;
+        constants.historyValid = (denoiser_.IsHistoryValid(channel) && !settings_.disableHistory) ? 1 : 0;
         constants.invViewProj = invViewProj;
         constants.waterHeight = waterSurface.height;
         constants.waterRefractiveIndex = waterSurface.refractiveIndex;
@@ -1003,22 +705,16 @@ namespace CoreEngine
         cmdList4->SetComputeRootSignature(globalRootSigMgr_.GetRootSignature());
         cmdList4->SetPipelineState1(stateObject_.Get());
 
-        {
-            BarrierBatch batch(cmdList);
-            batch.Transition(Slot(vi, shadowSlot, TextureSlot::Raw),
-                D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-            // 前フレームの履歴（ペナンブラ適応サンプリングの判定に読む）
-            batch.Transition(Slot(vi, shadowSlot, view.PreviousHistorySlot()),
-                D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        }
+        // 入力へ書き、前フレームの履歴（ペナンブラ適応サンプリングの判定）を読む
+        denoiser_.BeginInputWrite(cmdList, channel);
 
         // 差し方は RootSlot の種別から ShaderBinder が決める（番号を直接触らない）
         ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
-        binder.Set(bindings_[RTShadowBind::gShadowOutput], SlotUAV(vi, shadowSlot, TextureSlot::Raw));
+        binder.Set(bindings_[RTShadowBind::gShadowOutput], denoiser_.GetInputUAV(channel));
         binder.Set(bindings_[RTShadowBind::gScene], asMgr_->GetTLASSRVHandle());
         binder.Set(bindings_[RTShadowBind::gSceneDepth], sceneDepthSRV);
         binder.Set(bindings_[RTShadowBind::gNormalRoughness], normalRoughnessSRV);
-        binder.Set(bindings_[RTShadowBind::gShadowHistory], SlotSRV(vi, shadowSlot, view.PreviousHistorySlot()));
+        binder.Set(bindings_[RTShadowBind::gShadowHistory], denoiser_.GetPreviousHistorySRV(channel));
         binder.Set(bindings_[RTShadowBind::ShadowRayConstants], dxCommon_->GetUploadRing().AllocateConstants(constants));
         binder.ValidateBeforeDraw(bindings_);
 
@@ -1026,12 +722,8 @@ namespace CoreEngine
         auto dispatchDesc = shaderTableBuilder_.BuildDispatchDesc(traceWidth, traceHeight);
         cmdList4->DispatchRays(&dispatchDesc);
 
-        // ApplyTemporal の読み取り前に完了を保証してから SRV 状態へ
-        BarrierBatch rawToSrv(cmdList);
-        rawToSrv.UAV(Slot(vi, shadowSlot, TextureSlot::Raw));
-        rawToSrv.Transition(Slot(vi, shadowSlot, TextureSlot::Raw),
-            D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        rawToSrv.Flush();
+        // 時間の蓄積が読む前に書き込みの完了を待つ
+        denoiser_.EndInputWrite(cmdList, channel);
 
         view.dispatchedThisFrame = true;
         view.dispatchInfo.status = RayTracingDispatchStatus::Dispatched;
@@ -1042,246 +734,39 @@ namespace CoreEngine
         if (dispatchLogCount_ < 10) {
             Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Graphics,
                 "RTShadow::Dispatch complete viewId={} shadowSlot={} srvHandle=0x{:X}",
-                vi, shadowSlot, SlotSRV(vi, shadowSlot, TextureSlot::Mask).ptr);
+                vi, shadowSlot, denoiser_.GetOutputSRV(channel).ptr);
             ++dispatchLogCount_;
         }
     }
 
     // =========================================================================
-    // テンポラル蓄積パス（RayGen の直後、Denoise の前に呼び出す）
-    //   Raw + 前フレーム履歴 → 今フレーム履歴（履歴は 2 枚の ping-pong）。
+    // 時間の蓄積と A-Trous・仕上げ（どちらも今フレームに撃った枠だけ）
     // =========================================================================
     void RayTracingShadowManager::ApplyTemporal(
         ID3D12GraphicsCommandList* cmdList,
-        D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
-        D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
-        D3D12_GPU_DESCRIPTOR_HANDLE motionVectorSRV,
-        const Matrix4x4& projection,
-        ViewID viewId,
-        uint32_t shadowSlot)
-    {
-        if (!isInitialized_ || !temporalPass_.initialized) return;
-
-        shadowSlot = (std::min)(shadowSlot, kMaxShadowSlots - 1);
-        const uint32_t vi = static_cast<uint32_t>(viewId);
-        auto& view = views_[vi][shadowSlot];
-        if (!view.dispatchedThisFrame) return;
-
-        const TextureSlot currentHistory = view.CurrentHistorySlot();
-        const TextureSlot previousHistory = view.PreviousHistorySlot();
-
-        GpuResource& rawRes = Slot(vi, shadowSlot, TextureSlot::Raw);
-        GpuResource& prevRes = Slot(vi, shadowSlot, previousHistory);
-        GpuResource& curRes = Slot(vi, shadowSlot, currentHistory);
-        if (!rawRes.IsValid() || !prevRes.IsValid() || !curRes.IsValid()) return;
-
-        // 入出力の状態遷移（3リソースを一括バリア）
-        {
-            BarrierBatch batch(cmdList);
-            batch.Transition(rawRes, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            batch.Transition(prevRes, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            batch.Transition(curRes, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        }
-
-        cmdList->SetComputeRootSignature(temporalPass_.GetRootSignature());
-        cmdList->SetPipelineState(temporalPass_.pipelineState.Get());
-
-        namespace Bind = RTShadowTemporalBind;
-        const BindingTable& table = temporalPass_.bindings;
-        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
-
-        binder.Set(table[Bind::gRawShadow], SlotSRV(vi, shadowSlot, TextureSlot::Raw));
-        binder.Set(table[Bind::gGBufferNormal], normalRoughnessSRV);
-        binder.Set(table[Bind::gGBufferDepth], sceneDepthSRV);
-        binder.Set(table[Bind::gHistoryShadow], SlotSRV(vi, shadowSlot, previousHistory));
-        binder.Set(table[Bind::gMotionVector], motionVectorSRV);
-        binder.Set(table[Bind::gOutputShadow], SlotUAV(vi, shadowSlot, currentHistory));
-
-        TemporalConstants tc{};
-        tc.traceWidth = static_cast<int>(view.traceWidth);
-        tc.traceHeight = static_cast<int>(view.traceHeight);
-        tc.maxHistoryFrames = static_cast<float>(settings_.maxHistoryFrames);
-        // 初回フレーム（履歴未生成）か、デバッグトグルで明示的に無効化された場合は履歴を使わない
-        tc.disableHistory = (view.isHistoryValid && !settings_.disableHistory) ? 0.0f : 1.0f;
-        ExtractProjectionZW(projection, tc.projM33, tc.projM43);
-        tc.traceScale = static_cast<int>(view.traceScale);
-        tc.traceOffsetX = static_cast<int>(view.traceOffsetX);
-        tc.traceOffsetY = static_cast<int>(view.traceOffsetY);
-        tc.fullWidth = static_cast<int>(view.width);
-        tc.fullHeight = static_cast<int>(view.height);
-        tc.clampSigmaScale = settings_.historyClampSigma;
-        // 帯の固定下駄。σ が本当に 0 になる領域（完全な本影・完全な日向）でも
-        // 量子化とガイドの揺らぎぶんは許容しておく。
-        tc.clampMargin = 0.02f;
-        tc.depthTolerance = settings_.historyDepthTolerance;
-        tc.stillnessSigma = settings_.stillnessSigma;
-        binder.SetConstants(table[Bind::TemporalConstants], tc);
-
-        binder.ValidateBeforeDraw(table);
-        cmdList->Dispatch(DispatchGroupCount(view.traceWidth), DispatchGroupCount(view.traceHeight), 1);
-
-        // Denoise が SRV として読むので完了を保証してから遷移
-        BarrierBatch curToSrv(cmdList);
-        curToSrv.UAV(curRes);
-        curToSrv.Transition(curRes, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        curToSrv.Flush();
-
-        view.isHistoryValid = true;
-    }
-
-    // =========================================================================
-    // A-Trous デノイズ ＋ フル解像度への解決（ApplyTemporal の直後に呼ぶ）
-    //   入力はテンポラル出力（＝今フレームの履歴）。ping/pong は専用スロットで行う。
-    // =========================================================================
-    void RayTracingShadowManager::Denoise(
-        ID3D12GraphicsCommandList* cmdList,
-        D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
-        D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
-        const Matrix4x4& projection,
+        const RTDenoiseGuides& guides,
         ViewID viewId,
         uint32_t shadowSlot)
     {
         if (!isInitialized_) return;
 
         shadowSlot = (std::min)(shadowSlot, kMaxShadowSlots - 1);
-        const uint32_t vi = static_cast<uint32_t>(viewId);
-        auto& view = views_[vi][shadowSlot];
-        if (!view.dispatchedThisFrame) return;
+        if (!views_[static_cast<uint32_t>(viewId)][shadowSlot].dispatchedThisFrame) return;
 
-        // A-Trous: ステップ幅 1 → 2 → 4 → 8
-        static constexpr int kSteps[kMaxAtrousPassCount] = { 1, 2, 4, 8 };
-        // 法線重みの指数はパスに依らず一定にする。旧実装は 4→8→16→32 と厳しくしていたが、
-        // ステップ幅が広い後段ほど離れたタップを見るため、曲面ではわずかな向きの差でも
-        // 重みが消え「低周波ノイズを均すはずの広いパスだけが働かない」状態になっていた。
-        static constexpr float kPhiNormal = 16.0f;
-
-        // デノイズ PSO が作れていない場合はパス数 0 として扱う
-        // （その場合でも解決パスがテンポラル結果を Mask へ運ぶので影は消えない）
-        const int numPasses = denoisePass_.initialized ? GetEffectiveAtrousPassCount() : 0;
-
-        // A-Trous は 4 チャンネル信号（値/分散/N/深度）を読み書きするので、
-        // 1 チャンネルの Mask へ直接書くことはできない。解決パスが必ず最後に走る。
-        TextureSlot lastSlot = view.CurrentHistorySlot();
-
-        if (numPasses > 0) {
-            cmdList->SetComputeRootSignature(denoisePass_.GetRootSignature());
-            cmdList->SetPipelineState(denoisePass_.pipelineState.Get());
-
-            namespace Bind = RTShadowDenoiseBind;
-            const BindingTable& table = denoisePass_.bindings;
-
-            const UINT groupX = DispatchGroupCount(view.traceWidth);
-            const UINT groupY = DispatchGroupCount(view.traceHeight);
-
-            for (int pass = 0; pass < numPasses; ++pass)
-            {
-                const TextureSlot inSlot = lastSlot;
-                const TextureSlot outSlot = (pass % 2 == 0) ? TextureSlot::DenoiseA : TextureSlot::DenoiseB;
-
-                GpuResource& inputRes = Slot(vi, shadowSlot, inSlot);
-                GpuResource& outputRes = Slot(vi, shadowSlot, outSlot);
-                if (!inputRes.IsValid() || !outputRes.IsValid()) return;
-
-                // 入力: SRV へ、出力: UAV へ（2リソースを一括バリア）
-                {
-                    BarrierBatch batch(cmdList);
-                    batch.Transition(inputRes, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-                    batch.Transition(outputRes, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-                }
-
-                // 差し忘れ検出のビットをパス単位で見るため、バインダーはパスごとに作り直す
-                ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
-                binder.Set(table[Bind::gInputShadow], SlotSRV(vi, shadowSlot, inSlot));
-                binder.Set(table[Bind::gNormalRoughness], normalRoughnessSRV);
-                binder.Set(table[Bind::gSceneDepth], sceneDepthSRV);
-                binder.Set(table[Bind::gOutputShadow], SlotUAV(vi, shadowSlot, outSlot));
-
-                DenoiseConstants dc{};
-                dc.stepSize = kSteps[pass];
-                dc.phiShadow = settings_.denoisePhiShadow;
-                dc.phiNormal = kPhiNormal;
-                dc.phiDepth = settings_.denoisePhiDepth;
-                dc.traceWidth = static_cast<int>(view.traceWidth);
-                dc.traceHeight = static_cast<int>(view.traceHeight);
-                ExtractProjectionZW(projection, dc.projM33, dc.projM43);
-                dc.traceScale = static_cast<int>(view.traceScale);
-                dc.traceOffsetX = static_cast<int>(view.traceOffsetX);
-                dc.traceOffsetY = static_cast<int>(view.traceOffsetY);
-                dc.fullWidth = static_cast<int>(view.width);
-                dc.fullHeight = static_cast<int>(view.height);
-                binder.SetConstants(table[Bind::DenoiseConstants], dc);
-
-                binder.ValidateBeforeDraw(table);
-                cmdList->Dispatch(groupX, groupY, 1);
-
-                Barrier::UAV(cmdList, outputRes);
-                lastSlot = outSlot;
-            }
-        }
-
-        // トレース解像度の最終結果をフル解像度の Mask へ解決する
-        // （等倍のときは解決パスが 1:1 の写しになる）。
-        ResolveToFullResolution(cmdList, normalRoughnessSRV, sceneDepthSRV, projection,
-            vi, shadowSlot, lastSlot);
-
-        // 後段（DeferredLighting）はピクセルシェーダから読む
-        Barrier::Transition(cmdList, Slot(vi, shadowSlot, TextureSlot::Mask),
-            D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        denoiser_.Accumulate(cmdList, GetDenoiseChannel(viewId, shadowSlot), guides, MakeDenoiseSettings());
     }
 
-    // =========================================================================
-    // 解決パス（トレース解像度 → フル解像度のバイラテラルアップサンプル）
-    // =========================================================================
-    void RayTracingShadowManager::ResolveToFullResolution(
+    void RayTracingShadowManager::Denoise(
         ID3D12GraphicsCommandList* cmdList,
-        D3D12_GPU_DESCRIPTOR_HANDLE normalRoughnessSRV,
-        D3D12_GPU_DESCRIPTOR_HANDLE sceneDepthSRV,
-        const Matrix4x4& projection,
-        uint32_t viewIndex,
-        uint32_t shadowSlot,
-        TextureSlot sourceSlot)
+        const RTDenoiseGuides& guides,
+        ViewID viewId,
+        uint32_t shadowSlot)
     {
-        // ハーフ解像度で解いた影を、法線と深度をガイドにフル解像度へバイラテラルアップサンプルする
-        if (!resolvePass_.initialized) return;
+        if (!isInitialized_) return;
 
-        auto& view = views_[viewIndex][shadowSlot];
-        GpuResource& sourceRes = Slot(viewIndex, shadowSlot, sourceSlot);
-        GpuResource& maskRes = Slot(viewIndex, shadowSlot, TextureSlot::Mask);
-        if (!sourceRes.IsValid() || !maskRes.IsValid()) return;
+        shadowSlot = (std::min)(shadowSlot, kMaxShadowSlots - 1);
+        if (!views_[static_cast<uint32_t>(viewId)][shadowSlot].dispatchedThisFrame) return;
 
-        {
-            BarrierBatch batch(cmdList);
-            batch.Transition(sourceRes, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            batch.Transition(maskRes, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        }
-
-        cmdList->SetComputeRootSignature(resolvePass_.GetRootSignature());
-        cmdList->SetPipelineState(resolvePass_.pipelineState.Get());
-
-        namespace Bind = RTShadowResolveBind;
-        const BindingTable& table = resolvePass_.bindings;
-        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
-
-        binder.Set(table[Bind::gTraceShadow], SlotSRV(viewIndex, shadowSlot, sourceSlot));
-        binder.Set(table[Bind::gSceneDepth], sceneDepthSRV);
-        binder.Set(table[Bind::gNormalRoughness], normalRoughnessSRV);
-        binder.Set(table[Bind::gOutputShadow], SlotUAV(viewIndex, shadowSlot, TextureSlot::Mask));
-
-        ResolveConstants rc{};
-        rc.fullWidth = static_cast<int>(view.width);
-        rc.fullHeight = static_cast<int>(view.height);
-        rc.traceWidth = static_cast<int>(view.traceWidth);
-        rc.traceHeight = static_cast<int>(view.traceHeight);
-        ExtractProjectionZW(projection, rc.projM33, rc.projM43);
-        rc.traceScale = static_cast<int>(view.traceScale);
-        rc.traceOffsetX = static_cast<int>(view.traceOffsetX);
-        rc.traceOffsetY = static_cast<int>(view.traceOffsetY);
-        rc.phiDepth = settings_.upsamplePhiDepth;
-        binder.SetConstants(table[Bind::ResolveConstants], rc);
-
-        binder.ValidateBeforeDraw(table);
-        cmdList->Dispatch(DispatchGroupCount(view.width), DispatchGroupCount(view.height), 1);
-
-        Barrier::UAV(cmdList, maskRes);
+        denoiser_.Filter(cmdList, GetDenoiseChannel(viewId, shadowSlot), guides, MakeDenoiseSettings());
     }
 }

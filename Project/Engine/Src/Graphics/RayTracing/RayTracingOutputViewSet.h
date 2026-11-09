@@ -18,8 +18,7 @@ namespace CoreEngine
     /// @note スロットの意味は呼び出し元が決める（平坦な添字なので view 単位でも view×ライト×用途でもよい）。
     class RayTracingOutputViewSet {
     public:
-        /// @brief 管理可能なスロット数の上限
-        /// @details 最も多く使う RT シャドウは view(1) × ライト(4) × 用途(6) = 24 スロット。
+        /// @brief 管理可能なスロット数の上限（RTDenoiser はチャンネル 1 つに 6 スロット使う）
         static constexpr uint32_t kMaxSlotCount = 64;
 
         /// @brief テクスチャ 1 枚の作成オプション
