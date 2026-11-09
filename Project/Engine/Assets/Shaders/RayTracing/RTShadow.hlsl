@@ -5,6 +5,7 @@
 
 #include "../Include/Common/DepthReconstruction.hlsli"
 #include "../Include/Common/ShaderMath.hlsli" // PI / TWO_PI
+#include "../Include/Common/Sampling.hlsli" // PcgHash / R2SequenceFixed / SampleRotation
 #include "../Include/RayTracing/RTTrace.hlsli" // RayQuery と材質の表
 
 // 出力: R = シャドウ値（0=影, 1=光）, G = このピクセルに撃ったレイ本数。
@@ -89,36 +90,6 @@ static const int kLightTypeArea = 3;
 // ============================================================
 // ソフトシャドウ用ユーティリティ
 // ============================================================
-
-// PCG ハッシュ
-uint PcgHash(uint seed)
-{
-    uint state = seed * 747796405u + 2891336453u;
-    uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
-    return (word >> 22u) ^ word;
-}
-
-/// @brief R2（Roberts）低食い違い列の第 n 項を 32bit 固定小数で返す
-/// @details 加算列 x_{n+1} = x_n + alpha (mod 1) を uint の桁あふれで実現する。
-///          alpha = round(2^32 / g), round(2^32 / g^2)（g = 塑性数 1.324717957…）。
-///          float で n を掛けると n が大きいところで仮数 24bit を割って列が崩れるが、
-///          整数のままなら何フレーム回しても厳密に同じ列が出る。
-/// @note ホワイトノイズと違い、連続する n が 2 次元空間へ均等に散る。1spp でも
-///       「時間方向に層化されたサンプル列」になるため、テンポラル蓄積の収束が速い。
-uint2 R2SequenceFixed(uint n)
-{
-    return uint2(n * 3242174889u, n * 2447445413u);
-}
-
-/// @brief ピクセルごとの Cranley-Patterson 回転量
-/// @details 同じ R2 列を全ピクセルで共有すると、画面全体が同じ方向へ偏った
-///          サンプルを取り相関ノイズ（縞）になる。ピクセル固有のオフセットを
-///          足して回すことで、空間方向は無相関・時間方向は層化を両立させる。
-uint2 SampleRotation(uint2 pixel)
-{
-    uint h = PcgHash(pixel.x * 73856093u ^ pixel.y * 19349663u);
-    return uint2(h, PcgHash(h));
-}
 
 /// @brief dir を中心軸としたコーン内でランダム方向をサンプリング
 /// @param dir       コーンの中心軸（正規化済み）

@@ -82,4 +82,33 @@ float3 HemisphereSampleCosine(float2 xi)
     return float3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
 }
 
+// ===================================================================
+// 整数の乱数と R2 列
+// ===================================================================
+/// @brief PCG ハッシュ
+uint PcgHash(uint seed)
+{
+    uint state = seed * 747796405u + 2891336453u;
+    uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+    return (word >> 22u) ^ word;
+}
+
+/// @brief R2（Roberts）低食い違い列の第 n 項を 32bit 固定小数で返す
+/// @details 加算列 x_{n+1} = x_n + alpha (mod 1) を uint の桁あふれで求める。
+///          alpha = round(2^32 / g), round(2^32 / g^2)（g = 塑性数 1.324717957…）。
+///          整数のまま求めるので、n が大きくても列は崩れない。
+/// @note 連続する n が 2 次元空間へ均等に散るので、1 画素 1 本でも時間方向に層化された列になる。
+uint2 R2SequenceFixed(uint n)
+{
+    return uint2(n * 3242174889u, n * 2447445413u);
+}
+
+/// @brief 画素ごとの Cranley-Patterson 回転量
+/// @details R2 列へ画素ごとのずらしを足し、空間方向は無相関・時間方向は層化された列にする。
+uint2 SampleRotation(uint2 pixel)
+{
+    uint h = PcgHash(pixel.x * 73856093u ^ pixel.y * 19349663u);
+    return uint2(h, PcgHash(h));
+}
+
 #endif // SAMPLING_HLSLI

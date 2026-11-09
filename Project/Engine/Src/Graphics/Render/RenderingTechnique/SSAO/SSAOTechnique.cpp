@@ -170,6 +170,16 @@ namespace CoreEngine
         }
 
         ImGui::PopID();
+
+        ImGui::PushID("RTAOParams");
+        ImGui::SeparatorText("レイトレーシング（RTAO）");
+        ImGui::TextWrapped("レイトレーシングが使えるときは、上の SSAO の代わりに RTAO で環境光を遮る。"
+            "r.RTAO.Enabled を OFF にすると SSAO に戻る。");
+        CVarUI::DrawTree("r.RTAO");
+        if (ImGui::Button("デフォルトに戻す")) {
+            CVarUI::ResetTree("r.RTAO");
+        }
+        ImGui::PopID();
 #endif
     }
 
