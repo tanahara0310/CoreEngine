@@ -6,6 +6,21 @@
 
 namespace CoreEngine
 {
+    /// @brief 画素デバッガの記録を始める（エディタ版だけ）
+    /// @details 「レイの追跡」タブが頼んだフレームだけ、選んだ画素と記録の数を記録先へ書く。
+    ///          効果のパスはこのフレームに記録版のシェーダで撃つ
+    class RTDebugRayRecordPass : public RenderPass {
+    public:
+        const char* GetName() const override { return "RTDebugRayRecord"; }
+
+        /// @brief GameView のみ実行する
+        bool IsEnabledForView(const RenderViewSettings& view) const override {
+            return view.viewType == RenderViewType::GameView;
+        }
+
+        void Execute(const RenderContext& context) override;
+    };
+
     /// @brief レイトレーシングのデバッグ表示：RT から見たシーンと 1 画素のレイの追跡（エディタ版だけ）
     /// @details デバッグ窓の「見え方」「レイの追跡」タブが頼んだフレームだけ撃つ。TLAS とシーンの深度を読む
     class RTDebugScenePass : public RenderPass {

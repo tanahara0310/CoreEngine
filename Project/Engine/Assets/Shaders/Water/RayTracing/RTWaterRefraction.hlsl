@@ -222,6 +222,7 @@ float3 BuildRefractionDebugColor(
 void RTWaterRefractionRayGen()
 {
     uint2 launchIndex = DispatchRaysIndex().xy;
+    RTRecordBeginPixel(launchIndex, 1u);
     float4 fallbackSample = gSceneColor.Load(int3(launchIndex, 0));
     float ndcDepth = gSceneDepth.Load(int3(launchIndex, 0));
 

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.73.0">
+<meta name="engine-version" content="0.74.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -9649,7 +9649,7 @@ kbd {
       <tr><td><span class="ui">概要</span></td><td>効果（影・環境光の遮り（RTAO）・水のコースティクス・屈折・反射・海底の高さ・海の範囲）ごとの状態・解像度・レイの数・GPU 時間。行を開くと、段ごとの時間と、その効果の設定（CVar）が出ます。<span class="ui">ON</span> を外すと、その効果だけ撃ちません</td></tr>
       <tr><td><span class="ui">中間結果</span></td><td>効果の途中の画像（影の生の値・履歴・マスク、RTAO の生の値・履歴・AO、水面の映り込みの色など）。色の付け方・成分・範囲を選び、この窓・ゲーム画面いっぱい・ゲーム画面の左半分のどこに出すかを選べます。画像の上にマウスを置くと、その画素の生の値が出ます。NaN は紫、+Inf は白、−Inf は水色で出ます</td></tr>
       <tr><td><span class="ui">見え方</span></td><td>カメラから撃ったレイが何に当たったか（物・サブメッシュ・三角形・距離・法線・ベースカラー・印・表か裏か・動くか・ラスタの深度との差・調べた三角形の候補の数・アルファを調べた数）。当てる印と、アルファで抜ける所を通すかを選べます。マウスの下の画素で当たった物の名前とモデルが出ます</td></tr>
-      <tr><td><span class="ui">レイの追跡</span></td><td>1 画素から撃つカメラのレイ・影のレイ・映り込みのレイの、当たった物・距離・三角形・表か裏か。<span class="ui">ゲーム画面で選ぶ</span> を押してゲーム画面をクリックするか、<span class="ui">マウスの下を追う</span> を入れて画素を決めます。レイはゲーム画面に線で描きます（白 = カメラ、黄 = 影、赤 = 影のレイが当たった、水色 = 映り込み）</td></tr>
+      <tr><td><span class="ui">レイの追跡</span></td><td>選んだ 1 画素で、各効果（影・RTAO・水のコースティクス・屈折・反射）が実際に撃ったレイと、この窓が撃つカメラのレイの表。効果・撃ち方（いちばん近い所を探すか、遮られるかだけを見るか）・当たったか・距離・物・サブメッシュ・三角形・表か裏か・印・アルファを調べた数が出ます。<span class="ui">効果</span> で 1 つの効果に絞れます。<span class="ui">ゲーム画面で選ぶ</span> を押してゲーム画面をクリックするか、<span class="ui">マウスの下を追う</span> を入れて画素を決めます。レイはゲーム画面に線で描きます（白 = カメラ、ほかは表の左の印と同じ効果ごとの色。当たったレイは当たった所で止まり、十字が付きます）。効果のシェーダに書いた <code>RT_DEBUG_PRINT</code> の値もここに出ます</td></tr>
       <tr><td><span class="ui">加速構造</span></td><td>BLAS と TLAS の数と大きさ、TLAS の行の一覧（物・モデル・出どころ・印・形・三角形の数・BLAS の大きさ）。名前・出どころ・形・印で絞り込めます。選んだ行の物の箱をゲーム画面に描きます</td></tr>
       <tr><td><span class="ui">チェック</span></td><td>TLAS ができているか・材質の表の番号がヒープの中か・物の行列に NaN や拡大率 0 が無いか・加速構造のメモリ・中間結果の NaN と Inf（<span class="ui">中間結果を見回る</span> を入れている間だけ数えます）。<span class="ui">今の結果を記録</span> を押しておくと、後で増えた結果に「新」が付きます</td></tr>
     </tbody>
@@ -9666,7 +9666,16 @@ kbd {
   </table>
   </div>
   <div class="callout note"><p>窓を閉じると、帯のスイッチと <span class="ui">概要</span> の <span class="ui">ON</span> は元に戻ります（凍結や止めたままにはなりません）。ゲームの書き出し（Release 版）には、この窓も切り分けのスイッチも入りません。</p></div>
-  <p>エンジンに新しいレイトレーシングの効果を足すときは、その効果の .cpp だけを書きます。効果の本体（<code>RTEffect</code> を継いだクラス）とパスを <code>RT_EFFECT_REGISTER</code> で申告すれば、効果が作られ、パスはパイプラインの申告したフェーズと優先度へ入ります。パスの中では <code>FindRTEffect&lt;T&gt;(context)</code> で効果を引きます。窓には、同じ .cpp に <code>RT_DEBUG_EFFECT_REGISTER</code>（概要の行）・<code>RT_DEBUG_CHANNEL_REGISTER</code>（中間結果）・<code>RT_DEBUG_CHECK_REGISTER</code>（チェック）を書けば並びます。パイプラインの組み立ても窓のコードも変えなくて構いません。効果のパスの <code>Execute</code> の頭で、取り口の <code>IsActive()</code> が false なら撃たずに戻ります。</p>
+  <p><span class="ui">レイの追跡</span> のタブを開いている間は、効果を「記録版」のシェーダで撃ちます。記録版は、選んだ画素で共通の関数 <code>TraceRTScene</code>・<code>TraceRTOpaqueClosestHit</code>（<span class="path">Include/RayTracing/RTTrace.hlsli</span>）が撃ったレイを全部書き残します。記録版は初めて追跡するときに作るので、そのとき少し止まります。タブを離れるか <span class="ui">止める</span> を入れると、いつものシェーダに戻ります。1 フレームに記録するのはレイ 256 本・値 64 個までで、それより多いときは表の上に出ます。</p>
+  <p>シェーダの途中の値を見たいときは、効果のシェーダに <code>RT_DEBUG_PRINT(値);</code> と書きます。選んだ画素で書いた値が、タブの <span class="ui">シェーダの値（RT_DEBUG_PRINT）</span> に、効果の名前・ファイル・行と一緒に出ます。渡せるのは float・int・uint・bool の 1〜4 成分です。いつものシェーダ（記録版でないもの・ゲームの書き出し）では、この行は何もしない行になります。シェーダを書き換えたら、エディタを開き直してください。</p>
+  <script type="text/x-code" data-lang="text" data-file="効果のシェーダ（例：RTAO.CS.hlsl）">
+    // 選んだ画素で、この行の値がレイの追跡のタブに出る
+    RT_DEBUG_PRINT(traceCoord);          // uint2
+    RT_DEBUG_PRINT(normal);              // float3
+    RT_DEBUG_PRINT(hit.hit);             // bool
+  </script>
+  <p>エンジンに新しいレイトレーシングの効果を足すときは、その効果の .cpp とシェーダだけを書きます。効果の本体（<code>RTEffect</code> を継いだクラス）とパスを <code>RT_EFFECT_REGISTER</code> で申告すれば、効果が作られ、パスはパイプラインの申告したフェーズと優先度へ入ります。パスの中では <code>FindRTEffect&lt;T&gt;(context)</code> で効果を引きます。窓には、同じ .cpp に <code>RT_DEBUG_EFFECT_REGISTER</code>（概要の行）・<code>RT_DEBUG_CHANNEL_REGISTER</code>（中間結果）・<code>RT_DEBUG_CHECK_REGISTER</code>（チェック）を書けば並びます。パイプラインの組み立ても窓のコードも変えなくて構いません。効果のパスの <code>Execute</code> の頭で、取り口の <code>IsActive()</code> が false なら撃たずに戻ります。</p>
+  <p>新しい効果のレイを <span class="ui">レイの追跡</span> に出すには、シェーダの入口で 1 回 <code>RTRecordBeginPixel(トレース解像度の座標, 画面の解像度との比);</code> を呼び、レイは <code>TraceRTScene</code>・<code>TraceRTOpaqueClosestHit</code> で撃ちます。DXR のパス（<code>RayTracingPassBase</code> を継いだもの）は、<code>Initialize</code> で <code>EnableRayRecord(シェーダ, RayGen の名前, 表に出す名前)</code> を呼び、<code>DispatchRays</code> の直前に <code>SetDispatchPipeline</code> でパイプラインを差して記述子を受け取ります。記録版は記録先をヒープの番号で引くので、ルートシグネチャに <code>CBV_SRV_UAV_HEAP_DIRECTLY_INDEXED</code> が要ります。</p>
   <p>レイで求めた 0〜1 の割合（光が届いた割合など）のざらつきは、<code>RTDenoiser</code>（<span class="path">Graphics/RayTracing/Denoise/RTDenoiser.h</span>）で取れます。効果の <code>Initialize</code> で、信号の数をチャンネルの数として渡します。毎フレーム、チャンネルごとに次の順で呼びます。</p>
   <ol>
     <li><code>Prepare</code>：テクスチャをそろえ、履歴の書き込み先を入れ替えます。渡す値（影ならライトを見分ける値）が前と違うときと、前のフレームに呼んでいないときは、履歴を捨てます。</li>
@@ -11390,6 +11399,15 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-74-0">v0.74.0 <span class="dim">（2026-11-09）</span></h3>
+  <p>レイトレーシングの窓の <span class="ui">レイの追跡</span> で、選んだ画素で各効果が実際に撃ったレイと、シェーダの途中の値を見られるようにした版です（<a href="#g3d-shadow-debug">影や映り込みがおかしいとき</a>）。ゲームの見た目と、いつものシェーダの中身は変わりません。</p>
+  <ul>
+    <li><strong>画素デバッガ</strong>：<span class="ui">レイの追跡</span> のタブを開いている間、影・RTAO・水のコースティクス・屈折・反射を記録版のシェーダで撃ち、選んだ画素で撃ったレイを全部（1 フレーム 256 本まで）表と 3D の線に出します。記録は共通の関数 <code>TraceRTScene</code>・<code>TraceRTOpaqueClosestHit</code> の中で行います。窓が自分で撃っていた、効果に近づけた影と映り込みのレイはやめ、カメラのレイだけ残しました。</li>
+    <li><strong>RT_DEBUG_PRINT</strong>：効果のシェーダに <code>RT_DEBUG_PRINT(値);</code> と書くと、選んだ画素の値（float・int・uint・bool の 1〜4 成分。1 フレーム 64 個まで）がタブに出ます。いつものシェーダでは何もしない行になります。</li>
+    <li><strong>効果を足すとき</strong>：DXR のパスは <code>DispatchRays</code> の直前に <code>SetDispatchPipeline</code>（<code>RayTracingPassBase</code>）でパイプラインを差すようにしました。追跡に出したい効果は、<code>EnableRayRecord</code> と、シェーダの入口の <code>RTRecordBeginPixel</code> を足します。</li>
+    <li><strong>試験用のプロジェクト</strong>：<span class="path">Projects/EngineTests</span> の README に、影と RTAO のシーンで画素デバッガを確かめる手順を足しました。</li>
+  </ul>
 
   <h3 id="changelog-v0-73-0">v0.73.0 <span class="dim">（2026-11-09）</span></h3>
   <p>物の間の暗がり（AO）をレイトレーシングで求める RTAO を足した版です（<a href="#g3d-ao">物の間の暗がり（AO）</a>）。</p>

@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <future>
 #include <string>
+#include <string_view>
 
 #include "Graphics/RootSignature/RootSignatureManager.h"
 #include "Graphics/Shader/ShaderBindingContract.h"
@@ -114,6 +115,22 @@ namespace CoreEngine
 
         const char* GetOwnerName() const { return ownerName_; }
 
+        /// @brief 画素デバッガが記録するフレームに、記録版のシェーダで撃てるようにする（Initialize で呼ぶ）
+        /// @details 記録版はエディタ版だけ、初めて記録するフレームに作る。製品版では何もしない
+        /// @param shaderPath  GetOrCreateLibrary に渡したシェーダ
+        /// @param rayGenName  RayGen の名前（静的記憶域の文字列）
+        /// @param recordLabel 記録の表に出す名前（SetDispatchPipeline で名前を渡さないときに使う）
+        void EnableRayRecord(const wchar_t* shaderPath, const wchar_t* rayGenName, const char* recordLabel);
+
+        /// @brief パイプラインを差し、DispatchRays の記述子を返す（DispatchRays の直前に呼ぶ）
+        /// @details 画素デバッガが記録しているフレームは記録版の State Object を差し、撃ったレイを記録させる
+        /// @param recordLabel 記録の表に出す名前（空なら EnableRayRecord の名前）
+        D3D12_DISPATCH_RAYS_DESC SetDispatchPipeline(
+            ID3D12GraphicsCommandList4* cmdList4,
+            UINT width,
+            UINT height,
+            std::string_view recordLabel = {});
+
         GraphicsCore* dxCommon_ = nullptr;
         DescriptorAllocator* descriptorAllocator_ = nullptr;
         AccelerationStructureManager* asMgr_ = nullptr;
@@ -144,6 +161,24 @@ namespace CoreEngine
         const char* outputDebugName_ = "RTOutput";
         /// @brief 最後に警告ログへ出したガードの結果（同じ理由を毎フレーム出さない）
         DispatchGuardStatus lastReportedGuardStatus_ = DispatchGuardStatus::Ok;
+
+#ifdef CORE_EDITOR
+        /// @brief 記録版の State Object とシェーダーテーブルを作る（作れていれば true）
+        bool EnsureRayRecordPipeline();
+
+        /// @brief 画素デバッガの記録版のパイプライン
+        struct RayRecordPipeline {
+            std::wstring shaderPath;
+            const wchar_t* rayGenName = nullptr;
+            std::string label;
+            Microsoft::WRL::ComPtr<ID3D12StateObject> stateObject;
+            Microsoft::WRL::ComPtr<ID3D12StateObjectProperties> properties;
+            ShaderTableBuilder shaderTable;
+            bool enabled = false;
+            bool failed = false;
+        };
+        RayRecordPipeline rayRecord_;
+#endif
 
         /// @brief State Object とシェーダーテーブルを作る別スレッドの仕事（作れたら true）
         /// @note 書き込む先のメンバより後に宣言し、先に破棄されて完成を待つ

@@ -44,6 +44,10 @@ namespace CoreEngine
 
         // フレーム前処理: DXR 加速構造構築（frameNumber ガードでフレーム内 1 回のみ実行）
         pipeline.AddPass(std::make_unique<ASBuildPass>(), RenderPassPhase::FrameSetup);
+#ifdef CORE_EDITOR
+        // 画素デバッガが頼んだフレームだけ、レイを撃つどの効果よりも先に記録先を用意する
+        pipeline.AddPass(std::make_unique<RTDebugRayRecordPass>(), RenderPassPhase::FrameSetup, 5);
+#endif
 
         // フレーム前処理: 大気散乱 LUT 生成（パラメータ変更時のみ Compute 実行）
         // パス自身が SRV ヒープをバインドするため、フレーム先頭でも安全に実行できる

@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <exception>
 #include <iterator>
+#include <string>
 
 #include "Graphics/Pipeline/ComputePipelineUtil.h"
 #include "Graphics/RHI/GraphicsCore.h"
@@ -144,6 +145,9 @@ namespace CoreEngine
             return false;
         }
 
+#ifdef CORE_EDITOR
+        shaderProgramCache_ = init.shaderProgramCache;
+#endif
         const ShaderProgram* program = init.shaderProgramCache->GetOrCreateCompute(L"RTAO.CS.hlsl", "RTAO", L"cs_6_6");
         if (!program) {
             log.Errorf(LogCategory::Graphics, LogSubCategory::Pipeline, "RTAO: シェーダーをコンパイルできませんでした");
@@ -286,7 +290,17 @@ namespace CoreEngine
         constants.hitSubMeshTableIndex = hitTables.IsValid() ? hitTables.subMeshTable : kRTHitNoTexture;
 
         cmdList->SetComputeRootSignature(rootSigMgr_.GetRootSignature());
-        cmdList->SetPipelineState(pipelineState_.Get());
+        ID3D12PipelineState* pipelineState = pipelineState_.Get();
+#ifdef CORE_EDITOR
+        // 画素デバッガが記録するフレームは記録版で撃つ
+        if (RTDebug::IsRecordingRays()) {
+            if (ID3D12PipelineState* recordPipelineState = GetRayRecordPipeline()) {
+                RTDebug::BeginRayRecordDispatch(cmdList, "環境光の遮り（RTAO）", "RTAO.CS.hlsl");
+                pipelineState = recordPipelineState;
+            }
+        }
+#endif
+        cmdList->SetPipelineState(pipelineState);
 
         // 入力へ書き、前フレームの履歴（現れた直後の画素の判定）を読む
         denoiser_.BeginInputWrite(cmdList, kDenoiseChannel);
@@ -309,6 +323,31 @@ namespace CoreEngine
         dispatchInfo_.rayCount =
             static_cast<uint64_t>(traceWidth) * static_cast<uint64_t>(traceHeight) * static_cast<uint64_t>(sampleCount);
     }
+
+#ifdef CORE_EDITOR
+    ID3D12PipelineState* RTAmbientOcclusion::GetRayRecordPipeline()
+    {
+        if (recordPipelineState_ || recordPipelineFailed_ || !shaderProgramCache_ || !dxCommon_) {
+            return recordPipelineState_.Get();
+        }
+        // 作れなかったら次から試さない
+        recordPipelineFailed_ = true;
+        const std::wstring path = RTDebug::WriteRayRecordShader(shaderProgramCache_->GetCompiler(), L"RTAO.CS.hlsl");
+        if (path.empty()) {
+            return nullptr;
+        }
+        const ShaderProgram* program = shaderProgramCache_->GetOrCreateCompute(path, "RTAO.Record", L"cs_6_6");
+        if (!program) {
+            Logger::GetInstance().Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
+                "RTAO: 画素デバッガの記録版をコンパイルできませんでした");
+            return nullptr;
+        }
+        recordPipelineState_ = ComputePipelineUtil::Create(
+            dxCommon_->GetDevice(), rootSigMgr_.GetRootSignature(), program->GetCS(), "RTAO.Record");
+        recordPipelineFailed_ = !recordPipelineState_;
+        return recordPipelineState_.Get();
+    }
+#endif
 
     void RTAmbientOcclusion::Accumulate(ID3D12GraphicsCommandList* cmdList, const RTDenoiseGuides& guides)
     {

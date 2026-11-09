@@ -16,6 +16,7 @@ namespace CoreEngine
 {
     class GraphicsCore;
     class AccelerationStructureManager;
+    class ShaderProgramCache;
 
     /// @brief RTAO の調整値（実体は CVar "r.RTAO.*"）
     struct RTAOSettings {
@@ -92,6 +93,15 @@ namespace CoreEngine
 
         /// @brief トレース解像度の縮小率（1 = フル解像度 / 2 = ハーフ解像度）
         UINT GetTraceScale() const { return settings_.halfResolutionTrace ? 2u : 1u; }
+
+#ifdef CORE_EDITOR
+        /// @brief 画素デバッガの記録版のパイプライン（初めて記録するフレームに作る。作れなければ nullptr）
+        ID3D12PipelineState* GetRayRecordPipeline();
+
+        ShaderProgramCache* shaderProgramCache_ = nullptr;
+        Microsoft::WRL::ComPtr<ID3D12PipelineState> recordPipelineState_;
+        bool recordPipelineFailed_ = false;
+#endif
 
         GraphicsCore* dxCommon_ = nullptr;
         AccelerationStructureManager* asMgr_ = nullptr;

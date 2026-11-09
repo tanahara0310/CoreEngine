@@ -15,6 +15,7 @@ namespace CoreEngine
     class LightManager;
     class RenderDomainContext;
     class RTDebugSystem;
+    class ShaderCompiler;
     struct RenderContext;
 
     /// @brief 中間結果の色の付け方
@@ -170,6 +171,17 @@ namespace CoreEngine
         void SetSceneFrozen(bool frozen);
         void SetNoiseFixed(bool fixed);
         void SetStopped(bool stopped);
+
+        /// @brief 画素デバッガがこのフレームに効果のレイを記録しているか（記録版のシェーダで撃つフレーム）
+        bool IsRecordingRays();
+        /// @brief 記録を足した版のシェーダを Intermediate へ書き、そのパスを返す（作れなければ空）
+        /// @param compiler   元のシェーダの場所を引く
+        /// @param shaderPath 元のシェーダ（GetOrCreateLibrary・GetOrCreateCompute に渡したもの）
+        std::wstring WriteRayRecordShader(const ShaderCompiler& compiler, const std::wstring& shaderPath);
+        /// @brief 続くディスパッチが撃つレイと値に付ける名前を記録先へ書く（記録していなければ何もしない）
+        /// @param label      表に出す名前
+        /// @param shaderName シェーダのファイル名（RT_DEBUG_PRINT の行の持ち主）
+        void BeginRayRecordDispatch(ID3D12GraphicsCommandList* cmdList, std::string label, std::string shaderName);
     }
 
     /// @brief フレームの掲示板に載った画像を中間結果として引く（今フレームに載っていなければ false）
@@ -186,6 +198,7 @@ namespace CoreEngine
         constexpr bool IsNoiseFixed() { return false; }
         constexpr uint32_t NoiseFrame(uint32_t frame) { return frame; }
         constexpr bool IsStopped() { return false; }
+        constexpr bool IsRecordingRays() { return false; }
     }
 #endif
 }

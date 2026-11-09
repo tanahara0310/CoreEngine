@@ -180,19 +180,114 @@ namespace CoreEngine
             return object ? object->GetName() : "（消えた物）";
         }
 
-        /// @brief 追跡したレイの種類の名前
-        std::string RayKindName(uint32_t kind)
+        // D3D12_RAY_FLAG_* のうち表に出すもの
+        constexpr uint32_t kRayFlagForceOpaque = 0x1;
+        constexpr uint32_t kRayFlagAcceptFirstHit = 0x4;
+        constexpr uint32_t kRayFlagCullBack = 0x10;
+        constexpr uint32_t kRayFlagCullFront = 0x20;
+
+        /// @brief レイの撃ち方（フラグから）
+        std::string RayFlagsText(uint32_t rayFlags)
         {
-            if (kind == 0) {
-                return "カメラ";
+            std::string text = (rayFlags & kRayFlagAcceptFirstHit) != 0 ? "遮られるか" : "いちばん近い所";
+            if ((rayFlags & kRayFlagForceOpaque) != 0) {
+                text += "・不透明として";
             }
-            if (kind >= 1 && kind <= 4) {
-                return std::format("影（ライト {}）", kind - 1);
+            if ((rayFlags & kRayFlagCullBack) != 0) {
+                text += "・裏を飛ばす";
             }
-            if (kind == 5) {
-                return "映り込み";
+            if ((rayFlags & kRayFlagCullFront) != 0) {
+                text += "・表を飛ばす";
             }
-            return "?";
+            return text;
+        }
+
+        /// @brief 記録したディスパッチの名前（範囲外 = 名前なし）
+        const char* DispatchLabel(const RTDebugRayRecordResult& record, uint32_t dispatch)
+        {
+            return dispatch < record.dispatches.size() ? record.dispatches[dispatch].label.c_str() : "（名前なし）";
+        }
+
+        const char* DispatchShader(const RTDebugRayRecordResult& record, uint32_t dispatch)
+        {
+            return dispatch < record.dispatches.size() ? record.dispatches[dispatch].shaderName.c_str() : "?";
+        }
+
+        /// @brief 記録したディスパッチごとの色（表の印と 3D の線で同じ色）
+        Vector3 DispatchColor(const RTDebugRayRecordResult& record, uint32_t dispatch)
+        {
+            constexpr float kPalette[][3] = {
+                { 1.00f, 0.85f, 0.20f }, { 0.30f, 0.90f, 1.00f }, { 1.00f, 0.45f, 0.30f },
+                { 0.50f, 1.00f, 0.40f }, { 0.85f, 0.50f, 1.00f }, { 1.00f, 0.60f, 0.80f },
+            };
+            if (dispatch >= record.dispatches.size()) {
+                return Vector3{ 0.6f, 0.6f, 0.6f };
+            }
+            const float* c = kPalette[dispatch % std::size(kPalette)];
+            return Vector3{ c[0], c[1], c[2] };
+        }
+
+        float FloatFromBits(uint32_t bits)
+        {
+            float value = 0.0f;
+            std::memcpy(&value, &bits, sizeof(value));
+            return value;
+        }
+
+        /// @brief RT_DEBUG_PRINT の値を種類に合わせて書く
+        std::string FormatPrintedValue(const RTDebugPrintedValue& value)
+        {
+            std::string text;
+            for (uint32_t c = 0; c < value.components; ++c) {
+                if (c > 0) {
+                    text += ", ";
+                }
+                const uint32_t bits = value.bits[c];
+                switch (value.type) {
+                case RTDebugPrintType::Float: text += std::format("{:.6g}", FloatFromBits(bits)); break;
+                case RTDebugPrintType::Uint:  text += std::format("{}", bits); break;
+                case RTDebugPrintType::Int:   text += std::format("{}", static_cast<int32_t>(bits)); break;
+                case RTDebugPrintType::Bool:  text += bits != 0 ? "true" : "false"; break;
+                }
+            }
+            return value.components > 1 ? "(" + text + ")" : text;
+        }
+
+        /// @brief 線 1 本と、当たった所の十字
+        void AddRayLines(std::vector<Line>& lines, const Vector3& origin, const Vector3& direction,
+            float tMin, float tMax, bool hit, float hitT, const Vector3& color)
+        {
+            constexpr float kMissLength = 300.0f;
+            const float end = hit ? hitT : (std::min)(tMax, kMissLength);
+            const float start = (std::min)((std::max)(tMin, 0.0f), end);
+            auto at = [&](float t) {
+                return Vector3{ origin.x + direction.x * t, origin.y + direction.y * t, origin.z + direction.z * t };
+            };
+            const Vector3 endPoint = at(end);
+            lines.emplace_back(at(start), endPoint, color, 1.0f, false);
+            if (hit) {
+                const float s = (std::max)(end * 0.01f, 0.02f);
+                lines.emplace_back(Vector3{ endPoint.x - s, endPoint.y, endPoint.z }, Vector3{ endPoint.x + s, endPoint.y, endPoint.z }, color, 1.0f, false);
+                lines.emplace_back(Vector3{ endPoint.x, endPoint.y - s, endPoint.z }, Vector3{ endPoint.x, endPoint.y + s, endPoint.z }, color, 1.0f, false);
+                lines.emplace_back(Vector3{ endPoint.x, endPoint.y, endPoint.z - s }, Vector3{ endPoint.x, endPoint.y, endPoint.z + s }, color, 1.0f, false);
+            }
+        }
+
+        /// @brief 当たった物の名前（行の持ち主）を表のセルへ書く
+        void DrawHitObjectCell(const RTDebugQuery& query, const RTScene* scene, bool hit, uint32_t row)
+        {
+            if (hit && scene && row < scene->GetRows().size()) {
+                const RTScene::RowRecord& record = scene->GetRows()[row];
+                ImGui::Text("%s", ObjectNameOf(query.objects, record.owner).c_str());
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("行 %u・%s", row,
+                        record.resource ? FileNameOf(record.resource->GetFilePath()).c_str() : "?");
+                }
+            } else if (hit) {
+                ImGui::Text("行 %u", row);
+            } else {
+                ImGui::TextDisabled("--");
+            }
         }
 
         /// @brief 結果が今のフレームに近いか
@@ -1158,7 +1253,7 @@ namespace CoreEngine
         ImGui::SameLine();
         ImGui::Checkbox("3D の線で描く", &drawTraceLines_);
         if (ImGui::IsItemHovered()) {
-            ImGui::SetTooltip("白 = カメラのレイ・黄 = 影のレイ（赤 = 何かに当たって影）・水色 = 映り込みのレイ（青 = 何にも当たらない）");
+            ImGui::SetTooltip("白 = カメラのレイ・ほかは表の左の印と同じ効果ごとの色。当たったレイは当たった所で止めて十字を付ける");
         }
 
         if (!traceHold_) {
@@ -1188,52 +1283,88 @@ namespace CoreEngine
         }
 
         RTScene* scene = query.domain ? query.domain->GetRTScene() : nullptr;
-        if (ImGui::BeginTable("##TracedRays", 9,
-                ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
-            ImGui::TableSetupColumn("レイ");
+        const RTDebugRayRecordResult& record = debug.GetRayRecordResult();
+        const bool recordValid = record.valid;
+        if (recordValid) {
+            // 記録に無いディスパッチを選んでいたら全部に戻す
+            if (traceDispatchFilter_ >= static_cast<int>(record.dispatches.size())) {
+                traceDispatchFilter_ = -1;
+            }
+            ImGui::SetNextItemWidth(ImGui::GetFontSize() * 16.0f);
+            const char* preview = traceDispatchFilter_ < 0
+                ? "全部の効果" : record.dispatches[static_cast<size_t>(traceDispatchFilter_)].label.c_str();
+            if (ImGui::BeginCombo("効果", preview)) {
+                if (ImGui::Selectable("全部の効果", traceDispatchFilter_ < 0)) {
+                    traceDispatchFilter_ = -1;
+                }
+                for (size_t d = 0; d < record.dispatches.size(); ++d) {
+                    const std::string label = std::format("{}##dispatch{}", record.dispatches[d].label, d);
+                    if (ImGui::Selectable(label.c_str(), traceDispatchFilter_ == static_cast<int>(d))) {
+                        traceDispatchFilter_ = static_cast<int>(d);
+                    }
+                }
+                ImGui::EndCombo();
+            }
+            ImGui::SameLine();
+            ImGui::TextDisabled("効果のレイ %u 本・値 %u 個", record.rayTotal, record.printTotal);
+            if (record.rayTotal > record.rays.size()) {
+                ImGui::TextColored(kColorWarning, "撃ったレイ %u 本のうち、先頭の %zu 本だけ記録した",
+                    record.rayTotal, record.rays.size());
+            }
+        }
+        auto shown = [this](uint32_t dispatch) {
+            return traceDispatchFilter_ < 0 || static_cast<uint32_t>(traceDispatchFilter_) == dispatch;
+        };
+
+        const float swatch = ImGui::GetFontSize() * 0.8f;
+        size_t shownRays = 0;
+        if (recordValid) {
+            for (const RTDebugRecordedRay& ray : record.rays) {
+                shownRays += shown(ray.dispatch) ? 1 : 0;
+            }
+        }
+        const float rowHeight = ImGui::GetTextLineHeightWithSpacing();
+        const ImVec2 tableSize(0.0f, shownRays > 12 ? rowHeight * 14.0f : 0.0f);
+        ImGuiTableFlags tableFlags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders;
+        if (shownRays > 12) {
+            tableFlags |= ImGuiTableFlags_ScrollY;
+        }
+        if (ImGui::BeginTable("##TracedRays", 10, tableFlags, tableSize)) {
+            ImGui::TableSetupScrollFreeze(0, 1);
+            ImGui::TableSetupColumn("効果");
+            ImGui::TableSetupColumn("撃ち方");
             ImGui::TableSetupColumn("結果");
             ImGui::TableSetupColumn("距離");
             ImGui::TableSetupColumn("物");
             ImGui::TableSetupColumn("サブメッシュ");
             ImGui::TableSetupColumn("三角形");
             ImGui::TableSetupColumn("面");
-            ImGui::TableSetupColumn("候補");
+            ImGui::TableSetupColumn("印");
             ImGui::TableSetupColumn("アルファ");
             ImGui::TableHeadersRow();
-            for (const RTDebugTracedRay& ray : result.rays) {
+
+            // カメラのレイ（デバッグ窓が撃つ）
+            {
+                const RTDebugTracedRay& ray = result.cameraRay;
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
-                ImGui::TextUnformatted(RayKindName(ray.kind).c_str());
+                ImGui::ColorButton("##cameraColor", ImVec4(1.0f, 1.0f, 1.0f, 1.0f),
+                    ImGuiColorEditFlags_NoTooltip, ImVec2(swatch, swatch));
+                ImGui::SameLine();
+                ImGui::TextUnformatted("カメラ（この窓）");
                 if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("始点 (%.3f, %.3f, %.3f)\n向き (%.3f, %.3f, %.3f)\n最大 %.1f m・印 %s",
+                    ImGui::SetTooltip("始点 (%.3f, %.3f, %.3f)\n向き (%.3f, %.3f, %.3f)\n最大 %.1f m\n候補 %u（当たり判定へ来た三角形の数）",
                         ray.origin.x, ray.origin.y, ray.origin.z, ray.direction.x, ray.direction.y, ray.direction.z,
-                        ray.tMax, MaskLetters(ray.instanceMask).c_str());
+                        ray.tMax, ray.candidates);
                 }
                 ImGui::TableNextColumn();
-                if (ray.hit) {
-                    ImGui::TextColored(ray.kind >= 1 && ray.kind <= 4 ? kColorWarning : kColorOk, "当たった");
-                } else {
-                    ImGui::TextDisabled("抜けた");
-                }
+                ImGui::TextUnformatted("いちばん近い所");
                 ImGui::TableNextColumn();
-                if (ray.hit) {
-                    ImGui::Text("%.3f m", ray.hitT);
-                } else {
-                    ImGui::TextDisabled("--");
-                }
+                ray.hit ? ImGui::TextColored(kColorOk, "当たった") : ImGui::TextDisabled("抜けた");
                 ImGui::TableNextColumn();
-                if (ray.hit && scene && ray.row < scene->GetRows().size()) {
-                    const RTScene::RowRecord& record = scene->GetRows()[ray.row];
-                    ImGui::Text("%s", ObjectNameOf(query.objects, record.owner).c_str());
-                    if (ImGui::IsItemHovered()) {
-                        ImGui::SetTooltip("行 %u・%s", ray.row,
-                            record.resource ? FileNameOf(record.resource->GetFilePath()).c_str() : "?");
-                    }
-                } else if (ray.hit) {
-                    ImGui::Text("行 %u", ray.row);
-                } else {
-                    ImGui::TextDisabled("--");
-                }
+                ray.hit ? ImGui::Text("%.3f m", ray.hitT) : ImGui::TextDisabled("--");
+                ImGui::TableNextColumn();
+                DrawHitObjectCell(query, scene, ray.hit, ray.row);
                 ImGui::TableNextColumn();
                 ray.hit ? ImGui::Text("%u", ray.geometry) : ImGui::TextDisabled("--");
                 ImGui::TableNextColumn();
@@ -1241,13 +1372,110 @@ namespace CoreEngine
                 ImGui::TableNextColumn();
                 ray.hit ? ImGui::TextUnformatted(ray.frontFace ? "表" : "裏") : ImGui::TextDisabled("--");
                 ImGui::TableNextColumn();
-                ImGui::Text("%u", ray.candidates);
+                ImGui::TextUnformatted(MaskLetters(ray.instanceMask).c_str());
                 ImGui::TableNextColumn();
                 ImGui::Text("%u", ray.alphaTests);
             }
+
+            // 効果が撃ったレイ（記録版のシェーダが書いたもの）
+            if (recordValid) {
+                int rowId = 0;
+                for (const RTDebugRecordedRay& ray : record.rays) {
+                    if (!shown(ray.dispatch)) {
+                        continue;
+                    }
+                    ImGui::PushID(rowId++);
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    const Vector3 color = DispatchColor(record, ray.dispatch);
+                    ImGui::ColorButton("##color", ImVec4(color.x, color.y, color.z, 1.0f),
+                        ImGuiColorEditFlags_NoTooltip, ImVec2(swatch, swatch));
+                    ImGui::SameLine();
+                    ImGui::TextUnformatted(DispatchLabel(record, ray.dispatch));
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("%s・撃った画素 (%u, %u)\n始点 (%.3f, %.3f, %.3f)\n向き (%.3f, %.3f, %.3f)\n範囲 %.3f〜%.3f m・フラグ 0x%X",
+                            DispatchShader(record, ray.dispatch), ray.traceX, ray.traceY,
+                            ray.origin.x, ray.origin.y, ray.origin.z, ray.direction.x, ray.direction.y, ray.direction.z,
+                            ray.tMin, ray.tMax, ray.rayFlags);
+                    }
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(RayFlagsText(ray.rayFlags).c_str());
+                    ImGui::TableNextColumn();
+                    if (ray.hit) {
+                        // 遮られるかを見るレイは、当たった = 遮られた
+                        const bool blocked = (ray.rayFlags & kRayFlagAcceptFirstHit) != 0;
+                        ImGui::TextColored(blocked ? kColorWarning : kColorOk, blocked ? "遮られた" : "当たった");
+                    } else {
+                        ImGui::TextDisabled("抜けた");
+                    }
+                    ImGui::TableNextColumn();
+                    ray.hit ? ImGui::Text("%.3f m", ray.hitT) : ImGui::TextDisabled("--");
+                    ImGui::TableNextColumn();
+                    DrawHitObjectCell(query, scene, ray.hit, ray.row);
+                    ImGui::TableNextColumn();
+                    ray.hit ? ImGui::Text("%u", ray.geometry) : ImGui::TextDisabled("--");
+                    ImGui::TableNextColumn();
+                    ray.hit ? ImGui::Text("%u", ray.primitive) : ImGui::TextDisabled("--");
+                    ImGui::TableNextColumn();
+                    ray.hit ? ImGui::TextUnformatted(ray.frontFace ? "表" : "裏") : ImGui::TextDisabled("--");
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(MaskLetters(ray.instanceMask).c_str());
+                    ImGui::TableNextColumn();
+                    if (ray.cutouts > 0) {
+                        ImGui::Text("%u（抜け %u）", ray.alphaTests, ray.cutouts);
+                    } else {
+                        ImGui::Text("%u", ray.alphaTests);
+                    }
+                    ImGui::PopID();
+                }
+            }
             ImGui::EndTable();
         }
-        ImGui::TextDisabled("候補 = 当たり判定へ来た三角形の数（不透明な物は最初の 1 つで決まる）");
+        if (!recordValid || record.rays.empty()) {
+            ImGui::TextDisabled("効果のレイはまだ無い（この画素を照らす効果が動いていないか、結果がまだ届いていない）");
+        }
+        ImGui::TextDisabled("アルファ = アルファで抜けるかを調べた候補の数（抜け = そのうち通り抜けた数）");
+        ImGui::TextDisabled("効果のレイは記録版のシェーダで撃つ。初めて追跡するときは記録版を作るので少し止まる");
+
+        // RT_DEBUG_PRINT の値
+        SectionHeader("シェーダの値（RT_DEBUG_PRINT）");
+        size_t shownPrints = 0;
+        if (recordValid) {
+            for (const RTDebugPrintedValue& value : record.prints) {
+                shownPrints += shown(value.dispatch) ? 1 : 0;
+            }
+        }
+        if (shownPrints == 0) {
+            ImGui::TextDisabled("なし（効果のシェーダに RT_DEBUG_PRINT(値); と書くと、この画素で書いた値がここに出る）");
+            return;
+        }
+        if (record.printTotal > record.prints.size()) {
+            ImGui::TextColored(kColorWarning, "書いた値 %u 個のうち、先頭の %zu 個だけ記録した",
+                record.printTotal, record.prints.size());
+        }
+        if (ImGui::BeginTable("##PrintedValues", 3,
+                ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders)) {
+            ImGui::TableSetupColumn("効果");
+            ImGui::TableSetupColumn("書いた所");
+            ImGui::TableSetupColumn("値");
+            ImGui::TableHeadersRow();
+            for (const RTDebugPrintedValue& value : record.prints) {
+                if (!shown(value.dispatch)) {
+                    continue;
+                }
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(DispatchLabel(record, value.dispatch));
+                ImGui::TableNextColumn();
+                ImGui::Text("%s : %u 行", DispatchShader(record, value.dispatch), value.line);
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("書いた画素（効果のトレース解像度）(%u, %u)", value.traceX, value.traceY);
+                }
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(FormatPrintedValue(value).c_str());
+            }
+            ImGui::EndTable();
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -1591,24 +1819,17 @@ namespace CoreEngine
         if (debug && traceActive_ && drawTraceLines_) {
             const RTDebugTraceResult& result = debug->GetTraceResult();
             if (result.valid) {
-                constexpr float kMissLength = 300.0f;
-                for (const RTDebugTracedRay& ray : result.rays) {
-                    const float length = ray.hit ? ray.hitT : (std::min)(ray.tMax, kMissLength);
-                    const Vector3 end{ ray.origin.x + ray.direction.x * length, ray.origin.y + ray.direction.y * length,
-                        ray.origin.z + ray.direction.z * length };
-                    Vector3 color{ 1.0f, 1.0f, 1.0f };
-                    if (ray.kind >= 1 && ray.kind <= 4) {
-                        color = ray.hit ? Vector3{ 1.0f, 0.3f, 0.2f } : Vector3{ 1.0f, 0.9f, 0.2f };
-                    } else if (ray.kind == 5) {
-                        color = ray.hit ? Vector3{ 0.2f, 0.9f, 1.0f } : Vector3{ 0.3f, 0.45f, 1.0f };
+                const RTDebugTracedRay& ray = result.cameraRay;
+                AddRayLines(lines, ray.origin, ray.direction, 0.0f, ray.tMax, ray.hit, ray.hitT, Vector3{ 1.0f, 1.0f, 1.0f });
+            }
+            const RTDebugRayRecordResult& record = debug->GetRayRecordResult();
+            if (record.valid) {
+                for (const RTDebugRecordedRay& ray : record.rays) {
+                    if (traceDispatchFilter_ >= 0 && static_cast<uint32_t>(traceDispatchFilter_) != ray.dispatch) {
+                        continue;
                     }
-                    lines.emplace_back(ray.origin, end, color, 1.0f, false);
-                    if (ray.hit) {
-                        const float s = (std::max)(length * 0.01f, 0.02f);
-                        lines.emplace_back(Vector3{ end.x - s, end.y, end.z }, Vector3{ end.x + s, end.y, end.z }, color, 1.0f, false);
-                        lines.emplace_back(Vector3{ end.x, end.y - s, end.z }, Vector3{ end.x, end.y + s, end.z }, color, 1.0f, false);
-                        lines.emplace_back(Vector3{ end.x, end.y, end.z - s }, Vector3{ end.x, end.y, end.z + s }, color, 1.0f, false);
-                    }
+                    AddRayLines(lines, ray.origin, ray.direction, ray.tMin, ray.tMax, ray.hit, ray.hitT,
+                        DispatchColor(record, ray.dispatch));
                 }
             }
         }

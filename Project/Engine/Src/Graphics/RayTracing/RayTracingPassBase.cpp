@@ -1,7 +1,10 @@
 #include "pch.h"
 #include "RayTracingPassBase.h"
 
+#include <filesystem>
+
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
+#include "Graphics/RayTracing/Debug/RTDebugRegistry.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
@@ -222,6 +225,92 @@ namespace CoreEngine
                 return true;
             });
     }
+
+    void RayTracingPassBase::EnableRayRecord(const wchar_t* shaderPath, const wchar_t* rayGenName, const char* recordLabel)
+    {
+#ifdef CORE_EDITOR
+        rayRecord_.shaderPath = shaderPath ? shaderPath : L"";
+        rayRecord_.rayGenName = rayGenName;
+        rayRecord_.label = recordLabel ? recordLabel : ownerName_;
+        rayRecord_.enabled = shaderPath && rayGenName;
+#else
+        (void)shaderPath;
+        (void)rayGenName;
+        (void)recordLabel;
+#endif
+    }
+
+    D3D12_DISPATCH_RAYS_DESC RayTracingPassBase::SetDispatchPipeline(
+        ID3D12GraphicsCommandList4* cmdList4,
+        UINT width,
+        UINT height,
+        std::string_view recordLabel)
+    {
+#ifdef CORE_EDITOR
+        if (rayRecord_.enabled && RTDebug::IsRecordingRays() && EnsureRayRecordPipeline()) {
+            RTDebug::BeginRayRecordDispatch(cmdList4,
+                recordLabel.empty() ? rayRecord_.label : std::string(recordLabel),
+                Logger::GetInstance().PathToUtf8(std::filesystem::path(rayRecord_.shaderPath).filename()));
+            cmdList4->SetPipelineState1(rayRecord_.stateObject.Get());
+            return rayRecord_.shaderTable.BuildDispatchDesc(width, height);
+        }
+#else
+        (void)recordLabel;
+#endif
+        cmdList4->SetPipelineState1(stateObject_.Get());
+        return shaderTableBuilder_.BuildDispatchDesc(width, height);
+    }
+
+#ifdef CORE_EDITOR
+    bool RayTracingPassBase::EnsureRayRecordPipeline()
+    {
+        if (rayRecord_.stateObject) {
+            return true;
+        }
+        if (rayRecord_.failed || !shaderProgramCache_ || !dxCommon_) {
+            return false;
+        }
+        // 作れなかったら次から試さない
+        rayRecord_.failed = true;
+        Logger& log = Logger::GetInstance();
+
+        const std::wstring path = RTDebug::WriteRayRecordShader(shaderProgramCache_->GetCompiler(), rayRecord_.shaderPath);
+        if (path.empty()) {
+            return false;
+        }
+        const ShaderProgram* program = shaderProgramCache_->GetOrCreateLibrary(path, std::string(ownerName_) + ".Record");
+        IDxcBlob* shaderBlob = program ? program->GetCS() : nullptr;
+        if (!shaderBlob) {
+            log.Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
+                "{}: 画素デバッガの記録版をコンパイルできませんでした", ownerName_);
+            return false;
+        }
+
+        ID3D12Device* device = dxCommon_->GetDevice();
+        RayTracingPipelineBuilder pipelineBuilder;
+        pipelineBuilder
+            .SetDXILLibrary(shaderBlob)
+            .SetGlobalRootSignature(globalRootSigMgr_.GetRootSignature())
+            .SetMaxRecursionDepth(1);
+        Microsoft::WRL::ComPtr<ID3D12StateObject> stateObject;
+        Microsoft::WRL::ComPtr<ID3D12StateObjectProperties> properties;
+        if (!pipelineBuilder.Build(device, stateObject, properties)) {
+            log.Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
+                "{}: 画素デバッガの記録版の State Object を作れませんでした", ownerName_);
+            return false;
+        }
+        rayRecord_.shaderTable.SetRayGenShader(rayRecord_.rayGenName);
+        if (!rayRecord_.shaderTable.Build(device, properties.Get())) {
+            log.Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
+                "{}: 画素デバッガの記録版のシェーダーテーブルを作れませんでした", ownerName_);
+            return false;
+        }
+        rayRecord_.stateObject = std::move(stateObject);
+        rayRecord_.properties = std::move(properties);
+        rayRecord_.failed = false;
+        return true;
+    }
+#endif
 
     bool RayTracingPassBase::WaitForPipeline()
     {
