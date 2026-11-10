@@ -194,6 +194,9 @@ struct WaterFoamResult
     float surfaceFoam; ///< 水面の上の泡（レース）の割合。反射・グリッター・波頭の透過をこの割合だけ遮る
     float bubbleHaze;  ///< 水面下の気泡（白濁）の割合。透過してくる光にだけ混ざる
     float3 color;      ///< 泡の色
+    float whitecapInstant; ///< 白波のうち、いま砕けている泡の被覆率
+    float whitecapResidue; ///< 白波のうち、砕けた後に残っている泡の被覆率
+    float shoreCoverage;   ///< 岸の泡の被覆率
 };
 
 /// @brief 白波の泡と岸の泡を重ね、水面の 1 点の泡の割合と色を求める
@@ -208,7 +211,8 @@ struct WaterFoamResult
 WaterFoamResult ResolveWaterFoam(
     float2 baseWorldXZ, float3 surfacePosition, float fallbackDepth, float3 normal, float mainLightVisibility)
 {
-    const float whitecapFoam = ComputeFoamMask(baseWorldXZ);
+    const WhitecapFoamCoverage whitecapCoverage = ComputeWhitecapFoamCoverage(baseWorldXZ);
+    const float whitecapFoam = saturate(max(whitecapCoverage.instant, whitecapCoverage.residue));
     const ShoreFoamResult shoreFoam = ResolveShoreFoam(surfacePosition, fallbackDepth);
     const float2 whitecapPatternXZ = ComputeWhitecapPatternXZ(baseWorldXZ);
     const float2 shorePatternXZ = baseWorldXZ + shoreFoam.patternShift;
@@ -228,6 +232,9 @@ WaterFoamResult ResolveWaterFoam(
 
     WaterFoamResult result;
     result.mask = max(whitecapFoam, shoreFoam.coverage);
+    result.whitecapInstant = whitecapCoverage.instant;
+    result.whitecapResidue = whitecapCoverage.residue;
+    result.shoreCoverage = shoreFoam.coverage;
     result.surfaceFoam = foamLayer.lace * saturate(gFoamOpacity);
     result.bubbleHaze = foamLayer.haze * saturate(gFoamOpacity) * kFoamHazeOpacity;
 

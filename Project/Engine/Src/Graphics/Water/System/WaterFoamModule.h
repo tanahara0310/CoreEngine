@@ -10,7 +10,7 @@ namespace CoreEngine
     /// @brief 泡の設定を水面と、白波（WaterWhitecapFoam）・岸の泡（WaterShoreFoam）へ渡す
     class WaterFoamModule {
     public:
-        /// @brief 泡のしきい値・濃さを水面へ、風と消える速さを白波と岸の泡へ、流れた距離を水面へ渡す
+        /// @brief 泡のしきい値・濃さを水面へ、風と消える速さを白波と岸の泡へ、流れた距離と残りの泡の格子の範囲を水面へ渡す
         /// @param waves        水面が描いている波のモデルの機能（泡を使えないモデルでは泡を進めない）
         /// @param fftOceanTime FFT の海の時刻 [s]
         void ApplySettings(const WaterFrameContext& frame, const WaterWaveCapabilities& waves, float fftOceanTime) const;

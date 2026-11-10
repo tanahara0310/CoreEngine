@@ -419,6 +419,17 @@ namespace CoreEngine
         }
     }
 
+    void WaterSurfaceComponent::SetFoamResidue(
+        const std::array<float, 4>& originsXZ, const std::array<float, 2>& invSizes, float meanCoverage) {
+        for (size_t i = 0; i < originsXZ.size(); ++i) {
+            frameCB_.foamResidueOriginsXZ[i] = originsXZ[i];
+        }
+        for (size_t i = 0; i < invSizes.size(); ++i) {
+            frameCB_.foamResidueInvSizes[i] = invSizes[i];
+        }
+        frameCB_.foamResidueMeanCoverage = meanCoverage;
+    }
+
     void WaterSurfaceComponent::SetWaterOpticalCoefficients(const Vector3& absorptionCoeff, const Vector3& scatteringCoeff) {
         frameCB_.absorptionCoeff[0] = absorptionCoeff.x;
         frameCB_.absorptionCoeff[1] = absorptionCoeff.y;

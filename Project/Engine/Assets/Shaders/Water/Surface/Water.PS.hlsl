@@ -201,6 +201,9 @@ WaterPixelOutput main(WaterPSInput input)
         // ヤコビアン可視化は FFT テクスチャを引くので参照格子座標を渡す
         debugContext.worldXZ = input.baseWorldXZ;
         debugContext.foamMask = foam.mask;
+        debugContext.foamWhitecapInstant = foam.whitecapInstant;
+        debugContext.foamWhitecapResidue = foam.whitecapResidue;
+        debugContext.foamShoreCoverage = foam.shoreCoverage;
 
         waterOutput.color = float4(ResolveWaterDebugColor(debugContext), 1.0f);
         return waterOutput;

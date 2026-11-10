@@ -106,6 +106,12 @@ cbuffer WaterFrameConstants : register(b5)
     uint2 gSeaMapResolution;      // 地図の X・Z のテクセル数
     float gSeaMapDepthOffset;     // 今の水面の高さ − 測ったときの水面の高さ [m]
     float gSeaMapInvWaveHeight;   // 波の高さ（有義波高）の逆数 [1/m]
+
+    // ---- 白波の残りの泡の格子（gFFTOceanFoam。SampleWhitecapResidue）----
+    float4 gFoamResidueOriginsXZ;    // 段ごとの XZ の最小の角 [m]（xy = 近く・zw = 遠く。風下へ流した座標）
+    float2 gFoamResidueInvSizes;     // 段ごとの一辺の長さの逆数 [1/m]（x = 近く・y = 遠く）
+    float gFoamResidueMeanCoverage;  // 遠くの段より外で使う、残りの泡の被覆率の平均
+    float gFoamResiduePad;
 };
 
 #endif // WATER_FRAME_CONSTANTS_INCLUDED

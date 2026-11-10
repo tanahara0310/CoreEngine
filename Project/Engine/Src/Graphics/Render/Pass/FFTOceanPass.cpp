@@ -54,16 +54,19 @@ namespace CoreEngine
         // 白波の泡の蓄積と減衰（ヤコビアンが読み取り状態になった後）
         if (auto* foam = context.waterWhitecapFoam; foam && foam->IsInitialized()) {
             GpuStageScope stage(cmdList, context.gpuProfiler, "FFT Foam", GpuTimingCategory::WaterSimulation);
+            const std::array<float, 3> waveGroupPhase =
+                context.fftOceanManager->GetSpectrum().ComputeWaveGroupPhase(context.fftOceanSimulationTime);
             foam->Dispatch(
                 cmdList,
                 context.fftOceanManager->GetJacobianSRVHandle(),
                 context.fftOceanSimulationTime,
-                context.fftOceanManager->GetSpectrumRevision());
+                context.fftOceanManager->GetSpectrumRevision(),
+                waveGroupPhase);
             foam->DispatchStatistics(
                 cmdList,
                 context.fftOceanManager->GetJacobianSRVHandle(),
                 context.dxCommon->Frame().FrameIndex(),
-                context.fftOceanManager->GetSpectrum().ComputeWaveGroupPhase(context.fftOceanSimulationTime));
+                waveGroupPhase);
         }
     }
 }

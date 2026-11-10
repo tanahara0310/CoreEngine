@@ -53,6 +53,7 @@ const ViewModeItem kSurfaceViews[] = {
 	SurfaceView(WaterDebugViewMode::RTRefractionSuccessMask),
 	SurfaceView(WaterDebugViewMode::FFTOceanJacobian),
 	SurfaceView(WaterDebugViewMode::FFTOceanFoam),
+	SurfaceView(WaterDebugViewMode::FoamBreakdown),
 };
 
 constexpr ViewModeItem kRefractionViews[] = {
