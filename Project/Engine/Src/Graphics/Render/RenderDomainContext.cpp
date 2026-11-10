@@ -135,7 +135,7 @@ namespace CoreEngine
         waterWhitecapFoam_ = std::make_unique<WaterWhitecapFoam>();
         waterShoreFoam_ = std::make_unique<WaterShoreFoam>();
         if (fftOceanManager_->IsInitialized()) {
-            if (waterWhitecapFoam_->Initialize(dxCommon, descriptorAllocator, fftOceanManager_->GetSettings().resolution)) {
+            if (waterWhitecapFoam_->Initialize(dxCommon, descriptorAllocator)) {
                 Logger::GetInstance().Infof(LogCategory::Graphics,
                     "RenderDomainContext: WaterWhitecapFoam 初期化完了\n");
             }

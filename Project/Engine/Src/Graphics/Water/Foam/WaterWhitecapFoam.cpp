@@ -17,6 +17,8 @@
 
 namespace CoreEngine
 {
+    static_assert(WaterWhitecapFoam::kLevelCount == 2, "FFTOceanFoamAccumulate.CS と WaterFrameConstants は 2 段を前提にする");
+
     namespace
     {
         /// @brief フレーム間の時間の差の上限 [s]（シーンの切り替え直後などの大きな差を丸める）
@@ -29,18 +31,14 @@ namespace CoreEngine
         }
     }
 
-    bool WaterWhitecapFoam::Initialize(
-        GraphicsCore* dxCommon,
-        DescriptorAllocator* descriptorAllocator,
-        uint32_t fftResolution)
+    bool WaterWhitecapFoam::Initialize(GraphicsCore* dxCommon, DescriptorAllocator* descriptorAllocator)
     {
         dxCommon_ = dxCommon;
         descriptorAllocator_ = descriptorAllocator;
-        fftResolution_ = fftResolution;
-        if (!dxCommon_ || !dxCommon_->GetDevice() || !descriptorAllocator_ || fftResolution_ == 0) {
+        if (!dxCommon_ || !dxCommon_->GetDevice() || !descriptorAllocator_) {
             Logger::GetInstance().Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
-                "WaterWhitecapFoam: initialization failed. dxCommon={} descriptorAllocator={} fftResolution={}",
-                dxCommon_ != nullptr, descriptorAllocator_ != nullptr, fftResolution_);
+                "WaterWhitecapFoam: initialization failed. dxCommon={} descriptorAllocator={}",
+                dxCommon_ != nullptr, descriptorAllocator_ != nullptr);
             return false;
         }
 
@@ -67,6 +65,7 @@ namespace CoreEngine
     {
         resetPending_ = true;
         calibrated_ = false;
+        measuredResidueCoverage_ = 0.0f;
         ++calibrationEpoch_;
     }
 
@@ -74,6 +73,27 @@ namespace CoreEngine
     {
         const float distance = kWindDriftFactor * (std::max)(settings_.windSpeed, 0.0f) * timeSeconds;
         return { settings_.windDirection[0] * distance, settings_.windDirection[1] * distance };
+    }
+
+    void WaterWhitecapFoam::UpdateWindows(float cameraX, float cameraZ, float timeSeconds)
+    {
+        const std::array<float, 2> drift = ComputeDriftOffset(timeSeconds);
+        const float foamX = cameraX - drift[0];
+        const float foamZ = cameraZ - drift[1];
+        const uint32_t level = frameIndex_ % kLevelCount;
+        const float texelSize = kLevelTexelSizes[level];
+        const float halfSize = 0.5f * texelSize * static_cast<float>(kResolution);
+        levelOrigins_[level * 2 + 0] = std::floor((foamX - halfSize) / texelSize) * texelSize;
+        levelOrigins_[level * 2 + 1] = std::floor((foamZ - halfSize) / texelSize) * texelSize;
+    }
+
+    std::array<float, WaterWhitecapFoam::kLevelCount> WaterWhitecapFoam::GetResidueInvSizes() const
+    {
+        std::array<float, kLevelCount> invSizes{};
+        for (uint32_t level = 0; level < kLevelCount; ++level) {
+            invSizes[level] = 1.0f / (kLevelTexelSizes[level] * static_cast<float>(kResolution));
+        }
+        return invSizes;
     }
 
     std::array<float, 2> WaterWhitecapFoam::ComputeStretchAxis() const
@@ -129,9 +149,9 @@ namespace CoreEngine
 
         D3D12_RESOURCE_DESC desc{};
         desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-        desc.Width = fftResolution_;
-        desc.Height = fftResolution_;
-        desc.DepthOrArraySize = static_cast<UINT16>(kCascadeCount);
+        desc.Width = kResolution;
+        desc.Height = kResolution;
+        desc.DepthOrArraySize = static_cast<UINT16>(kLevelCount);
         desc.MipLevels = 1;
         desc.Format = format;
         desc.SampleDesc.Count = 1;
@@ -159,7 +179,7 @@ namespace CoreEngine
             s.Texture2DArray.MostDetailedMip = 0;
             s.Texture2DArray.MipLevels = 1;
             s.Texture2DArray.FirstArraySlice = 0;
-            s.Texture2DArray.ArraySize = kCascadeCount;
+            s.Texture2DArray.ArraySize = kLevelCount;
             foam_[i].srv = descriptorAllocator_->CreateSRV(foam_[i].Get(), s, "WaterWhitecapFoamSRV_" + idx);
 
             D3D12_UNORDERED_ACCESS_VIEW_DESC u{};
@@ -167,7 +187,7 @@ namespace CoreEngine
             u.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
             u.Texture2DArray.MipSlice = 0;
             u.Texture2DArray.FirstArraySlice = 0;
-            u.Texture2DArray.ArraySize = kCascadeCount;
+            u.Texture2DArray.ArraySize = kLevelCount;
             foam_[i].uav = descriptorAllocator_->CreateUAV(foam_[i].Get(), u, "WaterWhitecapFoamUAV_" + idx);
         }
 
@@ -236,7 +256,8 @@ namespace CoreEngine
         ID3D12GraphicsCommandList* cmdList,
         D3D12_GPU_DESCRIPTOR_HANDLE jacobianSRV,
         float timeSeconds,
-        uint32_t spectrumRevision)
+        uint32_t spectrumRevision,
+        const std::array<float, 3>& waveGroupPhase)
     {
         if (!isInitialized_ || !cmdList || jacobianSRV.ptr == 0) {
             return;
@@ -257,14 +278,30 @@ namespace CoreEngine
         const float deltaSeconds = ComputeDeltaSeconds(timeSeconds, previousTimeSeconds_);
         previousTimeSeconds_ = timeSeconds;
         elapsedSeconds_ += deltaSeconds;
+        for (float& pending : pendingSeconds_) {
+            pending += deltaSeconds;
+        }
+
+        // このフレームに進める段（UpdateWindows が角を動かした段）
+        const uint32_t activeLevel = frameIndex_ % kLevelCount;
 
         FoamConstants constants{};
-        constants.resolution = fftResolution_;
-        constants.deltaSeconds = deltaSeconds;
+        for (size_t i = 0; i < levelOrigins_.size(); ++i) {
+            constants.levelOriginsXZ[i] = levelOrigins_[i];
+            constants.prevLevelOriginsXZ[i] = prevLevelOrigins_[i];
+        }
+        prevLevelOrigins_ = levelOrigins_;
+        constants.deltaSeconds = pendingSeconds_[activeLevel];
+        constants.activeLevel = activeLevel;
+        pendingSeconds_[activeLevel] = 0.0f;
+        if (resetPending_) {
+            pendingSeconds_.fill(0.0f);
+        }
         constants.foamBias = bias_;
         constants.foamGain = gain_;
         for (int c = 0; c < 3; ++c) {
             constants.cascadeWeights[c] = settings_.cascadeWeights[c];
+            constants.waveGroupPhase[c] = waveGroupPhase[c];
         }
         constants.decaySeconds = settings_.decaySeconds;
         constants.resetFoam = resetPending_ ? 1u : 0u;
@@ -299,8 +336,8 @@ namespace CoreEngine
                 static_cast<UINT>(slot), dxCommon_->GetUploadRing().AllocateConstants(constants));
         }
 
-        const UINT groups = (fftResolution_ + 7) / 8;
-        cmdList->Dispatch(groups, groups, kCascadeCount);
+        const UINT groups = (kResolution + 7) / 8;
+        cmdList->Dispatch(groups, groups, kLevelCount);
 
         Barrier::Transition(cmdList, foam_[writeIndex], kAnyShaderResource);
         ++frameIndex_;
@@ -324,12 +361,17 @@ namespace CoreEngine
         }
         std::memcpy(histogram_.data(), words, sizeof(uint32_t) * kHistogramBins);
         const uint32_t coverageSum = words[kHistogramBins];
+        const uint32_t instantSum = words[kHistogramBins + 1];
+        const uint32_t residueSum = words[kHistogramBins + 2];
         const D3D12_RANGE writtenRange{ 0, 0 };
         statisticsReadback_[frameIndex]->Unmap(0, &writtenRange);
 
         constexpr float kSampleCount =
             static_cast<float>(kStatisticsSampleResolution) * static_cast<float>(kStatisticsSampleResolution);
-        measuredCoverage_ = static_cast<float>(coverageSum) / (kCoverageFixedPointScale * kSampleCount);
+        constexpr float kSumToMean = 1.0f / (kCoverageFixedPointScale * kSampleCount);
+        measuredCoverage_ = static_cast<float>(coverageSum) * kSumToMean;
+        measuredInstantCoverage_ = static_cast<float>(instantSum) * kSumToMean;
+        measuredResidueCoverage_ = static_cast<float>(residueSum) * kSumToMean;
         return true;
     }
 
@@ -423,10 +465,12 @@ namespace CoreEngine
         }
         statisticsFrameCounter_ = 0;
 
+        // 標本は遠くの段と同じ範囲（参照格子座標へ戻した位置）から取る
+        static_assert(kStatisticsSampleSpacing * kStatisticsSampleResolution == kLevelTexelSizes[1] * kResolution,
+            "白波の統計の標本は遠くの段と同じ範囲を覆う");
         StatisticsConstants constants{};
-        constexpr float kSampleExtent = kStatisticsSampleSpacing * static_cast<float>(kStatisticsSampleResolution);
-        constants.sampleOriginXZ[0] = -0.5f * kSampleExtent;
-        constants.sampleOriginXZ[1] = -0.5f * kSampleExtent;
+        constants.sampleOriginXZ[0] = levelOrigins_[2] + driftOffset_[0];
+        constants.sampleOriginXZ[1] = levelOrigins_[3] + driftOffset_[1];
         constants.sampleSpacing = kStatisticsSampleSpacing;
         constants.sampleResolution = kStatisticsSampleResolution;
         for (int c = 0; c < 3; ++c) {
@@ -440,6 +484,13 @@ namespace CoreEngine
         for (size_t i = 0; i < waveGroupPhase.size(); ++i) {
             constants.waveGroupPhase[i] = waveGroupPhase[i];
         }
+        constants.residueMeanCoverage = measuredResidueCoverage_;
+        for (size_t i = 0; i < levelOrigins_.size(); ++i) {
+            constants.residueOriginsXZ[i] = levelOrigins_[i];
+        }
+        const std::array<float, kLevelCount> invSizes = GetResidueInvSizes();
+        constants.residueInvSizes[0] = invSizes[0];
+        constants.residueInvSizes[1] = invSizes[1];
         constants.driftOffsetXZ[0] = driftOffset_[0];
         constants.driftOffsetXZ[1] = driftOffset_[1];
 

@@ -539,6 +539,8 @@ bool WaterSurfaceParameterPanel::DrawFoamSection(const Target& target, WaterSyst
 	if (const WaterWhitecapFoam* foam = runtimeController ? runtimeController->GetWaterWhitecapFoam() : nullptr) {
 		InfoRow("白波の割合", std::format("目標 {:.2f}% ／ 実測 {:.2f}%",
 			foam->GetTargetCoverage() * 100.0f, foam->GetMeasuredCoverage() * 100.0f));
+		InfoRow("実測の内訳", std::format("砕けている最中 {:.2f}% ／ 残り {:.2f}%",
+			foam->GetMeasuredInstantCoverage() * 100.0f, foam->GetMeasuredResidueCoverage() * 100.0f));
 	}
 	changed = target.Rows({ "foamOpacity", "foamDecaySeconds", "foamCascadeWeights" }) || changed;
 	ImGui::EndDisabled();

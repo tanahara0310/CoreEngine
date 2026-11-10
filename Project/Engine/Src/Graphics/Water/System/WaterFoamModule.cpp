@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "WaterFoamModule.h"
 
+#include "Camera/Camera.h"
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Water/FFT/FFTOceanManager.h"
 #include "Graphics/Water/Foam/WaterShoreFoam.h"
@@ -10,6 +11,7 @@
 #include "Graphics/Water/System/WaterFrameContext.h"
 #include "Graphics/Water/System/WaterSettings.h"
 #include "Graphics/Water/Wave/WaterWaveModel.h"
+#include "Scene/Feature/ISceneFeature.h"
 
 namespace CoreEngine
 {
@@ -58,6 +60,14 @@ namespace CoreEngine
 
         // 白波の泡が FFT の時刻までに風下へ流れた距離と、模様を風の向きに伸ばす軸
         waterPlane.SetFoamMotion(whitecap->ComputeDriftOffset(fftOceanTime), whitecap->ComputeStretchAxis());
+
+        // 残りの泡の格子を今のぞいているカメラの周りへ置き直し、同じ範囲を水面へ渡す
+        if (const Camera* camera = frame.scene.gameViewCamera3D) {
+            const Vector3 cameraPosition = camera->GetPosition();
+            whitecap->UpdateWindows(cameraPosition.x, cameraPosition.z, fftOceanTime);
+        }
+        waterPlane.SetFoamResidue(
+            whitecap->GetResidueOrigins(), whitecap->GetResidueInvSizes(), whitecap->GetMeasuredResidueCoverage());
     }
 
     void WaterFoamModule::ApplyWithoutFoam(const WaterFrameContext& frame) const

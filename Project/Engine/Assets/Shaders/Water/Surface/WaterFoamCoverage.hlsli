@@ -3,10 +3,6 @@
 // ------------------------------------------------------------
 // 泡が「どこにどれだけあるか」を、水面のうち泡が占める割合（被覆率 [0,1]）として求める。
 // 見た目（模様・色）は WaterFoamAppearance.hlsli が担当する。
-//
-// 【飽和対策 3 点セットの一角】瞬時マスクはカスケード重み付き合成 detJ
-// （ComputeFFTCombinedDetJ）を必ず通すこと。波群エンベロープは蓄積項のみに掛ける
-// （瞬時項は合成 detJ 内で適用済み＝二重適用禁止）。
 // ============================================================
 #ifndef WATER_FOAM_COVERAGE_INCLUDED
 #define WATER_FOAM_COVERAGE_INCLUDED
@@ -23,29 +19,37 @@ static const float kShoreFoamEdgeMeters = 0.15f;
 // 海底の高さの範囲の端で、視線の延長で測った水深へ移す幅（範囲の一辺に対する割合）
 static const float kSeabedWindowEdgeFade = 0.1f;
 
-/// @brief 泡マスク [0,1] を求める（FFTOcean 専用）
-/// @details 2 つの項の max で構成する:
-///          - 瞬時項: 合成ヤコビアン detJ < gFoamBias（波頭の圧縮）。カスケード間の
-///            強め合いを含む正確な砕波判定で、砕けている「今」を捉える。
-///          - 蓄積項: FFTOceanFoamAccumulate.CS が時間発展させた泡。波が通過した
-///            後に白い筋が数秒残る（発生時は瞬時項と同源なので max で二重計上しない）。
+/// @brief 白波の被覆率の内訳
+struct WhitecapFoamCoverage
+{
+    float instant; ///< いま砕けている泡 [0,1]
+    float residue; ///< 砕けた後に残っている泡 [0,1]
+};
+
+/// @brief 白波の被覆率を、いま砕けている泡と残っている泡に分けて求める（FFTOcean 専用）
+/// @details いま砕けている泡は合成ヤコビアン detJ < gFoamBias（波頭の圧縮）。
+///          残っている泡は FFTOceanFoamAccumulate.CS が同じ判定で溜めて減らした格子を読む。
 ///          Gerstner 経路はヤコビアンを持たないため常に 0
 ///          （gUseFFTOceanNormalMap は FFT 使用フラグと同値で更新される）。
-float ComputeFoamMask(float2 worldXZ)
+WhitecapFoamCoverage ComputeWhitecapFoamCoverage(float2 worldXZ)
 {
+    WhitecapFoamCoverage coverage;
+    coverage.instant = 0.0f;
+    coverage.residue = 0.0f;
     if (gFoamEnabled == 0 || gUseFFTOceanNormalMap == 0)
     {
-        return 0.0f;
+        return coverage;
     }
     const float detJ = ComputeFFTCombinedDetJ(
         worldXZ, gFFTOceanJacobian, gSampler, gFoamCascadeWeights, gWaveGroupPhase);
-    const float instant = ComputeWhitecapInstant(detJ, gFoamBias, gFoamGain);
-    const float accumulated = SampleWhitecapAccumulated(
-        worldXZ, gFFTOceanFoam, gSampler, gWaveGroupPhase, gFoamDriftOffsetXZ);
+    coverage.instant = ComputeWhitecapInstant(detJ, gFoamBias, gFoamGain);
 
-    // 返り値は滑らかな「被覆率」の場。レース状の形への変換（dissolve）は
-    // 表示側の ComputeFoamLace が行うため、ここではノイズを掛けない。
-    return saturate(max(instant, accumulated));
+    WhitecapResidueWindows windows;
+    windows.originsXZ = gFoamResidueOriginsXZ;
+    windows.invSizes = gFoamResidueInvSizes;
+    coverage.residue = SampleWhitecapResidue(
+        worldXZ, gFFTOceanFoam, gLinearClamp, gFoamDriftOffsetXZ, windows, gFoamResidueMeanCoverage);
+    return coverage;
 }
 
 /// @brief 海底の高さの範囲の中での位置と、範囲の端からの近さ

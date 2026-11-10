@@ -224,6 +224,13 @@ namespace CoreEngine
         /// @param stretchAxis   模様を風の向きに伸ばす軸（WaterWhitecapFoam::ComputeStretchAxis）
         void SetFoamMotion(const std::array<float, 2>& driftOffsetXZ, const std::array<float, 2>& stretchAxis);
 
+        /// @brief 白波の残りの泡の格子の範囲を設定する
+        /// @param originsXZ    段ごとの XZ の最小の角 [m]（近く xy・遠く zw。風下へ流した座標）
+        /// @param invSizes     段ごとの一辺の長さの逆数 [1/m]
+        /// @param meanCoverage 遠くの段より外で使う、残りの泡の被覆率の平均
+        void SetFoamResidue(
+            const std::array<float, 4>& originsXZ, const std::array<float, 2>& invSizes, float meanCoverage);
+
         /// @brief 描く波のモデルを切り替える（シェーダーを作り直す）
         void SetWaveModel(WaterWaveModelType waveModel);
 

@@ -1,52 +1,59 @@
 // ============================================================
-// FFT Ocean 泡（whitecap）の蓄積・減衰パス
+// 白波の残りの泡の蓄積と減衰
 // ------------------------------------------------------------
-// 泡は瞬時の砕波判定（detJ < bias）だけだと波の位相と一緒に動いて明滅する。
-// このパスは前フレームの泡を指数減衰させつつ、今フレームの砕波候補を
-// max 合成（Atlas方式）で書き込み、「砕けた後に白い筋が数秒残る」時間発展を作る。
-//
+// カメラの周りの 2 段の格子（近く・遠く）に、砕けた白波の泡を溜めて減らす。
 //   foam = max(prevFoam * exp(-dt/τ), injection)
-//
-// 蓄積は FFT の参照格子（カスケード毎の周期テクスチャ）上で行う。深水波の
-// 質点軌道はほぼ円運動（Stokesドリフトは微小）なので、格子テクセルに泡を
-// 置けば移流なしでも変位後のサーフェスに乗って自然に運ばれる。
-//
-// 入力ヤコビアンは FFTOceanFinalize.CS の (Jxx, Jzz, Jxy, detJ) 形式。
-// 発生判定はカスケード単体の「重み付き detJ」= det(I + w·J) を勾配成分から
-// 正確に計算する（.w の素の detJ を使うと最小カスケードが常時飽和する）。
-// カスケード間の相殺・強め合いは格子が異なるためここでは扱えない
-// （Water.PS 側の瞬時項 ComputeFFTCombinedDetJ が補完する）。
+// 格子は変位前の参照格子座標を風下へ流した座標に置く。
+// 注入は水面の瞬間の泡と同じ判定（全カスケードの合成ヤコビアン × 波群エンベロープ）で行う。
+// 1 フレームに進めるのは gActiveLevel の段だけで、ほかの段は前のフレームの値を写す。
 // ============================================================
 
 #include "../Common/WaterWhitecapCoverage.hlsli"
 
 Texture2DArray<float4> gJacobian : register(t0);
 Texture2DArray<float> gFoamPrev : register(t1);
-// 出力は全スライスを 1 ビューで見せる UAV（Dispatch z = カスケード）
+// 出力は全段を 1 ビューで見せる UAV（Dispatch z = 段）
 RWTexture2DArray<float> gFoamOutput : register(u0);
 SamplerState gLinearWrap : register(s0);
 
 // C++ 側 WaterWhitecapFoam::FoamConstants とレイアウト一致必須
 cbuffer FFTOceanFoamConstants : register(b0)
 {
-    uint gResolution;
-    float gDeltaSeconds;        // 前フレームからのシミュレーション経過時間 [s]
-    float gFoamBias;            // 発生しきい値（WaterFrameConstants と同値）
-    float gFoamGain;            // 立ち上がり勾配
-    float3 gFoamCascadeWeights; // カスケード別の勾配寄与（無重みは31mカスケードが飽和）
+    float4 gLevelOriginsXZ;     // xy = 近くの段・zw = 遠くの段の XZ の最小の角 [m]（風下へ流した座標）
+    float4 gPrevLevelOriginsXZ; // 前のフレームの段ごとの角 [m]
+    float2 gLevelTexelSizes;    // x = 近くの段・y = 遠くの段の 1 テクセルの幅 [m]
+    uint gResolution;           // 段の一辺のテクセル数
+    float gDeltaSeconds;        // 進める段を前に進めてから経ったシミュレーション時間 [s]
+    float3 gFoamCascadeWeights; // カスケード別の勾配の重み（水面の瞬間の泡と同じ値）
+    float gFoamBias;            // 砕けるしきい値（水面の瞬間の泡と同じ値）
+    float3 gWaveGroupPhase;     // 波群エンベロープの位相のずれ [rad]
+    float gFoamGain;            // しきい値からの立ち上がりの傾き
+    float2 gDriftOffsetXZ;      // 泡が風下へ流れた距離 [m]
     float gFoamDecaySeconds;    // 泡の寿命 τ（e^-1 に減衰するまでの秒数）
-    uint gResetFoam;            // 1 = 前フレームを無視して初期化（生成直後・設定変更後）
-    float2 gDriftOffsetXZ;      // 泡が風下へ流れた距離 [m]（泡はこの距離だけ流れる座標系の格子に置く）
-    float gFoamPadding;
+    uint gResetFoam;            // 1 = 前のフレームを捨てる（全段を進める）
+    uint gActiveLevel;          // このフレームに進める段
+    float3 gPadding;
 };
 
-// 蓄積（持続泡）へのカスケード別の参加率。
-// 持続する白波は「うねり＝大波の砕波」の現象で、さざ波の泡は瞬時に消える。
-// 特に最小カスケード（31m）は単体 detJ のレンジが極端（勾配∝k で ±数倍）なため、
-// 勾配重み 0.2 の緩和後でもしきい値を割る領域が広く、さらに波周期が約 4.5 秒と
-// 短くて頻繁に再注入されるので、蓄積に参加させると海面全体が白く飽和する（実測）。
-// 小カスケードの砕波は Water.PS の瞬時項（合成 detJ）が既に表現している。
-static const float kAccumulationShare[3] = { 1.0f, 0.4f, 0.0f };
+/// @brief 前のフレームで同じ位置にあった泡を読む
+/// @details 前の範囲の外にはみ出た所は、近くの段なら前のフレームの遠くの段から読む。遠くの段は 0
+float LoadPreviousFoam(float2 foamXZ, uint level, float texelSize, float2 prevOriginXZ)
+{
+    const int2 prevCoord = (int2)round((foamXZ - prevOriginXZ) / texelSize - 0.5f);
+    if (all(prevCoord >= 0) && all(prevCoord < (int)gResolution))
+    {
+        return gFoamPrev.Load(int4(prevCoord, level, 0));
+    }
+    if (level == 0u)
+    {
+        const float2 farUV = (foamXZ - gPrevLevelOriginsXZ.zw) / (gLevelTexelSizes.y * (float)gResolution);
+        if (all(farUV >= 0.0f) && all(farUV <= 1.0f))
+        {
+            return gFoamPrev.SampleLevel(gLinearWrap, float3(farUV, 1.0f), 0.0f);
+        }
+    }
+    return 0.0f;
+}
 
 [numthreads(8, 8, 1)]
 void main(uint3 dispatchThreadId : SV_DispatchThreadID)
@@ -56,32 +63,29 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         return;
     }
 
-    const uint slice = min(dispatchThreadId.z, 2u);
-    const float w = gFoamCascadeWeights[slice];
+    const uint level = min(dispatchThreadId.z, kWhitecapResidueLevelCount - 1u);
+    if (level != gActiveLevel && gResetFoam == 0u)
+    {
+        gFoamOutput[dispatchThreadId] = gFoamPrev.Load(int4(dispatchThreadId.xy, level, 0));
+        return;
+    }
 
-    // 重み付き detJ = det(I + w·J)。勾配テンソルへ重みを掛けてから行列式を取る
-    // （Water.PS の ComputeFFTCombinedDetJ と同じ流儀。detJ の線形補間より正確）。
-    // 格子点の泡が今いる参照格子の位置（流れた分だけ風下）でヤコビアンを読む
-    const float2 uv = (float2(dispatchThreadId.xy) + 0.5f) / (float)gResolution
-        + RotateToFFTCascadeGrid(gDriftOffsetXZ, (int)slice) / kFFTCascadePatch[slice];
-    const float3 j = gJacobian.SampleLevel(gLinearWrap, float3(uv, (float)slice), 0.0f).xyz * w;
-    const float detJ = (1.0f + j.x) * (1.0f + j.y) - j.z * j.z;
+    const float texelSize = (level == 0u) ? gLevelTexelSizes.x : gLevelTexelSizes.y;
+    const float2 originXZ = (level == 0u) ? gLevelOriginsXZ.xy : gLevelOriginsXZ.zw;
+    const float2 prevOriginXZ = (level == 0u) ? gPrevLevelOriginsXZ.xy : gPrevLevelOriginsXZ.zw;
+    const float2 foamXZ = originXZ + (float2(dispatchThreadId.xy) + 0.5f) * texelSize;
 
-    // 注入は二乗特性で「弱い圧縮」を非線形に抑圧する。カスケード単体の圧縮域は
-    // （合成 detJ と違い他カスケードの伸長による相殺が働かないため）空間的に広く、
-    // 波峰が参照格子上を位相速度で掃引しながら毎フレーム注入するので、線形のまま
-    // 蓄積すると数周期で海面全体が泡の包絡に埋まり真っ白に飽和する（実測）。
-    // 二乗にすると「強く砕けた峰」だけが持続泡として残り、弱い圧縮は跡を残さない。
-    // シミュレーション時間が止まっている間は注入しない（しきい値が動いても蓄積は止まったまま）
+    const float previous = (gResetFoam != 0u) ? 0.0f : LoadPreviousFoam(foamXZ, level, texelSize, prevOriginXZ);
+
+    // 格子点の泡が今いる参照格子の位置で砕けを判定し、砕けの度合いの二乗を注入する。
+    // シミュレーション時間が止まっている間は注入しない
+    const float2 baseXZ = foamXZ + gDriftOffsetXZ;
+    const float detJ = ComputeFFTCombinedDetJ(baseXZ, gJacobian, gLinearWrap, gFoamCascadeWeights, gWaveGroupPhase);
     const float breaking = ComputeWhitecapInstant(detJ, gFoamBias, gFoamGain);
-    const float injection = (gDeltaSeconds > 0.0f) ? breaking * breaking * kAccumulationShare[slice] : 0.0f;
+    const float injection = (gDeltaSeconds > 0.0f) ? breaking * breaking : 0.0f;
 
-    const float prev = (gResetFoam != 0)
-        ? 0.0f
-        : gFoamPrev.Load(int4(dispatchThreadId.xy, slice, 0));
-
-    // 指数減衰。dt=0（ポーズ中）は decay=1 で凍結される。
+    // 指数減衰。dt=0（ポーズ中）は decay=1 で凍結される
     const float decay = exp(-gDeltaSeconds / max(gFoamDecaySeconds, 1.0e-3f));
 
-    gFoamOutput[dispatchThreadId] = max(prev * decay, injection);
+    gFoamOutput[dispatchThreadId] = max(previous * decay, injection);
 }

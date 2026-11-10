@@ -1,0 +1,16 @@
+{
+    "r.AutoExposure.Enabled": false,
+    "r.AutoExposure.ExposureEV": 0.0,
+    "r.Bloom.Enabled": false,
+    "r.Cloud.Enabled": false,
+    "r.Fog.Enabled": false,
+    "r.LensFlare.Enabled": false,
+    "r.LocalExposure.Enabled": false,
+    "r.TimeOfDay.Advance": false,
+    "r.Wind.Direction": [
+        0.6,
+        0.8
+    ],
+    "r.Wind.Speed": 14.0,
+    "version": "1.0"
+}
