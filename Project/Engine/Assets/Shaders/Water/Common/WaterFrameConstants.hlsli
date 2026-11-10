@@ -111,7 +111,7 @@ cbuffer WaterFrameConstants : register(b5)
     float4 gFoamResidueOriginsXZ;    // 段ごとの XZ の最小の角 [m]（xy = 近く・zw = 遠く。風下へ流した座標）
     float2 gFoamResidueInvSizes;     // 段ごとの一辺の長さの逆数 [1/m]（x = 近く・y = 遠く）
     float gFoamResidueMeanCoverage;  // 遠くの段より外で使う、残りの泡の被覆率の平均
-    float gFoamResiduePad;
+    float gFoamPatternTime;          // 泡の模様を動かす時刻 [s]（FFT の時刻を kFoamPatternPeriodSeconds で巻き戻したもの）
 };
 
 #endif // WATER_FRAME_CONSTANTS_INCLUDED

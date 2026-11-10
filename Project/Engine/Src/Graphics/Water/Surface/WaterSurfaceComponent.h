@@ -118,7 +118,7 @@ namespace CoreEngine
                 p.tooltip = "白波の割合の倍率（1 = 風速からの観測式 W = 3.84e-6·U^3.41）")
             REFLECT_PROPERTY(profile_.foamOpacity, "泡の不透明度", p.range = Range(0.0f, 1.0f))
             REFLECT_PROPERTY(profile_.foamDecaySeconds, "泡が消えるまでの時間 [s]", p.range = Range(0.2f, 10.0f),
-                p.tooltip = "泡が e^-1 まで減る時間")
+                p.tooltip = "泡が e^-1 まで減る時間の平均（場所ごとに 0.45〜1.55 倍にばらつく）")
             REFLECT_PROPERTY(profile_.foamCascadeWeights, "波の大きさごとの重み", p.range = Range(0.0f, 1.0f),
                 p.tooltip = "白波を立てる傾きの寄与（大・中・小のカスケード）")
 
@@ -222,7 +222,9 @@ namespace CoreEngine
         /// @brief 白波の泡の動きを設定する
         /// @param driftOffsetXZ 泡が風下へ流れた距離 [m]（WaterWhitecapFoam::ComputeDriftOffset）
         /// @param stretchAxis   模様を風の向きに伸ばす軸（WaterWhitecapFoam::ComputeStretchAxis）
-        void SetFoamMotion(const std::array<float, 2>& driftOffsetXZ, const std::array<float, 2>& stretchAxis);
+        /// @param patternTime   泡の模様を動かす時刻 [s]（WaterWhitecapFoam::ComputePatternTime）
+        void SetFoamMotion(
+            const std::array<float, 2>& driftOffsetXZ, const std::array<float, 2>& stretchAxis, float patternTime);
 
         /// @brief 白波の残りの泡の格子の範囲を設定する
         /// @param originsXZ    段ごとの XZ の最小の角 [m]（近く xy・遠く zw。風下へ流した座標）

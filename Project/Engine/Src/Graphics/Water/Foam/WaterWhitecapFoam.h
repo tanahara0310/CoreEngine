@@ -119,6 +119,10 @@ namespace CoreEngine
         /// @details 模様の座標 p を p − a·(a·p) にすると、風の向きの成分だけが 1/伸び率 倍になる
         std::array<float, 2> ComputeStretchAxis() const;
 
+        /// @brief 泡の模様を動かす時刻 [s]（FFT の時刻を kPatternPeriodSeconds で巻き戻したもの）
+        /// @param timeSeconds FFT のシミュレーション時刻 [s]
+        static float ComputePatternTime(float timeSeconds);
+
         /// @brief 較正した砕けるしきい値（合成ヤコビアンがこれを下回ると砕ける）
         float GetBias() const { return bias_; }
 
@@ -133,6 +137,8 @@ namespace CoreEngine
         static constexpr float kStretchFullWindSpeed = 18.0f;
         /// @brief 模様の伸び率の最大
         static constexpr float kMaxFoamStretch = 3.0f;
+        /// @brief 泡の模様を動かす時刻の周期 [s]（WaterFoamAppearance.hlsli の kFoamPatternPeriodSeconds と同じ値）
+        static constexpr float kPatternPeriodSeconds = 600.0f;
 
         /// @brief 白波の蓄積パスの定数（FFTOceanFoamAccumulate.CS.hlsl の FFTOceanFoamConstants）
         struct FoamConstants {
@@ -279,7 +285,7 @@ namespace CoreEngine
         // ---- 白波（カメラの周りの格子の上の残りの泡）----
         CustomShaderPipeline foamPipeline_{};
         FoamShaderProvider foamShaderProvider_{};
-        /// @brief 書き込み先は frameIndex_ & 1。SRV / UAV とも全段を 1 ビューで見せる
+        /// @brief 書き込み先は frameIndex_ & 1。SRV / UAV とも全段を 1 ビューで見せる（x = 被覆率・y = 砕けた直後の厚い泡の量）
         FFTOceanPingPong foam_{};
         uint32_t frameIndex_ = 0;
         bool resetPending_ = true;

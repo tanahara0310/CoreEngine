@@ -412,11 +412,12 @@ namespace CoreEngine
     }
 
     void WaterSurfaceComponent::SetFoamMotion(
-        const std::array<float, 2>& driftOffsetXZ, const std::array<float, 2>& stretchAxis) {
+        const std::array<float, 2>& driftOffsetXZ, const std::array<float, 2>& stretchAxis, float patternTime) {
         for (size_t i = 0; i < 2; ++i) {
             frameCB_.foamDriftOffsetXZ[i] = driftOffsetXZ[i];
             frameCB_.foamStretchAxis[i] = stretchAxis[i];
         }
+        frameCB_.foamPatternTime = patternTime;
     }
 
     void WaterSurfaceComponent::SetFoamResidue(

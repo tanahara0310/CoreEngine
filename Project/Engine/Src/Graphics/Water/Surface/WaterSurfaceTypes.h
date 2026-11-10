@@ -164,7 +164,7 @@ struct WaterFrameConstants {
 	float foamResidueOriginsXZ[4] = { 0.0f, 0.0f, 0.0f, 0.0f }; // 段ごとの XZ の最小の角 [m]（近く xy・遠く zw）
 	float foamResidueInvSizes[2] = { 0.0f, 0.0f };               // 段ごとの一辺の長さの逆数 [1/m]
 	float foamResidueMeanCoverage = 0.0f;                        // 遠くの段より外で使う、残りの泡の被覆率の平均
-	float foamResiduePad = 0.0f;
+	float foamPatternTime = 0.0f;                                // 泡の模様を動かす時刻 [s]（WaterWhitecapFoam::ComputePatternTime）
 };
 
 // 全フィールドのオフセットを HLSL packing 規則から機械的に導出して検証する。
@@ -201,7 +201,7 @@ static constexpr Cb::Field kWaterFrameConstantsFields[] = {
     CB_FIELD(WaterFrameConstants, seaMapEnabled), CB_FIELD(WaterFrameConstants, seaMapResolution),
     CB_FIELD(WaterFrameConstants, seaMapDepthOffset), CB_FIELD(WaterFrameConstants, seaMapInvWaveHeight),
     CB_FIELD(WaterFrameConstants, foamResidueOriginsXZ), CB_FIELD(WaterFrameConstants, foamResidueInvSizes),
-    CB_FIELD(WaterFrameConstants, foamResidueMeanCoverage), CB_FIELD(WaterFrameConstants, foamResiduePad),
+    CB_FIELD(WaterFrameConstants, foamResidueMeanCoverage), CB_FIELD(WaterFrameConstants, foamPatternTime),
 };
 CB_VERIFY_LAYOUT(WaterFrameConstants, kWaterFrameConstantsFields);
 CB_BIND_HLSL(WaterFrameConstants, kWaterFrameConstantsFields, "WaterFrameConstants");

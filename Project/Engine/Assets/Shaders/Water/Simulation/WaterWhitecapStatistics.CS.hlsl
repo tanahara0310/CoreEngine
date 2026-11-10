@@ -5,7 +5,7 @@
 #include "../Common/WaterWhitecapCoverage.hlsli"
 
 Texture2DArray<float4> gJacobian : register(t0);
-Texture2DArray<float> gWhitecapFoam : register(t1);
+Texture2DArray<float2> gWhitecapFoam : register(t1);
 RWByteAddressBuffer gStatistics : register(u0);
 SamplerState gLinearWrap : register(s0);
 
@@ -60,7 +60,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     windows.originsXZ = gResidueOriginsXZ;
     windows.invSizes = gResidueInvSizes;
     const float residue = SampleWhitecapResidue(
-        worldXZ, gWhitecapFoam, gLinearWrap, gDriftOffsetXZ, windows, gResidueMeanCoverage);
+        worldXZ, gWhitecapFoam, gLinearWrap, gDriftOffsetXZ, windows, gResidueMeanCoverage).x;
 
     const uint bin = (uint)clamp((detJ - gHistogramMin) * gHistogramInvWidth, 0.0f, (float)(gHistogramBins - 1u));
     uint original;

@@ -22,8 +22,9 @@ static const float kSeabedWindowEdgeFade = 0.1f;
 /// @brief 白波の被覆率の内訳
 struct WhitecapFoamCoverage
 {
-    float instant; ///< いま砕けている泡 [0,1]
-    float residue; ///< 砕けた後に残っている泡 [0,1]
+    float instant;      ///< いま砕けている泡 [0,1]
+    float residue;      ///< 砕けた後に残っている泡 [0,1]
+    float residueFresh; ///< 残っている泡のうち、砕けた直後の厚い泡の量 [0,residue]
 };
 
 /// @brief 白波の被覆率を、いま砕けている泡と残っている泡に分けて求める（FFTOcean 専用）
@@ -36,6 +37,7 @@ WhitecapFoamCoverage ComputeWhitecapFoamCoverage(float2 worldXZ)
     WhitecapFoamCoverage coverage;
     coverage.instant = 0.0f;
     coverage.residue = 0.0f;
+    coverage.residueFresh = 0.0f;
     if (gFoamEnabled == 0 || gUseFFTOceanNormalMap == 0)
     {
         return coverage;
@@ -47,8 +49,10 @@ WhitecapFoamCoverage ComputeWhitecapFoamCoverage(float2 worldXZ)
     WhitecapResidueWindows windows;
     windows.originsXZ = gFoamResidueOriginsXZ;
     windows.invSizes = gFoamResidueInvSizes;
-    coverage.residue = SampleWhitecapResidue(
+    const float2 residue = SampleWhitecapResidue(
         worldXZ, gFFTOceanFoam, gLinearClamp, gFoamDriftOffsetXZ, windows, gFoamResidueMeanCoverage);
+    coverage.residue = residue.x;
+    coverage.residueFresh = residue.y;
     return coverage;
 }
 

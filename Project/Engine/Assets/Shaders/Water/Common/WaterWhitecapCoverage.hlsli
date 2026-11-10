@@ -11,6 +11,35 @@ static const uint kWhitecapResidueLevelCount = 2;
 /// @brief 格子の端で、外側の値へ移す幅（範囲の一辺に対する割合）
 static const float kWhitecapResidueEdgeFade = 0.1f;
 
+/// @brief 泡の乱数に使う 2D ハッシュ（[0,1)）
+/// @param p 格子点（整数値の float2）
+/// @details 格子点の整数座標から整数演算で作るので、原点から遠くても値の分布が変わらない。
+///          Tools/Water/generate_foam_coverage_table.py が同じ式を使う
+float FoamHash(float2 p)
+{
+    const uint2 q = asuint(int2(p));
+    uint h = (q.x * 0x8da6b343u) ^ (q.y * 0xd8163841u);
+    h ^= h >> 16;
+    h *= 0x7feb352du;
+    h ^= h >> 15;
+    h *= 0x846ca68bu;
+    h ^= h >> 16;
+    return (float)(h >> 8) * (1.0f / 16777216.0f);
+}
+
+/// @brief 泡の value noise（[0,1]・C1 連続）
+float FoamValueNoise(float2 p)
+{
+    const float2 i = floor(p);
+    float2 f = frac(p);
+    f = f * f * (3.0f - 2.0f * f);
+    const float a = FoamHash(i);
+    const float b = FoamHash(i + float2(1.0f, 0.0f));
+    const float c = FoamHash(i + float2(0.0f, 1.0f));
+    const float d = FoamHash(i + float2(1.0f, 1.0f));
+    return lerp(lerp(a, b, f.x), lerp(c, d, f.x), f.y);
+}
+
 /// @brief いま砕けている白波の被覆率 [0,1]
 /// @param detJ 合成ヤコビアン（ComputeFFTCombinedDetJ）
 /// @param bias 砕けるしきい値（detJ がこれを下回ると砕ける）
@@ -37,25 +66,27 @@ float ComputeWhitecapResidueInside(float2 foamXZ, float2 originXZ, float invSize
     return saturate(min(edgeDistance.x, edgeDistance.y) / kWhitecapResidueEdgeFade);
 }
 
-/// @brief 砕けた後に残っている白波の被覆率 [0,1]（FFTOceanFoamAccumulate.CS が進めたもの）
+/// @brief 砕けた後に残っている白波（FFTOceanFoamAccumulate.CS が進めたもの）
 /// @param baseWorldXZ    変位前の参照格子座標
-/// @param residue        残りの泡の格子（段ごとのスライス）
+/// @param residue        残りの泡の格子（段ごとのスライス。x = 被覆率・y = 砕けた直後の厚い泡の量）
 /// @param driftOffsetXZ  泡が風下へ流れた距離 [m]（格子はこの距離だけ流れる座標に置いてある）
 /// @param meanCoverage   遠くの段より外で使う、残りの泡の被覆率の平均
-/// @details 近くの段の中は近くの段、その外は遠くの段、さらに外は平均を使い、境目は端の幅でなだらかに移す
-float SampleWhitecapResidue(
-    float2 baseWorldXZ, Texture2DArray<float> residue, SamplerState linearSampler,
+/// @return x = 被覆率 [0,1]・y = そのうち砕けた直後の厚い泡の量 [0,x]
+/// @details 近くの段の中は近くの段、その外は遠くの段、さらに外は平均（厚い泡は 0）を使い、
+///          境目は端の幅でなだらかに移す
+float2 SampleWhitecapResidue(
+    float2 baseWorldXZ, Texture2DArray<float2> residue, SamplerState linearSampler,
     float2 driftOffsetXZ, WhitecapResidueWindows windows, float meanCoverage)
 {
     const float2 foamXZ = baseWorldXZ - driftOffsetXZ;
 
     float2 farUV;
     const float farInside = ComputeWhitecapResidueInside(foamXZ, windows.originsXZ.zw, windows.invSizes.y, farUV);
-    float coverage = meanCoverage;
+    float2 foam = float2(meanCoverage, 0.0f);
     [branch]
     if (farInside > 0.0f)
     {
-        coverage = lerp(meanCoverage, residue.SampleLevel(linearSampler, float3(farUV, 1.0f), 0.0f), farInside);
+        foam = lerp(foam, residue.SampleLevel(linearSampler, float3(farUV, 1.0f), 0.0f), farInside);
     }
 
     float2 nearUV;
@@ -63,9 +94,9 @@ float SampleWhitecapResidue(
     [branch]
     if (nearInside > 0.0f)
     {
-        coverage = lerp(coverage, residue.SampleLevel(linearSampler, float3(nearUV, 0.0f), 0.0f), nearInside);
+        foam = lerp(foam, residue.SampleLevel(linearSampler, float3(nearUV, 0.0f), 0.0f), nearInside);
     }
-    return saturate(coverage);
+    return saturate(foam);
 }
 
 #endif // WATER_WHITECAP_COVERAGE_INCLUDED

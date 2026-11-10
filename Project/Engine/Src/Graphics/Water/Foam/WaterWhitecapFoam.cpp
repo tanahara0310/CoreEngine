@@ -105,6 +105,12 @@ namespace CoreEngine
         return { settings_.windDirection[0] * axisLength, settings_.windDirection[1] * axisLength };
     }
 
+    float WaterWhitecapFoam::ComputePatternTime(float timeSeconds)
+    {
+        const float wrapped = std::fmod(timeSeconds, kPatternPeriodSeconds);
+        return (wrapped < 0.0f) ? wrapped + kPatternPeriodSeconds : wrapped;
+    }
+
     float WaterWhitecapFoam::GetTargetCoverage() const
     {
         const float windSpeed = settings_.windSpeed;
@@ -144,8 +150,8 @@ namespace CoreEngine
     bool WaterWhitecapFoam::CreateFoamResources()
     {
         Microsoft::WRL::ComPtr<ID3D12Device> device = dxCommon_->GetDevice();
-        // 被覆率 1 チャンネルなので R16_FLOAT
-        const DXGI_FORMAT format = DXGI_FORMAT_R16_FLOAT;
+        // 被覆率と砕けた直後の厚い泡の量の 2 チャンネル
+        const DXGI_FORMAT format = DXGI_FORMAT_R16G16_FLOAT;
 
         D3D12_RESOURCE_DESC desc{};
         desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
