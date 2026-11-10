@@ -81,8 +81,8 @@ namespace CoreEngine
             return foam_[(frameIndex_ + 1u) & 1u].srv.gpuHandle;
         }
 
-        /// @brief 段ごとの XZ の最小の角 [m]（近く xy・遠く zw。風下へ流した座標）
-        const std::array<float, 4>& GetResidueOrigins() const { return levelOrigins_; }
+        /// @brief GetSRVHandle の格子の段ごとの XZ の最小の角 [m]（近く xy・遠く zw。風下へ流した座標）
+        const std::array<float, 4>& GetResidueOrigins() const { return prevLevelOrigins_; }
 
         /// @brief 段ごとの一辺の長さの逆数 [1/m]
         std::array<float, kLevelCount> GetResidueInvSizes() const;

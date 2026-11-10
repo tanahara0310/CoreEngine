@@ -63,7 +63,7 @@ namespace CoreEngine
             whitecap->ComputeDriftOffset(fftOceanTime), whitecap->ComputeStretchAxis(),
             WaterWhitecapFoam::ComputePatternTime(fftOceanTime));
 
-        // 残りの泡の格子を今のぞいているカメラの周りへ置き直し、同じ範囲を水面へ渡す
+        // 残りの泡の格子を今のぞいているカメラの周りへ置き直す。水面へは、水面が読む書き終わった格子の範囲を渡す
         if (const Camera* camera = frame.scene.gameViewCamera3D) {
             const Vector3 cameraPosition = camera->GetPosition();
             whitecap->UpdateWindows(cameraPosition.x, cameraPosition.z, fftOceanTime);

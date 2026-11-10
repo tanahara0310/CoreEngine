@@ -31,9 +31,6 @@ static const float kFoamAgedOpacity = 0.6f;
 // 泡内部の粒状の明度変調（気泡の粒感。周期 ≈ 8cm）
 static const float kFoamGrainScale = 13.0f;
 static const float kFoamGrainMin = 0.82f;
-// 粒の明度変調を平均へ移し始める・移し終える 1 画素の幅 [m]
-static const float kFoamGrainFadeStart = 0.03f;
-static const float kFoamGrainFadeEnd = 0.08f;
 // 泡域でのグリッター用ラフネス（泡は微細気泡でハイライトが大きく柔らかくなる）
 static const float kFoamGlintRoughness = 0.45f;
 
@@ -56,7 +53,7 @@ static const float kFoamEdgeSlopes[3] = { 2.15f, 2.47f, 3.0f };
 // 網目の点の置き方（マスの中の散らばりと、時間で動く幅。どちらもマスの大きさに対する割合）
 static const float kFoamCellJitter = 0.62f;
 static const float kFoamCellMotion = 0.12f;
-// 段を平均へ移し始める・移し終える 1 画素の幅（マスの大きさに対する割合）
+// 段を平均へ移し始める・移し終える 1 画素の幅（マスの大きさに対する割合。粒の明度変調も粒の周期に対して同じ割合で移す）
 static const float kFoamEdgeFadeStart = 0.15f;
 static const float kFoamEdgeFadeEnd = 0.40f;
 // dissolve のしきい値の前後の幅の上限
@@ -324,7 +321,8 @@ FoamPatternFilter ComputeFoamPatternFilter(float2 baseWorldXZ)
     filter.tableLevel = filter.octaveFade.x + filter.octaveFade.y + filter.octaveFade.z;
     filter.edgeWidth = clamp(0.5f * slope * footprint, 0.5f * kFoamLaceSoftness, kFoamMaxEdgeWidth);
     filter.flatten = saturate((footprint - kFoamFlattenStart) / (kFoamFlattenEnd - kFoamFlattenStart));
-    filter.grainFade = saturate((footprint - kFoamGrainFadeStart) / (kFoamGrainFadeEnd - kFoamGrainFadeStart));
+    filter.grainFade = saturate(
+        (footprint * kFoamGrainScale - kFoamEdgeFadeStart) / (kFoamEdgeFadeEnd - kFoamEdgeFadeStart));
     return filter;
 }
 
