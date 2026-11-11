@@ -67,8 +67,10 @@ namespace CoreEngine
         // ワールド行列は、階層（親）を持ちうる TransformComponent があればそれを使う。
         // 無い場合は SRT から組み立てる。
         Matrix4x4 worldMatrix;
+        const WorldTransform* parent = nullptr;
         if (auto* transformComponent = object->GetComponent<TransformComponent>()) {
             worldMatrix = transformComponent->Get().GetWorldMatrix();
+            parent = transformComponent->Get().GetParent();
         } else {
             worldMatrix = MathCore::Matrix::MakeAffine(
                 source->GetScale(), source->GetRotate(), source->GetTranslate());
@@ -88,11 +90,18 @@ namespace CoreEngine
 
         // トランスフォームが変更された場合、オブジェクトに反映
         if (changed) {
-            // ワールド行列から位置、回転、スケールを抽出
+            // 書き戻すのは親から見た値なので、親があればワールド行列から親の行列を外す
+            // （world = local * parentWorld の逆算）
+            Matrix4x4 localMatrix = worldMatrix;
+            if (parent) {
+                localMatrix = worldMatrix * MathCore::Matrix::Inverse(parent->GetWorldMatrix());
+            }
+
+            // ローカル行列から位置、回転、スケールを抽出
             // 注意: DecomposeMatrixToComponentsは回転を度数法で返す
             Vector3 translation, rotationDegrees, scale;
             ImGuizmo::DecomposeMatrixToComponents(
-                &worldMatrix.m[0][0],
+                &localMatrix.m[0][0],
                 &translation.x,
                 &rotationDegrees.x,
                 &scale.x

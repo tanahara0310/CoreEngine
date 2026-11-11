@@ -38,8 +38,13 @@ namespace CoreEngine
     {
         // コライダーのワイヤ表示。Collider 側はレンダラを知らず、描く側が見に行く。
         // GameObject ではなく ILineSource として Line パスへ登録する（Hierarchy には出ない）。
+        // 描く直前に、このフレームのコライダーが登録済みかを確かめる。停止中は Update が回らないので
+        // ここで登録し直す（判定はしない。接触の色は最後に判定したときのまま）。
         debugRenderer_ = std::make_unique<ColliderDebugRenderer>();
-        debugRenderer_->SetWorld(&collisionWorld_);
+        GameObjectManager* const objects = ctx.gameObjectManager;
+        debugRenderer_->SetWorldProvider([this, objects]() -> const CollisionWorld* {
+            return objects ? &GetQueryWorld(*objects) : &collisionWorld_;
+            });
         if (auto* pipeline = GetLinePipeline(ctx)) {
             pipeline->RegisterLineSource(debugRenderer_.get());
         }

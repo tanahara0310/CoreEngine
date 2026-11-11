@@ -2972,6 +2972,7 @@ kbd {
   </div>
   <ul>
     <li>ギズモは常にオブジェクト自身の向き（ローカル）で出ます。スナップ（決まった刻みで動かす）はありません。細かい値はインスペクタで入れます。</li>
+    <li>親のあるオブジェクトを動かすと、トランスフォームには親から見た位置・回転・拡大が入ります。</li>
     <li>動かし終えるたびに Undo に積まれます（<kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せます）。</li>
     <li>W・E・R・F の割り当ては Key Config で変えられます。</li>
   </ul>
@@ -5065,7 +5066,7 @@ kbd {
   <ol class="steps">
     <li><strong>コライダーを付ける</strong>Inspector の <span class="ui">＋ コンポーネント追加</span> から <span class="ui">コライダー</span> を選びます。</li>
     <li><strong>形を足す</strong>付けただけでは形がありません。コライダーの欄の <span class="ui">球を追加</span> か <span class="ui">箱を追加</span> を押します。足した形は、<strong>トリガーがオン</strong>・レイヤー <code>Default</code> です。</li>
-    <li><strong>形を合わせる</strong><span class="ui">形状</span>（Sphere・Box・Capsule）と大きさ、<span class="ui">オフセット</span> を見た目に合わせます。ツールバーの <span class="ui">◍ Collider</span> を押すと、形が線で表示されます。</li>
+    <li><strong>形を合わせる</strong><span class="ui">形状</span>（Sphere・Box・Capsule）と大きさ、<span class="ui">オフセット</span> を見た目に合わせます。ツールバーの <span class="ui">◍ Collider</span> を押すと、停止中も再生中も形が線で表示されます。線の色は、接触中が赤・トリガーが青・それ以外が緑です。停止中は判定をしないので、赤になるのは一時停止で止めたときだけです。</li>
     <li><strong>知らせを受けるメソッドを書く</strong>スクリプトに <code>OnTriggerEnter</code> などを書きます（下の表）。</li>
   </ol>
 
@@ -5327,7 +5328,7 @@ kbd {
     <thead><tr><th>確かめること</th><th>見る場所</th></tr></thead>
     <tbody>
       <tr><td>両方にコライダーが付いていて、形が足してあり、有効になっているか</td><td>Inspector の <span class="ui">コライダー</span></td></tr>
-      <tr><td>形の大きさと位置が見た目と合っているか</td><td>ツールバーの <span class="ui">◍ Collider</span> で線を表示</td></tr>
+      <tr><td>形の大きさと位置が見た目と合っているか</td><td>ツールバーの <span class="ui">◍ Collider</span> で線を表示（停止中も出ます）</td></tr>
       <tr><td>2 つのレイヤーの組み合わせにチェックが入っているか</td><td><span class="ui">Scene Settings</span> の <span class="ui">当たり判定のレイヤー</span></td></tr>
       <tr><td>剛体・キャラクタコントローラのコライダーのトリガーが外れているか</td><td>Inspector の <span class="ui">トリガー</span></td></tr>
       <tr><td>両方とも <span class="ui">静止</span> になっていないか</td><td>Inspector の <span class="ui">静止</span></td></tr>
@@ -11431,6 +11432,14 @@ python Tools/OkinawaBeach/bake_araha_walk.py
     <li><strong>遠くの泡</strong>：画素に比べて細かすぎる模様の段を、その段の平均の濃さへなだらかに移します。画素が 0.6〜1.6m より大きい所と、泡がごく薄い所（被覆率 0.4% 以下）では、模様を使わず泡の量の濃さで塗ります。泡の量と網目の見える面積がずれないよう、どの段まで残っているかごとの表（<span class="path">Tools/Water/generate_foam_coverage_table.py</span> で作る）を引きます。泡の中の細かいざらつき（周期 約 8cm）も、画素が 1.2〜3.1cm より大きくなると消えます。</li>
     <li><strong>泡のちらつき</strong>：残る泡の格子を動かしたフレームで、水面が 1 つ前のフレームに書いた格子を、動かした後の位置として読んでいました。カメラが動いたときや、泡が風下へ流れて格子が 1 マス動いたときに、残る泡が 1 フレームだけ 25cm（遠くの格子は 1m）ずれて戻るので、泡がちらついていました（v0.76.0 から）。水面へは、読む格子を書いたときの位置を渡すようにしました。</li>
     <li><strong>試験用のプロジェクト</strong>：<span class="path">Projects/EngineTests</span> の README の WaterFoam に、近くから泡の模様と古さを確かめる手順を足しました。</li>
+  </ul>
+
+  <h3 id="changelog-v0-76-1">v0.76.1 <span class="dim">（2026-11-11）</span></h3>
+  <p>エディタの不具合 2 件と要望 1 件を直した版です。ゲームの見た目は変わりません。</p>
+  <ul>
+    <li><strong>子のギズモ</strong>：親のトランスフォームを変えた子をギズモで動かすと、動かすたびに親の位置・回転・拡大が足されていたのを直しました。ギズモで動かした結果は、親から見た値でトランスフォームに入ります（<a href="#viewport-gizmo">ギズモで動かす</a>）。</li>
+    <li><strong>停止中のコライダーの線</strong>：ツールバーの <span class="ui">◍ Collider</span> の線が、再生中にしか出なかったのを直しました。グリッドと同じく、停止中も出ます（<a href="#physics-debug">当たらないときの調べ方</a>）。</li>
+    <li><strong>入力欄のホバー</strong>：数値のドラッグやコンボなど、入力欄にマウスを乗せたときの明るさの変わり方を、スライダーと同じくらいに強くしました。</li>
   </ul>
 
   <h3 id="changelog-v0-76-0">v0.76.0 <span class="dim">（2026-11-10）</span></h3>
