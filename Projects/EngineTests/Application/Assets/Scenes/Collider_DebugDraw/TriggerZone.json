@@ -1,0 +1,55 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    1.1,
+                    5.5
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "shapes": [
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "static": false,
+                        "trigger": true,
+                        "type": "Box",
+                        "size": [
+                            4.0,
+                            2.0,
+                            2.0
+                        ]
+                    }
+                ]
+            },
+            "type": "Collider"
+        }
+    ],
+    "id": "d25ddc97b89c2f4b",
+    "name": "TriggerZone",
+    "order": 8
+}

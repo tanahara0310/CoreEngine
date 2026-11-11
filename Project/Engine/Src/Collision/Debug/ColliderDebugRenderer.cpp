@@ -46,7 +46,11 @@ namespace CoreEngine
     {
         (void)camera;
 
-        if (!cvDebugDraw.Get() || !world_) {
+        if (!cvDebugDraw.Get() || !worldProvider_) {
+            return;
+        }
+        const CollisionWorld* const world = worldProvider_();
+        if (!world) {
             return;
         }
 
@@ -56,10 +60,10 @@ namespace CoreEngine
 
         std::vector<Line> lines;
 
-        for (const Collider* collider : world_->GetAllColliders()) {
+        for (const Collider* collider : world->GetAllColliders()) {
             if (!collider || !collider->IsEnabled()) { continue; }
 
-            const bool touching = world_->IsColliding(*collider);
+            const bool touching = world->IsColliding(*collider);
             if (onlyColliding && !touching) { continue; }
 
             const Vector3 color = touching ? cvColorHit.Get()

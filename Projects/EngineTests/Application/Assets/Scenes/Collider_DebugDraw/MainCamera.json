@@ -1,0 +1,49 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.5,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    7.0,
+                    -12.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "background": 1,
+                "backgroundColor": [
+                    0.02,
+                    0.02,
+                    0.025,
+                    1.0
+                ],
+                "farClip": 200.0,
+                "fov": 50.0,
+                "isMainCamera": true,
+                "nearClip": 0.1,
+                "orthographicSize": 5.0,
+                "projection": 0
+            },
+            "type": "Camera"
+        }
+    ],
+    "id": "80e07f66f7312fab",
+    "name": "MainCamera",
+    "order": 0
+}
