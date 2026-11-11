@@ -546,8 +546,8 @@ namespace CoreEngine
 
         // ===== 入力欄 =====
         colors[ImGuiCol_FrameBg] = bgField;
-        colors[ImGuiCol_FrameBgHovered] = Theme::FromSrgb(32, 32, 36);
-        colors[ImGuiCol_FrameBgActive] = Theme::FromSrgb(38, 38, 43);
+        colors[ImGuiCol_FrameBgHovered] = Theme::kFieldHover;
+        colors[ImGuiCol_FrameBgActive] = Theme::kFieldActive;
 
         // ===== ボタン =====
         colors[ImGuiCol_Button] = bgControl;

@@ -32,6 +32,10 @@ namespace CoreEngine::Editor::Theme
     inline const ImVec4 kHover = FromSrgb(74, 74, 82);   ///< ホバー
     inline const ImVec4 kActive = FromSrgb(90, 90, 100);  ///< 押下
 
+    // ===== 入力欄の状態（入力欄の上に kHover / kActive を 35% 重ねた色。スライダーの見た目と揃える） =====
+    inline const ImVec4 kFieldHover = FromSrgb(49, 49, 54);   ///< 入力欄のホバー
+    inline const ImVec4 kFieldActive = FromSrgb(58, 58, 65);  ///< 入力欄の操作中
+
     // ===== アクセント（選択・操作中だけに使う） =====
     inline const ImVec4 kAccent = FromSrgb(61, 126, 200);
     inline const ImVec4 kAccentHover = FromSrgb(85, 150, 222);

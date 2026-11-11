@@ -2,6 +2,9 @@
 
 #include "Graphics/Render/Line/ILineSource.h"
 
+#include <functional>
+#include <utility>
+
 namespace CoreEngine
 {
 class CollisionWorld;
@@ -11,13 +14,17 @@ class CollisionWorld;
 ///          `CollisionWorld` の登録内容を毎フレーム描く。`Collider` 側はレンダラを一切知らない。
 class ColliderDebugRenderer : public ILineSource {
 public:
-    /// @brief 描画対象の衝突ワールドを設定する
-    void SetWorld(const CollisionWorld* world) { world_ = world; }
+    /// @brief 描く直前に衝突ワールドを返す関数
+    /// @details 停止中は判定が回らないので、返す側がそのフレームのコライダーを登録し直してから返す。
+    using WorldProvider = std::function<const CollisionWorld*()>;
+
+    /// @brief 描画対象の衝突ワールドを返す関数を設定する
+    void SetWorldProvider(WorldProvider provider) { worldProvider_ = std::move(provider); }
 
     /// @brief Line パスから呼ばれ、コライダーのワイヤフレームを供給する
     void SubmitLines(LineRendererPipeline& pipeline, const Camera* camera) override;
 
 private:
-    const CollisionWorld* world_ = nullptr;
+    WorldProvider worldProvider_;
 };
 }
