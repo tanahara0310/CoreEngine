@@ -38,7 +38,7 @@ cbuffer WaterSurfaceData : register(b1)
     float2 gSurfaceRegionCenterXZ;         // 水面メッシュのワールド XZ 範囲
     float2 gSurfaceRegionHalfExtentXZ;
     float3 gSurfaceWaveGroupPhase;         // 波群エンベロープの位相のずれ [rad]
-    float gSurfacePad2;
+    float gSurfaceMaxCrestHeight;          // 描かれる水面が静水面から上がる高さの上限 [m]（0 なら分からない）
     // 岸の細かい格子（WaterShoreMesh.hlsli。範囲は海底の高さと同じ）
     uint gSurfaceShoreMeshEnabled;         // 1 = 範囲の中は岸の格子の三角形で水面を描く
     float gSurfaceShoreMeshSize;           // 範囲の一辺の長さ [m]
@@ -464,6 +464,20 @@ float3 VisualizeRTScalar(float value, float displayScale)
 {
     const float scaled = 1.0f - exp(-max(value, 0.0f) * max(displayScale, 1.0e-4f));
     return scaled.xxx;
+}
+
+/// @brief 描かれる水面の高さの上限 [m]（上限が分からなければ大きな値）
+float GetDrawnSurfaceTopHeight()
+{
+    return gSurfaceMaxCrestHeight > 0.0f ? gSurfaceWaterHeight + gSurfaceMaxCrestHeight : 3.0e38f;
+}
+
+/// @brief カメラから sceneDistance 先までの視線が、描かれる水面の高さの上限より上だけを通るか
+/// @details 真のとき、RefineWaterSurfaceIntersection の交点はこの区間の外になる
+bool IsViewSegmentAboveDrawnSurface(float3 cameraPosition, float3 primaryDir, float sceneDistance)
+{
+    const float endY = cameraPosition.y + primaryDir.y * sceneDistance;
+    return min(cameraPosition.y, endY) > GetDrawnSurfaceTopHeight();
 }
 
 /// @brief フラット水面平面での交点をシードに、固定点反復（3回）で

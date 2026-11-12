@@ -61,6 +61,7 @@ namespace CoreEngine
         float time = 0.0f;
         uint32_t simulationType = static_cast<uint32_t>(WaterWaveModelType::Gerstner); ///< 描いている波のモデル
         WaveParams waves[kMaxWaterSurfaceWaveCount]{};
+        float maxCrestHeight = 0.0f; ///< 描かれる水面が waterHeight から上がる高さの上限 [m]（0 なら分からない）
 
         // FFT の海の波面のテクスチャ（RT と水面の高さの問い合わせが読む）
         WaterFFTOceanInput fftOcean{};

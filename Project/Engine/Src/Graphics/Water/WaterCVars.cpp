@@ -18,6 +18,11 @@ namespace CoreEngine
         CVar<bool> ShoreFineMesh{ "r.Water.Shore.FineMesh", true,
             "カメラの周りの範囲（海底の高さを測る範囲）を細かい格子で描き、短い波まで形に入れる（FFTOcean 専用）" };
 
+        // ---- 海底の高さ ----
+        CVar<int> SeabedRefreshFrames{ "r.Water.Seabed.RefreshFrames", 4,
+            "カメラの周りの海底の高さを、何フレームに分けて測り直すか（1 = 毎フレーム全部。範囲が動いたフレームは全部測る）",
+            CVarRange{ 1.0f, 16.0f } };
+
         // ---- 海の範囲マップ ----
         CVar<bool> SeaMapEnabled{ "r.Water.SeaMap.Enabled", true,
             "水面の範囲全体の水深と上の物までの高さをレイトレーシングで測り、陸の下・浅瀬・桟橋の下で波を弱める" };

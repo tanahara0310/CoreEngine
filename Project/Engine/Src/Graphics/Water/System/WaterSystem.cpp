@@ -395,6 +395,7 @@ namespace CoreEngine
         RenderDomainContext& domain, const WaterSurfaceComponent& waterPlane, WaterSurfaceData& out) const
     {
         wave_.Capture(domain, waterPlane, out);
+        out.maxCrestHeight = wave_.GetDrawnModel(waterPlane).ComputeMaxCrestHeight(domain, out);
         out.tideHeight = waterPlane.GetTideHeight();
 
         // 水面メッシュのワールド XZ 範囲（コースティクスを水域の外へ漏らさない受光マスク）。

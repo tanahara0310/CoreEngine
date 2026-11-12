@@ -70,7 +70,7 @@ namespace CoreEngine
             float regionCenterXZ[2] = { 0.0f, 0.0f };     ///< 水面メッシュのワールド XZ 範囲の中心
             float regionHalfExtentXZ[2] = { 0.0f, 0.0f }; ///< 水面メッシュのワールド XZ 範囲の半分の大きさ
             float waveGroupPhase[3] = { 0.0f, 0.0f, 0.0f };   ///< 波群エンベロープの位相のずれ [rad]
-            float pad2 = 0.0f;
+            float maxCrestHeight = 0.0f;                  ///< 描かれる水面が waterHeight から上がる高さの上限 [m]（0 なら分からない）
             // ---- 岸の細かい格子（WaterSurfaceData の同名の値）----
             uint32_t shoreMeshEnabled = 0;
             float shoreMeshSize = 0.0f;
@@ -99,7 +99,7 @@ namespace CoreEngine
             CB_FIELD(WaterSurfaceConstants, regionValid), CB_FIELD(WaterSurfaceConstants, cascadeMeanSquareSlope),
             CB_FIELD(WaterSurfaceConstants, fineWaveMeanSquareSlope), CB_FIELD(WaterSurfaceConstants, regionCenterXZ),
             CB_FIELD(WaterSurfaceConstants, regionHalfExtentXZ), CB_FIELD(WaterSurfaceConstants, waveGroupPhase),
-            CB_FIELD(WaterSurfaceConstants, pad2), CB_FIELD(WaterSurfaceConstants, shoreMeshEnabled),
+            CB_FIELD(WaterSurfaceConstants, maxCrestHeight), CB_FIELD(WaterSurfaceConstants, shoreMeshEnabled),
             CB_FIELD(WaterSurfaceConstants, shoreMeshSize), CB_FIELD(WaterSurfaceConstants, shoreMeshOriginXZ),
             CB_FIELD(WaterSurfaceConstants, shoreMeshCellSize), CB_FIELD(WaterSurfaceConstants, shoreMeshBlendWidth),
             CB_FIELD(WaterSurfaceConstants, shoreMeshDisplacementSrvIndex), CB_FIELD(WaterSurfaceConstants, pad3),

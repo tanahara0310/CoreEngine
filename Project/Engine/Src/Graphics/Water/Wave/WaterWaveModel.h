@@ -49,6 +49,10 @@ namespace CoreEngine
         /// @param snapshot このモデルが Capture した snapshot
         virtual float ComputeSignificantWaveHeight(RenderDomainContext& domain, const WaterSurfaceData& snapshot) const = 0;
 
+        /// @brief 描かれる水面が静水面から上がる高さの上限 [m]
+        /// @param snapshot このモデルが Capture した snapshot
+        virtual float ComputeMaxCrestHeight(RenderDomainContext& domain, const WaterSurfaceData& snapshot) const = 0;
+
         /// @brief 波のテクスチャと傾きの大きさを結線へ書く
         virtual void Bind(RenderDomainContext&, WaterFrameBinding&) const {}
 

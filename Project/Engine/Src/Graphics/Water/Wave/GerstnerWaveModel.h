@@ -19,5 +19,8 @@ namespace CoreEngine
 
         /// @brief 振幅の二乗和から求める
         float ComputeSignificantWaveHeight(RenderDomainContext& domain, const WaterSurfaceData& snapshot) const override;
+
+        /// @brief 振幅の和
+        float ComputeMaxCrestHeight(RenderDomainContext& domain, const WaterSurfaceData& snapshot) const override;
     };
 }
