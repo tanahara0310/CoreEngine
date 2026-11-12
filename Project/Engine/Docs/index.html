@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.76.1">
+<meta name="engine-version" content="0.77.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2410,11 +2410,14 @@ kbd {
       <tr><td>起動したとき</td><td>編集中</td><td>編集中</td><td>すぐ再生</td></tr>
       <tr><td>スクリプトの読み直し</td><td>する</td><td>する</td><td>しない</td></tr>
       <tr><td>GPU のデバッグ（D3D デバッグレイヤーなど）</td><td>有効</td><td>無効</td><td>無効</td></tr>
+      <tr><td>C++ の最適化</td><td>なし</td><td>あり（Release と同じ <code>/O2</code>）</td><td>あり</td></tr>
+      <tr><td>assert（コードの中の確認）</td><td>する</td><td>する</td><td>しない</td></tr>
       <tr><td>用途</td><td>エンジンの不具合を調べる</td><td><strong>ふだんのゲームづくり</strong></td><td>ゲームの書き出し</td></tr>
     </tbody>
   </table>
   </div>
-  <div class="callout tip"><p>ゲームを作るだけなら <code>Development</code> が向いています。<code>Debug</code> は GPU の検証が入るぶん重くなります。</p></div>
+  <div class="callout tip"><p>ゲームを作るだけなら <code>Development</code> が向いています。Release と同じ最適化をかけてあるので、遊んだときの速さが書き出したゲームに近くなります。</p></div>
+  <div class="callout note" data-title="Visual Studio で止めて調べるとき"><p><code>Development</code> は最適化をかけているので、ブレークポイントで止めたときに変数が「最適化で消えた」と出たり、行が飛んだりします。エンジンの C++ を 1 行ずつ追うときは <code>Debug</code> でビルドします。<code>Debug</code> は最適化が無く GPU の検証も入るぶん重くなります。</p></div>
 
   <h2 id="setup-cmdline">コマンドラインのオプション</h2>
   <div class="table-wrap">
@@ -11422,6 +11425,15 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-77-0">v0.77.0 <span class="dim">（2026-11-13）</span></h3>
+  <p><code>Development</code> のビルドに Release と同じ C++ の最適化をかけた版です（<a href="#setup-configs">ビルド構成の違い</a>）。エディタでの CPU の時間がおよそ半分になります。ゲームの動きと見た目は変わりません。</p>
+  <ul>
+    <li><strong>最適化</strong>：<code>Development</code> の C++ を Release と同じ <code>/O2</code> でコンパイルします。リンクのときの全体最適化（<code>/GL</code>）は使いません。assert は今までどおり効きます。アラハビーチのシーンを再生したときの CPU の時間（更新と描画の記録を合わせたもの）は 15.7ms から 8.0ms になりました。</li>
+    <li><strong>止めて調べるとき</strong>：Visual Studio のブレークポイントで止めると、変数が見えなかったり行が飛んだりすることがあります。エンジンの C++ を 1 行ずつ追うときは <code>Debug</code> でビルドします。</li>
+    <li><strong>ビルドの時間</strong>：全部のファイルをコンパイルし直すときは約 3 倍かかります（手元の PC で 10 分から 31 分）。多くのファイルが読むヘッダーを直したときも、そのぶん長くなります。.cpp を数個直したときはほとんど変わりません（3 個で、どちらも 40〜50 秒）。この版に変えた後の最初のビルドは、全部のファイルをコンパイルし直します。</li>
+    <li><strong>main.cpp の警告</strong>：<span class="path">main.cpp</span> だけに付いていた最適化の指定を外しました。<code>Development</code> のビルドで出ていたプリコンパイル済みヘッダーの警告（C4652・C4653）が出なくなります。</li>
+  </ul>
 
   <h3 id="changelog-v0-76-1">v0.76.1 <span class="dim">（2026-11-11）</span></h3>
   <p>エディタの不具合 2 件と要望 1 件を直した版です。ゲームの見た目は変わりません。</p>
