@@ -168,6 +168,12 @@ void RTWaterCausticsRayGen()
 
     float2 screenUV = (float2(launchIndex) + 0.5f.xx) / float2(gScreenWidth, gScreenHeight);
     float3 receiverWorldPos = ReconstructWorldPosition(ScreenUVToNDC(screenUV), ndcDepth, gInvViewProj);
+    // 水面の届く高さより上の受光点は水に覆われていない
+    if (receiverWorldPos.y >= GetDrawnSurfaceTopHeight())
+    {
+        gCausticsOutput[launchIndex] = 0.0f.xxxx;
+        return;
+    }
     float3 receiverNormal = normalize(gNormalRoughness.Load(int3(launchIndex, 0)).xyz * 2.0f - 1.0f);
 
     // 集光率のヤコビアン差分幅に使う、このピクセルが受光面で覆う幅

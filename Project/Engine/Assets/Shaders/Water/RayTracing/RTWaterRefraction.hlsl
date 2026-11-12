@@ -251,6 +251,13 @@ void RTWaterRefractionRayGen()
         return;
     }
 
+    // 視線が水面の届く高さより上だけを通る画素は、交点を求めずに水柱ゼロとする（下の不透明面より奥の場合と同じ値）
+    if (IsViewSegmentAboveDrawnSurface(gCameraPosition, primaryDir, sceneDistance))
+    {
+        gRefractionOutput[launchIndex] = MakeColorFallbackWithPath(fallbackSample.rgb, 0.0f);
+        return;
+    }
+
     // フラット平面シード→波反映の固定点反復（詳細は RefineWaterSurfaceIntersection）。
     // シード段階の 0 < t < sceneDistance 判定は行わず、精密化後に判定し直す
     // （「カメラを近づけるとカメラ下側の屈折が消える」既知バグの恒久対策）。

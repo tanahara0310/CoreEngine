@@ -44,4 +44,15 @@ namespace CoreEngine
         }
         return 4.0f * std::sqrt(0.5f * sumSquares);
     }
+
+    float GerstnerWaveModel::ComputeMaxCrestHeight(
+        [[maybe_unused]] RenderDomainContext& domain, const WaterSurfaceData& snapshot) const
+    {
+        // 全部の波の山が重なった高さ
+        float sumAmplitudes = 0.0f;
+        for (uint32_t waveIndex = 0; waveIndex < snapshot.activeWaveCount; ++waveIndex) {
+            sumAmplitudes += std::abs(snapshot.waves[waveIndex].amplitude);
+        }
+        return sumAmplitudes;
+    }
 }

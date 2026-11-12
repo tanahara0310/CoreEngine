@@ -244,6 +244,7 @@ namespace CoreEngine
             surfaceConstants.waveGroupPhase[c] = fftOceanInput.waveGroupPhase[c];
         }
         surfaceConstants.fineWaveMeanSquareSlope = fftOceanInput.fineWaveMeanSquareSlope;
+        surfaceConstants.maxCrestHeight = surfaceData.maxCrestHeight;
         surfaceConstants.regionValid = surfaceData.regionValid;
         for (int c = 0; c < 2; ++c) {
             surfaceConstants.regionCenterXZ[c] = surfaceData.regionCenterXZ[c];

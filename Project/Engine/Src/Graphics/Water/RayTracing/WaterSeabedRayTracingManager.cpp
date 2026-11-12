@@ -1,12 +1,14 @@
 #include "pch.h"
 #include "WaterSeabedRayTracingManager.h"
 
+#include <algorithm>
 #include <cmath>
 
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/RayTracing/RTInstanceMask.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
+#include "Graphics/Water/WaterCVars.h"
 
 namespace CoreEngine
 {
@@ -16,12 +18,15 @@ namespace CoreEngine
             float texelSize;
             float maxDepth;
             uint32_t instanceMask;
-            float pad[3];
+            uint32_t rowOffset; ///< 測る最初の行
+            uint32_t rowStride; ///< 測る行の間隔
+            float pad;
         };
 
         static constexpr Cb::Field kWaterSeabedConstantsFields[] = {
             CB_FIELD(WaterSeabedConstants, windowOriginXZ), CB_FIELD(WaterSeabedConstants, texelSize),
             CB_FIELD(WaterSeabedConstants, maxDepth), CB_FIELD(WaterSeabedConstants, instanceMask),
+            CB_FIELD(WaterSeabedConstants, rowOffset), CB_FIELD(WaterSeabedConstants, rowStride),
             CB_FIELD(WaterSeabedConstants, pad),
         };
         CB_VERIFY_LAYOUT(WaterSeabedConstants, kWaterSeabedConstantsFields);
@@ -77,12 +82,34 @@ namespace CoreEngine
             return;
         }
 
+        // 範囲が動いたか出力が作り直されたフレームは全部を、それ以外は 1 組の行だけを測り直す
+        const ID3D12Resource* outputResource = resources.output->Get();
+        const bool fullRefresh = measuredResource_ != outputResource
+            || measuredOriginX_ != window_.originX || measuredOriginZ_ != window_.originZ;
+        const uint32_t refreshFrames = static_cast<uint32_t>(std::clamp(
+            WaterCVars::SeabedRefreshFrames.Get(), 1, static_cast<int>(kMaxRefreshFrames)));
+        uint32_t rowOffset = 0;
+        uint32_t rowStride = 1;
+        if (fullRefresh || refreshFrames == 1) {
+            measuredResource_ = outputResource;
+            measuredOriginX_ = window_.originX;
+            measuredOriginZ_ = window_.originZ;
+            nextRowGroup_ = 0;
+        } else {
+            rowOffset = nextRowGroup_ % refreshFrames;
+            rowStride = refreshFrames;
+            nextRowGroup_ = (rowOffset + 1) % refreshFrames;
+        }
+        const UINT launchHeight = (kResolution - rowOffset + rowStride - 1) / rowStride;
+
         WaterSeabedConstants constants{};
         constants.windowOriginXZ[0] = window_.originX;
         constants.windowOriginXZ[1] = window_.originZ;
         constants.texelSize = kTexelSize;
         constants.maxDepth = kMaxDepth;
         constants.instanceMask = RTInstanceMask::kStaticSolid | RTInstanceMask::kMovingSolid;
+        constants.rowOffset = rowOffset;
+        constants.rowStride = rowStride;
 
         const SurfaceConstantsUpload surface = UploadSurfaceDataForDispatch(surfaceData, fftOceanInput);
 
@@ -95,7 +122,7 @@ namespace CoreEngine
             },
             &constants,
             kResolution,
-            kResolution,
+            launchHeight,
             D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
     }
 

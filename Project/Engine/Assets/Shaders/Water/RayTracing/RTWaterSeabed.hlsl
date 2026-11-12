@@ -15,7 +15,9 @@ cbuffer WaterSeabedConstants : register(b0)
     float gTexelSize;       // 1 テクセルの幅 [m]
     float gMaxDepth;        // 海底を探す水面からの深さの上限 [m]
     uint gInstanceMask;     // 海底として当てるインスタンスの印
-    float3 gSeabedPad;
+    uint gRowOffset;        // 測る最初の行
+    uint gRowStride;        // 測る行の間隔
+    float gSeabedPad;
 };
 
 /// @brief レイの出発点の、水面からの高さ [m]
@@ -39,11 +41,12 @@ RTTraceHit TraceSeabedRay(float3 origin, float3 direction, float maxDistance)
 /// @brief テクセルごとに、今の水面のすぐ上から真下へレイを撃ち、水面より下で最初に当たる面
 ///        （海底・水中の物）の高さを書く
 /// @details 水面より上の物（桟橋の床など）は出発点より上にあるので当たらない。
-///          水面の点が陸の下や物の中のときは、上向きのレイで陸や物の上の面の高さを書く（水深が負になる）
+///          水面の点が陸の下や物の中のときは、上向きのレイで陸や物の上の面の高さを書く（水深が負になる）。
+///          測るのは gRowOffset 行目から gRowStride 行おきの行
 [shader("raygeneration")]
 void RTWaterSeabedRayGen()
 {
-    const uint2 launchIndex = DispatchRaysIndex().xy;
+    const uint2 launchIndex = uint2(DispatchRaysIndex().x, DispatchRaysIndex().y * gRowStride + gRowOffset);
     const float2 worldXZ = gWindowOriginXZ + (float2(launchIndex) + 0.5f) * gTexelSize;
     const float waterY = gSurfaceWaterHeight + EvaluateDrawnSurfaceHeight(gFFTOceanDisplacement, worldXZ);
     const float3 origin = float3(worldXZ.x, waterY + kStartAboveSurface, worldXZ.y);

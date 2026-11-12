@@ -270,6 +270,13 @@ void RTWaterReflectionRayGen()
         return;
     }
 
+    // 視線が水面の届く高さより上だけを通る画素は、交点を求めずに水面の見えない画素とする
+    if (IsViewSegmentAboveDrawnSurface(gCameraPosition, primaryDir, sceneDistance))
+    {
+        gReflectionOutput[launchIndex] = MakeFallbackOutput(kRTReasonInvalidPlaneIntersection);
+        return;
+    }
+
     // フラット平面シード→波反映の固定点反復（RTWaterRefraction と共通の
     // RefineWaterSurfaceIntersection。詳細コメントは RTWaterSurfaceCommon.hlsli）。
     float3 waterPos;
