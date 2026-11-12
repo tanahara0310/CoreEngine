@@ -177,7 +177,7 @@ exit /b 0</Command>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>$(ProjectDir)Externals\assimp\include;$(ProjectDir)Externals\spdlog\include;$(ProjectDir)Externals\imgui;$(ProjectDir)Engine/Src;$(ProjectDir)Externals\angelscript\include;$(ProjectDir)Externals\angelscript\add_on;$(ProjectDir)Externals\SDL3\include</AdditionalIncludeDirectories>
-      <Optimization>Disabled</Optimization>
+      <Optimization>MaxSpeed</Optimization>
       <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
     <Link>
@@ -718,10 +718,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Editor\ImGui\EditorLogo.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\EditorImage.cpp" />
     <ClCompile Include="Engine\Src\Launch\MyGame.cpp" />
-    <ClCompile Include="Engine\Src\Launch\main.cpp">
-      <Optimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">MaxSpeed</Optimization>
-      <WholeProgramOptimization Condition="'$(Configuration)|$(Platform)'=='Development|x64'">true</WholeProgramOptimization>
-    </ClCompile>
+    <ClCompile Include="Engine\Src\Launch\main.cpp" />
     <ClCompile Include="Engine\Src\WinApp\WinApp.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RootSignature\RootSignatureManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Pipeline\PipelineStateManager.cpp" />
