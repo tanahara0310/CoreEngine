@@ -117,6 +117,12 @@ WaterCausticsPath BeginWaterCaustics(
         }
     }
 
+    // 水面の届く高さより上の受光点は水に覆われていない
+    if (receiverWorldPos.y >= GetDrawnSurfaceTopHeight())
+    {
+        return path;
+    }
+
     // 描かれる水面からの深さ。水面より上なら水に覆われていない（直接光は通常のまま）
     const float surfaceYAboveReceiver =
         gSurfaceWaterHeight + EvaluateDrawnSurfaceHeight(displacementTex, receiverWorldPos.xz);

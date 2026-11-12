@@ -33,6 +33,9 @@ namespace CoreEngine
         /// @brief 風波とうねりの有義波高を合わせた値
         float ComputeSignificantWaveHeight(RenderDomainContext& domain, const WaterSurfaceData& snapshot) const override;
 
+        /// @brief 有義波高から見積もった波頭の高さに、波群エンベロープの最大の倍率を掛けた値
+        float ComputeMaxCrestHeight(RenderDomainContext& domain, const WaterSurfaceData& snapshot) const override;
+
         /// @brief 波面のテクスチャとカスケードごとの傾きの大きさを書く
         void Bind(RenderDomainContext& domain, WaterFrameBinding& binding) const override;
 

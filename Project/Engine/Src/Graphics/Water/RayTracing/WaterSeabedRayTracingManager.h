@@ -22,7 +22,8 @@ namespace CoreEngine
 
     /// @brief カメラの周りの範囲で、水面より下で最初に当たる面（海底・水中の物）の高さを
     ///        レイトレーシングで測るマネージャ
-    /// @details 出力は範囲を kResolution 四方に分けた R32_FLOAT のワールド Y。毎フレーム測り直す
+    /// @details 出力は範囲を kResolution 四方に分けた R32_FLOAT のワールド Y。
+    ///          範囲が動いたフレームは全部を、それ以外のフレームは r.Water.Seabed.RefreshFrames 行おきの 1 組の行だけを測り直す
     class WaterSeabedRayTracingManager : public WaterRayTracingPassBase {
     public:
         using ViewID = RTWaterViewID;
@@ -35,6 +36,8 @@ namespace CoreEngine
         static constexpr float kWindowSnapMeters = 0.5f;
         /// @brief 海底を探す水面からの深さの上限 [m]
         static constexpr float kMaxDepth = 50.0f;
+        /// @brief 測り直しを分けるフレーム数の上限
+        static constexpr uint32_t kMaxRefreshFrames = 16;
 
         /// @brief パイプラインを作り始める（完成は別スレッド）
         bool Initialize(const RTEffectInitContext& init) override;
@@ -60,5 +63,12 @@ namespace CoreEngine
 
     private:
         WaterSeabedWindow window_{};
+        /// @brief 出力の全部を測ったときの範囲の角（measuredResource_ が null なら一度も測っていない）
+        float measuredOriginX_ = 0.0f;
+        float measuredOriginZ_ = 0.0f;
+        /// @brief 全部を測ったときの出力のテクスチャ（作り直されたら全部を測り直す）
+        const ID3D12Resource* measuredResource_ = nullptr;
+        /// @brief 次に測り直す行の組（行番号を分けるフレーム数で割った余り）
+        uint32_t nextRowGroup_ = 0;
     };
 }

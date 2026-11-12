@@ -8,10 +8,16 @@
 #include "Graphics/Water/Surface/WaterRenderResources.h"
 #include "Graphics/Water/Surface/WaterSurfaceComponent.h"
 #include "Graphics/Water/WaterSurfaceData.h"
+#include "../../../../Assets/Shaders/Water/Common/FFTOceanCascadeValues.hlsli"
 
 namespace CoreEngine
 {
     namespace {
+        /// @brief 波頭の高さの上限と有義波高の比（波面の高さの標準偏差の 6 倍）
+        constexpr float kMaxCrestToSignificantWaveHeight = 1.5f;
+        /// @brief 波群エンベロープの倍率の最大（3 つの正弦がそろって 1 になるとき）
+        constexpr float kMaxWaveGroupEnvelope = 1.0f + 3.0f * FFT_OCEAN_WAVE_GROUP_STRENGTH;
+
         /// @brief FFT のスペクトルを決める値が同じか（波のモデルの選択は見ない）
         bool SameSpectrum(const WaterWaveSettings& a, const WaterWaveSettings& b)
         {
@@ -97,6 +103,12 @@ namespace CoreEngine
         }
         const FFTOceanSpectrum::WaveSummary summary = fftOcean->GetSpectrum().GetWaveSummary();
         return std::sqrt(summary.windSeaHeight * summary.windSeaHeight + summary.swellHeight * summary.swellHeight);
+    }
+
+    float FFTOceanWaveModel::ComputeMaxCrestHeight(RenderDomainContext& domain, const WaterSurfaceData& snapshot) const
+    {
+        // 海の範囲マップの倍率（1 以下）は掛けない
+        return ComputeSignificantWaveHeight(domain, snapshot) * kMaxCrestToSignificantWaveHeight * kMaxWaveGroupEnvelope;
     }
 
     void FFTOceanWaveModel::Bind(RenderDomainContext& domain, WaterFrameBinding& binding) const
