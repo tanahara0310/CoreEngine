@@ -58,10 +58,12 @@ namespace CoreEngine
         whitecapSettings.decaySeconds = settings.decaySeconds;
         whitecap->SetSettings(whitecapSettings);
 
-        // 白波の泡が FFT の時刻までに風下へ流れた距離と、模様を風の向きに伸ばす軸
-        waterPlane.SetFoamMotion(whitecap->ComputeDriftOffset(fftOceanTime), whitecap->ComputeStretchAxis());
+        // 白波の泡が FFT の時刻までに風下へ流れた距離と、模様を風の向きに伸ばす軸と、模様を動かす時刻
+        waterPlane.SetFoamMotion(
+            whitecap->ComputeDriftOffset(fftOceanTime), whitecap->ComputeStretchAxis(),
+            WaterWhitecapFoam::ComputePatternTime(fftOceanTime));
 
-        // 残りの泡の格子を今のぞいているカメラの周りへ置き直し、同じ範囲を水面へ渡す
+        // 残りの泡の格子を今のぞいているカメラの周りへ置き直す。水面へは、水面が読む書き終わった格子の範囲を渡す
         if (const Camera* camera = frame.scene.gameViewCamera3D) {
             const Vector3 cameraPosition = camera->GetPosition();
             whitecap->UpdateWindows(cameraPosition.x, cameraPosition.z, fftOceanTime);
