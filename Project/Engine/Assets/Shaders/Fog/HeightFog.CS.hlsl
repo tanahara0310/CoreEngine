@@ -14,7 +14,7 @@
 /// LUT のサンプルそのものが走らない。
 ///
 /// volumetricEnabled のフレームは、格子が届く距離までをボリュメトリックの格子から引き、
-/// その先を同じ濃さの式と影の無い同じ光の式で解析的に足す。
+/// その先を同じ濃さの式と同じ光の式で解析的に足す（雲の影は格子の端の 1 点で引く）。
 
 #include "Fog.hlsli"
 #include "VolumetricFogCommon.hlsli"
@@ -27,6 +27,7 @@ Texture2D<float> gSceneDepth : register(t0);
 Texture2D<float4> gSkyViewLUT : register(t1);
 Texture3D<float4> gVolumetricFogIntegrated : register(t2);
 StructuredBuffer<float4> gSkyIrradianceSH : register(t3);
+Texture2D<float> gCloudShadowMap : register(t4);
 SamplerState gLUTSampler : register(s0);
 RWTexture2D<float4> gOutput : register(u0);
 
@@ -81,7 +82,9 @@ float3 ApplyVolumetricFog(float2 uv, float3 rayDirection, float rayEnd, float3 s
         const float farStart = max(p.distance, gFog.startDistance);
         farTransmittance = exp(-FogOpticalDepth(gFog, gFog.cameraWorldPos, rayDirection, farStart, rayEnd));
         const float3 ambient = VolumetricFogSkyAmbient(p, gSkyIrradianceSH);
-        const float3 source = VolumetricFogUnshadowedSource(p, rayDirection, ambient);
+        const float3 boundary = gFog.cameraWorldPos + rayDirection * p.distance;
+        const float3 source = VolumetricFogSource(
+            p, rayDirection, ambient, boundary, gCloudShadowMap, gLUTSampler);
         farLight = p.albedo * source * (1.0f - farTransmittance);
     }
 
@@ -107,6 +110,16 @@ float3 ApplyVolumetricFog(float2 uv, float3 rayDirection, float rayEnd, float3 s
         const float slice = VolumetricFogDistanceToSlice(p, volumeEnd);
         const float band = frac(floor(slice) * 0.61803398875f);
         return float3(band, frac(band * 3.0f), 1.0f - band);
+    }
+    if (p.debugView == 4)
+    {
+        if (p.directionalCount == 0)
+        {
+            return float3(1.0f, 1.0f, 1.0f);
+        }
+        const float3 endPoint = gFog.cameraWorldPos + rayDirection * volumeEnd;
+        return VolumetricFogCloudShadow(
+            p, gCloudShadowMap, gLUTSampler, endPoint, -p.directional[0].direction).xxx;
     }
 
     return sceneColor * limitedTransmittance + light * lightScale;

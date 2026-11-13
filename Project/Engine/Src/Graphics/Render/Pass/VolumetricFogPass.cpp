@@ -2,6 +2,7 @@
 #include "VolumetricFogPass.h"
 
 #include "Camera/View/ViewInfo.h"
+#include "Graphics/Cloud/VolumetricCloudManager.h"
 #include "Graphics/Fog/FogManager.h"
 #include "Graphics/Render/FrameBlackboard.h"
 #include "Graphics/Render/RenderGraph.h"
@@ -27,11 +28,35 @@ namespace CoreEngine
                 builder.Write(FrameBlackboard::VolumetricFog, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             }
         }
+
+        /// @brief 雲の影のマップを読む宣言（雲が無いシーンでは登録されない）
+        void DeclareCloudShadowRead(RenderGraphBuilder& builder, const RenderContext& context)
+        {
+            if (context.fogManager && context.fogManager->IsVolumetricRequested()) {
+                builder.Read(FrameBlackboard::CloudShadowMap, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            }
+        }
+
+        /// @brief 今フレームの雲の影のマップと範囲を入力へ詰める（雲が無ければ空のまま）
+        void FillCloudShadowInput(const RenderContext& context, VolumetricFogFrameInput& input)
+        {
+            const VolumetricCloudManager* clouds = context.volumetricCloudManager;
+            if (!clouds || !clouds->AreCloudsActive() || !context.frameBlackboard) {
+                return;
+            }
+            D3D12_GPU_DESCRIPTOR_HANDLE cloudShadowMap{};
+            if (!context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::CloudShadowMap, cloudShadowMap)) {
+                return;
+            }
+            input.cloudShadowMapSrv = cloudShadowMap;
+            input.cloudShadow = &clouds->GetCloudShadowConstants();
+        }
     }
 
     void VolumetricFogInjectPass::DeclareResources(
         RenderGraphBuilder& builder, const RenderContext& context)
     {
+        DeclareCloudShadowRead(builder, context);
         DeclareVolumeWrite(builder, context);
     }
 
@@ -58,6 +83,7 @@ namespace CoreEngine
         input.atmosphere = context.atmosphereManager;
         input.fog = &fog.GetSettings();
         input.fallbackAmbient = fog.GetFallbackAmbient();
+        FillCloudShadowInput(context, input);
 
         VolumetricFog& volumetric = fog.GetVolumetric();
         if (!volumetric.PrepareFrame(input)) {
@@ -75,6 +101,7 @@ namespace CoreEngine
     void VolumetricFogLightScatteringPass::DeclareResources(
         RenderGraphBuilder& builder, const RenderContext& context)
     {
+        DeclareCloudShadowRead(builder, context);
         DeclareVolumeWrite(builder, context);
     }
 

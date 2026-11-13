@@ -91,6 +91,8 @@ namespace CoreEngine
             // ボリュメトリックフォグの格子を積み上げ終えてから合成する
             if (context.fogManager && context.fogManager->IsVolumetricRequested()) {
                 builder.Read(FrameBlackboard::VolumetricFog, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                // 格子より奥の霧に雲の影を引く（雲が無いシーンでは登録されない）
+                builder.Read(FrameBlackboard::CloudShadowMap, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
             }
             builder.Write(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         }

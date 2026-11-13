@@ -32,6 +32,8 @@ namespace CoreEngine::VolumetricFogLightScatteringBind
         gVolumetricFog,
         gVBuffer,
         gSkyIrradianceSH,
+        gCloudShadowMap,
+        gLightScatteringHistory,
         gLightScattering,
         Count
     };
@@ -41,6 +43,9 @@ namespace CoreEngine::VolumetricFogLightScatteringBind
         { "gVBuffer",         ShaderBindingType::SRV, BindingUsage::Required }, // t0
         // 大気が無いシーンでは差さない（そのときシェーダーは読まない）
         { "gSkyIrradianceSH", ShaderBindingType::SRV, BindingUsage::Conditional }, // t1
+        // 雲が無いシーンでは差さない（そのときシェーダーは読まない）
+        { "gCloudShadowMap",  ShaderBindingType::SRV, BindingUsage::Conditional }, // t2
+        { "gLightScatteringHistory", ShaderBindingType::SRV, BindingUsage::Required }, // t3
         { "gLightScattering", ShaderBindingType::UAV, BindingUsage::Required }, // u0
     };
 

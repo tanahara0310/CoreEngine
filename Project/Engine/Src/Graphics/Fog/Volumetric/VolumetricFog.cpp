@@ -3,6 +3,7 @@
 
 #include "Camera/View/ViewInfo.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
+#include "Graphics/Cloud/Shader/CloudShaderConstants.h"
 #include "Graphics/Fog/Settings/FogSettings.h"
 #include "Graphics/Fog/Shader/VolumetricFogBindings.h"
 #include "Graphics/Fog/Volumetric/VolumetricFogCVars.h"
@@ -21,6 +22,7 @@
 #include "Utility/Logger/Logger.h"
 
 #include <algorithm>
+#include <cmath>
 #include <exception>
 #include <span>
 
@@ -71,6 +73,36 @@ namespace CoreEngine
         uint32_t DivideRoundUp(uint32_t value, uint32_t divisor)
         {
             return (value + divisor - 1) / divisor;
+        }
+
+        /// @brief カメラが 1 フレームでこれより動いたら前フレームの光を混ぜない [m]
+        constexpr float kHistoryResetDistance = 10.0f;
+
+        /// @brief 格子の中のずらし方が一巡するフレーム数
+        constexpr uint32_t kJitterSequenceLength = 16;
+
+        /// @brief base 進の各桁を小数点の後ろへ折り返した値（Halton 列）
+        float RadicalInverse(uint32_t base, uint32_t index)
+        {
+            const float inverseBase = 1.0f / static_cast<float>(base);
+            float fraction = inverseBase;
+            float result = 0.0f;
+            while (index > 0) {
+                result += static_cast<float>(index % base) * fraction;
+                index /= base;
+                fraction *= inverseBase;
+            }
+            return result;
+        }
+
+        /// @brief TAA のジッタを外した View*Projection
+        Matrix4x4 UnjitteredViewProjection(const ViewInfo& view)
+        {
+            Matrix4x4 projection = view.projection;
+            const int row = (std::fabs(projection.m[2][3]) > 0.5f) ? 2 : 3;
+            projection.m[row][0] -= view.jitterNdc.x;
+            projection.m[row][1] -= view.jitterNdc.y;
+            return view.viewMatrix * projection;
         }
     }
 
@@ -160,17 +192,21 @@ namespace CoreEngine
             return true;
         }
 
-        RetireVolume(vBuffer_);
-        RetireVolume(lightScattering_);
-        RetireVolume(integrated_);
+        const auto retireAll = [this]() {
+            RetireVolume(vBuffer_);
+            RetireVolume(lightScattering_[0]);
+            RetireVolume(lightScattering_[1]);
+            RetireVolume(integrated_);
+        };
+        retireAll();
         gridSize_[0] = gridSize_[1] = gridSize_[2] = 0;
+        historyAvailable_ = false;
 
         if (!CreateVolume(vBuffer_, sizeX, sizeY, sizeZ, "VolumetricFogVBuffer")
-            || !CreateVolume(lightScattering_, sizeX, sizeY, sizeZ, "VolumetricFogLightScattering")
+            || !CreateVolume(lightScattering_[0], sizeX, sizeY, sizeZ, "VolumetricFogLightScattering0")
+            || !CreateVolume(lightScattering_[1], sizeX, sizeY, sizeZ, "VolumetricFogLightScattering1")
             || !CreateVolume(integrated_, sizeX, sizeY, sizeZ, "VolumetricFogIntegrated")) {
-            RetireVolume(vBuffer_);
-            RetireVolume(lightScattering_);
-            RetireVolume(integrated_);
+            retireAll();
             return false;
         }
 
@@ -178,6 +214,53 @@ namespace CoreEngine
         gridSize_[1] = sizeY;
         gridSize_[2] = sizeZ;
         return true;
+    }
+
+    void VolumetricFog::FillCloudShadow(Constants& constants, const VolumetricFogFrameInput& input)
+    {
+        cloudShadowSrv_ = {};
+        constants.cloudShadowEnabled = 0;
+        const CloudShadowShaderConstants* cloudShadow = input.cloudShadow;
+        if (!cloudShadow || input.cloudShadowMapSrv.ptr == 0
+            || cloudShadow->sceneStrength <= 0.0f || cloudShadow->regionSizeM <= 0.0f) {
+            return;
+        }
+        constants.cloudShadowRegionCenterXZ = Vector2{ cloudShadow->regionCenterX, cloudShadow->regionCenterZ };
+        constants.cloudShadowRegionSize = cloudShadow->regionSizeM;
+        constants.cloudShadowAnchorY = cloudShadow->anchorWorldY;
+        constants.cloudShadowEdgeFadeStart = cloudShadow->edgeFadeStart;
+        constants.cloudShadowStrength = std::clamp(cloudShadow->sceneStrength, 0.0f, 1.0f);
+        constants.cloudShadowEnabled = 1;
+        cloudShadowSrv_ = input.cloudShadowMapSrv;
+    }
+
+    void VolumetricFog::FillHistory(Constants& constants, const Matrix4x4& viewProj, const Vector3& cameraPos)
+    {
+        const float historyWeight = std::clamp(VolumetricFogCVars::HistoryWeight.Get(), 0.0f, 0.98f);
+        const bool temporal = historyWeight > 0.0f;
+
+        // 混ぜないときは格子の中心で引く
+        constants.frameJitter = Vector3{ 0.0f, 0.0f, 0.5f };
+        if (temporal) {
+            const uint32_t sample = (frameIndex_ % kJitterSequenceLength) + 1;
+            constants.frameJitter = Vector3{
+                RadicalInverse(2, sample) - 0.5f,
+                RadicalInverse(3, sample) - 0.5f,
+                std::fmod(0.5f + static_cast<float>(sample) * 0.6180339887f, 1.0f) };
+        }
+
+        const bool sameGrid = (prevDistance_ == constants.distance)
+            && (prevDepthDistribution_ == constants.depthDistribution);
+        const bool cameraJumped = Length(cameraPos - prevCameraPos_) > kHistoryResetDistance;
+        constants.historyValid = (temporal && historyAvailable_ && sameGrid && !cameraJumped) ? 1u : 0u;
+        constants.historyWeight = historyWeight;
+        constants.prevViewProj = prevViewProj_;
+        constants.prevCameraWorldPos = prevCameraPos_;
+
+        prevViewProj_ = viewProj;
+        prevCameraPos_ = cameraPos;
+        prevDistance_ = constants.distance;
+        prevDepthDistribution_ = constants.depthDistribution;
     }
 
     void VolumetricFog::FillDirectionalLights(Constants& constants, const LightManager* lightManager) const
@@ -221,9 +304,13 @@ namespace CoreEngine
         const FogSettings& fog = *input.fog;
         const Vector4& albedo = VolumetricFogCVars::Albedo.Get();
         const float ambientScale = VolumetricFogCVars::AmbientScale.Get();
+        const Matrix4x4 viewProj = UnjitteredViewProjection(view);
+
+        currentLight_ ^= 1u;
+        ++frameIndex_;
 
         Constants constants{};
-        constants.invViewProj = view.invViewProjection;
+        constants.invViewProj = MathCore::Matrix::Inverse(viewProj);
         constants.cameraWorldPos = view.position;
         constants.distance = std::max(VolumetricFogCVars::Distance.Get(), 1.0f);
         constants.gridSize[0] = sizeX;
@@ -243,7 +330,7 @@ namespace CoreEngine
         constants.heightRef = fog.heightRefM;
         constants.startDistance = fog.startDistanceM;
         constants.fallbackAmbient = input.fallbackAmbient * ambientScale;
-        constants.debugView = static_cast<uint32_t>(std::clamp(VolumetricFogCVars::DebugView.Get(), 0, 3));
+        constants.debugView = static_cast<uint32_t>(std::clamp(VolumetricFogCVars::DebugView.Get(), 0, 4));
 
         const AtmosphereManager* atmosphere = input.atmosphere;
         const bool skyAmbientUsable = atmosphere
@@ -258,6 +345,8 @@ namespace CoreEngine
             ? atmosphere->GetSkyIrradianceSHSRVHandle() : D3D12_GPU_DESCRIPTOR_HANDLE{};
 
         FillDirectionalLights(constants, input.lightManager);
+        FillCloudShadow(constants, input);
+        FillHistory(constants, viewProj, view.position);
 
         frameConstants_ = graphicsCore_->GetUploadRing().AllocateConstants(constants);
         return frameConstants_ != 0;
@@ -293,8 +382,11 @@ namespace CoreEngine
             return;
         }
         namespace B = VolumetricFogLightScatteringBind;
+        Volume& current = lightScattering_[currentLight_];
+        Volume& previous = lightScattering_[currentLight_ ^ 1u];
 
-        Barrier::Transition(cmdList, lightScattering_.texture, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, previous.texture, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::Transition(cmdList, current.texture, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         cmdList->SetPipelineState(lightScatteringPipeline_.GetComputePSO());
         cmdList->SetComputeRootSignature(lightScatteringPipeline_.GetComputeRootSignature());
         {
@@ -304,15 +396,19 @@ namespace CoreEngine
             if (skyIrradianceSrv_.ptr != 0) {
                 binder.Set(lightScatteringBindings_[B::gSkyIrradianceSH], skyIrradianceSrv_);
             }
-            binder.Set(lightScatteringBindings_[B::gLightScattering], lightScattering_.uav.gpuHandle);
+            if (cloudShadowSrv_.ptr != 0) {
+                binder.Set(lightScatteringBindings_[B::gCloudShadowMap], cloudShadowSrv_);
+            }
+            binder.Set(lightScatteringBindings_[B::gLightScatteringHistory], previous.srv.gpuHandle);
+            binder.Set(lightScatteringBindings_[B::gLightScattering], current.uav.gpuHandle);
             binder.ValidateBeforeDraw(lightScatteringBindings_);
         }
         cmdList->Dispatch(
             DivideRoundUp(gridSize_[0], kCellGroupSize),
             DivideRoundUp(gridSize_[1], kCellGroupSize),
             DivideRoundUp(gridSize_[2], kCellGroupSize));
-        Barrier::UAV(cmdList, lightScattering_.texture);
-        Barrier::Transition(cmdList, lightScattering_.texture, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::UAV(cmdList, current.texture);
+        Barrier::Transition(cmdList, current.texture, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     }
 
     void VolumetricFog::DispatchIntegrate(ID3D12GraphicsCommandList* cmdList)
@@ -328,7 +424,7 @@ namespace CoreEngine
         {
             ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
             binder.Set(integrateBindings_[B::gVolumetricFog], frameConstants_);
-            binder.Set(integrateBindings_[B::gLightScattering], lightScattering_.srv.gpuHandle);
+            binder.Set(integrateBindings_[B::gLightScattering], lightScattering_[currentLight_].srv.gpuHandle);
             binder.Set(integrateBindings_[B::gIntegrated], integrated_.uav.gpuHandle);
             binder.ValidateBeforeDraw(integrateBindings_);
         }
@@ -343,8 +439,10 @@ namespace CoreEngine
 
     void VolumetricFog::EndFrame()
     {
+        historyAvailable_ = integratedThisFrame_;
         integratedThisFrame_ = false;
         frameConstants_ = 0;
         skyIrradianceSrv_ = {};
+        cloudShadowSrv_ = {};
     }
 }

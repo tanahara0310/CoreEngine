@@ -6,6 +6,7 @@
 ///          格子を作る CS と全画面の合成が同じ関数を呼ぶ。
 
 #include "ShaderMath.hlsli"
+#include "../../Cloud/Common/CloudShadowCommon.hlsli"
 
 /// @brief 格子を照らす平行光源 1 灯（C++ 側 VolumetricFog::DirectionalLight と 1 対 1）
 struct VolumetricFogDirectionalLight
@@ -22,7 +23,7 @@ static const uint kVolumetricFogMaxDirectionalLights = 4;
 /// @brief ボリュメトリックフォグの定数（C++ 側 VolumetricFog::Constants と 1 対 1）
 struct VolumetricFogParameters
 {
-    float4x4 invViewProj;        ///< View*Projection の逆行列（行ベクトル規約）
+    float4x4 invViewProj;        ///< ジッタ無しの View*Projection の逆行列（行ベクトル規約）
     float3   cameraWorldPos;     ///< カメラのワールド座標 [m]
     float    distance;           ///< 格子が届く距離 [m]
     uint3    gridSize;           ///< 格子の数（横・縦・奥行き）
@@ -41,6 +42,18 @@ struct VolumetricFogParameters
     uint     directionalCount;   ///< 霧を照らす平行光源の数
     uint     debugView;          ///< デバッグ表示（0 = なし）
     float    pad0;
+    float4x4 prevViewProj;       ///< 前フレームのジッタ無しの View*Projection
+    float3   prevCameraWorldPos; ///< 前フレームのカメラのワールド座標 [m]
+    float    historyWeight;      ///< 前フレームの光を混ぜる量
+    float3   frameJitter;        ///< 格子 1 つの中の今フレームの点（xy は -0.5〜0.5、z は 0〜1）
+    uint     historyValid;       ///< 1 なら前フレームの光を混ぜてよい
+    float2   cloudShadowRegionCenterXZ; ///< 雲の影のマップの中心（ワールド XZ）[m]
+    float    cloudShadowRegionSize;     ///< 雲の影のマップの一辺 [m]
+    float    cloudShadowAnchorY;        ///< 雲の影のマップを置く高さ（雲の底）[m]
+    float    cloudShadowEdgeFadeStart;  ///< マップの端で影を消し始める正規化半径
+    float    cloudShadowStrength;       ///< 雲の影の強さ（面と同じ値）
+    uint     cloudShadowEnabled;        ///< 1 なら雲の影を引く
+    float    pad1;
     VolumetricFogDirectionalLight directional[kVolumetricFogMaxDirectionalLights];
 };
 
@@ -80,20 +93,56 @@ float3 VolumetricFogSkyAmbient(VolumetricFogParameters p, StructuredBuffer<float
     return p.fallbackAmbient;
 }
 
-/// @brief 影の無い点で視線の向きへ散乱する光の源（散乱係数を掛ける前）
+/// @brief 点から光源の向きの雲の透過率（面の雲の影と同じ強さで弱めた値）
+/// @param toLight 点から光源へ向かう向き（正規化済み）
+float VolumetricFogCloudShadow(
+    VolumetricFogParameters p, Texture2D<float> cloudShadowMap, SamplerState linearClamp,
+    float3 worldPos, float3 toLight)
+{
+    if (p.cloudShadowEnabled == 0)
+    {
+        return 1.0f;
+    }
+    CloudShadowConstants cloudShadow;
+    cloudShadow.regionCenterX = p.cloudShadowRegionCenterXZ.x;
+    cloudShadow.regionCenterZ = p.cloudShadowRegionCenterXZ.y;
+    cloudShadow.regionSizeM = p.cloudShadowRegionSize;
+    cloudShadow.anchorWorldY = p.cloudShadowAnchorY;
+    cloudShadow.edgeFadeStart = p.cloudShadowEdgeFadeStart;
+    cloudShadow.sceneStrength = p.cloudShadowStrength;
+    cloudShadow.rowOffset = 0u;
+    cloudShadow.pad1 = 0.0f;
+    const float shadow = SampleCloudShadow(cloudShadowMap, linearClamp, worldPos, toLight, cloudShadow);
+    return lerp(1.0f, shadow, p.cloudShadowStrength);
+}
+
+/// @brief 点で視線の向きへ散乱する光の源（散乱係数を掛ける前）
 /// @param viewDir カメラから点へ向かう向き（正規化済み）
 /// @param ambient 空の平均の輝度
-float3 VolumetricFogUnshadowedSource(VolumetricFogParameters p, float3 viewDir, float3 ambient)
+/// @param worldPos 雲の影を引く点のワールド座標 [m]
+float3 VolumetricFogSource(
+    VolumetricFogParameters p, float3 viewDir, float3 ambient, float3 worldPos,
+    Texture2D<float> cloudShadowMap, SamplerState linearClamp)
 {
     float3 source = ambient;
     [loop]
     for (uint i = 0; i < p.directionalCount; ++i)
     {
         const VolumetricFogDirectionalLight light = p.directional[i];
-        const float cosTheta = dot(viewDir, -light.direction);
-        source += light.irradiance * VolumetricFogPhaseHG(p.phaseG, cosTheta);
+        const float3 toLight = -light.direction;
+        const float cosTheta = dot(viewDir, toLight);
+        const float shadow = VolumetricFogCloudShadow(p, cloudShadowMap, linearClamp, worldPos, toLight);
+        source += light.irradiance * (VolumetricFogPhaseHG(p.phaseG, cosTheta) * shadow);
     }
     return source;
+}
+
+/// @brief 画面の UV と距離から、格子の座標（テクスチャの UVW）を求める
+/// @param distanceM カメラからの距離 [m]
+float3 VolumetricFogGridUVW(VolumetricFogParameters p, float2 screenUV, float distanceM)
+{
+    return float3(screenUV * p.screenToGrid,
+        VolumetricFogDistanceToSlice(p, distanceM) / float(p.gridSize.z));
 }
 
 /// @brief 1 枚のスライスの中で散乱して視線へ届く光（スライスの手前の面で見た値）

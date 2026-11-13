@@ -248,6 +248,9 @@ namespace CoreEngine
                 if (volumetric_.GetSkyIrradianceSrv().ptr != 0) {
                     binder.Set(bindings_[B::gSkyIrradianceSH], volumetric_.GetSkyIrradianceSrv());
                 }
+                if (volumetric_.GetCloudShadowSrv().ptr != 0) {
+                    binder.Set(bindings_[B::gCloudShadowMap], volumetric_.GetCloudShadowSrv());
+                }
             }
             binder.ValidateBeforeDraw(bindings_);
         }

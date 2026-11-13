@@ -16,6 +16,7 @@ namespace CoreEngine
     class AtmosphereManager;
     class GraphicsCore;
     class LightManager;
+    struct CloudShadowShaderConstants;
     struct FogSettings;
     struct ViewInfo;
 
@@ -28,6 +29,8 @@ namespace CoreEngine
         const AtmosphereManager* atmosphere = nullptr;
         const FogSettings* fog = nullptr;       ///< 高さフォグの濃さ
         Vector3 fallbackAmbient{};              ///< 空の SH を使わないときの空の光（輝度）
+        D3D12_GPU_DESCRIPTOR_HANDLE cloudShadowMapSrv{};          ///< 雲の影のマップ（雲が無ければ 0）
+        const CloudShadowShaderConstants* cloudShadow = nullptr; ///< 雲の影のマップの範囲と強さ（雲が無ければ nullptr）
     };
 
     /// @brief ボリュメトリックフォグの格子（画面に揃えた 3D の配列）と、それを作る 3 本の CS
@@ -65,6 +68,18 @@ namespace CoreEngine
             uint32_t  directionalCount;
             uint32_t  debugView;
             float     pad0;
+            Matrix4x4 prevViewProj;
+            Vector3   prevCameraWorldPos;
+            float     historyWeight;
+            Vector3   frameJitter;
+            uint32_t  historyValid;
+            Vector2   cloudShadowRegionCenterXZ;
+            float     cloudShadowRegionSize;
+            float     cloudShadowAnchorY;
+            float     cloudShadowEdgeFadeStart;
+            float     cloudShadowStrength;
+            uint32_t  cloudShadowEnabled;
+            float     pad1;
             DirectionalLight directional[kMaxDirectionalLights];
         };
 
@@ -78,7 +93,13 @@ namespace CoreEngine
             CB_FIELD(Constants, startDistance),     CB_FIELD(Constants, fallbackAmbient),
             CB_FIELD(Constants, skyAmbientEnabled), CB_FIELD(Constants, skyAmbientScale),
             CB_FIELD(Constants, directionalCount),  CB_FIELD(Constants, debugView),
-            CB_FIELD(Constants, pad0),
+            CB_FIELD(Constants, pad0),              CB_FIELD(Constants, prevViewProj),
+            CB_FIELD(Constants, prevCameraWorldPos), CB_FIELD(Constants, historyWeight),
+            CB_FIELD(Constants, frameJitter),       CB_FIELD(Constants, historyValid),
+            CB_FIELD(Constants, cloudShadowRegionCenterXZ), CB_FIELD(Constants, cloudShadowRegionSize),
+            CB_FIELD(Constants, cloudShadowAnchorY), CB_FIELD(Constants, cloudShadowEdgeFadeStart),
+            CB_FIELD(Constants, cloudShadowStrength), CB_FIELD(Constants, cloudShadowEnabled),
+            CB_FIELD(Constants, pad1),
             CB_FIELD(Constants, directional),
         };
         CB_VERIFY_LAYOUT(Constants, kConstantsFields);
@@ -114,6 +135,9 @@ namespace CoreEngine
         /// @brief 空の SH の SRV（大気が無ければ 0）
         D3D12_GPU_DESCRIPTOR_HANDLE GetSkyIrradianceSrv() const { return skyIrradianceSrv_; }
 
+        /// @brief 雲の影のマップの SRV（今フレームに雲の影を引かないなら 0）
+        D3D12_GPU_DESCRIPTOR_HANDLE GetCloudShadowSrv() const { return cloudShadowSrv_; }
+
         /// @brief 積み上げた格子の SRV
         D3D12_GPU_DESCRIPTOR_HANDLE GetIntegratedSrv() const { return integrated_.srv.gpuHandle; }
 
@@ -134,8 +158,14 @@ namespace CoreEngine
             DescriptorHandle uav{};
         };
 
-        /// @brief 格子の数が変わったら 3 枚の画像を作り直す
+        /// @brief 格子の数が変わったら 4 枚の画像を作り直す（作り直したら前フレームの光は捨てる）
         bool EnsureVolumes(uint32_t sizeX, uint32_t sizeY, uint32_t sizeZ);
+
+        /// @brief 雲の影の値を定数へ詰め、マップの SRV を覚える
+        void FillCloudShadow(Constants& constants, const VolumetricFogFrameInput& input);
+
+        /// @brief 前フレームの光を混ぜてよいか、混ぜるならどこへずらすかを定数へ詰める
+        void FillHistory(Constants& constants, const Matrix4x4& viewProj, const Vector3& cameraPos);
 
         /// @brief 3D の画像 1 枚を作る
         bool CreateVolume(Volume& volume, uint32_t sizeX, uint32_t sizeY, uint32_t sizeZ, const char* name);
@@ -157,12 +187,25 @@ namespace CoreEngine
         bool pipelineReady_ = false;
 
         Volume vBuffer_{};
-        Volume lightScattering_{};
+        Volume lightScattering_[2]{}; ///< 今フレームと前フレームの光を交互に使う
         Volume integrated_{};
         uint32_t gridSize_[3]{};
 
         D3D12_GPU_VIRTUAL_ADDRESS frameConstants_ = 0;
         D3D12_GPU_DESCRIPTOR_HANDLE skyIrradianceSrv_{};
+        D3D12_GPU_DESCRIPTOR_HANDLE cloudShadowSrv_{};
         bool integratedThisFrame_ = false;
+
+        /// @brief 今フレームに光を書く方の lightScattering_ の番号
+        uint32_t currentLight_ = 0;
+        /// @brief 格子を作った回数（ずらし方の列の番号）
+        uint32_t frameIndex_ = 0;
+
+        /// @brief 前フレームに光を書き終えたか（書いていなければ混ぜない）
+        bool historyAvailable_ = false;
+        Matrix4x4 prevViewProj_{};
+        Vector3 prevCameraPos_{};
+        float prevDistance_ = 0.0f;
+        float prevDepthDistribution_ = 0.0f;
     };
 }
