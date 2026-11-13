@@ -46,6 +46,11 @@ namespace CoreEngine
                     "点光源・スポット・エリアは、画面に届くライトのうちカメラに近い 4 灯まで")
             REFLECT_PROPERTY(light_.sourceRadius, "光源の大きさ", p.range = Range(0.0f, 5.0f, 0.01f),
                 p.tooltip = "点光源とスポットの光る球の半径 [m]。大きいほど影の縁がぼける。0 でくっきり")
+            REFLECT_PROPERTY(light_.volumetricScatteringIntensity, "霧を照らす強さ", p.range = Range(0.0f, 10.0f, 0.01f),
+                p.tooltip = "ボリュメトリックフォグを照らす強さ。1 で面と同じ明るさ・0 で霧を照らさない（平行光源だけ）")
+            REFLECT_PROPERTY(light_.castVolumetricShadow, "霧に影を落とす",
+                p.tooltip = "ボリュメトリックフォグに物の影の筋を落とす（平行光源だけ・「影を落とす」も要る・DXR 1.1 に対応した GPU だけ）。"
+                    "落とすのは条件を満たす平行光源のうちいちばん明るい 1 灯")
             REFLECT_PROPERTY(light_.isAtmosphereSun, "大気の太陽")
             REFLECT_PROPERTY(light_.isAtmosphereMoon, "大気の月")
             REFLECT_PROPERTY(light_.atmosphereIntensity, "空の明るさ", p.range = Range(0.0f, 100.0f, 0.1f),

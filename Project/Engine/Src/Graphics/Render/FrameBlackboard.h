@@ -58,6 +58,7 @@ namespace CoreEngine
         static const char* const SkySpecular;          ///< 空のスペキュラキューブマップ（AtmosphereLUTPass が作り直す）
         static const char* const WaterSeaMap;          ///< 海の範囲マップ（RTWaterSeaMapPass が作り直す）
         static const char* const VolumetricFog;        ///< ボリュメトリックフォグの積み上げた格子（使うフレームだけ）
+        static const char* const VolumetricSunDepth;   ///< ボリュメトリックフォグの物の影に使う太陽から見た深さの画像（作ったフレームだけ）
 
         /// @brief RT 影のマスクの数（影の枠の数。0〜3 は平行光源、4〜7 は局所ライト）
         static constexpr uint32_t kRTShadowMaskCount = 8;

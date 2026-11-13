@@ -18,7 +18,21 @@ namespace CoreEngine
     class LightManager;
     struct CloudShadowShaderConstants;
     struct FogSettings;
+    struct Light;
     struct ViewInfo;
+
+    /// @brief 太陽から見た深さの画像（光に垂直な面から光の進む向きへ測った、最初に当たった距離 [m]）
+    struct VolumetricFogSunDepth {
+        const Light* light = nullptr;           ///< 画像を作った平行光源（見分けるだけで中身は読まない）
+        D3D12_GPU_DESCRIPTOR_HANDLE srv{};      ///< 画像の SRV（R32_FLOAT）
+        Vector3 origin{};                       ///< 面の中心（レイの始点の面）[m]
+        Vector3 right{};                        ///< 面の右の向き
+        Vector3 up{};                           ///< 面の上の向き
+        Vector3 direction{};                    ///< レイの向き（光の進行方向）
+        float size = 0.0f;                      ///< 面の一辺 [m]
+        float range = 0.0f;                     ///< レイの長さ [m]
+        float bias = 0.0f;                      ///< 日なたとみなす距離の余裕 [m]
+    };
 
     /// @brief 今フレームの格子を作るのに要る値
     struct VolumetricFogFrameInput {
@@ -31,6 +45,7 @@ namespace CoreEngine
         Vector3 fallbackAmbient{};              ///< 空の SH を使わないときの空の光（輝度）
         D3D12_GPU_DESCRIPTOR_HANDLE cloudShadowMapSrv{};          ///< 雲の影のマップ（雲が無ければ 0）
         const CloudShadowShaderConstants* cloudShadow = nullptr; ///< 雲の影のマップの範囲と強さ（雲が無ければ nullptr）
+        const VolumetricFogSunDepth* sunDepth = nullptr;         ///< 太陽から見た深さの画像（今フレームに作っていなければ nullptr）
     };
 
     /// @brief ボリュメトリックフォグの格子（画面に揃えた 3D の配列）と、それを作る 3 本の CS
@@ -80,8 +95,19 @@ namespace CoreEngine
             float     cloudShadowStrength;
             uint32_t  cloudShadowEnabled;
             float     pad1;
+            Vector3   sunDepthOrigin;
+            float     sunDepthInvSize;
+            Vector3   sunDepthRight;
+            float     sunDepthBias;
+            Vector3   sunDepthUp;
+            float     sunDepthRange;
+            Vector3   sunDepthDir;
+            uint32_t  sunDepthLightIndex;
             DirectionalLight directional[kMaxDirectionalLights];
         };
+
+        /// @brief 太陽から見た深さの画像を使う光源が無いときの番号（VolumetricFogCommon.hlsli と一致）
+        static constexpr uint32_t kNoSunDepthLight = 0xFFFFFFFFu;
 
         static constexpr Cb::Field kConstantsFields[] = {
             CB_FIELD(Constants, invViewProj),       CB_FIELD(Constants, cameraWorldPos),
@@ -100,6 +126,10 @@ namespace CoreEngine
             CB_FIELD(Constants, cloudShadowAnchorY), CB_FIELD(Constants, cloudShadowEdgeFadeStart),
             CB_FIELD(Constants, cloudShadowStrength), CB_FIELD(Constants, cloudShadowEnabled),
             CB_FIELD(Constants, pad1),
+            CB_FIELD(Constants, sunDepthOrigin),    CB_FIELD(Constants, sunDepthInvSize),
+            CB_FIELD(Constants, sunDepthRight),     CB_FIELD(Constants, sunDepthBias),
+            CB_FIELD(Constants, sunDepthUp),        CB_FIELD(Constants, sunDepthRange),
+            CB_FIELD(Constants, sunDepthDir),       CB_FIELD(Constants, sunDepthLightIndex),
             CB_FIELD(Constants, directional),
         };
         CB_VERIFY_LAYOUT(Constants, kConstantsFields);
@@ -138,6 +168,9 @@ namespace CoreEngine
         /// @brief 雲の影のマップの SRV（今フレームに雲の影を引かないなら 0）
         D3D12_GPU_DESCRIPTOR_HANDLE GetCloudShadowSrv() const { return cloudShadowSrv_; }
 
+        /// @brief 太陽から見た深さの画像の SRV（今フレームに物の影を引かないなら 0）
+        D3D12_GPU_DESCRIPTOR_HANDLE GetSunDepthSrv() const { return sunDepthSrv_; }
+
         /// @brief 積み上げた格子の SRV
         D3D12_GPU_DESCRIPTOR_HANDLE GetIntegratedSrv() const { return integrated_.srv.gpuHandle; }
 
@@ -164,6 +197,9 @@ namespace CoreEngine
         /// @brief 雲の影の値を定数へ詰め、マップの SRV を覚える
         void FillCloudShadow(Constants& constants, const VolumetricFogFrameInput& input);
 
+        /// @brief 太陽から見た深さの画像の座標を定数へ詰め、画像の SRV を覚える（FillDirectionalLights の後に呼ぶ）
+        void FillSunDepth(Constants& constants, const VolumetricFogFrameInput& input);
+
         /// @brief 前フレームの光を混ぜてよいか、混ぜるならどこへずらすかを定数へ詰める
         void FillHistory(Constants& constants, const Matrix4x4& viewProj, const Vector3& cameraPos);
 
@@ -174,7 +210,9 @@ namespace CoreEngine
         void RetireVolume(Volume& volume);
 
         /// @brief 平行光源を定数へ詰める
-        void FillDirectionalLights(Constants& constants, const LightManager* lightManager) const;
+        /// @param sunDepthLight 太陽から見た深さの画像を作った光源（無ければ nullptr）。詰めた番号を sunDepthLightIndex へ書く
+        void FillDirectionalLights(
+            Constants& constants, const LightManager* lightManager, const Light* sunDepthLight) const;
 
         GraphicsCore* graphicsCore_ = nullptr;
 
@@ -194,6 +232,7 @@ namespace CoreEngine
         D3D12_GPU_VIRTUAL_ADDRESS frameConstants_ = 0;
         D3D12_GPU_DESCRIPTOR_HANDLE skyIrradianceSrv_{};
         D3D12_GPU_DESCRIPTOR_HANDLE cloudShadowSrv_{};
+        D3D12_GPU_DESCRIPTOR_HANDLE sunDepthSrv_{};
         bool integratedThisFrame_ = false;
 
         /// @brief 今フレームに光を書く方の lightScattering_ の番号
@@ -207,5 +246,7 @@ namespace CoreEngine
         Vector3 prevCameraPos_{};
         float prevDistance_ = 0.0f;
         float prevDepthDistribution_ = 0.0f;
+        /// @brief 前フレームに太陽から見た深さの画像を作った光源（見分けるだけで中身は読まない）
+        const Light* prevSunDepthLight_ = nullptr;
     };
 }

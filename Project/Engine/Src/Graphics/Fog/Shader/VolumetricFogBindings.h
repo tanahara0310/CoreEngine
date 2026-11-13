@@ -34,6 +34,7 @@ namespace CoreEngine::VolumetricFogLightScatteringBind
         gSkyIrradianceSH,
         gCloudShadowMap,
         gLightScatteringHistory,
+        gSunDepth,
         gLightScattering,
         Count
     };
@@ -46,6 +47,8 @@ namespace CoreEngine::VolumetricFogLightScatteringBind
         // 雲が無いシーンでは差さない（そのときシェーダーは読まない）
         { "gCloudShadowMap",  ShaderBindingType::SRV, BindingUsage::Conditional }, // t2
         { "gLightScatteringHistory", ShaderBindingType::SRV, BindingUsage::Required }, // t3
+        // 太陽から見た深さの画像を作らないフレームでは差さない（そのときシェーダーは読まない）
+        { "gSunDepth",        ShaderBindingType::SRV, BindingUsage::Conditional }, // t4
         { "gLightScattering", ShaderBindingType::UAV, BindingUsage::Required }, // u0
     };
 

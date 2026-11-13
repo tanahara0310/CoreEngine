@@ -66,6 +66,8 @@ namespace CoreEngine
         float areaHeight = 2.0f;           ///< エリア発光面の高さ [m]
         bool castShadows = true;           ///< レイトレーシングの影を落とす
         float sourceRadius = 0.05f;        ///< 点光源・スポットの光る球の半径 [m]（大きいほど影の縁がぼける。0 でくっきり）
+        float volumetricScatteringIntensity = 1.0f; ///< ボリュメトリックフォグを照らす強さ（0 で霧を照らさない）
+        bool castVolumetricShadow = true;  ///< ボリュメトリックフォグに物の影を落とす（平行光源だけ。castShadows も要る）
 
         // ---- CPU 専用の役割フラグ（GPU には転送されない）----
         bool isAtmosphereSun = false;      ///< 大気散乱の太陽として扱う

@@ -1,0 +1,112 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    0.12,
+                    2.5,
+                    0.08
+                ],
+                "translate": [
+                    6.95,
+                    1.25,
+                    8.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "materials": [
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            0.45,
+                            0.32,
+                            0.2,
+                            1.0
+                        ],
+                        "dithering": true,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.9
+                    },
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            0.45,
+                            0.32,
+                            0.2,
+                            1.0
+                        ],
+                        "dithering": true,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.9
+                    }
+                ],
+                "model": {
+                    "guid": "e8a79191-50ea-0673-1816-c257f280ba64",
+                    "path": "Engine/Assets/Models/Primitives/Box/cube.obj"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "alphaCutoff": 0.5,
+                "color": [
+                    0.45,
+                    0.32,
+                    0.2,
+                    1.0
+                ],
+                "dithering": true,
+                "ditheringScale": 1.0,
+                "emissive": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "lighting": true,
+                "metallic": 0.0,
+                "normalMap": false,
+                "occlusionStrength": 1.0,
+                "roughness": 0.9
+            },
+            "type": "Material"
+        }
+    ],
+    "id": "43b7cb52bd321cc3",
+    "name": "Fence_11",
+    "order": 20
+}

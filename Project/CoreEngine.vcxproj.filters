@@ -358,6 +358,9 @@
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTAOPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTVolumetricShadowPass.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTShadowPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
@@ -801,6 +804,9 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RayTracing\AO\RTAmbientOcclusion.cpp">
       <Filter>Engine\Src\Graphics\RayTracing\AO</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RayTracing\VolumetricShadow\RTVolumetricShadow.cpp">
+      <Filter>Engine\Src\Graphics\RayTracing\VolumetricShadow</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RayTracing\Denoise\RTDenoiser.cpp">
       <Filter>Engine\Src\Graphics\RayTracing\Denoise</Filter>
@@ -2802,6 +2808,9 @@
     <ClInclude Include="Engine\Src\Graphics\RayTracing\AO\RTAmbientOcclusion.h">
       <Filter>Engine\Src\Graphics\RayTracing\AO</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\VolumetricShadow\RTVolumetricShadow.h">
+      <Filter>Engine\Src\Graphics\RayTracing\VolumetricShadow</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\Denoise\RTDenoiser.h">
       <Filter>Engine\Src\Graphics\RayTracing\Denoise</Filter>
     </ClInclude>
@@ -3016,6 +3025,9 @@
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTAOPass.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTVolumetricShadowPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTShadowPass.h">
@@ -4825,6 +4837,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\RayTracing\Effect">
       <UniqueIdentifier>{3FF02CB9-66E7-4A15-A7A0-DD257A44AA96}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\RayTracing\VolumetricShadow">
+      <UniqueIdentifier>{2C6B37E8-5425-4449-A86A-66782F7FD2EC}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Render">
       <UniqueIdentifier>{914A25D2-E4AB-4015-82E8-D55EC9CA375E}</UniqueIdentifier>

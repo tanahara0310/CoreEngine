@@ -14,7 +14,7 @@
 /// LUT のサンプルそのものが走らない。
 ///
 /// volumetricEnabled のフレームは、格子が届く距離までをボリュメトリックの格子から引き、
-/// その先を同じ濃さの式と同じ光の式で解析的に足す（雲の影は格子の端の 1 点で引く）。
+/// その先を同じ濃さの式と同じ光の式で解析的に足す（雲の影は格子の端の 1 点で引き、物の影は掛けない）。
 
 #include "Fog.hlsli"
 #include "VolumetricFogCommon.hlsli"
@@ -28,6 +28,7 @@ Texture2D<float4> gSkyViewLUT : register(t1);
 Texture3D<float4> gVolumetricFogIntegrated : register(t2);
 StructuredBuffer<float4> gSkyIrradianceSH : register(t3);
 Texture2D<float> gCloudShadowMap : register(t4);
+Texture2D<float> gSunDepth : register(t5);
 SamplerState gLUTSampler : register(s0);
 RWTexture2D<float4> gOutput : register(u0);
 
@@ -84,7 +85,7 @@ float3 ApplyVolumetricFog(float2 uv, float3 rayDirection, float rayEnd, float3 s
         const float3 ambient = VolumetricFogSkyAmbient(p, gSkyIrradianceSH);
         const float3 boundary = gFog.cameraWorldPos + rayDirection * p.distance;
         const float3 source = VolumetricFogSource(
-            p, rayDirection, ambient, boundary, gCloudShadowMap, gLUTSampler);
+            p, rayDirection, ambient, boundary, gCloudShadowMap, gLUTSampler, 1.0f);
         farLight = p.albedo * source * (1.0f - farTransmittance);
     }
 
@@ -117,9 +118,35 @@ float3 ApplyVolumetricFog(float2 uv, float3 rayDirection, float rayEnd, float3 s
         {
             return float3(1.0f, 1.0f, 1.0f);
         }
+        // 太陽から見た深さの画像を使う光源があればその光源、無ければ最初の光源
+        const bool hasSunDepth = p.sunDepthLightIndex != kVolumetricFogNoSunDepthLight;
+        const uint lightIndex = hasSunDepth ? p.sunDepthLightIndex : 0u;
         const float3 endPoint = gFog.cameraWorldPos + rayDirection * volumeEnd;
-        return VolumetricFogCloudShadow(
-            p, gCloudShadowMap, gLUTSampler, endPoint, -p.directional[0].direction).xxx;
+        const float cloudShadow = VolumetricFogCloudShadow(
+            p, gCloudShadowMap, gLUTSampler, endPoint, -p.directional[lightIndex].direction);
+        return (cloudShadow * VolumetricFogSunDepthShadow(p, gSunDepth, gLUTSampler, endPoint)).xxx;
+    }
+    if (p.debugView == 5)
+    {
+        // 太陽から見た深さの画像を画面の中央へ正方形で出す
+        // （霧の範囲の光源側の端 = 黒・反対側の端と当たらない所 = 白・正方形の外 = 暗い灰色。画像が無ければ暗い赤）
+        if (p.sunDepthLightIndex == kVolumetricFogNoSunDepthLight)
+        {
+            return float3(0.3f, 0.0f, 0.0f);
+        }
+        uint width;
+        uint height;
+        gOutput.GetDimensions(width, height);
+        const float aspect = float(width) / max(float(height), 1.0f);
+        const float2 imageUV = (uv - 0.5f) * float2(max(aspect, 1.0f), max(1.0f / aspect, 1.0f)) + 0.5f;
+        if (any(imageUV < 0.0f) || any(imageUV > 1.0f))
+        {
+            return float3(0.05f, 0.05f, 0.05f);
+        }
+        const float regionSize = 1.0f / max(p.sunDepthInvSize, 1.0e-6f);
+        const float regionFront = p.sunDepthRange - regionSize;
+        const float depth = gSunDepth.SampleLevel(gLUTSampler, imageUV, 0);
+        return saturate((depth - regionFront) / regionSize).xxx;
     }
 
     return sceneColor * limitedTransmittance + light * lightScale;

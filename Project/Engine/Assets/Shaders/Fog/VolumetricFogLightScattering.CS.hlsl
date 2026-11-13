@@ -1,6 +1,6 @@
 /// @file VolumetricFogLightScattering.CS.hlsl
 /// @brief 格子 1 つずつに、視線の向きへ散乱する光を書く
-/// @details 光の源は平行光源（位相関数と雲の影つき）と空の平均の輝度。
+/// @details 光の源は平行光源（位相関数・雲の影・太陽から見た深さの画像による物の影つき）と空の平均の輝度。
 ///          点は格子の中で毎フレームずらし、前フレームの格子へ写した位置の光と混ぜる。
 ///          出力: rgb = 散乱係数 × 光の源、a = 消散係数 [1/m]。
 
@@ -12,6 +12,7 @@ Texture3D<float4> gVBuffer : register(t0);
 StructuredBuffer<float4> gSkyIrradianceSH : register(t1);
 Texture2D<float> gCloudShadowMap : register(t2);
 Texture3D<float4> gLightScatteringHistory : register(t3);
+Texture2D<float> gSunDepth : register(t4);
 SamplerState gLinearClamp : register(s0);
 RWTexture3D<float4> gLightScattering : register(u0);
 
@@ -72,7 +73,9 @@ void main(uint3 cell : SV_DispatchThreadID)
     const float3 worldPos = CellWorldPosition(p, uv, float(cell.z) + p.frameJitter.z, viewDir);
 
     const float3 ambient = VolumetricFogSkyAmbient(p, gSkyIrradianceSH);
-    const float3 source = VolumetricFogSource(p, viewDir, ambient, worldPos, gCloudShadowMap, gLinearClamp);
+    const float sunDepthShadow = VolumetricFogSunDepthShadow(p, gSunDepth, gLinearClamp, worldPos);
+    const float3 source = VolumetricFogSource(
+        p, viewDir, ambient, worldPos, gCloudShadowMap, gLinearClamp, sunDepthShadow);
     float3 scattered = medium.rgb * source;
 
     if (p.historyValid != 0)
