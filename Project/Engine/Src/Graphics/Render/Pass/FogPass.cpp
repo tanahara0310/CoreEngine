@@ -88,6 +88,10 @@ namespace CoreEngine
 
         // SceneColor へ書くのは GameView だけ
         if (context.viewSettings.viewType == RenderViewType::GameView) {
+            // ボリュメトリックフォグの格子を積み上げ終えてから合成する
+            if (context.fogManager && context.fogManager->IsVolumetricRequested()) {
+                builder.Read(FrameBlackboard::VolumetricFog, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            }
             builder.Write(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         }
     }

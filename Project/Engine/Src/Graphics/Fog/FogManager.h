@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Graphics/Fog/Settings/FogSettings.h"
+#include "Graphics/Fog/Volumetric/VolumetricFog.h"
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
@@ -79,7 +80,7 @@ namespace CoreEngine
             uint32_t  waterClipEnabled; ///< 1 なら水面の範囲内で水面より下の面に全画面フォグを掛けない
             Vector2   waterRegionCenterXZ;     ///< 水面の範囲の中心（ワールド XZ）[m]
             Vector2   waterRegionHalfExtentXZ; ///< 水面の範囲の半分の大きさ（ワールド XZ）[m]
-            float     pad0;             ///< 16 バイト境界までの詰め物
+            uint32_t  volumetricEnabled; ///< 1 なら全画面の合成でボリュメトリックの格子を使う
             float     pad1;             ///< 16 バイト境界までの詰め物
         };
 
@@ -94,7 +95,7 @@ namespace CoreEngine
             CB_FIELD(FogConstants, skyColorBlend), CB_FIELD(FogConstants, cameraRadiusKm),
             CB_FIELD(FogConstants, planetRadiusKm), CB_FIELD(FogConstants, waterHeight),
             CB_FIELD(FogConstants, waterClipEnabled), CB_FIELD(FogConstants, waterRegionCenterXZ),
-            CB_FIELD(FogConstants, waterRegionHalfExtentXZ), CB_FIELD(FogConstants, pad0),
+            CB_FIELD(FogConstants, waterRegionHalfExtentXZ), CB_FIELD(FogConstants, volumetricEnabled),
             CB_FIELD(FogConstants, pad1),
         };
         CB_VERIFY_LAYOUT(FogConstants, kFogConstantsFields);
@@ -118,6 +119,7 @@ namespace CoreEngine
         void EndFrame()
         {
             fogActive_ = false;
+            volumetric_.EndFrame();
             // 次フレームで PrepareConstants が走るまで、前方描画には恒等バッファを返す
             for (auto& address : frameConstants_) { address = 0; }
         }
@@ -130,6 +132,16 @@ namespace CoreEngine
 
         /// @brief このフレームでフォグが要求されているか（Update() が呼ばれ、かつ有効かつ構築済み）
         bool IsFogActive() const { return fogActive_ && settings_.enabled && pipelineReady_; }
+
+        /// @brief このフレームでボリュメトリックの格子を作るか
+        bool IsVolumetricRequested() const;
+
+        /// @brief ボリュメトリックの格子
+        VolumetricFog& GetVolumetric() { return volumetric_; }
+        const VolumetricFog& GetVolumetric() const { return volumetric_; }
+
+        /// @brief 空の SH を使わないときに霧を照らす空の光（フォグ色 × 明るさ × 照明の追従）
+        Vector3 GetFallbackAmbient() const;
 
         /// @brief 合成パイプラインの構築に成功しているか
         /// @details false のときは r.Fog.Enabled を立ててもフォグは出ない（シェーダーのコンパイル失敗）。
@@ -178,6 +190,8 @@ namespace CoreEngine
         bool pipelineReady_ = false;
 
         FogSettings settings_{};
+
+        VolumetricFog volumetric_{};
 
         /// @brief 今フレームの太陽（Update が毎フレーム外から受け取る値）
         Vector3 sunDirection_{ 0.0f, -1.0f, 0.0f };

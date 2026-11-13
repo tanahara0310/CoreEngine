@@ -57,6 +57,7 @@ namespace CoreEngine
         static const char* const FFTOceanDisplacement; ///< FFT の海の波面の変位（FFTOceanPass が毎フレーム作る）
         static const char* const SkySpecular;          ///< 空のスペキュラキューブマップ（AtmosphereLUTPass が作り直す）
         static const char* const WaterSeaMap;          ///< 海の範囲マップ（RTWaterSeaMapPass が作り直す）
+        static const char* const VolumetricFog;        ///< ボリュメトリックフォグの積み上げた格子（使うフレームだけ）
 
         /// @brief RT 影のマスクの数（影の枠の数。0〜3 は平行光源、4〜7 は局所ライト）
         static constexpr uint32_t kRTShadowMaskCount = 8;

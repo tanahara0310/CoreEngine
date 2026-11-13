@@ -2029,10 +2029,19 @@
     <ClCompile Include="Engine\Src\Graphics\Fog\Settings\FogCVars.cpp">
       <Filter>Engine\Src\Graphics\Fog\Settings</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Fog\Volumetric\VolumetricFog.cpp">
+      <Filter>Engine\Src\Graphics\Fog\Volumetric</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Fog\Volumetric\VolumetricFogCVars.cpp">
+      <Filter>Engine\Src\Graphics\Fog\Volumetric</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\DefaultRenderPipelineBuilder.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\FogPass.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\VolumetricFogPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Text3D\Text3DRenderer.cpp">
@@ -4395,10 +4404,22 @@
     <ClInclude Include="Engine\Src\Graphics\Fog\Shader\FogBindings.h">
       <Filter>Engine\Src\Graphics\Fog\Shader</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Fog\Shader\VolumetricFogBindings.h">
+      <Filter>Engine\Src\Graphics\Fog\Shader</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Fog\Volumetric\VolumetricFog.h">
+      <Filter>Engine\Src\Graphics\Fog\Volumetric</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Fog\Volumetric\VolumetricFogCVars.h">
+      <Filter>Engine\Src\Graphics\Fog\Volumetric</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\DefaultRenderPipelineBuilder.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\FogPass.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\VolumetricFogPass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Text3D\Text3DRenderer.h">
@@ -4669,6 +4690,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\Fog\Shader">
       <UniqueIdentifier>{27455399-2A3B-46E9-8897-A971C729CB83}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Fog\Volumetric">
+      <UniqueIdentifier>{1A0DAEB0-D7E7-42AC-9033-E7D841528DBE}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Light">
       <UniqueIdentifier>{6E3F897F-23FE-4042-8FF1-02AA88D26941}</UniqueIdentifier>
