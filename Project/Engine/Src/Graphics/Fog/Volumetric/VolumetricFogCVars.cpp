@@ -47,8 +47,20 @@ namespace CoreEngine::VolumetricFogCVars
         "前のフレームの光を混ぜる量。大きいほど縞とざらつきが消えるが、動く影の追従が遅れる。0 で混ぜない",
         CVarRange{ 0.0f, 0.98f } };
 
+    CVar<int> ShadowResolution{
+        "r.Fog.Volumetric.ShadowResolution", 1024,
+        "物の影に使う太陽から見た深さの画像の一辺の画素数。大きいほど細い物の影が出るが、レイの本数が 2 乗で増える"
+        "（DXR 1.1 に対応した GPU だけ）",
+        CVarRange{ 256.0f, 4096.0f } };
+
+    CVar<float> ShadowCasterHeight{
+        "r.Fog.Volumetric.ShadowCasterHeight", 200.0f,
+        "太陽から見た深さの画像のレイを、霧の範囲よりどれだけ光源の側から撃つか [m]。範囲の外の高い物も霧に影を落とす",
+        CVarRange{ 0.0f, 2000.0f } };
+
     CVar<int> DebugView{
         "r.Fog.Volumetric.DebugView", 0,
-        "デバッグ表示。0 = なし、1 = 透過率、2 = 溜まった光、3 = 奥行きの何枚目か、4 = 格子の奥の端での雲の影",
-        CVarRange{ 0.0f, 4.0f }, CVarFlags::NoSave };
+        "デバッグ表示。0 = なし、1 = 透過率、2 = 溜まった光、3 = 奥行きの何枚目か、"
+        "4 = 格子の奥の端での影（雲の影 × 物の影）、5 = 太陽から見た深さの画像",
+        CVarRange{ 0.0f, 5.0f }, CVarFlags::NoSave };
 }

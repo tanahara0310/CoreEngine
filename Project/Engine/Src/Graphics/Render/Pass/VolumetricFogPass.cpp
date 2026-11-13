@@ -4,6 +4,8 @@
 #include "Camera/View/ViewInfo.h"
 #include "Graphics/Cloud/VolumetricCloudManager.h"
 #include "Graphics/Fog/FogManager.h"
+#include "Graphics/RayTracing/Effect/RTEffectSet.h"
+#include "Graphics/RayTracing/VolumetricShadow/RTVolumetricShadow.h"
 #include "Graphics/Render/FrameBlackboard.h"
 #include "Graphics/Render/RenderGraph.h"
 #include "Graphics/Render/RenderTarget/OffscreenRenderTarget.h"
@@ -34,6 +36,23 @@ namespace CoreEngine
         {
             if (context.fogManager && context.fogManager->IsVolumetricRequested()) {
                 builder.Read(FrameBlackboard::CloudShadowMap, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            }
+        }
+
+        /// @brief 太陽から見た深さの画像を読む宣言（作らないフレームでは登録されない）
+        void DeclareSunDepthRead(RenderGraphBuilder& builder, const RenderContext& context)
+        {
+            if (context.fogManager && context.fogManager->IsVolumetricRequested()) {
+                builder.Read(FrameBlackboard::VolumetricSunDepth, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            }
+        }
+
+        /// @brief 今フレームに書いた太陽から見た深さの画像を入力へ詰める（書いていなければ空のまま）
+        void FillSunDepthInput(const RenderContext& context, VolumetricFogFrameInput& input)
+        {
+            const RTVolumetricShadow* shadow = FindRTEffect<RTVolumetricShadow>(context);
+            if (shadow && shadow->IsDispatchedThisFrame()) {
+                input.sunDepth = &shadow->GetFrame();
             }
         }
 
@@ -84,6 +103,7 @@ namespace CoreEngine
         input.fog = &fog.GetSettings();
         input.fallbackAmbient = fog.GetFallbackAmbient();
         FillCloudShadowInput(context, input);
+        FillSunDepthInput(context, input);
 
         VolumetricFog& volumetric = fog.GetVolumetric();
         if (!volumetric.PrepareFrame(input)) {
@@ -102,6 +122,7 @@ namespace CoreEngine
         RenderGraphBuilder& builder, const RenderContext& context)
     {
         DeclareCloudShadowRead(builder, context);
+        DeclareSunDepthRead(builder, context);
         DeclareVolumeWrite(builder, context);
     }
 

@@ -20,6 +20,7 @@ namespace CoreEngine::FogApplyBind
         gVolumetricFogIntegrated,
         gSkyIrradianceSH,
         gCloudShadowMap,
+        gSunDepth,
         gOutput,
         Count
     };
@@ -35,6 +36,8 @@ namespace CoreEngine::FogApplyBind
         { "gSkyIrradianceSH", ShaderBindingType::SRV, BindingUsage::Conditional }, // t3
         // ボリュメトリックの格子を使い、雲もあるフレームだけ差す
         { "gCloudShadowMap", ShaderBindingType::SRV, BindingUsage::Conditional }, // t4
+        // ボリュメトリックの格子を使い、太陽から見た深さの画像を作ったフレームだけ差す（デバッグ表示 4・5 が読む）
+        { "gSunDepth",       ShaderBindingType::SRV, BindingUsage::Conditional }, // t5
         { "gOutput",     ShaderBindingType::UAV, BindingUsage::Required },  // u0
     };
 

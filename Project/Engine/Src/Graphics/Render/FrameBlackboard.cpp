@@ -36,6 +36,7 @@ namespace CoreEngine
     const char* const FrameBlackboard::SkySpecular = "SkySpecular";
     const char* const FrameBlackboard::WaterSeaMap = "WaterSeaMap";
     const char* const FrameBlackboard::VolumetricFog = "VolumetricFog";
+    const char* const FrameBlackboard::VolumetricSunDepth = "VolumetricSunDepth";
 
     const char* FrameBlackboard::RTShadowMaskOf(uint32_t shadowSlot)
     {

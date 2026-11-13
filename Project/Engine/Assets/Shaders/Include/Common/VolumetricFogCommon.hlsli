@@ -20,6 +20,9 @@ struct VolumetricFogDirectionalLight
 /// @brief 格子を照らす平行光源の最大数
 static const uint kVolumetricFogMaxDirectionalLights = 4;
 
+/// @brief 太陽から見た深さの画像を使う光源が無いときの番号
+static const uint kVolumetricFogNoSunDepthLight = 0xFFFFFFFFu;
+
 /// @brief ボリュメトリックフォグの定数（C++ 側 VolumetricFog::Constants と 1 対 1）
 struct VolumetricFogParameters
 {
@@ -54,6 +57,14 @@ struct VolumetricFogParameters
     float    cloudShadowStrength;       ///< 雲の影の強さ（面と同じ値）
     uint     cloudShadowEnabled;        ///< 1 なら雲の影を引く
     float    pad1;
+    float3   sunDepthOrigin;     ///< 太陽から見た深さの画像の面の中心（レイの始点の面）[m]
+    float    sunDepthInvSize;    ///< 画像の一辺 [m] の逆数
+    float3   sunDepthRight;      ///< 画像の右の向き（ワールド）
+    float    sunDepthBias;       ///< 日なたとみなす距離の余裕 [m]
+    float3   sunDepthUp;         ///< 画像の上の向き（ワールド）
+    float    sunDepthRange;      ///< レイの長さ [m]（当たらなかった所はこれより大きい値）
+    float3   sunDepthDir;        ///< レイの向き（光の進行方向）
+    uint     sunDepthLightIndex; ///< 画像を使う光源の directional の番号（kVolumetricFogNoSunDepthLight = 無し）
     VolumetricFogDirectionalLight directional[kVolumetricFogMaxDirectionalLights];
 };
 
@@ -116,13 +127,49 @@ float VolumetricFogCloudShadow(
     return lerp(1.0f, shadow, p.cloudShadowStrength);
 }
 
+/// @brief 太陽から見た深さの画像の UV と、点の面からの距離を求める
+/// @param distanceFromPlane 画像の面から光の進む向きへ測った点の距離 [m]
+float2 VolumetricFogSunDepthUV(VolumetricFogParameters p, float3 worldPos, out float distanceFromPlane)
+{
+    const float3 local = worldPos - p.sunDepthOrigin;
+    distanceFromPlane = dot(local, p.sunDepthDir);
+    return float2(dot(local, p.sunDepthRight), -dot(local, p.sunDepthUp)) * p.sunDepthInvSize + 0.5f;
+}
+
+/// @brief 点が物に遮られずに光源から見えている割合（太陽から見た深さの画像を 2x2 で比べて双線形で混ぜる）
+/// @return 画像を使う光源が無い・画像の範囲の外なら 1
+float VolumetricFogSunDepthShadow(
+    VolumetricFogParameters p, Texture2D<float> sunDepth, SamplerState linearClamp, float3 worldPos)
+{
+    if (p.sunDepthLightIndex == kVolumetricFogNoSunDepthLight)
+    {
+        return 1.0f;
+    }
+    float distanceFromPlane;
+    const float2 uv = VolumetricFogSunDepthUV(p, worldPos, distanceFromPlane);
+    if (any(uv <= 0.0f) || any(uv >= 1.0f))
+    {
+        return 1.0f;
+    }
+
+    uint width;
+    uint height;
+    sunDepth.GetDimensions(width, height);
+    const float2 f = frac(uv * float2(width, height) - 0.5f);
+    // x = 左下・y = 右下・z = 右上・w = 左上
+    const float4 depth = sunDepth.GatherRed(linearClamp, uv);
+    const float4 lit = float4(distanceFromPlane - p.sunDepthBias < depth);
+    return lerp(lerp(lit.w, lit.z, f.x), lerp(lit.x, lit.y, f.x), f.y);
+}
+
 /// @brief 点で視線の向きへ散乱する光の源（散乱係数を掛ける前）
 /// @param viewDir カメラから点へ向かう向き（正規化済み）
 /// @param ambient 空の平均の輝度
 /// @param worldPos 雲の影を引く点のワールド座標 [m]
+/// @param sunDepthShadow 太陽から見た深さの画像を使う光源への物の影（VolumetricFogSunDepthShadow）
 float3 VolumetricFogSource(
     VolumetricFogParameters p, float3 viewDir, float3 ambient, float3 worldPos,
-    Texture2D<float> cloudShadowMap, SamplerState linearClamp)
+    Texture2D<float> cloudShadowMap, SamplerState linearClamp, float sunDepthShadow)
 {
     float3 source = ambient;
     [loop]
@@ -131,7 +178,11 @@ float3 VolumetricFogSource(
         const VolumetricFogDirectionalLight light = p.directional[i];
         const float3 toLight = -light.direction;
         const float cosTheta = dot(viewDir, toLight);
-        const float shadow = VolumetricFogCloudShadow(p, cloudShadowMap, linearClamp, worldPos, toLight);
+        float shadow = VolumetricFogCloudShadow(p, cloudShadowMap, linearClamp, worldPos, toLight);
+        if (i == p.sunDepthLightIndex)
+        {
+            shadow *= sunDepthShadow;
+        }
         source += light.irradiance * (VolumetricFogPhaseHG(p.phaseG, cosTheta) * shadow);
     }
     return source;

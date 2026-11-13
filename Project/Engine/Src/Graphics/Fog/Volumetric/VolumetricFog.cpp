@@ -234,6 +234,25 @@ namespace CoreEngine
         cloudShadowSrv_ = input.cloudShadowMapSrv;
     }
 
+    void VolumetricFog::FillSunDepth(Constants& constants, const VolumetricFogFrameInput& input)
+    {
+        sunDepthSrv_ = {};
+        const VolumetricFogSunDepth* sunDepth = input.sunDepth;
+        if (!sunDepth || sunDepth->srv.ptr == 0 || sunDepth->size <= 0.0f
+            || constants.sunDepthLightIndex == kNoSunDepthLight) {
+            constants.sunDepthLightIndex = kNoSunDepthLight;
+            return;
+        }
+        constants.sunDepthOrigin = sunDepth->origin;
+        constants.sunDepthInvSize = 1.0f / sunDepth->size;
+        constants.sunDepthRight = sunDepth->right;
+        constants.sunDepthBias = sunDepth->bias;
+        constants.sunDepthUp = sunDepth->up;
+        constants.sunDepthRange = sunDepth->range;
+        constants.sunDepthDir = sunDepth->direction;
+        sunDepthSrv_ = sunDepth->srv;
+    }
+
     void VolumetricFog::FillHistory(Constants& constants, const Matrix4x4& viewProj, const Vector3& cameraPos)
     {
         const float historyWeight = std::clamp(VolumetricFogCVars::HistoryWeight.Get(), 0.0f, 0.98f);
@@ -263,9 +282,11 @@ namespace CoreEngine
         prevDepthDistribution_ = constants.depthDistribution;
     }
 
-    void VolumetricFog::FillDirectionalLights(Constants& constants, const LightManager* lightManager) const
+    void VolumetricFog::FillDirectionalLights(
+        Constants& constants, const LightManager* lightManager, const Light* sunDepthLight) const
     {
         constants.directionalCount = 0;
+        constants.sunDepthLightIndex = kNoSunDepthLight;
         if (!lightManager) {
             return;
         }
@@ -273,13 +294,17 @@ namespace CoreEngine
         const uint32_t count = lightManager->GetLightCount(LightType::Directional);
         for (uint32_t i = 0; i < count && constants.directionalCount < kMaxDirectionalLights; ++i) {
             const Light* light = lightManager->GetDirectionalLight(i);
-            if (!light || !light->enabled || LengthSquared(light->direction) < 1.0e-8f) {
+            if (!light || !light->enabled || LengthSquared(light->direction) < 1.0e-8f
+                || light->volumetricScatteringIntensity <= 0.0f) {
                 continue;
+            }
+            if (light == sunDepthLight) {
+                constants.sunDepthLightIndex = constants.directionalCount;
             }
             DirectionalLight& out = constants.directional[constants.directionalCount++];
             out.direction = Normalize(light->direction);
             out.irradiance = lightManager->GetEffectiveLightColorRGB(*light)
-                * LightUnits::LuxToShader(light->intensity);
+                * (LightUnits::LuxToShader(light->intensity) * light->volumetricScatteringIntensity);
         }
     }
 
@@ -330,7 +355,7 @@ namespace CoreEngine
         constants.heightRef = fog.heightRefM;
         constants.startDistance = fog.startDistanceM;
         constants.fallbackAmbient = input.fallbackAmbient * ambientScale;
-        constants.debugView = static_cast<uint32_t>(std::clamp(VolumetricFogCVars::DebugView.Get(), 0, 4));
+        constants.debugView = static_cast<uint32_t>(std::clamp(VolumetricFogCVars::DebugView.Get(), 0, 5));
 
         const AtmosphereManager* atmosphere = input.atmosphere;
         const bool skyAmbientUsable = atmosphere
@@ -344,9 +369,17 @@ namespace CoreEngine
         skyIrradianceSrv_ = atmosphere
             ? atmosphere->GetSkyIrradianceSHSRVHandle() : D3D12_GPU_DESCRIPTOR_HANDLE{};
 
-        FillDirectionalLights(constants, input.lightManager);
+        FillDirectionalLights(constants, input.lightManager, input.sunDepth ? input.sunDepth->light : nullptr);
         FillCloudShadow(constants, input);
+        FillSunDepth(constants, input);
         FillHistory(constants, viewProj, view.position);
+
+        // 物の影を作る光源が替わったら前フレームの光は混ぜない
+        const Light* sunDepthLight = (constants.sunDepthLightIndex != kNoSunDepthLight) ? input.sunDepth->light : nullptr;
+        if (sunDepthLight != prevSunDepthLight_) {
+            constants.historyValid = 0;
+        }
+        prevSunDepthLight_ = sunDepthLight;
 
         frameConstants_ = graphicsCore_->GetUploadRing().AllocateConstants(constants);
         return frameConstants_ != 0;
@@ -399,6 +432,9 @@ namespace CoreEngine
             if (cloudShadowSrv_.ptr != 0) {
                 binder.Set(lightScatteringBindings_[B::gCloudShadowMap], cloudShadowSrv_);
             }
+            if (sunDepthSrv_.ptr != 0) {
+                binder.Set(lightScatteringBindings_[B::gSunDepth], sunDepthSrv_);
+            }
             binder.Set(lightScatteringBindings_[B::gLightScatteringHistory], previous.srv.gpuHandle);
             binder.Set(lightScatteringBindings_[B::gLightScattering], current.uav.gpuHandle);
             binder.ValidateBeforeDraw(lightScatteringBindings_);
@@ -444,5 +480,6 @@ namespace CoreEngine
         frameConstants_ = 0;
         skyIrradianceSrv_ = {};
         cloudShadowSrv_ = {};
+        sunDepthSrv_ = {};
     }
 }

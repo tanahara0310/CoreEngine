@@ -17,6 +17,8 @@ namespace CoreEngine
         extern CVar<float>   Anisotropy;
         extern CVar<float>   AmbientScale;
         extern CVar<float>   HistoryWeight;
+        extern CVar<int>     ShadowResolution;
+        extern CVar<float>   ShadowCasterHeight;
         extern CVar<int>     DebugView;
     }
 }

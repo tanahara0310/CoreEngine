@@ -251,6 +251,9 @@ namespace CoreEngine
                 if (volumetric_.GetCloudShadowSrv().ptr != 0) {
                     binder.Set(bindings_[B::gCloudShadowMap], volumetric_.GetCloudShadowSrv());
                 }
+                if (volumetric_.GetSunDepthSrv().ptr != 0) {
+                    binder.Set(bindings_[B::gSunDepth], volumetric_.GetSunDepthSrv());
+                }
             }
             binder.ValidateBeforeDraw(bindings_);
         }
