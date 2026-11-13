@@ -140,6 +140,10 @@ namespace CoreEngine
         /// @details GPU 転送と可視化で同じ基底を使うための共通ヘルパー
         static void ComputeAreaLightBasis(const Vector3& normal, Vector3& outRight, Vector3& outUp);
 
+        /// @brief スポットの外角と内角の cos を求める（内角が外角より大きい値は外角へ寄せる）
+        /// @details GPU 転送とボリュメトリックフォグで同じ角度を使うための共通ヘルパー
+        static void ComputeSpotConeCosines(const Light& light, float& outCosOuter, float& outCosInner);
+
         // ==================== GPU バインディング ====================
 
         /// @brief コマンドリストにライトをセット（ShaderBinder 経由）

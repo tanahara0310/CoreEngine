@@ -75,6 +75,10 @@ namespace CoreEngine
             return (value + divisor - 1) / divisor;
         }
 
+        static_assert(VolumetricFog::kMaxLocalLights
+            == LightManager::MAX_POINT_LIGHTS + LightManager::MAX_SPOT_LIGHTS + LightManager::MAX_AREA_LIGHTS,
+            "格子を照らす局所のライトの枠は、点光源・スポット・エリアの最大数の合計と一致させる");
+
         /// @brief カメラが 1 フレームでこれより動いたら前フレームの光を混ぜない [m]
         constexpr float kHistoryResetDistance = 10.0f;
 
@@ -308,10 +312,70 @@ namespace CoreEngine
         }
     }
 
+    bool VolumetricFog::AllocateLocalLights(
+        const LightManager* lightManager, const Vector3& cameraPos, float distance)
+    {
+        LocalLightConstants constants{};
+        if (lightManager && VolumetricFogCVars::LocalLights.Get()) {
+            lightManager->ForEachLocalLight(
+                [&](LightType type, uint32_t, LightHandle, const Light& light) {
+                    if (constants.count >= kMaxLocalLights || !light.enabled || light.intensity <= 0.0f
+                        || light.volumetricScatteringIntensity <= 0.0f || light.range <= 0.0f) {
+                        return;
+                    }
+                    const bool hasDirection = (type == LightType::Spot || type == LightType::Area);
+                    if (hasDirection && LengthSquared(light.direction) < 1.0e-8f) {
+                        return;
+                    }
+
+                    // 届く範囲（エリアは発光面の端から range）がカメラから distance の球にかからなければ飛ばす
+                    float reach = light.range;
+                    if (type == LightType::Area) {
+                        reach += 0.5f * std::sqrt(light.areaWidth * light.areaWidth + light.areaHeight * light.areaHeight);
+                    }
+                    if (Length(light.position - cameraPos) - reach >= distance) {
+                        return;
+                    }
+
+                    LocalLight& out = constants.lights[constants.count++];
+                    out.position = light.position;
+                    out.range = light.range;
+                    switch (type) {
+                    case LightType::Spot:
+                        out.type = kLocalLightSpot;
+                        out.intensity = light.color * LightUnits::CandelaToShader(light.intensity);
+                        out.direction = Normalize(light.direction);
+                        LightManager::ComputeSpotConeCosines(light, out.cosOuter, out.cosInner);
+                        break;
+                    case LightType::Area:
+                        out.type = kLocalLightArea;
+                        out.intensity = light.color
+                            * LightUnits::NitToShader(light.intensity, light.areaWidth * light.areaHeight);
+                        out.direction = Normalize(light.direction);
+                        LightManager::ComputeAreaLightBasis(light.direction, out.right, out.up);
+                        out.halfWidth = 0.5f * light.areaWidth;
+                        out.halfHeight = 0.5f * light.areaHeight;
+                        break;
+                    case LightType::Point:
+                    default:
+                        out.type = kLocalLightPoint;
+                        out.intensity = light.color * LightUnits::CandelaToShader(light.intensity);
+                        break;
+                    }
+                    out.intensity = out.intensity * light.volumetricScatteringIntensity;
+                });
+        }
+
+        localLightCount_ = constants.count;
+        localLightConstants_ = graphicsCore_->GetUploadRing().AllocateConstants(constants);
+        return localLightConstants_ != 0;
+    }
+
     bool VolumetricFog::PrepareFrame(const VolumetricFogFrameInput& input)
     {
         integratedThisFrame_ = false;
         frameConstants_ = 0;
+        localLightConstants_ = 0;
         if (!pipelineReady_ || !graphicsCore_ || !input.view || !input.view->isValid || !input.fog
             || input.screenWidth == 0 || input.screenHeight == 0) {
             return false;
@@ -381,6 +445,9 @@ namespace CoreEngine
         }
         prevSunDepthLight_ = sunDepthLight;
 
+        if (!AllocateLocalLights(input.lightManager, view.position, constants.distance)) {
+            return false;
+        }
         frameConstants_ = graphicsCore_->GetUploadRing().AllocateConstants(constants);
         return frameConstants_ != 0;
     }
@@ -425,6 +492,7 @@ namespace CoreEngine
         {
             ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
             binder.Set(lightScatteringBindings_[B::gVolumetricFog], frameConstants_);
+            binder.Set(lightScatteringBindings_[B::gVolumetricFogLocalLights], localLightConstants_);
             binder.Set(lightScatteringBindings_[B::gVBuffer], vBuffer_.srv.gpuHandle);
             if (skyIrradianceSrv_.ptr != 0) {
                 binder.Set(lightScatteringBindings_[B::gSkyIrradianceSH], skyIrradianceSrv_);
@@ -478,6 +546,7 @@ namespace CoreEngine
         historyAvailable_ = integratedThisFrame_;
         integratedThisFrame_ = false;
         frameConstants_ = 0;
+        localLightConstants_ = 0;
         skyIrradianceSrv_ = {};
         cloudShadowSrv_ = {};
         sunDepthSrv_ = {};

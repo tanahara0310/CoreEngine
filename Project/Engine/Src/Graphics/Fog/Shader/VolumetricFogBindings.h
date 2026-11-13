@@ -30,6 +30,7 @@ namespace CoreEngine::VolumetricFogLightScatteringBind
     /// @brief VolumetricFogLightScattering.CS.hlsl の契約
     enum Slot : size_t {
         gVolumetricFog,
+        gVolumetricFogLocalLights,
         gVBuffer,
         gSkyIrradianceSH,
         gCloudShadowMap,
@@ -41,6 +42,7 @@ namespace CoreEngine::VolumetricFogLightScatteringBind
 
     inline constexpr ShaderBindingDecl kDecls[] = {
         { "gVolumetricFog",   ShaderBindingType::CBV, BindingUsage::Required }, // b0
+        { "gVolumetricFogLocalLights", ShaderBindingType::CBV, BindingUsage::Required }, // b1
         { "gVBuffer",         ShaderBindingType::SRV, BindingUsage::Required }, // t0
         // 大気が無いシーンでは差さない（そのときシェーダーは読まない）
         { "gSkyIrradianceSH", ShaderBindingType::SRV, BindingUsage::Conditional }, // t1

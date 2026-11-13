@@ -146,6 +146,7 @@ namespace CoreEngine {
         HelpMarker(
             "カメラの近く（r.Fog.Volumetric.Distance まで）の霧を 3D の格子で計算する。\n"
             "霧が太陽と空の光で照らされ、太陽の方を向くと明るく光る。\n"
+            "点光源・スポット・エリアライトも霧を照らす（霧に影は落とさない）。\n"
             "格子より奥は同じ式で計算を続けるので、境目は出ない。\n"
             "霧の濃さと高さは高さフォグの設定をそのまま使う。");
         if (volumetric) {
@@ -156,7 +157,8 @@ namespace CoreEngine {
                 ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f),
                     "ボリュメトリックフォグのパイプラインの構築に失敗しています（Shader ログを確認してください）");
             } else if (const uint32_t* grid = volumetricFog.GetGridSize(); grid[0] > 0) {
-                ImGui::TextDisabled("格子 %u x %u x %u", grid[0], grid[1], grid[2]);
+                ImGui::TextDisabled("格子 %u x %u x %u・霧を照らす点光源・スポット・エリア %u 灯",
+                    grid[0], grid[1], grid[2], volumetricFog.GetLocalLightCount());
             }
         }
 
