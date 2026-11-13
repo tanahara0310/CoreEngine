@@ -84,6 +84,7 @@ namespace CoreEngine
         extern CVar<float> ReprojectTolerance;
         extern CVar<int> TraceInterleave;
         extern CVar<int> CubemapFacesPerFrame;
+        extern CVar<int> CubemapUpdateInterval;
 
         // ---- 巻雲シェル ----
         extern CVar<float> CirrusAltitudeM;

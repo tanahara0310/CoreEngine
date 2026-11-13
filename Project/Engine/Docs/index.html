@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.79.0">
+<meta name="engine-version" content="0.80.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11426,6 +11426,13 @@ python Tools/OkinawaBeach/bake_araha_walk.py
 
   <h2 id="changelog-history">更新履歴</h2>
 
+  <h3 id="changelog-v0-80-0">v0.80.0 <span class="dim">（2026-11-13）</span></h3>
+  <p>雲を使うどのシーンでもかかっていた、映り込みの雲と雲の影の描き直しを減らした版です（<a href="#api-VolumetricCloud">ボリュメトリック雲</a>）。見た目は変わりません。空のテンプレートから作ったシーン（RTX 4060 Laptop・1920×1080）を再生したとき、GPU の時間が平均 6.0ms から 5.3ms になりました。</p>
+  <ul>
+    <li><strong>映り込みの雲</strong>：空のキューブマップ（空の映り込み・水面に映る雲）へ雲を描くとき、毎フレーム 1 面ずつ雲をマーチしていたのを、30 フレームに 1 回、6 面をまとめて描くようにしました。キューブマップは小さいので、1 面だけでも 6 面でもかかる時間はほぼ同じ（0.6〜0.8ms）です。平均は 0.48ms から 0.03ms になります。ほかのフレームは前に描いた雲を合成します。間隔は新しい CVar <code>r.Cloud.CubemapUpdateInterval</code>（既定 30・1〜240）、描く面の数は <code>r.Cloud.CubemapFacesPerFrame</code>（既定を 1 から 6 へ変更）で変えられます。太陽が 1 フレームで大きく動いたときは、今までどおりすぐに全部を描き直します。</li>
+    <li><strong>雲の影</strong>：地面に落とす雲の影のマップを、4 本の帯に分けて描き直していたのを 32 本にしました。全体を描き直すのは約 0.5 秒ごとになり、1 フレームあたり 0.18ms から 0.03ms になります。<code>r.Cloud.ShadowMapSlices</code> の既定を 4 から 32 へ、上限を 8 から 64 へ変えました。</li>
+  </ul>
+
   <h3 id="changelog-v0-79-0">v0.79.0 <span class="dim">（2026-11-13）</span></h3>
   <p>FFT の海の白波で、泡の模様と、泡が古くなる様子を作り直した版です（<a href="#api-WaterSurface">水面</a>）。泡が同じ形の網目で並ばなくなり、砕けた直後の白く厚い泡が、時間とともに薄く透けた網目に変わります。カメラを動かすと残る泡がちらつく不具合も直しました。</p>
   <ul>
@@ -17316,7 +17323,7 @@ void LateUpdate()   // 追いかける相手が動いた後に動かす
     keywords: "雲 空 天候 天気",
     summary: "立体的な雲を描きます。インスペクタの「スタイル」「天候」で雰囲気を選び、「配置ペイント（ウェザーマップ）」で雲を置く場所を塗れます。",
     intro: "<p>値は CVar <code>r.Cloud.*</code> としてシーンの <span class=\"path\">_environment.json</span> に、塗った配置は <span class=\"path\">_cloudPaint.bin</span> に保存されます。雲を消すには <code>r.Cloud.Enabled</code> をオフにします（見本の倉庫番のシーンも雲を切っています）。</p>",
-    notes: "<ul><li>雲は毎フレーム全部を描き直さず、分けて描き直します。<code>r.Cloud.TraceInterleave</code>（既定 2）は、雲のバッファの 2×2 画素のうち 1 画素だけにレイを撃ち、残りは前のフレームの雲をカメラの動きに合わせてずらして埋めます。<code>r.Cloud.CubemapFacesPerFrame</code>（既定 1）は、映り込み用の空のキューブマップで 1 フレームに雲を描き直す面の数です。<code>r.Cloud.ShadowMapSlices</code>（既定 4）は、地面に落とす雲の影のマップを何フレームに分けて描き直すかです。</li><li>カメラを速く回したときの雲の縁のにじみや、映り込み・雲の影の遅れが気になるときは、それぞれ 1・6・1 にすると毎フレーム全部を描き直します（そのぶん重くなります）。</li><li>太陽が 1 フレームで大きく動いたとき（時刻の早送りなど）と、雲の影の範囲がカメラについて動いたときは、映り込みの雲と雲の影を全部描き直します。</li></ul>",
+    notes: "<ul><li>雲は毎フレーム全部を描き直さず、分けて描き直します。<code>r.Cloud.TraceInterleave</code>（既定 2）は、雲のバッファの 2×2 画素のうち 1 画素だけにレイを撃ち、残りは前のフレームの雲をカメラの動きに合わせてずらして埋めます。<code>r.Cloud.CubemapUpdateInterval</code>（既定 30）は、映り込み用の空のキューブマップで雲を描き直すフレームの間隔です。描き直すフレームには <code>r.Cloud.CubemapFacesPerFrame</code>（既定 6）面を描き、ほかのフレームは前に描いた雲を合成します。<code>r.Cloud.ShadowMapSlices</code>（既定 32）は、地面に落とす雲の影のマップを何フレームに分けて描き直すかです。</li><li>カメラを速く回したときの雲の縁のにじみや、映り込み・雲の影の遅れが気になるときは、<code>r.Cloud.TraceInterleave</code>・<code>r.Cloud.CubemapUpdateInterval</code>・<code>r.Cloud.ShadowMapSlices</code> をどれも 1 にすると毎フレーム全部を描き直します（そのぶん重くなります）。</li><li>太陽が 1 フレームで大きく動いたとき（時刻の早送りなど）と、雲の影の範囲がカメラについて動いたときは、映り込みの雲と雲の影を全部描き直します。</li></ul>",
     see: [["api-SkyBox", "空と大気散乱"]]
   },
 
