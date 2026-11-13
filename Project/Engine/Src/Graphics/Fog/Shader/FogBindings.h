@@ -14,17 +14,24 @@ namespace CoreEngine::FogApplyBind
     /// @brief HeightFog.CS.hlsl の契約
     enum Slot : size_t {
         gFog,
+        gVolumetricFog,
         gSceneDepth,
         gSkyViewLUT,
+        gVolumetricFogIntegrated,
+        gSkyIrradianceSH,
         gOutput,
         Count
     };
 
     inline constexpr ShaderBindingDecl kDecls[] = {
         { "gFog",        ShaderBindingType::CBV, BindingUsage::Required },  // b0
+        // ボリュメトリックの格子を使うフレームだけ差す
+        { "gVolumetricFog", ShaderBindingType::CBV, BindingUsage::Conditional }, // b1
         { "gSceneDepth", ShaderBindingType::SRV, BindingUsage::Required },     // t0
         // 空色ブレンドが有効なフレームだけ差す（大気非対応シーンでは未バインド）
         { "gSkyViewLUT", ShaderBindingType::SRV, BindingUsage::Conditional }, // t1
+        { "gVolumetricFogIntegrated", ShaderBindingType::SRV, BindingUsage::Conditional }, // t2
+        { "gSkyIrradianceSH", ShaderBindingType::SRV, BindingUsage::Conditional }, // t3
         { "gOutput",     ShaderBindingType::UAV, BindingUsage::Required },  // u0
     };
 

@@ -24,6 +24,7 @@
 #include "Graphics/Render/Pass/VolumetricCloudPass.h"
 #include "Graphics/Render/Pass/GodRayPass.h"
 #include "Graphics/Render/Pass/FogPass.h"
+#include "Graphics/Render/Pass/VolumetricFogPass.h"
 #include "Graphics/Render/Pass/WaterCausticsPass.h"
 #include "Graphics/Render/Pass/GeometryPass.h"
 #include "Graphics/Render/Pass/SceneColorCopyPass.h"
@@ -107,6 +108,11 @@ namespace CoreEngine
 
         // ライティング後: 空気遠近感の合成（GameView のみ）
         pipeline.AddPass(std::make_unique<AerialPerspectivePass>(), RenderPassPhase::PostLighting, 10);
+
+        // ボリュメトリックフォグの格子: 霧の濃さ → 散乱する光 → 手前から積み上げ。FogPass が合成する（GameView のみ）
+        pipeline.AddPass(std::make_unique<VolumetricFogInjectPass>(), RenderPassPhase::PostLighting, 20);
+        pipeline.AddPass(std::make_unique<VolumetricFogLightScatteringPass>(), RenderPassPhase::PostLighting, 21);
+        pipeline.AddPass(std::make_unique<VolumetricFogIntegratePass>(), RenderPassPhase::PostLighting, 22);
 
         // Forward 合成（従来の大箱 GeometryPass をキュー単位の 3 パスへ分割）
         // 不透明 Model/SkinnedModel は投入時に GBuffer 経路へ振り分け済みなので含まれない

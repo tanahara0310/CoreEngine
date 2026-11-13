@@ -6,6 +6,7 @@
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/Fog/FogManager.h"
 #include "Graphics/Fog/Settings/FogCVars.h"
+#include "Graphics/Fog/Volumetric/VolumetricFogCVars.h"
 #include "Graphics/Render/RenderDomainContext.h"
 
 #ifdef CORE_EDITOR
@@ -137,6 +138,27 @@ namespace CoreEngine {
         HelpMarker(
             "大気散乱（Aerial Perspective）とは効く距離帯が 2 桁以上違う別の媒質なので、\n"
             "両方同時に有効にしてよい。重ねた結果は放射伝達として正しい。");
+
+        bool volumetric = VolumetricFogCVars::Enabled.Get();
+        if (ImGui::Checkbox("ボリュメトリックフォグ", &volumetric)) {
+            VolumetricFogCVars::Enabled.Set(volumetric);
+        }
+        HelpMarker(
+            "カメラの近く（r.Fog.Volumetric.Distance まで）の霧を 3D の格子で計算する。\n"
+            "霧が太陽と空の光で照らされ、太陽の方を向くと明るく光る。\n"
+            "格子より奥は同じ式で計算を続けるので、境目は出ない。\n"
+            "霧の濃さと高さは高さフォグの設定をそのまま使う。");
+        if (volumetric) {
+            const VolumetricFog& volumetricFog = fog->GetVolumetric();
+            if (!enabled) {
+                ImGui::TextDisabled("フォグを有効にすると効きます");
+            } else if (!volumetricFog.IsPipelineReady()) {
+                ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f),
+                    "ボリュメトリックフォグのパイプラインの構築に失敗しています（Shader ログを確認してください）");
+            } else if (const uint32_t* grid = volumetricFog.GetGridSize(); grid[0] > 0) {
+                ImGui::TextDisabled("格子 %u x %u x %u", grid[0], grid[1], grid[2]);
+            }
+        }
 
         UI::Separator();
         ImGui::TextUnformatted("プリセット");

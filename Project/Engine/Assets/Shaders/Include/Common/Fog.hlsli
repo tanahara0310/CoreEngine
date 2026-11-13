@@ -42,7 +42,7 @@ struct FogParameters
     uint     waterClipEnabled;///< 1 なら水面の範囲内で水面より下の面に全画面フォグを掛けない
     float2   waterRegionCenterXZ;     ///< 水面の範囲の中心（ワールド XZ）[m]
     float2   waterRegionHalfExtentXZ; ///< 水面の範囲の半分の大きさ（ワールド XZ）[m]
-    float    pad0;            ///< 16 バイト境界までの詰め物
+    uint     volumetricEnabled; ///< 1 なら全画面の合成でボリュメトリックの格子を使う
     float    pad1;            ///< 16 バイト境界までの詰め物
 };
 

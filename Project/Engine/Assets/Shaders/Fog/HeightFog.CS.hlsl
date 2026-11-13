@@ -12,14 +12,21 @@
 /// 空色ブレンドが有効なフレームは Sky-View LUT を視線方向で引き、フォグ色を空へ寄せる。
 /// 大気が無い（LUT 未生成の）シーンでは C++ 側が skyColorBlend = 0 にするため、
 /// LUT のサンプルそのものが走らない。
+///
+/// volumetricEnabled のフレームは、格子が届く距離までをボリュメトリックの格子から引き、
+/// その先を同じ濃さの式と影の無い同じ光の式で解析的に足す。
 
 #include "Fog.hlsli"
+#include "VolumetricFogCommon.hlsli"
 #include "DepthReconstruction.hlsli"
 #include "Common/AtmosphereCommon.hlsli" // SkyViewAzimuth / SkyViewParamsToUv
 
 ConstantBuffer<FogParameters> gFog : register(b0);
+ConstantBuffer<VolumetricFogParameters> gVolumetricFog : register(b1);
 Texture2D<float> gSceneDepth : register(t0);
 Texture2D<float4> gSkyViewLUT : register(t1);
+Texture3D<float4> gVolumetricFogIntegrated : register(t2);
+StructuredBuffer<float4> gSkyIrradianceSH : register(t3);
 SamplerState gLUTSampler : register(s0);
 RWTexture2D<float4> gOutput : register(u0);
 
@@ -54,6 +61,55 @@ bool IsBelowWaterSurface(float3 worldPos)
     }
     const float2 offset = abs(worldPos.xz - gFog.waterRegionCenterXZ);
     return worldPos.y < gFog.waterHeight && all(offset <= gFog.waterRegionHalfExtentXZ);
+}
+
+/// @brief ボリュメトリックの格子と、その先の解析的な霧をシーン色へ合成する
+/// @param uv 画面の UV
+/// @param rayDirection カメラから見た正規化済みの視線
+/// @param rayEnd 面までの距離 [m]
+float3 ApplyVolumetricFog(float2 uv, float3 rayDirection, float rayEnd, float3 sceneColor)
+{
+    const VolumetricFogParameters p = gVolumetricFog;
+    const float volumeEnd = min(rayEnd, p.distance);
+    const float4 volume = VolumetricFogSampleIntegrated(
+        p, gVolumetricFogIntegrated, gLUTSampler, uv * p.screenToGrid, volumeEnd);
+
+    float3 farLight = float3(0.0f, 0.0f, 0.0f);
+    float farTransmittance = 1.0f;
+    if (rayEnd > p.distance)
+    {
+        const float farStart = max(p.distance, gFog.startDistance);
+        farTransmittance = exp(-FogOpticalDepth(gFog, gFog.cameraWorldPos, rayDirection, farStart, rayEnd));
+        const float3 ambient = VolumetricFogSkyAmbient(p, gSkyIrradianceSH);
+        const float3 source = VolumetricFogUnshadowedSource(p, rayDirection, ambient);
+        farLight = p.albedo * source * (1.0f - farTransmittance);
+    }
+
+    const float transmittance = farTransmittance * volume.a;
+    const float3 light = farLight * volume.a + volume.rgb;
+
+    // 最大濃度: 透過率を今の高さフォグと同じ式で持ち上げ、散乱した光も同じ割合で減らす
+    const float maxOpacity = saturate(gFog.maxOpacity);
+    const float limitedTransmittance = lerp(1.0f, transmittance, maxOpacity);
+    const float opacity = 1.0f - transmittance;
+    const float lightScale = (opacity > 1.0e-5f) ? (1.0f - limitedTransmittance) / opacity : maxOpacity;
+
+    if (p.debugView == 1)
+    {
+        return volume.aaa;
+    }
+    if (p.debugView == 2)
+    {
+        return volume.rgb;
+    }
+    if (p.debugView == 3)
+    {
+        const float slice = VolumetricFogDistanceToSlice(p, volumeEnd);
+        const float band = frac(floor(slice) * 0.61803398875f);
+        return float3(band, frac(band * 3.0f), 1.0f - band);
+    }
+
+    return sceneColor * limitedTransmittance + light * lightScale;
 }
 
 [numthreads(8, 8, 1)]
@@ -95,6 +151,14 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     // 背景の復元点はファークリップ上なので、レイ長は skyDistance で置き換える
     const float rayEnd = isBackground ? max(gFog.skyDistance, 0.0f) : surfaceDistance;
     const float rayStart = min(gFog.startDistance, rayEnd);
+
+    if (gFog.volumetricEnabled != 0)
+    {
+        const float4 volumetricScene = gOutput[dispatchThreadId.xy];
+        gOutput[dispatchThreadId.xy] = float4(
+            ApplyVolumetricFog(uv, rayDirection, rayEnd, volumetricScene.rgb), volumetricScene.a);
+        return;
+    }
 
     const float transmittance = FogTransmittance(
         gFog, gFog.cameraWorldPos, rayDirection, rayStart, rayEnd);

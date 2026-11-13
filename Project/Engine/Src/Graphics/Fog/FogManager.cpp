@@ -4,6 +4,7 @@
 #include "Camera/View/ViewInfo.h"
 #include "Graphics/Fog/Settings/FogCVars.h"
 #include "Graphics/Fog/Shader/FogBindings.h"
+#include "Graphics/Fog/Volumetric/VolumetricFogCVars.h"
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Resource/GpuResource.h"
@@ -102,8 +103,23 @@ namespace CoreEngine
             disabledConstantsAddress_ = disabledConstantBuffer_->GetGPUVirtualAddress();
         }
 
+        if (!volumetric_.Initialize(graphicsCore_)) {
+            Logger::GetInstance().Warnf(LogCategory::Graphics,
+                "FogManager: ボリュメトリックフォグのパイプラインの構築に失敗（高さフォグだけで動く）");
+        }
+
         pipelineReady_ = true;
         return true;
+    }
+
+    bool FogManager::IsVolumetricRequested() const
+    {
+        return IsFogActive() && VolumetricFogCVars::Enabled.Get() && volumetric_.IsPipelineReady();
+    }
+
+    Vector3 FogManager::GetFallbackAmbient() const
+    {
+        return settings_.color * settings_.colorIntensity * illuminationScale_;
     }
 
     void FogManager::Update(const Vector3& sunDirection, bool hasSun, float illuminationScale)
@@ -161,6 +177,8 @@ namespace CoreEngine
         constants.waterClipEnabled = water.valid ? 1u : 0u;
         constants.waterRegionCenterXZ = water.regionCenterXZ;
         constants.waterRegionHalfExtentXZ = water.regionHalfExtentXZ;
+
+        constants.volumetricEnabled = (IsFogActive() && volumetric_.IsFrameReady()) ? 1u : 0u;
 
         return constants;
     }
@@ -222,6 +240,14 @@ namespace CoreEngine
             // 差さないフレームは skyColorBlend が 0 なのでシェーダーが触れない
             if (sky.valid && sky.skyViewLutSrv.ptr != 0) {
                 binder.Set(bindings_[B::gSkyViewLUT], sky.skyViewLutSrv);
+            }
+            // ボリュメトリックの格子は今フレームに積み上げたときだけ差す（差さないフレームは volumetricEnabled が 0）
+            if (volumetric_.IsFrameReady()) {
+                binder.Set(bindings_[B::gVolumetricFog], volumetric_.GetFrameConstantsAddress());
+                binder.Set(bindings_[B::gVolumetricFogIntegrated], volumetric_.GetIntegratedSrv());
+                if (volumetric_.GetSkyIrradianceSrv().ptr != 0) {
+                    binder.Set(bindings_[B::gSkyIrradianceSH], volumetric_.GetSkyIrradianceSrv());
+                }
             }
             binder.ValidateBeforeDraw(bindings_);
         }

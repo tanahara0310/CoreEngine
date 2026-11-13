@@ -1411,8 +1411,11 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Editor\Environment\FogEditor.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Fog\FogManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Fog\Settings\FogCVars.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Fog\Volumetric\VolumetricFog.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Fog\Volumetric\VolumetricFogCVars.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\DefaultRenderPipelineBuilder.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\FogPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\VolumetricFogPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Text3D\Text3DRenderer.cpp" />
     <ClCompile Include="Engine\Src\Particle\Modules\CollisionModule.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\CameraFeature.cpp" />
@@ -2201,8 +2204,12 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\Fog\Settings\FogCVars.h" />
     <ClInclude Include="Engine\Src\Graphics\Fog\Settings\FogSettings.h" />
     <ClInclude Include="Engine\Src\Graphics\Fog\Shader\FogBindings.h" />
+    <ClInclude Include="Engine\Src\Graphics\Fog\Shader\VolumetricFogBindings.h" />
+    <ClInclude Include="Engine\Src\Graphics\Fog\Volumetric\VolumetricFog.h" />
+    <ClInclude Include="Engine\Src\Graphics\Fog\Volumetric\VolumetricFogCVars.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\DefaultRenderPipelineBuilder.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\FogPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\VolumetricFogPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Text3D\Text3DRenderer.h" />
     <ClInclude Include="Engine\Src\Particle\Modules\CollisionModule.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\CameraFeature.h" />
