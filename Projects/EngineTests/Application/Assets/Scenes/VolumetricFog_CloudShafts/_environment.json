@@ -1,0 +1,18 @@
+{
+    "r.Atmosphere.SkyAmbientEnabled": true,
+    "r.AutoExposure.Enabled": false,
+    "r.AutoExposure.ExposureEV": 0.0,
+    "r.Bloom.Enabled": false,
+    "r.Cloud.Enabled": true,
+    "r.Cloud.GlobalCoverage": 0.55,
+    "r.Cloud.ShadowRegionSize": 10000.0,
+    "r.Cloud.WeatherMapScale": 8000.0,
+    "r.Fog.Density": 0.01,
+    "r.Fog.Enabled": true,
+    "r.Fog.Volumetric.Distance": 300.0,
+    "r.Fog.Volumetric.Enabled": true,
+    "r.LensFlare.Enabled": false,
+    "r.LocalExposure.Enabled": false,
+    "r.TimeOfDay.Advance": false,
+    "version": "1.0"
+}

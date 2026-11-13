@@ -16,6 +16,7 @@ namespace CoreEngine
         extern CVar<Vector4> Albedo;
         extern CVar<float>   Anisotropy;
         extern CVar<float>   AmbientScale;
+        extern CVar<float>   HistoryWeight;
         extern CVar<int>     DebugView;
     }
 }

@@ -19,6 +19,7 @@ namespace CoreEngine::FogApplyBind
         gSkyViewLUT,
         gVolumetricFogIntegrated,
         gSkyIrradianceSH,
+        gCloudShadowMap,
         gOutput,
         Count
     };
@@ -32,6 +33,8 @@ namespace CoreEngine::FogApplyBind
         { "gSkyViewLUT", ShaderBindingType::SRV, BindingUsage::Conditional }, // t1
         { "gVolumetricFogIntegrated", ShaderBindingType::SRV, BindingUsage::Conditional }, // t2
         { "gSkyIrradianceSH", ShaderBindingType::SRV, BindingUsage::Conditional }, // t3
+        // ボリュメトリックの格子を使い、雲もあるフレームだけ差す
+        { "gCloudShadowMap", ShaderBindingType::SRV, BindingUsage::Conditional }, // t4
         { "gOutput",     ShaderBindingType::UAV, BindingUsage::Required },  // u0
     };
 

@@ -42,8 +42,13 @@ namespace CoreEngine::VolumetricFogCVars
         "空の光への倍率（大気のあるシーンは面の空の環境光と同じ明るさに、さらにこの値を掛ける）",
         CVarRange{ 0.0f, 4.0f } };
 
+    CVar<float> HistoryWeight{
+        "r.Fog.Volumetric.HistoryWeight", 0.9f,
+        "前のフレームの光を混ぜる量。大きいほど縞とざらつきが消えるが、動く影の追従が遅れる。0 で混ぜない",
+        CVarRange{ 0.0f, 0.98f } };
+
     CVar<int> DebugView{
         "r.Fog.Volumetric.DebugView", 0,
-        "デバッグ表示。0 = なし、1 = 透過率、2 = 溜まった光、3 = 奥行きの何枚目か",
-        CVarRange{ 0.0f, 3.0f }, CVarFlags::NoSave };
+        "デバッグ表示。0 = なし、1 = 透過率、2 = 溜まった光、3 = 奥行きの何枚目か、4 = 格子の奥の端での雲の影",
+        CVarRange{ 0.0f, 4.0f }, CVarFlags::NoSave };
 }
