@@ -1,0 +1,61 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "areaHeight": 2.0,
+                "areaWidth": 2.0,
+                "atmosphereIntensity": 20.0,
+                "castShadows": true,
+                "castVolumetricShadow": true,
+                "color": [
+                    1.0,
+                    0.3,
+                    0.2,
+                    1.0
+                ],
+                "direction": [
+                    0.0,
+                    -1.0,
+                    0.0
+                ],
+                "innerConeAngleDeg": 30.0,
+                "intensity": 60000.0,
+                "isAtmosphereMoon": false,
+                "isAtmosphereSun": false,
+                "outerConeAngleDeg": 45.0,
+                "range": 4.0,
+                "sourceRadius": 0.05,
+                "type": 1,
+                "volumetricScatteringIntensity": 0.0
+            },
+            "type": "Light"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    -1.5,
+                    0.6,
+                    4.5
+                ]
+            },
+            "type": "Transform"
+        }
+    ],
+    "id": "46a24f6e9799c290",
+    "name": "NoFog",
+    "order": 10
+}

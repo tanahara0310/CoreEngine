@@ -349,6 +349,14 @@ namespace CoreEngine
         outUp = CoreEngine::Cross(n, outRight);
     }
 
+    void LightManager::ComputeSpotConeCosines(const Light& light, float& outCosOuter, float& outCosInner)
+    {
+        const float outerDeg = std::max(light.outerConeAngleDeg, 0.1f);
+        const float innerDeg = std::clamp(light.innerConeAngleDeg, 0.0f, outerDeg);
+        outCosOuter = std::cos(outerDeg * kDegToRad);
+        outCosInner = std::cos(innerDeg * kDegToRad);
+    }
+
     void LightManager::UpdateAll()
     {
         // ---- ディレクショナル（正準順。太陽・月には大気透過率を掛けた実効色を転送する）----
@@ -388,10 +396,6 @@ namespace CoreEngine
                 break;
             }
             case LightType::Spot: {
-                // 内角 > 外角 の不正入力はここで正す（オーサリング値は角度 [deg] のまま保持）
-                const float outerDeg = std::max(light.outerConeAngleDeg, 0.1f);
-                const float innerDeg = std::clamp(light.innerConeAngleDeg, 0.0f, outerDeg);
-
                 SpotLightData gpu{};
                 gpu.color = { light.color.x, light.color.y, light.color.z, 1.0f };
                 gpu.position = light.position;
@@ -399,8 +403,7 @@ namespace CoreEngine
                 gpu.direction = CoreEngine::Normalize(light.direction);
                 gpu.distance = light.range;
                 gpu.decay = 1.0f;
-                gpu.cosAngle = std::cos(outerDeg * kDegToRad);
-                gpu.cosFalloffStart = std::cos(innerDeg * kDegToRad);
+                ComputeSpotConeCosines(light, gpu.cosAngle, gpu.cosFalloffStart);
                 gpu.enabled = light.enabled ? 1u : 0u;
                 gpuSpots.push_back(gpu);
                 break;

@@ -1,0 +1,21 @@
+{
+    "r.Atmosphere.SkyAmbientEnabled": false,
+    "r.AutoExposure.Enabled": false,
+    "r.AutoExposure.ExposureEV": 2.0,
+    "r.Bloom.Enabled": false,
+    "r.Cloud.Enabled": false,
+    "r.Fog.Color": [
+        0.02,
+        0.025,
+        0.035,
+        1.0
+    ],
+    "r.Fog.Density": 0.04,
+    "r.Fog.Enabled": true,
+    "r.Fog.HeightFalloff": 0.05,
+    "r.Fog.Volumetric.Enabled": true,
+    "r.LensFlare.Enabled": false,
+    "r.LocalExposure.Enabled": false,
+    "r.TimeOfDay.Advance": false,
+    "version": "1.0"
+}

@@ -58,6 +58,11 @@ namespace CoreEngine::VolumetricFogCVars
         "太陽から見た深さの画像のレイを、霧の範囲よりどれだけ光源の側から撃つか [m]。範囲の外の高い物も霧に影を落とす",
         CVarRange{ 0.0f, 2000.0f } };
 
+    CVar<bool> LocalLights{
+        "r.Fog.Volumetric.LocalLights", true,
+        "点光源・スポット・エリアライトが霧を照らす（霧に影は落とさない）。"
+        "ライトごとの強さは Light の「霧を照らす強さ」" };
+
     CVar<int> DebugView{
         "r.Fog.Volumetric.DebugView", 0,
         "デバッグ表示。0 = なし、1 = 透過率、2 = 溜まった光、3 = 奥行きの何枚目か、"

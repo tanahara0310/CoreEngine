@@ -23,6 +23,39 @@ static const uint kVolumetricFogMaxDirectionalLights = 4;
 /// @brief 太陽から見た深さの画像を使う光源が無いときの番号
 static const uint kVolumetricFogNoSunDepthLight = 0xFFFFFFFFu;
 
+/// @brief 格子を照らす点光源・スポット・エリア 1 灯（C++ 側 VolumetricFog::LocalLight と 1 対 1）
+struct VolumetricFogLocalLight
+{
+    float3 position;   ///< 光源の位置（エリアは発光面の中心）[m]
+    float  range;      ///< 届く距離 [m]
+    float3 intensity;  ///< 色 × 強度 × 霧を照らす強さ（シェーダー単位。1/d² を掛けると照度）
+    uint   type;       ///< kVolumetricFogLocalLight*
+    float3 direction;  ///< スポットの向き・エリアの発光面の法線（正規化済み）
+    float  cosOuter;   ///< スポットの外角の cos
+    float3 right;      ///< エリアの発光面の右の向き
+    float  cosInner;   ///< スポットの内角の cos
+    float3 up;         ///< エリアの発光面の上の向き
+    float  halfWidth;  ///< エリアの発光面の幅の半分 [m]
+    float  halfHeight; ///< エリアの発光面の高さの半分 [m]
+    float3 pad;
+};
+
+/// @brief 格子を照らす点光源・スポット・エリアの最大数
+static const uint kVolumetricFogMaxLocalLights = 40;
+
+/// @brief 局所のライトの種類（C++ 側 VolumetricFog::LocalLightType と一致）
+static const uint kVolumetricFogLocalLightPoint = 0;
+static const uint kVolumetricFogLocalLightSpot = 1;
+static const uint kVolumetricFogLocalLightArea = 2;
+
+/// @brief 格子を照らす点光源・スポット・エリアの定数（C++ 側 VolumetricFog::LocalLightConstants と 1 対 1）
+struct VolumetricFogLocalLights
+{
+    uint  count;
+    uint3 pad;
+    VolumetricFogLocalLight lights[kVolumetricFogMaxLocalLights];
+};
+
 /// @brief ボリュメトリックフォグの定数（C++ 側 VolumetricFog::Constants と 1 対 1）
 struct VolumetricFogParameters
 {
@@ -186,6 +219,59 @@ float3 VolumetricFogSource(
         source += light.irradiance * (VolumetricFogPhaseHG(p.phaseG, cosTheta) * shadow);
     }
     return source;
+}
+
+/// @brief 点光源・スポット・エリア 1 灯から点へ届く照度（面の DeferredLighting と同じ逆二乗・範囲・コーン・発光面の式）
+/// @param minDistance 逆二乗に使う距離の下限 [m]（光源のすぐ近くで格子より細かく尖らせない）
+/// @param toLight 点から光源（エリアは発光面の上で点に最も近い点）へ向かう向き
+float3 VolumetricFogLocalLightIrradiance(
+    VolumetricFogLocalLight light, float3 worldPos, float minDistance, out float3 toLight)
+{
+    toLight = float3(0.0f, 1.0f, 0.0f);
+
+    float3 target = light.position;
+    float shape = 1.0f;
+    if (light.type == kVolumetricFogLocalLightArea)
+    {
+        // 発光面の上で点に最も近い点と、発光面を面の向きへ伸ばした筒からのはみ出し
+        const float3 offset = worldPos + light.direction * dot(light.position - worldPos, light.direction)
+            - light.position;
+        const float2 local = float2(dot(offset, light.right), dot(offset, light.up));
+        const float2 halfSize = float2(light.halfWidth, light.halfHeight);
+        const float2 clamped = clamp(local, -halfSize, halfSize);
+        target = light.position + light.right * clamped.x + light.up * clamped.y;
+        const float outside = length(max(abs(local) - halfSize, 0.0f));
+        if (outside > 0.001f)
+        {
+            shape = 1.0f - saturate(outside / max(max(halfSize.x, halfSize.y), 1.0e-4f));
+            shape = shape * shape * shape;
+        }
+    }
+
+    const float3 lightVector = target - worldPos;
+    const float distanceSq = dot(lightVector, lightVector);
+    if (distanceSq >= light.range * light.range)
+    {
+        return float3(0.0f, 0.0f, 0.0f);
+    }
+    const float distanceM = sqrt(distanceSq);
+    toLight = lightVector / max(distanceM, 1.0e-3f);
+
+    const float ratio = distanceM / light.range;
+    const float ratio2 = ratio * ratio;
+    const float window = saturate(1.0f - ratio2 * ratio2);
+    float attenuation = window * window / max(distanceSq, max(minDistance * minDistance, 0.01f));
+
+    if (light.type == kVolumetricFogLocalLightSpot)
+    {
+        const float cosTheta = dot(-toLight, light.direction);
+        attenuation *= saturate((cosTheta - light.cosOuter) / max(light.cosInner - light.cosOuter, 1.0e-4f));
+    }
+    else if (light.type == kVolumetricFogLocalLightArea)
+    {
+        attenuation *= shape * max(dot(light.direction, -toLight), 0.0f);
+    }
+    return light.intensity * attenuation;
 }
 
 /// @brief 画面の UV と距離から、格子の座標（テクスチャの UVW）を求める

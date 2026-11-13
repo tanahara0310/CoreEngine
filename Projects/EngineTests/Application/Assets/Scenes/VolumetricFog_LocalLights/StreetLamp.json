@@ -1,0 +1,61 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "areaHeight": 2.0,
+                "areaWidth": 2.0,
+                "atmosphereIntensity": 20.0,
+                "castShadows": true,
+                "castVolumetricShadow": true,
+                "color": [
+                    1.0,
+                    0.82,
+                    0.55,
+                    1.0
+                ],
+                "direction": [
+                    0.0,
+                    -1.0,
+                    0.0
+                ],
+                "innerConeAngleDeg": 25.0,
+                "intensity": 400000.0,
+                "isAtmosphereMoon": false,
+                "isAtmosphereSun": false,
+                "outerConeAngleDeg": 40.0,
+                "range": 9.0,
+                "sourceRadius": 0.1,
+                "type": 2,
+                "volumetricScatteringIntensity": 1.0
+            },
+            "type": "Light"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    -2.7,
+                    4.85,
+                    7.0
+                ]
+            },
+            "type": "Transform"
+        }
+    ],
+    "id": "397e54b2bb7bc50d",
+    "name": "StreetLamp",
+    "order": 3
+}

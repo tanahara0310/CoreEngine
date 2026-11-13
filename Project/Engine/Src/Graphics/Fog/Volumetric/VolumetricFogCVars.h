@@ -19,6 +19,7 @@ namespace CoreEngine
         extern CVar<float>   HistoryWeight;
         extern CVar<int>     ShadowResolution;
         extern CVar<float>   ShadowCasterHeight;
+        extern CVar<bool>    LocalLights;
         extern CVar<int>     DebugView;
     }
 }

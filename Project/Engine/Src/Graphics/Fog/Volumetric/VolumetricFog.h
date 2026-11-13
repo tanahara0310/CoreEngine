@@ -109,6 +109,56 @@ namespace CoreEngine
         /// @brief 太陽から見た深さの画像を使う光源が無いときの番号（VolumetricFogCommon.hlsli と一致）
         static constexpr uint32_t kNoSunDepthLight = 0xFFFFFFFFu;
 
+        /// @brief 格子を照らす点光源・スポット・エリアの最大数（VolumetricFogCommon.hlsli と一致）
+        static constexpr uint32_t kMaxLocalLights = 40;
+
+        /// @brief 局所のライトの種類（VolumetricFogCommon.hlsli の kVolumetricFogLocalLight* と一致）
+        enum LocalLightType : uint32_t {
+            kLocalLightPoint = 0,
+            kLocalLightSpot = 1,
+            kLocalLightArea = 2,
+        };
+
+        /// @brief 格子を照らす点光源・スポット・エリア 1 灯（VolumetricFogCommon.hlsli の VolumetricFogLocalLight と 1 対 1）
+        struct LocalLight {
+            Vector3  position;   ///< 光源の位置（エリアは発光面の中心）[m]
+            float    range;      ///< 届く距離 [m]
+            Vector3  intensity;  ///< 色 × 強度 × 霧を照らす強さ（シェーダー単位。1/d² を掛けると照度）
+            uint32_t type;       ///< LocalLightType
+            Vector3  direction;  ///< スポットの向き・エリアの発光面の法線（正規化済み）
+            float    cosOuter;   ///< スポットの外角の cos
+            Vector3  right;      ///< エリアの発光面の右の向き
+            float    cosInner;   ///< スポットの内角の cos
+            Vector3  up;         ///< エリアの発光面の上の向き
+            float    halfWidth;  ///< エリアの発光面の幅の半分 [m]
+            float    halfHeight; ///< エリアの発光面の高さの半分 [m]
+            Vector3  pad;
+        };
+
+        static constexpr Cb::Field kLocalLightFields[] = {
+            CB_FIELD(LocalLight, position),  CB_FIELD(LocalLight, range),
+            CB_FIELD(LocalLight, intensity), CB_FIELD(LocalLight, type),
+            CB_FIELD(LocalLight, direction), CB_FIELD(LocalLight, cosOuter),
+            CB_FIELD(LocalLight, right),     CB_FIELD(LocalLight, cosInner),
+            CB_FIELD(LocalLight, up),        CB_FIELD(LocalLight, halfWidth),
+            CB_FIELD(LocalLight, halfHeight), CB_FIELD(LocalLight, pad),
+        };
+        CB_VERIFY_LAYOUT(LocalLight, kLocalLightFields);
+
+        /// @brief 格子を照らす点光源・スポット・エリアの定数（VolumetricFogCommon.hlsli の VolumetricFogLocalLights と 1 対 1）
+        struct LocalLightConstants {
+            uint32_t   count;
+            uint32_t   pad[3];
+            LocalLight lights[kMaxLocalLights];
+        };
+
+        static constexpr Cb::Field kLocalLightConstantsFields[] = {
+            CB_FIELD(LocalLightConstants, count), CB_FIELD(LocalLightConstants, pad),
+            CB_FIELD(LocalLightConstants, lights),
+        };
+        CB_VERIFY_LAYOUT(LocalLightConstants, kLocalLightConstantsFields);
+        CB_BIND_HLSL(LocalLightConstants, kLocalLightConstantsFields, "gVolumetricFogLocalLights");
+
         static constexpr Cb::Field kConstantsFields[] = {
             CB_FIELD(Constants, invViewProj),       CB_FIELD(Constants, cameraWorldPos),
             CB_FIELD(Constants, distance),          CB_FIELD(Constants, gridSize),
@@ -180,6 +230,9 @@ namespace CoreEngine
         /// @brief 今フレームの格子の数（PrepareFrame の後に有効）
         const uint32_t* GetGridSize() const { return gridSize_; }
 
+        /// @brief 最後に作った格子を照らした点光源・スポット・エリアの数
+        uint32_t GetLocalLightCount() const { return localLightCount_; }
+
         /// @brief フレームの終わりに今フレームの状態を落とす
         void EndFrame();
 
@@ -214,6 +267,12 @@ namespace CoreEngine
         void FillDirectionalLights(
             Constants& constants, const LightManager* lightManager, const Light* sunDepthLight) const;
 
+        /// @brief 届く範囲が格子にかかる点光源・スポット・エリアを詰めて、今フレームの定数を確保する
+        /// @param cameraPos カメラのワールド座標 [m]
+        /// @param distance 格子が届く距離 [m]
+        /// @return 確保できたら true
+        bool AllocateLocalLights(const LightManager* lightManager, const Vector3& cameraPos, float distance);
+
         GraphicsCore* graphicsCore_ = nullptr;
 
         CustomShaderPipeline injectPipeline_{};
@@ -230,6 +289,8 @@ namespace CoreEngine
         uint32_t gridSize_[3]{};
 
         D3D12_GPU_VIRTUAL_ADDRESS frameConstants_ = 0;
+        D3D12_GPU_VIRTUAL_ADDRESS localLightConstants_ = 0;
+        uint32_t localLightCount_ = 0;
         D3D12_GPU_DESCRIPTOR_HANDLE skyIrradianceSrv_{};
         D3D12_GPU_DESCRIPTOR_HANDLE cloudShadowSrv_{};
         D3D12_GPU_DESCRIPTOR_HANDLE sunDepthSrv_{};

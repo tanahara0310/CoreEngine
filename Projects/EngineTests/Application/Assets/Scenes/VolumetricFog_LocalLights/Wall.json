@@ -1,0 +1,112 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    5.0,
+                    5.0,
+                    0.3
+                ],
+                "translate": [
+                    4.5,
+                    2.5,
+                    13.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "materials": [
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            0.6,
+                            0.58,
+                            0.55,
+                            1.0
+                        ],
+                        "dithering": true,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.85
+                    },
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            0.6,
+                            0.58,
+                            0.55,
+                            1.0
+                        ],
+                        "dithering": true,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.85
+                    }
+                ],
+                "model": {
+                    "guid": "e8a79191-50ea-0673-1816-c257f280ba64",
+                    "path": "Engine/Assets/Models/Primitives/Box/cube.obj"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "alphaCutoff": 0.5,
+                "color": [
+                    0.6,
+                    0.58,
+                    0.55,
+                    1.0
+                ],
+                "dithering": true,
+                "ditheringScale": 1.0,
+                "emissive": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "lighting": true,
+                "metallic": 0.0,
+                "normalMap": false,
+                "occlusionStrength": 1.0,
+                "roughness": 0.85
+            },
+            "type": "Material"
+        }
+    ],
+    "id": "ca3dde26c10f0447",
+    "name": "Wall",
+    "order": 8
+}
