@@ -314,6 +314,7 @@ namespace CoreEngine {
             &CloudCVars::ReprojectTolerance,
             &CloudCVars::TraceInterleave,
             &CloudCVars::CubemapFacesPerFrame,
+            &CloudCVars::CubemapUpdateInterval,
             &CloudCVars::ShadowMapSlices,
         };
 

@@ -507,8 +507,25 @@ namespace CoreEngine
     {
         // 前フレームに雲だけのキューブを書いていなければ、残っている面は使わずに 6 面を描く
         const bool cubeCurrent = cloudCubeWritten_ && lastCubeCaptureFrame_ + 1u == frameCounter_;
+        if (forceAll || !cubeCurrent) {
+            cubeFaceFirst_ = 0;
+            cubeFaceCount_ = 6;
+            cubeFaceCursor_ = 0;
+            lastCubeMarchFrame_ = frameCounter_;
+            return;
+        }
+
+        // 間隔に達するまでは雲をマーチせず、雲だけのキューブに残っている結果を合成する
+        const uint32_t interval = std::max(parameters_.cubemapUpdateInterval, 1u);
+        if (frameCounter_ - lastCubeMarchFrame_ < interval) {
+            cubeFaceFirst_ = 0;
+            cubeFaceCount_ = 0;
+            return;
+        }
+        lastCubeMarchFrame_ = frameCounter_;
+
         const uint32_t facesPerFrame = std::clamp(parameters_.cubemapFacesPerFrame, 1u, 6u);
-        if (forceAll || !cubeCurrent || facesPerFrame >= 6u) {
+        if (facesPerFrame >= 6u) {
             cubeFaceFirst_ = 0;
             cubeFaceCount_ = 6;
             cubeFaceCursor_ = 0;
@@ -542,7 +559,7 @@ namespace CoreEngine
             && prev.regionSizeM == s.regionSizeM
             && prev.anchorWorldY == s.anchorWorldY;
         const bool mapCurrent = cloudShadowWritten_ && lastCloudShadowFrame_ + 1u == frameCounter_;
-        const uint32_t slices = std::clamp(parameters_.shadowMapSlices, 1u, 8u);
+        const uint32_t slices = std::clamp(parameters_.shadowMapSlices, 1u, 64u);
         if (forceFullUpdate || !sameRegion || !mapCurrent || slices == 1u) {
             shadowRowOffset_ = 0;
             shadowRowCount_ = kMapSize;

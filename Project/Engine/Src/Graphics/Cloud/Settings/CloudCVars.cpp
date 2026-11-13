@@ -289,9 +289,14 @@ namespace CoreEngine
             CVarRange{ 1.0f, 2.0f } };
 
         CVar<int> CubemapFacesPerFrame{
-            "r.Cloud.CubemapFacesPerFrame", 1,
-            "映り込み用の空キューブマップで 1 フレームに雲を描き直す面の数。6 で毎フレーム全面",
+            "r.Cloud.CubemapFacesPerFrame", 6,
+            "映り込み用の空キューブマップで、雲を描き直すフレームに描く面の数。6 で全面",
             CVarRange{ 1.0f, 6.0f } };
+
+        CVar<int> CubemapUpdateInterval{
+            "r.Cloud.CubemapUpdateInterval", 30,
+            "映り込み用の空キューブマップの雲を描き直すフレームの間隔。1 で毎フレーム",
+            CVarRange{ 1.0f, 240.0f } };
 
         // ---- 巻雲シェル ----
         CVar<float> CirrusAltitudeM{
@@ -360,9 +365,9 @@ namespace CoreEngine
             CVarRange{ 0.0f, 1.0f } };
 
         CVar<int> ShadowMapSlices{
-            "r.Cloud.ShadowMapSlices", 4,
+            "r.Cloud.ShadowMapSlices", 32,
             "雲シャドウマップを何フレームに分けて描き直すか。1 で毎フレーム全体",
-            CVarRange{ 1.0f, 8.0f } };
+            CVarRange{ 1.0f, 64.0f } };
 
         namespace
         {
@@ -443,6 +448,7 @@ namespace CoreEngine
                 { &Style,             &VolumetricCloudParameters::styleIndex },
                 { &TraceInterleave,   &VolumetricCloudParameters::traceInterleave },
                 { &CubemapFacesPerFrame, &VolumetricCloudParameters::cubemapFacesPerFrame },
+                { &CubemapUpdateInterval, &VolumetricCloudParameters::cubemapUpdateInterval },
                 { &ShadowMapSlices,   &VolumetricCloudParameters::shadowMapSlices },
             };
 

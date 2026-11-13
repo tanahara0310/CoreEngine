@@ -230,6 +230,7 @@ namespace CoreEngine
         uint32_t cubeFaceCount_ = 6;
         uint32_t cubeFaceCursor_ = 0;
         uint32_t lastCubeCaptureFrame_ = 0;
+        uint32_t lastCubeMarchFrame_ = 0;
         bool cloudCubeWritten_ = false;
         bool cloudCubeReady_ = false;
 
