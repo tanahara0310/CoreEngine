@@ -31,6 +31,7 @@ namespace CoreEngine::Editor::ShaderGraph
             "gPrevSkinnedPositions", "LoadPrevSkinnedPosition",
             "gSourceVertices", "gIndices", "gOutputVertices", "gDeform",
             "gSkyAmbient", "gSkyIrradianceSH", "gSkySpecularMap",
+            "gVolumetricFogIntegrated", "gVolumetricFogFarLight", "gVolumetricFogSampler", "ApplyForwardFog",
         };
 
         bool ParseTarget(const std::string& text, Target& target)

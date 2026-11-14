@@ -4,6 +4,7 @@
 ///          点光源・スポット・エリア（位相関数つき・影なし）と空の平均の輝度。
 ///          点は格子の中で毎フレームずらし、前フレームの格子へ写した位置の光と混ぜる。
 ///          出力: rgb = 散乱係数 × 光の源、a = 消散係数 [1/m]。
+///          奥行き 0 の格子は、縦横 1 列の中心の視線で格子の端の点の光の源（物の影なし）も書く（格子より奥の霧の光）。
 
 #include "VolumetricFogCommon.hlsli"
 #include "DepthReconstruction.hlsli"
@@ -17,6 +18,7 @@ Texture3D<float4> gLightScatteringHistory : register(t3);
 Texture2D<float> gSunDepth : register(t4);
 SamplerState gLinearClamp : register(s0);
 RWTexture3D<float4> gLightScattering : register(u0);
+RWTexture2D<float4> gFarLight : register(u1);
 
 /// @brief 画面の UV と距離のスライス座標から、格子の中の点のワールド座標と視線を求める
 float3 CellWorldPosition(VolumetricFogParameters p, float2 uv, float slice, out float3 viewDir)
@@ -80,6 +82,15 @@ bool SampleHistory(VolumetricFogParameters p, uint3 cell, out float3 history)
     return true;
 }
 
+/// @brief 縦横 1 列の中心の視線で、格子の端の点の光の源にアルベドを掛けた値（物の影は掛けない）
+float3 FarLight(VolumetricFogParameters p, uint2 column, float3 ambient)
+{
+    float3 viewDir;
+    const float2 uv = (float2(column) + 0.5f) * p.gridPixelSize;
+    const float3 boundary = CellWorldPosition(p, uv, float(p.gridSize.z), viewDir);
+    return p.albedo * VolumetricFogSource(p, viewDir, ambient, boundary, gCloudShadowMap, gLinearClamp, 1.0f);
+}
+
 [numthreads(4, 4, 4)]
 void main(uint3 cell : SV_DispatchThreadID)
 {
@@ -87,6 +98,12 @@ void main(uint3 cell : SV_DispatchThreadID)
     if (any(cell >= p.gridSize))
     {
         return;
+    }
+
+    const float3 ambient = VolumetricFogSkyAmbient(p, gSkyIrradianceSH);
+    if (cell.z == 0)
+    {
+        gFarLight[cell.xy] = float4(FarLight(p, cell.xy, ambient), 1.0f);
     }
 
     const float4 medium = gVBuffer[cell];
@@ -100,7 +117,6 @@ void main(uint3 cell : SV_DispatchThreadID)
     const float2 uv = (float2(cell.xy) + 0.5f + p.frameJitter.xy) * p.gridPixelSize;
     const float3 worldPos = CellWorldPosition(p, uv, float(cell.z) + p.frameJitter.z, viewDir);
 
-    const float3 ambient = VolumetricFogSkyAmbient(p, gSkyIrradianceSH);
     const float sunDepthShadow = VolumetricFogSunDepthShadow(p, gSunDepth, gLinearClamp, worldPos);
     float3 source = VolumetricFogSource(
         p, viewDir, ambient, worldPos, gCloudShadowMap, gLinearClamp, sunDepthShadow);

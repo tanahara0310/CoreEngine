@@ -4407,6 +4407,9 @@
     <ClInclude Include="Engine\Src\Graphics\Fog\FogManager.h">
       <Filter>Engine\Src\Graphics\Fog</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Fog\FogVolumetricResources.h">
+      <Filter>Engine\Src\Graphics\Fog</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Fog\Settings\FogCVars.h">
       <Filter>Engine\Src\Graphics\Fog\Settings</Filter>
     </ClInclude>

@@ -316,7 +316,7 @@ PixelShaderOutput SurfaceForward(VertexShaderOutput input)
     if (SurfaceIsUnlit())
     {
         output.color = float4(OUT.baseColor, OUT.alpha);
-        output.color.rgb = ApplyFog(gFog, input.worldPosition, output.color.rgb);
+        output.color.rgb = ApplyForwardFog(gFog, input.worldPosition, output.color.rgb);
         return output;
     }
 
@@ -332,7 +332,7 @@ PixelShaderOutput SurfaceForward(VertexShaderOutput input)
     output.color.rgb += OUT.emission;
 
     // フォグ（全画面合成パスと同じ数式）。不透明フォワードでは gFog が「何もしない」バリアント
-    output.color.rgb = ApplyFog(gFog, input.worldPosition, output.color.rgb);
+    output.color.rgb = ApplyForwardFog(gFog, input.worldPosition, output.color.rgb);
 
     // ディザリング時はアルファを 1.0 に固定
     if (gMaterial.enableDithering != 0)

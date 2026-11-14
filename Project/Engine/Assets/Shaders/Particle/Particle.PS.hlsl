@@ -1,14 +1,15 @@
 #include "Particle.hlsli"
-#include "Fog.hlsli"
+#include "FogForward.hlsli"
 
 //SRVのregisterはt0
 Texture2D<float32_t4> gTexture : register(t0);
 //Samplerのregisterはs0
 SamplerState gSampler : register(s0);
 
-// フォグ。C++ 側は「減衰のみ」バリアントを差す（BaseParticleRenderer::SetFogConstants）。
+// フォグ。C++ 側は「減衰のみ」バリアントを差す（BaseParticleRenderer::SelectFogConstants）。
 // 出力がアルファ事前乗算の加算合成なので、内散乱を足すと背後の不透明面に
-// 既に乗った分と二重に光る。ここは透過率での減衰だけが正しい
+// 既に乗った分と二重に光る。ここは透過率での減衰だけが正しい。
+// 合成なしのパーティクルは全画面の合成の前に描かれるので、C++ 側が「何もしない」バリアントを差す
 ConstantBuffer<FogParameters> gFog : register(b0);
 
 struct PixelShaderOutput
@@ -31,7 +32,7 @@ PixelShaderOutput main(VertexShaderOutput input)
     output.color.a = 1.0f;
 
     // フォグ（不透明・半透明と同じ数式。減衰のみ効く）
-    output.color.rgb = ApplyFog(gFog, input.worldPosition, output.color.rgb);
+    output.color.rgb = ApplyForwardFog(gFog, input.worldPosition, output.color.rgb);
 
     if (finalColor.a == 0.0f)
     {

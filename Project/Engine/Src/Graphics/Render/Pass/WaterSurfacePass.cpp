@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "WaterSurfacePass.h"
 
+#include "Graphics/Fog/FogManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/RenderTarget/OffscreenRenderTarget.h"
@@ -15,7 +16,7 @@
 
 namespace CoreEngine
 {
-    void WaterSurfacePass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
+    void WaterSurfacePass::DeclareResources(RenderGraphBuilder& builder, const RenderContext& context)
     {
         builder.Read(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         builder.Read(FrameBlackboard::SceneDepth, D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
@@ -24,6 +25,11 @@ namespace CoreEngine
         builder.Read(FrameBlackboard::RTWaterSunVisibility, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         builder.Read(FrameBlackboard::RTWaterSeabedHeight, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
         builder.Read(FrameBlackboard::WaterShoreFoam, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        // 水面の霧がボリュメトリックの格子を読む（格子を作るフレームだけ。水面は GameView だけ）
+        if (context.fogManager && context.fogManager->IsVolumetricRequested()) {
+            builder.Read(FrameBlackboard::VolumetricFog,
+                D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        }
         builder.Write(FrameBlackboard::SceneColor, D3D12_RESOURCE_STATE_RENDER_TARGET);
         // 水面も自分のモーションベクターを書く（TAA の再投影用）。
         // GBuffer が書いた値は「水の背後の地形」の動きなので、上書きしないと

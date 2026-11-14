@@ -83,6 +83,9 @@ namespace CoreEngine
 
         const char* GetName() const override { return "TransparentQueue"; }
 
+        /// @brief 共通の宣言に加え、ボリュメトリックフォグの格子を読む（格子を作る GameView のフレームだけ）
+        void DeclareResources(RenderGraphBuilder& builder, const RenderContext& context) override;
+
     protected:
         void DrawQueue(const RenderContext& context) override;
     };

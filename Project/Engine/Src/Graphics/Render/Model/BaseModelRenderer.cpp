@@ -166,6 +166,11 @@ namespace CoreEngine
         if (const D3D12_GPU_VIRTUAL_ADDRESS fogCBV = SelectFogConstants(); fogCBV != 0) {
             binder.Set(table[ModelBind::gFog], fogCBV);
         }
+        // ボリュメトリックの格子（定数が格子を使うビューだけ。G-Buffer は霧を掛けない）
+        if (!isInGBufferPass_ && fogVolumetric_.IsValid()) {
+            binder.Set(table[ModelBind::gVolumetricFogIntegrated], fogVolumetric_.integratedSrv);
+            binder.Set(table[ModelBind::gVolumetricFogFarLight], fogVolumetric_.farLightSrv);
+        }
         // 画面の深度は、半透明には写しを、GBuffer には「奥に何も無い」テクスチャを差す
         if (sceneDepth_) {
             if (const RootSlot depthSlot = table[ModelBind::gSceneDepthTexture]; depthSlot.IsValid()) {

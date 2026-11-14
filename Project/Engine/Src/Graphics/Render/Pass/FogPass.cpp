@@ -59,22 +59,24 @@ namespace CoreEngine
             const D3D12_GPU_VIRTUAL_ADDRESS full = fog.GetConstantsGpuAddress(FogVariant::Full);
             const D3D12_GPU_VIRTUAL_ADDRESS additive = fog.GetConstantsGpuAddress(FogVariant::Additive);
             const D3D12_GPU_VIRTUAL_ADDRESS disabled = fog.GetConstantsGpuAddress(FogVariant::Disabled);
+            const FogVolumetricResources& volumetric = fog.GetForwardVolumetricResources();
 
             for (const auto passType : { RenderPassType::Model, RenderPassType::SkinnedModel }) {
                 if (auto* renderer = dynamic_cast<BaseModelRenderer*>(
                         context.renderManager->GetRenderer(passType))) {
-                    renderer->SetFogConstants(full, additive, disabled);
+                    renderer->SetFogConstants(full, additive, disabled, volumetric);
                 }
             }
 
             // パーティクルは出力がアルファ事前乗算の加算合成なので、内散乱を足さない
-            // 「減衰のみ」バリアントだけを渡す（足すと背後の不透明面の分と二重に光る）
+            // 「減衰のみ」バリアントを渡す（足すと背後の不透明面の分と二重に光る）。
+            // 合成なしのパーティクルは全画面の合成の前に描かれるので「何もしない」バリアントを使う
             for (const auto passType : { RenderPassType::Particle,
                                         RenderPassType::ModelParticle,
                                         RenderPassType::GpuParticle }) {
                 if (auto* renderer = dynamic_cast<BaseParticleRenderer*>(
                         context.renderManager->GetRenderer(passType))) {
-                    renderer->SetFogConstants(additive);
+                    renderer->SetFogConstants(additive, disabled, volumetric);
                 }
             }
         }
@@ -88,9 +90,10 @@ namespace CoreEngine
 
         // SceneColor へ書くのは GameView だけ
         if (context.viewSettings.viewType == RenderViewType::GameView) {
-            // ボリュメトリックフォグの格子を積み上げ終えてから合成する
+            // ボリュメトリックフォグの格子を積み上げ終えてから合成する（後の前方描画の PS も読むので両方の読み取り状態）
             if (context.fogManager && context.fogManager->IsVolumetricRequested()) {
-                builder.Read(FrameBlackboard::VolumetricFog, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+                builder.Read(FrameBlackboard::VolumetricFog,
+                    D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
                 // 格子より奥の霧に雲の影を引く（雲が無いシーンでは登録されない）
                 builder.Read(FrameBlackboard::CloudShadowMap, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
                 // デバッグ表示が太陽から見た深さの画像を引く（作らないフレームでは登録されない）
@@ -116,8 +119,9 @@ namespace CoreEngine
         const FogSkyInfo sky = BuildSkyInfo(context.atmosphereManager);
 
         // 前方描画（半透明・水面）は全画面合成の有無に関わらず gFog を差すので、
-        // フォグが無効なフレームでも定数だけは必ず用意する
-        context.fogManager->PrepareConstants(view, sky, BuildWaterInfo(context.waterSurfaceState));
+        // フォグが無効なフレームでも定数だけは必ず用意する。ボリュメトリックの格子は GameView のカメラで作る
+        context.fogManager->PrepareConstants(view, sky, BuildWaterInfo(context.waterSurfaceState),
+            context.viewSettings.viewType == RenderViewType::GameView);
         PublishFogConstants(context);
 
         // ここから先は SceneColor への合成。GameView かつ有効なときだけ

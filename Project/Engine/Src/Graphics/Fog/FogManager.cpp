@@ -142,7 +142,7 @@ namespace CoreEngine
     }
 
     FogManager::FogConstants FogManager::BuildConstants(
-        const ViewInfo& view, const FogSkyInfo& sky, const FogWaterInfo& water) const
+        const ViewInfo& view, const FogSkyInfo& sky, const FogWaterInfo& water, bool useVolumetric) const
     {
         FogConstants constants{};
         constants.invViewProj = view.invViewProjection;
@@ -178,22 +178,40 @@ namespace CoreEngine
         constants.waterRegionCenterXZ = water.regionCenterXZ;
         constants.waterRegionHalfExtentXZ = water.regionHalfExtentXZ;
 
-        constants.volumetricEnabled = (IsFogActive() && volumetric_.IsFrameReady()) ? 1u : 0u;
+        constants.volumetricLightScale = 1.0f;
+        if (useVolumetric) {
+            const VolumetricFog::ForwardParams& grid = volumetric_.GetForwardParams();
+            constants.volumetricEnabled = 1u;
+            constants.volumetricViewProj = grid.viewProj;
+            constants.volumetricGridSize = grid.gridSize;
+            constants.volumetricDistance = grid.distance;
+            constants.volumetricScreenToGrid = grid.screenToGrid;
+            constants.volumetricDepthDistribution = grid.depthDistribution;
+        }
 
         return constants;
     }
 
-    void FogManager::PrepareConstants(const ViewInfo& view, const FogSkyInfo& sky, const FogWaterInfo& water)
+    void FogManager::PrepareConstants(
+        const ViewInfo& view, const FogSkyInfo& sky, const FogWaterInfo& water, bool allowVolumetric)
     {
+        forwardVolumetric_ = {};
         if (!graphicsCore_ || !view.isValid) {
             return;
+        }
+
+        // 格子は GameView のカメラで作るので、そのビューの定数だけが格子を引く
+        const bool useVolumetric = allowVolumetric && IsFogActive() && volumetric_.IsFrameReady();
+        if (useVolumetric) {
+            forwardVolumetric_.integratedSrv = volumetric_.GetIntegratedSrv();
+            forwardVolumetric_.farLightSrv = volumetric_.GetFarLightSrv();
         }
 
         // 定数は毎フレーム UploadRing から取る（専用バッファを 1 本持って上書きすると、
         // GPU が前フレームのディスパッチを実行する前に CPU が書き潰す）
         UploadRing& ring = graphicsCore_->GetUploadRing();
 
-        const FogConstants full = BuildConstants(view, sky, water);
+        const FogConstants full = BuildConstants(view, sky, water, useVolumetric);
         frameConstants_[static_cast<size_t>(FogVariant::Full)] = ring.AllocateConstants(full);
 
         // 加算・スクリーン合成用: 内散乱色を 0 にすると ApplyFog の lerp が
@@ -204,11 +222,13 @@ namespace CoreEngine
         additive.skyColorBlend = 0.0f;
         additive.sunTint = Vector3{ 1.0f, 1.0f, 1.0f };
         additive.sunGain = 1.0f;
+        additive.volumetricLightScale = 0.0f;
         frameConstants_[static_cast<size_t>(FogVariant::Additive)] = ring.AllocateConstants(additive);
 
         // 不透明フォワード用: 全画面パスが深度から掛けるので、描画側では何もしない
         FogConstants disabled = full;
         disabled.density = 0.0f;
+        disabled.volumetricEnabled = 0u;
         frameConstants_[static_cast<size_t>(FogVariant::Disabled)] = ring.AllocateConstants(disabled);
     }
 
@@ -245,9 +265,7 @@ namespace CoreEngine
             if (volumetric_.IsFrameReady()) {
                 binder.Set(bindings_[B::gVolumetricFog], volumetric_.GetFrameConstantsAddress());
                 binder.Set(bindings_[B::gVolumetricFogIntegrated], volumetric_.GetIntegratedSrv());
-                if (volumetric_.GetSkyIrradianceSrv().ptr != 0) {
-                    binder.Set(bindings_[B::gSkyIrradianceSH], volumetric_.GetSkyIrradianceSrv());
-                }
+                binder.Set(bindings_[B::gVolumetricFogFarLight], volumetric_.GetFarLightSrv());
                 if (volumetric_.GetCloudShadowSrv().ptr != 0) {
                     binder.Set(bindings_[B::gCloudShadowMap], volumetric_.GetCloudShadowSrv());
                 }

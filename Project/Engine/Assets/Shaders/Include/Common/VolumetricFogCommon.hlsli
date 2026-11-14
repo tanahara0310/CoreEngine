@@ -1,4 +1,6 @@
 #pragma once
+#ifndef VOLUMETRIC_FOG_COMMON_HLSLI
+#define VOLUMETRIC_FOG_COMMON_HLSLI
 
 /// @file VolumetricFogCommon.hlsli
 /// @brief ボリュメトリックフォグの格子の写像と光の式
@@ -109,12 +111,21 @@ float VolumetricFogSliceToDistance(VolumetricFogParameters p, float slice)
     return p.distance * (pow(1.0f + c, u) - 1.0f) / c;
 }
 
+/// @brief 距離 [m] から奥行きの連続のスライス座標 [0, N] を求める（格子の値を 1 つずつ渡す版）
+/// @param gridDistance 格子が届く距離 [m]
+/// @param depthDistribution 奥ほど厚くする度合い（c）
+/// @param sliceCount 奥行きの枚数（N）
+float VolumetricFogDistanceToSliceFrom(float gridDistance, float depthDistribution, float sliceCount, float distanceM)
+{
+    const float c = max(depthDistribution, 1.0e-3f);
+    const float d = clamp(distanceM, 0.0f, gridDistance);
+    return sliceCount * log(1.0f + c * d / max(gridDistance, 1.0e-3f)) / log(1.0f + c);
+}
+
 /// @brief 距離 [m] から奥行きの連続のスライス座標 [0, N] を求める
 float VolumetricFogDistanceToSlice(VolumetricFogParameters p, float distanceM)
 {
-    const float c = max(p.depthDistribution, 1.0e-3f);
-    const float d = clamp(distanceM, 0.0f, p.distance);
-    return float(p.gridSize.z) * log(1.0f + c * d / max(p.distance, 1.0e-3f)) / log(1.0f + c);
+    return VolumetricFogDistanceToSliceFrom(p.distance, p.depthDistribution, float(p.gridSize.z), distanceM);
 }
 
 /// @brief Henyey-Greenstein の位相関数
@@ -293,6 +304,20 @@ float3 VolumetricFogIntegrateSlice(float3 scattered, float extinction, float sli
     return scattered * (sliceLength * f);
 }
 
+/// @brief 積み上げた格子から、連続のスライス座標 slice までの光と透過率を引く
+/// @param integrated 各スライスの奥の面までの光（rgb）と透過率（a）
+/// @param gridUV 格子の UV（画面の UV × screenToGrid）
+/// @param slice 奥行きの連続のスライス座標 [0, N]
+/// @param sliceCount 奥行きの枚数（N）
+/// @return rgb = 溜まった光、a = 透過率
+float4 VolumetricFogSampleIntegratedAt(
+    Texture3D<float4> integrated, SamplerState linearClamp, float2 gridUV, float slice, float sliceCount)
+{
+    const float w = (max(slice, 1.0f) - 0.5f) / sliceCount;
+    const float4 value = integrated.SampleLevel(linearClamp, float3(gridUV, w), 0);
+    return lerp(float4(0.0f, 0.0f, 0.0f, 1.0f), value, saturate(slice));
+}
+
 /// @brief 積み上げた格子から、カメラから distanceM までの光と透過率を引く
 /// @param integrated 各スライスの奥の面までの光（rgb）と透過率（a）
 /// @param gridUV 格子の UV（画面の UV × screenToGrid）
@@ -301,8 +326,8 @@ float4 VolumetricFogSampleIntegrated(
     VolumetricFogParameters p, Texture3D<float4> integrated, SamplerState linearClamp,
     float2 gridUV, float distanceM)
 {
-    const float slice = VolumetricFogDistanceToSlice(p, distanceM);
-    const float w = (max(slice, 1.0f) - 0.5f) / float(p.gridSize.z);
-    const float4 value = integrated.SampleLevel(linearClamp, float3(gridUV, w), 0);
-    return lerp(float4(0.0f, 0.0f, 0.0f, 1.0f), value, saturate(slice));
+    return VolumetricFogSampleIntegratedAt(
+        integrated, linearClamp, gridUV, VolumetricFogDistanceToSlice(p, distanceM), float(p.gridSize.z));
 }
+
+#endif // VOLUMETRIC_FOG_COMMON_HLSLI

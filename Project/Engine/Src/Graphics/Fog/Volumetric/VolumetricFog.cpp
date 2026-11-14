@@ -43,6 +43,10 @@ namespace CoreEngine
         constexpr uint32_t kCellGroupSize = 4;
         constexpr uint32_t kColumnGroupSize = 8;
 
+        /// @brief CS と PS の両方から読む状態
+        constexpr D3D12_RESOURCE_STATES kShaderReadState =
+            D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+
         /// @brief CS を 1 本組み、契約からバインディング表を作る
         bool BuildCompute(
             ID3D12Device* device, ShaderCompiler& compiler, ShaderReflectionBuilder& reflectionBuilder,
@@ -150,6 +154,26 @@ namespace CoreEngine
         desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
         desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
+        return CreateTexture(volume, desc, name);
+    }
+
+    bool VolumetricFog::CreateImage(Volume& image, uint32_t sizeX, uint32_t sizeY, const char* name)
+    {
+        D3D12_RESOURCE_DESC desc{};
+        desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+        desc.Width = sizeX;
+        desc.Height = sizeY;
+        desc.DepthOrArraySize = 1;
+        desc.MipLevels = 1;
+        desc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+        desc.SampleDesc.Count = 1;
+        desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+        desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+        return CreateTexture(image, desc, name);
+    }
+
+    bool VolumetricFog::CreateTexture(Volume& volume, const D3D12_RESOURCE_DESC& desc, const char* name)
+    {
         try {
             const Microsoft::WRL::ComPtr<ID3D12Device> device = graphicsCore_->GetDevice();
             volume.texture.Reset(ResourceFactory::CreateTextureResource(
@@ -157,20 +181,27 @@ namespace CoreEngine
         }
         catch (const std::exception&) {
             Logger::GetInstance().Warnf(LogCategory::Graphics,
-                "VolumetricFog: %s の 3D テクスチャの生成に失敗", name);
+                "VolumetricFog: %s のテクスチャの生成に失敗", name);
             return false;
         }
 
+        const bool isVolume = desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D;
         D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
         srvDesc.Format = desc.Format;
-        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
         srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        srvDesc.Texture3D.MipLevels = 1;
-
         D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
         uavDesc.Format = desc.Format;
-        uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
-        uavDesc.Texture3D.WSize = sizeZ;
+        if (isVolume) {
+            srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
+            srvDesc.Texture3D.MipLevels = 1;
+            uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
+            uavDesc.Texture3D.WSize = desc.DepthOrArraySize;
+        }
+        else {
+            srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+            srvDesc.Texture2D.MipLevels = 1;
+            uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+        }
 
         DescriptorAllocator* allocator = graphicsCore_->GetDescriptorAllocator();
         volume.srv = allocator->CreateSRV(volume.texture.Get(), srvDesc, name);
@@ -201,6 +232,7 @@ namespace CoreEngine
             RetireVolume(lightScattering_[0]);
             RetireVolume(lightScattering_[1]);
             RetireVolume(integrated_);
+            RetireVolume(farLight_);
         };
         retireAll();
         gridSize_[0] = gridSize_[1] = gridSize_[2] = 0;
@@ -209,7 +241,8 @@ namespace CoreEngine
         if (!CreateVolume(vBuffer_, sizeX, sizeY, sizeZ, "VolumetricFogVBuffer")
             || !CreateVolume(lightScattering_[0], sizeX, sizeY, sizeZ, "VolumetricFogLightScattering0")
             || !CreateVolume(lightScattering_[1], sizeX, sizeY, sizeZ, "VolumetricFogLightScattering1")
-            || !CreateVolume(integrated_, sizeX, sizeY, sizeZ, "VolumetricFogIntegrated")) {
+            || !CreateVolume(integrated_, sizeX, sizeY, sizeZ, "VolumetricFogIntegrated")
+            || !CreateImage(farLight_, sizeX, sizeY, "VolumetricFogFarLight")) {
             retireAll();
             return false;
         }
@@ -438,6 +471,13 @@ namespace CoreEngine
         FillSunDepth(constants, input);
         FillHistory(constants, viewProj, view.position);
 
+        forwardParams_.viewProj = viewProj;
+        forwardParams_.gridSize = Vector3{
+            static_cast<float>(sizeX), static_cast<float>(sizeY), static_cast<float>(sizeZ) };
+        forwardParams_.distance = constants.distance;
+        forwardParams_.screenToGrid = constants.screenToGrid;
+        forwardParams_.depthDistribution = constants.depthDistribution;
+
         // 物の影を作る光源が替わったら前フレームの光は混ぜない
         const Light* sunDepthLight = (constants.sunDepthLightIndex != kNoSunDepthLight) ? input.sunDepth->light : nullptr;
         if (sunDepthLight != prevSunDepthLight_) {
@@ -487,6 +527,7 @@ namespace CoreEngine
 
         Barrier::Transition(cmdList, previous.texture, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         Barrier::Transition(cmdList, current.texture, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, farLight_.texture, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         cmdList->SetPipelineState(lightScatteringPipeline_.GetComputePSO());
         cmdList->SetComputeRootSignature(lightScatteringPipeline_.GetComputeRootSignature());
         {
@@ -505,6 +546,7 @@ namespace CoreEngine
             }
             binder.Set(lightScatteringBindings_[B::gLightScatteringHistory], previous.srv.gpuHandle);
             binder.Set(lightScatteringBindings_[B::gLightScattering], current.uav.gpuHandle);
+            binder.Set(lightScatteringBindings_[B::gFarLight], farLight_.uav.gpuHandle);
             binder.ValidateBeforeDraw(lightScatteringBindings_);
         }
         cmdList->Dispatch(
@@ -513,6 +555,9 @@ namespace CoreEngine
             DivideRoundUp(gridSize_[2], kCellGroupSize));
         Barrier::UAV(cmdList, current.texture);
         Barrier::Transition(cmdList, current.texture, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        // 奥の光の画像は全画面の合成（CS）と前方描画（PS）が読む
+        Barrier::UAV(cmdList, farLight_.texture);
+        Barrier::Transition(cmdList, farLight_.texture, kShaderReadState);
     }
 
     void VolumetricFog::DispatchIntegrate(ID3D12GraphicsCommandList* cmdList)
@@ -537,7 +582,8 @@ namespace CoreEngine
             DivideRoundUp(gridSize_[1], kColumnGroupSize),
             1);
         Barrier::UAV(cmdList, integrated_.texture);
-        Barrier::Transition(cmdList, integrated_.texture, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        // 積み上げた格子は全画面の合成（CS）と前方描画（PS）が読む
+        Barrier::Transition(cmdList, integrated_.texture, kShaderReadState);
         integratedThisFrame_ = true;
     }
 

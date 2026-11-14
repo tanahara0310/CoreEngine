@@ -18,7 +18,7 @@ namespace CoreEngine::FogApplyBind
         gSceneDepth,
         gSkyViewLUT,
         gVolumetricFogIntegrated,
-        gSkyIrradianceSH,
+        gVolumetricFogFarLight,
         gCloudShadowMap,
         gSunDepth,
         gOutput,
@@ -33,7 +33,7 @@ namespace CoreEngine::FogApplyBind
         // 空色ブレンドが有効なフレームだけ差す（大気非対応シーンでは未バインド）
         { "gSkyViewLUT", ShaderBindingType::SRV, BindingUsage::Conditional }, // t1
         { "gVolumetricFogIntegrated", ShaderBindingType::SRV, BindingUsage::Conditional }, // t2
-        { "gSkyIrradianceSH", ShaderBindingType::SRV, BindingUsage::Conditional }, // t3
+        { "gVolumetricFogFarLight", ShaderBindingType::SRV, BindingUsage::Conditional }, // t3
         // ボリュメトリックの格子を使い、雲もあるフレームだけ差す
         { "gCloudShadowMap", ShaderBindingType::SRV, BindingUsage::Conditional }, // t4
         // ボリュメトリックの格子を使い、太陽から見た深さの画像を作ったフレームだけ差す（デバッグ表示 4・5 が読む）

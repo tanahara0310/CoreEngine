@@ -1,5 +1,7 @@
 #include "pch.h"
 #include "GeometryPass.h"
+#include "Graphics/Fog/FogManager.h"
+#include "Graphics/Render/FrameBlackboard.h"
 #include "Graphics/Render/Render.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Render/RenderManager.h"
@@ -91,6 +93,16 @@ namespace CoreEngine
     void SkyBoxQueuePass::DrawQueue(const RenderContext& context)
     {
         context.renderManager->DrawSkyQueuePass(context.cmdList, context.viewSettings.viewType);
+    }
+
+    void TransparentQueuePass::DeclareResources(RenderGraphBuilder& builder, const RenderContext& context)
+    {
+        ForwardQueuePassBase::DeclareResources(builder, context);
+        if (context.viewSettings.viewType == RenderViewType::GameView
+            && context.fogManager && context.fogManager->IsVolumetricRequested()) {
+            builder.Read(FrameBlackboard::VolumetricFog,
+                D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+        }
     }
 
     void TransparentQueuePass::DrawQueue(const RenderContext& context)

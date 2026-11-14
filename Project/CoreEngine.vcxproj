@@ -2205,6 +2205,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Editor\Camera\Widget\CameraTimelineWidget.h" />
     <ClInclude Include="Engine\Src\Editor\Environment\FogEditor.h" />
     <ClInclude Include="Engine\Src\Graphics\Fog\FogManager.h" />
+    <ClInclude Include="Engine\Src\Graphics\Fog\FogVolumetricResources.h" />
     <ClInclude Include="Engine\Src\Graphics\Fog\Settings\FogCVars.h" />
     <ClInclude Include="Engine\Src\Graphics\Fog\Settings\FogSettings.h" />
     <ClInclude Include="Engine\Src\Graphics\Fog\Shader\FogBindings.h" />

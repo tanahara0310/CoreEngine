@@ -4,7 +4,7 @@
 #include "../Lighting/LightStructures.hlsli"
 #include "../Lighting/ShadowLightFloor.hlsli"
 #include "../PBR/PBR.hlsli"
-#include "Fog.hlsli"
+#include "FogForward.hlsli"
 
 // ===== カメラ =====
 struct Camera
@@ -16,7 +16,7 @@ struct Camera
 // gMaterial(b0) と マテリアルテクスチャ(t0, t7-t10) は ObjectMaterial.hlsli で定義
 ConstantBuffer<Camera> gCamera : register(b2);
 ConstantBuffer<LightCounts> gLightCounts : register(b1);
-// フォグ。全画面合成パス（HeightFog.CS）と同じ数式・同じ定数を使う。
+// フォグ。全画面合成パス（HeightFog.CS）と同じ数式・同じ定数を使う（ボリュメトリックの格子は FogForward.hlsli の space6）。
 // 不透明フォワードには全画面パスが深度から掛けるので、C++ 側が「何もしない」
 // バリアントを差して二重適用を防ぐ（BaseModelRenderer::BindForwardSceneResources）。
 // b4 = Water.VS の WaterConstants、b5 = WaterFrameConstants、b6 = AtmosphereApply の

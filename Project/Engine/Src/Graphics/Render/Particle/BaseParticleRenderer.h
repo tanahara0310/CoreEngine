@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../BaseRenderer.h"
+#include "Graphics/Fog/FogVolumetricResources.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include <d3d12.h>
 #include <wrl.h>
@@ -38,10 +39,18 @@ public:
     /// @param camera カメラオブジェクト
     void SetCamera(const CoreEngine::Camera* camera) override;
 
-    /// @brief 今フレームのフォグ定数を受け取る（gFog）
+    /// @brief 今フレームのフォグ定数とボリュメトリックの格子を受け取る（gFog・space6）
     /// @details FogPass が毎フレーム供給する。パーティクルは出力がアルファ事前乗算の
     ///          加算合成なので、内散乱を足さない「減衰のみ」バリアントを渡すこと。
-    void SetFogConstants(D3D12_GPU_VIRTUAL_ADDRESS attenuationOnly) { fogCBV_ = attenuationOnly; }
+    ///          合成なしのパーティクルは全画面の合成の前に描かれるので「何もしない」バリアントを差す。
+    void SetFogConstants(D3D12_GPU_VIRTUAL_ADDRESS attenuationOnly,
+                         D3D12_GPU_VIRTUAL_ADDRESS disabled,
+                         const FogVolumetricResources& volumetric)
+    {
+        fogCBV_ = attenuationOnly;
+        fogDisabledCBV_ = disabled;
+        fogVolumetric_ = volumetric;
+    }
 
     /// @brief パーティクルを描画（派生クラスで実装）
     /// @param particle パーティクルのコンポーネント
@@ -54,6 +63,14 @@ public:
 protected:
     /// @brief 今フレームのフォグ定数（0 = 未供給で差さない）
     D3D12_GPU_VIRTUAL_ADDRESS fogCBV_ = 0;
+    D3D12_GPU_VIRTUAL_ADDRESS fogDisabledCBV_ = 0;
+    FogVolumetricResources fogVolumetric_{};
+
+    /// @brief BeginPass で受け取ったブレンドモード
+    BlendMode currentBlendMode_ = BlendMode::kBlendModeNone;
+
+    /// @brief フォグ定数とボリュメトリックの格子を差す（BeginPass の後に呼ぶ）
+    void BindFogResources();
 
     // ──────────────────────────────────────────────────────────
     // 共通リソース
