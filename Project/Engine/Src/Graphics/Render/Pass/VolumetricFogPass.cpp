@@ -56,6 +56,19 @@ namespace CoreEngine
             }
         }
 
+        /// @brief 霧のノイズに使う雲のベース形状ノイズを入力へ詰める（まだ焼いていなければここで焼く）
+        void FillNoiseInput(const RenderContext& context, const VolumetricFog& volumetric, VolumetricFogFrameInput& input)
+        {
+            VolumetricCloudManager* clouds = context.volumetricCloudManager;
+            if (!clouds || !volumetric.IsNoiseRequested()) {
+                return;
+            }
+            clouds->GenerateNoiseTexturesIfNeeded(context.cmdList, context.gpuProfiler);
+            if (clouds->AreNoiseTexturesReady()) {
+                input.noiseSrv = clouds->GetBaseShapeNoiseSrv();
+            }
+        }
+
         /// @brief 今フレームの雲の影のマップと範囲を入力へ詰める（雲が無ければ空のまま）
         void FillCloudShadowInput(const RenderContext& context, VolumetricFogFrameInput& input)
         {
@@ -106,6 +119,7 @@ namespace CoreEngine
         FillSunDepthInput(context, input);
 
         VolumetricFog& volumetric = fog.GetVolumetric();
+        FillNoiseInput(context, volumetric, input);
         if (!volumetric.PrepareFrame(input)) {
             return;
         }

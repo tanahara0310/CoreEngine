@@ -13,13 +13,20 @@ namespace CoreEngine::VolumetricFogInjectBind
     /// @brief VolumetricFogInject.CS.hlsl の契約
     enum Slot : size_t {
         gVolumetricFog,
+        gVolumetricFogMedia,
+        gNoise,
         gVBuffer,
+        gEmissive,
         Count
     };
 
     inline constexpr ShaderBindingDecl kDecls[] = {
-        { "gVolumetricFog", ShaderBindingType::CBV, BindingUsage::Required }, // b0
-        { "gVBuffer",       ShaderBindingType::UAV, BindingUsage::Required }, // u0
+        { "gVolumetricFog",      ShaderBindingType::CBV, BindingUsage::Required }, // b0
+        { "gVolumetricFogMedia", ShaderBindingType::CBV, BindingUsage::Required }, // b1
+        // ノイズを使わないフレームでは差さない（そのときシェーダーは読まない）
+        { "gNoise",              ShaderBindingType::SRV, BindingUsage::Conditional }, // t0
+        { "gVBuffer",            ShaderBindingType::UAV, BindingUsage::Required }, // u0
+        { "gEmissive",           ShaderBindingType::UAV, BindingUsage::Required }, // u1
     };
 
     static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
@@ -36,6 +43,7 @@ namespace CoreEngine::VolumetricFogLightScatteringBind
         gCloudShadowMap,
         gLightScatteringHistory,
         gSunDepth,
+        gEmissive,
         gLightScattering,
         gFarLight,
         Count
@@ -52,6 +60,7 @@ namespace CoreEngine::VolumetricFogLightScatteringBind
         { "gLightScatteringHistory", ShaderBindingType::SRV, BindingUsage::Required }, // t3
         // 太陽から見た深さの画像を作らないフレームでは差さない（そのときシェーダーは読まない）
         { "gSunDepth",        ShaderBindingType::SRV, BindingUsage::Conditional }, // t4
+        { "gEmissive",        ShaderBindingType::SRV, BindingUsage::Required }, // t5
         { "gLightScattering", ShaderBindingType::UAV, BindingUsage::Required }, // u0
         { "gFarLight",        ShaderBindingType::UAV, BindingUsage::Required }, // u1
     };

@@ -19,6 +19,8 @@
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
+#include "Scene/Environment/WindCVars.h"
+#include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
 
 #include <algorithm>
@@ -86,6 +88,12 @@ namespace CoreEngine
         /// @brief カメラが 1 フレームでこれより動いたら前フレームの光を混ぜない [m]
         constexpr float kHistoryResetDistance = 10.0f;
 
+        /// @brief ノイズを流す 1 フレームの時間の上限 [s]
+        constexpr float kMaxNoiseDeltaTime = 0.25f;
+
+        /// @brief 局所の霧の 1 辺の大きさの下限 [m]
+        constexpr float kMinVolumeSize = 1.0e-3f;
+
         /// @brief 格子の中のずらし方が一巡するフレーム数
         constexpr uint32_t kJitterSequenceLength = 16;
 
@@ -141,7 +149,7 @@ namespace CoreEngine
     }
 
     bool VolumetricFog::CreateVolume(
-        Volume& volume, uint32_t sizeX, uint32_t sizeY, uint32_t sizeZ, const char* name)
+        Volume& volume, uint32_t sizeX, uint32_t sizeY, uint32_t sizeZ, const char* name, DXGI_FORMAT format)
     {
         D3D12_RESOURCE_DESC desc{};
         desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE3D;
@@ -149,7 +157,7 @@ namespace CoreEngine
         desc.Height = sizeY;
         desc.DepthOrArraySize = static_cast<UINT16>(sizeZ);
         desc.MipLevels = 1;
-        desc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+        desc.Format = format;
         desc.SampleDesc.Count = 1;
         desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
         desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
@@ -229,6 +237,7 @@ namespace CoreEngine
 
         const auto retireAll = [this]() {
             RetireVolume(vBuffer_);
+            RetireVolume(emissive_);
             RetireVolume(lightScattering_[0]);
             RetireVolume(lightScattering_[1]);
             RetireVolume(integrated_);
@@ -239,6 +248,7 @@ namespace CoreEngine
         historyAvailable_ = false;
 
         if (!CreateVolume(vBuffer_, sizeX, sizeY, sizeZ, "VolumetricFogVBuffer")
+            || !CreateVolume(emissive_, sizeX, sizeY, sizeZ, "VolumetricFogEmissive", DXGI_FORMAT_R11G11B10_FLOAT)
             || !CreateVolume(lightScattering_[0], sizeX, sizeY, sizeZ, "VolumetricFogLightScattering0")
             || !CreateVolume(lightScattering_[1], sizeX, sizeY, sizeZ, "VolumetricFogLightScattering1")
             || !CreateVolume(integrated_, sizeX, sizeY, sizeZ, "VolumetricFogIntegrated")
@@ -404,11 +414,93 @@ namespace CoreEngine
         return localLightConstants_ != 0;
     }
 
+    void VolumetricFog::SetVolumes(std::span<const VolumetricFogVolumeDesc> volumes)
+    {
+        volumes_.assign(volumes.begin(), volumes.end());
+    }
+
+    bool VolumetricFog::IsNoiseRequested() const
+    {
+        if (VolumetricFogCVars::NoiseStrength.Get() > 0.0f) {
+            return true;
+        }
+        return std::any_of(volumes_.begin(), volumes_.end(),
+            [](const VolumetricFogVolumeDesc& volume) { return volume.noiseStrength > 0.0f; });
+    }
+
+    bool VolumetricFog::AllocateMedia(
+        Constants& constants, const Vector3& cameraPos, D3D12_GPU_DESCRIPTOR_HANDLE noiseSrv)
+    {
+        MediaConstants media{};
+
+        // 模様は風下へ流れる。ずれは模様の一辺で折り返す（ノイズの画像は繰り返す）
+        const float noiseScale = std::max(VolumetricFogCVars::NoiseScale.Get(), 0.1f);
+        const float deltaTime = std::clamp(Time::DeltaTime(), 0.0f, kMaxNoiseDeltaTime);
+        const Vector2 windDirection = WindCVars::NormalizedDirection();
+        const float windSpeed = WindCVars::Speed.Get() * VolumetricFogCVars::NoiseWindScale.Get();
+        noiseOffset_.x = std::fmod(noiseOffset_.x - windDirection.x * windSpeed * deltaTime, noiseScale);
+        noiseOffset_.z = std::fmod(noiseOffset_.z - windDirection.y * windSpeed * deltaTime, noiseScale);
+        media.noiseOffset = noiseOffset_;
+        media.noiseInvScale = 1.0f / noiseScale;
+        media.noiseStrength = std::clamp(VolumetricFogCVars::NoiseStrength.Get(), 0.0f, 1.0f);
+
+        bool anyNoise = media.noiseStrength > 0.0f;
+        bool anyEmissive = false;
+        for (const VolumetricFogVolumeDesc& volume : volumes_) {
+            if (media.volumeCount >= kMaxVolumes) {
+                break;
+            }
+            const bool emits = (std::max)({ volume.emissive.x, volume.emissive.y, volume.emissive.z }) > 0.0f;
+            if (volume.extinction <= 0.0f && !emits) {
+                continue;
+            }
+            const Vector3 size{
+                std::max(volume.size.x, kMinVolumeSize),
+                std::max(volume.size.y, kMinVolumeSize),
+                std::max(volume.size.z, kMinVolumeSize) };
+            // 形を包む球がカメラから distance の球にかからなければ飛ばす
+            if (Length(volume.center - cameraPos) - 0.5f * Length(size) >= constants.distance) {
+                continue;
+            }
+
+            LocalVolume& out = media.volumes[media.volumeCount++];
+            out.center = volume.center;
+            out.shape = (volume.shape == kVolumeShapeSphere) ? kVolumeShapeSphere : kVolumeShapeBox;
+            out.axisX = volume.axisX * (1.0f / size.x);
+            out.axisY = volume.axisY * (1.0f / size.y);
+            out.axisZ = volume.axisZ * (1.0f / size.z);
+            out.edgeFade = std::clamp(volume.edgeFade, 0.0f, 1.0f);
+            out.noiseStrength = std::clamp(volume.noiseStrength, 0.0f, 1.0f);
+            out.extinction = std::max(volume.extinction, 0.0f);
+            out.albedo = volume.albedo;
+            out.emissive = emits ? volume.emissive : Vector3{};
+            anyNoise = anyNoise || out.noiseStrength > 0.0f;
+            anyEmissive = anyEmissive || emits;
+        }
+
+        noiseSrv_ = (anyNoise && noiseSrv.ptr != 0) ? noiseSrv : D3D12_GPU_DESCRIPTOR_HANDLE{};
+        media.noiseEnabled = (noiseSrv_.ptr != 0) ? 1u : 0u;
+        injectedVolumeCount_ = media.volumeCount;
+        noiseActive_ = media.noiseEnabled != 0;
+
+        constants.mediaFlags = 0;
+        if (media.volumeCount > 0 || media.noiseEnabled != 0) {
+            constants.mediaFlags |= kMediaVarying;
+        }
+        if (anyEmissive) {
+            constants.mediaFlags |= kMediaEmissive;
+        }
+
+        mediaConstants_ = graphicsCore_->GetUploadRing().AllocateConstants(media);
+        return mediaConstants_ != 0;
+    }
+
     bool VolumetricFog::PrepareFrame(const VolumetricFogFrameInput& input)
     {
         integratedThisFrame_ = false;
         frameConstants_ = 0;
         localLightConstants_ = 0;
+        mediaConstants_ = 0;
         if (!pipelineReady_ || !graphicsCore_ || !input.view || !input.view->isValid || !input.fog
             || input.screenWidth == 0 || input.screenHeight == 0) {
             return false;
@@ -485,7 +577,8 @@ namespace CoreEngine
         }
         prevSunDepthLight_ = sunDepthLight;
 
-        if (!AllocateLocalLights(input.lightManager, view.position, constants.distance)) {
+        if (!AllocateLocalLights(input.lightManager, view.position, constants.distance)
+            || !AllocateMedia(constants, view.position, input.noiseSrv)) {
             return false;
         }
         frameConstants_ = graphicsCore_->GetUploadRing().AllocateConstants(constants);
@@ -500,12 +593,18 @@ namespace CoreEngine
         namespace B = VolumetricFogInjectBind;
 
         Barrier::Transition(cmdList, vBuffer_.texture, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, emissive_.texture, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         cmdList->SetPipelineState(injectPipeline_.GetComputePSO());
         cmdList->SetComputeRootSignature(injectPipeline_.GetComputeRootSignature());
         {
             ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
             binder.Set(injectBindings_[B::gVolumetricFog], frameConstants_);
+            binder.Set(injectBindings_[B::gVolumetricFogMedia], mediaConstants_);
+            if (noiseSrv_.ptr != 0) {
+                binder.Set(injectBindings_[B::gNoise], noiseSrv_);
+            }
             binder.Set(injectBindings_[B::gVBuffer], vBuffer_.uav.gpuHandle);
+            binder.Set(injectBindings_[B::gEmissive], emissive_.uav.gpuHandle);
             binder.ValidateBeforeDraw(injectBindings_);
         }
         cmdList->Dispatch(
@@ -513,7 +612,9 @@ namespace CoreEngine
             DivideRoundUp(gridSize_[1], kCellGroupSize),
             DivideRoundUp(gridSize_[2], kCellGroupSize));
         Barrier::UAV(cmdList, vBuffer_.texture);
+        Barrier::UAV(cmdList, emissive_.texture);
         Barrier::Transition(cmdList, vBuffer_.texture, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        Barrier::Transition(cmdList, emissive_.texture, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     }
 
     void VolumetricFog::DispatchLightScattering(ID3D12GraphicsCommandList* cmdList)
@@ -535,6 +636,7 @@ namespace CoreEngine
             binder.Set(lightScatteringBindings_[B::gVolumetricFog], frameConstants_);
             binder.Set(lightScatteringBindings_[B::gVolumetricFogLocalLights], localLightConstants_);
             binder.Set(lightScatteringBindings_[B::gVBuffer], vBuffer_.srv.gpuHandle);
+            binder.Set(lightScatteringBindings_[B::gEmissive], emissive_.srv.gpuHandle);
             if (skyIrradianceSrv_.ptr != 0) {
                 binder.Set(lightScatteringBindings_[B::gSkyIrradianceSH], skyIrradianceSrv_);
             }
@@ -593,8 +695,10 @@ namespace CoreEngine
         integratedThisFrame_ = false;
         frameConstants_ = 0;
         localLightConstants_ = 0;
+        mediaConstants_ = 0;
         skyIrradianceSrv_ = {};
         cloudShadowSrv_ = {};
         sunDepthSrv_ = {};
+        noiseSrv_ = {};
     }
 }

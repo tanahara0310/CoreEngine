@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.85.0">
+<meta name="engine-version" content="0.86.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11426,6 +11426,17 @@ python Tools/OkinawaBeach/bake_araha_walk.py
 
   <h2 id="changelog-history">更新履歴</h2>
 
+  <h3 id="changelog-v0-86-0">v0.86.0 <span class="dim">（2026-11-14）</span></h3>
+  <p>箱や球の形の中だけに霧を置く <a href="#api-FogVolume">局所の霧（FogVolume）</a> と、霧の濃さのむらを風で流すノイズ、光る霧を足した版です（<a href="#api-HeightFog">高さフォグ</a>）。局所の霧を置かず、ノイズを入れていないシーンの見た目は変わりません。</p>
+  <ul>
+    <li><strong>局所の霧</strong>：<a href="#api-FogVolume">FogVolume</a> コンポーネントを付けたオブジェクトの位置・向き・スケールで、箱か球の霧を置けます。縁のぼかし・濃さ・色（散乱の割合）・発光・ノイズの強さを 1 つずつ決めます。霧は太陽・空・点光源・スポット・エリアライトに照らされ、物の影と雲の影も落ちます。ボリュメトリックフォグの格子の中（既定 150m まで）だけで描きます。</li>
+    <li><strong>ノイズと風</strong>：<code>r.Fog.Volumetric.NoiseStrength</code> で高さフォグの濃さに、FogVolume の <code>noiseStrength</code> で局所の霧にむらを付けます。模様は雲のノイズの画像を使い回し、大きさは <code>r.Fog.Volumetric.NoiseScale</code>（既定 40m）、流れは風（<code>r.Wind.Speed</code>・<code>r.Wind.Direction</code>）× <code>r.Fog.Volumetric.NoiseWindScale</code>（既定 1）です。雲を使っていないシーンでも、ノイズが要るときだけ雲のノイズの画像を作ります。</li>
+    <li><strong>発光</strong>：FogVolume の <code>emissiveColor</code>・<code>emissiveIntensity</code>（霧 1m あたりの輝度 nt/m）で、光が当たらなくても光る霧を作れます。</li>
+    <li><strong>前のフレームと混ぜる</strong>：局所の霧かノイズがあるフレームは、霧の濃さも光と同じく格子の中でずらした点で求め、前のフレームと混ぜます（形の縁とむらが格子の形に角ばらないように）。</li>
+    <li><strong>エディタ</strong>：Game の窓に局所の霧の形の輪郭を水色の線で重ねます（選んだものは濃く。<code>d.FogVolume.Visualize</code>）。高さフォグのインスペクタに、局所の霧の数とノイズを使っているかが出ます。コンポーネントの追加の「環境」に FogVolume が入りました。</li>
+    <li><strong>試験用のプロジェクト</strong>：<span class="path">Projects/EngineTests</span> に VolumetricFog_Volumes のシーンと、README の確かめ方を足しました。</li>
+  </ul>
+
   <h3 id="changelog-v0-85-0">v0.85.0 <span class="dim">（2026-11-14）</span></h3>
   <p>半透明の物・水面・パーティクルにも、ボリュメトリックフォグと同じ霧が掛かるようにした版です（<a href="#api-HeightFog">高さフォグ</a>）。ボリュメトリックフォグを入れていないシーンの見た目は変わりません。</p>
   <ul>
@@ -17366,11 +17377,31 @@ void LateUpdate()   // 追いかける相手が動いた後に動かす
   {
     id: "HeightFog", kind: "component", cat: "環境", display: "高さフォグ", type: "HeightFog",
     accessor: "", title: "高さフォグ（HeightFog）", brief: "霧",
-    keywords: "フォグ 霧 もや 遠景 ボリュメトリックフォグ volumetric fog 散乱 フロクセル 雲の影 cloud shadow 物の影 光の筋 光芒 太陽から見た深さ 点光源 スポットライト エリアライト 街灯 光の円錐 半透明 水面 パーティクル",
+    keywords: "フォグ 霧 もや 遠景 ボリュメトリックフォグ volumetric fog 散乱 フロクセル 雲の影 cloud shadow 物の影 光の筋 光芒 太陽から見た深さ 点光源 スポットライト エリアライト 街灯 光の円錐 半透明 水面 パーティクル 局所の霧 FogVolume ノイズ むら 風",
     summary: "低い所ほど濃くなる霧をかけます。インスペクタの <span class=\"ui\">フォグを有効にする</span>・<span class=\"ui\">ボリュメトリックフォグ</span>・<span class=\"ui\">プリセット</span>・<span class=\"ui\">詳細設定</span> で調整します。",
     intro: "<p>値はシーンの見た目の設定（CVar <code>r.Fog.*</code>）として <span class=\"path\">_environment.json</span> に保存されます（<kbd>Ctrl</kbd>+<kbd>S</kbd>）。スクリプトからは <code>CVar::SetBool(\"r.Fog.Enabled\", true)</code> のように CVar で変えます。</p>",
-    notes: "<ul><li><strong>ボリュメトリックフォグ</strong>：インスペクタの <span class=\"ui\">ボリュメトリックフォグ</span>（CVar <code>r.Fog.Volumetric.Enabled</code>・既定はオフ）を入れると、カメラから <code>r.Fog.Volumetric.Distance</code>（既定 150m）までの霧を、画面に合わせた 3D の格子（1920×1080 の画面で 160×90×64）で計算します。霧は平行光源（4 灯まで）と空の光で照らされ、光源の方を向くほど明るく光ります。平行光源の強さは物の面を照らすときと同じ値なので、太陽を強くすると霧も同じだけ明るくなります。空の光は画面に描く空と同じ明るさで当たるので、遠くの霧は地平線で空になじみます（面の環境光に掛ける <code>r.Atmosphere.SkyAmbientScale</code> は霧には掛けません）。</li><li>霧の濃さと高さは、高さフォグの <code>r.Fog.Density</code>・<code>r.Fog.HeightFalloff</code>・<code>r.Fog.HeightRef</code>・<code>r.Fog.StartDistance</code>・<code>r.Fog.MaxOpacity</code> をそのまま使います。格子より奥も同じ濃さの式と同じ光の式で計算を続けるので、格子の端に段は出ません。</li><li>ボリュメトリックフォグを入れている間は、高さフォグの色の設定（<code>r.Fog.Color</code>・空の色へ寄せる量・太陽の方向の色味）は使わず、霧の色は光源と空の光から決まります。大気が無いシーンや空の環境光を切ったシーンでは、空の光の代わりに <code>r.Fog.Color</code> × <code>r.Fog.ColorIntensity</code> で照らします。</li><li>主な CVar：<code>r.Fog.Volumetric.Anisotropy</code>（既定 0.6。光の進む向きへ散る強さ。0 でどの向きへも同じ）、<code>r.Fog.Volumetric.Albedo</code>（光を散らす割合。色を付けると霧に色が付く）、<code>r.Fog.Volumetric.AmbientScale</code>（空の光の強さ。既定 1）、<code>r.Fog.Volumetric.GridPixelSize</code>（格子 1 マスの画素数。既定 12）、<code>r.Fog.Volumetric.GridSizeZ</code>（奥行きの区切りの数。既定 64）、<code>r.Fog.Volumetric.DepthDistribution</code>（区切りを手前に寄せる強さ。既定 32）、<code>r.Fog.Volumetric.DebugView</code>（1 格子の透過率・2 格子が足す光・3 奥行きの区切り・4 格子の奥の端での影（雲の影 × 物の影。白が日なた・黒が影）・5 太陽から見た深さの画像（画面の中央の正方形。霧の範囲の光源側の端が黒・反対側の端と何にも当たらない所が白。物と床の差は小さいので、細かく見るときはレイトレーシングの窓の <span class=\"ui\">中間結果</span> で範囲を狭める）。保存されない）。</li><li><strong>雲の影</strong>：雲を使うシーンでは、雲の影の中の霧が地面と同じだけ暗くなります（地面の雲の影と同じマップと強さ <code>r.Cloud.SceneShadowStrength</code>）。雲の影は km 単位でなめらかなので、手前の霧に細い筋はほとんど出ません。</li><li><strong>前のフレームと混ぜる</strong>：光を求める点を毎フレーム格子の中でずらし、前のフレームの光と <code>r.Fog.Volumetric.HistoryWeight</code>（既定 0.9）の割合で混ぜて、縞とざらつきを消します。大きくするほどなめらかになり、動く影への追従は遅れます。0 で混ぜません。</li><li><strong>物の影</strong>：DXR 1.1 に対応した GPU では、霧を照らすいちばん明るい平行光源（<code>castShadows</code> と <a href=\"#api-Light\">ライト</a> の <code>castVolumetricShadow</code> がオンのもの）から見た深さの画像を毎フレーム作り、物の陰の霧を暗くします。柱の間・柵・葉の抜けた所から光の筋が差します。画像は霧の範囲を覆う正方形で、一辺の画素数は <code>r.Fog.Volumetric.ShadowResolution</code>（既定 1024）です。細い物の影が出ないときは上げます。範囲の外の高い物の影は、<code>r.Fog.Volumetric.ShadowCasterHeight</code>（既定 200m）だけ光源の側まで拾います。格子より奥の霧には物の影を掛けません。DXR に対応していない GPU では、雲の影だけが霧に落ちます。</li><li>ライトごとに、<code>volumetricScatteringIntensity</code>（霧を照らす強さ）で霧の明るさを、<code>castVolumetricShadow</code> で物の影を落とすかを変えられます。</li><li><strong>点光源・スポット・エリアライト</strong>：届く範囲が格子にかかるライトが霧を照らします（<code>r.Fog.Volumetric.LocalLights</code>・既定はオン）。明るさ・届く距離・スポットの角度・エリアの発光面の形は物の面と同じ式なので、街灯の下には床の光の輪と同じ太さの光の円錐が出ます。霧に影は落とさないので、壁の向こうの霧も照らします。格子より奥の霧は照らしません。インスペクタの格子の数の横に、霧を照らしているライトの数が出ます。</li><li><strong>半透明・水面・パーティクル</strong>：アルファで透ける物と水面は、自分の面の位置で格子を引くので、不透明の物と同じ霧が掛かります。合成が「加算」「スクリーン」の物とパーティクルは、霧で薄れるだけです（霧の光は足しません）。エディタのシーンビューでは、これらは高さフォグの式で描きます。</li></ul>",
-    see: [["api-VolumetricCloud", "ボリュメトリック雲"], ["api-CVar", "CVar"]]
+    notes: "<ul><li><strong>ボリュメトリックフォグ</strong>：インスペクタの <span class=\"ui\">ボリュメトリックフォグ</span>（CVar <code>r.Fog.Volumetric.Enabled</code>・既定はオフ）を入れると、カメラから <code>r.Fog.Volumetric.Distance</code>（既定 150m）までの霧を、画面に合わせた 3D の格子（1920×1080 の画面で 160×90×64）で計算します。霧は平行光源（4 灯まで）と空の光で照らされ、光源の方を向くほど明るく光ります。平行光源の強さは物の面を照らすときと同じ値なので、太陽を強くすると霧も同じだけ明るくなります。空の光は画面に描く空と同じ明るさで当たるので、遠くの霧は地平線で空になじみます（面の環境光に掛ける <code>r.Atmosphere.SkyAmbientScale</code> は霧には掛けません）。</li><li>霧の濃さと高さは、高さフォグの <code>r.Fog.Density</code>・<code>r.Fog.HeightFalloff</code>・<code>r.Fog.HeightRef</code>・<code>r.Fog.StartDistance</code>・<code>r.Fog.MaxOpacity</code> をそのまま使います。格子より奥も同じ濃さの式と同じ光の式で計算を続けるので、格子の端に段は出ません。</li><li>ボリュメトリックフォグを入れている間は、高さフォグの色の設定（<code>r.Fog.Color</code>・空の色へ寄せる量・太陽の方向の色味）は使わず、霧の色は光源と空の光から決まります。大気が無いシーンや空の環境光を切ったシーンでは、空の光の代わりに <code>r.Fog.Color</code> × <code>r.Fog.ColorIntensity</code> で照らします。</li><li>主な CVar：<code>r.Fog.Volumetric.Anisotropy</code>（既定 0.6。光の進む向きへ散る強さ。0 でどの向きへも同じ）、<code>r.Fog.Volumetric.Albedo</code>（光を散らす割合。色を付けると霧に色が付く）、<code>r.Fog.Volumetric.AmbientScale</code>（空の光の強さ。既定 1）、<code>r.Fog.Volumetric.GridPixelSize</code>（格子 1 マスの画素数。既定 12）、<code>r.Fog.Volumetric.GridSizeZ</code>（奥行きの区切りの数。既定 64）、<code>r.Fog.Volumetric.DepthDistribution</code>（区切りを手前に寄せる強さ。既定 32）、<code>r.Fog.Volumetric.DebugView</code>（1 格子の透過率・2 格子が足す光・3 奥行きの区切り・4 格子の奥の端での影（雲の影 × 物の影。白が日なた・黒が影）・5 太陽から見た深さの画像（画面の中央の正方形。霧の範囲の光源側の端が黒・反対側の端と何にも当たらない所が白。物と床の差は小さいので、細かく見るときはレイトレーシングの窓の <span class=\"ui\">中間結果</span> で範囲を狭める）。保存されない）。</li><li><strong>雲の影</strong>：雲を使うシーンでは、雲の影の中の霧が地面と同じだけ暗くなります（地面の雲の影と同じマップと強さ <code>r.Cloud.SceneShadowStrength</code>）。雲の影は km 単位でなめらかなので、手前の霧に細い筋はほとんど出ません。</li><li><strong>前のフレームと混ぜる</strong>：光を求める点を毎フレーム格子の中でずらし、前のフレームの光と <code>r.Fog.Volumetric.HistoryWeight</code>（既定 0.9）の割合で混ぜて、縞とざらつきを消します。大きくするほどなめらかになり、動く影への追従は遅れます。0 で混ぜません。</li><li><strong>物の影</strong>：DXR 1.1 に対応した GPU では、霧を照らすいちばん明るい平行光源（<code>castShadows</code> と <a href=\"#api-Light\">ライト</a> の <code>castVolumetricShadow</code> がオンのもの）から見た深さの画像を毎フレーム作り、物の陰の霧を暗くします。柱の間・柵・葉の抜けた所から光の筋が差します。画像は霧の範囲を覆う正方形で、一辺の画素数は <code>r.Fog.Volumetric.ShadowResolution</code>（既定 1024）です。細い物の影が出ないときは上げます。範囲の外の高い物の影は、<code>r.Fog.Volumetric.ShadowCasterHeight</code>（既定 200m）だけ光源の側まで拾います。格子より奥の霧には物の影を掛けません。DXR に対応していない GPU では、雲の影だけが霧に落ちます。</li><li>ライトごとに、<code>volumetricScatteringIntensity</code>（霧を照らす強さ）で霧の明るさを、<code>castVolumetricShadow</code> で物の影を落とすかを変えられます。</li><li><strong>点光源・スポット・エリアライト</strong>：届く範囲が格子にかかるライトが霧を照らします（<code>r.Fog.Volumetric.LocalLights</code>・既定はオン）。明るさ・届く距離・スポットの角度・エリアの発光面の形は物の面と同じ式なので、街灯の下には床の光の輪と同じ太さの光の円錐が出ます。霧に影は落とさないので、壁の向こうの霧も照らします。格子より奥の霧は照らしません。インスペクタの格子の数の横に、霧を照らしているライトの数が出ます。</li><li><strong>半透明・水面・パーティクル</strong>：アルファで透ける物と水面は、自分の面の位置で格子を引くので、不透明の物と同じ霧が掛かります。合成が「加算」「スクリーン」の物とパーティクルは、霧で薄れるだけです（霧の光は足しません）。エディタのシーンビューでは、これらは高さフォグの式で描きます。</li><li><strong>局所の霧とノイズ</strong>：<a href=\"#api-FogVolume\">局所の霧（FogVolume）</a>を置くと、箱や球の中だけに霧を足せます。<code>r.Fog.Volumetric.NoiseStrength</code>（既定 0）で高さフォグの濃さにむらを付け、<code>r.Fog.Volumetric.NoiseScale</code>（既定 40m）で模様の大きさを、<code>r.Fog.Volumetric.NoiseWindScale</code>（既定 1）で風（<code>r.Wind.*</code>）に流す速さを決めます。むらは格子の中だけで、格子より奥の霧は一様です。インスペクタの格子の数の下に、局所の霧の数とノイズを使っているかが出ます。</li></ul>",
+    see: [["api-FogVolume", "局所の霧"], ["api-VolumetricCloud", "ボリュメトリック雲"], ["api-CVar", "CVar"]]
+  },
+
+  {
+    id: "FogVolume", kind: "component", cat: "環境", display: "局所の霧", type: "FogVolume",
+    accessor: "owner.fogVolume", title: "局所の霧（FogVolume）", brief: "箱や球の中だけの霧",
+    keywords: "霧 フォグ 局所の霧 ボリューム fog volume 谷 谷霧 もや 煙 発光 光る霧 ノイズ むら 風 箱 球",
+    summary: "箱か球の形の中だけに霧を置きます。谷に溜まる霧・部屋の中のもや・光る霧に使います。<a href=\"#api-HeightFog\">高さフォグ</a>の <span class=\"ui\">ボリュメトリックフォグ</span> が入っているときだけ描かれます。",
+    requires: "トランスフォーム（自動で足します）、高さフォグの <span class=\"ui\">ボリュメトリックフォグ</span>",
+    props: [
+      ["形", "shape", "int", "0（箱）", "0 = 箱・1 = 球。"],
+      ["大きさ", "size", "Vector3", "(10, 10, 10)", "箱は各辺の長さ・球は直径（m）。トランスフォームのスケールも掛かります（球をスケールで伸ばすと楕円体になります）。形の中心と向きはトランスフォームの位置と回転です。"],
+      ["縁のぼかし", "edgeFade", "float", "0.25", "0〜1。縁で霧を薄くしていく幅（中心から表面までに対する割合）。0 でくっきり・1 で中心から表面まで少しずつ薄くなります。"],
+      ["濃さ", "density", "float", "0.05", "消散係数（1/m）。0.1 で 10m 先がおよそ 37% 見えます。高さフォグの濃さに足されます。"],
+      ["色", "albedo", "Vector4", "(1, 1, 1, 1)", "光を散乱する割合（w は使いません）。暗くすると霧が暗く、色を付けると色の霧になります。"],
+      ["発光の色", "emissiveColor", "Vector4", "(1, 1, 1, 1)", "霧が自分で光る色（w は使いません）。"],
+      ["発光の強さ", "emissiveIntensity", "float", "0", "霧 1m あたりの発光の輝度（nt/m）。光が当たらなくても霧が光って見えます。昼の屋外で目立たせるには数千が要ります。0 で光りません。"],
+      ["ノイズの強さ", "noiseStrength", "float", "0", "0〜1。濃さにむらを付けます（平均の濃さは変わりません。1 では薄い所の霧が途切れます）。模様の大きさは <code>r.Fog.Volumetric.NoiseScale</code>、流れは風（<code>r.Wind.Speed</code>・<code>r.Wind.Direction</code>）× <code>r.Fog.Volumetric.NoiseWindScale</code> で決まります。"]
+    ],
+    notes: "<ul><li>ボリュメトリックフォグの格子（カメラから <code>r.Fog.Volumetric.Distance</code>・既定 150m まで）の中だけで描きます。それより遠くの局所の霧と、ボリュメトリックフォグを切ったシーンでは描かれません。</li><li>霧は高さフォグと同じく、平行光源・空の光・点光源・スポット・エリアライトに照らされ、物の影と雲の影も落ちます。半透明の物・水面・パーティクルの手前の霧にもなります。</li><li>1 フレームに格子へ入れるのは、格子にかかるもののうちシーンの順に 32 個までです。</li><li>エディタの Game の窓には、形の輪郭が水色の線で重なります（選んだものは濃く。無効にしたものも選ぶと出ます。CVar <code>d.FogVolume.Visualize</code> で消せます）。</li><li>ノイズの模様は雲のノイズの画像（繰り返す 3D の模様）を使い回します。雲を使っていないシーンでも、ノイズが要るときだけ作ります。</li></ul>",
+    see: [["api-HeightFog", "高さフォグ"], ["api-CVar", "CVar"]]
   },
 
   {

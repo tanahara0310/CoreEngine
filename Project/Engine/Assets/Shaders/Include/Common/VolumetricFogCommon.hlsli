@@ -58,6 +58,48 @@ struct VolumetricFogLocalLights
     VolumetricFogLocalLight lights[kVolumetricFogMaxLocalLights];
 };
 
+/// @brief mediaFlags: 局所の霧かノイズがあり、濃さを格子の中のずらした点で求める
+static const uint kVolumetricFogMediaVarying = 1u;
+/// @brief mediaFlags: 発光する局所の霧がある
+static const uint kVolumetricFogMediaEmissive = 2u;
+
+/// @brief 局所の霧の形（C++ 側 VolumetricFog::VolumeShape と一致）
+static const uint kVolumetricFogVolumeBox = 0;
+static const uint kVolumetricFogVolumeSphere = 1;
+
+/// @brief 局所の霧の最大数
+static const uint kVolumetricFogMaxVolumes = 32;
+
+/// @brief 局所の霧 1 つ（C++ 側 VolumetricFog::LocalVolume と 1 対 1）
+/// @details 点 P の形の中の座標は dot(P - center, axis*)。形の表面で -0.5〜0.5 になる。
+struct VolumetricFogLocalVolume
+{
+    float3 center;        ///< 中心のワールド座標 [m]
+    uint   shape;         ///< kVolumetricFogVolume*
+    float3 axisX;         ///< X の向き ÷ X の大きさ [1/m]
+    float  edgeFade;      ///< 縁をぼかす幅（中心から表面までに対する割合）
+    float3 axisY;         ///< Y の向き ÷ Y の大きさ [1/m]
+    float  noiseStrength; ///< ノイズの強さ（0〜1）
+    float3 axisZ;         ///< Z の向き ÷ Z の大きさ [1/m]
+    float  extinction;    ///< 消散係数 [1/m]
+    float3 albedo;        ///< 散乱の割合
+    float  pad0;
+    float3 emissive;      ///< 1m あたりの発光（シェーダー単位の輝度）
+    float  pad1;
+};
+
+/// @brief 局所の霧とノイズの定数（C++ 側 VolumetricFog::MediaConstants と 1 対 1）
+struct VolumetricFogMedia
+{
+    float3 noiseOffset;   ///< ノイズを引く座標へ足すずれ（風で流す）[m]
+    float  noiseInvScale; ///< ノイズの模様の一辺 [m] の逆数
+    float  noiseStrength; ///< 高さフォグへ掛けるノイズの強さ（0〜1）
+    uint   noiseEnabled;  ///< 1 ならノイズの画像を引く
+    uint   volumeCount;   ///< 局所の霧の数
+    float  pad;
+    VolumetricFogLocalVolume volumes[kVolumetricFogMaxVolumes];
+};
+
 /// @brief ボリュメトリックフォグの定数（C++ 側 VolumetricFog::Constants と 1 対 1）
 struct VolumetricFogParameters
 {
@@ -79,7 +121,7 @@ struct VolumetricFogParameters
     float    skyAmbientScale;    ///< 空の SH の値への倍率
     uint     directionalCount;   ///< 霧を照らす平行光源の数
     uint     debugView;          ///< デバッグ表示（0 = なし）
-    float    pad0;
+    uint     mediaFlags;         ///< kVolumetricFogMedia* の組み合わせ
     float4x4 prevViewProj;       ///< 前フレームのジッタ無しの View*Projection
     float3   prevCameraWorldPos; ///< 前フレームのカメラのワールド座標 [m]
     float    historyWeight;      ///< 前フレームの光を混ぜる量

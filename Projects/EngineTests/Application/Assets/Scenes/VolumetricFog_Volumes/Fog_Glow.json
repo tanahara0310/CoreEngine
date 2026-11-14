@@ -1,0 +1,58 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    16.0,
+                    3.0,
+                    14.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "albedo": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "density": 0.02,
+                "edgeFade": 0.7,
+                "emissiveColor": [
+                    0.3,
+                    0.6,
+                    1.0,
+                    1.0
+                ],
+                "emissiveIntensity": 8000.0,
+                "noiseStrength": 0.0,
+                "shape": 1,
+                "size": [
+                    6.0,
+                    6.0,
+                    6.0
+                ]
+            },
+            "type": "FogVolume"
+        }
+    ],
+    "id": "793c8f4aacbe7cce",
+    "name": "Fog_Glow",
+    "order": 9
+}

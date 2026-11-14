@@ -438,6 +438,10 @@ namespace CoreEngine
         lightGizmos_ = std::make_unique<Editor::SceneLightGizmos>();
         lightGizmos_->Initialize(*dx);
 
+        // シーンビューに局所の霧の形の輪郭を描く
+        fogVolumeGizmos_ = std::make_unique<Editor::SceneFogVolumeGizmos>();
+        fogVolumeGizmos_->Initialize();
+
         // LoggerからConsoleUIへのログ転送を接続
         if (auto* console = GetConsole()) {
             Logger::GetInstance().SetConsoleCallback(
@@ -781,6 +785,7 @@ namespace CoreEngine
 
         // シーンビューのライトのアイコンと、深度と比べて描く PSO（GPU より先に放す）
         lightGizmos_.reset();
+        fogVolumeGizmos_.reset();
         Editor::SceneOverlayOcclusion::Get().Finalize();
 
         // プロファイラーの終了処理（ImGui より先に解放）

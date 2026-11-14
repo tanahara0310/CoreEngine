@@ -1,0 +1,58 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    10.0,
+                    1.5,
+                    32.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "albedo": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "density": 0.06,
+                "edgeFade": 0.3,
+                "emissiveColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "emissiveIntensity": 0.0,
+                "noiseStrength": 0.0,
+                "shape": 0,
+                "size": [
+                    18.0,
+                    3.0,
+                    20.0
+                ]
+            },
+            "type": "FogVolume"
+        }
+    ],
+    "id": "5473e679d0500c03",
+    "name": "Fog_ValleyCalm",
+    "order": 7
+}

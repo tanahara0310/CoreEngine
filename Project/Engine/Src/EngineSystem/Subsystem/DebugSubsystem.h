@@ -27,6 +27,7 @@
 #include "Editor/Environment/VolumetricCloudEditor.h"
 #include "Editor/Environment/FogEditor.h"
 #include "Editor/Scene/PlayModeController.h"
+#include "Editor/Scene/SceneFogVolumeGizmos.h"
 #include "Editor/Scene/SceneLightGizmos.h"
 #include "EngineSystem/Settings/CVarSettingsSection.h"
 #include "Graphics/Render/Pass/RenderPass.h"
@@ -120,6 +121,9 @@ namespace CoreEngine
 
         // シーンビューのライトのアイコンと範囲の線
         std::unique_ptr<Editor::SceneLightGizmos> lightGizmos_;
+
+        // シーンビューの局所の霧の輪郭
+        std::unique_ptr<Editor::SceneFogVolumeGizmos> fogVolumeGizmos_;
 
         // エディタ設定の自動保存セクション（大気物性・雲。太陽/月ライトはシーン寿命のため
         // EnvironmentFeature 側が別セクションで扱う）。cloudEditor_ を参照するため

@@ -574,6 +574,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\GameObject\Component\Render\Text3DRendererComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Animation\SkeletonSocketComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Camera\CameraComponent.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Component\Environment\FogVolumeComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Environment\HeightFogComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Environment\PostProcessComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Environment\VolumetricCloudComponent.cpp" />
@@ -610,6 +611,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Editor\Scene\ObjectEditing.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\ScenePicking.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\SceneViewTools.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Scene\SceneFogVolumeGizmos.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\SceneLightGizmos.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\SceneOverlayOcclusion.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\PlayModeController.cpp" />
@@ -1886,6 +1888,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\GameObject\Component\Animation\AnimatorComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Camera\CameraComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Environment\CVarToggleComponent.h" />
+    <ClInclude Include="Engine\Src\GameObject\Component\Environment\FogVolumeComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Environment\HeightFogComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Environment\PostProcessComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\Component\Environment\VolumetricCloudComponent.h" />
@@ -1938,6 +1941,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Editor\Scene\PrefabEditing.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\PrefabMode.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\SceneDebugEditor.h" />
+    <ClInclude Include="Engine\Src\Editor\Scene\SceneFogVolumeGizmos.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\SceneLightGizmos.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\SceneOverlayOcclusion.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\SceneResaveDialog.h" />

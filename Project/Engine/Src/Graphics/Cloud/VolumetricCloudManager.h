@@ -76,6 +76,9 @@ namespace CoreEngine
         /// @brief ノイズテクスチャが生成済みか
         bool AreNoiseTexturesReady() const { return noiseBaker_.IsReady(); }
 
+        /// @brief ベース形状ノイズ（128^3・繰り返す・ミップ付き）の SRV（生成前は中身が無い）
+        D3D12_GPU_DESCRIPTOR_HANDLE GetBaseShapeNoiseSrv() const { return resources_.baseShapeNoise.srv.gpuHandle; }
+
         // ===== 雲シャドウマップ（CloudShadowMapPass から呼ばれる） =====
 
         /// @brief 太陽方向の雲透過率マップを生成する
