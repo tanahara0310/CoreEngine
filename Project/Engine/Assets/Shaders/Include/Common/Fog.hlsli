@@ -44,7 +44,7 @@ struct FogParameters
     uint     waterClipEnabled;///< 1 なら水面の範囲内で水面より下の面に全画面フォグを掛けない
     float2   waterRegionCenterXZ;     ///< 水面の範囲の中心（ワールド XZ）[m]
     float2   waterRegionHalfExtentXZ; ///< 水面の範囲の半分の大きさ（ワールド XZ）[m]
-    uint     volumetricEnabled; ///< 1 なら全画面の合成と前方描画でボリュメトリックの格子を使う
+    uint     volumetricEnabled; ///< kFogVolumetric*（全画面の合成と前方描画がボリュメトリックの格子をどう使うか）
     float    volumetricLightScale; ///< 格子で散乱した光を足す割合（通常 1・加算とスクリーンは 0 で減衰だけ）
     float4x4 volumetricViewProj; ///< 格子を作ったジッタ無しの View*Projection（行ベクトル規約）
     float3   volumetricGridSize; ///< 格子の数（横・縦・奥行き）
@@ -53,6 +53,13 @@ struct FogParameters
     float    volumetricDepthDistribution; ///< 格子の奥ほど厚くする度合い（c）
     float    pad1;            ///< 16 バイト境界までの詰め物
 };
+
+/// @brief volumetricEnabled: 格子を使わない（Fog.hlsli の解析式だけ）
+static const uint kFogVolumetricOff = 0u;
+/// @brief volumetricEnabled: 高さフォグと局所の霧を格子で描く（格子より奥は解析式の濃さと格子の奥の光）
+static const uint kFogVolumetricHeightFog = 1u;
+/// @brief volumetricEnabled: 格子には局所の霧だけが入る（高さフォグは解析式のまま掛け、その手前に局所の霧を重ねる）
+static const uint kFogVolumetricLocalOnly = 2u;
 
 /// @brief 光学的深さの上限。exp(-32) = 1.3e-14 で、これ以上は完全に不透明と区別できない
 static const float kFogMaxOpticalDepth = 32.0f;

@@ -125,6 +125,9 @@ namespace CoreEngine
         /// @brief パーティクルのオブジェクトを Game ビューの中央の地面に作って選ぶ（Undo に積む）
         void CreateParticleObject(ObjectEditing::ParticleKind kind);
 
+        /// @brief 局所の霧のオブジェクトを Game ビューの中央の地面に作って選ぶ（Undo に積む）
+        void CreateFogVolumeObject();
+
         /// @brief 白い四角のスプライトを Game ビューの中央の z = 0 に作って選ぶ（Undo に積む）
         void CreateSpriteObject();
 

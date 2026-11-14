@@ -61,7 +61,7 @@ namespace CoreEngine
         .screenSpace = false,
         .resolve = [](const RenderContext& context, uint32_t, RTDebugSource& out) {
             RTVolumetricShadow* shadow = FindRTEffect<RTVolumetricShadow>(context);
-            if (!shadow || !shadow->IsInitialized() || !shadow->IsDispatchedThisFrame()) {
+            if (!shadow || !shadow->IsInitialized() || !shadow->IsAvailableThisFrame()) {
                 return false;
             }
             out.resource = &shadow->GetDepth();
@@ -95,8 +95,8 @@ namespace CoreEngine
             VolumetricFogCVars::Distance.Get(),
             context.rtScene ? context.rtScene->GetHitTableIndices() : RTHitTableIndices{});
 
-        // 書いたフレームだけ載せる（載っていなければ霧の格子は物の影なしで照らす）
-        if (shadow->IsDispatchedThisFrame() && context.frameBlackboard) {
+        // 使える画像があるフレームだけ載せる（載っていなければ霧の格子は物の影なしで照らす）
+        if (shadow->IsAvailableThisFrame() && context.frameBlackboard) {
             context.frameBlackboard->SetResource(
                 FrameBlackboard::VolumetricSunDepth, shadow->GetDepthSrv(), &shadow->GetDepth());
         }

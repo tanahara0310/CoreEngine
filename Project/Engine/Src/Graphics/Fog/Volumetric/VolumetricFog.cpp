@@ -94,6 +94,39 @@ namespace CoreEngine
         /// @brief 局所の霧の 1 辺の大きさの下限 [m]
         constexpr float kMinVolumeSize = 1.0e-3f;
 
+        /// @brief 局所の霧が発光するか
+        bool Emits(const VolumetricFogVolumeDesc& volume)
+        {
+            return (std::max)({ volume.emissive.x, volume.emissive.y, volume.emissive.z }) > 0.0f;
+        }
+
+        /// @brief 局所の霧 1 つを定数の形へ写す
+        /// @param size 各軸の大きさ（下限をかけた値）[m]
+        VolumetricFog::LocalVolume ToLocalVolume(const VolumetricFogVolumeDesc& volume, const Vector3& size)
+        {
+            VolumetricFog::LocalVolume out{};
+            out.center = volume.center;
+            out.shape = (volume.shape == VolumetricFog::kVolumeShapeSphere)
+                ? VolumetricFog::kVolumeShapeSphere : VolumetricFog::kVolumeShapeBox;
+            out.axisX = volume.axisX * (1.0f / size.x);
+            out.axisY = volume.axisY * (1.0f / size.y);
+            out.axisZ = volume.axisZ * (1.0f / size.z);
+            out.edgeFade = std::clamp(volume.edgeFade, 0.0f, 1.0f);
+            out.noiseStrength = std::clamp(volume.noiseStrength, 0.0f, 1.0f);
+            out.extinction = std::max(volume.extinction, 0.0f);
+            out.albedo = volume.albedo;
+            out.emissive = Emits(volume) ? volume.emissive : Vector3{};
+            return out;
+        }
+
+        /// @brief カメラから見た局所の霧の形を包む球の範囲
+        struct VolumeCandidate {
+            const VolumetricFogVolumeDesc* desc = nullptr;
+            Vector3 size{};             ///< 各軸の大きさ（下限をかけた値）[m]
+            float nearDistance = 0.0f;  ///< 球のいちばん手前までの距離 [m]
+            float farDistance = 0.0f;   ///< 球のいちばん奥までの距離 [m]
+        };
+
         /// @brief 格子の中のずらし方が一巡するフレーム数
         constexpr uint32_t kJitterSequenceLength = 16;
 
@@ -419,6 +452,12 @@ namespace CoreEngine
         volumes_.assign(volumes.begin(), volumes.end());
     }
 
+    bool VolumetricFog::HasVolumes() const
+    {
+        return std::any_of(volumes_.begin(), volumes_.end(),
+            [](const VolumetricFogVolumeDesc& volume) { return volume.extinction > 0.0f || Emits(volume); });
+    }
+
     bool VolumetricFog::IsNoiseRequested() const
     {
         if (VolumetricFogCVars::NoiseStrength.Get() > 0.0f) {
@@ -429,9 +468,10 @@ namespace CoreEngine
     }
 
     bool VolumetricFog::AllocateMedia(
-        Constants& constants, const Vector3& cameraPos, D3D12_GPU_DESCRIPTOR_HANDLE noiseSrv)
+        Constants& constants, const Vector3& cameraPos, D3D12_GPU_DESCRIPTOR_HANDLE noiseSrv, bool heightFogInGrid)
     {
         MediaConstants media{};
+        FarMediaConstants farMedia{};
 
         // 模様は風下へ流れる。ずれは模様の一辺で折り返す（ノイズの画像は繰り返す）
         const float noiseScale = std::max(VolumetricFogCVars::NoiseScale.Get(), 0.1f);
@@ -442,41 +482,48 @@ namespace CoreEngine
         noiseOffset_.z = std::fmod(noiseOffset_.z - windDirection.y * windSpeed * deltaTime, noiseScale);
         media.noiseOffset = noiseOffset_;
         media.noiseInvScale = 1.0f / noiseScale;
-        media.noiseStrength = std::clamp(VolumetricFogCVars::NoiseStrength.Get(), 0.0f, 1.0f);
+        media.noiseStrength = heightFogInGrid
+            ? std::clamp(VolumetricFogCVars::NoiseStrength.Get(), 0.0f, 1.0f) : 0.0f;
 
-        bool anyNoise = media.noiseStrength > 0.0f;
-        bool anyEmissive = false;
+        // 数が上限を超えたら遠いものから落とすので、形を包む球の手前の距離の順に並べる
+        std::vector<VolumeCandidate> candidates;
+        candidates.reserve(volumes_.size());
         for (const VolumetricFogVolumeDesc& volume : volumes_) {
-            if (media.volumeCount >= kMaxVolumes) {
-                break;
-            }
-            const bool emits = (std::max)({ volume.emissive.x, volume.emissive.y, volume.emissive.z }) > 0.0f;
-            if (volume.extinction <= 0.0f && !emits) {
+            if (volume.extinction <= 0.0f && !Emits(volume)) {
                 continue;
             }
-            const Vector3 size{
+            VolumeCandidate candidate{};
+            candidate.desc = &volume;
+            candidate.size = Vector3{
                 std::max(volume.size.x, kMinVolumeSize),
                 std::max(volume.size.y, kMinVolumeSize),
                 std::max(volume.size.z, kMinVolumeSize) };
-            // 形を包む球がカメラから distance の球にかからなければ飛ばす
-            if (Length(volume.center - cameraPos) - 0.5f * Length(size) >= constants.distance) {
-                continue;
-            }
-
-            LocalVolume& out = media.volumes[media.volumeCount++];
-            out.center = volume.center;
-            out.shape = (volume.shape == kVolumeShapeSphere) ? kVolumeShapeSphere : kVolumeShapeBox;
-            out.axisX = volume.axisX * (1.0f / size.x);
-            out.axisY = volume.axisY * (1.0f / size.y);
-            out.axisZ = volume.axisZ * (1.0f / size.z);
-            out.edgeFade = std::clamp(volume.edgeFade, 0.0f, 1.0f);
-            out.noiseStrength = std::clamp(volume.noiseStrength, 0.0f, 1.0f);
-            out.extinction = std::max(volume.extinction, 0.0f);
-            out.albedo = volume.albedo;
-            out.emissive = emits ? volume.emissive : Vector3{};
-            anyNoise = anyNoise || out.noiseStrength > 0.0f;
-            anyEmissive = anyEmissive || emits;
+            const float centerDistance = Length(volume.center - cameraPos);
+            const float radius = 0.5f * Length(candidate.size);
+            candidate.nearDistance = centerDistance - radius;
+            candidate.farDistance = centerDistance + radius;
+            candidates.push_back(candidate);
         }
+        std::stable_sort(candidates.begin(), candidates.end(),
+            [](const VolumeCandidate& a, const VolumeCandidate& b) { return a.nearDistance < b.nearDistance; });
+
+        bool anyNoise = media.noiseStrength > 0.0f;
+        bool anyEmissive = false;
+        for (const VolumeCandidate& candidate : candidates) {
+            // 形を包む球がカメラから distance の球にかかるものは格子へ入れる
+            if (candidate.nearDistance < constants.distance && media.volumeCount < kMaxVolumes) {
+                const LocalVolume& out = media.volumes[media.volumeCount++] =
+                    ToLocalVolume(*candidate.desc, candidate.size);
+                anyNoise = anyNoise || out.noiseStrength > 0.0f;
+                anyEmissive = anyEmissive || Emits(*candidate.desc);
+            }
+            // distance の球の外へはみ出すものは、格子より奥でも合成が足す
+            if (candidate.farDistance > constants.distance && farMedia.volumeCount < kMaxFarVolumes) {
+                farMedia.volumes[farMedia.volumeCount++] = ToLocalVolume(*candidate.desc, candidate.size);
+            }
+        }
+        farMedia.heightAlbedo = heightFogInGrid ? constants.albedo : Vector3{};
+        farVolumeCount_ = farMedia.volumeCount;
 
         noiseSrv_ = (anyNoise && noiseSrv.ptr != 0) ? noiseSrv : D3D12_GPU_DESCRIPTOR_HANDLE{};
         media.noiseEnabled = (noiseSrv_.ptr != 0) ? 1u : 0u;
@@ -491,8 +538,10 @@ namespace CoreEngine
             constants.mediaFlags |= kMediaEmissive;
         }
 
-        mediaConstants_ = graphicsCore_->GetUploadRing().AllocateConstants(media);
-        return mediaConstants_ != 0;
+        UploadRing& ring = graphicsCore_->GetUploadRing();
+        mediaConstants_ = ring.AllocateConstants(media);
+        farMediaConstants_ = ring.AllocateConstants(farMedia);
+        return mediaConstants_ != 0 && farMediaConstants_ != 0;
     }
 
     bool VolumetricFog::PrepareFrame(const VolumetricFogFrameInput& input)
@@ -501,6 +550,7 @@ namespace CoreEngine
         frameConstants_ = 0;
         localLightConstants_ = 0;
         mediaConstants_ = 0;
+        farMediaConstants_ = 0;
         if (!pipelineReady_ || !graphicsCore_ || !input.view || !input.view->isValid || !input.fog
             || input.screenWidth == 0 || input.screenHeight == 0) {
             return false;
@@ -539,7 +589,9 @@ namespace CoreEngine
             static_cast<float>(pixelSize) / static_cast<float>(input.screenHeight) };
         constants.albedo = Vector3{ albedo.x, albedo.y, albedo.z };
         constants.phaseG = std::clamp(VolumetricFogCVars::Anisotropy.Get(), -0.99f, 0.99f);
-        constants.density = fog.density;
+        // 高さフォグを格子へ入れないフレームは、格子に局所の霧だけが入る
+        heightFogInGrid_ = input.heightFogInGrid;
+        constants.density = heightFogInGrid_ ? fog.density : 0.0f;
         constants.heightFalloff = fog.heightFalloff;
         constants.heightRef = fog.heightRefM;
         constants.startDistance = fog.startDistanceM;
@@ -578,7 +630,7 @@ namespace CoreEngine
         prevSunDepthLight_ = sunDepthLight;
 
         if (!AllocateLocalLights(input.lightManager, view.position, constants.distance)
-            || !AllocateMedia(constants, view.position, input.noiseSrv)) {
+            || !AllocateMedia(constants, view.position, input.noiseSrv, heightFogInGrid_)) {
             return false;
         }
         frameConstants_ = graphicsCore_->GetUploadRing().AllocateConstants(constants);
@@ -696,6 +748,7 @@ namespace CoreEngine
         frameConstants_ = 0;
         localLightConstants_ = 0;
         mediaConstants_ = 0;
+        farMediaConstants_ = 0;
         skyIrradianceSrv_ = {};
         cloudShadowSrv_ = {};
         sunDepthSrv_ = {};

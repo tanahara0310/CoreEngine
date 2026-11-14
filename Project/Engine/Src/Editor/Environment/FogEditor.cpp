@@ -149,21 +149,29 @@ namespace CoreEngine {
             "点光源・スポット・エリアライトも霧を照らす（霧に影は落とさない）。\n"
             "格子より奥は同じ式で計算を続けるので、境目は出ない。\n"
             "霧の濃さと高さは高さフォグの設定をそのまま使う。\n"
-            "局所の霧（FogVolume）を置くと、箱や球の中だけに霧を足せる（格子の中だけ）。\n"
+            "局所の霧（FogVolume）を置くと、箱や球の中だけに霧を足せる。\n"
+            "局所の霧はこのチェックや高さフォグに関係なく描かれ、格子より奥の部分も合成が足す。\n"
             "r.Fog.Volumetric.NoiseStrength で濃さにむらを付け、風で流せる。");
-        if (volumetric) {
-            const VolumetricFog& volumetricFog = fog->GetVolumetric();
-            if (!enabled) {
-                ImGui::TextDisabled("フォグを有効にすると効きます");
-            } else if (!volumetricFog.IsPipelineReady()) {
+        const VolumetricFog& volumetricFog = fog->GetVolumetric();
+        const bool hasVolumes = volumetricFog.HasVolumes();
+        if (volumetric || hasVolumes) {
+            if (!volumetricFog.IsPipelineReady()) {
                 ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f),
                     "ボリュメトリックフォグのパイプラインの構築に失敗しています（Shader ログを確認してください）");
-            } else if (const uint32_t* grid = volumetricFog.GetGridSize(); grid[0] > 0) {
-                ImGui::TextDisabled("格子 %u x %u x %u・霧を照らす点光源・スポット・エリア %u 灯",
-                    grid[0], grid[1], grid[2], volumetricFog.GetLocalLightCount());
-                ImGui::TextDisabled("局所の霧 %u 個（格子にかかる %u 個）・ノイズ %s",
-                    volumetricFog.GetVolumeCount(), volumetricFog.GetInjectedVolumeCount(),
-                    volumetricFog.IsNoiseActive() ? "あり" : "なし");
+            } else {
+                if (volumetric && !enabled) {
+                    ImGui::TextDisabled("フォグを有効にすると高さフォグも格子で描きます");
+                }
+                if (const uint32_t* grid = volumetricFog.GetGridSize(); grid[0] > 0 && ((volumetric && enabled) || hasVolumes)) {
+                    ImGui::TextDisabled("格子 %u x %u x %u・霧を照らす点光源・スポット・エリア %u 灯",
+                        grid[0], grid[1], grid[2], volumetricFog.GetLocalLightCount());
+                    ImGui::TextDisabled("局所の霧 %u 個（格子にかかる %u 個・格子より奥まで届く %u 個）・ノイズ %s",
+                        volumetricFog.GetVolumeCount(), volumetricFog.GetInjectedVolumeCount(),
+                        volumetricFog.GetFarVolumeCount(), volumetricFog.IsNoiseActive() ? "あり" : "なし");
+                    if (hasVolumes && !(volumetric && enabled)) {
+                        ImGui::TextDisabled("高さフォグは格子に入れず、局所の霧だけを格子で描いています");
+                    }
+                }
             }
         }
 

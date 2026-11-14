@@ -35,6 +35,7 @@ namespace CoreEngine::ModelBind
         gSkySpecularMap,
         gVolumetricFogIntegrated,
         gVolumetricFogFarLight,
+        gVolumetricFogFarMedia,
         Count
     };
 
@@ -73,6 +74,7 @@ namespace CoreEngine::ModelBind
         { "gSkySpecularMap",       kSRV, kCond },  // 空の映り込みが有効なときだけ読む
         { "gVolumetricFogIntegrated", kSRV, kCond },  // ボリュメトリックの格子を使うビューだけ読む
         { "gVolumetricFogFarLight",   kSRV, kCond },
+        { "gVolumetricFogFarMedia",   kCBV, kCond },
     };
 
     /// @brief GBuffer.VS/PS（通常モデル・G-Buffer）
@@ -104,6 +106,7 @@ namespace CoreEngine::ModelBind
         { "gSkySpecularMap",       kSRV, kOpt  },
         { "gVolumetricFogIntegrated", kSRV, kOpt },  // G-Buffer には無い（全画面パスが掛ける）
         { "gVolumetricFogFarLight",   kSRV, kOpt },
+        { "gVolumetricFogFarMedia",   kCBV, kOpt },
     };
 
     /// @brief スキニングモデル・フォワード（gInstanceData の代わりに gTransformationMatrix）
@@ -134,6 +137,7 @@ namespace CoreEngine::ModelBind
         { "gSkySpecularMap",       kSRV, kCond },  // 空の映り込みが有効なときだけ読む
         { "gVolumetricFogIntegrated", kSRV, kCond },  // ボリュメトリックの格子を使うビューだけ読む
         { "gVolumetricFogFarLight",   kSRV, kCond },
+        { "gVolumetricFogFarMedia",   kCBV, kCond },
     };
 
     /// @brief スキニングモデル・G-Buffer
@@ -164,6 +168,7 @@ namespace CoreEngine::ModelBind
         { "gSkySpecularMap",       kSRV, kOpt  },
         { "gVolumetricFogIntegrated", kSRV, kOpt },
         { "gVolumetricFogFarLight",   kSRV, kOpt },
+        { "gVolumetricFogFarMedia",   kCBV, kOpt },
     };
 
     /// @brief カスタムシェーダー用。宣言されているものだけエンジンが差すのですべて Optional
@@ -194,6 +199,7 @@ namespace CoreEngine::ModelBind
         { "gSkySpecularMap",       kSRV, kOpt  },
         { "gVolumetricFogIntegrated", kSRV, kOpt },
         { "gVolumetricFogFarLight",   kSRV, kOpt },
+        { "gVolumetricFogFarMedia",   kCBV, kOpt },
     };
 
     static_assert(std::size(kCustom) == Slot::Count, "kCustom と Slot の並びがずれている");

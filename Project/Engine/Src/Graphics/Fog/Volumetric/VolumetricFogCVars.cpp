@@ -58,6 +58,12 @@ namespace CoreEngine::VolumetricFogCVars
         "太陽から見た深さの画像のレイを、霧の範囲よりどれだけ光源の側から撃つか [m]。範囲の外の高い物も霧に影を落とす",
         CVarRange{ 0.0f, 2000.0f } };
 
+    CVar<int> ShadowUpdateInterval{
+        "r.Fog.Volumetric.ShadowUpdateInterval", 2,
+        "太陽から見た深さの画像を何フレームに 1 回撮り直すか。間のフレームは前に撮った画像を使う"
+        "（光源・光の向き・霧の範囲が大きく変わったフレームはすぐ撮り直す）。1 で毎フレーム",
+        CVarRange{ 1.0f, 8.0f } };
+
     CVar<bool> LocalLights{
         "r.Fog.Volumetric.LocalLights", true,
         "点光源・スポット・エリアライトが霧を照らす（霧に影は落とさない）。"

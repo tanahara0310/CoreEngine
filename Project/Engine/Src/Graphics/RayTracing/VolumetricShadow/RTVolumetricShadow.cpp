@@ -35,6 +35,12 @@ namespace CoreEngine
         /// @brief 日なたとみなす距離の余裕（画素の幅の何倍か）
         constexpr float kBiasTexels = 2.0f;
 
+        /// @brief 前の画像を使い回してよい光の向きの差（cos）
+        constexpr float kReuseMinDirectionCos = 0.99995f;
+
+        /// @brief 前の画像を使い回してよい、霧の範囲を包む球の中心と半径のずれ（半径に対する割合）
+        constexpr float kReuseMaxShiftRatio = 0.05f;
+
         /// @brief RTVolumetricShadow.CS.hlsl の RTVolumetricShadowConstants
         struct alignas(16) RTVolumetricShadowConstants {
             Vector3 origin;                 // offset   0
@@ -157,6 +163,26 @@ namespace CoreEngine
     void RTVolumetricShadow::BeginFrame()
     {
         dispatchedThisFrame_ = false;
+        availableThisFrame_ = false;
+        tracedCalledLastFrame_ = tracedCalledThisFrame_;
+        tracedCalledThisFrame_ = false;
+    }
+
+    bool RTVolumetricShadow::CanReuseFrame(
+        const Light* light, uint32_t resolution, const Vector3& center, float radius) const
+    {
+        const int interval = std::clamp(VolumetricFogCVars::ShadowUpdateInterval.Get(), 1, 8);
+        if (!frameValid_ || !tracedCalledLastFrame_ || framesSinceTrace_ + 1 >= static_cast<uint32_t>(interval)) {
+            return false;
+        }
+        if (light != frame_.light || resolution != resolution_) {
+            return false;
+        }
+        if (Dot(Normalize(light->direction), frame_.direction) < kReuseMinDirectionCos) {
+            return false;
+        }
+        const float maxShift = tracedRadius_ * kReuseMaxShiftRatio;
+        return Length(center - tracedCenter_) <= maxShift && std::fabs(radius - tracedRadius_) <= maxShift;
     }
 
     const Light* RTVolumetricShadow::SelectLight(const LightManager& lights)
@@ -282,12 +308,25 @@ namespace CoreEngine
         const Light* light = SelectLight(lights);
         Vector3 center{};
         float radius = 0.0f;
+        tracedCalledThisFrame_ = true;
         if (!light || !ComputeFogBoundingSphere(view, std::max(fogDistance, 1.0f), center, radius)) {
             dispatchInfo_.status = RayTracingDispatchStatus::Skipped;
+            frameValid_ = false;
+            return;
+        }
+
+        // 光源と霧の範囲がほとんど変わっていなければ、前に書いた画像と座標をそのまま使う
+        if (CanReuseFrame(light, resolution, center, radius)) {
+            ++framesSinceTrace_;
+            availableThisFrame_ = true;
+            dispatchInfo_.status = RayTracingDispatchStatus::Skipped;
+            dispatchInfo_.outputSrvPtr = srv_.gpuHandle.ptr;
+            dispatchInfo_.AddExtra("reused[frames]", static_cast<float>(framesSinceTrace_));
             return;
         }
         if (!EnsureTexture(resolution)) {
             dispatchInfo_.status = RayTracingDispatchStatus::OutputAllocationFailed;
+            frameValid_ = false;
             return;
         }
 
@@ -349,6 +388,11 @@ namespace CoreEngine
         frame_.bias = texelSize * kBiasTexels;
 
         dispatchedThisFrame_ = true;
+        availableThisFrame_ = true;
+        frameValid_ = true;
+        framesSinceTrace_ = 0;
+        tracedCenter_ = center;
+        tracedRadius_ = radius;
         dispatchInfo_.status = RayTracingDispatchStatus::Dispatched;
         dispatchInfo_.rayCount = static_cast<uint64_t>(resolution) * static_cast<uint64_t>(resolution);
         dispatchInfo_.outputSrvPtr = srv_.gpuHandle.ptr;

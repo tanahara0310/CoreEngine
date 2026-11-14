@@ -44,36 +44,6 @@ float NoiseFactor(float noise, float strength)
     return max(1.0f + kNoiseContrast * strength * noise, 0.0f);
 }
 
-/// @brief 局所の霧の中での濃さの割合（縁のぼかしの内側で 1・形の外で 0）
-float VolumeWeight(VolumetricFogLocalVolume volume, float3 worldPos)
-{
-    const float3 offset = worldPos - volume.center;
-    const float3 local = float3(dot(offset, volume.axisX), dot(offset, volume.axisY), dot(offset, volume.axisZ)) * 2.0f;
-    const float fade = max(volume.edgeFade, 1.0e-4f);
-
-    float weight;
-    if (volume.shape == kVolumetricFogVolumeSphere)
-    {
-        const float inside = 1.0f - length(local);
-        if (inside <= 0.0f)
-        {
-            return 0.0f;
-        }
-        weight = saturate(inside / fade);
-    }
-    else
-    {
-        const float3 inside = 1.0f - abs(local);
-        if (any(inside <= 0.0f))
-        {
-            return 0.0f;
-        }
-        const float3 axes = saturate(inside / fade);
-        weight = axes.x * axes.y * axes.z;
-    }
-    return weight * weight * (3.0f - 2.0f * weight);
-}
-
 [numthreads(4, 4, 4)]
 void main(uint3 cell : SV_DispatchThreadID)
 {
@@ -131,7 +101,7 @@ void main(uint3 cell : SV_DispatchThreadID)
         for (uint i = 0; i < gVolumetricFogMedia.volumeCount; ++i)
         {
             const VolumetricFogLocalVolume volume = gVolumetricFogMedia.volumes[i];
-            float weight = VolumeWeight(volume, worldPos);
+            float weight = VolumetricFogVolumeWeight(volume, worldPos);
             if (weight <= 0.0f)
             {
                 continue;

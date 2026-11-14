@@ -339,6 +339,12 @@ namespace CoreEngine
             }
             ImGui::EndMenu();
         }
+        if (ImGui::BeginMenu("環境", sceneDebugEditor_ != nullptr)) {
+            if (ImGui::MenuItem("局所の霧（FogVolume）")) {
+                sceneDebugEditor_->CreateFogVolumeObject();
+            }
+            ImGui::EndMenu();
+        }
         if (ImGui::BeginMenu("UI", sceneDebugEditor_ != nullptr)) {
             if (ImGui::MenuItem("テキスト")) {
                 sceneDebugEditor_->CreateUIObject(ObjectEditing::UIElementKind::Text);

@@ -6,6 +6,7 @@
 #include "Editor/Command/EditorCommand.h"
 #include "Editor/Command/EditorCommandStack.h"
 #include "Editor/Scene/EditorSceneAccess.h"
+#include "GameObject/Component/Environment/FogVolumeComponent.h"
 #include "GameObject/Component/Render/SpriteRendererComponent.h"
 #include "GameObject/Component/Transform/ITransformSource.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
@@ -40,6 +41,9 @@ namespace CoreEngine::ObjectEditing
 
         /// GPU パーティクルのオブジェクトの名前
         constexpr const char* kGpuParticleObjectName = "GPU Particle System";
+
+        /// 局所の霧のオブジェクトの名前
+        constexpr const char* kFogVolumeObjectName = "Fog Volume";
 
         /// UI テキストのオブジェクトの名前
         constexpr const char* kTextObjectName = "Text";
@@ -382,6 +386,38 @@ namespace CoreEngine::ObjectEditing
         PushCreateCommand(*object, object->GetName() + " を作る");
         Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
             "ObjectEditing: パーティクルのオブジェクト \"{}\" を作りました", object->GetName());
+        return object;
+    }
+
+    GameObject* CreateFogVolume(const Context& context, const Vector3& groundPosition)
+    {
+        GameObjectManager& manager = *context.manager;
+        const std::string name = HasObjectNamed(manager, kFogVolumeObjectName)
+            ? MakeCopyName(manager, kFogVolumeObjectName) : std::string(kFogVolumeObjectName);
+        auto owned = std::make_unique<GameObject>();
+        owned->SetSerializeKey(MakeNewObjectKey(name));
+        owned->SetName(name);
+        GameObject* const object = manager.AddObject(std::move(owned));
+        if (!object) {
+            return nullptr;
+        }
+
+        // エディタが作るオブジェクトのコンポーネントとして、トランスフォームを先頭に付ける。
+        // 形の底が置いた所に着くよう、中心を大きさの半分だけ上げる
+        {
+            ComponentHost::DataAttachScope dataScope(*object);
+            TransformComponent* const transform = object->AddComponent<TransformComponent>();
+            const FogVolumeComponent* const volume = object->AddComponent<FogVolumeComponent>();
+            if (transform) {
+                const float halfHeight = volume ? volume->GetSize().y * 0.5f : 0.0f;
+                transform->SetTranslate(groundPosition + Vector3{ 0.0f, halfHeight, 0.0f });
+            }
+        }
+        manager.InvalidateReferences();
+
+        PushCreateCommand(*object, object->GetName() + " を作る");
+        Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
+            "ObjectEditing: 局所の霧のオブジェクト \"{}\" を作りました", object->GetName());
         return object;
     }
 

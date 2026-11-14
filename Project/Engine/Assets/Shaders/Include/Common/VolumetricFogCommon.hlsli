@@ -100,6 +100,103 @@ struct VolumetricFogMedia
     VolumetricFogLocalVolume volumes[kVolumetricFogMaxVolumes];
 };
 
+/// @brief 格子より奥まで届く局所の霧の最大数
+static const uint kVolumetricFogMaxFarVolumes = 16;
+
+/// @brief 格子より奥の局所の霧を、形と視線が重なる区間ごとに調べる点の数
+static const uint kVolumetricFogFarVolumeSteps = 16;
+
+/// @brief 格子より奥の霧の定数（C++ 側 VolumetricFog::FarMediaConstants と 1 対 1）
+/// @details 全画面の合成と前方描画が、格子が届く距離より奥の高さフォグと局所の霧を足すのに使う
+struct VolumetricFogFarMedia
+{
+    float3 heightAlbedo;  ///< 高さフォグの散乱の割合
+    uint   volumeCount;   ///< 格子より奥まで届く局所の霧の数
+    VolumetricFogLocalVolume volumes[kVolumetricFogMaxFarVolumes];
+};
+
+/// @brief ワールド座標を局所の霧の座標（中心で 0・形の表面で 1）へ写す
+float3 VolumetricFogVolumeLocal(VolumetricFogLocalVolume volume, float3 worldPos)
+{
+    const float3 offset = worldPos - volume.center;
+    return float3(dot(offset, volume.axisX), dot(offset, volume.axisY), dot(offset, volume.axisZ)) * 2.0f;
+}
+
+/// @brief 向きを局所の霧の座標へ写す（長さは形の大きさで割った分だけ変わる）
+float3 VolumetricFogVolumeLocalDirection(VolumetricFogLocalVolume volume, float3 direction)
+{
+    return float3(dot(direction, volume.axisX), dot(direction, volume.axisY), dot(direction, volume.axisZ)) * 2.0f;
+}
+
+/// @brief 局所の霧の座標での濃さの割合（縁のぼかしの内側で 1・形の外で 0）
+float VolumetricFogVolumeWeightLocal(VolumetricFogLocalVolume volume, float3 local)
+{
+    const float fade = max(volume.edgeFade, 1.0e-4f);
+
+    float weight;
+    if (volume.shape == kVolumetricFogVolumeSphere)
+    {
+        const float inside = 1.0f - length(local);
+        if (inside <= 0.0f)
+        {
+            return 0.0f;
+        }
+        weight = saturate(inside / fade);
+    }
+    else
+    {
+        const float3 inside = 1.0f - abs(local);
+        if (any(inside <= 0.0f))
+        {
+            return 0.0f;
+        }
+        const float3 axes = saturate(inside / fade);
+        weight = axes.x * axes.y * axes.z;
+    }
+    return weight * weight * (3.0f - 2.0f * weight);
+}
+
+/// @brief ワールド座標の点での局所の霧の濃さの割合
+float VolumetricFogVolumeWeight(VolumetricFogLocalVolume volume, float3 worldPos)
+{
+    return VolumetricFogVolumeWeightLocal(volume, VolumetricFogVolumeLocal(volume, worldPos));
+}
+
+/// @brief 局所の霧の座標の視線 localOrigin + localDir × t が形の中を通る t の区間
+/// @return 形を通らなければ false
+bool VolumetricFogVolumeRayRange(
+    VolumetricFogLocalVolume volume, float3 localOrigin, float3 localDir, out float tEnter, out float tExit)
+{
+    tEnter = 0.0f;
+    tExit = 0.0f;
+    if (volume.shape == kVolumetricFogVolumeSphere)
+    {
+        const float a = dot(localDir, localDir);
+        const float b = dot(localOrigin, localDir);
+        const float c = dot(localOrigin, localOrigin) - 1.0f;
+        const float discriminant = b * b - a * c;
+        if (a <= 1.0e-12f || discriminant <= 0.0f)
+        {
+            return false;
+        }
+        const float root = sqrt(discriminant);
+        tEnter = (-b - root) / a;
+        tExit = (-b + root) / a;
+        return true;
+    }
+
+    // 箱は 3 組の面の間を通る区間の重なり
+    const float3 directionSign = step(0.0f, localDir) * 2.0f - 1.0f;
+    const float3 inverse = 1.0f / (directionSign * max(abs(localDir), 1.0e-8f));
+    const float3 t0 = (-1.0f - localOrigin) * inverse;
+    const float3 t1 = (1.0f - localOrigin) * inverse;
+    const float3 near = min(t0, t1);
+    const float3 far = max(t0, t1);
+    tEnter = max(max(near.x, near.y), near.z);
+    tExit = min(min(far.x, far.y), far.z);
+    return tExit > tEnter;
+}
+
 /// @brief ボリュメトリックフォグの定数（C++ 側 VolumetricFog::Constants と 1 対 1）
 struct VolumetricFogParameters
 {

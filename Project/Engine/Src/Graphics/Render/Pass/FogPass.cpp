@@ -124,11 +124,11 @@ namespace CoreEngine
             context.viewSettings.viewType == RenderViewType::GameView);
         PublishFogConstants(context);
 
-        // ここから先は SceneColor への合成。GameView かつ有効なときだけ
+        // ここから先は SceneColor への合成。GameView で、高さフォグが有効か格子を作ったときだけ
         if (context.viewSettings.viewType != RenderViewType::GameView) {
             return;
         }
-        if (!context.fogManager->IsFogActive() || !context.renderTargetManager) {
+        if (!context.fogManager->IsCompositeActive() || !context.renderTargetManager) {
             return;
         }
 

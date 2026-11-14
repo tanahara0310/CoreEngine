@@ -68,6 +68,11 @@ namespace CoreEngine
         /// @return 作ったオブジェクト（作れなければ nullptr）
         GameObject* CreateParticle(const Context& context, ParticleKind kind, const Vector3& position);
 
+        /// @brief Transform と局所の霧（FogVolume）を持つオブジェクトを作る
+        /// @param groundPosition 形の底の中心を置く所
+        /// @return 作ったオブジェクト（作れなければ nullptr）
+        GameObject* CreateFogVolume(const Context& context, const Vector3& groundPosition);
+
         /// @brief Transform とスプライト描画を持つオブジェクトを作る
         /// @param baseName 名前（同じ名前があれば番号を足す）
         /// @param texturePath 貼るテクスチャのアセットのパス
