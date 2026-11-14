@@ -148,7 +148,9 @@ namespace CoreEngine {
             "霧が太陽と空の光で照らされ、太陽の方を向くと明るく光る。\n"
             "点光源・スポット・エリアライトも霧を照らす（霧に影は落とさない）。\n"
             "格子より奥は同じ式で計算を続けるので、境目は出ない。\n"
-            "霧の濃さと高さは高さフォグの設定をそのまま使う。");
+            "霧の濃さと高さは高さフォグの設定をそのまま使う。\n"
+            "局所の霧（FogVolume）を置くと、箱や球の中だけに霧を足せる（格子の中だけ）。\n"
+            "r.Fog.Volumetric.NoiseStrength で濃さにむらを付け、風で流せる。");
         if (volumetric) {
             const VolumetricFog& volumetricFog = fog->GetVolumetric();
             if (!enabled) {
@@ -159,6 +161,9 @@ namespace CoreEngine {
             } else if (const uint32_t* grid = volumetricFog.GetGridSize(); grid[0] > 0) {
                 ImGui::TextDisabled("格子 %u x %u x %u・霧を照らす点光源・スポット・エリア %u 灯",
                     grid[0], grid[1], grid[2], volumetricFog.GetLocalLightCount());
+                ImGui::TextDisabled("局所の霧 %u 個（格子にかかる %u 個）・ノイズ %s",
+                    volumetricFog.GetVolumeCount(), volumetricFog.GetInjectedVolumeCount(),
+                    volumetricFog.IsNoiseActive() ? "あり" : "なし");
             }
         }
 

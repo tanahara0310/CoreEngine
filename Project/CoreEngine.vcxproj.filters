@@ -1114,6 +1114,9 @@
     <ClCompile Include="Engine\Src\GameObject\Component\Camera\CameraComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Camera</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\Environment\FogVolumeComponent.cpp">
+      <Filter>Engine\Src\GameObject\Component\Environment</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\Component\Environment\HeightFogComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Environment</Filter>
     </ClCompile>
@@ -1220,6 +1223,9 @@
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Scene\SceneViewTools.cpp">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Scene\SceneFogVolumeGizmos.cpp">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Scene\SceneLightGizmos.cpp">
@@ -3450,6 +3456,9 @@
     <ClInclude Include="Engine\Src\GameObject\Component\Environment\CVarToggleComponent.h">
       <Filter>Engine\Src\GameObject\Component\Environment</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\Environment\FogVolumeComponent.h">
+      <Filter>Engine\Src\GameObject\Component\Environment</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Environment\HeightFogComponent.h">
       <Filter>Engine\Src\GameObject\Component\Environment</Filter>
     </ClInclude>
@@ -3604,6 +3613,9 @@
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Scene\SceneDebugEditor.h">
+      <Filter>Engine\Src\Editor\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Scene\SceneFogVolumeGizmos.h">
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Scene\SceneLightGizmos.h">

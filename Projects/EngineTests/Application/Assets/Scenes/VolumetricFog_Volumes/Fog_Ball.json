@@ -1,0 +1,58 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    -16.0,
+                    4.0,
+                    14.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "albedo": [
+                    1.0,
+                    0.45,
+                    0.35,
+                    1.0
+                ],
+                "density": 0.4,
+                "edgeFade": 1.0,
+                "emissiveColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "emissiveIntensity": 0.0,
+                "noiseStrength": 0.0,
+                "shape": 1,
+                "size": [
+                    7.0,
+                    7.0,
+                    7.0
+                ]
+            },
+            "type": "FogVolume"
+        }
+    ],
+    "id": "bf2e2da3d21f8847",
+    "name": "Fog_Ball",
+    "order": 8
+}

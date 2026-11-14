@@ -2,8 +2,9 @@
 /// @brief 格子 1 つずつに、視線の向きへ散乱する光を書く
 /// @details 光の源は平行光源（位相関数・雲の影・太陽から見た深さの画像による物の影つき）・
 ///          点光源・スポット・エリア（位相関数つき・影なし）と空の平均の輝度。
-///          点は格子の中で毎フレームずらし、前フレームの格子へ写した位置の光と混ぜる。
-///          出力: rgb = 散乱係数 × 光の源、a = 消散係数 [1/m]。
+///          局所の霧の発光を足す。点は格子の中で毎フレームずらし、前フレームの格子へ写した位置の光と混ぜる。
+///          局所の霧かノイズがあるフレームは、濃さもずらした点で求めているので消散係数も混ぜる。
+///          出力: rgb = 散乱係数 × 光の源 + 発光、a = 消散係数 [1/m]。
 ///          奥行き 0 の格子は、縦横 1 列の中心の視線で格子の端の点の光の源（物の影なし）も書く（格子より奥の霧の光）。
 
 #include "VolumetricFogCommon.hlsli"
@@ -16,6 +17,7 @@ StructuredBuffer<float4> gSkyIrradianceSH : register(t1);
 Texture2D<float> gCloudShadowMap : register(t2);
 Texture3D<float4> gLightScatteringHistory : register(t3);
 Texture2D<float> gSunDepth : register(t4);
+Texture3D<float3> gEmissive : register(t5);
 SamplerState gLinearClamp : register(s0);
 RWTexture3D<float4> gLightScattering : register(u0);
 RWTexture2D<float4> gFarLight : register(u1);
@@ -54,11 +56,11 @@ float3 LocalLightSource(VolumetricFogParameters p, float3 worldPos, float3 viewD
     return source;
 }
 
-/// @brief 格子の中心を前フレームの格子へ写し、そこに溜まっていた光を引く
+/// @brief 格子の中心を前フレームの格子へ写し、そこに溜まっていた光と消散係数を引く
 /// @return 前フレームの格子の外なら false
-bool SampleHistory(VolumetricFogParameters p, uint3 cell, out float3 history)
+bool SampleHistory(VolumetricFogParameters p, uint3 cell, out float4 history)
 {
-    history = float3(0.0f, 0.0f, 0.0f);
+    history = float4(0.0f, 0.0f, 0.0f, 0.0f);
 
     float3 centerDir;
     const float2 centerUV = (float2(cell.xy) + 0.5f) * p.gridPixelSize;
@@ -78,7 +80,7 @@ bool SampleHistory(VolumetricFogParameters p, uint3 cell, out float3 history)
     }
 
     const float3 uvw = VolumetricFogGridUVW(p, prevUV, prevDistance);
-    history = gLightScatteringHistory.SampleLevel(gLinearClamp, uvw, 0).rgb;
+    history = gLightScatteringHistory.SampleLevel(gLinearClamp, uvw, 0);
     return true;
 }
 
@@ -107,33 +109,44 @@ void main(uint3 cell : SV_DispatchThreadID)
     }
 
     const float4 medium = gVBuffer[cell];
-    if (medium.a <= 0.0f)
+    const bool varying = (p.mediaFlags & kVolumetricFogMediaVarying) != 0;
+    float4 result = float4(0.0f, 0.0f, 0.0f, medium.a);
+    if ((p.mediaFlags & kVolumetricFogMediaEmissive) != 0)
     {
-        gLightScattering[cell] = float4(0.0f, 0.0f, 0.0f, 0.0f);
-        return;
+        result.rgb = gEmissive[cell];
     }
 
-    float3 viewDir;
-    const float2 uv = (float2(cell.xy) + 0.5f + p.frameJitter.xy) * p.gridPixelSize;
-    const float3 worldPos = CellWorldPosition(p, uv, float(cell.z) + p.frameJitter.z, viewDir);
-
-    const float sunDepthShadow = VolumetricFogSunDepthShadow(p, gSunDepth, gLinearClamp, worldPos);
-    float3 source = VolumetricFogSource(
-        p, viewDir, ambient, worldPos, gCloudShadowMap, gLinearClamp, sunDepthShadow);
-    if (gVolumetricFogLocalLights.count > 0)
+    if (medium.a > 0.0f)
     {
-        source += LocalLightSource(p, worldPos, viewDir, CellRadius(p, cell));
+        float3 viewDir;
+        const float2 uv = (float2(cell.xy) + 0.5f + p.frameJitter.xy) * p.gridPixelSize;
+        const float3 worldPos = CellWorldPosition(p, uv, float(cell.z) + p.frameJitter.z, viewDir);
+
+        const float sunDepthShadow = VolumetricFogSunDepthShadow(p, gSunDepth, gLinearClamp, worldPos);
+        float3 source = VolumetricFogSource(
+            p, viewDir, ambient, worldPos, gCloudShadowMap, gLinearClamp, sunDepthShadow);
+        if (gVolumetricFogLocalLights.count > 0)
+        {
+            source += LocalLightSource(p, worldPos, viewDir, CellRadius(p, cell));
+        }
+        result.rgb += medium.rgb * source;
     }
-    float3 scattered = medium.rgb * source;
 
-    if (p.historyValid != 0)
+    if (p.historyValid != 0 && (medium.a > 0.0f || varying))
     {
-        float3 history;
+        float4 history;
         if (SampleHistory(p, cell, history))
         {
-            scattered = lerp(scattered, history, p.historyWeight);
+            if (varying)
+            {
+                result = lerp(result, history, p.historyWeight);
+            }
+            else
+            {
+                result.rgb = lerp(result.rgb, history.rgb, p.historyWeight);
+            }
         }
     }
 
-    gLightScattering[cell] = float4(scattered, medium.a);
+    gLightScattering[cell] = result;
 }

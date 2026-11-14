@@ -7,6 +7,7 @@
 #include "GameObject/GameObject.h"
 #include "Graphics/Render/SkyBox/SkyBoxComponent.h"
 #include "GameObject/Component/Environment/VolumetricCloudComponent.h"
+#include "GameObject/Component/Environment/FogVolumeComponent.h"
 #include "GameObject/Component/Environment/HeightFogComponent.h"
 #include "GameObject/Component/Environment/PostProcessComponent.h"
 #include "Graphics/Cloud/Settings/CloudCVars.h"
@@ -26,6 +27,7 @@
 #include "Utility/Logger/Logger.h"
 
 #include <algorithm>
+#include <vector>
 
 namespace CoreEngine
 {
@@ -75,6 +77,12 @@ namespace CoreEngine
         }
         if (HeightFogComponent* const fog = fog_.Get()) {
             fog->BindEnabledCVar(nullptr);
+        }
+
+        // 局所の霧を次のシーンへ持ち越さない
+        auto* domainContext = ctx.engine ? ctx.engine->GetRenderDomainContext() : nullptr;
+        if (auto* fogManager = domainContext ? domainContext->GetFogManager() : nullptr) {
+            fogManager->GetVolumetric().SetVolumes({});
         }
 
         // どれも GameObjectManager が所有しているため参照だけ外す
@@ -292,5 +300,17 @@ namespace CoreEngine
         // このフレームはフォグを使うと宣言する（実際に合成するかは r.Fog.Enabled 次第）。
         // 深度復元用の行列とカメラ位置は FrameViews から FogPass が取るのでここでは渡さない。
         fogManager->Update(sunDirection, hasSun, illuminationScale);
+
+        // 局所の霧は毎フレーム集め直す（動かした・消した・無効にしたものがそのまま効く）
+        std::vector<VolumetricFogVolumeDesc> volumes;
+        if (ctx.gameObjectManager) {
+            ctx.gameObjectManager->ForEachComponent<FogVolumeComponent>(
+                [&volumes](FogVolumeComponent& volume) {
+                    if (volume.IsActiveAndEnabled()) {
+                        volumes.push_back(volume.BuildDesc());
+                    }
+                });
+        }
+        fogManager->GetVolumetric().SetVolumes(volumes);
     }
 }

@@ -1,0 +1,58 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.7853981633974483,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    4.0,
+                    55.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "albedo": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "density": 0.4,
+                "edgeFade": 0.05,
+                "emissiveColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "emissiveIntensity": 0.0,
+                "noiseStrength": 0.0,
+                "shape": 0,
+                "size": [
+                    12.0,
+                    8.0,
+                    2.5
+                ]
+            },
+            "type": "FogVolume"
+        }
+    ],
+    "id": "05b22923bd8ae262",
+    "name": "Fog_Rotated",
+    "order": 10
+}

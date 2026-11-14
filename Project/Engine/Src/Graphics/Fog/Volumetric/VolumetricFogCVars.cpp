@@ -63,6 +63,21 @@ namespace CoreEngine::VolumetricFogCVars
         "点光源・スポット・エリアライトが霧を照らす（霧に影は落とさない）。"
         "ライトごとの強さは Light の「霧を照らす強さ」" };
 
+    CVar<float> NoiseStrength{
+        "r.Fog.Volumetric.NoiseStrength", 0.0f,
+        "高さフォグの濃さにノイズでむらを付ける強さ。0 でむらなし。局所の霧（FogVolume）は自分の「ノイズの強さ」を使う",
+        CVarRange{ 0.0f, 1.0f } };
+
+    CVar<float> NoiseScale{
+        "r.Fog.Volumetric.NoiseScale", 40.0f,
+        "ノイズの模様が繰り返す一辺の長さ [m]。大きいほどむらが大きい（高さフォグと局所の霧で共通）",
+        CVarRange{ 1.0f, 1000.0f } };
+
+    CVar<float> NoiseWindScale{
+        "r.Fog.Volumetric.NoiseWindScale", 1.0f,
+        "ノイズの模様を風（r.Wind.Speed・r.Wind.Direction）で流す速さの倍率。1 で風と同じ速さ・0 で止める",
+        CVarRange{ 0.0f, 4.0f } };
+
     CVar<int> DebugView{
         "r.Fog.Volumetric.DebugView", 0,
         "デバッグ表示。0 = なし、1 = 透過率、2 = 溜まった光、3 = 奥行きの何枚目か、"

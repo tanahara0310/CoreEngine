@@ -10,6 +10,8 @@
 
 #include <d3d12.h>
 #include <cstdint>
+#include <span>
+#include <vector>
 
 namespace CoreEngine
 {
@@ -34,6 +36,21 @@ namespace CoreEngine
         float bias = 0.0f;                      ///< 日なたとみなす距離の余裕 [m]
     };
 
+    /// @brief 局所の霧 1 つ（シーンの FogVolume から毎フレーム集める）
+    struct VolumetricFogVolumeDesc {
+        uint32_t shape = 0;                     ///< VolumetricFog::VolumeShape
+        Vector3 center{};                       ///< 中心のワールド座標 [m]
+        Vector3 axisX{ 1.0f, 0.0f, 0.0f };      ///< X の向き（正規化済み）
+        Vector3 axisY{ 0.0f, 1.0f, 0.0f };      ///< Y の向き（正規化済み）
+        Vector3 axisZ{ 0.0f, 0.0f, 1.0f };      ///< Z の向き（正規化済み）
+        Vector3 size{ 1.0f, 1.0f, 1.0f };       ///< 各軸の大きさ（端から端）[m]
+        float edgeFade = 0.0f;                  ///< 縁をぼかす幅（中心から表面までに対する割合 0〜1）
+        float extinction = 0.0f;                ///< 消散係数 [1/m]
+        Vector3 albedo{ 1.0f, 1.0f, 1.0f };     ///< 散乱の割合
+        Vector3 emissive{};                     ///< 1m あたりの発光（シェーダー単位の輝度）
+        float noiseStrength = 0.0f;             ///< ノイズの強さ（0〜1）
+    };
+
     /// @brief 今フレームの格子を作るのに要る値
     struct VolumetricFogFrameInput {
         const ViewInfo* view = nullptr;
@@ -46,6 +63,7 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE cloudShadowMapSrv{};          ///< 雲の影のマップ（雲が無ければ 0）
         const CloudShadowShaderConstants* cloudShadow = nullptr; ///< 雲の影のマップの範囲と強さ（雲が無ければ nullptr）
         const VolumetricFogSunDepth* sunDepth = nullptr;         ///< 太陽から見た深さの画像（今フレームに作っていなければ nullptr）
+        D3D12_GPU_DESCRIPTOR_HANDLE noiseSrv{};                  ///< 霧のノイズに使う 3D の画像（雲のベース形状ノイズ。無ければ 0）
     };
 
     /// @brief ボリュメトリックフォグの格子（画面に揃えた 3D の配列）と、それを作る 3 本の CS
@@ -82,7 +100,7 @@ namespace CoreEngine
             float     skyAmbientScale;
             uint32_t  directionalCount;
             uint32_t  debugView;
-            float     pad0;
+            uint32_t  mediaFlags;
             Matrix4x4 prevViewProj;
             Vector3   prevCameraWorldPos;
             float     historyWeight;
@@ -178,7 +196,7 @@ namespace CoreEngine
             CB_FIELD(Constants, startDistance),     CB_FIELD(Constants, fallbackAmbient),
             CB_FIELD(Constants, skyAmbientEnabled), CB_FIELD(Constants, skyAmbientScale),
             CB_FIELD(Constants, directionalCount),  CB_FIELD(Constants, debugView),
-            CB_FIELD(Constants, pad0),              CB_FIELD(Constants, prevViewProj),
+            CB_FIELD(Constants, mediaFlags),        CB_FIELD(Constants, prevViewProj),
             CB_FIELD(Constants, prevCameraWorldPos), CB_FIELD(Constants, historyWeight),
             CB_FIELD(Constants, frameJitter),       CB_FIELD(Constants, historyValid),
             CB_FIELD(Constants, cloudShadowRegionCenterXZ), CB_FIELD(Constants, cloudShadowRegionSize),
@@ -193,6 +211,67 @@ namespace CoreEngine
         };
         CB_VERIFY_LAYOUT(Constants, kConstantsFields);
         CB_BIND_HLSL(Constants, kConstantsFields, "gVolumetricFog");
+
+        /// @brief mediaFlags の印（VolumetricFogCommon.hlsli の kVolumetricFogMedia* と一致）
+        enum MediaFlag : uint32_t {
+            kMediaVarying = 1u,   ///< 局所の霧かノイズがあり、濃さを格子の中のずらした点で求める
+            kMediaEmissive = 2u,  ///< 発光する局所の霧がある
+        };
+
+        /// @brief 局所の霧の形（VolumetricFogCommon.hlsli の kVolumetricFogVolume* と一致）
+        enum VolumeShape : uint32_t {
+            kVolumeShapeBox = 0,
+            kVolumeShapeSphere = 1,
+        };
+
+        /// @brief 格子へ入れる局所の霧の最大数（VolumetricFogCommon.hlsli と一致）
+        static constexpr uint32_t kMaxVolumes = 32;
+
+        /// @brief 局所の霧 1 つ（VolumetricFogCommon.hlsli の VolumetricFogLocalVolume と 1 対 1）
+        struct LocalVolume {
+            Vector3  center;        ///< 中心のワールド座標 [m]
+            uint32_t shape;         ///< VolumeShape
+            Vector3  axisX;         ///< X の向き ÷ X の大きさ [1/m]
+            float    edgeFade;      ///< 縁をぼかす幅（中心から表面までに対する割合）
+            Vector3  axisY;         ///< Y の向き ÷ Y の大きさ [1/m]
+            float    noiseStrength; ///< ノイズの強さ（0〜1）
+            Vector3  axisZ;         ///< Z の向き ÷ Z の大きさ [1/m]
+            float    extinction;    ///< 消散係数 [1/m]
+            Vector3  albedo;        ///< 散乱の割合
+            float    pad0;
+            Vector3  emissive;      ///< 1m あたりの発光（シェーダー単位の輝度）
+            float    pad1;
+        };
+
+        static constexpr Cb::Field kLocalVolumeFields[] = {
+            CB_FIELD(LocalVolume, center),   CB_FIELD(LocalVolume, shape),
+            CB_FIELD(LocalVolume, axisX),    CB_FIELD(LocalVolume, edgeFade),
+            CB_FIELD(LocalVolume, axisY),    CB_FIELD(LocalVolume, noiseStrength),
+            CB_FIELD(LocalVolume, axisZ),    CB_FIELD(LocalVolume, extinction),
+            CB_FIELD(LocalVolume, albedo),   CB_FIELD(LocalVolume, pad0),
+            CB_FIELD(LocalVolume, emissive), CB_FIELD(LocalVolume, pad1),
+        };
+        CB_VERIFY_LAYOUT(LocalVolume, kLocalVolumeFields);
+
+        /// @brief 局所の霧とノイズの定数（VolumetricFogCommon.hlsli の VolumetricFogMedia と 1 対 1）
+        struct MediaConstants {
+            Vector3     noiseOffset;   ///< ノイズを引く座標へ足すずれ [m]
+            float       noiseInvScale; ///< ノイズの模様の一辺 [m] の逆数
+            float       noiseStrength; ///< 高さフォグへ掛けるノイズの強さ（0〜1）
+            uint32_t    noiseEnabled;  ///< 1 ならノイズの画像を引く
+            uint32_t    volumeCount;   ///< 局所の霧の数
+            float       pad;
+            LocalVolume volumes[kMaxVolumes];
+        };
+
+        static constexpr Cb::Field kMediaConstantsFields[] = {
+            CB_FIELD(MediaConstants, noiseOffset),   CB_FIELD(MediaConstants, noiseInvScale),
+            CB_FIELD(MediaConstants, noiseStrength), CB_FIELD(MediaConstants, noiseEnabled),
+            CB_FIELD(MediaConstants, volumeCount),   CB_FIELD(MediaConstants, pad),
+            CB_FIELD(MediaConstants, volumes),
+        };
+        CB_VERIFY_LAYOUT(MediaConstants, kMediaConstantsFields);
+        CB_BIND_HLSL(MediaConstants, kMediaConstantsFields, "gVolumetricFogMedia");
 
     public:
         /// @brief 3 本の CS のパイプラインを作る
@@ -248,6 +327,21 @@ namespace CoreEngine
         /// @brief 最後に作った格子を照らした点光源・スポット・エリアの数
         uint32_t GetLocalLightCount() const { return localLightCount_; }
 
+        /// @brief このフレームの局所の霧を差し替える（シーンの更新から毎フレーム呼ぶ）
+        void SetVolumes(std::span<const VolumetricFogVolumeDesc> volumes);
+
+        /// @brief 置かれている局所の霧の数（格子に入らない物も含む）
+        uint32_t GetVolumeCount() const { return static_cast<uint32_t>(volumes_.size()); }
+
+        /// @brief 最後に作った格子へ入れた局所の霧の数
+        uint32_t GetInjectedVolumeCount() const { return injectedVolumeCount_; }
+
+        /// @brief 霧のノイズの画像が要るか（高さフォグか局所の霧のどれかにノイズの強さがある）
+        bool IsNoiseRequested() const;
+
+        /// @brief 最後に作った格子がノイズの画像を引いたか
+        bool IsNoiseActive() const { return noiseActive_; }
+
         /// @brief フレームの終わりに今フレームの状態を落とす
         void EndFrame();
 
@@ -271,8 +365,15 @@ namespace CoreEngine
         /// @brief 前フレームの光を混ぜてよいか、混ぜるならどこへずらすかを定数へ詰める
         void FillHistory(Constants& constants, const Matrix4x4& viewProj, const Vector3& cameraPos);
 
+        /// @brief 格子にかかる局所の霧とノイズを詰めて今フレームの定数を確保し、mediaFlags を書く
+        /// @param cameraPos カメラのワールド座標 [m]
+        /// @param noiseSrv ノイズの画像の SRV（無ければ 0）
+        /// @return 確保できたら true
+        bool AllocateMedia(Constants& constants, const Vector3& cameraPos, D3D12_GPU_DESCRIPTOR_HANDLE noiseSrv);
+
         /// @brief 3D の画像 1 枚を作る
-        bool CreateVolume(Volume& volume, uint32_t sizeX, uint32_t sizeY, uint32_t sizeZ, const char* name);
+        bool CreateVolume(Volume& volume, uint32_t sizeX, uint32_t sizeY, uint32_t sizeZ, const char* name,
+            DXGI_FORMAT format = DXGI_FORMAT_R16G16B16A16_FLOAT);
 
         /// @brief 2D の画像 1 枚を作る
         bool CreateImage(Volume& image, uint32_t sizeX, uint32_t sizeY, const char* name);
@@ -305,6 +406,7 @@ namespace CoreEngine
         bool pipelineReady_ = false;
 
         Volume vBuffer_{};
+        Volume emissive_{};           ///< 局所の霧の発光（rgb）
         Volume lightScattering_[2]{}; ///< 今フレームと前フレームの光を交互に使う
         Volume integrated_{};
         Volume farLight_{};
@@ -314,6 +416,14 @@ namespace CoreEngine
         D3D12_GPU_VIRTUAL_ADDRESS frameConstants_ = 0;
         D3D12_GPU_VIRTUAL_ADDRESS localLightConstants_ = 0;
         uint32_t localLightCount_ = 0;
+        D3D12_GPU_VIRTUAL_ADDRESS mediaConstants_ = 0;
+        D3D12_GPU_DESCRIPTOR_HANDLE noiseSrv_{};
+
+        std::vector<VolumetricFogVolumeDesc> volumes_;
+        uint32_t injectedVolumeCount_ = 0;
+        bool noiseActive_ = false;
+        /// @brief 風で流したノイズのずれ（模様の一辺で折り返す）[m]
+        Vector3 noiseOffset_{};
         D3D12_GPU_DESCRIPTOR_HANDLE skyIrradianceSrv_{};
         D3D12_GPU_DESCRIPTOR_HANDLE cloudShadowSrv_{};
         D3D12_GPU_DESCRIPTOR_HANDLE sunDepthSrv_{};
