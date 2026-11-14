@@ -104,13 +104,7 @@ namespace CoreEngine
             cmdList_->SetGraphicsRootDescriptorTable(texIdx, system->GetTextureHandle());
         }
 
-        // フォグ（減衰のみのバリアント。FogPass が毎フレーム供給する）
-        if (fogCBV_ != 0) {
-            const int fogIdx = GetRootParamIndex("gFog");
-            if (fogIdx >= 0) {
-                cmdList_->SetGraphicsRootConstantBufferView(fogIdx, fogCBV_);
-            }
-        }
+        BindFogResources();
 
         cmdList_->ExecuteIndirect(commandSignature_.Get(), 1, system->GetArgsResource(), 0, nullptr, 0);
     }

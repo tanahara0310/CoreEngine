@@ -241,9 +241,9 @@ WaterPixelOutput main(WaterPSInput input)
 
     // ---- 14. 高さフォグ ----
     // 水面は全画面合成パス（HeightFog.CS）より後に描かれるため、そこでは掛かっていない。
-    // 不透明と同じ数式（Fog.hlsli）を水面自身の距離で適用する。
+    // 不透明と同じ数式（FogForward.hlsli）を水面自身の距離で適用する。
     // gFog は BaseModelRenderer がブレンドモードに応じて差す（水面は通常ブレンド＝内散乱あり）。
-    output.color.rgb = ApplyFog(gFog, input.worldPosition, output.color.rgb);
+    output.color.rgb = ApplyForwardFog(gFog, input.worldPosition, output.color.rgb);
 
     output.color.a = 1.0f;
 

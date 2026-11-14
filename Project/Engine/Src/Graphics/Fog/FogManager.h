@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Graphics/Fog/FogVolumetricResources.h"
 #include "Graphics/Fog/Settings/FogSettings.h"
 #include "Graphics/Fog/Volumetric/VolumetricFog.h"
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
@@ -80,7 +81,13 @@ namespace CoreEngine
             uint32_t  waterClipEnabled; ///< 1 なら水面の範囲内で水面より下の面に全画面フォグを掛けない
             Vector2   waterRegionCenterXZ;     ///< 水面の範囲の中心（ワールド XZ）[m]
             Vector2   waterRegionHalfExtentXZ; ///< 水面の範囲の半分の大きさ（ワールド XZ）[m]
-            uint32_t  volumetricEnabled; ///< 1 なら全画面の合成でボリュメトリックの格子を使う
+            uint32_t  volumetricEnabled; ///< 1 なら全画面の合成と前方描画でボリュメトリックの格子を使う
+            float     volumetricLightScale; ///< 格子で散乱した光を足す割合（通常 1・加算とスクリーンは 0）
+            Matrix4x4 volumetricViewProj; ///< 格子を作ったジッタ無しの View*Projection
+            Vector3   volumetricGridSize; ///< 格子の数（横・縦・奥行き）
+            float     volumetricDistance; ///< 格子が届く距離 [m]
+            Vector2   volumetricScreenToGrid; ///< 画面の UV → 格子の UV の倍率
+            float     volumetricDepthDistribution; ///< 格子の奥ほど厚くする度合い
             float     pad1;             ///< 16 バイト境界までの詰め物
         };
 
@@ -96,6 +103,9 @@ namespace CoreEngine
             CB_FIELD(FogConstants, planetRadiusKm), CB_FIELD(FogConstants, waterHeight),
             CB_FIELD(FogConstants, waterClipEnabled), CB_FIELD(FogConstants, waterRegionCenterXZ),
             CB_FIELD(FogConstants, waterRegionHalfExtentXZ), CB_FIELD(FogConstants, volumetricEnabled),
+            CB_FIELD(FogConstants, volumetricLightScale), CB_FIELD(FogConstants, volumetricViewProj),
+            CB_FIELD(FogConstants, volumetricGridSize), CB_FIELD(FogConstants, volumetricDistance),
+            CB_FIELD(FogConstants, volumetricScreenToGrid), CB_FIELD(FogConstants, volumetricDepthDistribution),
             CB_FIELD(FogConstants, pad1),
         };
         CB_VERIFY_LAYOUT(FogConstants, kFogConstantsFields);
@@ -122,13 +132,16 @@ namespace CoreEngine
             volumetric_.EndFrame();
             // 次フレームで PrepareConstants が走るまで、前方描画には恒等バッファを返す
             for (auto& address : frameConstants_) { address = 0; }
+            forwardVolumetric_ = {};
         }
 
         /// @brief 今フレームの定数バッファ 3 本を確保する
         /// @details 前方描画（半透明・水面）が読むので、フォグが無効なフレームでも必ず呼ぶこと。
         ///          無効なフレームは 3 本とも恒等（密度 0）になる。
         /// @param water 水面の高さと範囲（valid == false なら水面で打ち切らない）
-        void PrepareConstants(const ViewInfo& view, const FogSkyInfo& sky, const FogWaterInfo& water);
+        /// @param allowVolumetric 格子を作ったビュー（GameView）なら true。false なら格子を使わない
+        void PrepareConstants(
+            const ViewInfo& view, const FogSkyInfo& sky, const FogWaterInfo& water, bool allowVolumetric);
 
         /// @brief このフレームでフォグが要求されているか（Update() が呼ばれ、かつ有効かつ構築済み）
         bool IsFogActive() const { return fogActive_ && settings_.enabled && pipelineReady_; }
@@ -179,9 +192,15 @@ namespace CoreEngine
             return address != 0 ? address : disabledConstantsAddress_;
         }
 
+        /// @brief 最後の PrepareConstants の定数が格子を使うときに、前方描画が差す格子の SRV
+        /// @details 定数の volumetricEnabled が 0 のフレームは両方 0（差さない）
+        const FogVolumetricResources& GetForwardVolumetricResources() const { return forwardVolumetric_; }
+
     private:
         /// @brief 設定・ビュー・大気情報・水面から今フレームの定数バッファ内容を作る
-        FogConstants BuildConstants(const ViewInfo& view, const FogSkyInfo& sky, const FogWaterInfo& water) const;
+        /// @param useVolumetric 格子の値を詰めて volumetricEnabled を立てるか
+        FogConstants BuildConstants(
+            const ViewInfo& view, const FogSkyInfo& sky, const FogWaterInfo& water, bool useVolumetric) const;
 
         GraphicsCore* graphicsCore_ = nullptr;
 
@@ -205,6 +224,9 @@ namespace CoreEngine
 
         /// @brief 今フレームぶんのフォグ定数（UploadRing 上）。フレームを跨いで持ち越さない
         D3D12_GPU_VIRTUAL_ADDRESS frameConstants_[static_cast<size_t>(FogVariant::Count)]{};
+
+        /// @brief 最後の PrepareConstants の定数が格子を使うときの格子の SRV（フレームを跨いで持ち越さない）
+        FogVolumetricResources forwardVolumetric_{};
 
         /// @brief 常設の「何もしない」フォグ定数。PrepareConstants 未実行のビュー・フレームで差す
         /// @details PrepareConstants を通らなかったフレームの前方描画が、未バインドの CBV を読まないようにする

@@ -14,10 +14,10 @@
 /// LUT のサンプルそのものが走らない。
 ///
 /// volumetricEnabled のフレームは、格子が届く距離までをボリュメトリックの格子から引き、
-/// その先を同じ濃さの式と同じ光の式で解析的に足す（雲の影は格子の端の 1 点で引き、物の影は掛けない）。
+/// その先を同じ濃さの式と格子の奥の光の画像で足す（VolumetricFogComposite.hlsli。前方描画と同じ式）。
 
 #include "Fog.hlsli"
-#include "VolumetricFogCommon.hlsli"
+#include "VolumetricFogComposite.hlsli"
 #include "DepthReconstruction.hlsli"
 #include "Common/AtmosphereCommon.hlsli" // SkyViewAzimuth / SkyViewParamsToUv
 
@@ -26,7 +26,7 @@ ConstantBuffer<VolumetricFogParameters> gVolumetricFog : register(b1);
 Texture2D<float> gSceneDepth : register(t0);
 Texture2D<float4> gSkyViewLUT : register(t1);
 Texture3D<float4> gVolumetricFogIntegrated : register(t2);
-StructuredBuffer<float4> gSkyIrradianceSH : register(t3);
+Texture2D<float4> gVolumetricFogFarLight : register(t3);
 Texture2D<float> gCloudShadowMap : register(t4);
 Texture2D<float> gSunDepth : register(t5);
 SamplerState gLUTSampler : register(s0);
@@ -73,38 +73,12 @@ float3 ApplyVolumetricFog(float2 uv, float3 rayDirection, float rayEnd, float3 s
 {
     const VolumetricFogParameters p = gVolumetricFog;
     const float volumeEnd = min(rayEnd, p.distance);
-    const float4 volume = VolumetricFogSampleIntegrated(
-        p, gVolumetricFogIntegrated, gLUTSampler, uv * p.screenToGrid, volumeEnd);
 
-    float3 farLight = float3(0.0f, 0.0f, 0.0f);
-    float farTransmittance = 1.0f;
-    if (rayEnd > p.distance)
+    if (p.debugView == 1 || p.debugView == 2)
     {
-        const float farStart = max(p.distance, gFog.startDistance);
-        farTransmittance = exp(-FogOpticalDepth(gFog, gFog.cameraWorldPos, rayDirection, farStart, rayEnd));
-        const float3 ambient = VolumetricFogSkyAmbient(p, gSkyIrradianceSH);
-        const float3 boundary = gFog.cameraWorldPos + rayDirection * p.distance;
-        const float3 source = VolumetricFogSource(
-            p, rayDirection, ambient, boundary, gCloudShadowMap, gLUTSampler, 1.0f);
-        farLight = p.albedo * source * (1.0f - farTransmittance);
-    }
-
-    const float transmittance = farTransmittance * volume.a;
-    const float3 light = farLight * volume.a + volume.rgb;
-
-    // 最大濃度: 透過率を今の高さフォグと同じ式で持ち上げ、散乱した光も同じ割合で減らす
-    const float maxOpacity = saturate(gFog.maxOpacity);
-    const float limitedTransmittance = lerp(1.0f, transmittance, maxOpacity);
-    const float opacity = 1.0f - transmittance;
-    const float lightScale = (opacity > 1.0e-5f) ? (1.0f - limitedTransmittance) / opacity : maxOpacity;
-
-    if (p.debugView == 1)
-    {
-        return volume.aaa;
-    }
-    if (p.debugView == 2)
-    {
-        return volume.rgb;
+        const float4 volume = VolumetricFogSampleIntegrated(
+            p, gVolumetricFogIntegrated, gLUTSampler, uv * p.screenToGrid, volumeEnd);
+        return (p.debugView == 1) ? volume.aaa : volume.rgb;
     }
     if (p.debugView == 3)
     {
@@ -149,7 +123,10 @@ float3 ApplyVolumetricFog(float2 uv, float3 rayDirection, float rayEnd, float3 s
         return saturate((depth - regionFront) / regionSize).xxx;
     }
 
-    return sceneColor * limitedTransmittance + light * lightScale;
+    const float4 ray = VolumetricFogSampleRay(
+        gFog, gVolumetricFogIntegrated, gVolumetricFogFarLight, gLUTSampler,
+        uv * gFog.volumetricScreenToGrid, rayDirection, rayEnd);
+    return VolumetricFogApplyRay(gFog, ray, sceneColor);
 }
 
 [numthreads(8, 8, 1)]

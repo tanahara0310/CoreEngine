@@ -1,4 +1,6 @@
 #pragma once
+#ifndef FOG_HLSLI
+#define FOG_HLSLI
 
 /// @file Fog.hlsli
 /// @brief 高さフォグの数式（エンジン内で唯一の実体）
@@ -42,7 +44,13 @@ struct FogParameters
     uint     waterClipEnabled;///< 1 なら水面の範囲内で水面より下の面に全画面フォグを掛けない
     float2   waterRegionCenterXZ;     ///< 水面の範囲の中心（ワールド XZ）[m]
     float2   waterRegionHalfExtentXZ; ///< 水面の範囲の半分の大きさ（ワールド XZ）[m]
-    uint     volumetricEnabled; ///< 1 なら全画面の合成でボリュメトリックの格子を使う
+    uint     volumetricEnabled; ///< 1 なら全画面の合成と前方描画でボリュメトリックの格子を使う
+    float    volumetricLightScale; ///< 格子で散乱した光を足す割合（通常 1・加算とスクリーンは 0 で減衰だけ）
+    float4x4 volumetricViewProj; ///< 格子を作ったジッタ無しの View*Projection（行ベクトル規約）
+    float3   volumetricGridSize; ///< 格子の数（横・縦・奥行き）
+    float    volumetricDistance; ///< 格子が届く距離 [m]
+    float2   volumetricScreenToGrid; ///< 画面の UV → 格子の UV の倍率
+    float    volumetricDepthDistribution; ///< 格子の奥ほど厚くする度合い（c）
     float    pad1;            ///< 16 バイト境界までの詰め物
 };
 
@@ -151,8 +159,8 @@ float3 FogInscatteringColor(FogParameters p, float3 rayDir)
     return FogInscatteringColor(p, rayDir, p.fogColor);
 }
 
-/// @brief ワールド座標が分かっている面の色へフォグを合成する
-/// @details 前方描画（半透明・水面・パーティクル）はこれを呼ぶ。
+/// @brief ワールド座標が分かっている面の色へ解析式のフォグを合成する
+/// @details ボリュメトリックの格子を使わないときの前方描画の式（FogForward.hlsli の ApplyForwardFog が呼ぶ）。
 ///          全画面パスと同じ数式を通るので、不透明との境目が出ない。
 float3 ApplyFog(FogParameters p, float3 worldPos, float3 color)
 {
@@ -169,3 +177,5 @@ float3 ApplyFog(FogParameters p, float3 worldPos, float3 color)
 
     return lerp(FogInscatteringColor(p, dir), color, transmittance);
 }
+
+#endif // FOG_HLSLI

@@ -37,6 +37,7 @@ namespace CoreEngine::VolumetricFogLightScatteringBind
         gLightScatteringHistory,
         gSunDepth,
         gLightScattering,
+        gFarLight,
         Count
     };
 
@@ -52,6 +53,7 @@ namespace CoreEngine::VolumetricFogLightScatteringBind
         // 太陽から見た深さの画像を作らないフレームでは差さない（そのときシェーダーは読まない）
         { "gSunDepth",        ShaderBindingType::SRV, BindingUsage::Conditional }, // t4
         { "gLightScattering", ShaderBindingType::UAV, BindingUsage::Required }, // u0
+        { "gFarLight",        ShaderBindingType::UAV, BindingUsage::Required }, // u1
     };
 
     static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");

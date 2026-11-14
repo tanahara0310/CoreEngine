@@ -1,4 +1,5 @@
 #pragma once
+#include "Graphics/Fog/FogVolumetricResources.h"
 #include "Graphics/Render/IRenderer.h"
 #include "Graphics/Render/IGBufferRenderer.h"
 #include "Graphics/Render/Model/ModelDrawPacket.h"
@@ -77,16 +78,19 @@ namespace CoreEngine
             skySpecularMapHandle_ = specularMap;
         }
 
-        /// @brief 今フレームのフォグ定数を受け取る（gFog b4）
+        /// @brief 今フレームのフォグ定数とボリュメトリックの格子を受け取る（gFog b7・space6）
         /// @details FogPass が毎フレーム供給する。どれを差すかはブレンドモードで決まる
         ///          （不透明は全画面パスが掛けるので恒等、加算・スクリーンは減衰のみ）。
+        ///          格子は定数が格子を使うビューだけ有効（そうでなければ両方 0 で差さない）。
         void SetFogConstants(D3D12_GPU_VIRTUAL_ADDRESS full,
                              D3D12_GPU_VIRTUAL_ADDRESS additive,
-                             D3D12_GPU_VIRTUAL_ADDRESS disabled)
+                             D3D12_GPU_VIRTUAL_ADDRESS disabled,
+                             const FogVolumetricResources& volumetric)
         {
             fogFullCBV_ = full;
             fogAdditiveCBV_ = additive;
             fogDisabledCBV_ = disabled;
+            fogVolumetric_ = volumetric;
         }
 
         /// @brief フォワードパスのリソース名からルートパラメータインデックスを取得（-1: 未登録）
@@ -162,6 +166,7 @@ namespace CoreEngine
         D3D12_GPU_VIRTUAL_ADDRESS fogFullCBV_ = 0;
         D3D12_GPU_VIRTUAL_ADDRESS fogAdditiveCBV_ = 0;
         D3D12_GPU_VIRTUAL_ADDRESS fogDisabledCBV_ = 0;
+        FogVolumetricResources fogVolumetric_{};
 
         // 頂点アニメーションの時間・風（ルート定数 gVertexAnim。パスの開始時に作り直す）
         VertexAnimationParams vertexAnimParams_{};

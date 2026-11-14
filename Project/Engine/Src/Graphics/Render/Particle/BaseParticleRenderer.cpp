@@ -28,6 +28,7 @@ namespace CoreEngine
 
     void BaseParticleRenderer::BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMode blendMode) {
         cmdList_ = cmdList;
+        currentBlendMode_ = blendMode;
 
         // ルートシグネチャとパイプラインステートを設定
         cmdList_->SetGraphicsRootSignature(rootSignatureMg_->GetRootSignature());
@@ -105,11 +106,26 @@ namespace CoreEngine
             cmdList_->SetGraphicsRootDescriptorTable(texIdx, textureHandle);
         }
 
-        // フォグ（減衰のみのバリアント。FogPass が毎フレーム供給する）
-        if (fogCBV_ != 0) {
+        BindFogResources();
+    }
+
+    void BaseParticleRenderer::BindFogResources() {
+        // 合成なしは全画面の合成が深度から掛けるので恒等、それ以外は減衰のみ（FogPass が毎フレーム供給する）
+        const D3D12_GPU_VIRTUAL_ADDRESS fogCBV =
+            (currentBlendMode_ == BlendMode::kBlendModeNone) ? fogDisabledCBV_ : fogCBV_;
+        if (fogCBV != 0) {
             const int fogIdx = GetRootParamIndex("gFog");
             if (fogIdx >= 0) {
-                cmdList_->SetGraphicsRootConstantBufferView(fogIdx, fogCBV_);
+                cmdList_->SetGraphicsRootConstantBufferView(fogIdx, fogCBV);
+            }
+        }
+        // ボリュメトリックの格子（定数が格子を使うビューだけ）
+        if (fogVolumetric_.IsValid()) {
+            const int integratedIdx = GetRootParamIndex("gVolumetricFogIntegrated");
+            const int farLightIdx = GetRootParamIndex("gVolumetricFogFarLight");
+            if (integratedIdx >= 0 && farLightIdx >= 0) {
+                cmdList_->SetGraphicsRootDescriptorTable(integratedIdx, fogVolumetric_.integratedSrv);
+                cmdList_->SetGraphicsRootDescriptorTable(farLightIdx, fogVolumetric_.farLightSrv);
             }
         }
     }

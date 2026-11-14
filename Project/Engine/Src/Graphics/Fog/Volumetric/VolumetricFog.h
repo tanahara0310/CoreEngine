@@ -106,6 +106,15 @@ namespace CoreEngine
             DirectionalLight directional[kMaxDirectionalLights];
         };
 
+        /// @brief 前方描画と全画面の合成が格子を引くのに要る値（FogParameters の volumetric* へ写す）
+        struct ForwardParams {
+            Matrix4x4 viewProj{};           ///< 格子を作ったジッタ無しの View*Projection
+            Vector3   gridSize{};           ///< 格子の数（横・縦・奥行き）
+            float     distance = 0.0f;      ///< 格子が届く距離 [m]
+            Vector2   screenToGrid{};       ///< 画面の UV → 格子の UV の倍率
+            float     depthDistribution = 0.0f; ///< 奥ほど厚くする度合い
+        };
+
         /// @brief 太陽から見た深さの画像を使う光源が無いときの番号（VolumetricFogCommon.hlsli と一致）
         static constexpr uint32_t kNoSunDepthLight = 0xFFFFFFFFu;
 
@@ -227,6 +236,12 @@ namespace CoreEngine
         /// @brief 積み上げた格子（ステート追跡込み）
         GpuResource& GetIntegratedResource() { return integrated_.texture; }
 
+        /// @brief 格子の奥の光の画像の SRV（縦横は格子と同じ・rgb = アルベド × 格子の端の点の光の源）
+        D3D12_GPU_DESCRIPTOR_HANDLE GetFarLightSrv() const { return farLight_.srv.gpuHandle; }
+
+        /// @brief 最後に作った格子を引くのに要る値（PrepareFrame の後に有効）
+        const ForwardParams& GetForwardParams() const { return forwardParams_; }
+
         /// @brief 今フレームの格子の数（PrepareFrame の後に有効）
         const uint32_t* GetGridSize() const { return gridSize_; }
 
@@ -237,14 +252,14 @@ namespace CoreEngine
         void EndFrame();
 
     private:
-        /// @brief 3D の画像 1 枚と SRV・UAV
+        /// @brief 画像 1 枚と SRV・UAV
         struct Volume {
             GpuResource texture;
             DescriptorHandle srv{};
             DescriptorHandle uav{};
         };
 
-        /// @brief 格子の数が変わったら 4 枚の画像を作り直す（作り直したら前フレームの光は捨てる）
+        /// @brief 格子の数が変わったら 4 枚の 3D の画像と奥の光の画像を作り直す（作り直したら前フレームの光は捨てる）
         bool EnsureVolumes(uint32_t sizeX, uint32_t sizeY, uint32_t sizeZ);
 
         /// @brief 雲の影の値を定数へ詰め、マップの SRV を覚える
@@ -258,6 +273,12 @@ namespace CoreEngine
 
         /// @brief 3D の画像 1 枚を作る
         bool CreateVolume(Volume& volume, uint32_t sizeX, uint32_t sizeY, uint32_t sizeZ, const char* name);
+
+        /// @brief 2D の画像 1 枚を作る
+        bool CreateImage(Volume& image, uint32_t sizeX, uint32_t sizeY, const char* name);
+
+        /// @brief 画像 1 枚と SRV・UAV を作る（3D と 2D）
+        bool CreateTexture(Volume& volume, const D3D12_RESOURCE_DESC& desc, const char* name);
 
         /// @brief 3D の画像 1 枚を GPU が使い終わってから手放す
         void RetireVolume(Volume& volume);
@@ -286,7 +307,9 @@ namespace CoreEngine
         Volume vBuffer_{};
         Volume lightScattering_[2]{}; ///< 今フレームと前フレームの光を交互に使う
         Volume integrated_{};
+        Volume farLight_{};
         uint32_t gridSize_[3]{};
+        ForwardParams forwardParams_{};
 
         D3D12_GPU_VIRTUAL_ADDRESS frameConstants_ = 0;
         D3D12_GPU_VIRTUAL_ADDRESS localLightConstants_ = 0;

@@ -1,0 +1,112 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.5,
+                    4.0,
+                    1.5
+                ],
+                "translate": [
+                    -10.715610891851217,
+                    2.0,
+                    50.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 1,
+                "materials": [
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            0.6,
+                            0.6,
+                            0.6,
+                            0.99
+                        ],
+                        "dithering": false,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.8
+                    },
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            0.6,
+                            0.6,
+                            0.6,
+                            0.99
+                        ],
+                        "dithering": false,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.8
+                    }
+                ],
+                "model": {
+                    "guid": "e8a79191-50ea-0673-1816-c257f280ba64",
+                    "path": "Engine/Assets/Models/Primitives/Box/cube.obj"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "alphaCutoff": 0.5,
+                "color": [
+                    0.6,
+                    0.6,
+                    0.6,
+                    0.99
+                ],
+                "dithering": false,
+                "ditheringScale": 1.0,
+                "emissive": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "lighting": true,
+                "metallic": 0.0,
+                "normalMap": false,
+                "occlusionStrength": 1.0,
+                "roughness": 0.8
+            },
+            "type": "Material"
+        }
+    ],
+    "id": "a354ac82d27fbe2d",
+    "name": "Glass_050m",
+    "order": 8
+}
