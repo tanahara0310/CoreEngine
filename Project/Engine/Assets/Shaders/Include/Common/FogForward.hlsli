@@ -5,8 +5,10 @@
 /// @file FogForward.hlsli
 /// @brief 前方描画（半透明・水面・パーティクル）の霧
 /// @details gFog は呼び出し側のシェーダーが自分の空いたレジスタで宣言する。
-///          ボリュメトリックの格子は space6 に置き、全画面の合成と同じ VolumetricFogComposite.hlsli の式で引く。
-///          格子を使わないフレーム（gFog.volumetricEnabled == 0）は Fog.hlsli の解析式のまま。
+///          ボリュメトリックの格子と格子より奥の局所の霧は space6 に置き、全画面の合成と同じ
+///          VolumetricFogComposite.hlsli の式で引く。
+///          格子を使わないフレーム（kFogVolumetricOff）は Fog.hlsli の解析式のまま。
+///          局所の霧だけのフレーム（kFogVolumetricLocalOnly）は、解析式の高さフォグの手前に局所の霧を重ねる。
 
 #include "Fog.hlsli"
 #include "VolumetricFogComposite.hlsli"
@@ -18,7 +20,7 @@ SamplerState gVolumetricFogSampler : register(s0, space6);         ///< 線形�
 /// @brief ワールド座標が分かっている面の色へ霧を合成する
 float3 ApplyForwardFog(FogParameters p, float3 worldPos, float3 color)
 {
-    if (p.volumetricEnabled == 0)
+    if (p.volumetricEnabled == kFogVolumetricOff)
     {
         return ApplyFog(p, worldPos, color);
     }
@@ -38,6 +40,10 @@ float3 ApplyForwardFog(FogParameters p, float3 worldPos, float3 color)
     const float4 ray = VolumetricFogSampleRay(
         p, gVolumetricFogIntegrated, gVolumetricFogFarLight, gVolumetricFogSampler,
         screenUV * p.volumetricScreenToGrid, toSurface / distance, distance);
+    if (p.volumetricEnabled == kFogVolumetricLocalOnly)
+    {
+        return VolumetricFogApplyLocalRay(p, ray, ApplyFog(p, worldPos, color));
+    }
     return VolumetricFogApplyRay(p, ray, color);
 }
 

@@ -25,6 +25,7 @@ namespace CoreEngine
     /// @details 霧の格子が届く範囲を包む球を光に垂直な面へ写し、その面に並べた点から光の進む向きへ
     ///          レイを撃って、最初に当たった距離を R32_FLOAT の画像へ書く。霧の格子（LightScattering）は
     ///          点の距離と画像の距離を比べて影を決める。毎フレーム Trace を呼ぶ。
+    ///          r.Fog.Volumetric.ShadowUpdateInterval のフレームごとに撮り直し、間のフレームは前の画像と座標を使う。
     class RTVolumetricShadow : public RTEffect {
     public:
         bool Initialize(const RTEffectInitContext& init) override;
@@ -52,7 +53,10 @@ namespace CoreEngine
         /// @brief 今フレームに画像を書いたか
         bool IsDispatchedThisFrame() const { return dispatchedThisFrame_; }
 
-        /// @brief 今フレームの画像と座標（IsDispatchedThisFrame のときだけ有効）
+        /// @brief 今フレームに使える画像があるか（今フレームに書いたか、前に書いた画像を使い回す）
+        bool IsAvailableThisFrame() const { return availableThisFrame_; }
+
+        /// @brief 今フレームに使う画像と座標（IsAvailableThisFrame のときだけ有効。使い回すフレームは書いたときの座標）
         const VolumetricFogSunDepth& GetFrame() const { return frame_; }
 
         /// @brief 画像（ステート追跡込み）と SRV
@@ -68,6 +72,11 @@ namespace CoreEngine
 
         /// @brief 画像を GPU が使い終わってから手放す
         void RetireTexture();
+
+        /// @brief 前に書いた画像を今フレームも使えるか
+        /// @param center 今フレームの霧の範囲を包む球の中心 [m]
+        /// @param radius 今フレームの霧の範囲を包む球の半径 [m]
+        bool CanReuseFrame(const Light* light, uint32_t resolution, const Vector3& center, float radius) const;
 
         GraphicsCore* dxCommon_ = nullptr;
         AccelerationStructureManager* asMgr_ = nullptr;
@@ -85,5 +94,12 @@ namespace CoreEngine
         VolumetricFogSunDepth frame_{};
         RayTracingDispatchInfo dispatchInfo_{};
         bool dispatchedThisFrame_ = false;
+        bool availableThisFrame_ = false;
+        bool tracedCalledThisFrame_ = false; ///< 今フレームに Trace が呼ばれたか
+        bool tracedCalledLastFrame_ = false; ///< 前のフレームに Trace が呼ばれたか
+        bool frameValid_ = false;            ///< frame_ が使い回せる画像を指しているか
+        uint32_t framesSinceTrace_ = 0;      ///< 最後に書いてから使い回したフレームの数
+        Vector3 tracedCenter_{};             ///< 書いたときの霧の範囲を包む球の中心 [m]
+        float tracedRadius_ = 0.0f;          ///< 書いたときの霧の範囲を包む球の半径 [m]
     };
 }

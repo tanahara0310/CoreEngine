@@ -64,6 +64,7 @@ namespace CoreEngine
         const CloudShadowShaderConstants* cloudShadow = nullptr; ///< 雲の影のマップの範囲と強さ（雲が無ければ nullptr）
         const VolumetricFogSunDepth* sunDepth = nullptr;         ///< 太陽から見た深さの画像（今フレームに作っていなければ nullptr）
         D3D12_GPU_DESCRIPTOR_HANDLE noiseSrv{};                  ///< 霧のノイズに使う 3D の画像（雲のベース形状ノイズ。無ければ 0）
+        bool heightFogInGrid = true;            ///< 高さフォグを格子へ入れるか（false なら格子は局所の霧だけ）
     };
 
     /// @brief ボリュメトリックフォグの格子（画面に揃えた 3D の配列）と、それを作る 3 本の CS
@@ -273,6 +274,24 @@ namespace CoreEngine
         CB_VERIFY_LAYOUT(MediaConstants, kMediaConstantsFields);
         CB_BIND_HLSL(MediaConstants, kMediaConstantsFields, "gVolumetricFogMedia");
 
+        /// @brief 格子より奥まで届く局所の霧の最大数（VolumetricFogCommon.hlsli と一致）
+        static constexpr uint32_t kMaxFarVolumes = 16;
+
+        /// @brief 格子より奥の霧の定数（VolumetricFogCommon.hlsli の VolumetricFogFarMedia と 1 対 1）
+        /// @details 全画面の合成と前方描画が、格子が届く距離より奥の高さフォグと局所の霧を足すのに使う
+        struct FarMediaConstants {
+            Vector3     heightAlbedo;  ///< 高さフォグの散乱の割合
+            uint32_t    volumeCount;   ///< 格子より奥まで届く局所の霧の数
+            LocalVolume volumes[kMaxFarVolumes];
+        };
+
+        static constexpr Cb::Field kFarMediaConstantsFields[] = {
+            CB_FIELD(FarMediaConstants, heightAlbedo), CB_FIELD(FarMediaConstants, volumeCount),
+            CB_FIELD(FarMediaConstants, volumes),
+        };
+        CB_VERIFY_LAYOUT(FarMediaConstants, kFarMediaConstantsFields);
+        CB_BIND_HLSL(FarMediaConstants, kFarMediaConstantsFields, "gVolumetricFogFarMedia");
+
     public:
         /// @brief 3 本の CS のパイプラインを作る
         /// @return 3 本とも作れたら true
@@ -315,11 +334,17 @@ namespace CoreEngine
         /// @brief 積み上げた格子（ステート追跡込み）
         GpuResource& GetIntegratedResource() { return integrated_.texture; }
 
-        /// @brief 格子の奥の光の画像の SRV（縦横は格子と同じ・rgb = アルベド × 格子の端の点の光の源）
+        /// @brief 格子の奥の光の画像の SRV（縦横は格子と同じ・rgb = 格子の端の点の光の源）
         D3D12_GPU_DESCRIPTOR_HANDLE GetFarLightSrv() const { return farLight_.srv.gpuHandle; }
 
         /// @brief 最後に作った格子を引くのに要る値（PrepareFrame の後に有効）
         const ForwardParams& GetForwardParams() const { return forwardParams_; }
+
+        /// @brief 今フレームの格子より奥の霧の定数の GPU 仮想アドレス（PrepareFrame の前は 0）
+        D3D12_GPU_VIRTUAL_ADDRESS GetFarMediaAddress() const { return farMediaConstants_; }
+
+        /// @brief 最後に作った格子に高さフォグを入れたか（false なら局所の霧だけ）
+        bool IsHeightFogInGrid() const { return heightFogInGrid_; }
 
         /// @brief 今フレームの格子の数（PrepareFrame の後に有効）
         const uint32_t* GetGridSize() const { return gridSize_; }
@@ -335,6 +360,12 @@ namespace CoreEngine
 
         /// @brief 最後に作った格子へ入れた局所の霧の数
         uint32_t GetInjectedVolumeCount() const { return injectedVolumeCount_; }
+
+        /// @brief 最後に作った格子で、格子より奥まで届くとして合成へ渡した局所の霧の数
+        uint32_t GetFarVolumeCount() const { return farVolumeCount_; }
+
+        /// @brief 濃さか発光のある局所の霧が置かれているか（高さフォグが無くても格子を作る）
+        bool HasVolumes() const;
 
         /// @brief 霧のノイズの画像が要るか（高さフォグか局所の霧のどれかにノイズの強さがある）
         bool IsNoiseRequested() const;
@@ -365,11 +396,15 @@ namespace CoreEngine
         /// @brief 前フレームの光を混ぜてよいか、混ぜるならどこへずらすかを定数へ詰める
         void FillHistory(Constants& constants, const Matrix4x4& viewProj, const Vector3& cameraPos);
 
-        /// @brief 格子にかかる局所の霧とノイズを詰めて今フレームの定数を確保し、mediaFlags を書く
+        /// @brief 局所の霧とノイズを詰めて今フレームの定数を確保し、mediaFlags を書く
+        /// @details 格子にかかるものは格子の定数へ、格子より奥へはみ出すものは格子より奥の霧の定数へ、
+        ///          カメラに近いものから詰める（両方に入るものもある）
         /// @param cameraPos カメラのワールド座標 [m]
         /// @param noiseSrv ノイズの画像の SRV（無ければ 0）
+        /// @param heightFogInGrid 高さフォグを格子へ入れるか
         /// @return 確保できたら true
-        bool AllocateMedia(Constants& constants, const Vector3& cameraPos, D3D12_GPU_DESCRIPTOR_HANDLE noiseSrv);
+        bool AllocateMedia(Constants& constants, const Vector3& cameraPos, D3D12_GPU_DESCRIPTOR_HANDLE noiseSrv,
+            bool heightFogInGrid);
 
         /// @brief 3D の画像 1 枚を作る
         bool CreateVolume(Volume& volume, uint32_t sizeX, uint32_t sizeY, uint32_t sizeZ, const char* name,
@@ -421,6 +456,9 @@ namespace CoreEngine
 
         std::vector<VolumetricFogVolumeDesc> volumes_;
         uint32_t injectedVolumeCount_ = 0;
+        D3D12_GPU_VIRTUAL_ADDRESS farMediaConstants_ = 0;
+        uint32_t farVolumeCount_ = 0;
+        bool heightFogInGrid_ = true;
         bool noiseActive_ = false;
         /// @brief 風で流したノイズのずれ（模様の一辺で折り返す）[m]
         Vector3 noiseOffset_{};

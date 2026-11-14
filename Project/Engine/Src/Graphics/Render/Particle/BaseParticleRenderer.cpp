@@ -123,9 +123,13 @@ namespace CoreEngine
         if (fogVolumetric_.IsValid()) {
             const int integratedIdx = GetRootParamIndex("gVolumetricFogIntegrated");
             const int farLightIdx = GetRootParamIndex("gVolumetricFogFarLight");
+            const int farMediaIdx = GetRootParamIndex("gVolumetricFogFarMedia");
             if (integratedIdx >= 0 && farLightIdx >= 0) {
                 cmdList_->SetGraphicsRootDescriptorTable(integratedIdx, fogVolumetric_.integratedSrv);
                 cmdList_->SetGraphicsRootDescriptorTable(farLightIdx, fogVolumetric_.farLightSrv);
+            }
+            if (farMediaIdx >= 0) {
+                cmdList_->SetGraphicsRootConstantBufferView(farMediaIdx, fogVolumetric_.farMediaCbv);
             }
         }
     }

@@ -170,6 +170,7 @@ namespace CoreEngine
         if (!isInGBufferPass_ && fogVolumetric_.IsValid()) {
             binder.Set(table[ModelBind::gVolumetricFogIntegrated], fogVolumetric_.integratedSrv);
             binder.Set(table[ModelBind::gVolumetricFogFarLight], fogVolumetric_.farLightSrv);
+            binder.Set(table[ModelBind::gVolumetricFogFarMedia], fogVolumetric_.farMediaCbv);
         }
         // 画面の深度は、半透明には写しを、GBuffer には「奥に何も無い」テクスチャを差す
         if (sceneDepth_) {

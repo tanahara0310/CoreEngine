@@ -922,6 +922,20 @@ namespace CoreEngine
         }
     }
 
+    void SceneDebugEditor::CreateFogVolumeObject()
+    {
+        if (RefuseInPrefabMode()) {
+            return;
+        }
+        if (!gameObjectManager_) {
+            return;
+        }
+        if (GameObject* const created = ObjectEditing::CreateFogVolume(
+                MakeObjectEditingContext(), ComputeDropPosition(nullptr))) {
+            objectSelector_.SelectObject(created);
+        }
+    }
+
     void SceneDebugEditor::CreateSpriteObject()
     {
         if (RefuseInPrefabMode()) {

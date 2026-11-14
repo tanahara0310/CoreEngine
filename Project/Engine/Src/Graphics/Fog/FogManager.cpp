@@ -19,6 +19,7 @@
 
 #include <cstring>
 #include <exception>
+#include <iterator>
 
 namespace CoreEngine
 {
@@ -27,10 +28,56 @@ namespace CoreEngine
         /// @brief 合成 CS のシェーダー供給（パスはファイル名で AssetDatabase が解決する）
         class HeightFogShaderProvider final : public ICustomShaderProvider {
         public:
-            std::wstring GetComputeShaderPath() const override { return L"HeightFog.CS.hlsl"; }
+            explicit HeightFogShaderProvider(const wchar_t* path) : path_(path) {}
+            std::wstring GetComputeShaderPath() const override { return path_; }
+
+        private:
+            const wchar_t* path_;
+        };
+
+        /// @brief 合成 CS の 1 つの版のシェーダ
+        struct CompositeShader {
+            const wchar_t* path;  ///< シェーダのファイル名
+            const char* name;     ///< ログと束ねの表に出す名前
+        };
+
+        /// @brief 合成 CS の版ごとのシェーダ（FogManager::CompositeVariant の順）
+        constexpr CompositeShader kCompositeShaders[] = {
+            { L"HeightFog.CS.hlsl", "HeightFog" },
+            { L"HeightFogNoFarVolumes.CS.hlsl", "HeightFogNoFarVolumes" },
         };
 
         constexpr uint32_t kThreadGroupSize = 8;
+
+        /// @brief 合成 CS の 1 つの版のパイプラインを作り、束ねの表を引く
+        bool BuildCompositePipeline(
+            ID3D12Device* device, ShaderCompiler& shaderCompiler, ShaderReflectionBuilder& reflectionBuilder,
+            const CompositeShader& shader, CustomShaderPipeline& pipeline, BindingTable& bindings)
+        {
+            const HeightFogShaderProvider provider(shader.path);
+            if (!pipeline.Build(device, shaderCompiler, reflectionBuilder, provider)
+                || !pipeline.HasComputePSO()) {
+                Logger::GetInstance().Warnf(LogCategory::Graphics,
+                    "FogManager: {} コンピュートパイプラインの構築に失敗", shader.name);
+                return false;
+            }
+
+            const ShaderReflectionData* reflection = pipeline.GetComputeReflection();
+            if (!reflection) {
+                Logger::GetInstance().Warnf(LogCategory::Graphics,
+                    "FogManager: {} のリフレクションを取得できません", shader.name);
+                return false;
+            }
+
+            try {
+                bindings = BindingTable::Resolve(*reflection, FogApplyBind::kDecls, shader.name);
+            }
+            catch (const std::exception&) {
+                // 違反の内訳は BindingTable::Resolve が error ログへ出している
+                return false;
+            }
+            return true;
+        }
     }
 
     bool FogManager::Initialize(GraphicsCore* graphicsCore)
@@ -52,27 +99,13 @@ namespace CoreEngine
         ShaderReflectionBuilder reflectionBuilder;
         reflectionBuilder.Initialize(shaderCompiler.GetDxcUtils());
 
-        const HeightFogShaderProvider provider;
-        if (!pipeline_.Build(device, shaderCompiler, reflectionBuilder, provider)
-            || !pipeline_.HasComputePSO()) {
-            Logger::GetInstance().Warnf(LogCategory::Graphics,
-                "FogManager: HeightFog コンピュートパイプラインの構築に失敗");
-            return false;
-        }
-
-        const ShaderReflectionData* reflection = pipeline_.GetComputeReflection();
-        if (!reflection) {
-            Logger::GetInstance().Warnf(LogCategory::Graphics,
-                "FogManager: HeightFog のリフレクションを取得できません");
-            return false;
-        }
-
-        try {
-            bindings_ = BindingTable::Resolve(*reflection, FogApplyBind::kDecls, "HeightFog");
-        }
-        catch (const std::exception&) {
-            // 違反の内訳は BindingTable::Resolve が error ログへ出している
-            return false;
+        static_assert(std::size(kCompositeShaders) == kCompositeVariantCount);
+        for (uint32_t variant = 0; variant < kCompositeVariantCount; ++variant) {
+            CompositePipeline& composite = composites_[variant];
+            if (!BuildCompositePipeline(device, shaderCompiler, reflectionBuilder,
+                    kCompositeShaders[variant], composite.pipeline, composite.bindings)) {
+                return false;
+            }
         }
 
         // 常設の「何もしない」フォグ定数を 1 本作る。PrepareConstants が走らないビュー・
@@ -112,9 +145,17 @@ namespace CoreEngine
         return true;
     }
 
+    bool FogManager::IsHeightFogVolumetric() const
+    {
+        return IsFogActive() && VolumetricFogCVars::Enabled.Get();
+    }
+
     bool FogManager::IsVolumetricRequested() const
     {
-        return IsFogActive() && VolumetricFogCVars::Enabled.Get() && volumetric_.IsPipelineReady();
+        if (!fogActive_ || !pipelineReady_ || !volumetric_.IsPipelineReady()) {
+            return false;
+        }
+        return IsHeightFogVolumetric() || volumetric_.HasVolumes();
     }
 
     Vector3 FogManager::GetFallbackAmbient() const
@@ -181,7 +222,8 @@ namespace CoreEngine
         constants.volumetricLightScale = 1.0f;
         if (useVolumetric) {
             const VolumetricFog::ForwardParams& grid = volumetric_.GetForwardParams();
-            constants.volumetricEnabled = 1u;
+            constants.volumetricEnabled = volumetric_.IsHeightFogInGrid()
+                ? kVolumetricHeightFog : kVolumetricLocalOnly;
             constants.volumetricViewProj = grid.viewProj;
             constants.volumetricGridSize = grid.gridSize;
             constants.volumetricDistance = grid.distance;
@@ -201,10 +243,11 @@ namespace CoreEngine
         }
 
         // 格子は GameView のカメラで作るので、そのビューの定数だけが格子を引く
-        const bool useVolumetric = allowVolumetric && IsFogActive() && volumetric_.IsFrameReady();
+        const bool useVolumetric = allowVolumetric && volumetric_.IsFrameReady();
         if (useVolumetric) {
             forwardVolumetric_.integratedSrv = volumetric_.GetIntegratedSrv();
             forwardVolumetric_.farLightSrv = volumetric_.GetFarLightSrv();
+            forwardVolumetric_.farMediaCbv = volumetric_.GetFarMediaAddress();
         }
 
         // 定数は毎フレーム UploadRing から取る（専用バッファを 1 本持って上書きすると、
@@ -249,31 +292,37 @@ namespace CoreEngine
 
         {
             namespace B = FogApplyBind;
-            cmdList->SetPipelineState(pipeline_.GetComputePSO());
-            cmdList->SetComputeRootSignature(pipeline_.GetComputeRootSignature());
+            // 格子より奥まで届く局所の霧が無いフレームは、それを調べない版で合成する
+            const bool farVolumes = volumetric_.IsFrameReady() && volumetric_.GetFarVolumeCount() > 0;
+            const CompositePipeline& composite =
+                composites_[farVolumes ? kCompositeFarVolumes : kCompositeNoFarVolumes];
+            const BindingTable& bindings = composite.bindings;
+            cmdList->SetPipelineState(composite.pipeline.GetComputePSO());
+            cmdList->SetComputeRootSignature(composite.pipeline.GetComputeRootSignature());
 
             ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
-            binder.Set(bindings_[B::gFog], GetConstantsGpuAddress(FogVariant::Full));
-            binder.Set(bindings_[B::gSceneDepth], sceneDepthSrv);
-            binder.Set(bindings_[B::gOutput], sceneColorUav);
+            binder.Set(bindings[B::gFog], GetConstantsGpuAddress(FogVariant::Full));
+            binder.Set(bindings[B::gSceneDepth], sceneDepthSrv);
+            binder.Set(bindings[B::gOutput], sceneColorUav);
             // Sky-View LUT はフレームごとの判断で差す（Conditional 宣言）。
             // 差さないフレームは skyColorBlend が 0 なのでシェーダーが触れない
             if (sky.valid && sky.skyViewLutSrv.ptr != 0) {
-                binder.Set(bindings_[B::gSkyViewLUT], sky.skyViewLutSrv);
+                binder.Set(bindings[B::gSkyViewLUT], sky.skyViewLutSrv);
             }
             // ボリュメトリックの格子は今フレームに積み上げたときだけ差す（差さないフレームは volumetricEnabled が 0）
             if (volumetric_.IsFrameReady()) {
-                binder.Set(bindings_[B::gVolumetricFog], volumetric_.GetFrameConstantsAddress());
-                binder.Set(bindings_[B::gVolumetricFogIntegrated], volumetric_.GetIntegratedSrv());
-                binder.Set(bindings_[B::gVolumetricFogFarLight], volumetric_.GetFarLightSrv());
+                binder.Set(bindings[B::gVolumetricFog], volumetric_.GetFrameConstantsAddress());
+                binder.Set(bindings[B::gVolumetricFogIntegrated], volumetric_.GetIntegratedSrv());
+                binder.Set(bindings[B::gVolumetricFogFarLight], volumetric_.GetFarLightSrv());
+                binder.Set(bindings[B::gVolumetricFogFarMedia], volumetric_.GetFarMediaAddress());
                 if (volumetric_.GetCloudShadowSrv().ptr != 0) {
-                    binder.Set(bindings_[B::gCloudShadowMap], volumetric_.GetCloudShadowSrv());
+                    binder.Set(bindings[B::gCloudShadowMap], volumetric_.GetCloudShadowSrv());
                 }
                 if (volumetric_.GetSunDepthSrv().ptr != 0) {
-                    binder.Set(bindings_[B::gSunDepth], volumetric_.GetSunDepthSrv());
+                    binder.Set(bindings[B::gSunDepth], volumetric_.GetSunDepthSrv());
                 }
             }
-            binder.ValidateBeforeDraw(bindings_);
+            binder.ValidateBeforeDraw(bindings);
         }
 
         const D3D12_RESOURCE_DESC desc = sceneColor.Desc();

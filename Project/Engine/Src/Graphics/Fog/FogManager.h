@@ -56,6 +56,13 @@ namespace CoreEngine
     ///       （カメラに近い媒質を後に合成する＝本パスが AerialPerspective より後）。
     class FogManager {
     public:
+        /// @brief FogConstants::volumetricEnabled の値（Fog.hlsli の kFogVolumetric* と一致）
+        enum VolumetricMode : uint32_t {
+            kVolumetricOff = 0u,        ///< 格子を使わない（解析式だけ）
+            kVolumetricHeightFog = 1u,  ///< 高さフォグと局所の霧を格子で描く
+            kVolumetricLocalOnly = 2u,  ///< 格子は局所の霧だけ（高さフォグは解析式のまま掛ける）
+        };
+
         /// @brief フォグ合成 CS が使う定数バッファ
         /// @note Assets/Shaders/Include/Common/Fog.hlsli の struct FogParameters と 1 対 1。
         ///       行列は転置せずそのまま入れる（HLSL 側は行ベクトル規約 mul(v, M)）
@@ -81,7 +88,7 @@ namespace CoreEngine
             uint32_t  waterClipEnabled; ///< 1 なら水面の範囲内で水面より下の面に全画面フォグを掛けない
             Vector2   waterRegionCenterXZ;     ///< 水面の範囲の中心（ワールド XZ）[m]
             Vector2   waterRegionHalfExtentXZ; ///< 水面の範囲の半分の大きさ（ワールド XZ）[m]
-            uint32_t  volumetricEnabled; ///< 1 なら全画面の合成と前方描画でボリュメトリックの格子を使う
+            uint32_t  volumetricEnabled; ///< VolumetricMode（全画面の合成と前方描画が格子をどう使うか）
             float     volumetricLightScale; ///< 格子で散乱した光を足す割合（通常 1・加算とスクリーンは 0）
             Matrix4x4 volumetricViewProj; ///< 格子を作ったジッタ無しの View*Projection
             Vector3   volumetricGridSize; ///< 格子の数（横・縦・奥行き）
@@ -147,7 +154,14 @@ namespace CoreEngine
         bool IsFogActive() const { return fogActive_ && settings_.enabled && pipelineReady_; }
 
         /// @brief このフレームでボリュメトリックの格子を作るか
+        /// @details 高さフォグのボリュメトリックが有効か、濃さか発光のある局所の霧が置かれていれば作る
         bool IsVolumetricRequested() const;
+
+        /// @brief 高さフォグを格子で描くか（r.Fog.Enabled と r.Fog.Volumetric.Enabled）
+        bool IsHeightFogVolumetric() const;
+
+        /// @brief このフレームに全画面の合成を走らせるか（高さフォグが有効か、今フレームに格子を作った）
+        bool IsCompositeActive() const { return IsFogActive() || volumetric_.IsFrameReady(); }
 
         /// @brief ボリュメトリックの格子
         VolumetricFog& GetVolumetric() { return volumetric_; }
@@ -193,7 +207,7 @@ namespace CoreEngine
         }
 
         /// @brief 最後の PrepareConstants の定数が格子を使うときに、前方描画が差す格子の SRV
-        /// @details 定数の volumetricEnabled が 0 のフレームは両方 0（差さない）
+        /// @details 定数の volumetricEnabled が 0 のフレームは全部 0（差さない）
         const FogVolumetricResources& GetForwardVolumetricResources() const { return forwardVolumetric_; }
 
     private:
@@ -202,10 +216,22 @@ namespace CoreEngine
         FogConstants BuildConstants(
             const ViewInfo& view, const FogSkyInfo& sky, const FogWaterInfo& water, bool useVolumetric) const;
 
+        /// @brief 合成 CS の版
+        enum CompositeVariant : uint32_t {
+            kCompositeFarVolumes = 0u,   ///< 格子より奥まで届く局所の霧を視線に沿って足す
+            kCompositeNoFarVolumes = 1u, ///< 格子より奥の局所の霧を調べない
+            kCompositeVariantCount = 2u,
+        };
+
+        /// @brief 合成 CS の 1 つの版のパイプラインと束ねの表
+        struct CompositePipeline {
+            CustomShaderPipeline pipeline{};
+            BindingTable bindings{};
+        };
+
         GraphicsCore* graphicsCore_ = nullptr;
 
-        CustomShaderPipeline pipeline_{};
-        BindingTable bindings_{};
+        CompositePipeline composites_[kCompositeVariantCount]{};
         bool pipelineReady_ = false;
 
         FogSettings settings_{};

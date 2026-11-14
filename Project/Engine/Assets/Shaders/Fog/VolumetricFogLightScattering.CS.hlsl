@@ -5,7 +5,8 @@
 ///          局所の霧の発光を足す。点は格子の中で毎フレームずらし、前フレームの格子へ写した位置の光と混ぜる。
 ///          局所の霧かノイズがあるフレームは、濃さもずらした点で求めているので消散係数も混ぜる。
 ///          出力: rgb = 散乱係数 × 光の源 + 発光、a = 消散係数 [1/m]。
-///          奥行き 0 の格子は、縦横 1 列の中心の視線で格子の端の点の光の源（物の影なし）も書く（格子より奥の霧の光）。
+///          奥行き 0 の格子は、縦横 1 列の中心の視線で格子の端の点の光の源（物の影なし）も書く
+///          （格子より奥の高さフォグと局所の霧の光。散乱の割合は合成の側で掛ける）。
 
 #include "VolumetricFogCommon.hlsli"
 #include "DepthReconstruction.hlsli"
@@ -84,13 +85,13 @@ bool SampleHistory(VolumetricFogParameters p, uint3 cell, out float4 history)
     return true;
 }
 
-/// @brief 縦横 1 列の中心の視線で、格子の端の点の光の源にアルベドを掛けた値（物の影は掛けない）
+/// @brief 縦横 1 列の中心の視線で、格子の端の点の光の源（物の影は掛けない）
 float3 FarLight(VolumetricFogParameters p, uint2 column, float3 ambient)
 {
     float3 viewDir;
     const float2 uv = (float2(column) + 0.5f) * p.gridPixelSize;
     const float3 boundary = CellWorldPosition(p, uv, float(p.gridSize.z), viewDir);
-    return p.albedo * VolumetricFogSource(p, viewDir, ambient, boundary, gCloudShadowMap, gLinearClamp, 1.0f);
+    return VolumetricFogSource(p, viewDir, ambient, boundary, gCloudShadowMap, gLinearClamp, 1.0f);
 }
 
 [numthreads(4, 4, 4)]

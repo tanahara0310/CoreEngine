@@ -47,11 +47,11 @@ namespace CoreEngine
             }
         }
 
-        /// @brief 今フレームに書いた太陽から見た深さの画像を入力へ詰める（書いていなければ空のまま）
+        /// @brief 今フレームに使える太陽から見た深さの画像を入力へ詰める（無ければ空のまま）
         void FillSunDepthInput(const RenderContext& context, VolumetricFogFrameInput& input)
         {
             const RTVolumetricShadow* shadow = FindRTEffect<RTVolumetricShadow>(context);
-            if (shadow && shadow->IsDispatchedThisFrame()) {
+            if (shadow && shadow->IsAvailableThisFrame()) {
                 input.sunDepth = &shadow->GetFrame();
             }
         }
@@ -115,6 +115,7 @@ namespace CoreEngine
         input.atmosphere = context.atmosphereManager;
         input.fog = &fog.GetSettings();
         input.fallbackAmbient = fog.GetFallbackAmbient();
+        input.heightFogInGrid = fog.IsHeightFogVolumetric();
         FillCloudShadowInput(context, input);
         FillSunDepthInput(context, input);
 

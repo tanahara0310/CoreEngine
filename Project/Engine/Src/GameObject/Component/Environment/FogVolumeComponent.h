@@ -10,7 +10,8 @@ namespace CoreEngine
 {
     /// @brief 箱か球の形の中だけに霧を置くコンポーネント（ボリュメトリックフォグの格子へ足す）
     /// @details 形の中心・向きはオブジェクトのトランスフォーム、大きさは「大きさ」×スケール。
-    ///          ボリュメトリックフォグ（r.Fog.Enabled と r.Fog.Volumetric.Enabled）が有効なときだけ描かれる。
+    ///          高さフォグの設定に関係なく描かれる（高さフォグのボリュメトリックが無効でも、局所の霧があれば格子を作る）。
+    ///          ボリュメトリックフォグの格子が届く距離より奥の部分は、合成が視線に沿って足す。
     ///          シーンの更新（EnvironmentFeature）が有効なものを毎フレーム集めて霧へ渡す。
     class FogVolumeComponent final : public IComponent {
     public:
@@ -54,6 +55,9 @@ namespace CoreEngine
         void SetAlbedo(const Vector4& color) { albedo_ = { color.x, color.y, color.z }; }
 
         Vector4 GetEmissiveColor() const { return { emissiveColor_.x, emissiveColor_.y, emissiveColor_.z, 1.0f }; }
+
+        /// @brief 「大きさ」（スケールを掛ける前）[m]
+        const Vector3& GetSize() const { return size_; }
         void SetEmissiveColor(const Vector4& color) { emissiveColor_ = { color.x, color.y, color.z }; }
 
         /// @brief 格子へ渡す値（中心・向き・大きさはオブジェクトのワールドの値から作る）

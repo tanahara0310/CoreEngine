@@ -13,8 +13,10 @@
 /// 大気が無い（LUT 未生成の）シーンでは C++ 側が skyColorBlend = 0 にするため、
 /// LUT のサンプルそのものが走らない。
 ///
-/// volumetricEnabled のフレームは、格子が届く距離までをボリュメトリックの格子から引き、
-/// その先を同じ濃さの式と格子の奥の光の画像で足す（VolumetricFogComposite.hlsli。前方描画と同じ式）。
+/// volumetricEnabled が kFogVolumetricHeightFog のフレームは、格子が届く距離までをボリュメトリックの格子から引き、
+/// その先を同じ濃さの式・格子より奥の局所の霧・格子の奥の光の画像で足す（VolumetricFogComposite.hlsli。前方描画と同じ式）。
+/// kFogVolumetricLocalOnly のフレームは、高さフォグを解析式で掛けてから、その手前に局所の霧（格子とその奥）を重ねる。
+/// 局所の霧は空へ掛けない設定でも空の手前に出す。
 
 #include "Fog.hlsli"
 #include "VolumetricFogComposite.hlsli"
@@ -126,7 +128,26 @@ float3 ApplyVolumetricFog(float2 uv, float3 rayDirection, float rayEnd, float3 s
     const float4 ray = VolumetricFogSampleRay(
         gFog, gVolumetricFogIntegrated, gVolumetricFogFarLight, gLUTSampler,
         uv * gFog.volumetricScreenToGrid, rayDirection, rayEnd);
-    return VolumetricFogApplyRay(gFog, ray, sceneColor);
+    return VolumetricFogApplyAny(gFog, ray, sceneColor);
+}
+
+/// @brief 解析式の高さフォグをシーン色へ掛ける
+/// @param rayStart フォグが効き始める距離 [m]
+/// @param rayEnd 面までの距離 [m]
+float3 ApplyHeightFog(float3 rayDirection, float rayStart, float rayEnd, float3 sceneColor)
+{
+    const float transmittance = FogTransmittance(
+        gFog, gFog.cameraWorldPos, rayDirection, rayStart, rayEnd);
+
+    // 分岐は定数バッファ由来なのでワープ内で一様。LUT 未バインドのフレームは
+    // skyColorBlend が 0 なのでサンプルへ入らない
+    float3 skyLuminance = gFog.fogColor;
+    if (gFog.skyColorBlend > 0.0f)
+    {
+        skyLuminance = SampleSkyLuminance(rayDirection);
+    }
+    const float3 inscattering = FogInscatteringColor(gFog, rayDirection, skyLuminance);
+    return lerp(inscattering, sceneColor, transmittance);
 }
 
 [numthreads(8, 8, 1)]
@@ -142,9 +163,11 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 
     const float ndcDepth = gSceneDepth[dispatchThreadId.xy];
     const bool isBackground = IsBackgroundDepth(ndcDepth);
+    const bool localOnly = gFog.volumetricEnabled == kFogVolumetricLocalOnly;
+    const bool skipHeightFog = isBackground && gFog.applyToSky == 0;
 
-    // 空へ掛けない設定なら背景ピクセルには触れない
-    if (isBackground && gFog.applyToSky == 0)
+    // 空へ掛けない設定なら背景ピクセルには触れない（局所の霧だけの格子は空の手前にも重ねる）
+    if (skipHeightFog && !localOnly)
     {
         return;
     }
@@ -169,27 +192,24 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     const float rayEnd = isBackground ? max(gFog.skyDistance, 0.0f) : surfaceDistance;
     const float rayStart = min(gFog.startDistance, rayEnd);
 
-    if (gFog.volumetricEnabled != 0)
+    const float4 sceneColor = gOutput[dispatchThreadId.xy];
+    if (gFog.volumetricEnabled == kFogVolumetricHeightFog)
     {
-        const float4 volumetricScene = gOutput[dispatchThreadId.xy];
         gOutput[dispatchThreadId.xy] = float4(
-            ApplyVolumetricFog(uv, rayDirection, rayEnd, volumetricScene.rgb), volumetricScene.a);
+            ApplyVolumetricFog(uv, rayDirection, rayEnd, sceneColor.rgb), sceneColor.a);
         return;
     }
 
-    const float transmittance = FogTransmittance(
-        gFog, gFog.cameraWorldPos, rayDirection, rayStart, rayEnd);
-
-    // 分岐は定数バッファ由来なのでワープ内で一様。LUT 未バインドのフレームは
-    // skyColorBlend が 0 なのでサンプルへ入らない
-    float3 skyLuminance = gFog.fogColor;
-    if (gFog.skyColorBlend > 0.0f)
+    float3 color = sceneColor.rgb;
+    if (!skipHeightFog && gFog.density > 0.0f)
     {
-        skyLuminance = SampleSkyLuminance(rayDirection);
+        color = ApplyHeightFog(rayDirection, rayStart, rayEnd, color);
     }
-    const float3 inscattering = FogInscatteringColor(gFog, rayDirection, skyLuminance);
-
-    const float4 sceneColor = gOutput[dispatchThreadId.xy];
-    gOutput[dispatchThreadId.xy] = float4(
-        lerp(inscattering, sceneColor.rgb, transmittance), sceneColor.a);
+    if (localOnly)
+    {
+        // 局所の霧は空の手前でも形の奥の端まで調べる
+        const float localRayEnd = isBackground ? kVolumetricFogSkyRayLength : surfaceDistance;
+        color = ApplyVolumetricFog(uv, rayDirection, localRayEnd, color);
+    }
+    gOutput[dispatchThreadId.xy] = float4(color, sceneColor.a);
 }
