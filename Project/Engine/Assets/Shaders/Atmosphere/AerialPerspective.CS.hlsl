@@ -47,8 +47,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     float distanceKm = distanceMeters * 0.001f;
 
     // CameraVolume LUT から (inscattering, 透過率) を取得して合成
-    float w = CameraVolumeDistanceToW(distanceKm, gAtmosphere.apKmPerSlice);
-    float4 aerial = gCameraVolumeLUT.SampleLevel(gLUTSampler, float3(uv, w), 0);
+    float4 aerial = SampleCameraVolume(gCameraVolumeLUT, gLUTSampler, uv, distanceKm, gAtmosphere.apKmPerSlice);
 
     // CameraVolume LUT はライト色・強度前乗算済み（サンプル後の色乗算は二重適用になる）
     float3 inscattering = aerial.rgb;
