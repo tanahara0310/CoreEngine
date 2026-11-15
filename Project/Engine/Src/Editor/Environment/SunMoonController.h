@@ -66,6 +66,9 @@ namespace CoreEngine
     /// @brief 方位を -180〜180 へ巻き取る
     float WrapAzimuth(float azimuthDeg);
 
+    /// @brief 画面に出す方位（0〜360、小数 1 桁で 360.0 にならない値）
+    float AzimuthForDisplay(float azimuthDeg);
+
     /// @brief 地表から天体を見る向き（長さ 1）
     Vector3 SkyAnglesToDirection(const SkyAngles& angles);
 
@@ -226,9 +229,22 @@ namespace CoreEngine
         AtmosphereManager* GetAtmosphereManager() const;
 
     private:
+        /// @brief 時刻の機能の始まりの時刻と月齢（シーンに保存される値）
+        struct StartValues
+        {
+            float hour = 0.0f;
+            float moonAgeDays = 0.0f;
+        };
+
         LightSnapshot Capture() const;
         LightManager* GetLightManager() const;
         ToneMapping* GetToneMapping() const;
+
+        /// @brief 時刻の機能があり、停止中か（始まりの時刻と月齢へも書くか）
+        bool WritesStartValues() const;
+
+        /// @brief 時刻の機能の始まりの時刻と月齢を読む
+        StartValues ReadStartValues() const;
 
         /// @brief 今の時刻の位置へ太陽を置く（時刻の機能が無いとき）
         void ApplyLocalTime();
@@ -251,6 +267,7 @@ namespace CoreEngine
         int lastTickFrame_ = -1;                ///< 時刻を進めたフレーム
 
         std::optional<LightSnapshot> editBefore_; ///< 操作を始める前の値
+        std::optional<StartValues> startBefore_;  ///< 操作を始める前の始まりの時刻と月齢（停止中だけ控える）
         bool editEnded_ = false;                  ///< 掴んでいた項目を離した
 
         SkyViewCamera viewCamera_{};

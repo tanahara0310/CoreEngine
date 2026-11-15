@@ -18,6 +18,7 @@
 #include "Utility/FrameRate/Time.h"
 
 #ifdef CORE_EDITOR
+#include "Editor/Environment/SunMoonController.h"
 #include "Editor/ImGui/CVarPanel.h"
 #include "Editor/ImGui/EditorTheme.h"
 #include "Editor/ImGui/ImGuiAll.h"
@@ -147,8 +148,10 @@ namespace CoreEngine
 
     void TimeOfDayFeature::Initialize(SceneContext&)
     {
-        timeOfDay_ = NormalizeHours(cvStartHour.Get());
-        moonAgeDays_ = NormalizeMoonAge(cvStartMoonAge.Get());
+        appliedStartHour_ = cvStartHour.Get();
+        appliedStartMoonAge_ = cvStartMoonAge.Get();
+        timeOfDay_ = NormalizeHours(appliedStartHour_);
+        moonAgeDays_ = NormalizeMoonAge(appliedStartMoonAge_);
 
 #ifdef CORE_EDITOR
         // Engine Settings に「Time of Day」パネルを登録する（パラメータ UI は CVar から自動生成する）
@@ -164,6 +167,16 @@ namespace CoreEngine
     {
         if (phase != SceneUpdatePhase::FrameStart) {
             return;
+        }
+
+        // 始まりの時刻と月齢が書き換えられたら、今の時刻と月齢もそこへ合わせる
+        if (const float startHour = cvStartHour.Get(); startHour != appliedStartHour_) {
+            appliedStartHour_ = startHour;
+            timeOfDay_ = NormalizeHours(startHour);
+        }
+        if (const float startMoonAge = cvStartMoonAge.Get(); startMoonAge != appliedStartMoonAge_) {
+            appliedStartMoonAge_ = startMoonAge;
+            moonAgeDays_ = NormalizeMoonAge(startMoonAge);
         }
 
         // 前進はゲーム時間で行う。停止ボタン中は Time::DeltaTime() が 0 を返すため、
@@ -588,17 +601,20 @@ namespace CoreEngine
 
         // ===== 太陽の軌道 =====
         if (InspectorLayout::Foldout("太陽の軌道", true)) {
-            InspectorLayout::InfoRow("太陽", "高度 %.1f°　方位 %.1f°", sunElevationDeg_, sunAzimuthDeg_);
+            InspectorLayout::InfoRow("太陽", "高度 %.1f°　方位 %.1f°（%s）", sunElevationDeg_,
+                AzimuthForDisplay(sunAzimuthDeg_), CompassName(sunAzimuthDeg_));
             CVarUI::DrawRow(&cvLatitudeDeg, "緯度", "%.1f°");
             CVarUI::DrawRow(&cvSunAzimuthOffsetDeg, "軌道の向き", "%.1f°");
             CVarUI::DrawRow(&cvTwilightDeg, "夜になる深さ", "%.1f°");
-            InspectorLayout::Hint("太陽と月は、空と大気散乱のインスペクタの空の図と、Game ビューの印でも動かせる。");
+            InspectorLayout::Hint("太陽と月は、空と大気散乱のインスペクタの空の図と、Game ビューの印でも動かせる"
+                "（停止中に動かすと始まりの時刻と月齢も変わる）。");
         }
 
         // ===== 月 =====
         if (InspectorLayout::Foldout("月", true)) {
             CVarUI::DrawRow(&cvMoon, "月を出す");
-            InspectorLayout::InfoRow("月", "高度 %.1f°　方位 %.1f°%s", moonElevationDeg_, moonAzimuthDeg_,
+            InspectorLayout::InfoRow("月", "高度 %.1f°　方位 %.1f°（%s）%s", moonElevationDeg_,
+                AzimuthForDisplay(moonAzimuthDeg_), CompassName(moonAzimuthDeg_),
                 moonElevationDeg_ > 0.0f ? "" : "（地平線の下なので光らない）");
 
             ImGui::PushID("MoonAge");

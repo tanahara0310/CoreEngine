@@ -245,8 +245,10 @@ namespace CoreEngine
         const Camera& camera = *context.camera;
 
         // カメラの向きと画角を渡す（空の図が見ている範囲を描くのに使う）
+        // 見ている向きはカメラ行列の Z 軸（GetForward() はその逆を返す）
         SkyViewCamera view;
-        view.forward = camera.GetForward();
+        const Matrix4x4& cameraMatrix = camera.GetCameraMatrix();
+        view.forward = Normalize(Vector3{ cameraMatrix.m[2][0], cameraMatrix.m[2][1], cameraMatrix.m[2][2] });
         view.right = camera.GetRight();
         view.up = camera.GetUp();
         const Matrix4x4& projection = camera.GetUnjitteredProjectionMatrix();
@@ -417,7 +419,7 @@ namespace CoreEngine
         if (focus) {
             const SkyAngles angles = controller_->GetAngles(*focus);
             ImGui::BeginTooltip();
-            ImGui::Text("%s　高度 %.1f°　方位 %.1f°（%s）", BodyName(*focus), angles.elevationDeg, angles.azimuthDeg,
+            ImGui::Text("%s　高度 %.1f°　方位 %.1f°（%s）", BodyName(*focus), angles.elevationDeg, AzimuthForDisplay(angles.azimuthDeg),
                 CompassName(angles.azimuthDeg));
             if (!dragging_) {
                 if (controller_->IsTimeDriven()) {

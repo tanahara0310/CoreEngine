@@ -578,7 +578,7 @@ namespace CoreEngine
         if (hovered && !highlighted) {
             const SkyAngles at = layout.FromScreen(mouse);
             char text[64];
-            std::snprintf(text, sizeof(text), "高度 %.0f°  方位 %.0f°（%s）", at.elevationDeg, at.azimuthDeg,
+            std::snprintf(text, sizeof(text), "高度 %.0f°  方位 %.0f°（%s）", at.elevationDeg, AzimuthForDisplay(at.azimuthDeg),
                 CompassName(at.azimuthDeg));
             const float y = view == View::Dome ? layout.max.y - 8.0f : layout.min.y + 10.0f;
             const float x = view == View::Dome ? layout.min.x + 2.0f : layout.max.x - 4.0f;
@@ -595,7 +595,7 @@ namespace CoreEngine
                 ImGui::SetMouseCursor(controller.CanMove(body) ? ImGuiMouseCursor_Hand : ImGuiMouseCursor_NotAllowed);
             }
             ImGui::BeginTooltip();
-            ImGui::Text("%s　高度 %.1f°　方位 %.1f°（%s）", BodyName(body), angles.elevationDeg, angles.azimuthDeg,
+            ImGui::Text("%s　高度 %.1f°　方位 %.1f°（%s）", BodyName(body), angles.elevationDeg, AzimuthForDisplay(angles.azimuthDeg),
                 CompassName(angles.azimuthDeg));
             if (!dragging_) {
                 if (controller.IsTimeDriven()) {

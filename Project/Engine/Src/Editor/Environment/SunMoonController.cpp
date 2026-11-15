@@ -3,10 +3,12 @@
 
 #ifdef CORE_EDITOR
 
+#include "Editor/Command/EditorCommand.h"
 #include "Editor/Command/EditorCommandStack.h"
 #include "Editor/Scene/EditorSceneAccess.h"
 #include "Editor/Scene/SceneDebugEditor.h"
 #include "EngineSystem/EngineSystem.h"
+#include "EngineSystem/PlaybackState.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/GameObjectManager.h"
 #include "GameObject/Component/Light/LightComponent.h"
@@ -43,6 +45,10 @@ namespace CoreEngine
         /// 時刻の機能が月を出すかの CVar
         constexpr const char* kTimeOfDayMoonCVar = "r.TimeOfDay.Moon";
 
+        /// 時刻の機能の始まりの時刻と月齢の CVar
+        constexpr const char* kTimeOfDayStartHourCVar = "r.TimeOfDay.StartHour";
+        constexpr const char* kTimeOfDayStartMoonAgeCVar = "r.TimeOfDay.StartMoonAge";
+
         /// 太陽が時刻の位置にあるとみなす角度 [deg]
         constexpr float kOnPathToleranceDeg = 0.5f;
 
@@ -70,6 +76,22 @@ namespace CoreEngine
             const ICVar* const cvar = CVarRegistry::Get().Find(name);
             const bool* const value = cvar ? cvar->AsBool() : nullptr;
             return value ? *value : fallback;
+        }
+
+        /// @brief float の CVar へ書く（無いか型が違えば何もしない）
+        void WriteFloatCVar(const char* name, float value)
+        {
+            ICVar* const cvar = CVarRegistry::Get().Find(name);
+            if (cvar && cvar->AsFloat()) {
+                cvar->SetFromPointer(&value);
+            }
+        }
+
+        /// @brief 月齢を 0 以上・朔望月未満へ収める
+        float NormalizeMoonAge(float days)
+        {
+            days = std::fmod(days, TimeOfDayFeature::kSynodicMonthDays);
+            return days < 0.0f ? days + TimeOfDayFeature::kSynodicMonthDays : days;
         }
 
         /// @brief 高度を空の図の範囲へ収める
@@ -150,6 +172,15 @@ namespace CoreEngine
             a += 360.0f;
         }
         return a - 180.0f;
+    }
+
+    float AzimuthForDisplay(float azimuthDeg)
+    {
+        float a = std::fmod(azimuthDeg, 360.0f);
+        if (a < 0.0f) {
+            a += 360.0f;
+        }
+        return a >= 359.95f ? 0.0f : a;
     }
 
     Vector3 SkyAnglesToDirection(const SkyAngles& angles)
@@ -321,14 +352,14 @@ namespace CoreEngine
         if (!CanMove(body)) {
             return;
         }
-        if (TimeOfDayFeature* const timeOfDay = FindTimeOfDay()) {
+        if (const TimeOfDayFeature* const timeOfDay = FindTimeOfDay()) {
             // 太陽は時刻を、月は太陽から遅れる時間（月齢）を変えて、軌道の上のいちばん近い所へ動かす
             const float hours = NearestTimeOnPath(angles);
             if (body == SkyBody::Sun) {
-                timeOfDay->SetTimeOfDay(hours);
+                SetTimeOfDay(hours);
             } else {
                 const float lagHours = NormalizeHours(timeOfDay->GetTimeOfDay() - hours);
-                timeOfDay->SetMoonAge(lagHours / 24.0f * TimeOfDayFeature::kSynodicMonthDays);
+                SetMoonAge(lagHours / 24.0f * TimeOfDayFeature::kSynodicMonthDays);
             }
             return;
         }
@@ -362,6 +393,10 @@ namespace CoreEngine
     {
         if (TimeOfDayFeature* const timeOfDay = FindTimeOfDay()) {
             timeOfDay->SetTimeOfDay(hours);
+            // 停止中は始まりの時刻にも書いて、シーンに残す
+            if (WritesStartValues()) {
+                WriteFloatCVar(kTimeOfDayStartHourCVar, NormalizeHours(hours));
+            }
             return;
         }
         timeOfDay_ = NormalizeHours(hours);
@@ -414,7 +449,23 @@ namespace CoreEngine
     {
         if (TimeOfDayFeature* const timeOfDay = FindTimeOfDay()) {
             timeOfDay->SetMoonAge(days);
+            // 停止中は始まりの月齢にも書いて、シーンに残す
+            if (WritesStartValues()) {
+                WriteFloatCVar(kTimeOfDayStartMoonAgeCVar, NormalizeMoonAge(days));
+            }
         }
+    }
+
+    bool SunMoonController::WritesStartValues() const
+    {
+        return IsTimeDriven() && PlaybackStateManager::GetInstance().IsEditing();
+    }
+
+    SunMoonController::StartValues SunMoonController::ReadStartValues() const
+    {
+        return StartValues{
+            ReadFloatCVar(kTimeOfDayStartHourCVar, 0.0f),
+            ReadFloatCVar(kTimeOfDayStartMoonAgeCVar, 0.0f) };
     }
 
     bool SunMoonController::IsSunOnTimePath() const
@@ -523,13 +574,14 @@ namespace CoreEngine
     void SunMoonController::PlaceMoonOppositeSun()
     {
         // 時刻の機能の月は、満月（太陽から 12 時間遅れ）でちょうど反対に来る
-        if (TimeOfDayFeature* const timeOfDay = FindTimeOfDay()) {
-            timeOfDay->SetMoonAge(TimeOfDayFeature::kSynodicMonthDays * 0.5f);
+        if (IsTimeDriven()) {
+            SetMoonAge(TimeOfDayFeature::kSynodicMonthDays * 0.5f);
             return;
         }
         MoonSettings moon = moon_;
         moon.enabled = true;
-        moon.angles = SkyAngles{ -sun_.angles.elevationDeg, sun_.angles.azimuthDeg + 180.0f };
+        // 0 から引いて、太陽が地平線にあるときに -0 を作らない
+        moon.angles = SkyAngles{ 0.0f - sun_.angles.elevationDeg, sun_.angles.azimuthDeg + 180.0f };
         ApplyMoon(moon);
     }
 
@@ -565,6 +617,9 @@ namespace CoreEngine
     {
         if (!editBefore_) {
             editBefore_ = Capture();
+            if (WritesStartValues()) {
+                startBefore_ = ReadStartValues();
+            }
         }
     }
 
@@ -576,6 +631,24 @@ namespace CoreEngine
         }
         const LightSnapshot before = *editBefore_;
         editBefore_.reset();
+        const std::optional<StartValues> startBefore = startBefore_;
+        startBefore_.reset();
+
+        // 始まりの時刻と月齢が変わっていれば、2 つまとめて 1 件積む（CVar の値なのでシーンの未保存には数えない）
+        if (startBefore) {
+            const StartValues startAfter = ReadStartValues();
+            if (startAfter.hour != startBefore->hour || startAfter.moonAgeDays != startBefore->moonAgeDays) {
+                const auto apply = [](const StartValues& values) {
+                    WriteFloatCVar(kTimeOfDayStartHourCVar, values.hour);
+                    WriteFloatCVar(kTimeOfDayStartMoonAgeCVar, values.moonAgeDays);
+                };
+                Editor::EditorCommandStack::Get().Push(std::make_unique<Editor::FunctionCommand>(
+                    "時刻と月齢の変更",
+                    [apply, values = *startBefore] { apply(values); },
+                    [apply, values = startAfter] { apply(values); },
+                    false, true));
+            }
+        }
 
         // 時刻の機能があるときは、太陽の向き以外の値だけを比べる（月は比べない）
         const LightSnapshot after = Capture();

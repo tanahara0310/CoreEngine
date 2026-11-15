@@ -157,6 +157,8 @@ namespace CoreEngine
 
         float timeOfDay_ = 12.0f;         ///< 現在時刻 [h]（0-24）
         float moonAgeDays_ = kSynodicMonthDays * 0.5f; ///< 現在の月齢 [日]
+        float appliedStartHour_ = 12.0f;  ///< 今の時刻へ写した始まりの時刻 [h]
+        float appliedStartMoonAge_ = kSynodicMonthDays * 0.5f; ///< 今の月齢へ写した始まりの月齢 [日]
         float sunElevationDeg_ = 90.0f;   ///< 直近に適用した太陽高度角 [deg]
         float sunAzimuthDeg_ = 0.0f;      ///< 直近に適用した太陽方位角 [deg]
         float moonElevationDeg_ = -90.0f; ///< 直近に適用した月高度角 [deg]

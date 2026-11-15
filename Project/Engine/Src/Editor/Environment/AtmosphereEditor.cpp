@@ -44,7 +44,7 @@ namespace CoreEngine
         const SunSettings kSunDefaults{};
         const MoonSettings kMoonDefaults{};
 
-        /// 散乱係数を見やすい桁で出す倍率（×10⁻⁶ /m の単位）
+        /// 散乱係数を見やすい桁で出す倍率（10^-6 /m の単位）
         constexpr float kPerMegaMeter = 1.0e6f;
 
         /// 朔望月 [日]
@@ -93,16 +93,6 @@ namespace CoreEngine
         bool NearlyEqual(const Vector3& lhs, const Vector3& rhs)
         {
             return NearlyEqual(lhs.x, rhs.x) && NearlyEqual(lhs.y, rhs.y) && NearlyEqual(lhs.z, rhs.z);
-        }
-
-        /// @brief 方位を 0〜360 で出す
-        float AzimuthForDisplay(float azimuthDeg)
-        {
-            float a = std::fmod(azimuthDeg, 360.0f);
-            if (a < 0.0f) {
-                a += 360.0f;
-            }
-            return a >= 359.95f ? 0.0f : a;
         }
 
         /// @brief 右クリックのメニュー（既定値へ戻す）
@@ -300,7 +290,7 @@ namespace CoreEngine
         }
 
         skyMap_.Draw(controller_, view == 0 ? SkyMapWidget::View::Dome : SkyMapWidget::View::Panorama);
-        InspectorLayout::Hint("左ドラッグで太陽、右ドラッグで月を動かす（月の印は左でも掴める）。Ctrl を押すと 5° ごとに止まる。"
+        InspectorLayout::Hint("左ドラッグで太陽を、右ドラッグで月を動かす。月の印は左ドラッグでも動かせる。Ctrl を押すと 5° ごとに止まる。"
             "水色の枠は Game ビューのカメラが見ている範囲。");
 
         // まとめて置く
@@ -325,7 +315,8 @@ namespace CoreEngine
         if (controller_.IsTimeDriven()) {
             InspectorLayout::HelpBox(
                 "このシーンには時刻の機能（TimeOfDay）があり、太陽と月を時刻で動かしています。"
-                "太陽を動かすと時刻が、月を動かすと月齢が変わり、どちらも軌道の上のいちばん近い所へ行きます。");
+                "太陽を動かすと時刻が、月を動かすと月齢が変わり、どちらも軌道の上のいちばん近い所へ行きます。"
+                "停止中に動かすと、シーンの始まりの時刻と月齢も変わります。");
         }
 
         ImGui::SeparatorText("太陽");
@@ -397,6 +388,7 @@ namespace CoreEngine
                     return ImGui::DragFloat("##value", &age, 0.05f, 0.0f, kMoonMonthDays, "%.1f 日",
                         ImGuiSliderFlags_AlwaysClamp);
                 });
+                controller_.TrackItem();
                 if (edited) {
                     controller_.SetMoonAge(age);
                 }
@@ -414,7 +406,9 @@ namespace CoreEngine
                     }
                     first = false;
                     if (UI::Bar::Button(phase.label, false)) {
+                        controller_.BeginEdit();
                         controller_.SetMoonAge(kMoonMonthDays * phase.fraction);
+                        controller_.EndEdit();
                     }
                 }
                 ImGui::PopID();
@@ -426,14 +420,14 @@ namespace CoreEngine
             CVarUI::DrawRow(FindCVar("r.TimeOfDay.MoonColor"), "色", "%.2f", kRgbLabels);
             RightButtons({
                 { "満月にする", "月齢を満月にして、太陽のちょうど反対へ置く", controller_.IsShown(SkyBody::Moon),
-                  [this] { controller_.PlaceMoonOppositeSun(); } },
+                  [this] { controller_.BeginEdit(); controller_.PlaceMoonOppositeSun(); controller_.EndEdit(); } },
                 { "カメラの正面へ", "Game ビューのカメラが向いている方向にいちばん近い月齢にする",
                   controller_.GetViewCamera() != nullptr && controller_.CanMove(SkyBody::Moon),
-                  [this] { controller_.PlaceAtView(SkyBody::Moon); } },
+                  [this] { controller_.BeginEdit(); controller_.PlaceAtView(SkyBody::Moon); controller_.EndEdit(); } },
                 { "ライトを選ぶ", "月のライトを持つオブジェクトを選ぶ", controller_.FindLight(SkyBody::Moon) != nullptr,
                   [this] { controller_.SelectLightObject(SkyBody::Moon); } },
             });
-            InspectorLayout::Hint("時刻の機能の月は、太陽と同じ軌道を月齢の分だけ遅れて通る。月を動かすと月齢が変わる（今の月齢は保存しない）。");
+            InspectorLayout::Hint("時刻の機能の月は、太陽と同じ軌道を月齢の分だけ遅れて通る。月を動かすと月齢が変わり、停止中は始まりの月齢も変わる。");
             ImGui::PopID();
             return;
         }
@@ -515,7 +509,7 @@ namespace CoreEngine
             CVarUI::DrawRow(FindCVar("r.TimeOfDay.StartHour"), "始まりの時刻", "%.2f h");
             CVarUI::DrawRow(FindCVar("r.TimeOfDay.LatitudeDeg"), "緯度", "%.1f°");
             CVarUI::DrawRow(FindCVar("r.TimeOfDay.SunAzimuthOffsetDeg"), "軌道の向き", "%.1f°");
-            InspectorLayout::Hint("時刻の機能の設定はシーンに保存する。今の時刻は保存せず、再生を始めると「始まりの時刻」から進む。");
+            InspectorLayout::Hint("時刻の機能の設定はシーンに保存する。停止中に時刻や太陽を動かすと始まりの時刻も変わり、再生はその時刻から進む。");
             ImGui::PopID();
             return;
         }
@@ -619,7 +613,7 @@ namespace CoreEngine
         CVarUI::DrawRow(FindCVar("r.Atmosphere.OzoneAbsorption"), "吸収係数", "%.3f", kRgbLabels, kPerMegaMeter);
         CVarUI::DrawRow(FindCVar("r.Atmosphere.OzoneLayerCenter"), "層の中心の高さ", "%.1f km", nullptr, kMeterToKm);
         CVarUI::DrawRow(FindCVar("r.Atmosphere.OzoneLayerHalfWidth"), "層の厚さの半分", "%.1f km", nullptr, kMeterToKm);
-        InspectorLayout::Hint("散乱係数と吸収係数の単位は ×10⁻⁶ /m。");
+        InspectorLayout::Hint("散乱係数と吸収係数は 100 万倍して出す（単位は 10^-6 /m）。");
 
         ImGui::SeparatorText("地面と多重散乱");
         CVarUI::DrawRow(FindCVar("r.Atmosphere.GroundAlbedo"), "地面の反射率", "%.2f", kRgbLabels);
