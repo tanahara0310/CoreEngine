@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.88.0">
+<meta name="engine-version" content="0.89.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2961,6 +2961,16 @@ kbd {
     <li>範囲の線は、床に埋まった所や物の後ろに回った所を薄く描きます（シーンの奥行きと比べます）。アイコンは物に隠れません。</li>
     <li>届く距離（<code>range</code>）は、光がちょうど 0 になる距離です。明るさは距離の 2 乗で弱まるので、目に見えて明るい所は線よりかなり内側になります。明るく見える広さは強さ（<code>intensity</code>）で、光を切る所は届く距離で決めます。</li>
     <li>アイコンと線は CVar <code>d.Light.Visualize</code> で消せます（Console で <code>d.Light.Visualize 0</code>）。</li>
+  </ul>
+
+  <h2 id="viewport-sun-moon">太陽と月の印</h2>
+  <p><a href="#api-SkyBox">空と大気散乱</a> の物か、<span class="ui">大気の太陽</span>・<span class="ui">大気の月</span> のライトを持つ物を選んでいる間、Game ビューに空の目盛りと太陽・月の印が出ます。印はカメラから見た向きに出るので、カメラを動かしても空の同じ所に見えます。編集中も再生中も出ますが、書き出したゲームには出ません。</p>
+  <ul>
+    <li>地平線の円と、北・北東・東…の 8 方位の文字が出ます（北は +Z、東は +X）。</li>
+    <li>太陽の 1 日の軌道が淡い橙の線で出て、3 時間ごとに時刻が付きます。地平線の下の部分は薄く描きます。</li>
+    <li>太陽と月の印の横に高度が出て、地平線から印まで縦の線が引かれます。画面の外にあるときは、その向きの画面の端に矢印と印が出ます。</li>
+    <li>印を左ドラッグすると、カーソルの向きの空へ動きます。Ctrl を押すと 5° ごとに止まります。離すと 1 件として Ctrl+Z で戻せます。シーンの機能 <code>TimeOfDay</code> がある間は、太陽は時刻、月は月齢が変わり、軌道の上を動きます。停止中に動かすと、シーンに保存される始まりの時刻と月齢も変わります。</li>
+    <li>印は CVar <code>d.Atmosphere.SceneGizmo</code> で消せます（空と大気散乱のインスペクタの <span class="ui">Game ビューに出す</span> でも切り替えられます）。正投影のカメラでは出ません。</li>
   </ul>
 
   <h2 id="viewport-gizmo">ギズモで動かす</h2>
@@ -11428,6 +11438,19 @@ python Tools/OkinawaBeach/bake_araha_walk.py
 
   <h2 id="changelog-history">更新履歴</h2>
 
+  <h3 id="changelog-v0-89-0">v0.89.0 <span class="dim">（2026-11-15）</span></h3>
+  <p><a href="#api-SkyBox">空と大気散乱</a> のインスペクタを今のエディタの見た目にそろえ、太陽と月を空の図と Game ビューの印で置けるようにした版です。シーンの見た目と保存する値は変わりません。</p>
+  <ul>
+    <li><strong>見た目をそろえた</strong>：水面や高さフォグと同じく、左にラベル・右に欄の行で並べました。既定値から変えた値はラベルが橙になり、ラベルか欄の右クリックで既定値へ戻せます。大気の CVar も日本語の名前で並べ、散乱係数と吸収係数は ×10⁻⁶ /m、高さと半径は km で出します。まとまりは「太陽と月」「時刻から置く」「環境光」「大気」「診断」です。</li>
+    <li><strong>空の図</strong>：太陽と月の位置を、真上から見た図（中心が天頂・円が地平線・上が北）か、地平線をぐるりと広げた展開図（横が方位で中央が南・縦が高度）で見られます。方角と高度の目盛り、太陽の 1 日の軌道（3 時間ごとの点）、Game ビューのカメラが見ている範囲（水色の枠）も出ます。左ドラッグで太陽、右ドラッグで月を動かし（月の印は左ドラッグでも動かせます）、Ctrl を押すと 5° ごとに止まります。図の空の色は、太陽の高さに合わせて昼・夕方・夜と変わります。</li>
+    <li><strong>Game ビューの印</strong>：空の物か太陽・月のライトを選んでいる間、Game ビューに地平線・8 方位・太陽の軌道と、太陽と月の印が出ます。印をドラッグすると、カーソルの向きの空へ動きます。画面の外にある太陽と月は、画面の端の矢印で向きが分かります（<a href="#viewport-sun-moon">太陽と月の印</a>）。</li>
+    <li><strong>置き方のボタン</strong>：<span class="ui">カメラの正面へ</span>（Game ビューのカメラが向いている方向へ置く）・<span class="ui">太陽の反対へ</span>（満月の位置）・<span class="ui">ライトを選ぶ</span> を足しました。プリセット（朝・正午・夕暮れ・夜（満月））は今までどおりです。</li>
+    <li><strong>時刻の機能があるシーン</strong>：シーンの機能 <code>TimeOfDay</code> がある間は、太陽を動かすと時刻が、月を動かすと月齢が変わり、どちらも軌道の上のいちばん近い所へ行きます。停止中に動かすと、シーンに保存される始まりの時刻と月齢も変わり、Ctrl+Z で戻せます。<span class="ui">時刻から置く</span> に <code>TimeOfDay</code> の設定（時刻を進める・1 日の長さ・始まりの時刻・緯度・軌道の向き）が、<span class="ui">月</span> に月齢と「新月」「上弦」「満月」「下弦」のボタンが出ます。今までは、インスペクタで太陽と月を動かしても、次のフレームで時刻の機能に戻されていました。</li>
+    <li><strong>Undo</strong>：Game ビューの印で太陽と月を動かす操作も、離したときに 1 件として Ctrl+Z で戻せます。</li>
+    <li><strong>Time of Day の設定</strong>：Engine Settings の「Time of Day」も同じ行の並びにし、「時刻」「太陽の軌道」「月」「夜の明るさ」のまとまりで並べました。今の時刻と月齢は欄で動かせ、今の自動露出と空の環境光は値の行で出ます。<span class="ui">既定に戻す</span> で時刻の機能の値をまとめて既定値へ戻せます。</li>
+    <li><strong>新しい CVar</strong>：<code>d.Atmosphere.SceneGizmo</code>（Game ビューの印。既定はオン）・<code>d.Atmosphere.SkyMapView</code>（空の図。0 で真上から・1 で展開図）。どちらもエディタの設定として保存します。</li>
+  </ul>
+
   <h3 id="changelog-v0-88-0">v0.88.0 <span class="dim">（2026-11-15）</span> <span class="badge">サンプルだけ</span></h3>
   <p>ボリュメトリックフォグの見本 <span class="path">Projects/FogShowcase</span> を足した版です（<a href="#intro-samples">付属のサンプル</a>）。シーンは夕暮れの森の遺跡と月夜の墓地の 2 つです。エンジンは変えていません。</p>
   <ul>
@@ -17393,13 +17416,13 @@ void LateUpdate()   // 追いかける相手が動いた後に動かす
   {
     id: "SkyBox", kind: "component", cat: "環境", display: "空と大気散乱", type: "SkyBox",
     accessor: "owner.skyBox", title: "空と大気散乱（SkyBox）", brief: "空と環境光",
-    keywords: "空 スカイボックス 大気 太陽 月 時刻 環境光 ibl 満ち欠け 月齢 新月 満月 上弦 下弦",
-    summary: "空と大気散乱、周りの環境光を決めます。インスペクタでは太陽と月の配置（「正午」「朝」「夕暮れ」「夜（満月）」、時刻から配置）や大気のパラメータも調整できます。",
+    keywords: "空 スカイボックス 大気 太陽 月 時刻 環境光 ibl 満ち欠け 月齢 新月 満月 上弦 下弦 空の図 天球図 展開図 方位 高度 太陽の軌道 配置 ドラッグ",
+    summary: "空と大気散乱、周りの環境光を決めます。インスペクタでは、空の図と Game ビューの印をドラッグして太陽と月を置き、時刻・環境光・大気の値も調整できます。",
     props: [
       ["向き", "rotation", "Vector3", "(0, 0, 0)", "空の向き（インスペクタは度、スクリプトはラジアン）。"],
       ["環境光の強さ", "environmentIntensity", "float", "1", "0〜10。"]
     ],
-    notes: "<ul><li>シーンに空が無いと、エンジンが保存されない空を自動で置きます。値を保存したいときは、自分で空のオブジェクトを置きます。</li><li>インスペクタの主なまとまり：「太陽と月の配置」「太陽」「月」「環境光」「大気パラメータ」「診断」。</li><li>月は既定でいつも満月の形で描きます。CVar <code>r.Atmosphere.MoonPhaseFromSun</code> をオンにすると、太陽と月の向きから満ち欠けを求めて月面の欠けを描き、月光（空の明るさ・雲・自動露出・地表を照らす光）を月面全体の明るさに合わせて弱めます。半月で満月の約 38%、新月で 0 です。シーンの機能 <code>TimeOfDay</code> がある間は、オフでも満ち欠けします。</li><li><code>TimeOfDay</code> の月は、太陽と同じ道を月齢の分だけ遅れて通ります（月齢 0 で新月・7.4 で上弦・14.8 で満月・22.1 で下弦）。上弦の月は夕方に、満月は真夜中に、下弦の月は明け方にいちばん高く昇り、月の出は毎日約 49 分ずつ遅れます。月齢によっては昼の空にも月が出ます。開始時の月齢は <code>r.TimeOfDay.StartMoonAge</code>（既定は満月）で決まり、時刻が 24 時間進むごとに 1 日進みます。<code>r.TimeOfDay.AdvanceMoonAge</code> を切ると、開始時の月齢のまま毎晩同じ形の月になります。Engine Settings の「Time of Day」に、月齢のスライダーと「新月」「上弦」「満月」「下弦」のボタンがあります。</li></ul>",
+    notes: "<ul><li>シーンに空が無いと、エンジンが保存されない空を自動で置きます。値を保存したいときは、自分で空のオブジェクトを置きます。</li><li>インスペクタのまとまり：「太陽と月」（空の図・プリセット・太陽と月の値）「時刻から置く」「環境光」「大気」「診断」。</li><li>空の図は、真上から見た図（中心が天頂・円が地平線・上が北）と展開図（横が方位で中央が南・縦が高度）を切り替えられます。左ドラッグで太陽、右ドラッグで月を動かし（月の印は左ドラッグでも動かせます）、Ctrl を押すと 5° ごとに止まります。淡い橙の線は太陽の 1 日の軌道、水色の枠は Game ビューのカメラが見ている範囲です。</li><li>空の物か太陽・月のライトを選んでいる間は、Game ビューにも太陽と月の印が出て、ドラッグで動かせます（<a href=\"#viewport-sun-moon\">太陽と月の印</a>）。</li><li>方位は北（+Z）が 0°、東（+X）が 90° です。高度は 0° が地平線、90° が真上で、-20° まで下げられます。</li><li>シーンの機能 <code>TimeOfDay</code> がある間は、太陽を動かすと時刻が、月を動かすと月齢が変わります（どちらも軌道の上のいちばん近い所へ行きます）。停止中に動かすと、始まりの時刻と月齢（<code>r.TimeOfDay.StartHour</code>・<code>r.TimeOfDay.StartMoonAge</code>）も変わり、再生はそこから進みます。「時刻から置く」には <code>TimeOfDay</code> の設定が出ます。<code>TimeOfDay</code> が無いシーンの時刻・緯度・軌道の向きはエディタの中だけの値で、シーンには太陽の向きが残ります。</li><li>月は既定でいつも満月の形で描きます。CVar <code>r.Atmosphere.MoonPhaseFromSun</code> をオンにすると、太陽と月の向きから満ち欠けを求めて月面の欠けを描き、月光（空の明るさ・雲・自動露出・地表を照らす光）を月面全体の明るさに合わせて弱めます。半月で満月の約 38%、新月で 0 です。シーンの機能 <code>TimeOfDay</code> がある間は、オフでも満ち欠けします。</li><li><code>TimeOfDay</code> の月は、太陽と同じ道を月齢の分だけ遅れて通ります（月齢 0 で新月・7.4 で上弦・14.8 で満月・22.1 で下弦）。上弦の月は夕方に、満月は真夜中に、下弦の月は明け方にいちばん高く昇り、月の出は毎日約 49 分ずつ遅れます。月齢によっては昼の空にも月が出ます。開始時の月齢は <code>r.TimeOfDay.StartMoonAge</code>（既定は満月）で決まり、時刻が 24 時間進むごとに 1 日進みます。<code>r.TimeOfDay.AdvanceMoonAge</code> を切ると、開始時の月齢のまま毎晩同じ形の月になります。Engine Settings の「Time of Day」と、空と大気散乱のインスペクタの「月」に、月齢と「新月」「上弦」「満月」「下弦」のボタンがあります。</li></ul>",
     see: [["api-Light", "ライト"], ["api-HeightFog", "高さフォグ"]]
   },
 

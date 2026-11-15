@@ -1204,6 +1204,15 @@
     <ClCompile Include="Engine\Src\Editor\Environment\AtmosphereEditor.cpp">
       <Filter>Engine\Src\Editor\Environment</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Environment\SkyMapWidget.cpp">
+      <Filter>Engine\Src\Editor\Environment</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Environment\SunMoonController.cpp">
+      <Filter>Engine\Src\Editor\Environment</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Environment\SunMoonSceneGizmo.cpp">
+      <Filter>Engine\Src\Editor\Environment</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.cpp">
       <Filter>Engine\Src\Editor\Environment</Filter>
     </ClCompile>
@@ -3586,6 +3595,15 @@
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Environment\AtmosphereEditor.h">
+      <Filter>Engine\Src\Editor\Environment</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Environment\SkyMapWidget.h">
+      <Filter>Engine\Src\Editor\Environment</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Environment\SunMoonController.h">
+      <Filter>Engine\Src\Editor\Environment</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Environment\SunMoonSceneGizmo.h">
       <Filter>Engine\Src\Editor\Environment</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.h">

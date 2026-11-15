@@ -18,8 +18,16 @@
 #include "Utility/FrameRate/Time.h"
 
 #ifdef CORE_EDITOR
+#include "Editor/Environment/SunMoonController.h"
 #include "Editor/ImGui/CVarPanel.h"
+#include "Editor/ImGui/EditorTheme.h"
 #include "Editor/ImGui/ImGuiAll.h"
+#include "Editor/ImGui/Widgets/EditorBars.h"
+#include "Editor/Inspector/InspectorLayout.h"
+
+#include <cstdio>
+#include <functional>
+#include <initializer_list>
 #endif
 
 #include <algorithm>
@@ -140,8 +148,10 @@ namespace CoreEngine
 
     void TimeOfDayFeature::Initialize(SceneContext&)
     {
-        timeOfDay_ = NormalizeHours(cvStartHour.Get());
-        moonAgeDays_ = NormalizeMoonAge(cvStartMoonAge.Get());
+        appliedStartHour_ = cvStartHour.Get();
+        appliedStartMoonAge_ = cvStartMoonAge.Get();
+        timeOfDay_ = NormalizeHours(appliedStartHour_);
+        moonAgeDays_ = NormalizeMoonAge(appliedStartMoonAge_);
 
 #ifdef CORE_EDITOR
         // Engine Settings に「Time of Day」パネルを登録する（パラメータ UI は CVar から自動生成する）
@@ -157,6 +167,16 @@ namespace CoreEngine
     {
         if (phase != SceneUpdatePhase::FrameStart) {
             return;
+        }
+
+        // 始まりの時刻と月齢が書き換えられたら、今の時刻と月齢もそこへ合わせる
+        if (const float startHour = cvStartHour.Get(); startHour != appliedStartHour_) {
+            appliedStartHour_ = startHour;
+            timeOfDay_ = NormalizeHours(startHour);
+        }
+        if (const float startMoonAge = cvStartMoonAge.Get(); startMoonAge != appliedStartMoonAge_) {
+            appliedStartMoonAge_ = startMoonAge;
+            moonAgeDays_ = NormalizeMoonAge(startMoonAge);
         }
 
         // 前進はゲーム時間で行う。停止ボタン中は Time::DeltaTime() が 0 を返すため、
@@ -532,69 +552,118 @@ namespace CoreEngine
 #ifdef CORE_EDITOR
     void TimeOfDayFeature::DrawSettingsImGui()
     {
-        const int hour = static_cast<int>(timeOfDay_);
-        const int minute = static_cast<int>((timeOfDay_ - static_cast<float>(hour)) * 60.0f);
-        ImGui::Text("%02d:%02d", hour, minute);
-        ImGui::Text("太陽  高度 %.1f°  方位 %.1f°", sunElevationDeg_, sunAzimuthDeg_);
-        ImGui::Text("月    高度 %.1f°  方位 %.1f°  月齢 %.1f 日（照らされた面 %.0f%%）",
-            moonElevationDeg_, moonAzimuthDeg_, moonAgeDays_, GetMoonIlluminatedFraction() * 100.0f);
-        ImGui::Text("夜の度合い %.2f%s", nightFactor_, IsNight() ? "（地平線下）" : "");
+        namespace Theme = Editor::Theme;
+        ImGui::PushID("TimeOfDay");
 
-        // 借りている CVar の実効値。夜の暗さはこの 2 つと月光 [lx] で決まる
-        const float ambientMul = 1.0f + (cvNightSkyAmbientMul.Get() - 1.0f) * nightFactor_;
-        const bool evClamped = currentAutoEV_ >= cvNightMaxAutoEV.Get() - 0.01f;
-        ImGui::Text("自動露出 %+.2f EV%s（上限 %.1f）",
-            currentAutoEV_, evClamped ? " ← 上限に張り付き" : "", cvNightMaxAutoEV.Get());
-        ImGui::Text("空アンビエント %.2f（元 %.2f）",
-            skyAmbientScale_.original * ambientMul, skyAmbientScale_.original);
-
-        ImGui::Spacing();
-
-        float hours = timeOfDay_;
-        if (ImGui::SliderFloat("時刻 [h]", &hours, 0.0f, 24.0f, "%.2f")) {
-            SetTimeOfDay(hours);
-        }
-
+        // ラベルの行にボタンを並べ、押したボタンの値で onPress を呼ぶ
         struct Preset { const char* label; float value; };
-        constexpr Preset kPresets[] = {
-            { "夜明け 5:00", 5.0f }, { "正午 12:00", 12.0f },
-            { "夕暮れ 18:00", 18.0f }, { "深夜 0:00", 0.0f },
+        const auto presetRow = [](const char* id, const char* label, std::initializer_list<Preset> presets,
+            const std::function<void(float)>& onPress) {
+            ImGui::PushID(id);
+            InspectorLayout::BeginRow(label, Theme::kTextDim);
+            bool first = true;
+            for (const Preset& preset : presets) {
+                if (!first) {
+                    ImGui::SameLine();
+                }
+                first = false;
+                if (UI::Bar::Button(preset.label, false)) {
+                    onPress(preset.value);
+                }
+            }
+            ImGui::PopID();
         };
-        bool first = true;
-        for (const Preset& preset : kPresets) {
-            if (!first) {
-                ImGui::SameLine();
+
+        // ===== 時刻 =====
+        if (InspectorLayout::Foldout("時刻", true)) {
+            ImGui::PushID("Hour");
+            InspectorLayout::BeginRow("今の時刻", Theme::kTextDim);
+            float hours = timeOfDay_;
+            const int minutes = static_cast<int>(std::floor(hours * 60.0f + 0.5f)) % (24 * 60);
+            char format[48];
+            std::snprintf(format, sizeof(format), "%02d:%02d（%%.2f h）", minutes / 60, minutes % 60);
+            if (InspectorLayout::FilledField(hours / 24.0f, [&] {
+                    return ImGui::DragFloat("##value", &hours, 0.02f, 0.0f, 24.0f, format, ImGuiSliderFlags_AlwaysClamp);
+                })) {
+                SetTimeOfDay(hours);
             }
-            first = false;
-            if (ImGui::SmallButton(preset.label)) {
-                SetTimeOfDay(preset.value);
-            }
+            ImGui::PopID();
+
+            presetRow("HourPresets", "プリセット",
+                { { "夜明け", 5.0f }, { "正午", 12.0f }, { "夕暮れ", 18.0f }, { "深夜", 0.0f } },
+                [this](float value) { SetTimeOfDay(value); });
+
+            CVarUI::DrawRow(&cvAdvance, "時刻を進める");
+            CVarUI::DrawRow(&cvDayLengthSeconds, "1 日の長さ", "%.0f s");
+            CVarUI::DrawRow(&cvStartHour, "始まりの時刻", "%.2f h");
+            InspectorLayout::Hint("今の時刻は保存しない。再生を始めると「始まりの時刻」から進む。");
         }
 
-        float moonAge = moonAgeDays_;
-        if (ImGui::SliderFloat("月齢 [日]", &moonAge, 0.0f, kSynodicMonthDays, "%.1f")) {
-            SetMoonAge(moonAge);
+        // ===== 太陽の軌道 =====
+        if (InspectorLayout::Foldout("太陽の軌道", true)) {
+            InspectorLayout::InfoRow("太陽", "高度 %.1f°　方位 %.1f°（%s）", sunElevationDeg_,
+                AzimuthForDisplay(sunAzimuthDeg_), CompassName(sunAzimuthDeg_));
+            CVarUI::DrawRow(&cvLatitudeDeg, "緯度", "%.1f°");
+            CVarUI::DrawRow(&cvSunAzimuthOffsetDeg, "軌道の向き", "%.1f°");
+            CVarUI::DrawRow(&cvTwilightDeg, "夜になる深さ", "%.1f°");
+            InspectorLayout::Hint("太陽と月は、空と大気散乱のインスペクタの空の図と、Game ビューの印でも動かせる"
+                "（停止中に動かすと始まりの時刻と月齢も変わる）。");
         }
 
-        constexpr Preset kMoonPresets[] = {
-            { "新月", 0.0f }, { "上弦", kSynodicMonthDays * 0.25f },
-            { "満月", kSynodicMonthDays * 0.5f }, { "下弦", kSynodicMonthDays * 0.75f },
-        };
-        first = true;
-        for (const Preset& preset : kMoonPresets) {
-            if (!first) {
-                ImGui::SameLine();
+        // ===== 月 =====
+        if (InspectorLayout::Foldout("月", true)) {
+            CVarUI::DrawRow(&cvMoon, "月を出す");
+            InspectorLayout::InfoRow("月", "高度 %.1f°　方位 %.1f°（%s）%s", moonElevationDeg_,
+                AzimuthForDisplay(moonAzimuthDeg_), CompassName(moonAzimuthDeg_),
+                moonElevationDeg_ > 0.0f ? "" : "（地平線の下なので光らない）");
+
+            ImGui::PushID("MoonAge");
+            InspectorLayout::BeginRow("今の月齢", Theme::kTextDim);
+            float moonAge = moonAgeDays_;
+            char format[64];
+            std::snprintf(format, sizeof(format), "%%.1f 日（照らされた面 %.0f%%%%）", GetMoonIlluminatedFraction() * 100.0f);
+            if (InspectorLayout::FilledField(moonAge / kSynodicMonthDays, [&] {
+                    return ImGui::DragFloat("##value", &moonAge, 0.05f, 0.0f, kSynodicMonthDays, format,
+                        ImGuiSliderFlags_AlwaysClamp);
+                })) {
+                SetMoonAge(moonAge);
             }
-            first = false;
-            if (ImGui::SmallButton(preset.label)) {
-                SetMoonAge(preset.value);
-            }
+            ImGui::PopID();
+
+            presetRow("MoonPresets", "満ち欠け",
+                { { "新月", 0.0f }, { "上弦", kSynodicMonthDays * 0.25f },
+                  { "満月", kSynodicMonthDays * 0.5f }, { "下弦", kSynodicMonthDays * 0.75f } },
+                [this](float value) { SetMoonAge(value); });
+
+            CVarUI::DrawRow(&cvStartMoonAge, "始まりの月齢", "%.1f 日");
+            CVarUI::DrawRow(&cvAdvanceMoonAge, "月齢を日ごとに進める");
+            static constexpr const char* kRgbLabels[] = { "R", "G", "B" };
+            CVarUI::DrawRow(&cvMoonColor, "色", "%.2f", kRgbLabels);
+            CVarUI::DrawRow(&cvMoonSurfaceIntensity, "照度", "%.1f lx");
+            CVarUI::DrawRow(&cvMoonSkyRatio, "空の明るさ（太陽の何倍）", "%.4f");
+        }
+
+        // ===== 夜の明るさ =====
+        if (InspectorLayout::Foldout("夜の明るさ", true)) {
+            InspectorLayout::InfoRow("夜の度合い", "%.2f%s", nightFactor_, IsNight() ? "（太陽が地平線の下）" : "");
+            CVarUI::DrawRow(&cvAutoExposure, "自動露出を入れる");
+            CVarUI::DrawRow(&cvNightMaxAutoEV, "自動露出の上限", "%.1f EV");
+            const bool evClamped = currentAutoEV_ >= cvNightMaxAutoEV.Get() - 0.01f;
+            InspectorLayout::InfoRow("今の自動露出", "%+.2f EV%s", currentAutoEV_, evClamped ? "（上限に達している）" : "");
+            CVarUI::DrawRow(&cvNightSkyAmbientMul, "夜の空の環境光", "%.2f");
+            const float ambientMul = 1.0f + (cvNightSkyAmbientMul.Get() - 1.0f) * nightFactor_;
+            InspectorLayout::InfoRow("今の空の環境光", "%.2f（元 %.2f）",
+                skyAmbientScale_.original * ambientMul, skyAmbientScale_.original);
+            InspectorLayout::Hint("夜の暗さは、自動露出の上限・夜の空の環境光・月の照度で決まる。");
         }
 
         ImGui::Spacing();
-
-        // パラメータ UI は CVar から自動生成される（値は Update が毎フレーム取り込む）
-        CVarUI::DrawTree(kCVarPrefix);
+        const float resetWidth = UI::Bar::ButtonWidth("既定に戻す");
+        InspectorLayout::AlignToRight(resetWidth);
+        if (UI::Bar::Button("既定に戻す", false, "時刻の機能の値をすべて既定値へ戻す（Ctrl+Z で 1 回で戻せる）")) {
+            CVarUI::ResetTree(kCVarPrefix);
+        }
+        ImGui::PopID();
     }
 #endif
 }

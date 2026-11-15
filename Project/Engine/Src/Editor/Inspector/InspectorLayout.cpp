@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cfloat>
+#include <cstdarg>
 
 namespace CoreEngine::InspectorLayout
 {
@@ -267,7 +268,7 @@ namespace CoreEngine::InspectorLayout
     }
 
     bool VectorField(const char* id, float* values, int count, float speed, float min, float max,
-        const char* const* labels)
+        const char* const* labels, const char* format)
     {
         static constexpr const char* kAxes[] = { "X", "Y", "Z", "W" };
         const char* const* const axes = labels ? labels : kAxes;
@@ -287,7 +288,7 @@ namespace CoreEngine::InspectorLayout
                 ImGui::SameLine(0.0f, spacing);
             }
             ImGui::SetNextItemWidth(fieldWidth);
-            changed = ImGui::DragFloat("##axis", &values[i], speed, min, max, "%.3f") || changed;
+            changed = ImGui::DragFloat("##axis", &values[i], speed, min, max, format ? format : "%.3f") || changed;
 
             const ImVec2 fieldMin = ImGui::GetItemRectMin();
             const ImVec2 fieldMax = ImGui::GetItemRectMax();
@@ -380,6 +381,18 @@ namespace CoreEngine::InspectorLayout
         ImGui::PushTextWrapPos(0.0f);
         ImGui::TextDisabled("%s", text);
         ImGui::PopTextWrapPos();
+    }
+
+    void InfoRow(const char* label, const char* format, ...)
+    {
+        BeginRow(label, Editor::Theme::kTextDim);
+        ImGui::AlignTextToFramePadding();
+        va_list args;
+        va_start(args, format);
+        ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+        ImGui::TextV(format, args);
+        ImGui::PopStyleColor();
+        va_end(args);
     }
 
     bool Foldout(const char* label, bool defaultOpen)

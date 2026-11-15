@@ -77,8 +77,9 @@ namespace CoreEngine::InspectorLayout
     /// @brief ベクトルの欄（成分ごとの欄の左端に、軸の色の印と文字を添えて並べる）
     /// @param min 下限（min >= max なら制限しない）
     /// @param labels 成分の文字（nullptr なら X・Y・Z・W）
+    /// @param format 成分の数の書式
     bool VectorField(const char* id, float* values, int count, float speed, float min, float max,
-        const char* const* labels = nullptr);
+        const char* const* labels = nullptr, const char* format = "%.3f");
 
     /// @brief 色の欄（幅いっぱいのスウォッチを押すとピッカーが開く）
     /// @param hasAlpha false なら不透明度を出さない（`rgba` の 4 つ目は読み書きしない）
@@ -102,6 +103,9 @@ namespace CoreEngine::InspectorLayout
 
     /// @brief 淡い補足の文を、欄の幅で折り返して描く
     void Hint(const char* text);
+
+    /// @brief 編集できない値の行（左にラベル、右に printf の書式で淡い文字）
+    void InfoRow(const char* label, const char* format, ...) IM_FMTARGS(2);
 
     /// @brief コンポーネントの中のグループを開閉する見出し（矢印と文字。下地は塗らない）
     /// @return 開いていれば true（TreePop は要らない）

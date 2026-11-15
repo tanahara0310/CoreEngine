@@ -370,7 +370,7 @@ namespace CoreEngine
     }
 
     bool CVarUI::DrawRow(ICVar* cvar, const char* label, const char* format,
-        const char* const* componentLabels)
+        const char* const* componentLabels, float displayScale)
     {
         if (!cvar) {
             return false;
@@ -380,7 +380,10 @@ namespace CoreEngine
         const char* const floatFormat = format ? format : kDefaultFloatFormat;
         const CVarRange range = cvar->GetRange();
         const bool ranged = range.valid && range.max > range.min;
-        const float speed = DragSpeed(range);
+        const float scale = displayScale > 0.0f ? displayScale : 1.0f;
+        const float speed = range.valid ? DragSpeed(range) * scale : kDefaultDragSpeed;
+        const float shownMin = range.min * scale;
+        const float shownMax = range.max * scale;
         const ImGuiSliderFlags flags = range.valid ? kRangedDragFlags : ImGuiSliderFlags_None;
 
         return DrawRowWith(cvar, shownLabel, false, [&] {
@@ -408,30 +411,33 @@ namespace CoreEngine
                 return edited;
             }
             case CVarType::Float: {
-                float v = *cvar->AsFloat();
+                const float v = *cvar->AsFloat();
+                float shown = v * scale;
                 const auto drawField = [&] {
-                    return ImGui::DragFloat("##value", &v, speed, range.min, range.max, floatFormat, flags);
+                    return ImGui::DragFloat("##value", &shown, speed, shownMin, shownMax, floatFormat, flags);
                 };
                 const bool edited = ranged
                     ? InspectorLayout::FilledField(FractionOf(v, range), drawField)
                     : drawField();
                 if (edited) {
-                    SetWithUndo(cvar, v);
+                    SetWithUndo(cvar, shown / scale);
                 }
                 return edited;
             }
             case CVarType::Vector2: {
-                Vector2 v = *cvar->AsVector2();
-                if (InspectorLayout::VectorField("##value", &v.x, 2, speed, range.min, range.max, componentLabels)) {
-                    SetWithUndo(cvar, v);
+                Vector2 shown = *cvar->AsVector2() * scale;
+                if (InspectorLayout::VectorField("##value", &shown.x, 2, speed, shownMin, shownMax,
+                        componentLabels, floatFormat)) {
+                    SetWithUndo(cvar, shown * (1.0f / scale));
                     return true;
                 }
                 return false;
             }
             case CVarType::Vector3: {
-                Vector3 v = *cvar->AsVector3();
-                if (InspectorLayout::VectorField("##value", &v.x, 3, speed, range.min, range.max, componentLabels)) {
-                    SetWithUndo(cvar, v);
+                Vector3 shown = *cvar->AsVector3() * scale;
+                if (InspectorLayout::VectorField("##value", &shown.x, 3, speed, shownMin, shownMax,
+                        componentLabels, floatFormat)) {
+                    SetWithUndo(cvar, shown * (1.0f / scale));
                     return true;
                 }
                 return false;
