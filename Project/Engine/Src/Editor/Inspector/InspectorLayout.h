@@ -104,6 +104,9 @@ namespace CoreEngine::InspectorLayout
     /// @brief 淡い補足の文を、欄の幅で折り返して描く
     void Hint(const char* text);
 
+    /// @brief 編集できない値の行（左にラベル、右に printf の書式で淡い文字）
+    void InfoRow(const char* label, const char* format, ...) IM_FMTARGS(2);
+
     /// @brief コンポーネントの中のグループを開閉する見出し（矢印と文字。下地は塗らない）
     /// @return 開いていれば true（TreePop は要らない）
     bool Foldout(const char* label, bool defaultOpen = true);

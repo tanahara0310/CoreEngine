@@ -11447,6 +11447,7 @@ python Tools/OkinawaBeach/bake_araha_walk.py
     <li><strong>置き方のボタン</strong>：<span class="ui">カメラの正面へ</span>（Game ビューのカメラが向いている方向へ置く）・<span class="ui">太陽の反対へ</span>（満月の位置）・<span class="ui">ライトを選ぶ</span> を足しました。プリセット（朝・正午・夕暮れ・夜（満月））は今までどおりです。</li>
     <li><strong>時刻の機能があるシーン</strong>：シーンの機能 <code>TimeOfDay</code> がある間は、太陽を動かすと時刻が、月を動かすと月齢が変わり、どちらも軌道の上のいちばん近い所へ行きます。<span class="ui">時刻から置く</span> に <code>TimeOfDay</code> の設定（時刻を進める・1 日の長さ・始まりの時刻・緯度・軌道の向き）が、<span class="ui">月</span> に月齢と「新月」「上弦」「満月」「下弦」のボタンが出ます。今までは、インスペクタで太陽と月を動かしても、次のフレームで時刻の機能に戻されていました。</li>
     <li><strong>Undo</strong>：Game ビューの印で太陽と月を動かす操作も、離したときに 1 件として Ctrl+Z で戻せます。</li>
+    <li><strong>Time of Day の設定</strong>：Engine Settings の「Time of Day」も同じ行の並びにし、「時刻」「太陽の軌道」「月」「夜の明るさ」のまとまりで並べました。今の時刻と月齢は欄で動かせ、今の自動露出と空の環境光は値の行で出ます。<span class="ui">既定に戻す</span> で時刻の機能の値をまとめて既定値へ戻せます。</li>
     <li><strong>新しい CVar</strong>：<code>d.Atmosphere.SceneGizmo</code>（Game ビューの印。既定はオン）・<code>d.Atmosphere.SkyMapView</code>（空の図。0 で真上から・1 で展開図）。どちらもエディタの設定として保存します。</li>
   </ul>
 

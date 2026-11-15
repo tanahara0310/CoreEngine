@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cfloat>
+#include <cstdarg>
 
 namespace CoreEngine::InspectorLayout
 {
@@ -380,6 +381,18 @@ namespace CoreEngine::InspectorLayout
         ImGui::PushTextWrapPos(0.0f);
         ImGui::TextDisabled("%s", text);
         ImGui::PopTextWrapPos();
+    }
+
+    void InfoRow(const char* label, const char* format, ...)
+    {
+        BeginRow(label, Editor::Theme::kTextDim);
+        ImGui::AlignTextToFramePadding();
+        va_list args;
+        va_start(args, format);
+        ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+        ImGui::TextV(format, args);
+        ImGui::PopStyleColor();
+        va_end(args);
     }
 
     bool Foldout(const char* label, bool defaultOpen)

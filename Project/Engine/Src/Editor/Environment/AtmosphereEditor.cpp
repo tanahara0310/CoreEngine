@@ -18,7 +18,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstdarg>
 #include <cstdio>
 #include <functional>
 #include <initializer_list>
@@ -201,19 +200,6 @@ namespace CoreEngine
                 controller.EndEdit();
             }
             ImGui::PopID();
-        }
-
-        /// @brief 編集できない値の行（左にラベル、右に淡い文字）
-        void InfoRow(const char* label, const char* format, ...)
-        {
-            char text[160];
-            va_list args;
-            va_start(args, format);
-            std::vsnprintf(text, sizeof(text), format, args);
-            va_end(args);
-            InspectorLayout::BeginRow(label, Theme::kTextDim);
-            ImGui::AlignTextToFramePadding();
-            ImGui::TextDisabled("%s", text);
         }
 
         /// @brief 右へ寄せたボタンの並び
@@ -401,8 +387,8 @@ namespace CoreEngine
             // 時刻の機能があるときは、その機能の月の設定を並べる
             CVarUI::DrawRow(FindCVar("r.TimeOfDay.Moon"), "月を出す");
             if (controller_.IsShown(SkyBody::Moon)) {
-                InfoRow("高度", "%.1f°%s", moon.angles.elevationDeg, moon.angles.elevationDeg > 0.0f ? "" : "（地平線の下なので光らない）");
-                InfoRow("方位", "%.1f°（%s）", AzimuthForDisplay(moon.angles.azimuthDeg), CompassName(moon.angles.azimuthDeg));
+                InspectorLayout::InfoRow("高度", "%.1f°%s", moon.angles.elevationDeg, moon.angles.elevationDeg > 0.0f ? "" : "（地平線の下なので光らない）");
+                InspectorLayout::InfoRow("方位", "%.1f°（%s）", AzimuthForDisplay(moon.angles.azimuthDeg), CompassName(moon.angles.azimuthDeg));
 
                 ImGui::PushID("Age");
                 InspectorLayout::BeginRow("月齢", Theme::kTextDim);
@@ -582,13 +568,13 @@ namespace CoreEngine
         if (ambientOn) {
             CVarUI::DrawRow(FindCVar("r.Atmosphere.SkyAmbientScale"), "環境光の強さ", "%.3f");
             if (atmosphere) {
-                InfoRow("環境光の用意", "%s", atmosphere->IsSkyAmbientReady() ? "できている" : "作っている");
+                InspectorLayout::InfoRow("環境光の用意", "%s", atmosphere->IsSkyAmbientReady() ? "できている" : "作っている");
             }
 
             ICVar* const specular = FindCVar("r.Atmosphere.SkySpecularEnabled");
             CVarUI::DrawRow(specular, "空と雲の映り込み");
             if (atmosphere && specular && specular->AsBool() && *specular->AsBool()) {
-                InfoRow("映り込みの用意", "%s", atmosphere->IsSkyEnvironmentReady() ? "できている" : "作っている");
+                InspectorLayout::InfoRow("映り込みの用意", "%s", atmosphere->IsSkyEnvironmentReady() ? "できている" : "作っている");
             }
         }
         InspectorLayout::Hint("空の色から物を照らす。昼は青く、夕方は橙に、夜はほとんど暗くなる。切ると、ライトの色の簡単な環境光になる。");
@@ -687,30 +673,30 @@ namespace CoreEngine
         if (atmosphere->HasSunLight()) {
             const Vector3& direction = atmosphere->GetSunDirection();
             const Vector3& transmittance = atmosphere->GetSunTransmittance();
-            InfoRow("光の向き", "(%.3f, %.3f, %.3f)", direction.x, direction.y, direction.z);
-            InfoRow("空の明るさ", "%.2f", atmosphere->GetSunIntensity());
-            InfoRow("地表に届く割合", "(%.3f, %.3f, %.3f)", transmittance.x, transmittance.y, transmittance.z);
+            InspectorLayout::InfoRow("光の向き", "(%.3f, %.3f, %.3f)", direction.x, direction.y, direction.z);
+            InspectorLayout::InfoRow("空の明るさ", "%.2f", atmosphere->GetSunIntensity());
+            InspectorLayout::InfoRow("地表に届く割合", "(%.3f, %.3f, %.3f)", transmittance.x, transmittance.y, transmittance.z);
         } else {
-            InfoRow("太陽", "なし");
+            InspectorLayout::InfoRow("太陽", "なし");
         }
 
         ImGui::SeparatorText("月");
         if (atmosphere->HasMoonLight()) {
             const Vector3& direction = atmosphere->GetMoonDirection();
             const Vector3& transmittance = atmosphere->GetMoonTransmittance();
-            InfoRow("光の向き", "(%.3f, %.3f, %.3f)", direction.x, direction.y, direction.z);
-            InfoRow("空の明るさ", "%.4f", atmosphere->GetMoonIntensity());
-            InfoRow("満ち欠けの明るさ", "%.1f%%%s", atmosphere->GetMoonPhaseBrightness() * 100.0f,
+            InspectorLayout::InfoRow("光の向き", "(%.3f, %.3f, %.3f)", direction.x, direction.y, direction.z);
+            InspectorLayout::InfoRow("空の明るさ", "%.4f", atmosphere->GetMoonIntensity());
+            InspectorLayout::InfoRow("満ち欠けの明るさ", "%.1f%%%s", atmosphere->GetMoonPhaseBrightness() * 100.0f,
                 atmosphere->IsMoonPhaseFromSun() ? "" : "（常に満月）");
-            InfoRow("地表に届く割合", "(%.3f, %.3f, %.3f)", transmittance.x, transmittance.y, transmittance.z);
+            InspectorLayout::InfoRow("地表に届く割合", "(%.3f, %.3f, %.3f)", transmittance.x, transmittance.y, transmittance.z);
         } else {
-            InfoRow("月", "なし");
+            InspectorLayout::InfoRow("月", "なし");
         }
 
         ImGui::SeparatorText("カメラ");
-        InfoRow("地表からの高さ", "%.2f m", atmosphere->GetCameraHeightAboveGround());
-        InfoRow("惑星の中心から", "%.1f km", atmosphere->GetDistanceFromPlanetCenter() * kMeterToKm);
-        InfoRow("空の表", "%s", atmosphere->IsLUTDirty() ? "作り直しを待っている" : "最新");
+        InspectorLayout::InfoRow("地表からの高さ", "%.2f m", atmosphere->GetCameraHeightAboveGround());
+        InspectorLayout::InfoRow("惑星の中心から", "%.1f km", atmosphere->GetDistanceFromPlanetCenter() * kMeterToKm);
+        InspectorLayout::InfoRow("空の表", "%s", atmosphere->IsLUTDirty() ? "作り直しを待っている" : "最新");
         ImGui::PopID();
     }
 }
