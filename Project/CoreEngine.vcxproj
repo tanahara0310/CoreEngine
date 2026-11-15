@@ -604,6 +604,9 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Scene\Feature\GridFeature.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\DebugEditorFeature.cpp" />
     <ClCompile Include="Engine\Src\Editor\Environment\AtmosphereEditor.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Environment\SkyMapWidget.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Environment\SunMoonController.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Environment\SunMoonSceneGizmo.cpp" />
     <ClCompile Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\ComponentEditing.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\EditorSceneAccess.cpp" />
@@ -1932,6 +1935,9 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Scene\Feature\GridFeature.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\DebugEditorFeature.h" />
     <ClInclude Include="Engine\Src\Editor\Environment\AtmosphereEditor.h" />
+    <ClInclude Include="Engine\Src\Editor\Environment\SkyMapWidget.h" />
+    <ClInclude Include="Engine\Src\Editor\Environment\SunMoonController.h" />
+    <ClInclude Include="Engine\Src\Editor\Environment\SunMoonSceneGizmo.h" />
     <ClInclude Include="Engine\Src\Editor\Environment\VolumetricCloudEditor.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\ComponentEditing.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\EditorSceneAccess.h" />

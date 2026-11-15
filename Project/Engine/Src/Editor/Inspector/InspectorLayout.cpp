@@ -267,7 +267,7 @@ namespace CoreEngine::InspectorLayout
     }
 
     bool VectorField(const char* id, float* values, int count, float speed, float min, float max,
-        const char* const* labels)
+        const char* const* labels, const char* format)
     {
         static constexpr const char* kAxes[] = { "X", "Y", "Z", "W" };
         const char* const* const axes = labels ? labels : kAxes;
@@ -287,7 +287,7 @@ namespace CoreEngine::InspectorLayout
                 ImGui::SameLine(0.0f, spacing);
             }
             ImGui::SetNextItemWidth(fieldWidth);
-            changed = ImGui::DragFloat("##axis", &values[i], speed, min, max, "%.3f") || changed;
+            changed = ImGui::DragFloat("##axis", &values[i], speed, min, max, format ? format : "%.3f") || changed;
 
             const ImVec2 fieldMin = ImGui::GetItemRectMin();
             const ImVec2 fieldMax = ImGui::GetItemRectMax();

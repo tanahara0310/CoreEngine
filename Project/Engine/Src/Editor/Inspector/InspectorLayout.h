@@ -77,8 +77,9 @@ namespace CoreEngine::InspectorLayout
     /// @brief ベクトルの欄（成分ごとの欄の左端に、軸の色の印と文字を添えて並べる）
     /// @param min 下限（min >= max なら制限しない）
     /// @param labels 成分の文字（nullptr なら X・Y・Z・W）
+    /// @param format 成分の数の書式
     bool VectorField(const char* id, float* values, int count, float speed, float min, float max,
-        const char* const* labels = nullptr);
+        const char* const* labels = nullptr, const char* format = "%.3f");
 
     /// @brief 色の欄（幅いっぱいのスウォッチを押すとピッカーが開く）
     /// @param hasAlpha false なら不透明度を出さない（`rgba` の 4 つ目は読み書きしない）

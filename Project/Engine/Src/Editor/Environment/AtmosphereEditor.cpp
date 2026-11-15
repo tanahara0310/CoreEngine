@@ -1,697 +1,718 @@
 #include "pch.h"
-#include "Editor/Inspector/ComponentInspectors.h"
-#include "Editor/Panel/EditorPanelRegistry.h"
-#include "AtmosphereEditor.h"
-
-#include "EngineSystem/EngineSystem.h"
-#include "GameObject/GameObject.h"
-#include "GameObject/GameObjectManager.h"
-#include "GameObject/Component/Light/LightComponent.h"
-#include "Graphics/Atmosphere/AtmosphereManager.h"
-#include "Graphics/Light/LightManager.h"
-#include "Scene/SceneManager.h"
-#include "Graphics/PostEffect/Effect/PostEffectManager.h"
-#include "Graphics/PostEffect/Effect/PostEffectNames.h"
-#include "Graphics/PostEffect/Effect/ToneMapping/ToneMapping.h"
-#include "Graphics/Render/RenderDomainContext.h"
-#include "Math/MathCore.h"
+#include "Editor/Environment/AtmosphereEditor.h"
 
 #ifdef CORE_EDITOR
-#include "Editor/Command/EditorCommandStack.h"
-#include "Editor/ImGui/ImGuiAll.h"
+
 #include "Editor/ImGui/CVarPanel.h"
-#endif
+#include "Editor/ImGui/EditorTheme.h"
+#include "Editor/ImGui/ImGuiAll.h"
+#include "Editor/ImGui/Widgets/EditorBars.h"
+#include "Editor/Inspector/ComponentInspectors.h"
+#include "Editor/Inspector/InspectorLayout.h"
+#include "EngineSystem/EngineSystem.h"
+#include "Graphics/Atmosphere/AtmosphereManager.h"
+#include "Scene/Feature/TimeOfDayFeature.h"
+#include "Utility/CVar/CVar.h"
+#include "Utility/CVar/CVarRegistry.h"
+#include "Utility/CVar/CVarUndoStack.h"
 
 #include <algorithm>
 #include <cmath>
-#include <memory>
+#include <cstdarg>
+#include <cstdio>
+#include <functional>
+#include <initializer_list>
+#include <optional>
 
-namespace CoreEngine {
+namespace CoreEngine
+{
+    namespace
+    {
+        namespace Theme = Editor::Theme;
 
-    namespace {
-        constexpr float kDegToRad = MathCore::Constants::kDegToRad;
-        constexpr const char* kEditorLabel = "Sky Atmosphere";
-        /// @brief この設定を持つコンポーネントの型名
+        CVar<int> cvSkyMapView{
+            "d.Atmosphere.SkyMapView", 1,
+            "空と大気散乱のインスペクタの空の図（0 = 真上から・1 = 展開図）",
+            CVarRange{ 0.0f, 1.0f }, CVarFlags::NoUI };
+
+        /// この設定を持つコンポーネントの型名
         constexpr const char* kComponentTypeName = "SkyBox";
-        /// @brief 大気パラメータの CVar 接頭辞（定義は AtmosphereManager.cpp）
-        constexpr const char* kAtmosphereCVarPrefix = "r.Atmosphere";
 
-        /// @brief 今のシーンへ月のオブジェクトを作り、そのライトを返す（作れなければ nullptr）
-        /// @note ライトはオブジェクトが持つので、ここで作った月もシーンに保存される。
-        LightComponent* CreateMoonLightObject(EngineSystem* engine)
-        {
-            SceneManager* const sceneManager = engine ? engine->GetSceneManager() : nullptr;
-            GameObjectManager* const objects =
-                sceneManager ? sceneManager->GetCurrentGameObjectManager() : nullptr;
-            if (!objects) {
-                return nullptr;
-            }
+        /// 行のラベルと欄の右クリックで開くメニューの ID
+        constexpr const char* kRowMenuId = "##lightRowMenu";
 
-            auto owned = std::make_unique<GameObject>();
-            owned->SetName("Moon");
-            GameObject* const object = objects->AddObject(std::move(owned));
-            LightComponent* const component =
-                object ? object->AddComponent<LightComponent>(LightType::Directional) : nullptr;
-            if (!component) {
-                return nullptr;
-            }
+        /// 太陽と月の値の既定（新しく置いたライトと同じ）
+        const SunSettings kSunDefaults{};
+        const MoonSettings kMoonDefaults{};
 
-            component->Get().isAtmosphereMoon = true;
-            component->SyncWithManager();
+        /// 散乱係数を見やすい桁で出す倍率（×10⁻⁶ /m の単位）
+        constexpr float kPerMegaMeter = 1.0e6f;
 
-            if (!component->GetLight()) {
-                // ディレクショナルライトが上限で実体を作れなかった
-                object->Destroy();
-                return nullptr;
-            }
-            return component;
-        }
+        /// 朔望月 [日]
+        constexpr float kMoonMonthDays = TimeOfDayFeature::kSynodicMonthDays;
 
-#ifdef CORE_EDITOR
-        /// @brief ライトへ値と有効を戻して、実体へ写す
-        void RestoreLight(LightComponent* light, const Light& values, bool enabled)
-        {
-            if (!light) {
-                return;
-            }
-            light->Get() = values;
-            light->SetEnabled(enabled);
-            light->SyncWithManager();
-        }
+        /// m を km で出す倍率
+        constexpr float kMeterToKm = 0.001f;
 
-        /// @brief 控えた状態へ戻す（月が無かった状態へ戻すときは、今ある月を消す）
-        void RestoreLightState(const AtmosphereLightState& target, const AtmosphereLightState& other)
-        {
-            RestoreLight(target.sun, target.sunValues, target.sunEnabled);
-            if (target.moon) {
-                RestoreLight(target.moon, target.moonValues, target.moonEnabled);
-            } else if (other.moon) {
-                RestoreLight(other.moon, other.moonValues, false);
-            }
-        }
+        /// RGB の成分の文字
+        constexpr const char* kRgbLabels[] = { "R", "G", "B" };
 
-        /// @brief パネルで触る値が同じか
-        bool SameLightValues(const Light& a, const Light& b)
-        {
-            return a.direction == b.direction && a.color == b.color
-                && a.intensity == b.intensity && a.atmosphereIntensity == b.atmosphereIntensity;
-        }
-
-        /// @brief Sky Atmosphere パネルで変えた太陽と月の値を戻す操作
-        class LightEditCommand final : public Editor::IEditorCommand
-        {
-        public:
-            LightEditCommand(AtmosphereLightState before, AtmosphereLightState after)
-                : before_(std::move(before)), after_(std::move(after)) {}
-
-            void Undo() override { RestoreLightState(before_, after_); }
-            void Redo() override { RestoreLightState(after_, before_); }
-            std::string GetLabel() const override { return "太陽と月の変更"; }
-
-            bool References(const void* target) const override
-            {
-                return target != nullptr && (target == before_.sun || target == before_.moon
-                    || target == after_.sun || target == after_.moon);
-            }
-
-        private:
-            AtmosphereLightState before_;
-            AtmosphereLightState after_;
+        /// 「大気」の節に並べる CVar（既定に戻すの対象）
+        constexpr const char* kAtmosphereCVars[] = {
+            "r.Atmosphere.PlanetRadius",
+            "r.Atmosphere.TopRadius",
+            "r.Atmosphere.RayleighScattering",
+            "r.Atmosphere.RayleighScaleHeight",
+            "r.Atmosphere.MieScattering",
+            "r.Atmosphere.MieAbsorption",
+            "r.Atmosphere.MieScaleHeight",
+            "r.Atmosphere.MiePhaseG",
+            "r.Atmosphere.OzoneAbsorption",
+            "r.Atmosphere.OzoneLayerCenter",
+            "r.Atmosphere.OzoneLayerHalfWidth",
+            "r.Atmosphere.GroundAlbedo",
+            "r.Atmosphere.MultiScatteringFactor",
+            "r.Atmosphere.SunDiskAngularRadius",
+            "r.Atmosphere.SunDiskLuminanceScale",
+            "r.Atmosphere.MoonDiskAngularRadius",
+            "r.Atmosphere.MoonDiskLuminanceScale",
+            "r.Atmosphere.StarIntensity",
+            "r.Atmosphere.AerialPerspectiveKmPerSlice",
         };
-#endif
+
+        ICVar* FindCVar(const char* name)
+        {
+            return CVarRegistry::Get().Find(name);
+        }
+
+        /// @brief 値がほぼ同じか（大きい方の値の 0.1% 以内）
+        bool NearlyEqual(float lhs, float rhs)
+        {
+            return std::fabs(lhs - rhs) <= 0.001f * (std::max)({ 1.0e-6f, std::fabs(lhs), std::fabs(rhs) });
+        }
+
+        bool NearlyEqual(const Vector3& lhs, const Vector3& rhs)
+        {
+            return NearlyEqual(lhs.x, rhs.x) && NearlyEqual(lhs.y, rhs.y) && NearlyEqual(lhs.z, rhs.z);
+        }
+
+        /// @brief 方位を 0〜360 で出す
+        float AzimuthForDisplay(float azimuthDeg)
+        {
+            float a = std::fmod(azimuthDeg, 360.0f);
+            if (a < 0.0f) {
+                a += 360.0f;
+            }
+            return a >= 359.95f ? 0.0f : a;
+        }
+
+        /// @brief 右クリックのメニュー（既定値へ戻す）
+        /// @return 既定値へ戻すを選んだら true
+        bool ResetMenu(bool modified)
+        {
+            bool reset = false;
+            ImGui::OpenPopupOnItemClick(kRowMenuId, ImGuiPopupFlags_MouseButtonRight);
+            if (ImGui::BeginPopup(kRowMenuId)) {
+                if (ImGui::MenuItem("既定値へ戻す", nullptr, false, modified)) {
+                    reset = true;
+                }
+                ImGui::EndPopup();
+            }
+            return reset;
+        }
+
+        /// @brief 小数の欄の作り
+        struct FloatField
+        {
+            float min = 0.0f;
+            float max = 1.0f;
+            const char* format = "%.3f";
+            bool logarithmic = false;
+            std::optional<float> defaultValue; ///< 既定値（無ければ橙にせず、戻すメニューも出さない）
+        };
+
+        /// @brief ライトの小数の行（掴んだ・離したを履歴へ渡し、変えたら apply を呼ぶ）
+        void LightFloatRow(SunMoonController& controller, const char* id, const char* label, float value,
+            const FloatField& field, const std::function<void(float)>& apply)
+        {
+            ImGui::PushID(id);
+            const bool modified = field.defaultValue && !NearlyEqual(value, *field.defaultValue);
+            InspectorLayout::BeginRow(label, modified ? Theme::kWarm : Theme::kTextDim,
+                field.defaultValue ? kRowMenuId : nullptr);
+
+            ImGuiSliderFlags flags = ImGuiSliderFlags_AlwaysClamp;
+            if (field.logarithmic) {
+                flags |= ImGuiSliderFlags_Logarithmic;
+            }
+            const float speed = (field.max - field.min) / 400.0f;
+            const auto drawField = [&] {
+                return ImGui::DragFloat("##value", &value, speed, field.min, field.max, field.format, flags);
+            };
+            const bool edited = field.logarithmic
+                ? drawField()
+                : InspectorLayout::FilledField((value - field.min) / (field.max - field.min), drawField);
+            controller.TrackItem();
+            if (edited) {
+                apply(value);
+            }
+            if (field.defaultValue && ResetMenu(modified)) {
+                controller.BeginEdit();
+                apply(*field.defaultValue);
+                controller.EndEdit();
+            }
+            ImGui::PopID();
+        }
+
+        /// @brief ライトの方位の行（0〜360 で出し、端を越えたら回り込む）
+        void LightAzimuthRow(SunMoonController& controller, const char* id, float azimuthDeg,
+            const std::function<void(float)>& apply)
+        {
+            ImGui::PushID(id);
+            InspectorLayout::BeginRow("方位", Theme::kTextDim);
+            float shown = AzimuthForDisplay(azimuthDeg);
+            char format[48];
+            std::snprintf(format, sizeof(format), "%%.1f°（%s）", CompassName(azimuthDeg));
+            const bool edited = InspectorLayout::FilledField(shown / 360.0f, [&] {
+                return ImGui::DragFloat("##value", &shown, 0.5f, 0.0f, 0.0f, format);
+            });
+            controller.TrackItem();
+            if (edited) {
+                apply(WrapAzimuth(shown));
+            }
+            ImGui::PopID();
+        }
+
+        /// @brief ライトの色の行
+        void LightColorRow(SunMoonController& controller, const char* id, const Vector3& color, const Vector3& defaultColor,
+            const std::function<void(const Vector3&)>& apply)
+        {
+            ImGui::PushID(id);
+            const bool modified = !NearlyEqual(color, defaultColor);
+            InspectorLayout::BeginRow("色", modified ? Theme::kWarm : Theme::kTextDim, kRowMenuId);
+            float rgba[4] = { color.x, color.y, color.z, 1.0f };
+            const bool edited = InspectorLayout::ColorSwatch("##value", rgba, false);
+            controller.TrackItem();
+            if (edited) {
+                apply(Vector3{ rgba[0], rgba[1], rgba[2] });
+            }
+            if (ResetMenu(modified)) {
+                controller.BeginEdit();
+                apply(defaultColor);
+                controller.EndEdit();
+            }
+            ImGui::PopID();
+        }
+
+        /// @brief 編集できない値の行（左にラベル、右に淡い文字）
+        void InfoRow(const char* label, const char* format, ...)
+        {
+            char text[160];
+            va_list args;
+            va_start(args, format);
+            std::vsnprintf(text, sizeof(text), format, args);
+            va_end(args);
+            InspectorLayout::BeginRow(label, Theme::kTextDim);
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextDisabled("%s", text);
+        }
+
+        /// @brief 右へ寄せたボタンの並び
+        struct ButtonSpec
+        {
+            const char* label = "";
+            const char* tooltip = nullptr;
+            bool enabled = true;
+            std::function<void()> onPress;
+            bool on = false; ///< 選んでいる状態として描くか
+        };
+
+        void RightButtons(std::initializer_list<ButtonSpec> buttons)
+        {
+            const float spacing = ImGui::GetStyle().ItemSpacing.x;
+            float width = 0.0f;
+            for (const ButtonSpec& button : buttons) {
+                width += UI::Bar::ButtonWidth(button.label) + (width > 0.0f ? spacing : 0.0f);
+            }
+            InspectorLayout::AlignToRight(width);
+            bool first = true;
+            for (const ButtonSpec& button : buttons) {
+                if (!first) {
+                    ImGui::SameLine();
+                }
+                first = false;
+                if (UI::Bar::Button(button.label, button.on, button.tooltip, button.enabled) && button.onPress) {
+                    button.onPress();
+                }
+            }
+        }
+
+        /// @brief 時刻を「12:30（12.50 h）」の書式にする
+        void TimeFormat(char* out, size_t size, float hours)
+        {
+            const int minutes = static_cast<int>(std::floor(hours * 60.0f + 0.5f)) % (24 * 60);
+            std::snprintf(out, size, "%02d:%02d（%%.2f h）", minutes / 60, minutes % 60);
+        }
     }
 
     void AtmosphereEditor::Initialize(EngineSystem& engine)
     {
         engine_ = &engine;
-#ifdef CORE_EDITOR
-        // シーンに置かれたコンポーネントのインスペクタとして中身を描く
+        controller_.Initialize(engine);
+        sceneGizmo_.Initialize(controller_);
         inspector_ = Editor::ComponentInspectors::Register(kComponentTypeName, {
             .displayName = "空と大気散乱",
             .drawBody = [this](IComponent&) { DrawContent(); return false; },
             });
-#endif
-    }
-
-    void AtmosphereEditor::ApplySunSettings(const AtmosphereEditorSunSettings& settings)
-    {
-        sunSettings_ = settings;
-
-        if (LightComponent* const sun = FindSunLight()) {
-            Light& values = sun->Get();
-            values.direction = ComputeSunLightDirection(settings.elevationDeg, settings.azimuthDeg);
-            // UI の「強度」は空（大気散乱）の輝度スケール。サーフェスの直接光（intensity）は
-            // 単位系が別なので触らない（同じ値を入れると明るいアルベドが ACES の飽和域に入る）。
-            values.atmosphereIntensity = settings.intensity;
-            sun->SyncWithManager();
-        }
-
-        // 太陽方向・強度の変化は AtmosphereManager::Update() が自動検知して
-        // Sky-View LUT のみを再生成するため、ここで MarkLUTDirty()（全LUT再生成）は呼ばない
-    }
-
-    void AtmosphereEditor::ApplyMoonSettings(const AtmosphereEditorMoonSettings& settings)
-    {
-        moonSettings_ = settings;
-
-        LightComponent* moon = FindMoonLight();
-        if (!moon && settings.enabled) {
-            // 月ライトはオプトイン。初回有効化時に第2ディレクショナルライトのオブジェクトを作る
-            moon = CreateMoonLightObject(engine_);
-        }
-        if (!moon) {
-            return;
-        }
-
-        Light& values = moon->Get();
-        values.direction = ComputeSunLightDirection(settings.elevationDeg, settings.azimuthDeg);
-        values.color = settings.color;
-        // 太陽と同じく「空の輝度」と「サーフェス直接光（照度 [lx]）」は単位系が別（ACES 飽和域回避）
-        values.intensity = settings.surfaceIntensity;
-        values.atmosphereIntensity = settings.skyIntensity;
-        moon->SetEnabled(settings.enabled);
-        moon->SyncWithManager();
-
-        // 月の変化も AtmosphereManager::Update() が自動検知して Sky-View LUT を再生成する
-    }
-
-    void AtmosphereEditor::SyncFromLights()
-    {
-        auto* lightManager = GetLightManager();
-        if (!lightManager) {
-            return;
-        }
-
-        if (const Light* sun = lightManager->GetAtmosphereSunLight()) {
-            const Vector3 toSun = Normalize(-sun->direction);
-            sunSettings_.elevationDeg = std::asin(std::clamp(toSun.y, -1.0f, 1.0f)) / kDegToRad;
-            // 真上（天頂）付近では方位が不定になるため、直前の UI 値を維持する
-            if (std::abs(toSun.x) > 1e-5f || std::abs(toSun.z) > 1e-5f) {
-                sunSettings_.azimuthDeg = std::atan2(toSun.x, toSun.z) / kDegToRad;
-            }
-            sunSettings_.intensity = sun->atmosphereIntensity;
-        }
-
-        if (const Light* moon = lightManager->GetAtmosphereMoonLight()) {
-            moonSettings_.enabled = moon->enabled;
-            const Vector3 toMoon = Normalize(-moon->direction);
-            moonSettings_.elevationDeg = std::asin(std::clamp(toMoon.y, -1.0f, 1.0f)) / kDegToRad;
-            if (std::abs(toMoon.x) > 1e-5f || std::abs(toMoon.z) > 1e-5f) {
-                moonSettings_.azimuthDeg = std::atan2(toMoon.x, toMoon.z) / kDegToRad;
-            }
-            moonSettings_.skyIntensity = moon->atmosphereIntensity;
-            moonSettings_.surfaceIntensity = moon->intensity;
-            moonSettings_.color = moon->color;
-        } else {
-            // 月ライトが無いシーンでは無効表示にする（色などの既定値は次回有効化用に維持）
-            moonSettings_.enabled = false;
-        }
     }
 
     void AtmosphereEditor::DrawContent()
     {
-#ifdef CORE_EDITOR
-        // エディタはエンジン寿命・ライトはシーン寿命。まず実体から UI モデルを同期する
-        SyncFromLights();
+        controller_.SyncFromLights();
+        controller_.Tick(ImGui::GetIO().DeltaTime);
 
-        // ===== 太陽・月の配置（UE 風の直接操作） =====
-        if (ImGui::CollapsingHeader("太陽と月の配置", ImGuiTreeNodeFlags_DefaultOpen)) {
-            // --- プリセット（1クリックで代表的な時間帯へ） ---
-            if (ImGui::Button("正午")) { BeginLightEdit(); ApplyDaytimePreset(12.0f); }
-            ImGui::SameLine();
-            if (ImGui::Button("朝")) { BeginLightEdit(); ApplyDaytimePreset(6.7f); }
-            ImGui::SameLine();
-            if (ImGui::Button("夕暮れ")) { BeginLightEdit(); ApplyDaytimePreset(17.6f); }
-            ImGui::SameLine();
-            if (ImGui::Button("夜（満月）")) { BeginLightEdit(); ApplyNightPreset(); }
-            ImGui::SameLine();
-            ImGui::TextDisabled("(?)");
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("「夜（満月）」は自動露出も有効化します\n"
-                    "（月光は太陽の約 1/1000 に抑えた美術値のため、露出補正が必要）\n"
-                    "昼系プリセット（正午・朝・夕暮れ）を押すと自動露出は元の設定へ戻ります");
-            }
-
-            // --- スカイマップ（太陽・月をドラッグで配置） ---
-            DrawSunMoonPlacementWidget();
-
-            // --- 時刻ベースの太陽軌道（UE の Sun Position 相当の簡易版） ---
-            ImGui::SeparatorText("時刻から配置");
-            bool timeChanged = false;
-            timeChanged |= ImGui::SliderFloat("時刻 [h]", &timeOfDay_, 0.0f, 24.0f, "%.2f");
-            TrackLightEdit();
-            timeChanged |= ImGui::SliderFloat("緯度 [deg]", &latitudeDeg_, -89.0f, 89.0f, "%.0f");
-            TrackLightEdit();
-            ImGui::Checkbox("時刻を自動で進める", &autoTimeCycle_);
-            if (autoTimeCycle_) {
-                ImGui::SliderFloat("進行速度 [h/s]", &timeSpeedHoursPerSec_, 0.05f, 4.0f, "%.2f");
-                timeOfDay_ += timeSpeedHoursPerSec_ * ImGui::GetIO().DeltaTime;
-                if (timeOfDay_ >= 24.0f) { timeOfDay_ -= 24.0f; }
-                timeChanged = true;
-            }
-            if (timeChanged) {
-                ApplyTimeOfDay();
-            }
-        }
-
-        // ===== 太陽設定 =====
-        if (ImGui::CollapsingHeader("太陽", ImGuiTreeNodeFlags_DefaultOpen)) {
-            // ここは Sun オブジェクト（大気の太陽フラグ付きライト）を操作する別ビュー。
-            // 「空の明るさ」は大気散乱（空・雲）専用のスケールで、地面や物への
-            // 直接光の強さ（照度 [lx]）は Sun オブジェクトのライト側で設定する
-            UI::Hint("Sun オブジェクトと同じライトを操作します。地表への直接光はそちらの「強さ [lx]」");
-            AtmosphereEditorSunSettings settings = sunSettings_;
-            bool changed = false;
-            changed |= ImGui::SliderFloat("高度角 [deg]", &settings.elevationDeg, -20.0f, 90.0f, "%.1f");
-            TrackLightEdit();
-            changed |= ImGui::SliderFloat("方位角 [deg]", &settings.azimuthDeg, -180.0f, 180.0f, "%.1f");
-            TrackLightEdit();
-            changed |= ImGui::SliderFloat("空の明るさ（散乱スケール）", &settings.intensity, 0.0f, 100.0f, "%.2f");
-            TrackLightEdit();
-            if (changed) {
-                ApplySunSettings(settings);
-            }
-
-            // 太陽直接光への大気透過率適用（UE の Transmittance on light color 相当）。
-            // OFF にすると従来どおり日没後も地表が昼の明るさのまま照らされる
-            if (auto* atmosphereManager = GetAtmosphereManager()) {
-                bool transmittanceOnLight = atmosphereManager->IsTransmittanceOnLightEnabled();
-                if (ImGui::Checkbox("直接光へ透過率を適用", &transmittanceOnLight)) {
-                    atmosphereManager->SetTransmittanceOnLightEnabled(transmittanceOnLight);
-                }
-            }
-        }
-
-        // ===== 月（第2大気ライト。UE の Second Atmosphere Light 相当） =====
-        if (ImGui::CollapsingHeader("月", ImGuiTreeNodeFlags_DefaultOpen)) {
-            AtmosphereEditorMoonSettings settings = moonSettings_;
-            bool changed = false;
-            changed |= ImGui::Checkbox("月を有効にする", &settings.enabled);
-            TrackLightEdit();
-            if (settings.enabled) {
-                changed |= ImGui::SliderFloat("高度角 [deg]##moon", &settings.elevationDeg, -20.0f, 90.0f, "%.1f");
-                TrackLightEdit();
-                changed |= ImGui::SliderFloat("方位角 [deg]##moon", &settings.azimuthDeg, -180.0f, 180.0f, "%.1f");
-                TrackLightEdit();
-                // 空の輝度スケール（太陽 20 に対し既定 0.02 = 1/1000 の美術値）。
-                // 微小値を扱うためログスケール
-                changed |= ImGui::SliderFloat("空の明るさ（散乱スケール）##moon", &settings.skyIntensity,
-                    0.0f, 1.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
-                TrackLightEdit();
-                // サーフェス直接光の照度 [lx]（既定は太陽の空:直接光比に揃えた約 114 lx。
-                // 盛りすぎると自動露出下で「空だけ暗く床だけ明るい」不整合になる）
-                changed |= ImGui::SliderFloat("直接光の照度 [lx]##moon", &settings.surfaceIntensity,
-                    0.0f, 2000.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
-                TrackLightEdit();
-                float moonColor[3] = { settings.color.x, settings.color.y, settings.color.z };
-                if (ImGui::ColorEdit3("月光色", moonColor)) {
-                    settings.color = { moonColor[0], moonColor[1], moonColor[2] };
-                    changed = true;
-                }
-                TrackLightEdit();
-
-                // 満ち欠け: 既定は常に満月。オンにすると太陽との位置から欠けと月光の明るさを求める
-                // （TimeOfDay がある間はオフでも満ち欠けする）。実体は CVar が持つ（GetParametersMutable への直書きは次の同期で戻されるため使わない）
-                CVarUI::DrawTree("r.Atmosphere.MoonPhaseFromSun");
-            }
-            if (changed) {
-                ApplyMoonSettings(settings);
-            }
-        }
-
-        // ===== 空アンビエント（Sky Light 相当） =====
-        if (ImGui::CollapsingHeader("環境光", ImGuiTreeNodeFlags_DefaultOpen)) {
-            if (auto* atmosphereManager = GetAtmosphereManager()) {
-                // Sky-View LUT を SH 射影した環境光。昼は青、夕方はオレンジ、夜はほぼゼロと時刻に追従する。
-                // OFF にすると従来のハーフランバートアンビエント（ライト色固定）に戻る
-                bool skyAmbient = atmosphereManager->IsSkyAmbientEnabled();
-                if (ImGui::Checkbox("空アンビエント（大気連動）", &skyAmbient)) {
-                    atmosphereManager->SetSkyAmbientEnabled(skyAmbient);
-                }
-                if (skyAmbient) {
-                    float scale = atmosphereManager->GetSkyAmbientScale();
-                    if (ImGui::SliderFloat("環境光スケール", &scale, 0.0f, 1.0f, "%.3f")) {
-                        atmosphereManager->SetSkyAmbientScale(scale);
-                    }
-                    ImGui::Text("SH生成済み: %s", atmosphereManager->IsSkyAmbientReady() ? "true" : "false");
-
-                    // 空＋雲キューブマップによる環境反射（Phase 3b）。
-                    // モデルの roughness に応じたぼけ付きで空・雲が映り込み、
-                    // 水面は平面反射に雲が合成される
-                    bool skySpecular = atmosphereManager->IsSkySpecularEnabled();
-                    if (ImGui::Checkbox("スペキュラIBL（空・雲の映り込み）", &skySpecular)) {
-                        atmosphereManager->SetSkySpecularEnabled(skySpecular);
-                    }
-                    if (skySpecular) {
-                        ImGui::Text("キューブマップ生成済み: %s",
-                            atmosphereManager->IsSkyEnvironmentReady() ? "true" : "false");
-                    }
-                }
-            }
-        }
-
-        // ===== 大気パラメータ =====
-        if (ImGui::CollapsingHeader("大気パラメータ")) {
-            if (auto* atmosphereManager = GetAtmosphereManager()) {
-                // パラメータ UI は CVar から自動生成される（説明は各項目のツールチップに出る）。
-                // 値の反映は AtmosphereManager::Update が CVar の変更を検知して行う
-                CVarUI::DrawTree(kAtmosphereCVarPrefix);
-
-                // groundLevelY だけはシーンが所有する値なので CVar 化していない
-                auto& params = atmosphereManager->GetParametersMutable();
-                if (ImGui::DragFloat("地表とみなすY座標 [m]（シーン設定）", &params.groundLevelY,
-                        1.0f, -1000.0f, 1000.0f, "%.1f")) {
-                    atmosphereManager->MarkLUTDirty();
-                }
-
-                ImGui::Spacing();
-                if (ImGui::Button("大気パラメータをリセット")) {
-                    CVarUI::ResetTree(kAtmosphereCVarPrefix);
-                }
-            } else {
-                ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "AtmosphereManager が見つかりません");
-            }
-        }
-
-        // ===== 診断情報（AtmosphereManager の計算結果） =====
-        if (ImGui::CollapsingHeader("診断")) {
-            if (auto* atmosphereManager = GetAtmosphereManager()) {
-                const Vector3& sunDir = atmosphereManager->GetSunDirection();
-                ImGui::Text("太陽高度角（UI設定値）: %.1f deg", sunSettings_.elevationDeg);
-                ImGui::Text("太陽ライト方向: (%.3f, %.3f, %.3f)", sunDir.x, sunDir.y, sunDir.z);
-                ImGui::Text("太陽ライト有効: %s", atmosphereManager->HasSunLight() ? "true" : "false");
-                ImGui::Text("太陽光強度: %.2f", atmosphereManager->GetSunIntensity());
-                const Vector3& sunTrans = atmosphereManager->GetSunTransmittance();
-                ImGui::Text("太陽透過率（地表）: (%.3f, %.3f, %.3f)", sunTrans.x, sunTrans.y, sunTrans.z);
-                ImGui::Text("月ライト有効: %s", atmosphereManager->HasMoonLight() ? "true" : "false");
-                if (atmosphereManager->HasMoonLight()) {
-                    const Vector3& moonDir = atmosphereManager->GetMoonDirection();
-                    ImGui::Text("月ライト方向: (%.3f, %.3f, %.3f)", moonDir.x, moonDir.y, moonDir.z);
-                    ImGui::Text("月光強度（空）: %.3f", atmosphereManager->GetMoonIntensity());
-                    ImGui::Text("月全体の明るさ（満ち欠け）: %.1f%%%s",
-                        atmosphereManager->GetMoonPhaseBrightness() * 100.0f,
-                        atmosphereManager->IsMoonPhaseFromSun() ? "" : "（満ち欠けなし）");
-                    const Vector3& moonTrans = atmosphereManager->GetMoonTransmittance();
-                    ImGui::Text("月透過率（地表）: (%.3f, %.3f, %.3f)", moonTrans.x, moonTrans.y, moonTrans.z);
-                }
-                ImGui::Text("カメラ高度（地表基準）: %.2f m", atmosphereManager->GetCameraHeightAboveGround());
-                ImGui::Text("惑星中心距離: %.1f m", atmosphereManager->GetDistanceFromPlanetCenter());
-                ImGui::Text("LUT再計算要求: %s", atmosphereManager->IsLUTDirty() ? "true" : "false");
-            } else {
-                ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "AtmosphereManager が見つかりません");
-            }
-        }
+        ImGui::PushID("Atmosphere");
+        DrawPlacementSection();
+        DrawTimeSection();
+        DrawAmbientSection();
+        DrawAtmosphereSection();
+        DrawDiagnosticsSection();
+        ImGui::PopID();
 
         // 太陽と月を変えた操作を離したら、1 件だけ履歴へ積む
-        CommitLightEdit();
-#endif
+        controller_.CommitTrackedEdit();
     }
 
-    AtmosphereLightState AtmosphereEditor::CaptureLightState() const
-    {
-        AtmosphereLightState state;
-        state.sun = FindSunLight();
-        state.moon = FindMoonLight();
-        if (state.sun) {
-            state.sunValues = state.sun->Get();
-            state.sunEnabled = state.sun->IsEnabled();
-        }
-        if (state.moon) {
-            state.moonValues = state.moon->Get();
-            state.moonEnabled = state.moon->IsEnabled();
-        }
-        return state;
-    }
+    // ==================== 太陽と月 ====================
 
-    void AtmosphereEditor::TrackLightEdit()
+    void AtmosphereEditor::DrawPlacementSection()
     {
-#ifdef CORE_EDITOR
-        if (ImGui::IsItemActivated() && !lightEditBefore_) {
-            lightEditBefore_ = CaptureLightState();
-        }
-        if (ImGui::IsItemDeactivated()) {
-            lightEditEnded_ = true;
-        }
-#endif
-    }
-
-    void AtmosphereEditor::BeginLightEdit()
-    {
-        if (!lightEditBefore_) {
-            lightEditBefore_ = CaptureLightState();
-        }
-        lightEditEnded_ = true;
-    }
-
-    void AtmosphereEditor::CommitLightEdit()
-    {
-#ifdef CORE_EDITOR
-        if (!lightEditEnded_) {
+        if (!InspectorLayout::Foldout("太陽と月", true)) {
             return;
         }
-        lightEditEnded_ = false;
-        if (!lightEditBefore_) {
-            return;
-        }
-        const AtmosphereLightState before = *lightEditBefore_;
-        lightEditBefore_.reset();
+        ImGui::PushID("Placement");
 
-        const AtmosphereLightState after = CaptureLightState();
-        const bool sunSame = before.sun == after.sun
-            && (!after.sun || (SameLightValues(before.sunValues, after.sunValues) && before.sunEnabled == after.sunEnabled));
-        const bool moonSame = before.moon == after.moon
-            && (!after.moon || (SameLightValues(before.moonValues, after.moonValues) && before.moonEnabled == after.moonEnabled));
-        if (sunSame && moonSame) {
-            return;
-        }
-        Editor::EditorCommandStack::Get().Push(std::make_unique<LightEditCommand>(before, after));
-#endif
-    }
-
-    LightComponent* AtmosphereEditor::FindSunLight() const
-    {
-        const LightManager* const lightManager = GetLightManager();
-        return lightManager ? LightComponent::Find(lightManager->GetAtmosphereSunHandle()) : nullptr;
-    }
-
-    LightComponent* AtmosphereEditor::FindMoonLight() const
-    {
-        const LightManager* const lightManager = GetLightManager();
-        return lightManager ? LightComponent::Find(lightManager->GetAtmosphereMoonHandle()) : nullptr;
-    }
-
-    void AtmosphereEditor::DrawSunMoonPlacementWidget()
-    {
-#ifdef CORE_EDITOR
-        // ===== スカイマップ: 上から見た天球の極座標表示 =====
-        // 中心=天頂（高度90°）・内側の円=地平線（0°）・外周=高度-20°（スライダーの下限と一致）。
-        // 方位はワールド軸準拠で上=+Z（方位角0°）・右=+X（+90°）。
-        const float size = 230.0f;
-        ImDrawList* drawList = ImGui::GetWindowDrawList();
-        const ImVec2 origin = ImGui::GetCursorScreenPos();
-        ImGui::InvisibleButton("##skyPlacement", ImVec2(size, size));
-        TrackLightEdit();
-        const bool active = ImGui::IsItemActive();
-
-        const ImVec2 center(origin.x + size * 0.5f, origin.y + size * 0.5f);
-        const float rMax = size * 0.5f - 10.0f;              // 高度 -20°
-        const float rHorizon = rMax * (90.0f / 110.0f);      // 高度 0°
-
-        // 高度・方位 → スクリーン座標（高度は表示上 [-20,90] にクランプ）
-        auto toScreen = [&](float elevationDeg, float azimuthDeg) {
-            const float e = std::clamp(elevationDeg, -20.0f, 90.0f);
-            const float r = (90.0f - e) / 110.0f * rMax;
-            const float a = azimuthDeg * kDegToRad;
-            return ImVec2(center.x + r * std::sin(a), center.y - r * std::cos(a));
-        };
-
-        // --- 背景 ---
-        drawList->AddCircleFilled(center, rMax, IM_COL32(24, 26, 34, 255), 64);      // 地平線下の帯
-        drawList->AddCircleFilled(center, rHorizon, IM_COL32(46, 66, 100, 255), 64); // 天球（空）
-        for (float e = 30.0f; e < 90.0f; e += 30.0f) {                               // 高度リング
-            drawList->AddCircle(center, rMax * (90.0f - e) / 110.0f, IM_COL32(255, 255, 255, 24), 64, 1.0f);
-        }
-        drawList->AddLine(ImVec2(center.x, center.y - rMax), ImVec2(center.x, center.y + rMax), IM_COL32(255, 255, 255, 24));
-        drawList->AddLine(ImVec2(center.x - rMax, center.y), ImVec2(center.x + rMax, center.y), IM_COL32(255, 255, 255, 24));
-        drawList->AddCircle(center, rHorizon, IM_COL32(170, 190, 220, 200), 64, 2.0f); // 地平線
-        drawList->AddText(ImVec2(center.x - 8.0f, origin.y), IM_COL32(200, 210, 230, 200), "+Z");
-        drawList->AddText(ImVec2(origin.x + size - 22.0f, center.y - 8.0f), IM_COL32(200, 210, 230, 200), "+X");
-
-        // --- ドラッグ処理 ---
-        const ImVec2 mouse = ImGui::GetIO().MousePos;
-        auto distSq = [](const ImVec2& a, const ImVec2& b) {
-            const float dx = a.x - b.x;
-            const float dy = a.y - b.y;
-            return dx * dx + dy * dy;
-        };
-        ImVec2 sunPos = toScreen(sunSettings_.elevationDeg, sunSettings_.azimuthDeg);
-        ImVec2 moonPos = toScreen(moonSettings_.elevationDeg, moonSettings_.azimuthDeg);
-
-        if (ImGui::IsItemActivated()) {
-            // ハンドルの近くを掴んだらそれを、空白を掴んだら太陽をその場へ（直接配置）
-            constexpr float kGrabRadiusSq = 16.0f * 16.0f;
-            const float sunDist = distSq(mouse, sunPos);
-            const float moonDist = moonSettings_.enabled ? distSq(mouse, moonPos) : 1e12f;
-            if (moonDist <= kGrabRadiusSq && moonDist < sunDist) {
-                placementDrag_ = 2;
-            } else {
-                placementDrag_ = 1;
-            }
-        }
-        if (!active) {
-            placementDrag_ = 0;
-        }
-        if (active && placementDrag_ != 0) {
-            const float dx = mouse.x - center.x;
-            const float dy = mouse.y - center.y;
-            const float r = std::sqrt(dx * dx + dy * dy);
-            float azimuthDeg = std::atan2(dx, -dy) / kDegToRad;                  // 上=0°・右=+90°
-            float elevationDeg = std::clamp(90.0f - (r / rMax) * 110.0f, -20.0f, 90.0f);
-            if (placementDrag_ == 1) {
-                AtmosphereEditorSunSettings s = sunSettings_;
-                s.elevationDeg = elevationDeg;
-                s.azimuthDeg = azimuthDeg;
-                ApplySunSettings(s);
-            } else {
-                AtmosphereEditorMoonSettings s = moonSettings_;
-                s.elevationDeg = elevationDeg;
-                s.azimuthDeg = azimuthDeg;
-                ApplyMoonSettings(s);
-            }
-            sunPos = toScreen(sunSettings_.elevationDeg, sunSettings_.azimuthDeg);
-            moonPos = toScreen(moonSettings_.elevationDeg, moonSettings_.azimuthDeg);
-        }
-
-        // --- ハンドル描画（月→太陽の順。重なったら太陽が上） ---
-        if (moonSettings_.enabled) {
-            const bool moonUp = moonSettings_.elevationDeg >= 0.0f;
-            drawList->AddCircleFilled(moonPos, 9.0f, IM_COL32(170, 190, 230, 60));
-            drawList->AddCircleFilled(moonPos, 5.5f,
-                moonUp ? IM_COL32(205, 220, 245, 255) : IM_COL32(105, 115, 135, 255));
-            drawList->AddCircle(moonPos, 6.0f, IM_COL32(20, 25, 40, 200), 0, 1.5f);
-        }
-        {
-            const bool sunUp = sunSettings_.elevationDeg >= 0.0f;
-            drawList->AddCircleFilled(sunPos, 11.0f, IM_COL32(255, 200, 70, 60));
-            drawList->AddCircleFilled(sunPos, 6.5f,
-                sunUp ? IM_COL32(255, 195, 60, 255) : IM_COL32(160, 100, 45, 255));
-            drawList->AddCircle(sunPos, 7.0f, IM_COL32(40, 25, 5, 200), 0, 1.5f);
-        }
-
-        // --- 読み取り値（ウィジェット右側） ---
+        // 図の切り替えと Game ビューの印
+        const int view = cvSkyMapView.Get();
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextColored(Theme::kTextDim, "空の図");
         ImGui::SameLine();
-        ImGui::BeginGroup();
-        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.35f, 1.0f), "● 太陽");
-        ImGui::Text("高度 %.1f°", sunSettings_.elevationDeg);
-        ImGui::Text("方位 %.1f°", sunSettings_.azimuthDeg);
+        RightButtons({
+            { "真上から", "真上から見た空（中心が天頂・円が地平線・上が北）", true,
+              [] { cvSkyMapView.Set(0); }, view == 0 },
+            { "展開図", "地平線をぐるりと広げた空（横が方位・縦が高度・中央が南）", true,
+              [] { cvSkyMapView.Set(1); }, view != 0 },
+            { "Game ビューに出す",
+              "空の物か太陽・月のライトを選んでいる間、Game ビューに太陽と月と軌道を描く（印をドラッグで動かせる）", true,
+              [] { SunMoonSceneGizmo::SetEnabled(!SunMoonSceneGizmo::IsEnabled()); }, SunMoonSceneGizmo::IsEnabled() },
+        });
+
         ImGui::Spacing();
-        if (moonSettings_.enabled) {
-            ImGui::TextColored(ImVec4(0.8f, 0.86f, 0.96f, 1.0f), "● 月");
-            ImGui::Text("高度 %.1f°", moonSettings_.elevationDeg);
-            ImGui::Text("方位 %.1f°", moonSettings_.azimuthDeg);
+        if (!controller_.HasSun()) {
+            InspectorLayout::HelpBox(
+                "このシーンには大気の太陽がありません。ディレクショナルライトを置いて「大気の太陽」を入れると、空が明るくなります。",
+                InspectorLayout::Message::Warning);
+        }
+
+        skyMap_.Draw(controller_, view == 0 ? SkyMapWidget::View::Dome : SkyMapWidget::View::Panorama);
+        InspectorLayout::Hint("左ドラッグで太陽、右ドラッグで月を動かす（月の印は左でも掴める）。Ctrl を押すと 5° ごとに止まる。"
+            "水色の枠は Game ビューのカメラが見ている範囲。");
+
+        // まとめて置く
+        ImGui::PushID("Presets");
+        InspectorLayout::BeginRow("プリセット", Theme::kTextDim);
+        const auto preset = [this](const char* label, const char* tooltip, const std::function<void()>& apply) {
+            if (UI::Bar::Button(label, false, tooltip)) {
+                controller_.BeginEdit();
+                apply();
+                controller_.EndEdit();
+            }
+        };
+        preset("朝", "6:40 の太陽", [this] { controller_.ApplyDaytimePreset(6.7f); });
+        ImGui::SameLine();
+        preset("正午", "12:00 の太陽", [this] { controller_.ApplyDaytimePreset(12.0f); });
+        ImGui::SameLine();
+        preset("夕暮れ", "17:36 の太陽", [this] { controller_.ApplyDaytimePreset(17.6f); });
+        ImGui::SameLine();
+        preset("夜（満月）", "0:00 にして満月を出し、自動露出を入れる", [this] { controller_.ApplyNightPreset(); });
+        ImGui::PopID();
+
+        if (controller_.IsTimeDriven()) {
+            InspectorLayout::HelpBox(
+                "このシーンには時刻の機能（TimeOfDay）があり、太陽と月を時刻で動かしています。"
+                "太陽を動かすと時刻が、月を動かすと月齢が変わり、どちらも軌道の上のいちばん近い所へ行きます。");
+        }
+
+        ImGui::SeparatorText("太陽");
+        DrawSunRows();
+
+        ImGui::SeparatorText("月");
+        DrawMoonRows();
+
+        ImGui::PopID();
+    }
+
+    void AtmosphereEditor::DrawSunRows()
+    {
+        ImGui::PushID("Sun");
+        if (!controller_.HasSun()) {
+            InspectorLayout::Hint("大気の太陽がありません。");
+            ImGui::PopID();
+            return;
+        }
+
+        const SunSettings sun = controller_.GetSun();
+        const bool timeDriven = controller_.IsTimeDriven();
+
+        ImGui::BeginDisabled(timeDriven);
+        LightFloatRow(controller_, "Elevation", "高度", sun.angles.elevationDeg,
+            { SunMoonController::kMinElevationDeg, 90.0f, "%.1f°" },
+            [this](float v) { controller_.MoveTo(SkyBody::Sun, SkyAngles{ v, controller_.GetSun().angles.azimuthDeg }); });
+        LightAzimuthRow(controller_, "Azimuth", sun.angles.azimuthDeg,
+            [this](float v) { controller_.MoveTo(SkyBody::Sun, SkyAngles{ controller_.GetSun().angles.elevationDeg, v }); });
+        ImGui::EndDisabled();
+
+        LightFloatRow(controller_, "Sky", "空の明るさ", sun.skyIntensity,
+            { 0.0f, 100.0f, "%.1f", false, kSunDefaults.skyIntensity },
+            [this](float v) { SunSettings s = controller_.GetSun(); s.skyIntensity = v; controller_.ApplySun(s); });
+        LightFloatRow(controller_, "Lux", "照度", sun.illuminanceLux,
+            { 0.0f, 150000.0f, "%.0f lx", true, kSunDefaults.illuminanceLux },
+            [this](float v) { SunSettings s = controller_.GetSun(); s.illuminanceLux = v; controller_.ApplySun(s); });
+        LightColorRow(controller_, "Color", sun.color, kSunDefaults.color,
+            [this](const Vector3& v) { SunSettings s = controller_.GetSun(); s.color = v; controller_.ApplySun(s); });
+        CVarUI::DrawRow(FindCVar("r.Atmosphere.TransmittanceOnLight"), "夕日で光を赤くする");
+
+        RightButtons({
+            { "カメラの正面へ", "Game ビューのカメラが向いている方向へ置く",
+              controller_.GetViewCamera() != nullptr && controller_.CanMove(SkyBody::Sun),
+              [this] { controller_.BeginEdit(); controller_.PlaceAtView(SkyBody::Sun); controller_.EndEdit(); } },
+            { "ライトを選ぶ", "太陽のライトを持つオブジェクトを選ぶ", true,
+              [this] { controller_.SelectLightObject(SkyBody::Sun); } },
+        });
+        ImGui::PopID();
+    }
+
+    void AtmosphereEditor::DrawMoonRows()
+    {
+        ImGui::PushID("Moon");
+        const MoonSettings moon = controller_.GetMoon();
+        const bool timeDriven = controller_.IsTimeDriven();
+
+        if (timeDriven) {
+            // 時刻の機能があるときは、その機能の月の設定を並べる
+            CVarUI::DrawRow(FindCVar("r.TimeOfDay.Moon"), "月を出す");
+            if (controller_.IsShown(SkyBody::Moon)) {
+                InfoRow("高度", "%.1f°%s", moon.angles.elevationDeg, moon.angles.elevationDeg > 0.0f ? "" : "（地平線の下なので光らない）");
+                InfoRow("方位", "%.1f°（%s）", AzimuthForDisplay(moon.angles.azimuthDeg), CompassName(moon.angles.azimuthDeg));
+
+                ImGui::PushID("Age");
+                InspectorLayout::BeginRow("月齢", Theme::kTextDim);
+                float age = controller_.GetMoonAge();
+                const bool edited = InspectorLayout::FilledField(age / kMoonMonthDays, [&] {
+                    return ImGui::DragFloat("##value", &age, 0.05f, 0.0f, kMoonMonthDays, "%.1f 日",
+                        ImGuiSliderFlags_AlwaysClamp);
+                });
+                if (edited) {
+                    controller_.SetMoonAge(age);
+                }
+                ImGui::PopID();
+
+                ImGui::PushID("Phases");
+                InspectorLayout::BeginRow("満ち欠け", Theme::kTextDim);
+                static constexpr struct { const char* label; float fraction; } kPhases[] = {
+                    { "新月", 0.0f }, { "上弦", 0.25f }, { "満月", 0.5f }, { "下弦", 0.75f },
+                };
+                bool first = true;
+                for (const auto& phase : kPhases) {
+                    if (!first) {
+                        ImGui::SameLine();
+                    }
+                    first = false;
+                    if (UI::Bar::Button(phase.label, false)) {
+                        controller_.SetMoonAge(kMoonMonthDays * phase.fraction);
+                    }
+                }
+                ImGui::PopID();
+            }
+            CVarUI::DrawRow(FindCVar("r.TimeOfDay.StartMoonAge"), "始まりの月齢", "%.1f 日");
+            CVarUI::DrawRow(FindCVar("r.TimeOfDay.AdvanceMoonAge"), "月齢を日ごとに進める");
+            CVarUI::DrawRow(FindCVar("r.TimeOfDay.MoonSkyRatio"), "空の明るさ（太陽の何倍）", "%.4f");
+            CVarUI::DrawRow(FindCVar("r.TimeOfDay.MoonSurfaceIntensity"), "照度", "%.1f lx");
+            CVarUI::DrawRow(FindCVar("r.TimeOfDay.MoonColor"), "色", "%.2f", kRgbLabels);
+            RightButtons({
+                { "満月にする", "月齢を満月にして、太陽のちょうど反対へ置く", controller_.IsShown(SkyBody::Moon),
+                  [this] { controller_.PlaceMoonOppositeSun(); } },
+                { "カメラの正面へ", "Game ビューのカメラが向いている方向にいちばん近い月齢にする",
+                  controller_.GetViewCamera() != nullptr && controller_.CanMove(SkyBody::Moon),
+                  [this] { controller_.PlaceAtView(SkyBody::Moon); } },
+                { "ライトを選ぶ", "月のライトを持つオブジェクトを選ぶ", controller_.FindLight(SkyBody::Moon) != nullptr,
+                  [this] { controller_.SelectLightObject(SkyBody::Moon); } },
+            });
+            InspectorLayout::Hint("時刻の機能の月は、太陽と同じ軌道を月齢の分だけ遅れて通る。月を動かすと月齢が変わる（今の月齢は保存しない）。");
+            ImGui::PopID();
+            return;
+        }
+
+        ImGui::PushID("Enabled");
+        InspectorLayout::BeginRow("月を出す", Theme::kTextDim);
+        bool enabled = moon.enabled;
+        if (ImGui::Checkbox("##value", &enabled)) {
+            controller_.BeginEdit();
+            MoonSettings settings = moon;
+            settings.enabled = enabled;
+            controller_.ApplyMoon(settings);
+            controller_.EndEdit();
+        }
+        ImGui::PopID();
+
+        if (moon.enabled) {
+            LightFloatRow(controller_, "Elevation", "高度", moon.angles.elevationDeg,
+                { SunMoonController::kMinElevationDeg, 90.0f, "%.1f°" },
+                [this](float v) { controller_.MoveTo(SkyBody::Moon, SkyAngles{ v, controller_.GetMoon().angles.azimuthDeg }); });
+            LightAzimuthRow(controller_, "Azimuth", moon.angles.azimuthDeg,
+                [this](float v) { controller_.MoveTo(SkyBody::Moon, SkyAngles{ controller_.GetMoon().angles.elevationDeg, v }); });
+            LightFloatRow(controller_, "Sky", "空の明るさ", moon.skyIntensity,
+                { 0.0f, 1.0f, "%.4f", true, kMoonDefaults.skyIntensity },
+                [this](float v) { MoonSettings s = controller_.GetMoon(); s.skyIntensity = v; controller_.ApplyMoon(s); });
+            LightFloatRow(controller_, "Lux", "照度", moon.illuminanceLux,
+                { 0.0f, 2000.0f, "%.1f lx", true, kMoonDefaults.illuminanceLux },
+                [this](float v) { MoonSettings s = controller_.GetMoon(); s.illuminanceLux = v; controller_.ApplyMoon(s); });
+            LightColorRow(controller_, "Color", moon.color, kMoonDefaults.color,
+                [this](const Vector3& v) { MoonSettings s = controller_.GetMoon(); s.color = v; controller_.ApplyMoon(s); });
+        }
+        CVarUI::DrawRow(FindCVar("r.Atmosphere.MoonPhaseFromSun"), "満ち欠けを太陽の位置から決める");
+
+        if (moon.enabled) {
+            RightButtons({
+                { "太陽の反対へ", "太陽のちょうど反対（満月の位置）へ置く", true,
+                  [this] { controller_.BeginEdit(); controller_.PlaceMoonOppositeSun(); controller_.EndEdit(); } },
+                { "カメラの正面へ", "Game ビューのカメラが向いている方向へ置く", controller_.GetViewCamera() != nullptr,
+                  [this] { controller_.BeginEdit(); controller_.PlaceAtView(SkyBody::Moon); controller_.EndEdit(); } },
+                { "ライトを選ぶ", "月のライトを持つオブジェクトを選ぶ", controller_.FindLight(SkyBody::Moon) != nullptr,
+                  [this] { controller_.SelectLightObject(SkyBody::Moon); } },
+            });
+        }
+        ImGui::PopID();
+    }
+
+    // ==================== 時刻 ====================
+
+    void AtmosphereEditor::DrawTimeSection()
+    {
+        if (!InspectorLayout::Foldout("時刻から置く", true)) {
+            return;
+        }
+        ImGui::PushID("Time");
+
+        const bool timeDriven = controller_.IsTimeDriven();
+
+        // 時刻
+        {
+            ImGui::PushID("Hour");
+            const bool onPath = timeDriven || controller_.IsSunOnTimePath();
+            InspectorLayout::BeginRow("時刻", onPath ? Theme::kTextDim : Theme::kTextMute);
+            float hours = controller_.GetTimeOfDay();
+            char format[48];
+            TimeFormat(format, sizeof(format), hours);
+            const bool edited = InspectorLayout::FilledField(hours / 24.0f, [&] {
+                return ImGui::DragFloat("##value", &hours, 0.02f, 0.0f, 24.0f, format, ImGuiSliderFlags_AlwaysClamp);
+            });
+            controller_.TrackItem();
+            if (edited) {
+                controller_.SetTimeOfDay(hours);
+            }
+            ImGui::PopID();
+        }
+
+        if (timeDriven) {
+            CVarUI::DrawRow(FindCVar("r.TimeOfDay.Advance"), "時刻を進める");
+            CVarUI::DrawRow(FindCVar("r.TimeOfDay.DayLengthSeconds"), "1 日の長さ", "%.0f s");
+            CVarUI::DrawRow(FindCVar("r.TimeOfDay.StartHour"), "始まりの時刻", "%.2f h");
+            CVarUI::DrawRow(FindCVar("r.TimeOfDay.LatitudeDeg"), "緯度", "%.1f°");
+            CVarUI::DrawRow(FindCVar("r.TimeOfDay.SunAzimuthOffsetDeg"), "軌道の向き", "%.1f°");
+            InspectorLayout::Hint("時刻の機能の設定はシーンに保存する。今の時刻は保存せず、再生を始めると「始まりの時刻」から進む。");
+            ImGui::PopID();
+            return;
+        }
+
+        LightFloatRow(controller_, "Latitude", "緯度", controller_.GetLatitudeDeg(),
+            { -89.0f, 89.0f, "%.1f°" }, [this](float v) { controller_.SetLatitudeDeg(v); });
+        LightFloatRow(controller_, "Orbit", "軌道の向き", controller_.GetOrbitOffsetDeg(),
+            { -180.0f, 180.0f, "%.1f°" }, [this](float v) { controller_.SetOrbitOffsetDeg(v); });
+
+        ImGui::PushID("Advance");
+        InspectorLayout::BeginRow("時刻を進める", Theme::kTextDim);
+        bool advancing = controller_.IsAutoAdvancing();
+        if (ImGui::Checkbox("##value", &advancing)) {
+            controller_.SetAutoAdvancing(advancing);
+        }
+        ImGui::PopID();
+
+        if (controller_.IsAutoAdvancing()) {
+            ImGui::PushID("Speed");
+            InspectorLayout::BeginRow("進める速さ", Theme::kTextDim);
+            float speed = controller_.GetAdvanceSpeed();
+            if (ImGui::DragFloat("##value", &speed, 0.03f, 0.01f, 12.0f, "%.2f h/s",
+                    ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_Logarithmic)) {
+                controller_.SetAdvanceSpeed(speed);
+            }
+            ImGui::PopID();
+        }
+
+        if (!controller_.IsSunOnTimePath()) {
+            InspectorLayout::Hint("太陽を手で動かしたので、時刻の位置から外れている。時刻・緯度・軌道の向きを動かすと軌道の上へ戻る。");
+        }
+        InspectorLayout::Hint("時刻・緯度・軌道の向きはエディタの中だけの値で、シーンには太陽の向きが残る。"
+            "シーンで時刻を動かすには、時刻の機能（TimeOfDay）を入れる。");
+        ImGui::PopID();
+    }
+
+    // ==================== 環境光 ====================
+
+    void AtmosphereEditor::DrawAmbientSection()
+    {
+        if (!InspectorLayout::Foldout("環境光", true)) {
+            return;
+        }
+        ImGui::PushID("Ambient");
+        const AtmosphereManager* const atmosphere = controller_.GetAtmosphereManager();
+
+        ICVar* const ambient = FindCVar("r.Atmosphere.SkyAmbientEnabled");
+        CVarUI::DrawRow(ambient, "空の環境光");
+        const bool ambientOn = ambient && ambient->AsBool() && *ambient->AsBool();
+        if (ambientOn) {
+            CVarUI::DrawRow(FindCVar("r.Atmosphere.SkyAmbientScale"), "環境光の強さ", "%.3f");
+            if (atmosphere) {
+                InfoRow("環境光の用意", "%s", atmosphere->IsSkyAmbientReady() ? "できている" : "作っている");
+            }
+
+            ICVar* const specular = FindCVar("r.Atmosphere.SkySpecularEnabled");
+            CVarUI::DrawRow(specular, "空と雲の映り込み");
+            if (atmosphere && specular && specular->AsBool() && *specular->AsBool()) {
+                InfoRow("映り込みの用意", "%s", atmosphere->IsSkyEnvironmentReady() ? "できている" : "作っている");
+            }
+        }
+        InspectorLayout::Hint("空の色から物を照らす。昼は青く、夕方は橙に、夜はほとんど暗くなる。切ると、ライトの色の簡単な環境光になる。");
+        ImGui::PopID();
+    }
+
+    // ==================== 大気 ====================
+
+    void AtmosphereEditor::DrawAtmosphereSection()
+    {
+        if (!InspectorLayout::Foldout("大気", false)) {
+            return;
+        }
+        ImGui::PushID("Parameters");
+
+        ImGui::SeparatorText("惑星");
+        CVarUI::DrawRow(FindCVar("r.Atmosphere.PlanetRadius"), "地表の半径", "%.0f km", nullptr, kMeterToKm);
+        CVarUI::DrawRow(FindCVar("r.Atmosphere.TopRadius"), "大気の上端の半径", "%.0f km", nullptr, kMeterToKm);
+        if (AtmosphereManager* const atmosphere = controller_.GetAtmosphereManager()) {
+            // 地表の高さはシーンの大気の値へ直接書く
+            ImGui::PushID("GroundLevel");
+            InspectorLayout::BeginRow("地表の高さ（シーン）", Theme::kTextDim);
+            AtmosphereParameters& parameters = atmosphere->GetParametersMutable();
+            if (ImGui::DragFloat("##value", &parameters.groundLevelY, 0.5f, -1000.0f, 1000.0f, "%.1f m",
+                    ImGuiSliderFlags_AlwaysClamp)) {
+                atmosphere->MarkLUTDirty();
+            }
+            ImGui::PopID();
+        }
+
+        ImGui::SeparatorText("レイリー散乱（空の青さ）");
+        CVarUI::DrawRow(FindCVar("r.Atmosphere.RayleighScattering"), "散乱係数", "%.2f", kRgbLabels, kPerMegaMeter);
+        CVarUI::DrawRow(FindCVar("r.Atmosphere.RayleighScaleHeight"), "薄くなる高さ", "%.1f km", nullptr, kMeterToKm);
+
+        ImGui::SeparatorText("ミー散乱（かすみ）");
+        CVarUI::DrawRow(FindCVar("r.Atmosphere.MieScattering"), "散乱係数", "%.2f", nullptr, kPerMegaMeter);
+        CVarUI::DrawRow(FindCVar("r.Atmosphere.MieAbsorption"), "吸収係数", "%.2f", nullptr, kPerMegaMeter);
+        CVarUI::DrawRow(FindCVar("r.Atmosphere.MieScaleHeight"), "薄くなる高さ", "%.2f km", nullptr, kMeterToKm);
+        CVarUI::DrawRow(FindCVar("r.Atmosphere.MiePhaseG"), "前へ散る強さ", "%.2f");
+
+        ImGui::SeparatorText("オゾン（薄明の青紫）");
+        CVarUI::DrawRow(FindCVar("r.Atmosphere.OzoneAbsorption"), "吸収係数", "%.3f", kRgbLabels, kPerMegaMeter);
+        CVarUI::DrawRow(FindCVar("r.Atmosphere.OzoneLayerCenter"), "層の中心の高さ", "%.1f km", nullptr, kMeterToKm);
+        CVarUI::DrawRow(FindCVar("r.Atmosphere.OzoneLayerHalfWidth"), "層の厚さの半分", "%.1f km", nullptr, kMeterToKm);
+        InspectorLayout::Hint("散乱係数と吸収係数の単位は ×10⁻⁶ /m。");
+
+        ImGui::SeparatorText("地面と多重散乱");
+        CVarUI::DrawRow(FindCVar("r.Atmosphere.GroundAlbedo"), "地面の反射率", "%.2f", kRgbLabels);
+        CVarUI::DrawRow(FindCVar("r.Atmosphere.MultiScatteringFactor"), "多重散乱の強さ", "%.2f");
+
+        ImGui::SeparatorText("太陽と月の円盤");
+        CVarUI::DrawRow(FindCVar("r.Atmosphere.SunDiskAngularRadius"), "太陽の見かけの半径", "%.3f°");
+        CVarUI::DrawRow(FindCVar("r.Atmosphere.SunDiskLuminanceScale"), "太陽の円盤の明るさ", "%.1f");
+        CVarUI::DrawRow(FindCVar("r.Atmosphere.MoonDiskAngularRadius"), "月の見かけの半径", "%.3f°");
+        CVarUI::DrawRow(FindCVar("r.Atmosphere.MoonDiskLuminanceScale"), "月の円盤の明るさ", "%.1f");
+
+        ImGui::SeparatorText("星と遠くのかすみ");
+        CVarUI::DrawRow(FindCVar("r.Atmosphere.StarIntensity"), "星の明るさ", "%.2f");
+        CVarUI::DrawRow(FindCVar("r.Atmosphere.AerialPerspectiveKmPerSlice"), "かすみの刻み", "%.1f km");
+
+        ImGui::Spacing();
+        RightButtons({
+            { "既定に戻す", "この節の値をすべて既定値へ戻す（Ctrl+Z で 1 回で戻せる）", true, [] {
+                auto& undoStack = CVarUndoStack::Get();
+                undoStack.BeginBatch();
+                for (const char* name : kAtmosphereCVars) {
+                    if (ICVar* const cvar = FindCVar(name)) {
+                        undoStack.BeginEdit(cvar);
+                        cvar->ResetToDefault();
+                        undoStack.CommitEdit(cvar);
+                    }
+                }
+                undoStack.EndBatch();
+                CVarRegistry::Get().NotifyCommit();
+            } },
+        });
+        ImGui::PopID();
+    }
+
+    // ==================== 診断 ====================
+
+    void AtmosphereEditor::DrawDiagnosticsSection()
+    {
+        if (!InspectorLayout::Foldout("診断", false)) {
+            return;
+        }
+        ImGui::PushID("Diagnostics");
+        const AtmosphereManager* const atmosphere = controller_.GetAtmosphereManager();
+        if (!atmosphere) {
+            InspectorLayout::HelpBox("大気散乱の管理が見つかりません。", InspectorLayout::Message::Error);
+            ImGui::PopID();
+            return;
+        }
+
+        ImGui::SeparatorText("太陽");
+        if (atmosphere->HasSunLight()) {
+            const Vector3& direction = atmosphere->GetSunDirection();
+            const Vector3& transmittance = atmosphere->GetSunTransmittance();
+            InfoRow("光の向き", "(%.3f, %.3f, %.3f)", direction.x, direction.y, direction.z);
+            InfoRow("空の明るさ", "%.2f", atmosphere->GetSunIntensity());
+            InfoRow("地表に届く割合", "(%.3f, %.3f, %.3f)", transmittance.x, transmittance.y, transmittance.z);
         } else {
-            ImGui::TextDisabled("月: 無効");
-        }
-        ImGui::Spacing();
-        ImGui::TextDisabled("ドラッグで配置\n中心=天頂\n円=地平線\n外周=地平線下");
-        ImGui::EndGroup();
-#endif
-    }
-
-    void AtmosphereEditor::ApplyTimeOfDay()
-    {
-        // 春分（赤緯0）の太陽軌道: 時角 H = (時刻-12)×15°、緯度 φ。
-        // sin(高度) = cosφ·cosH。方位は南基準 A = atan2(sinH, cosH·sinφ) を北（+Z）基準へ変換する。
-        // 正午に南（北半球）、6時に東（+X）、18時に西へ沈む現実的な弧になる。
-        const float H = (timeOfDay_ - 12.0f) * 15.0f * kDegToRad;
-        const float phi = std::clamp(latitudeDeg_, -89.0f, 89.0f) * kDegToRad;
-
-        const float sinElevation = std::cos(phi) * std::cos(H);
-        const float elevationDeg = std::asin(std::clamp(sinElevation, -1.0f, 1.0f)) / kDegToRad;
-        float azimuthDeg = 180.0f + std::atan2(std::sin(H), std::cos(H) * std::sin(phi)) / kDegToRad;
-        if (azimuthDeg > 180.0f) {
-            azimuthDeg -= 360.0f;
+            InfoRow("太陽", "なし");
         }
 
-        AtmosphereEditorSunSettings settings = sunSettings_;
-        // 高度はエディタの対応範囲（スカイマップ・スライダーと同じ -20°）で頭打ちにする
-        settings.elevationDeg = std::max(elevationDeg, -20.0f);
-        settings.azimuthDeg = azimuthDeg;
-        ApplySunSettings(settings);
-    }
-
-    void AtmosphereEditor::ApplyDaytimePreset(float hour)
-    {
-        timeOfDay_ = hour;
-        ApplyTimeOfDay();
-        // 夜プリセットは自動露出を強制 ON にする。戻さないと昼のシーンにも
-        // Krawczyk キーの減光（昼で約 -3EV）が掛かり続け、夜を経由する前より暗くなる
-        RestoreAutoExposureFromNightPreset();
-    }
-
-    void AtmosphereEditor::ApplyNightPreset()
-    {
-        timeOfDay_ = 0.0f;
-        ApplyTimeOfDay();
-
-        AtmosphereEditorMoonSettings moon = moonSettings_;
-        moon.enabled = true;
-        moon.elevationDeg = 40.0f;
-        moon.azimuthDeg = 180.0f;
-        ApplyMoonSettings(moon);
-
-        // 自動露出を有効化して「暗いが見える夜」にする
-        if (ToneMapping* toneMapping = GetToneMapping()) {
-            // 昼系プリセットで元へ戻せるよう、プリセットが触る前の値を退避する。
-            // 夜プリセットを連打しても最初の退避（＝ユーザーの元設定）を保つ
-            if (!autoExposureSaved_) {
-                autoExposureBeforeNight_ = toneMapping->IsAutoExposureEnabled();
-                autoExposureSaved_ = true;
-            }
-            toneMapping->SetAutoExposureEnabled(true);
-        }
-    }
-
-    void AtmosphereEditor::RestoreAutoExposureFromNightPreset()
-    {
-        if (!autoExposureSaved_) {
-            return; // 夜プリセットを経由していない＝触らない
+        ImGui::SeparatorText("月");
+        if (atmosphere->HasMoonLight()) {
+            const Vector3& direction = atmosphere->GetMoonDirection();
+            const Vector3& transmittance = atmosphere->GetMoonTransmittance();
+            InfoRow("光の向き", "(%.3f, %.3f, %.3f)", direction.x, direction.y, direction.z);
+            InfoRow("空の明るさ", "%.4f", atmosphere->GetMoonIntensity());
+            InfoRow("満ち欠けの明るさ", "%.1f%%%s", atmosphere->GetMoonPhaseBrightness() * 100.0f,
+                atmosphere->IsMoonPhaseFromSun() ? "" : "（常に満月）");
+            InfoRow("地表に届く割合", "(%.3f, %.3f, %.3f)", transmittance.x, transmittance.y, transmittance.z);
+        } else {
+            InfoRow("月", "なし");
         }
 
-        if (ToneMapping* toneMapping = GetToneMapping()) {
-            // 夜の間にユーザーが自分で自動露出を切っていた場合は、その操作を尊重して復元しない
-            if (toneMapping->IsAutoExposureEnabled()) {
-                toneMapping->SetAutoExposureEnabled(autoExposureBeforeNight_);
-            }
-        }
-        autoExposureSaved_ = false;
-    }
-
-    AtmosphereManager* AtmosphereEditor::GetAtmosphereManager() const
-    {
-        if (!engine_ || !engine_->GetRenderDomainContext()) {
-            return nullptr;
-        }
-        return engine_->GetRenderDomainContext()->GetAtmosphereManager();
-    }
-
-    LightManager* AtmosphereEditor::GetLightManager() const
-    {
-        if (!engine_) {
-            return nullptr;
-        }
-        return engine_->GetService<LightManager>();
-    }
-
-    ToneMapping* AtmosphereEditor::GetToneMapping() const
-    {
-        if (!engine_) {
-            return nullptr;
-        }
-        auto* postEffect = engine_->GetService<PostEffectManager>();
-        if (!postEffect) {
-            return nullptr;
-        }
-        return postEffect->GetEffect<ToneMapping>(PostEffectNames::ToneMapping);
+        ImGui::SeparatorText("カメラ");
+        InfoRow("地表からの高さ", "%.2f m", atmosphere->GetCameraHeightAboveGround());
+        InfoRow("惑星の中心から", "%.1f km", atmosphere->GetDistanceFromPlanetCenter() * kMeterToKm);
+        InfoRow("空の表", "%s", atmosphere->IsLUTDirty() ? "作り直しを待っている" : "最新");
+        ImGui::PopID();
     }
 }
+
+#endif // CORE_EDITOR

@@ -33,11 +33,12 @@ namespace CoreEngine
         /// @param label 左に出す名前（nullptr なら CVar の名前の末尾）
         /// @param format 小数の表示の書式（nullptr なら "%.3f"）
         /// @param componentLabels ベクトルの成分の文字（nullptr なら X・Y・Z）
+        /// @param displayScale 表示の倍率（欄には値×倍率を出し、書き込むときに割り戻す。小数とベクトルだけに効く）
         /// @return 値が変更された場合 true
         /// @note 既定値から変えていればラベルが橙になり、ラベルか欄の右クリックで既定値へ戻せる。
         ///       範囲のある数は値の位置まで塗り、ドラッグを離したときに Undo を 1 件積む。色の不透明度は出さない
         bool DrawRow(ICVar* cvar, const char* label = nullptr, const char* format = nullptr,
-            const char* const* componentLabels = nullptr);
+            const char* const* componentLabels = nullptr, float displayScale = 1.0f);
 
         /// @brief 整数の CVar を、名前の一覧から選ぶ行で描く
         /// @param names 値 0 から順の名前
