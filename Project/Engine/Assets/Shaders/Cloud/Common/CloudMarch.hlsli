@@ -171,8 +171,7 @@ void ApplyCloudAerialPerspective(inout CloudMarchResult cloud, float2 screenUv,
         return;
     }
 
-    float w = CameraVolumeDistanceToW(cloud.distance * 0.001f, gAtmosphere.apKmPerSlice);
-    float4 aerial = cameraVolumeLUT.SampleLevel(samp, float3(screenUv, w), 0);
+    float4 aerial = SampleCameraVolume(cameraVolumeLUT, samp, screenUv, cloud.distance * 0.001f, gAtmosphere.apKmPerSlice);
 
     // 前乗算輝度はカメラまでの透過率で減衰させ、内散乱は雲が覆う割合だけ足す
     // （覆っていない部分の空は SceneColor 側で内散乱を済ませている）

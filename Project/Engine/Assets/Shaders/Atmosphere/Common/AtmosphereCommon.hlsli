@@ -467,12 +467,25 @@ float3 IntegrateScatteredLuminance(
 
 static const uint CAMERA_VOLUME_SIZE = 32;
 
-/// @brief カメラからの距離 [km] を CameraVolume の Wスライス座標 [0,1] へ変換する
+/// @brief CameraVolume LUT からカメラから指定距離までの霞を引く
+/// @details 1 スライス目のテクセル中心（0.5 スライス）より手前は中心の値を引き、
+///          距離に比例して内散乱を 0・透過率を 1 へ近づける。
+/// @param screenUv 画面 UV（LUT の xy）
+/// @param distanceKm カメラからの距離 [km]
 /// @param kmPerSlice 1スライスあたりの距離 [km]（AtmosphereConstants.apKmPerSlice を渡す）
-float CameraVolumeDistanceToW(float distanceKm, float kmPerSlice)
+/// @return rgb = 内散乱（ライト色・強度前乗算済み）、a = 透過率
+float4 SampleCameraVolume(Texture3D<float4> cameraVolumeLUT, SamplerState clampSampler,
+                          float2 screenUv, float distanceKm, float kmPerSlice)
 {
     float slice = distanceKm / max(kmPerSlice, 1e-3f);
-    return saturate(slice / CAMERA_VOLUME_SIZE);
+    float nearWeight = saturate(slice * 2.0f);
+    slice = max(slice, 0.5f);
+
+    float w = saturate(slice / CAMERA_VOLUME_SIZE);
+    float4 aerial = cameraVolumeLUT.SampleLevel(clampSampler, float3(screenUv, w), 0);
+    aerial.rgb *= nearWeight;
+    aerial.a = lerp(1.0f, aerial.a, nearWeight);
+    return aerial;
 }
 
 /// @brief 視線レイに沿った散乱の積分（距離指定版・透過率出力付き）

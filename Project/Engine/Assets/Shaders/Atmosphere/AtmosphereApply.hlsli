@@ -34,8 +34,7 @@ float3 ApplyAerialPerspective(float3 color, float3 worldPos, float2 screenUv, Sa
     // CameraVolume LUT から (inscattering, 透過率) を取得して合成。
     // 式は不透明への合成（AerialPerspective.CS.hlsl）と完全に一致させること。
     // LUT はライト色・強度前乗算済み（サンプル後の色乗算は二重適用になる）
-    float w = CameraVolumeDistanceToW(distanceKm, gAtmosphereAP.apKmPerSlice);
-    float4 aerial = gCameraVolumeLUT.SampleLevel(lutClampSampler, float3(screenUv, w), 0);
+    float4 aerial = SampleCameraVolume(gCameraVolumeLUT, lutClampSampler, screenUv, distanceKm, gAtmosphereAP.apKmPerSlice);
     float3 result = color * aerial.a + aerial.rgb;
 
     // ===== CameraVolume の最大距離を超える遠方: Sky-View LUT へ溶かす =====

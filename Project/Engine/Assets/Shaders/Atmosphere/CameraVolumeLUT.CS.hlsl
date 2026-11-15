@@ -31,8 +31,7 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     farWorld /= farWorld.w;
     float3 rayDir = normalize(farWorld.xyz - gAtmosphere.cameraWorldPos);
 
-    // スライス距離（テクセル中心 = (z+0.5)×スライス幅。サンプリング側の
-    // CameraVolumeDistanceToW と半テクセルずれなく対応させる）
+    // スライス距離（テクセル中心 = (z+0.5)×スライス幅。SampleCameraVolume の引き方と対応する）
     float tMaxKm = (float(dispatchThreadId.z) + 0.5f) * gAtmosphere.apKmPerSlice;
 
     // 大気空間: カメラは +Y 軸上。方向ベクトルはワールドと共通（Y-up）
