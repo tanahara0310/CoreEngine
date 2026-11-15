@@ -1,0 +1,61 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "areaHeight": 2.0,
+                "areaWidth": 2.0,
+                "atmosphereIntensity": 20.0,
+                "castShadows": false,
+                "castVolumetricShadow": true,
+                "color": [
+                    1.0,
+                    0.6,
+                    0.28,
+                    1.0
+                ],
+                "direction": [
+                    0.0,
+                    -1.0,
+                    0.0
+                ],
+                "innerConeAngleDeg": 30.0,
+                "intensity": 1800.0,
+                "isAtmosphereMoon": false,
+                "isAtmosphereSun": false,
+                "outerConeAngleDeg": 45.0,
+                "range": 9.0,
+                "sourceRadius": 0.05,
+                "type": 1,
+                "volumetricScatteringIntensity": 1.2
+            },
+            "type": "Light"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    -2.35,
+                    2.636161,
+                    1.4
+                ]
+            },
+            "type": "Transform"
+        }
+    ],
+    "id": "641bd110b3c9e4bb",
+    "name": "GateLamp_L_Light",
+    "order": 11
+}

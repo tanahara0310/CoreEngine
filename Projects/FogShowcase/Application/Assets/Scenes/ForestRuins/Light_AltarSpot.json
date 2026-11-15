@@ -1,0 +1,61 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "areaHeight": 2.0,
+                "areaWidth": 2.0,
+                "atmosphereIntensity": 20.0,
+                "castShadows": true,
+                "castVolumetricShadow": true,
+                "color": [
+                    0.75,
+                    0.88,
+                    1.0,
+                    1.0
+                ],
+                "direction": [
+                    0.0,
+                    -1.0,
+                    0.0
+                ],
+                "innerConeAngleDeg": 16.0,
+                "intensity": 600000.0,
+                "isAtmosphereMoon": false,
+                "isAtmosphereSun": false,
+                "outerConeAngleDeg": 30.0,
+                "range": 9.0,
+                "sourceRadius": 0.1,
+                "type": 2,
+                "volumetricScatteringIntensity": 2.0
+            },
+            "type": "Light"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    5.3,
+                    36.0
+                ]
+            },
+            "type": "Transform"
+        }
+    ],
+    "id": "adaafca56e7bbdc6",
+    "name": "Light_AltarSpot",
+    "order": 26
+}

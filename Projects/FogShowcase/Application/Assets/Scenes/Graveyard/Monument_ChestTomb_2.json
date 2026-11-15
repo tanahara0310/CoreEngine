@@ -1,0 +1,42 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.06,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    -8.2,
+                    -0.071718,
+                    20.6
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "cc8a0d8a-841f-54e6-aafa-85a9152b43b7",
+                    "path": "Application/Assets/Models/Graveyard/ChestTomb.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "57d90a0c01d8b9d0",
+    "name": "Monument_ChestTomb_2",
+    "order": 172
+}

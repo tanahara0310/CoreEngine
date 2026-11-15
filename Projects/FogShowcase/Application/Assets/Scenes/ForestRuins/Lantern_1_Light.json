@@ -1,0 +1,61 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "areaHeight": 2.0,
+                "areaWidth": 2.0,
+                "atmosphereIntensity": 20.0,
+                "castShadows": false,
+                "castVolumetricShadow": true,
+                "color": [
+                    1.0,
+                    0.6,
+                    0.28,
+                    1.0
+                ],
+                "direction": [
+                    0.0,
+                    -1.0,
+                    0.0
+                ],
+                "innerConeAngleDeg": 30.0,
+                "intensity": 25000.0,
+                "isAtmosphereMoon": false,
+                "isAtmosphereSun": false,
+                "outerConeAngleDeg": 45.0,
+                "range": 6.0,
+                "sourceRadius": 0.1,
+                "type": 1,
+                "volumetricScatteringIntensity": 1.0
+            },
+            "type": "Light"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    2.918013,
+                    1.155859,
+                    11.0
+                ]
+            },
+            "type": "Transform"
+        }
+    ],
+    "id": "8a06e8b26034a7e6",
+    "name": "Lantern_1_Light",
+    "order": 30
+}

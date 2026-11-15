@@ -1,0 +1,42 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.35,
+                    1.570796
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    -6.3,
+                    1.15,
+                    43.2
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "2a84e110-c7e3-5c1b-9fff-f3c2416c72df",
+                    "path": "Application/Assets/Models/PillarDrum/PillarDrum.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "5324ca89165999b4",
+    "name": "Ruin_FallenDrum_0",
+    "order": 22
+}

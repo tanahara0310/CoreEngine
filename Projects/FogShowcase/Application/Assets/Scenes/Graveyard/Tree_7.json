@@ -1,0 +1,42 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    3.3,
+                    0.0
+                ],
+                "scale": [
+                    0.95,
+                    0.95,
+                    0.95
+                ],
+                "translate": [
+                    5.0,
+                    1.688962,
+                    58.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "a713bf6d-c1d1-5acb-8eab-11cfd86fcc8b",
+                    "path": "Application/Assets/Models/Graveyard/DeadTree_B.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "8839d10e33b7c466",
+    "name": "Tree_7",
+    "order": 185
+}

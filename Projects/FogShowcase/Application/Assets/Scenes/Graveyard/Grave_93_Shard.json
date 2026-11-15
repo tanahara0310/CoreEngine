@@ -1,0 +1,42 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    -0.351859,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    10.016821,
+                    -0.08814,
+                    24.883534
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "edcabb4e-6931-5548-84b7-704aa93b7938",
+                    "path": "Application/Assets/Models/Graveyard/Headstone_Shard.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "c1ff50a1b9dec0a8",
+    "name": "Grave_93_Shard",
+    "order": 154
+}

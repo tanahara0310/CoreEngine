@@ -1,0 +1,42 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    1.590277,
+                    0.0
+                ],
+                "scale": [
+                    1.22177,
+                    1.22177,
+                    1.22177
+                ],
+                "translate": [
+                    -43.289913,
+                    7.51884,
+                    102.574239
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "f856e852-2c03-5ff0-adbd-c6a487329874",
+                    "path": "Application/Assets/Models/TreePine_B/TreePine_B.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "3774a5cbd6f4ec14",
+    "name": "Tree_54",
+    "order": 93
+}

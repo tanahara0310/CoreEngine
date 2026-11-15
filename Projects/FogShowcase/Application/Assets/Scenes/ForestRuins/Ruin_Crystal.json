@@ -1,0 +1,42 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.3,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    2.65,
+                    36.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 1,
+                "model": {
+                    "guid": "f7d6a15e-b5de-5b13-af58-25f48cf81580",
+                    "path": "Application/Assets/Models/Crystal/Crystal.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "6d4e020e267318b4",
+    "name": "Ruin_Crystal",
+    "order": 6
+}

@@ -1,0 +1,61 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "areaHeight": 2.0,
+                "areaWidth": 2.0,
+                "atmosphereIntensity": 20.0,
+                "castShadows": true,
+                "castVolumetricShadow": true,
+                "color": [
+                    0.5,
+                    1.0,
+                    0.66,
+                    1.0
+                ],
+                "direction": [
+                    0.0,
+                    -0.12,
+                    -1.0
+                ],
+                "innerConeAngleDeg": 5.0,
+                "intensity": 40000.0,
+                "isAtmosphereMoon": false,
+                "isAtmosphereSun": false,
+                "outerConeAngleDeg": 14.0,
+                "range": 16.0,
+                "sourceRadius": 0.05,
+                "type": 2,
+                "volumetricScatteringIntensity": 2.5
+            },
+            "type": "Light"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    1.7,
+                    30.7
+                ]
+            },
+            "type": "Transform"
+        }
+    ],
+    "id": "fe418c41d5470f58",
+    "name": "Tomb_DoorSpot",
+    "order": 7
+}

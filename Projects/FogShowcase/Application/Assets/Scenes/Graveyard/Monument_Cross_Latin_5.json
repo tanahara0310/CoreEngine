@@ -1,0 +1,42 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.15,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    6.8,
+                    -0.018403,
+                    9.6
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "ef8ea59d-3f63-5f05-98ca-cd9c17f621b2",
+                    "path": "Application/Assets/Models/Graveyard/Cross_Latin.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "46515ce9334d951a",
+    "name": "Monument_Cross_Latin_5",
+    "order": 175
+}

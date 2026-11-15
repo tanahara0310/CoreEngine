@@ -1,0 +1,42 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    5.560033,
+                    0.0
+                ],
+                "scale": [
+                    0.556475,
+                    0.556475,
+                    0.556475
+                ],
+                "translate": [
+                    -8.0,
+                    -1.09082,
+                    17.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "9249056c-a93b-5326-805d-5ab914e7592c",
+                    "path": "Application/Assets/Models/Rock_B/Rock_B.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "ab1d03a863c21604",
+    "name": "Rock_00",
+    "order": 97
+}

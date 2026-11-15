@@ -1,0 +1,58 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    3.3,
+                    36.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "albedo": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "density": 0.03,
+                "edgeFade": 0.8,
+                "emissiveColor": [
+                    0.35,
+                    0.9,
+                    1.0,
+                    1.0
+                ],
+                "emissiveIntensity": 12000.0,
+                "noiseStrength": 0.6,
+                "shape": 1,
+                "size": [
+                    4.5,
+                    4.5,
+                    4.5
+                ]
+            },
+            "type": "FogVolume"
+        }
+    ],
+    "id": "6524dcd55e276358",
+    "name": "Fog_AltarGlow",
+    "order": 110
+}

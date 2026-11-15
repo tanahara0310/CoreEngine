@@ -1,0 +1,42 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.089448,
+                    0.220409,
+                    -0.000838
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    -12.4,
+                    -0.128188,
+                    33.5
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "8c00746a-3e62-5f7b-a2fa-c3e1149b9f08",
+                    "path": "Application/Assets/Models/Graveyard/Rock_A.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "794b0b48630db093",
+    "name": "Debris_08",
+    "order": 208
+}

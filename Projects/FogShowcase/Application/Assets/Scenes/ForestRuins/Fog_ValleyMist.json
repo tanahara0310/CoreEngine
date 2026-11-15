@@ -1,0 +1,58 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    -0.55,
+                    15.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "albedo": [
+                    1.0,
+                    0.97,
+                    0.93,
+                    1.0
+                ],
+                "density": 0.06,
+                "edgeFade": 0.45,
+                "emissiveColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "emissiveIntensity": 0.0,
+                "noiseStrength": 1.0,
+                "shape": 0,
+                "size": [
+                    110.0,
+                    2.2,
+                    10.0
+                ]
+            },
+            "type": "FogVolume"
+        }
+    ],
+    "id": "292b699ece4b5216",
+    "name": "Fog_ValleyMist",
+    "order": 109
+}

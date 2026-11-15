@@ -1,0 +1,42 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.084648,
+                    -0.021325,
+                    0.005858
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    -9.570942,
+                    -0.076235,
+                    18.055746
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "3c02189c-3839-5aff-9c82-f370f2c86341",
+                    "path": "Application/Assets/Models/Graveyard/Marker.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "2ec6d5a7e880b000",
+    "name": "Grave_57",
+    "order": 113
+}
