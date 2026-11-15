@@ -1,0 +1,42 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.150849,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    -4.6,
+                    0.7,
+                    32.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "d02c6c39-a502-5c33-afd6-1392777f0bbb",
+                    "path": "Application/Assets/Models/Pillar/Pillar.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "6c03c21bb00fa9ea",
+    "name": "Ruin_Pillar_L32",
+    "order": 8
+}

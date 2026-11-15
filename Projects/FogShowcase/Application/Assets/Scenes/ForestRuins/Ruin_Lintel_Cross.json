@@ -1,0 +1,42 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    1.570796,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    2.05
+                ],
+                "translate": [
+                    0.0,
+                    7.44,
+                    36.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "64b7c70d-4762-5ce0-aed6-597a53d9f56c",
+                    "path": "Application/Assets/Models/Lintel/Lintel.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "bd1529b8430691cc",
+    "name": "Ruin_Lintel_Cross",
+    "order": 21
+}

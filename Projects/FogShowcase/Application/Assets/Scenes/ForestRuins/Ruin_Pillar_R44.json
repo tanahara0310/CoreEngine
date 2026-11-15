@@ -1,0 +1,42 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.037496,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    4.6,
+                    0.7,
+                    44.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "d16a65fb-1444-59c6-89d2-f7c7e4ff4e27",
+                    "path": "Application/Assets/Models/PillarBroken_B/PillarBroken_B.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "933bae1ca6ed3b8c",
+    "name": "Ruin_Pillar_R44",
+    "order": 15
+}

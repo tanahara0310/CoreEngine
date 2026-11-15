@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"name": "Scripts",
+			"path": "Application/Assets/Scripts"
+		}
+	],
+	"settings": {
+		"angelScript.implicitMutualInclusion": true
+	},
+	"extensions": {
+		"recommendations": [
+			"sashi0034.angel-lsp"
+		]
+	}
+}

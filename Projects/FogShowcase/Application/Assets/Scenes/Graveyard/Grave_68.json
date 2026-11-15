@@ -1,0 +1,42 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.006243,
+                    0.051042,
+                    -0.026467
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    -11.819326,
+                    -0.130168,
+                    20.466754
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "eed40968-b890-5319-a217-1d06d25bb171",
+                    "path": "Application/Assets/Models/Graveyard/Headstone_Round_B.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "9be154198e3e8d40",
+    "name": "Grave_68",
+    "order": 125
+}

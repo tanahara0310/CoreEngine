@@ -1,0 +1,42 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.315393,
+                    0.019832,
+                    0.0202
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    4.022399,
+                    -0.014647,
+                    13.120121
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "ef8ea59d-3f63-5f05-98ca-cd9c17f621b2",
+                    "path": "Application/Assets/Models/Graveyard/Cross_Latin.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "6d57ca71fb14ce83",
+    "name": "Grave_38",
+    "order": 93
+}

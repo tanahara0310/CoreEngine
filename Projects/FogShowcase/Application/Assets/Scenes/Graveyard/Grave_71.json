@@ -1,0 +1,42 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.084001,
+                    -0.091692,
+                    -0.068746
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    5.822747,
+                    -0.008135,
+                    20.328594
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "122822ad-bf89-5284-a1ca-9b4679b3a030",
+                    "path": "Application/Assets/Models/Graveyard/Headstone_Broken.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "a63c37b8f8dd8067",
+    "name": "Grave_71",
+    "order": 129
+}

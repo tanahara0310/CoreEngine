@@ -1,0 +1,42 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    -0.05,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    7.4,
+                    -0.063802,
+                    19.6
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "42917485-1ec5-51e7-836f-1a5b5460750b",
+                    "path": "Application/Assets/Models/Graveyard/Obelisk.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "01d222f7726cf63a",
+    "name": "Monument_Obelisk_1",
+    "order": 171
+}

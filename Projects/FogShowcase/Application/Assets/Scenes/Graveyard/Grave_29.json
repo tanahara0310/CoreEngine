@@ -1,0 +1,42 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    -0.016322,
+                    0.105424,
+                    0.048983
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    8.201216,
+                    -0.025493,
+                    10.188803
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "42930173-6882-534e-95a9-dc268e0d6672",
+                    "path": "Application/Assets/Models/Graveyard/Headstone_Tablet.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "43ef911c899edba6",
+    "name": "Grave_29",
+    "order": 84
+}

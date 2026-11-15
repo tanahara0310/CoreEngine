@@ -1,0 +1,61 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "areaHeight": 2.0,
+                "areaWidth": 2.0,
+                "atmosphereIntensity": 0.05,
+                "castShadows": true,
+                "castVolumetricShadow": true,
+                "color": [
+                    0.62,
+                    0.72,
+                    0.92,
+                    1.0
+                ],
+                "direction": [
+                    0.443826,
+                    -0.207919,
+                    -0.871658
+                ],
+                "innerConeAngleDeg": 30.0,
+                "intensity": 260.0,
+                "isAtmosphereMoon": true,
+                "isAtmosphereSun": false,
+                "outerConeAngleDeg": 45.0,
+                "range": 10.0,
+                "sourceRadius": 0.0,
+                "type": 0,
+                "volumetricScatteringIntensity": 3.5
+            },
+            "type": "Light"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    30.0,
+                    0.0
+                ]
+            },
+            "type": "Transform"
+        }
+    ],
+    "id": "6160a1f53fd5bb6b",
+    "name": "Moon",
+    "order": 1
+}

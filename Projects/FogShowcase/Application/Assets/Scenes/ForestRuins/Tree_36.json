@@ -1,0 +1,42 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    5.503761,
+                    0.0
+                ],
+                "scale": [
+                    1.012789,
+                    1.012789,
+                    1.012789
+                ],
+                "translate": [
+                    -40.627367,
+                    1.926039,
+                    0.448146
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "2c4594ff-cf72-5bc4-8763-6ef640bfe6f2",
+                    "path": "Application/Assets/Models/TreeBroad_B/TreeBroad_B.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "a60a38fda71bffd1",
+    "name": "Tree_36",
+    "order": 75
+}

@@ -1,0 +1,22 @@
+{
+    "r.AutoExposure.Enabled": false,
+    "r.AutoExposure.ExposureEV": 4.8,
+    "r.Bloom.Enabled": true,
+    "r.Cloud.Enabled": false,
+    "r.Fog.Density": 0.02,
+    "r.Fog.Enabled": true,
+    "r.Fog.HeightFalloff": 0.22,
+    "r.Fog.Volumetric.AmbientScale": 0.4,
+    "r.Fog.Volumetric.Anisotropy": 0.75,
+    "r.Fog.Volumetric.Enabled": true,
+    "r.Fog.Volumetric.NoiseScale": 9.0,
+    "r.Fog.Volumetric.NoiseStrength": 0.6,
+    "r.LensFlare.Enabled": false,
+    "r.TimeOfDay.Advance": false,
+    "r.Wind.Direction": [
+        0.85,
+        0.35
+    ],
+    "r.Wind.Speed": 0.7,
+    "version": "1.0"
+}

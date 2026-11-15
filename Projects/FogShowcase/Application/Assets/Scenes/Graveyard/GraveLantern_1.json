@@ -1,0 +1,42 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    2.748385,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    3.6,
+                    0.068235,
+                    21.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "f49c41f8-c69b-5a67-a1ab-382bf2c9dd90",
+                    "path": "Application/Assets/Models/Graveyard/GraveLantern.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "9414c51c9da5e59f",
+    "name": "GraveLantern_1",
+    "order": 188
+}

@@ -1,0 +1,42 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    -0.047388,
+                    -0.049033,
+                    0.010019
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    11.650592,
+                    -0.118291,
+                    20.535502
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "model": {
+                    "guid": "1310875a-5fc5-5d5b-b8c2-6ae8719559f3",
+                    "path": "Application/Assets/Models/Graveyard/Headstone_Gothic.gltf"
+                },
+                "texture": null
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "396a04cfc8c0fc2a",
+    "name": "Grave_73",
+    "order": 132
+}
