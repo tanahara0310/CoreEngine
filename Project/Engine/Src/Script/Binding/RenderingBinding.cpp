@@ -11,6 +11,7 @@
 #include "Graphics/Material/ShaderMaterialLibrary.h"
 #include "Math/Vector/Vector4.h"
 #include "Script/Binding/BindingRegistrar.h"
+#include "Script/Binding/ScriptRefCounted.h"
 #include "Utility/Logger/Logger.h"
 
 #include <angelscript.h>
@@ -55,22 +56,10 @@ namespace CoreEngine::Script
         /// @brief スクリプトへ渡すマテリアル（.mat）の口。同じパスなら全員が同じ中身を共有する
         /// @details 値を変えると、そのマテリアルを指すスプライトと UI 画像の全部に効く。
         ///          再生を止めるとファイルの中身へ戻る。
-        class ScriptShaderMaterial
+        class ScriptShaderMaterial : public ScriptRefCounted<ScriptShaderMaterial>
         {
         public:
             explicit ScriptShaderMaterial(std::shared_ptr<ShaderMaterial> material) : material_(std::move(material)) {}
-
-            ScriptShaderMaterial(const ScriptShaderMaterial&) = delete;
-            ScriptShaderMaterial& operator=(const ScriptShaderMaterial&) = delete;
-
-            void AddRef() const { ++refCount_; }
-
-            void Release() const
-            {
-                if (--refCount_ == 0) {
-                    delete this;
-                }
-            }
 
             bool IsValid() const { return material_ != nullptr; }
 
@@ -135,6 +124,7 @@ namespace CoreEngine::Script
             }
 
         private:
+            friend class ScriptRefCounted<ScriptShaderMaterial>;
             ~ScriptShaderMaterial() = default;
 
             void Set(const std::string& name, std::span<const float> numbers)
@@ -145,7 +135,6 @@ namespace CoreEngine::Script
             }
 
             std::shared_ptr<ShaderMaterial> material_;
-            mutable int refCount_ = 1;
         };
 
         /// @brief パスかファイル名でマテリアルを引く（`Application/Assets` からの相対パスでもよい）
@@ -203,8 +192,7 @@ namespace CoreEngine::Script
             r.ReferenceType("ShaderMaterial", asOBJ_REF);
             r.Behaviour("ShaderMaterial", asBEHAVE_FACTORY, "ShaderMaterial@ f(const string &in path)",
                 asFUNCTION(CreateShaderMaterial), asCALL_CDECL);
-            r.Behaviour("ShaderMaterial", asBEHAVE_ADDREF, "void f()", asMETHOD(Handle, AddRef), asCALL_THISCALL);
-            r.Behaviour("ShaderMaterial", asBEHAVE_RELEASE, "void f()", asMETHOD(Handle, Release), asCALL_THISCALL);
+            r.RefCountBehaviours<Handle>("ShaderMaterial");
             r.Method("ShaderMaterial", "bool get_isValid() const property", asMETHOD(Handle, IsValid), asCALL_THISCALL);
             r.Method("ShaderMaterial", "string get_path() const property", asMETHOD(Handle, GetPath), asCALL_THISCALL);
             r.Method("ShaderMaterial", "string get_shader() const property", asMETHOD(Handle, GetShader), asCALL_THISCALL);

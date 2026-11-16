@@ -83,6 +83,33 @@ namespace CoreEngine::Editor
             return false;
         }
 
+        /// @brief ForEachProperty で回すメンバ変数（PublicOnly は private と protected を飛ばす）
+        enum class PropertyAccess
+        {
+            All,
+            PublicOnly,
+        };
+
+        /// @brief オブジェクトのメンバ変数を順に回し、名前・型 ID・場所を visit へ渡す（名前か場所が取れないものは飛ばす）
+        /// @param type object の型
+        template <typename Visit>
+        void ForEachProperty(const asITypeInfo& type, asIScriptObject& object, PropertyAccess access, Visit&& visit)
+        {
+            for (asUINT i = 0; i < type.GetPropertyCount(); ++i) {
+                const char* name = nullptr;
+                int typeId = 0;
+                bool isPrivate = false;
+                bool isProtected = false;
+                if (type.GetProperty(i, &name, &typeId, &isPrivate, &isProtected) < 0 || !name
+                    || (access == PropertyAccess::PublicOnly && (isPrivate || isProtected))) {
+                    continue;
+                }
+                if (void* const address = object.GetAddressOfProperty(i)) {
+                    visit(name, typeId, address);
+                }
+            }
+        }
+
         /// @brief メンバ変数の値を JSON にする（数・bool・string・Vector・列挙・スクリプトのクラスと、それらの array）
         /// @details クラスのオブジェクトには番号（$id）を振り、同じオブジェクトをもう一度指すところには番号（$ref）だけを書く。
         class ValueWriter
@@ -171,14 +198,13 @@ namespace CoreEngine::Editor
                 out["$id"] = id;
                 out["$class"] = engine_.GetTypeDeclaration(type->GetTypeId(), true);
                 auto* const writable = const_cast<asIScriptObject*>(object);
-                for (asUINT i = 0; i < object->GetPropertyCount(); ++i) {
-                    const char* const name = object->GetPropertyName(i);
-                    const void* const address = writable->GetAddressOfProperty(i);
-                    json value;
-                    if (name && address && Write(object->GetPropertyTypeId(i), address, value)) {
-                        out[name] = std::move(value);
-                    }
-                }
+                ForEachProperty(*type, *writable, PropertyAccess::All,
+                    [this, &out](const char* name, int typeId, const void* address) {
+                        json value;
+                        if (Write(typeId, address, value)) {
+                            out[name] = std::move(value);
+                        }
+                    });
                 return true;
             }
 
@@ -346,16 +372,12 @@ namespace CoreEngine::Editor
 
             void ReadFields(asIScriptObject& object, const json& in)
             {
-                for (asUINT i = 0; i < object.GetPropertyCount(); ++i) {
-                    const char* const name = object.GetPropertyName(i);
-                    void* const address = object.GetAddressOfProperty(i);
-                    if (!name || !address) {
-                        continue;
-                    }
-                    if (const auto value = in.find(name); value != in.end()) {
-                        Read(object.GetPropertyTypeId(i), address, *value);
-                    }
-                }
+                ForEachProperty(*object.GetObjectType(), object, PropertyAccess::All,
+                    [this, &in](const char* name, int typeId, void* address) {
+                        if (const auto value = in.find(name); value != in.end()) {
+                            Read(typeId, address, *value);
+                        }
+                    });
             }
 
             const ScriptHost& host_;
@@ -720,19 +742,10 @@ namespace CoreEngine::Editor
                     objects[name] = std::move(value);
                 }
                 };
-            for (asUINT i = 0; i < type->GetPropertyCount(); ++i) {
-                const char* name = nullptr;
-                int typeId = 0;
-                if (type->GetProperty(i, &name, &typeId) < 0 || !name) {
-                    continue;
-                }
-                const void* const address = window->object->GetAddressOfProperty(i);
-                if (!address) {
-                    continue;
-                }
+            ForEachProperty(*type, *window->object, PropertyAccess::All, [&](const char* name, int typeId, const void* address) {
                 if ((typeId & asTYPEID_OBJHANDLE) != 0) {
                     saveAsJson(name, typeId, address);
-                    continue;
+                    return;
                 }
 
                 SavedProperty property;
@@ -747,19 +760,19 @@ namespace CoreEngine::Editor
                 } else if (propertyType && IsModuleIndependent(*engine, typeId)) {
                     property.object = engine->CreateScriptObjectCopy(const_cast<void*>(address), propertyType);
                     if (!property.object) {
-                        continue;
+                        return;
                     }
                     propertyType->AddRef();
                     property.objectType = propertyType;
                 } else {
                     saveAsJson(name, typeId, address);
-                    continue;
+                    return;
                 }
                 if (property.valueSize > 0 && property.valueSize <= sizeof(property.value)) {
                     std::memcpy(&property.value, address, property.valueSize);
                 }
                 saved.push_back(std::move(property));
-            }
+                });
             if (!objects.empty()) {
                 if (!savedObjects_) {
                     savedObjects_ = std::make_unique<SavedObjects>();
@@ -828,18 +841,11 @@ namespace CoreEngine::Editor
             if (savedObjects_) {
                 if (const auto objects = savedObjects_->windows.find(className); objects != savedObjects_->windows.end()) {
                     ValueReader reader(host_, *type->GetEngine());
-                    for (asUINT i = 0; i < type->GetPropertyCount(); ++i) {
-                        const char* name = nullptr;
-                        int typeId = 0;
-                        if (type->GetProperty(i, &name, &typeId) < 0 || !name) {
-                            continue;
-                        }
-                        const auto value = objects->second.find(name);
-                        void* const address = window.object->GetAddressOfProperty(i);
-                        if (value != objects->second.end() && address) {
+                    ForEachProperty(*type, *window.object, PropertyAccess::All, [&](const char* name, int typeId, void* address) {
+                        if (const auto value = objects->second.find(name); value != objects->second.end()) {
                             reader.Read(typeId, address, *value);
                         }
-                    }
+                        });
                 }
             }
 
@@ -849,23 +855,17 @@ namespace CoreEngine::Editor
                 continue;
             }
             asIScriptEngine* const engine = type->GetEngine();
-            for (asUINT i = 0; i < type->GetPropertyCount(); ++i) {
-                const char* name = nullptr;
-                int typeId = 0;
-                if (type->GetProperty(i, &name, &typeId) < 0 || !name) {
-                    continue;
-                }
+            ForEachProperty(*type, *window.object, PropertyAccess::All, [&](const char* name, int typeId, void* address) {
                 const auto property = std::find_if(saved->second.begin(), saved->second.end(),
                     [name](const SavedProperty& candidate) { return candidate.name == name; });
-                void* const address = window.object->GetAddressOfProperty(i);
-                if (property == saved->second.end() || !address) {
-                    continue;
+                if (property == saved->second.end()) {
+                    return;
                 }
                 if (property->objectType) {
                     if (property->typeId == typeId) {
                         engine->AssignScriptObject(address, property->object, property->objectType);
                     }
-                    continue;
+                    return;
                 }
                 const bool sameType = property->enumDeclaration.empty()
                     ? property->typeId == typeId
@@ -873,7 +873,7 @@ namespace CoreEngine::Editor
                 if (sameType && property->valueSize > 0 && property->valueSize <= sizeof(property->value)) {
                     std::memcpy(address, &property->value, property->valueSize);
                 }
-            }
+                });
         }
         savedProperties_.clear();
         savedObjects_.reset();
@@ -984,20 +984,11 @@ namespace CoreEngine::Editor
 
         const asITypeInfo* const type = window.object->GetObjectType();
         ValueReader reader(host_, *type->GetEngine());
-        for (asUINT i = 0; i < type->GetPropertyCount(); ++i) {
-            const char* name = nullptr;
-            int typeId = 0;
-            bool isPrivate = false;
-            bool isProtected = false;
-            if (type->GetProperty(i, &name, &typeId, &isPrivate, &isProtected) < 0 || !name || isPrivate || isProtected) {
-                continue;
-            }
-            const auto value = entry->find(name);
-            void* const address = window.object->GetAddressOfProperty(i);
-            if (value != entry->end() && address) {
+        ForEachProperty(*type, *window.object, PropertyAccess::PublicOnly, [&](const char* name, int typeId, void* address) {
+            if (const auto value = entry->find(name); value != entry->end()) {
                 reader.Read(typeId, address, *value);
             }
-        }
+            });
     }
 
     void ScriptEditorExtensions::SavePersisted()
@@ -1016,20 +1007,12 @@ namespace CoreEngine::Editor
             const asITypeInfo* const type = window->object->GetObjectType();
             ValueWriter writer(host_, *type->GetEngine());
             json values = json::object();
-            for (asUINT i = 0; i < type->GetPropertyCount(); ++i) {
-                const char* name = nullptr;
-                int typeId = 0;
-                bool isPrivate = false;
-                bool isProtected = false;
-                if (type->GetProperty(i, &name, &typeId, &isPrivate, &isProtected) < 0 || !name || isPrivate || isProtected) {
-                    continue;
-                }
-                const void* const address = window->object->GetAddressOfProperty(i);
+            ForEachProperty(*type, *window->object, PropertyAccess::PublicOnly, [&](const char* name, int typeId, const void* address) {
                 json value;
-                if (address && writer.Write(typeId, address, value)) {
+                if (writer.Write(typeId, address, value)) {
                     values[name] = std::move(value);
                 }
-            }
+                });
             persisted_->values[window->windowClass.className] = std::move(values);
             any = true;
         }

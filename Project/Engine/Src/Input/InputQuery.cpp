@@ -35,28 +35,17 @@ bool InputQuery::IsActionActive(InputAction action) const {
 }
 
 bool InputQuery::IsActionPressed(InputAction action, int player) const {
-    if (!IsActionActive(action)) return false;
-    for (const auto& b : config_.GetBindings(action)) {
-        if (EvaluatePressed(b, player)) return true;
-    }
-    return false;
+    return IsActionActive(action) && AnyBinding<&InputQuery::EvaluatePressed>(action, player);
 }
 
 bool InputQuery::IsActionTriggered(InputAction action, int player) const {
-    if (!IsActionActive(action)) return false;
-    for (const auto& b : config_.GetBindings(action)) {
-        if (EvaluateTriggered(b, player)) return true;
-    }
-    return false;
+    return IsActionActive(action) && AnyBinding<&InputQuery::EvaluateTriggered>(action, player);
 }
 
 bool InputQuery::IsActionReleased(InputAction action, int player) const {
     // 場面が切り替わった瞬間に「離した」を取りこぼさないよう、ここだけは場面を見ない。
     // 押している途中でメニューへ移っても、指を離せば押し下げの後始末が回る
-    for (const auto& b : config_.GetBindings(action)) {
-        if (EvaluateReleased(b, player)) return true;
-    }
-    return false;
+    return AnyBinding<&InputQuery::EvaluateReleased>(action, player);
 }
 
 float InputQuery::GetAxisValue(InputAction action, int player) const {

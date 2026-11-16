@@ -3,8 +3,8 @@
 
 #include "Audio/AudioSystem.h"
 #include "Script/Binding/BindingRegistrar.h"
+#include "Script/Binding/ScriptRefCounted.h"
 
-#include <new>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -19,22 +19,10 @@ namespace CoreEngine::Script
         AudioSystem* sAudio = nullptr;
 
         /// @brief スクリプトへ渡す再生のハンドル（最後の参照が消えると止まる）
-        class ScriptSound
+        class ScriptSound : public ScriptRefCounted<ScriptSound>
         {
         public:
             explicit ScriptSound(ScopedSound sound) : sound_(std::move(sound)) {}
-
-            ScriptSound(const ScriptSound&) = delete;
-            ScriptSound& operator=(const ScriptSound&) = delete;
-
-            void AddRef() const { ++refCount_; }
-
-            void Release() const
-            {
-                if (--refCount_ == 0) {
-                    delete this;
-                }
-            }
 
             void Stop() { sound_.Get().Stop(); }
             void Pause() { sound_.Get().Pause(); }
@@ -51,16 +39,11 @@ namespace CoreEngine::Script
             bool IsValid() const { return sound_.Get().IsValid(); }
 
         private:
+            friend class ScriptRefCounted<ScriptSound>;
             ~ScriptSound() = default;
 
             ScopedSound sound_;
-            mutable int refCount_ = 1;
         };
-
-        void ConstructPlayParams(PlayParams* self)
-        {
-            new (self) PlayParams();
-        }
 
         void PlayOneShot(const std::string& path, const PlayParams& params)
         {
@@ -113,7 +96,7 @@ namespace CoreEngine::Script
             r.EnumValue("AudioBus", "Voice", static_cast<int>(AudioBus::Voice));
 
             r.ValueType("PlayParams", sizeof(PlayParams), asOBJ_VALUE | asOBJ_POD | asGetTypeTraits<PlayParams>());
-            r.Behaviour("PlayParams", asBEHAVE_CONSTRUCT, "void f()", asFUNCTION(ConstructPlayParams), asCALL_CDECL_OBJLAST);
+            r.Behaviour("PlayParams", asBEHAVE_CONSTRUCT, "void f()", asFUNCTION(ConstructDefault<PlayParams>), asCALL_CDECL_OBJLAST);
             r.Property("PlayParams", "AudioBus bus", asOFFSET(PlayParams, bus));
             r.Property("PlayParams", "bool loop", asOFFSET(PlayParams, loop));
             r.Property("PlayParams", "float volume", asOFFSET(PlayParams, volume));
@@ -124,8 +107,7 @@ namespace CoreEngine::Script
         void RegisterSound(BindingRegistrar& r)
         {
             r.ReferenceType("Sound", asOBJ_REF);
-            r.Behaviour("Sound", asBEHAVE_ADDREF, "void f()", asMETHOD(ScriptSound, AddRef), asCALL_THISCALL);
-            r.Behaviour("Sound", asBEHAVE_RELEASE, "void f()", asMETHOD(ScriptSound, Release), asCALL_THISCALL);
+            r.RefCountBehaviours<ScriptSound>("Sound");
             r.Method("Sound", "void Stop()", asMETHOD(ScriptSound, Stop), asCALL_THISCALL);
             r.Method("Sound", "void Pause()", asMETHOD(ScriptSound, Pause), asCALL_THISCALL);
             r.Method("Sound", "void Resume()", asMETHOD(ScriptSound, Resume), asCALL_THISCALL);

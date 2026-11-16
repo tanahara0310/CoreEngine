@@ -254,75 +254,52 @@ namespace CoreEngine
 
     TweenHandle& TweenHandle::SetEase(EasingUtil::Type ease)
     {
-        if (auto* item = TweenDetail::Resolve(index_, generation_)) {
-            item->settings.ease = ease;
-        }
-        return *this;
+        return EditSettings([&](TweenDetail::TweenSettings& settings) { settings.ease = ease; });
     }
 
     TweenHandle& TweenHandle::SetDelay(float seconds)
     {
-        if (auto* item = TweenDetail::Resolve(index_, generation_)) {
-            item->settings.delay = (seconds > 0.0f) ? seconds : 0.0f;
-        }
-        return *this;
+        return EditSettings([&](TweenDetail::TweenSettings& settings) {
+            settings.delay = (seconds > 0.0f) ? seconds : 0.0f;
+        });
     }
 
     TweenHandle& TweenHandle::SetLoops(int count, TweenLoop type)
     {
-        if (auto* item = TweenDetail::Resolve(index_, generation_)) {
-            item->settings.loopCount = count;
-            item->settings.loopType = type;
-        }
-        return *this;
+        return EditSettings([&](TweenDetail::TweenSettings& settings) {
+            settings.loopCount = count;
+            settings.loopType = type;
+        });
     }
 
     TweenHandle& TweenHandle::SetLink(const GameObject* owner)
     {
-        if (auto* item = TweenDetail::Resolve(index_, generation_)) {
-            item->settings.link = owner;
-        }
-        return *this;
+        return EditSettings([&](TweenDetail::TweenSettings& settings) { settings.link = owner; });
     }
 
     TweenHandle& TweenHandle::SetUpdateType(TweenUpdate type)
     {
-        if (auto* item = TweenDetail::Resolve(index_, generation_)) {
-            item->settings.updateType = type;
-        }
-        return *this;
+        return EditSettings([&](TweenDetail::TweenSettings& settings) { settings.updateType = type; });
     }
 
     TweenHandle& TweenHandle::SetId(std::string id)
     {
-        if (auto* item = TweenDetail::Resolve(index_, generation_)) {
-            item->settings.id = std::move(id);
-        }
-        return *this;
+        return EditSettings([&](TweenDetail::TweenSettings& settings) { settings.id = std::move(id); });
     }
 
     TweenHandle& TweenHandle::OnComplete(std::function<void()> callback)
     {
-        if (auto* item = TweenDetail::Resolve(index_, generation_)) {
-            item->settings.onComplete = std::move(callback);
-        }
-        return *this;
+        return EditSettings([&](TweenDetail::TweenSettings& settings) { settings.onComplete = std::move(callback); });
     }
 
     TweenHandle& TweenHandle::OnStepComplete(std::function<void()> callback)
     {
-        if (auto* item = TweenDetail::Resolve(index_, generation_)) {
-            item->settings.onStepComplete = std::move(callback);
-        }
-        return *this;
+        return EditSettings([&](TweenDetail::TweenSettings& settings) { settings.onStepComplete = std::move(callback); });
     }
 
     TweenHandle& TweenHandle::OnUpdate(std::function<void(float)> callback)
     {
-        if (auto* item = TweenDetail::Resolve(index_, generation_)) {
-            item->settings.onUpdate = std::move(callback);
-        }
-        return *this;
+        return EditSettings([&](TweenDetail::TweenSettings& settings) { settings.onUpdate = std::move(callback); });
     }
 
     void TweenHandle::Kill(bool complete)
@@ -469,37 +446,32 @@ namespace CoreEngine
             return TweenHandle(id.first, id.second);
         }
 
-        TweenHandle MoveTo(GameObject* object, const Vector3& to, float duration)
+        /// @brief Transform の値を Getter で読み Setter で書いて to まで補間する（対象の GameObject を link する）
+        template <auto Getter, auto Setter>
+        static TweenHandle TransformTo(GameObject* object, const Vector3& to, float duration)
         {
             TransformComponent* const transform = FindTransform(object);
             if (transform == nullptr) { return TweenHandle(); }
 
             return ToVector3(
-                [transform] { return transform->GetTranslate(); },
-                [transform](const Vector3& value) { transform->SetTranslate(value); },
+                [transform] { return (transform->*Getter)(); },
+                [transform](const Vector3& value) { (transform->*Setter)(value); },
                 to, duration).SetLink(object);
+        }
+
+        TweenHandle MoveTo(GameObject* object, const Vector3& to, float duration)
+        {
+            return TransformTo<&TransformComponent::GetTranslate, &TransformComponent::SetTranslate>(object, to, duration);
         }
 
         TweenHandle ScaleTo(GameObject* object, const Vector3& to, float duration)
         {
-            TransformComponent* const transform = FindTransform(object);
-            if (transform == nullptr) { return TweenHandle(); }
-
-            return ToVector3(
-                [transform] { return transform->GetScale(); },
-                [transform](const Vector3& value) { transform->SetScale(value); },
-                to, duration).SetLink(object);
+            return TransformTo<&TransformComponent::GetScale, &TransformComponent::SetScale>(object, to, duration);
         }
 
         TweenHandle RotateTo(GameObject* object, const Vector3& to, float duration)
         {
-            TransformComponent* const transform = FindTransform(object);
-            if (transform == nullptr) { return TweenHandle(); }
-
-            return ToVector3(
-                [transform] { return transform->GetRotate(); },
-                [transform](const Vector3& value) { transform->SetRotate(value); },
-                to, duration).SetLink(object);
+            return TransformTo<&TransformComponent::GetRotate, &TransformComponent::SetRotate>(object, to, duration);
         }
 
         int KillById(const std::string& id, bool complete)

@@ -2241,6 +2241,12 @@
     <ClInclude Include="Engine\Src\Script\Binding\BindingRegistrar.h">
       <Filter>Engine\Src\Script\Binding</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\ScriptRefCounted.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\ScriptComponentHandle.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Script\Binding\MathBinding.h">
       <Filter>Engine\Src\Script\Binding</Filter>
     </ClInclude>

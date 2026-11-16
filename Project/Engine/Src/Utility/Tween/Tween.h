@@ -373,6 +373,16 @@ namespace CoreEngine
         std::uint32_t Generation() const { return generation_; }
 
     private:
+        /// @brief 再生中なら設定を edit で書き換える（完了済み・キル済みなら何もしない）
+        template <class Fn>
+        TweenHandle& EditSettings(Fn&& edit)
+        {
+            if (auto* item = TweenDetail::Resolve(index_, generation_)) {
+                edit(item->settings);
+            }
+            return *this;
+        }
+
         std::uint32_t index_ = 0;
         std::uint32_t generation_ = 0; ///< 0 は無効
     };

@@ -15,6 +15,7 @@
 #include "Scene/SceneManager.h"
 #include "Script/Binding/BindingRegistrar.h"
 #include "Script/Binding/GameObjectBinding.h"
+#include "Script/Binding/ScriptComponentHandle.h"
 #include "Utility/Logger/Logger.h"
 
 #include <angelscript.h>
@@ -34,7 +35,7 @@ namespace CoreEngine::Script
         EngineSystem* sEngineSystem = nullptr;
 
         /// @brief スクリプトへ渡すレイキャストの当たり（当たったときの値の写しと、相手のハンドル）
-        class ScriptRaycastHit
+        class ScriptRaycastHit : public ScriptRefCounted<ScriptRaycastHit>
         {
         public:
             explicit ScriptRaycastHit(const RaycastHit& hit)
@@ -44,18 +45,6 @@ namespace CoreEngine::Script
                   distance_(hit.distance),
                   layer_(hit.collider ? hit.collider->GetLayer() : CollisionLayer::Default)
             {
-            }
-
-            ScriptRaycastHit(const ScriptRaycastHit&) = delete;
-            ScriptRaycastHit& operator=(const ScriptRaycastHit&) = delete;
-
-            void AddRef() const { ++refCount_; }
-
-            void Release() const
-            {
-                if (--refCount_ == 0) {
-                    delete this;
-                }
             }
 
             /// @brief 当たった GameObject のハンドル（参照を 1 つ足して返す）
@@ -73,6 +62,7 @@ namespace CoreEngine::Script
             CollisionLayer GetLayer() const { return layer_; }
 
         private:
+            friend class ScriptRefCounted<ScriptRaycastHit>;
             ~ScriptRaycastHit()
             {
                 if (object_) {
@@ -85,28 +75,15 @@ namespace CoreEngine::Script
             Vector3 normal_{};
             float distance_ = 0.0f;
             CollisionLayer layer_ = CollisionLayer::Default;
-            mutable int refCount_ = 1;
         };
 
         /// @brief スクリプトへ渡すコライダーのハンドル
         /// @details GameObject のハンドルの参照を 1 つ持ち、使うたびに ColliderComponent を引き直す。
         ///          読み取りは先頭の形、書き込みはすべての形に効く。
-        class ScriptCollider
+        class ScriptCollider : public ScriptComponentHandle<ScriptCollider, ColliderComponent>
         {
         public:
-            explicit ScriptCollider(ScriptGameObject& owner) : owner_(owner) { owner_.AddRef(); }
-
-            ScriptCollider(const ScriptCollider&) = delete;
-            ScriptCollider& operator=(const ScriptCollider&) = delete;
-
-            void AddRef() const { ++refCount_; }
-
-            void Release() const
-            {
-                if (--refCount_ == 0) {
-                    delete this;
-                }
-            }
+            explicit ScriptCollider(ScriptGameObject& owner) : ScriptComponentHandle(owner) {}
 
             /// @brief 持ち主の GameObject があり、ColliderComponent が付いているか
             bool Exists() const { return Find() != nullptr; }
@@ -187,20 +164,11 @@ namespace CoreEngine::Script
             }
 
             /// @brief 持ち主の GameObject のハンドル（参照を 1 つ足して返す）
-            ScriptGameObject* GetGameObject() const
-            {
-                owner_.AddRef();
-                return &owner_;
-            }
+            ScriptGameObject* GetGameObject() const { return AcquireOwner(); }
 
         private:
-            ~ScriptCollider() { owner_.Release(); }
-
-            ColliderComponent* Find() const
-            {
-                GameObject* const object = owner_.Resolve();
-                return object ? object->GetComponent<ColliderComponent>() : nullptr;
-            }
+            friend class ScriptRefCounted<ScriptCollider>;
+            ~ScriptCollider() = default;
 
             const Collider* First() const
             {
@@ -258,10 +226,6 @@ namespace CoreEngine::Script
                     }
                 }
             }
-
-            ScriptGameObject& owner_;
-            mutable int refCount_ = 1;
-            mutable bool warned_ = false;
         };
 
         ScriptCollider* GetCollider(ScriptGameObject& self)
@@ -464,18 +428,6 @@ namespace CoreEngine::Script
         }
     }
 
-    void ScriptCollision::AddRef() const
-    {
-        ++refCount_;
-    }
-
-    void ScriptCollision::Release() const
-    {
-        if (--refCount_ == 0) {
-            delete this;
-        }
-    }
-
     ScriptGameObject* ScriptCollision::GetGameObject() const
     {
         if (other_) {
@@ -497,8 +449,7 @@ namespace CoreEngine::Script
         }
 
         r.ReferenceType("Collision", asOBJ_REF);
-        r.Behaviour("Collision", asBEHAVE_ADDREF, "void f()", asMETHOD(ScriptCollision, AddRef), asCALL_THISCALL);
-        r.Behaviour("Collision", asBEHAVE_RELEASE, "void f()", asMETHOD(ScriptCollision, Release), asCALL_THISCALL);
+        r.RefCountBehaviours<ScriptCollision>("Collision");
         r.Method("Collision", "GameObject@ get_gameObject() const property", asMETHOD(ScriptCollision, GetGameObject), asCALL_THISCALL);
         r.Method("Collision", "Vector3 get_normal() const property", asMETHOD(ScriptCollision, GetNormal), asCALL_THISCALL);
         r.Method("Collision", "float get_impulse() const property", asMETHOD(ScriptCollision, GetImpulse), asCALL_THISCALL);
@@ -509,8 +460,7 @@ namespace CoreEngine::Script
         r.Method("Collision", "bool get_isTrigger() const property", asMETHOD(ScriptCollision, IsTrigger), asCALL_THISCALL);
 
         r.ReferenceType("RaycastHit", asOBJ_REF);
-        r.Behaviour("RaycastHit", asBEHAVE_ADDREF, "void f()", asMETHOD(ScriptRaycastHit, AddRef), asCALL_THISCALL);
-        r.Behaviour("RaycastHit", asBEHAVE_RELEASE, "void f()", asMETHOD(ScriptRaycastHit, Release), asCALL_THISCALL);
+        r.RefCountBehaviours<ScriptRaycastHit>("RaycastHit");
         r.Method("RaycastHit", "GameObject@ get_gameObject() const property", asMETHOD(ScriptRaycastHit, GetGameObject), asCALL_THISCALL);
         r.Method("RaycastHit", "Vector3 get_point() const property", asMETHOD(ScriptRaycastHit, GetPoint), asCALL_THISCALL);
         r.Method("RaycastHit", "Vector3 get_normal() const property", asMETHOD(ScriptRaycastHit, GetNormal), asCALL_THISCALL);
@@ -518,8 +468,7 @@ namespace CoreEngine::Script
         r.Method("RaycastHit", "CollisionLayer get_layer() const property", asMETHOD(ScriptRaycastHit, GetLayer), asCALL_THISCALL);
 
         r.ReferenceType("Collider", asOBJ_REF);
-        r.Behaviour("Collider", asBEHAVE_ADDREF, "void f()", asMETHOD(ScriptCollider, AddRef), asCALL_THISCALL);
-        r.Behaviour("Collider", asBEHAVE_RELEASE, "void f()", asMETHOD(ScriptCollider, Release), asCALL_THISCALL);
+        r.RefCountBehaviours<ScriptCollider>("Collider");
         r.Method("Collider", "bool get_exists() const property", asMETHOD(ScriptCollider, Exists), asCALL_THISCALL);
         r.Method("Collider", "int get_count() const property", asMETHOD(ScriptCollider, GetCount), asCALL_THISCALL);
         r.Method("Collider", "bool get_enabled() const property", asMETHOD(ScriptCollider, IsEnabled), asCALL_THISCALL);

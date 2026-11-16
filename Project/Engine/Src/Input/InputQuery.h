@@ -188,6 +188,16 @@ namespace CoreEngine {
             return best;
         }
 
+        /// @brief アクションの割り当てのどれかが Evaluate を満たすか（場面は見ない）
+        template <bool (InputQuery::*Evaluate)(const InputBinding&, int) const>
+        bool AnyBinding(InputAction action, int player) const
+        {
+            for (const auto& b : config_.GetBindings(action)) {
+                if ((this->*Evaluate)(b, player)) return true;
+            }
+            return false;
+        }
+
         bool  EvaluatePressed  (const InputBinding& b, int player) const;
         bool  EvaluateTriggered(const InputBinding& b, int player) const;
         bool  EvaluateReleased (const InputBinding& b, int player) const;

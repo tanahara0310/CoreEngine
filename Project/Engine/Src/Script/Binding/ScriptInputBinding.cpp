@@ -27,22 +27,12 @@ namespace CoreEngine::Script
             return &sInput->GetQuery();
         }
 
-        bool IsActionPressed(int action, int player)
+        /// @brief アクションの番号を確かめてから Check で問い合わせる（Pressed・Triggered・Released に共通）
+        template <bool (InputQuery::*Check)(InputAction, int) const>
+        bool ActionState(int action, int player)
         {
             const InputQuery* const query = QueryFor(action);
-            return query && query->IsActionPressed(static_cast<InputAction>(action), player);
-        }
-
-        bool IsActionTriggered(int action, int player)
-        {
-            const InputQuery* const query = QueryFor(action);
-            return query && query->IsActionTriggered(static_cast<InputAction>(action), player);
-        }
-
-        bool IsActionReleased(int action, int player)
-        {
-            const InputQuery* const query = QueryFor(action);
-            return query && query->IsActionReleased(static_cast<InputAction>(action), player);
+            return query && (query->*Check)(static_cast<InputAction>(action), player);
         }
 
         float GetAxisValue(int action, int player)
@@ -84,22 +74,12 @@ namespace CoreEngine::Script
             return &sInput->GetQuery();
         }
 
-        bool IsMouseButtonPressed(int button)
+        /// @brief マウスのボタン番号を確かめてから Check で問い合わせる（Pressed・Triggered・Released に共通）
+        template <bool (InputQuery::*Check)(MouseButton) const>
+        bool MouseButtonState(int button)
         {
             const InputQuery* const query = QueryForMouse(button);
-            return query && query->IsMouseButtonPressed(static_cast<MouseButton>(button));
-        }
-
-        bool IsMouseButtonTriggered(int button)
-        {
-            const InputQuery* const query = QueryForMouse(button);
-            return query && query->IsMouseButtonTriggered(static_cast<MouseButton>(button));
-        }
-
-        bool IsMouseButtonReleased(int button)
-        {
-            const InputQuery* const query = QueryForMouse(button);
-            return query && query->IsMouseButtonReleased(static_cast<MouseButton>(button));
+            return query && (query->*Check)(static_cast<MouseButton>(button));
         }
 
         /// @brief 前のフレームからのマウスの移動量［px］
@@ -218,22 +198,12 @@ namespace CoreEngine::Script
             return &sInput->GetQuery();
         }
 
-        bool IsKeyPressed(int key)
+        /// @brief キーの番号を確かめてから Check で問い合わせる（Pressed・Triggered・Released に共通）
+        template <bool (InputQuery::*Check)(uint8_t) const>
+        bool KeyState(int key)
         {
             const InputQuery* const query = QueryForKey(key);
-            return query && query->IsKeyPressed(static_cast<uint8_t>(key));
-        }
-
-        bool IsKeyTriggered(int key)
-        {
-            const InputQuery* const query = QueryForKey(key);
-            return query && query->IsKeyTriggered(static_cast<uint8_t>(key));
-        }
-
-        bool IsKeyReleased(int key)
-        {
-            const InputQuery* const query = QueryForKey(key);
-            return query && query->IsKeyReleased(static_cast<uint8_t>(key));
+            return query && (query->*Check)(static_cast<uint8_t>(key));
         }
     }
 
@@ -265,9 +235,9 @@ namespace CoreEngine::Script
 
         r.Namespace("Input");
         // player を省くとキーボードと全パッドを見る。2 人目以降は 0〜3 を渡して分ける
-        r.Function("bool IsActionPressed(InputAction, int player = -1)", asFUNCTION(IsActionPressed));
-        r.Function("bool IsActionTriggered(InputAction, int player = -1)", asFUNCTION(IsActionTriggered));
-        r.Function("bool IsActionReleased(InputAction, int player = -1)", asFUNCTION(IsActionReleased));
+        r.Function("bool IsActionPressed(InputAction, int player = -1)", asFUNCTION(ActionState<&InputQuery::IsActionPressed>));
+        r.Function("bool IsActionTriggered(InputAction, int player = -1)", asFUNCTION(ActionState<&InputQuery::IsActionTriggered>));
+        r.Function("bool IsActionReleased(InputAction, int player = -1)", asFUNCTION(ActionState<&InputQuery::IsActionReleased>));
         r.Function("float GetAxisValue(InputAction, int player = -1)", asFUNCTION(GetAxisValue));
         r.Function("float GetAxis(InputAction negative, InputAction positive, int player = -1)",
             asFUNCTION(GetAxis));
@@ -280,16 +250,16 @@ namespace CoreEngine::Script
         r.Function("float GetLeftTrigger(int player = 0)", asFUNCTION(GetLeftTrigger));
         r.Function("float GetRightTrigger(int player = 0)", asFUNCTION(GetRightTrigger));
         r.Function("void SetVibration(float left, float right, int player = 0)", asFUNCTION(SetVibration));
-        r.Function("bool IsMouseButtonPressed(MouseButton)", asFUNCTION(IsMouseButtonPressed));
-        r.Function("bool IsMouseButtonTriggered(MouseButton)", asFUNCTION(IsMouseButtonTriggered));
-        r.Function("bool IsMouseButtonReleased(MouseButton)", asFUNCTION(IsMouseButtonReleased));
+        r.Function("bool IsMouseButtonPressed(MouseButton)", asFUNCTION(MouseButtonState<&InputQuery::IsMouseButtonPressed>));
+        r.Function("bool IsMouseButtonTriggered(MouseButton)", asFUNCTION(MouseButtonState<&InputQuery::IsMouseButtonTriggered>));
+        r.Function("bool IsMouseButtonReleased(MouseButton)", asFUNCTION(MouseButtonState<&InputQuery::IsMouseButtonReleased>));
         r.Function("Vector2 GetMouseDelta()", asFUNCTION(GetMouseDelta));
         r.Function("Vector2 GetMousePosition()", asFUNCTION(GetMousePosition));
         r.Function("float GetWheelDelta()", asFUNCTION(GetWheelDelta));
         r.Function("bool IsPointerOverGame()", asFUNCTION(IsPointerOverGame));
-        r.Function("bool IsKeyPressed(Key)", asFUNCTION(IsKeyPressed));
-        r.Function("bool IsKeyTriggered(Key)", asFUNCTION(IsKeyTriggered));
-        r.Function("bool IsKeyReleased(Key)", asFUNCTION(IsKeyReleased));
+        r.Function("bool IsKeyPressed(Key)", asFUNCTION(KeyState<&InputQuery::IsKeyPressed>));
+        r.Function("bool IsKeyTriggered(Key)", asFUNCTION(KeyState<&InputQuery::IsKeyTriggered>));
+        r.Function("bool IsKeyReleased(Key)", asFUNCTION(KeyState<&InputQuery::IsKeyReleased>));
         r.Namespace("");
         return r.Succeeded();
     }

@@ -6,6 +6,7 @@
 #include "GameObject/GameObjectManager.h"
 #include "Script/Binding/BindingRegistrar.h"
 #include "Script/Binding/GameObjectBinding.h"
+#include "Script/Binding/ScriptComponentHandle.h"
 #include "Scene/Feature/UIInteractionFeature.h"
 #include "Text/FontManager.h"
 #include "UI/RectTransformComponent.h"
@@ -38,25 +39,13 @@ namespace CoreEngine::Script
         ///          配置の口は兄弟の UI トランスフォームへ渡す。
         ///          文字と画像にだけある口は、その型を登録するときだけ使う。
         template <class Element>
-        class ScriptUIElement
+        class ScriptUIElement : public ScriptComponentHandle<ScriptUIElement<Element>, Element>
         {
         public:
-            explicit ScriptUIElement(ScriptGameObject& owner) : owner_(owner) { owner_.AddRef(); }
-
-            ScriptUIElement(const ScriptUIElement&) = delete;
-            ScriptUIElement& operator=(const ScriptUIElement&) = delete;
-
-            void AddRef() const { ++refCount_; }
-
-            void Release() const
-            {
-                if (--refCount_ == 0) {
-                    delete this;
-                }
-            }
+            explicit ScriptUIElement(ScriptGameObject& owner) : ScriptComponentHandle<ScriptUIElement, Element>(owner) {}
 
             /// @brief 持ち主の GameObject があり、この種類の UI 要素か
-            bool Exists() const { return Find() != nullptr; }
+            bool Exists() const { return this->Find() != nullptr; }
 
             Vector2 GetAnchoredPosition() const
             {
@@ -140,11 +129,7 @@ namespace CoreEngine::Script
             }
 
             /// @brief 持ち主の GameObject のハンドル（参照を 1 つ足して返す）
-            ScriptGameObject* GetGameObject() const
-            {
-                owner_.AddRef();
-                return &owner_;
-            }
+            ScriptGameObject* GetGameObject() const { return this->AcquireOwner(); }
 
             // ---------------------------------------------------------------- UIText
 
@@ -422,20 +407,15 @@ namespace CoreEngine::Script
                 return element ? element->GetMaterialSlot().FindNumbers(name) : nullptr;
             }
 
-            ~ScriptUIElement() { owner_.Release(); }
-
-            Element* Find() const
-            {
-                GameObject* const object = owner_.Resolve();
-                return object ? object->GetComponent<Element>() : nullptr;
-            }
+            friend class ScriptRefCounted<ScriptUIElement>;
+            ~ScriptUIElement() = default;
 
             /// @brief UI 要素を引き、引けなければ 1 回だけ警告する
             Element* FindOrWarn(const char* action) const
             {
-                Element* const element = Find();
-                if (!element && !warned_) {
-                    warned_ = true;
+                Element* const element = this->Find();
+                if (!element && !this->warned_) {
+                    this->warned_ = true;
                     Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Script,
                         "{} で{}をしようとしましたが、GameObject が無いか {} ではありません",
                         kElementTypeName<Element>, action, kElementTypeName<Element>);
@@ -449,10 +429,6 @@ namespace CoreEngine::Script
                 const Element* const element = FindOrWarn(action);
                 return element ? element->GetRectTransform() : nullptr;
             }
-
-            ScriptGameObject& owner_;
-            mutable int refCount_ = 1;
-            mutable bool warned_ = false;
         };
 
         using ScriptUIText = ScriptUIElement<UITextComponent>;
@@ -461,19 +437,10 @@ namespace CoreEngine::Script
         /// @brief スクリプトから押せるボタンを見るためのハンドル
         /// @details 押されたかは問い合わせで受け取る（関数を渡す形にすると、
         ///          スクリプトを読み直したときに渡し直しが要る）。
-        class ScriptUIButton
+        class ScriptUIButton : public ScriptComponentHandle<ScriptUIButton, UIButtonComponent>
         {
         public:
-            explicit ScriptUIButton(ScriptGameObject& owner) : owner_(owner)
-            {
-                owner_.AddRef();
-            }
-
-            ScriptUIButton(const ScriptUIButton&) = delete;
-            ScriptUIButton& operator=(const ScriptUIButton&) = delete;
-
-            void AddRef() const { ++refCount_; }
-            void Release() const { if (--refCount_ == 0) { delete this; } }
+            explicit ScriptUIButton(ScriptGameObject& owner) : ScriptComponentHandle(owner) {}
 
             bool Exists() const { return Find() != nullptr; }
 
@@ -527,20 +494,11 @@ namespace CoreEngine::Script
                 }
             }
 
-            ScriptGameObject* GetGameObject() const
-            {
-                owner_.AddRef();
-                return &owner_;
-            }
+            ScriptGameObject* GetGameObject() const { return AcquireOwner(); }
 
         private:
-            ~ScriptUIButton() { owner_.Release(); }
-
-            UIButtonComponent* Find() const
-            {
-                GameObject* const object = owner_.Resolve();
-                return object ? object->GetComponent<UIButtonComponent>() : nullptr;
-            }
+            friend class ScriptRefCounted<ScriptUIButton>;
+            ~ScriptUIButton() = default;
 
             UIButtonComponent* FindOrWarn(const char* action) const
             {
@@ -553,10 +511,6 @@ namespace CoreEngine::Script
                 }
                 return button;
             }
-
-            ScriptGameObject& owner_;
-            mutable int refCount_ = 1;
-            mutable bool warned_ = false;
         };
 
         /// @brief GameObject のハンドルからボタンのハンドルを作る
@@ -713,8 +667,7 @@ namespace CoreEngine::Script
         {
             using Handle = ScriptUIElement<Element>;
             r.ReferenceType(type, asOBJ_REF);
-            r.Behaviour(type, asBEHAVE_ADDREF, "void f()", asMETHOD(Handle, AddRef), asCALL_THISCALL);
-            r.Behaviour(type, asBEHAVE_RELEASE, "void f()", asMETHOD(Handle, Release), asCALL_THISCALL);
+            r.RefCountBehaviours<Handle>(type);
             r.Method(type, "bool get_exists() const property", asMETHOD(Handle, Exists), asCALL_THISCALL);
             r.Method(type, "Vector2 get_anchoredPosition() const property", asMETHOD(Handle, GetAnchoredPosition), asCALL_THISCALL);
             r.Method(type, "void set_anchoredPosition(const Vector2 &in) property", asMETHOD(Handle, SetAnchoredPosition), asCALL_THISCALL);
@@ -797,8 +750,7 @@ namespace CoreEngine::Script
         {
             using Handle = ScriptUIButton;
             r.ReferenceType("UIButton", asOBJ_REF);
-            r.Behaviour("UIButton", asBEHAVE_ADDREF, "void f()", asMETHOD(Handle, AddRef), asCALL_THISCALL);
-            r.Behaviour("UIButton", asBEHAVE_RELEASE, "void f()", asMETHOD(Handle, Release), asCALL_THISCALL);
+            r.RefCountBehaviours<Handle>("UIButton");
             r.Method("UIButton", "bool get_exists() const property", asMETHOD(Handle, Exists), asCALL_THISCALL);
             r.Method("UIButton", "bool get_wasClicked() const property", asMETHOD(Handle, WasClicked), asCALL_THISCALL);
             r.Method("UIButton", "bool get_hovered() const property", asMETHOD(Handle, IsHovered), asCALL_THISCALL);

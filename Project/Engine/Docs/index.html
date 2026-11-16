@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.89.5">
+<meta name="engine-version" content="0.89.6">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11437,6 +11437,16 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-89-6">v0.89.6 <span class="dim">（2026-11-16）</span></h3>
+  <p>スクリプトの束縛で、同じ形で何か所にも書いていた所をテンプレートの補助にまとめた版です。スクリプトから使える型・関数・引数（<span class="path">as.predefined</span> の中身）と、見た目・動き・シーンの書き方・CVar は変わりません。</p>
+  <ul>
+    <li><strong>参照型の参照カウント</strong>：スクリプトへ渡す参照型 12 クラスが、参照の数を持つ基底 <code>ScriptRefCounted&lt;T&gt;</code>（<span class="path">Script/Binding/ScriptRefCounted.h</span>）を継ぎます。AddRef と Release の登録は <code>BindingRegistrar::RefCountBehaviours&lt;T&gt;</code> の 1 行になりました。</li>
+    <li><strong>コンポーネントを指すハンドル</strong>：コライダー・UI の文字と画像・ボタンのハンドルが、持ち主の GameObject を持って毎回コンポーネントを引き直す基底 <code>ScriptComponentHandle&lt;T, Component&gt;</code> を継ぎます。</li>
+    <li><strong>値型の作り方</strong>：値型の Construct と Destruct の手書きを、<code>ConstructDefault&lt;T&gt;</code>・<code>ConstructCopy&lt;T&gt;</code>・<code>DestructValue&lt;T&gt;</code> にしました。</li>
+    <li><strong>保存ファイル・入力・Tween</strong>：<code>SaveFile</code>・<code>DataFile</code> の型ごとの読み書き、入力の Pressed・Triggered・Released、Tween の設定 9 本と MoveTo・ScaleTo・RotateTo を、それぞれ 1 つの形にまとめました。</li>
+    <li><strong>エディタの拡張</strong>：スクリプトの GUI の Begin〜 7 本と値の欄 10 本、スクリプトのオブジェクトのメンバ変数を回すループ 7 つを、それぞれ 1 つの補助にまとめました。</li>
+  </ul>
 
   <h3 id="changelog-v0-89-5">v0.89.5 <span class="dim">（2026-11-16）</span></h3>
   <p>描画の処理で、同じ形で何か所にも書いていた所をテンプレートの補助にまとめた版です。見た目・動き・シーンの書き方・CVar・スクリプトは変わりません。</p>

@@ -1483,6 +1483,8 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Reflection\TypeDescriptor.h" />
     <ClInclude Include="Engine\Src\Script\Binding\LogBinding.h" />
     <ClInclude Include="Engine\Src\Script\Binding\BindingRegistrar.h" />
+    <ClInclude Include="Engine\Src\Script\Binding\ScriptRefCounted.h" />
+    <ClInclude Include="Engine\Src\Script\Binding\ScriptComponentHandle.h" />
     <ClInclude Include="Engine\Src\Script\Binding\MathBinding.h" />
     <ClInclude Include="Engine\Src\Script\Binding\TimeBinding.h" />
     <ClInclude Include="Engine\Src\Script\Binding\GameObjectBinding.h" />

@@ -5,7 +5,6 @@
 #include "Camera/Shake/CameraShakePresets.h"
 #include "Script/Binding/BindingRegistrar.h"
 
-#include <new>
 #include <string>
 #include <type_traits>
 
@@ -14,11 +13,6 @@ namespace CoreEngine::Script
     namespace
     {
         static_assert(std::is_trivially_copyable_v<CameraShakeParams>);
-
-        void ConstructParams(CameraShakeParams* self)
-        {
-            new (self) CameraShakeParams();
-        }
 
         ShakeHandle PlayShake(const CameraShakeParams& params)
         {
@@ -78,7 +72,7 @@ namespace CoreEngine::Script
         {
             const char* const type = "CameraShakeParams";
             r.ValueType(type, sizeof(CameraShakeParams), asOBJ_VALUE | asOBJ_POD | asGetTypeTraits<CameraShakeParams>());
-            r.Behaviour(type, asBEHAVE_CONSTRUCT, "void f()", asFUNCTION(ConstructParams), asCALL_CDECL_OBJLAST);
+            r.Behaviour(type, asBEHAVE_CONSTRUCT, "void f()", asFUNCTION(ConstructDefault<CameraShakeParams>), asCALL_CDECL_OBJLAST);
             r.Property(type, "Vector3 positionAmplitude", asOFFSET(CameraShakeParams, positionAmplitude));
             r.Property(type, "Vector3 rotationAmplitude", asOFFSET(CameraShakeParams, rotationAmplitude));
             r.Property(type, "float fovAmplitude", asOFFSET(CameraShakeParams, fovAmplitude));
