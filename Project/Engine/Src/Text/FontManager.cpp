@@ -17,7 +17,7 @@ namespace CoreEngine
     namespace
     {
         // ── FNV-1a 64bit ────────────────────────────────────────
-        constexpr uint64_t kFnvOffsetBasis = 1469598103934665603ULL;
+        constexpr uint64_t kFnvOffsetBasis = 14695981039346656037ULL;
         constexpr uint64_t kFnvPrime = 1099511628211ULL;
 
         /// @brief DirectWrite が開けるフォントファイルの拡張子か

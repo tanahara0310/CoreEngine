@@ -174,7 +174,9 @@ namespace CoreEngine
 
                     RTScene::DynamicShape shape;
                     shape.owner = &renderer;
-                    // 頂点を動かすマテリアル（`#define SURFACE_VERTEX`）は、揺れと同じ距離の内で同じ式の CS を掛ける
+                    // 頂点を動かすマテリアル（`#define SURFACE_VERTEX`）は、揺れと同じ距離の内で同じ式の CS を掛ける。
+                    // カメラに映っていない物も、読む前にマテリアルのパイプラインを付け直す
+                    renderer.SyncSurfaceMaterial();
                     SurfaceMaterialPipeline* const surface = model->GetSurfacePipeline();
                     const bool surfaceMoves = deformer && surface && surface->HasVertexFunction()
                         && withinSwayDistance(&renderer, *resource, world, renderer.GetBoundsPadding());

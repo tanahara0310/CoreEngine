@@ -11,48 +11,6 @@
 
 namespace CoreEngine
 {
-struct KeyName {
-    uint8_t code;
-    const char* name;
-};
-
-static const KeyName kKeyNameTable[] = {
-    { DIK_A, "A" },
-    { DIK_B, "B" },
-    { DIK_C, "C" },
-    { DIK_D, "D" },
-    { DIK_E, "E" },
-    { DIK_F, "F" },
-    { DIK_G, "G" },
-    { DIK_H, "H" },
-    { DIK_I, "I" },
-    { DIK_J, "J" },
-    { DIK_K, "K" },
-    { DIK_L, "L" },
-    { DIK_M, "M" },
-    { DIK_N, "N" },
-    { DIK_O, "O" },
-    { DIK_P, "P" },
-    { DIK_Q, "Q" },
-    { DIK_R, "R" },
-    { DIK_S, "S" },
-    { DIK_T, "T" },
-    { DIK_U, "U" },
-    { DIK_V, "V" },
-    { DIK_W, "W" },
-    { DIK_X, "X" },
-    { DIK_Y, "Y" },
-    { DIK_Z, "Z" },
-    { DIK_SPACE, "Space" },
-    { DIK_RETURN, "Enter" },
-    { DIK_ESCAPE, "Escape" },
-    { DIK_UP, "Up" },
-    { DIK_DOWN, "Down" },
-    { DIK_LEFT, "Left" },
-    { DIK_RIGHT, "Right" },
-    // 必要なら増やす
-};
-
 void KeyboardInput::Initialize(IDirectInput8* directInput, HWND hwnd)
 {
     HRESULT result;

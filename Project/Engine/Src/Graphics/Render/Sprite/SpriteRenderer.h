@@ -76,9 +76,6 @@ namespace CoreEngine
         /// 差してあるマテリアルのパイプライン（標準なら nullptr）
         const ShaderMaterialPipeline* boundPipeline_ = nullptr;
 
-        // シェーダーリフレクションデータ
-        std::unique_ptr<ShaderReflectionData> reflectionData_;
-
         /// @brief パイプラインのみを初期化（Initialize(GraphicsCore*) から呼び出す）
         void InitializePipeline(ID3D12Device* device);
 

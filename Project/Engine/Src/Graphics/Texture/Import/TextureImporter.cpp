@@ -11,6 +11,9 @@ namespace CoreEngine
 {
     TextureCompression TextureImporter::ParseCompression(std::string_view setting)
     {
+        if (setting == "auto") {
+            return TextureCompression::Auto;
+        }
         if (setting == "bc7") {
             return TextureCompression::BC7;
         }
@@ -33,12 +36,13 @@ namespace CoreEngine
     {
         switch (compression) {
         case TextureCompression::Auto: return "auto";
+        case TextureCompression::BC7: return "bc7";
         case TextureCompression::BC3: return "bc3";
         case TextureCompression::BC1: return "bc1";
         case TextureCompression::BC5: return "bc5";
         case TextureCompression::None: return "none";
-        default: return "bc7";
         }
+        return "auto";
     }
 
     std::string TextureImporter::Settings(TextureColorSpace colorSpace, TextureCompression compression)

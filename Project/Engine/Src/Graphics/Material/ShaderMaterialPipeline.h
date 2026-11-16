@@ -19,6 +19,7 @@
 
 namespace CoreEngine
 {
+    class GraphicsCore;
     class ShaderCompiler;
     class ShaderReflectionBuilder;
 
@@ -151,15 +152,17 @@ namespace CoreEngine
     /// @brief マテリアルのシェーダの組み合わせごとにパイプラインを 1 つずつ持つ
     /// @details シェーダのファイルが変わったら（`ShaderMaterialLibrary` の番号が進んだら）組み直す。
     ///          組み直しに失敗したら、次に組み直せるまで nullptr を返す。
-    ///          組み直した古いパイプラインは、描画中のフレームが使っているかもしれないので捨てずに持つ。
+    ///          組み直した古いパイプラインは、記録中のフレームの GPU 作業が終わってから捨てる
+    ///          （返したポインタは、組み直したフレームの終わりまで使える）。
     class ShaderMaterialPipelineCache
     {
     public:
         explicit ShaderMaterialPipelineCache(ShaderMaterialPipeline::Target target) : target_(target) {}
 
         /// @brief マテリアルのシェーダのパイプラインを引く（無ければ組む）
+        /// @param graphics パイプラインを作るデバイスと、古いパイプラインを預ける遅延解放のキューの持ち主
         /// @return 組めなければ nullptr
-        const ShaderMaterialPipeline* Get(ID3D12Device* device, ShaderCompiler& compiler,
+        const ShaderMaterialPipeline* Get(GraphicsCore& graphics, ShaderCompiler& compiler,
             ShaderReflectionBuilder& reflectionBuilder, const ShaderMaterial& material);
 
     private:
@@ -171,6 +174,5 @@ namespace CoreEngine
 
         ShaderMaterialPipeline::Target target_;
         std::unordered_map<std::string, Entry> entries_;
-        std::vector<std::unique_ptr<ShaderMaterialPipeline>> retired_;
     };
 }

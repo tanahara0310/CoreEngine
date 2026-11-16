@@ -4,6 +4,8 @@
 #include "Graphics/Material/ShaderMaterial.h"
 #include "Graphics/Material/ShaderMaterialLibrary.h"
 #include "Graphics/Pipeline/ComputePipelineUtil.h"
+#include "Graphics/RHI/Command/DeferredReleaseQueue.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RayTracing/VertexAnimationDeformer.h"
 #include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/Render/Model/ModelBindings.h"
@@ -361,9 +363,9 @@ namespace CoreEngine
         return true;
     }
 
-    SurfaceMaterialPipelineCache::SurfaceMaterialPipelineCache(ID3D12Device* device, ShaderCompiler& compiler,
+    SurfaceMaterialPipelineCache::SurfaceMaterialPipelineCache(GraphicsCore& graphics, ShaderCompiler& compiler,
         ShaderReflectionBuilder& reflectionBuilder)
-        : device_(device), compiler_(&compiler), reflectionBuilder_(&reflectionBuilder)
+        : graphics_(&graphics), compiler_(&compiler), reflectionBuilder_(&reflectionBuilder)
     {
     }
 
@@ -388,11 +390,10 @@ namespace CoreEngine
             return nullptr;
         }
 
-        auto pipeline = std::make_unique<SurfaceMaterialPipeline>(device_, *compiler_, *reflectionBuilder_, shaderPath);
+        auto pipeline = std::make_unique<SurfaceMaterialPipeline>(
+            graphics_->GetDevice(), *compiler_, *reflectionBuilder_, shaderPath);
         const bool built = pipeline->Build() && (!entry.pipeline || pipeline->BuildVariantsUsedBy(*entry.pipeline));
-        if (entry.pipeline) {
-            retired_.push_back(std::move(entry.pipeline));
-        }
+        graphics_->DeferredRelease().PushForCurrentFrame(std::move(entry.pipeline));
         if (built) {
             entry.pipeline = std::move(pipeline);
         }

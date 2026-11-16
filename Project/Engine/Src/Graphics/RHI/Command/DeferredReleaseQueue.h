@@ -4,6 +4,7 @@
 #include <wrl.h>
 #include <cstdint>
 #include <limits>
+#include <memory>
 #include <mutex>
 #include <vector>
 
@@ -14,7 +15,7 @@ namespace CoreEngine
 {
     class DescriptorAllocator;
 
-    /// @brief GPU がまだ参照しているリソース・ディスクリプタのスロット・定数バッファの領域を、フェンス通過後に解放するキュー
+    /// @brief GPU がまだ参照しているリソース・ディスクリプタのスロット・定数バッファの領域・パイプラインなどを持つ物を、フェンス通過後に解放するキュー
     /// @note Push は呼び出し側が渡したフェンス値で寿命を判定する。
     ///       PushForCurrentFrame は記録中のフレームに預け、そのフレームの投入時に SealFrame が付けるフェンス値で判定する
     class DeferredReleaseQueue
@@ -39,6 +40,11 @@ namespace CoreEngine
         /// @param block 返す領域（無効なら何もしない。預けた後は無効になる）
         void PushForCurrentFrame(ConstantBufferPool& pool, ConstantBufferBlock& block);
 
+        /// @brief 記録中のフレームの GPU 作業が終わってから物を捨てる予約をする
+        /// @param object 捨てる物（パイプラインの組など、GPU が参照するものを持つ物。空なら何もしない）
+        /// @note 物は予約の鍵を外してから壊すので、壊すときにこのキューへ予約してもよい
+        void PushForCurrentFrame(std::shared_ptr<void> object);
+
         /// @brief 記録中のフレームへ預けた予約に、そのフレームのフェンス値を付ける
         /// @param fenceValue 投入したフレームに発行したフェンス値（フレームを投入した直後に呼ぶ）
         void SealFrame(std::uint64_t fenceValue);
@@ -59,7 +65,7 @@ namespace CoreEngine
         /// @brief まだフェンス値が付いていない予約の印
         static constexpr std::uint64_t kUnsealed = (std::numeric_limits<std::uint64_t>::max)();
 
-        /// @brief 予約 1 件（リソース・ディスクリプタのスロット・定数バッファの領域のどれか）
+        /// @brief 予約 1 件（リソース・ディスクリプタのスロット・定数バッファの領域・物のどれか）
         struct Entry
         {
             Microsoft::WRL::ComPtr<ID3D12Resource> resource;
@@ -67,11 +73,13 @@ namespace CoreEngine
             DescriptorHandle descriptor{};
             ConstantBufferPool* pool = nullptr;
             ConstantBufferBlock block{};
+            std::shared_ptr<void> object;
             std::uint64_t fenceValue = kUnsealed;
         };
 
         /// @brief 予約 1 件を解放する
-        static void Release(Entry& entry);
+        /// @param objects 預かっていた物の移し先（呼ぶ側が鍵を外してから壊す）
+        static void Release(Entry& entry, std::vector<std::shared_ptr<void>>& objects);
 
         mutable std::mutex mutex_;
         std::vector<Entry> entries_;
