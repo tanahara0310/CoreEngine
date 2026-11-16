@@ -129,9 +129,6 @@ namespace CoreEngine
         ///          0 を返して確保させない
         virtual size_t GetConstantBufferPoolCount() const { return kMaxUICount; }
 
-        /// @brief シェーダーリフレクション結果（派生も GetRootParamIndex 経由で使う）
-        std::unique_ptr<ShaderReflectionData> reflectionData_;
-
     private:
         // BaseRenderer から継承したサブシステムを使用（rootSignatureMg_, psoMg_, shaderCompiler_, reflectionBuilder_ は削除）
 

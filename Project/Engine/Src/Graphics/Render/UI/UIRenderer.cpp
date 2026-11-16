@@ -104,7 +104,7 @@ namespace CoreEngine
         if (!dxCommon_) {
             return nullptr;
         }
-        return materialPipelines_.Get(dxCommon_->GetDevice(), *shaderCompiler_, *reflectionBuilder_, material);
+        return materialPipelines_.Get(*dxCommon_, *shaderCompiler_, *reflectionBuilder_, material);
     }
 
     void UIRenderer::BindPipeline(ID3D12GraphicsCommandList* cmdList, const ShaderMaterialPipeline* pipeline) {

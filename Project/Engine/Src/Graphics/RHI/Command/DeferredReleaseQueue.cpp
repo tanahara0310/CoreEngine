@@ -56,6 +56,17 @@ namespace CoreEngine
         block.Invalidate();
     }
 
+    void DeferredReleaseQueue::PushForCurrentFrame(std::shared_ptr<void> object)
+    {
+        if (!object) {
+            return;
+        }
+        std::lock_guard<std::mutex> lock(mutex_);
+        Entry entry;
+        entry.object = std::move(object);
+        entries_.push_back(std::move(entry));
+    }
+
     void DeferredReleaseQueue::SealFrame(std::uint64_t fenceValue)
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -68,6 +79,8 @@ namespace CoreEngine
 
     size_t DeferredReleaseQueue::Collect(std::uint64_t completedFenceValue)
     {
+        // 預かっていた物は、鍵を外した後（この関数を出るとき）に壊す
+        std::vector<std::shared_ptr<void>> objects;
         std::lock_guard<std::mutex> lock(mutex_);
         if (entries_.empty()) {
             return 0;
@@ -78,7 +91,7 @@ namespace CoreEngine
         auto kept = entries_.begin();
         for (auto it = entries_.begin(); it != entries_.end(); ++it) {
             if (it->fenceValue != kUnsealed && it->fenceValue <= completedFenceValue) {
-                Release(*it);
+                Release(*it, objects);
                 ++released;
                 continue;
             }
@@ -93,9 +106,11 @@ namespace CoreEngine
 
     void DeferredReleaseQueue::ReleaseAll()
     {
+        // 預かっていた物は、鍵を外した後（この関数を出るとき）に壊す
+        std::vector<std::shared_ptr<void>> objects;
         std::lock_guard<std::mutex> lock(mutex_);
         for (Entry& entry : entries_) {
-            Release(entry);
+            Release(entry, objects);
         }
         entries_.clear();
     }
@@ -106,8 +121,11 @@ namespace CoreEngine
         return entries_.size();
     }
 
-    void DeferredReleaseQueue::Release(Entry& entry)
+    void DeferredReleaseQueue::Release(Entry& entry, std::vector<std::shared_ptr<void>>& objects)
     {
+        if (entry.object) {
+            objects.push_back(std::move(entry.object));
+        }
         if (entry.allocator && entry.descriptor.IsValid()) {
             entry.allocator->Free(entry.descriptor);
         }

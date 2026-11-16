@@ -100,7 +100,7 @@ namespace CoreEngine
         // 3D モデルのマテリアルは通常モデルのレンダラーのコンパイラとリフレクションで組む
         BaseModelRenderer* const renderer = renderContext_.modelRenderer;
         surfaceMaterialPipelineCache_ = std::make_unique<SurfaceMaterialPipelineCache>(
-            dxCommon_->GetDevice(), *renderer->GetShaderCompiler(), *renderer->GetReflectionBuilder());
+            *dxCommon_, *renderer->GetShaderCompiler(), *renderer->GetReflectionBuilder());
     }
 
     std::unique_ptr<Model> ModelManager::CreateStaticModel(const std::string& filePath)

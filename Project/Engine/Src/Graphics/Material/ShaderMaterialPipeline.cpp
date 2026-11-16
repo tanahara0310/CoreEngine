@@ -3,6 +3,8 @@
 
 #include "Graphics/Material/ShaderMaterial.h"
 #include "Graphics/Material/ShaderMaterialLibrary.h"
+#include "Graphics/RHI/Command/DeferredReleaseQueue.h"
+#include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
@@ -297,7 +299,7 @@ namespace CoreEngine
         return rootSignature_ ? rootSignature_->GetRootSignature() : nullptr;
     }
 
-    const ShaderMaterialPipeline* ShaderMaterialPipelineCache::Get(ID3D12Device* device, ShaderCompiler& compiler,
+    const ShaderMaterialPipeline* ShaderMaterialPipelineCache::Get(GraphicsCore& graphics, ShaderCompiler& compiler,
         ShaderReflectionBuilder& reflectionBuilder, const ShaderMaterial& material)
     {
         if (material.GetShaderPath().empty()) {
@@ -313,11 +315,9 @@ namespace CoreEngine
         entry.shaderRevision = revision;
 
         auto pipeline = std::make_unique<ShaderMaterialPipeline>();
-        const bool built = pipeline->Build(device, compiler, reflectionBuilder,
+        const bool built = pipeline->Build(graphics.GetDevice(), compiler, reflectionBuilder,
             material.GetShaderPath(), material.GetVertexShaderPath(), target_);
-        if (entry.pipeline) {
-            retired_.push_back(std::move(entry.pipeline));
-        }
+        graphics.DeferredRelease().PushForCurrentFrame(std::move(entry.pipeline));
         if (built) {
             entry.pipeline = std::move(pipeline);
         }

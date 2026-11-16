@@ -184,6 +184,11 @@ public:
     /// @brief 兄弟の TransformComponent（描画に必要なワールド行列の出どころ）
     TransformComponent* GetTransformComponent() const { return ResolveTransform(); }
 
+    /// @brief マテリアルのパイプラインをモデルへ渡す（マテリアル・シェーダ・モデルが変わったときだけ引き直す）
+    /// @details 描画とレイトレの形の収集が、モデルのパイプラインを読む前に呼ぶ。
+    /// @note カスタムシェーダーのプロバイダがあれば、マテリアルは使わない。
+    void SyncSurfaceMaterial();
+
 private:
     /// @brief メッシュの出どころ
     enum class Source { None, ModelFile, SkinnedModelFile, Primitive };
@@ -202,10 +207,6 @@ private:
 
     /// @brief カスタムシェーダー用 PSO を構築する（プロバイダ登録時のみ）
     void BuildCustomShaderPipelineIfNeeded();
-
-    /// @brief マテリアルのパイプラインをモデルへ渡す（マテリアル・シェーダ・モデルが変わったときだけ引き直す）
-    /// @note カスタムシェーダーのプロバイダがあれば、マテリアルは使わない。
-    void SyncSurfaceMaterial();
 
     std::unique_ptr<Model> model_;
     std::unique_ptr<IPrimitiveMeshGenerator> generator_;

@@ -30,7 +30,7 @@ namespace CoreEngine
         /// @brief 取り込み設定で形式を決めていない画像の形式
         inline constexpr TextureCompression kDefaultCompression = TextureCompression::Auto;
 
-        /// @brief 取り込み設定の文字列（"bc7" / "bc3" / "bc1" / "bc5" / "none" / 空）から形式を決める（空なら既定）
+        /// @brief 取り込み設定の文字列（"auto" / "bc7" / "bc3" / "bc1" / "bc5" / "none" / 空）から形式を決める（空と知らない文字列は既定）
         TextureCompression ParseCompression(std::string_view setting);
 
         /// @brief 形式を取り込み設定の文字列にする

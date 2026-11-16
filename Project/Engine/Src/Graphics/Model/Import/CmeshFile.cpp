@@ -168,12 +168,12 @@ namespace CoreEngine
 
             /// @brief 残りを生のまま配列にする（要素の大きさで割り切れなければ例外）
             template<typename T>
-            void Rest(std::vector<T>& values, size_t elementSize)
+            void Rest(std::vector<T>& values)
             {
-                if (Remaining() % elementSize != 0) {
+                if (Remaining() % sizeof(T) != 0) {
                     throw std::runtime_error("cmesh のチャンクの大きさが要素の大きさで割り切れません");
                 }
-                values.resize(Remaining() / elementSize);
+                values.resize(Remaining() / sizeof(T));
                 if (!values.empty()) {
                     Bytes(values.data(), Remaining());
                 }
@@ -305,11 +305,11 @@ namespace CoreEngine
             ModelData& model = asset.model;
             const std::string_view id(header.id, 4);
             if (id == "VERT") {
-                reader.Rest(model.vertices, sizeof(VertexData));
+                reader.Rest(model.vertices);
             } else if (id == "VCOL") {
-                reader.Rest(model.vertexColors, sizeof(uint32_t));
+                reader.Rest(model.vertexColors);
             } else if (id == "INDX") {
-                reader.Rest(model.indices, sizeof(int32_t));
+                reader.Rest(model.indices);
             } else if (id == "SUBM") {
                 const uint32_t count = reader.U32();
                 if (count > reader.Remaining()) {
