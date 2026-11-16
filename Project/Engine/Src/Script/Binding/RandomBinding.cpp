@@ -2,6 +2,7 @@
 #include "Script/Binding/RandomBinding.h"
 
 #include "Script/Binding/BindingRegistrar.h"
+#include "Script/Binding/ScriptRefCounted.h"
 #include "Utility/Random/RandomGenerator.h"
 
 #include <angelscript.h>
@@ -27,22 +28,10 @@ namespace CoreEngine::Script
         }
 
         /// @brief 種を決めて同じ列を出す乱数（std::mt19937 と標準の一様分布をそのまま使う）
-        class ScriptRandomStream
+        class ScriptRandomStream : public ScriptRefCounted<ScriptRandomStream>
         {
         public:
             explicit ScriptRandomStream(std::uint32_t seed) : engine_(seed) {}
-
-            ScriptRandomStream(const ScriptRandomStream&) = delete;
-            ScriptRandomStream& operator=(const ScriptRandomStream&) = delete;
-
-            void AddRef() const { ++refCount_; }
-
-            void Release() const
-            {
-                if (--refCount_ == 0) {
-                    delete this;
-                }
-            }
 
             std::uint32_t Next() { return engine_(); }
 
@@ -65,10 +54,10 @@ namespace CoreEngine::Script
             }
 
         private:
+            friend class ScriptRefCounted<ScriptRandomStream>;
             ~ScriptRandomStream() = default;
 
             std::mt19937 engine_;
-            mutable int refCount_ = 1;
         };
 
         ScriptRandomStream* CreateRandomStream(std::uint32_t seed)
@@ -106,8 +95,7 @@ namespace CoreEngine::Script
         BindingRegistrar r(engine);
         r.ReferenceType("RandomStream", asOBJ_REF);
         r.Behaviour("RandomStream", asBEHAVE_FACTORY, "RandomStream@ f(uint seed)", asFUNCTION(CreateRandomStream), asCALL_CDECL);
-        r.Behaviour("RandomStream", asBEHAVE_ADDREF, "void f()", asMETHOD(ScriptRandomStream, AddRef), asCALL_THISCALL);
-        r.Behaviour("RandomStream", asBEHAVE_RELEASE, "void f()", asMETHOD(ScriptRandomStream, Release), asCALL_THISCALL);
+        r.RefCountBehaviours<ScriptRandomStream>("RandomStream");
         r.Method("RandomStream", "uint Next()", asMETHOD(ScriptRandomStream, Next), asCALL_THISCALL);
         r.Method("RandomStream", "float Uniform(float minimum, float maximum)", asMETHOD(ScriptRandomStream, Uniform), asCALL_THISCALL);
         r.Method("RandomStream", "int UniformInt(int minimum, int maximum)", asMETHOD(ScriptRandomStream, UniformInt), asCALL_THISCALL);

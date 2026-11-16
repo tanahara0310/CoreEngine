@@ -2,6 +2,7 @@
 
 #include "GameObject/ObjectId.h"
 #include "Math/Vector/Vector3.h"
+#include "Script/Binding/ScriptRefCounted.h"
 
 #include <memory>
 #include <string>
@@ -75,7 +76,7 @@ namespace CoreEngine::Script
     /// @details 実体のポインタは持たず、使うたびに引き直す。引けなければ実体の無いハンドルになる。
     ///          コンポーネントの持ち主を指すものはそのコンポーネントから引き（コンポーネントが壊れたら繋がりを切る）、
     ///          それ以外は所属する管理者の印とオブジェクトの ID から引く（管理者が壊れたら引けない）。
-    class ScriptGameObject
+    class ScriptGameObject : public ScriptRefCounted<ScriptGameObject>
     {
     public:
         /// @brief コンポーネントの持ち主を指すハンドルを作る
@@ -86,12 +87,6 @@ namespace CoreEngine::Script
         /// @brief オブジェクトを ID で指すハンドルを作る
         /// @return 参照を 1 つ持ったハンドル。object が nullptr なら nullptr
         static ScriptGameObject* CreateForObject(const GameObject* object);
-
-        ScriptGameObject(const ScriptGameObject&) = delete;
-        ScriptGameObject& operator=(const ScriptGameObject&) = delete;
-
-        void AddRef() const;
-        void Release() const;
 
         /// @brief 指す先の実体（引けなければ nullptr）
         GameObject* Resolve() const;
@@ -149,6 +144,7 @@ namespace CoreEngine::Script
         bool GetComponent(void* reference, int typeId) const;
 
     private:
+        friend class ScriptRefCounted<ScriptGameObject>;
         ScriptGameObject() = default;
         ~ScriptGameObject() = default;
 
@@ -159,7 +155,6 @@ namespace CoreEngine::Script
         ObjectId objectId_{};
         std::weak_ptr<const GameObjectManager*> manager_;
         ScriptTransform transform_{ *this };
-        mutable int refCount_ = 1;
         mutable bool warned_ = false;
     };
 

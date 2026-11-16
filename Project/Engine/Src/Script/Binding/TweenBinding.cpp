@@ -42,22 +42,23 @@ namespace CoreEngine::Script
             return object ? object->Resolve() : nullptr;
         }
 
-        // ---------------------------------------------------------------- TweenHandle
+        // ---------------------------------------------------------------- TweenHandle と TweenSequence に共通
 
-        void ConstructHandle(TweenHandle* self)
-        {
-            new (self) TweenHandle();
-        }
-
-        TweenHandle& HandleSetLink(ScriptGameObject* owner, TweenHandle& self)
+        /// @brief 生存を GameObject に紐づける（T は TweenHandle か TweenSequence）
+        template <class T>
+        T& SetLinkOf(ScriptGameObject* owner, T& self)
         {
             return self.SetLink(ResolveObject(owner));
         }
 
-        TweenHandle& HandleSetId(const std::string& id, TweenHandle& self)
+        /// @brief 名前を付ける（T は TweenHandle か TweenSequence）
+        template <class T>
+        T& SetIdOf(const std::string& id, T& self)
         {
             return self.SetId(id);
         }
+
+        // ---------------------------------------------------------------- TweenHandle
 
         TweenHandle& HandleOnComplete(asIScriptFunction* callback, TweenHandle& self)
         {
@@ -85,16 +86,6 @@ namespace CoreEngine::Script
         {
             std::function<void()> callback = MakeScriptAction(action, CallbackLabel(action, "シーケンスの途中の関数"));
             return callback ? self.AppendCallback(std::move(callback)) : self;
-        }
-
-        TweenSequence& SequenceSetLink(ScriptGameObject* owner, TweenSequence& self)
-        {
-            return self.SetLink(ResolveObject(owner));
-        }
-
-        TweenSequence& SequenceSetId(const std::string& id, TweenSequence& self)
-        {
-            return self.SetId(id);
         }
 
         TweenSequence& SequenceOnComplete(asIScriptFunction* callback, TweenSequence& self)
@@ -134,22 +125,12 @@ namespace CoreEngine::Script
             return callback ? Tween::Delay(seconds, std::move(callback)) : TweenHandle();
         }
 
-        TweenHandle MoveToObject(ScriptGameObject* object, const Vector3& to, float duration)
+        /// @brief GameObject を引き直して Transform の生成口 MakeTween へ渡す（MoveTo・ScaleTo・RotateTo に共通）
+        template <TweenHandle (*MakeTween)(GameObject*, const Vector3&, float)>
+        TweenHandle TransformToObject(ScriptGameObject* object, const Vector3& to, float duration)
         {
             GameObject* const target = ResolveObject(object);
-            return target ? Tween::MoveTo(target, to, duration) : TweenHandle();
-        }
-
-        TweenHandle ScaleToObject(ScriptGameObject* object, const Vector3& to, float duration)
-        {
-            GameObject* const target = ResolveObject(object);
-            return target ? Tween::ScaleTo(target, to, duration) : TweenHandle();
-        }
-
-        TweenHandle RotateToObject(ScriptGameObject* object, const Vector3& to, float duration)
-        {
-            GameObject* const target = ResolveObject(object);
-            return target ? Tween::RotateTo(target, to, duration) : TweenHandle();
+            return target ? MakeTween(target, to, duration) : TweenHandle();
         }
 
         int KillById(const std::string& id, bool complete)
@@ -188,17 +169,17 @@ namespace CoreEngine::Script
         void RegisterHandle(BindingRegistrar& r)
         {
             r.ValueType("TweenHandle", sizeof(TweenHandle), kHandleFlags | asGetTypeTraits<TweenHandle>());
-            r.Behaviour("TweenHandle", asBEHAVE_CONSTRUCT, "void f()", asFUNCTION(ConstructHandle), asCALL_CDECL_OBJLAST);
+            r.Behaviour("TweenHandle", asBEHAVE_CONSTRUCT, "void f()", asFUNCTION(ConstructDefault<TweenHandle>), asCALL_CDECL_OBJLAST);
             r.Method("TweenHandle", "TweenHandle &SetEase(EaseType ease)",
                 asMETHODPR(TweenHandle, SetEase, (EasingUtil::Type), TweenHandle&), asCALL_THISCALL);
             r.Method("TweenHandle", "TweenHandle &SetDelay(float seconds)",
                 asMETHODPR(TweenHandle, SetDelay, (float), TweenHandle&), asCALL_THISCALL);
             r.Method("TweenHandle", "TweenHandle &SetLoops(int count, TweenLoop type = TweenLoop::Restart)",
                 asMETHODPR(TweenHandle, SetLoops, (int, TweenLoop), TweenHandle&), asCALL_THISCALL);
-            r.Method("TweenHandle", "TweenHandle &SetLink(GameObject@+ owner)", asFUNCTION(HandleSetLink), asCALL_CDECL_OBJLAST);
+            r.Method("TweenHandle", "TweenHandle &SetLink(GameObject@+ owner)", asFUNCTION(SetLinkOf<TweenHandle>), asCALL_CDECL_OBJLAST);
             r.Method("TweenHandle", "TweenHandle &SetUpdateType(TweenUpdate type)",
                 asMETHODPR(TweenHandle, SetUpdateType, (TweenUpdate), TweenHandle&), asCALL_THISCALL);
-            r.Method("TweenHandle", "TweenHandle &SetId(const string &in id)", asFUNCTION(HandleSetId), asCALL_CDECL_OBJLAST);
+            r.Method("TweenHandle", "TweenHandle &SetId(const string &in id)", asFUNCTION(SetIdOf<TweenHandle>), asCALL_CDECL_OBJLAST);
             r.Method("TweenHandle", "TweenHandle &OnComplete(TweenCallback@ callback)", asFUNCTION(HandleOnComplete), asCALL_CDECL_OBJLAST);
             r.Method("TweenHandle", "TweenHandle &OnStepComplete(TweenCallback@ callback)",
                 asFUNCTION(HandleOnStepComplete), asCALL_CDECL_OBJLAST);
@@ -225,10 +206,10 @@ namespace CoreEngine::Script
                 asMETHODPR(TweenSequence, SetLoops, (int, TweenLoop), TweenSequence&), asCALL_THISCALL);
             r.Method("TweenSequence", "TweenSequence &SetDelay(float seconds)",
                 asMETHODPR(TweenSequence, SetDelay, (float), TweenSequence&), asCALL_THISCALL);
-            r.Method("TweenSequence", "TweenSequence &SetLink(GameObject@+ owner)", asFUNCTION(SequenceSetLink), asCALL_CDECL_OBJLAST);
+            r.Method("TweenSequence", "TweenSequence &SetLink(GameObject@+ owner)", asFUNCTION(SetLinkOf<TweenSequence>), asCALL_CDECL_OBJLAST);
             r.Method("TweenSequence", "TweenSequence &SetUpdateType(TweenUpdate type)",
                 asMETHODPR(TweenSequence, SetUpdateType, (TweenUpdate), TweenSequence&), asCALL_THISCALL);
-            r.Method("TweenSequence", "TweenSequence &SetId(const string &in id)", asFUNCTION(SequenceSetId), asCALL_CDECL_OBJLAST);
+            r.Method("TweenSequence", "TweenSequence &SetId(const string &in id)", asFUNCTION(SetIdOf<TweenSequence>), asCALL_CDECL_OBJLAST);
             r.Method("TweenSequence", "TweenSequence &OnComplete(TweenCallback@ callback)",
                 asFUNCTION(SequenceOnComplete), asCALL_CDECL_OBJLAST);
             r.Method("TweenSequence", "void Kill(bool complete = false)", asMETHOD(TweenSequence, Kill), asCALL_THISCALL);
@@ -246,9 +227,12 @@ namespace CoreEngine::Script
             r.Function("TweenHandle To(const Vector4 &in from, const Vector4 &in to, float duration, TweenVector4Setter@ setter)",
                 asFUNCTION(ToVector4));
             r.Function("TweenHandle Delay(float seconds, TweenCallback@ action)", asFUNCTION(DelayCall));
-            r.Function("TweenHandle MoveTo(GameObject@+ object, const Vector3 &in to, float duration)", asFUNCTION(MoveToObject));
-            r.Function("TweenHandle ScaleTo(GameObject@+ object, const Vector3 &in to, float duration)", asFUNCTION(ScaleToObject));
-            r.Function("TweenHandle RotateTo(GameObject@+ object, const Vector3 &in to, float duration)", asFUNCTION(RotateToObject));
+            r.Function("TweenHandle MoveTo(GameObject@+ object, const Vector3 &in to, float duration)",
+                asFUNCTION(TransformToObject<Tween::MoveTo>));
+            r.Function("TweenHandle ScaleTo(GameObject@+ object, const Vector3 &in to, float duration)",
+                asFUNCTION(TransformToObject<Tween::ScaleTo>));
+            r.Function("TweenHandle RotateTo(GameObject@+ object, const Vector3 &in to, float duration)",
+                asFUNCTION(TransformToObject<Tween::RotateTo>));
             r.Function("int KillById(const string &in id, bool complete = false)", asFUNCTION(KillById));
             r.Function("int KillByLink(GameObject@+ owner, bool complete = false)", asFUNCTION(KillByLink));
             r.Function("TweenSequence Sequence()", asFUNCTION(MakeSequence));

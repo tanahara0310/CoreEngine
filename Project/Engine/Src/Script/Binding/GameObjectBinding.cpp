@@ -193,18 +193,6 @@ namespace CoreEngine::Script
         return handle;
     }
 
-    void ScriptGameObject::AddRef() const
-    {
-        ++refCount_;
-    }
-
-    void ScriptGameObject::Release() const
-    {
-        if (--refCount_ == 0) {
-            delete this;
-        }
-    }
-
     GameObject* ScriptGameObject::Resolve() const
     {
         if (component_) {
@@ -429,8 +417,7 @@ namespace CoreEngine::Script
         r.ReferenceType("GameObject", asOBJ_REF);
         r.ReferenceType("Transform", asOBJ_REF);
 
-        r.Behaviour("GameObject", asBEHAVE_ADDREF, "void f()", asMETHOD(ScriptGameObject, AddRef), asCALL_THISCALL);
-        r.Behaviour("GameObject", asBEHAVE_RELEASE, "void f()", asMETHOD(ScriptGameObject, Release), asCALL_THISCALL);
+        r.RefCountBehaviours<ScriptGameObject>("GameObject");
         r.Method("GameObject", "string get_name() const property", asMETHOD(ScriptGameObject, GetName), asCALL_THISCALL);
         r.Method("GameObject", "void set_name(const string &in) property", asMETHOD(ScriptGameObject, SetName), asCALL_THISCALL);
         r.Method("GameObject", "bool get_active() const property", asMETHOD(ScriptGameObject, IsActive), asCALL_THISCALL);
@@ -448,8 +435,7 @@ namespace CoreEngine::Script
         r.Method("GameObject", "GameObject@ InstantiatePrefab(const string &in prefabPath, const string &in name) const",
             asMETHOD(ScriptGameObject, InstantiatePrefab), asCALL_THISCALL);
 
-        r.Behaviour("Transform", asBEHAVE_ADDREF, "void f()", asMETHOD(ScriptTransform, AddRef), asCALL_THISCALL);
-        r.Behaviour("Transform", asBEHAVE_RELEASE, "void f()", asMETHOD(ScriptTransform, Release), asCALL_THISCALL);
+        r.RefCountBehaviours<ScriptTransform>("Transform");
         r.Method("Transform", "bool get_exists() const property", asMETHOD(ScriptTransform, Exists), asCALL_THISCALL);
         r.Method("Transform", "Vector3 get_position() const property", asMETHOD(ScriptTransform, GetPosition), asCALL_THISCALL);
         r.Method("Transform", "void set_position(const Vector3 &in) property", asMETHOD(ScriptTransform, SetPosition), asCALL_THISCALL);

@@ -12,6 +12,7 @@
 #include "Reflection/TypeDescriptor.h"
 #include "Script/Binding/BindingRegistrar.h"
 #include "Script/Binding/GameObjectBinding.h"
+#include "Script/Binding/ScriptRefCounted.h"
 #include "Utility/Logger/Logger.h"
 
 #include <angelscript.h>
@@ -51,25 +52,13 @@ namespace CoreEngine::Script
 
         /// @brief スクリプトへ渡すエンジンのコンポーネントのハンドル（どの型も同じ C++ のクラス）
         /// @details GameObject のハンドルの参照を 1 つ持ち、使うたびに記述子が同じコンポーネントを引き直す。
-        class ScriptEngineComponent
+        class ScriptEngineComponent : public ScriptRefCounted<ScriptEngineComponent>
         {
         public:
             ScriptEngineComponent(ScriptGameObject& owner, const EngineComponentType& type)
                 : owner_(owner), type_(type)
             {
                 owner_.AddRef();
-            }
-
-            ScriptEngineComponent(const ScriptEngineComponent&) = delete;
-            ScriptEngineComponent& operator=(const ScriptEngineComponent&) = delete;
-
-            void AddRef() const { ++refCount_; }
-
-            void Release() const
-            {
-                if (--refCount_ == 0) {
-                    delete this;
-                }
             }
 
             /// @brief 持ち主の GameObject があり、このコンポーネントが付いているか
@@ -123,11 +112,11 @@ namespace CoreEngine::Script
             }
 
         private:
+            friend class ScriptRefCounted<ScriptEngineComponent>;
             ~ScriptEngineComponent() { owner_.Release(); }
 
             ScriptGameObject& owner_;
             const EngineComponentType& type_;
-            mutable int refCount_ = 1;
             mutable bool warned_ = false;
         };
 
@@ -343,8 +332,7 @@ namespace CoreEngine::Script
         {
             const char* const name = type.name.c_str();
             r.ReferenceType(name, asOBJ_REF);
-            r.Behaviour(name, asBEHAVE_ADDREF, "void f()", asMETHOD(ScriptEngineComponent, AddRef), asCALL_THISCALL);
-            r.Behaviour(name, asBEHAVE_RELEASE, "void f()", asMETHOD(ScriptEngineComponent, Release), asCALL_THISCALL);
+            r.RefCountBehaviours<ScriptEngineComponent>(name);
             r.Method(name, "bool get_exists() const property", asMETHOD(ScriptEngineComponent, Exists), asCALL_THISCALL);
             r.Method(name, "bool get_enabled() const property", asMETHOD(ScriptEngineComponent, IsEnabled), asCALL_THISCALL);
             r.Method(name, "void set_enabled(bool) property", asMETHOD(ScriptEngineComponent, SetEnabled), asCALL_THISCALL);

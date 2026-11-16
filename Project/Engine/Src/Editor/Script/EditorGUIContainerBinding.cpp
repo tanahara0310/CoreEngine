@@ -45,6 +45,20 @@ namespace CoreEngine::Editor::ScriptBinding
             return scope->open;
         }
 
+        /// @brief 入れ子の範囲を開き、End〜 と組にするために控える（OnGUI の外なら開かずに false）
+        /// @param function 例外の文に入れる関数の名前
+        /// @param begin ImGui の Begin〜 を呼び、開いたかを返す関数
+        template <typename Begin>
+        bool BeginScope(const char* function, GUIScopeKind kind, Begin&& begin)
+        {
+            if (!RequireGUI(function)) {
+                return false;
+            }
+            const bool open = begin();
+            PushGUIScope(kind, open);
+            return open;
+        }
+
         // ---------------------------------------------------------------- まとまりと子の枠
 
         void BeginGroup()
@@ -80,23 +94,20 @@ namespace CoreEngine::Editor::ScriptBinding
 
         bool BeginTreeNode(const std::string& label, bool defaultOpen, bool selected, bool leaf)
         {
-            if (!RequireGUI("BeginTreeNode")) {
-                return false;
-            }
-            ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick
-                | ImGuiTreeNodeFlags_SpanAvailWidth;
-            if (defaultOpen) {
-                flags |= ImGuiTreeNodeFlags_DefaultOpen;
-            }
-            if (selected) {
-                flags |= ImGuiTreeNodeFlags_Selected;
-            }
-            if (leaf) {
-                flags |= ImGuiTreeNodeFlags_Leaf;
-            }
-            const bool open = ImGui::TreeNodeEx(label.c_str(), flags);
-            PushGUIScope(GUIScopeKind::TreeNode, open);
-            return open;
+            return BeginScope("BeginTreeNode", GUIScopeKind::TreeNode, [&] {
+                ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick
+                    | ImGuiTreeNodeFlags_SpanAvailWidth;
+                if (defaultOpen) {
+                    flags |= ImGuiTreeNodeFlags_DefaultOpen;
+                }
+                if (selected) {
+                    flags |= ImGuiTreeNodeFlags_Selected;
+                }
+                if (leaf) {
+                    flags |= ImGuiTreeNodeFlags_Leaf;
+                }
+                return ImGui::TreeNodeEx(label.c_str(), flags);
+                });
         }
 
         void EndTreeNode()
@@ -108,12 +119,7 @@ namespace CoreEngine::Editor::ScriptBinding
 
         bool BeginTabBar(const std::string& id)
         {
-            if (!RequireGUI("BeginTabBar")) {
-                return false;
-            }
-            const bool open = ImGui::BeginTabBar(id.c_str());
-            PushGUIScope(GUIScopeKind::TabBar, open);
-            return open;
+            return BeginScope("BeginTabBar", GUIScopeKind::TabBar, [&id] { return ImGui::BeginTabBar(id.c_str()); });
         }
 
         void EndTabBar()
@@ -123,12 +129,7 @@ namespace CoreEngine::Editor::ScriptBinding
 
         bool BeginTabItem(const std::string& label)
         {
-            if (!RequireGUI("BeginTabItem")) {
-                return false;
-            }
-            const bool open = ImGui::BeginTabItem(label.c_str());
-            PushGUIScope(GUIScopeKind::TabItem, open);
-            return open;
+            return BeginScope("BeginTabItem", GUIScopeKind::TabItem, [&label] { return ImGui::BeginTabItem(label.c_str()); });
         }
 
         void EndTabItem()
@@ -280,23 +281,15 @@ namespace CoreEngine::Editor::ScriptBinding
 
         bool BeginPopup(const std::string& id)
         {
-            if (!RequireGUI("BeginPopup")) {
-                return false;
-            }
-            const bool open = ImGui::BeginPopup(id.c_str());
-            PushGUIScope(GUIScopeKind::Popup, open);
-            return open;
+            return BeginScope("BeginPopup", GUIScopeKind::Popup, [&id] { return ImGui::BeginPopup(id.c_str()); });
         }
 
         bool BeginPopupModal(const std::string& title)
         {
-            if (!RequireGUI("BeginPopupModal")) {
-                return false;
-            }
-            ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-            const bool open = ImGui::BeginPopupModal(title.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize);
-            PushGUIScope(GUIScopeKind::Popup, open);
-            return open;
+            return BeginScope("BeginPopupModal", GUIScopeKind::Popup, [&title] {
+                ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+                return ImGui::BeginPopupModal(title.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+                });
         }
 
         bool BeginPopupContextItem(const std::string& id)
@@ -315,13 +308,10 @@ namespace CoreEngine::Editor::ScriptBinding
 
         bool BeginPopupContextWindow(const std::string& id)
         {
-            if (!RequireGUI("BeginPopupContextWindow")) {
-                return false;
-            }
-            const bool open = ImGui::BeginPopupContextWindow(id.empty() ? nullptr : id.c_str(),
-                ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems);
-            PushGUIScope(GUIScopeKind::Popup, open);
-            return open;
+            return BeginScope("BeginPopupContextWindow", GUIScopeKind::Popup, [&id] {
+                return ImGui::BeginPopupContextWindow(id.empty() ? nullptr : id.c_str(),
+                    ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems);
+                });
         }
 
         void EndPopup()
@@ -344,12 +334,9 @@ namespace CoreEngine::Editor::ScriptBinding
 
         bool BeginMenu(const std::string& label, bool enabled)
         {
-            if (!RequireGUI("BeginMenu")) {
-                return false;
-            }
-            const bool open = ImGui::BeginMenu(label.c_str(), enabled && FrameState().enabled);
-            PushGUIScope(GUIScopeKind::Menu, open);
-            return open;
+            return BeginScope("BeginMenu", GUIScopeKind::Menu, [&label, enabled] {
+                return ImGui::BeginMenu(label.c_str(), enabled && FrameState().enabled);
+                });
         }
 
         void EndMenu()

@@ -69,6 +69,21 @@ namespace CoreEngine::Editor::ScriptBinding
             return changed;
         }
 
+        /// @brief 左の列にラベルを置いた欄を 1 つ描き、描いた後の値を返す（OnGUI の外では value をそのまま返す）
+        /// @param function 例外の文に入れる関数の名前
+        /// @param draw 欄の ID と値を受け取って欄を描き、値が変わったかを返す関数
+        template <typename T, typename Draw>
+        T LabeledField(const char* function, const std::string& label, T value, Draw&& draw)
+        {
+            WidgetScope widget(function);
+            if (!widget) {
+                return value;
+            }
+            BeginRow(label);
+            MarkChanged(draw(FieldId(label).c_str(), value));
+            return value;
+        }
+
         /// @brief sRGB の色を ImGui の描画先（リニア）の色にする
         ImVec4 ToLinear(const Vector4& color)
         {
@@ -236,13 +251,7 @@ namespace CoreEngine::Editor::ScriptBinding
 
         bool Toggle(const std::string& label, bool value)
         {
-            WidgetScope widget("Toggle");
-            if (!widget) {
-                return value;
-            }
-            BeginRow(label);
-            MarkChanged(ImGui::Checkbox(FieldId(label).c_str(), &value));
-            return value;
+            return LabeledField("Toggle", label, value, [](const char* id, bool& checked) { return ImGui::Checkbox(id, &checked); });
         }
 
         bool RadioButton(const std::string& label, bool active)
@@ -333,120 +342,87 @@ namespace CoreEngine::Editor::ScriptBinding
 
         int IntField(const std::string& label, int value)
         {
-            WidgetScope widget("IntField");
-            if (!widget) {
-                return value;
-            }
-            BeginRow(label);
-            MarkChanged(ImGui::DragInt(FieldId(label).c_str(), &value, 0.1f));
-            return value;
+            return LabeledField("IntField", label, value, [](const char* id, int& number) { return ImGui::DragInt(id, &number, 0.1f); });
         }
 
         float FloatField(const std::string& label, float value)
         {
-            WidgetScope widget("FloatField");
-            if (!widget) {
-                return value;
-            }
-            BeginRow(label);
-            MarkChanged(ImGui::DragFloat(FieldId(label).c_str(), &value, 0.01f, 0.0f, 0.0f, "%.3f"));
-            return value;
+            return LabeledField("FloatField", label, value, [](const char* id, float& number) {
+                return ImGui::DragFloat(id, &number, 0.01f, 0.0f, 0.0f, "%.3f");
+                });
         }
 
         std::string TextField(const std::string& label, const std::string& value)
         {
-            WidgetScope widget("TextField");
-            if (!widget) {
-                return value;
-            }
-            BeginRow(label);
-            std::string text = value;
-            MarkChanged(ImGui::InputText(FieldId(label).c_str(), text.data(), text.capacity() + 1,
-                ImGuiInputTextFlags_CallbackResize, &ResizeStringCallback, &text));
-            return text;
+            return LabeledField("TextField", label, value, [](const char* id, std::string& text) {
+                return ImGui::InputText(id, text.data(), text.capacity() + 1,
+                    ImGuiInputTextFlags_CallbackResize, &ResizeStringCallback, &text);
+                });
         }
 
         std::string TextArea(const std::string& label, const std::string& value, float height)
         {
-            WidgetScope widget("TextArea");
-            if (!widget) {
-                return value;
-            }
-            BeginRow(label);
-            const float areaHeight = height > 0.0f ? height : ImGui::GetTextLineHeight() * 5.0f + ImGui::GetStyle().FramePadding.y * 2.0f;
-            std::string text = value;
-            MarkChanged(ImGui::InputTextMultiline(FieldId(label).c_str(), text.data(), text.capacity() + 1,
-                ImVec2(-FLT_MIN, areaHeight), ImGuiInputTextFlags_CallbackResize, &ResizeStringCallback, &text));
-            return text;
+            return LabeledField("TextArea", label, value, [height](const char* id, std::string& text) {
+                const float areaHeight = height > 0.0f ? height
+                    : ImGui::GetTextLineHeight() * 5.0f + ImGui::GetStyle().FramePadding.y * 2.0f;
+                return ImGui::InputTextMultiline(id, text.data(), text.capacity() + 1,
+                    ImVec2(-FLT_MIN, areaHeight), ImGuiInputTextFlags_CallbackResize, &ResizeStringCallback, &text);
+                });
         }
 
         int IntSlider(const std::string& label, int value, int min, int max)
         {
-            WidgetScope widget("IntSlider");
-            if (!widget) {
-                return value;
-            }
-            BeginRow(label);
-            MarkChanged(ImGui::SliderInt(FieldId(label).c_str(), &value, min, max));
-            return value;
+            return LabeledField("IntSlider", label, value, [min, max](const char* id, int& number) {
+                return ImGui::SliderInt(id, &number, min, max);
+                });
         }
 
         float Slider(const std::string& label, float value, float min, float max)
         {
-            WidgetScope widget("Slider");
-            if (!widget) {
-                return value;
-            }
-            BeginRow(label);
-            MarkChanged(ImGui::SliderFloat(FieldId(label).c_str(), &value, min, max, "%.3f"));
-            return value;
+            return LabeledField("Slider", label, value, [min, max](const char* id, float& number) {
+                return ImGui::SliderFloat(id, &number, min, max, "%.3f");
+                });
         }
 
         Vector2 Vector2Field(const std::string& label, const Vector2& value)
         {
-            WidgetScope widget("Vector2Field");
-            if (!widget) {
-                return value;
-            }
-            BeginRow(label);
-            float components[2] = { value.x, value.y };
-            MarkChanged(ImGui::DragFloat2(FieldId(label).c_str(), components, 0.05f, 0.0f, 0.0f, "%.3f"));
-            return Vector2{ components[0], components[1] };
+            return LabeledField("Vector2Field", label, value, [](const char* id, Vector2& vector) {
+                float components[2] = { vector.x, vector.y };
+                const bool changed = ImGui::DragFloat2(id, components, 0.05f, 0.0f, 0.0f, "%.3f");
+                vector = Vector2{ components[0], components[1] };
+                return changed;
+                });
         }
 
         Vector3 Vector3Field(const std::string& label, const Vector3& value)
         {
-            WidgetScope widget("Vector3Field");
-            if (!widget) {
-                return value;
-            }
-            BeginRow(label);
-            float components[3] = { value.x, value.y, value.z };
-            MarkChanged(ImGui::DragFloat3(FieldId(label).c_str(), components, 0.05f, 0.0f, 0.0f, "%.3f"));
-            return Vector3{ components[0], components[1], components[2] };
+            return LabeledField("Vector3Field", label, value, [](const char* id, Vector3& vector) {
+                float components[3] = { vector.x, vector.y, vector.z };
+                const bool changed = ImGui::DragFloat3(id, components, 0.05f, 0.0f, 0.0f, "%.3f");
+                vector = Vector3{ components[0], components[1], components[2] };
+                return changed;
+                });
         }
 
         Vector4 ColorField(const std::string& label, const Vector4& value)
         {
-            WidgetScope widget("ColorField");
-            if (!widget) {
-                return value;
-            }
-            BeginRow(label);
-
-            constexpr const char* kPickerId = "##colorPicker";
-            float rgba[4] = { value.x, value.y, value.z, value.w };
-            const ImVec2 size((std::max)(1.0f, ImGui::CalcItemWidth()), ImGui::GetFrameHeight());
-            ImGui::PushID(FieldId(label).c_str());
-            if (ImGui::ColorButton("##swatch", ToLinear(value), ImGuiColorEditFlags_AlphaPreviewHalf, size)) {
-                ImGui::OpenPopup(kPickerId);
-            }
-            if (ImGui::BeginPopup(kPickerId)) {
-                MarkChanged(ImGui::ColorPicker4("##picker", rgba, ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreviewHalf));
-                ImGui::EndPopup();
-            }
-            ImGui::PopID();
-            return Vector4{ rgba[0], rgba[1], rgba[2], rgba[3] };
+            return LabeledField("ColorField", label, value, [](const char* id, Vector4& color) {
+                constexpr const char* kPickerId = "##colorPicker";
+                float rgba[4] = { color.x, color.y, color.z, color.w };
+                const ImVec2 size((std::max)(1.0f, ImGui::CalcItemWidth()), ImGui::GetFrameHeight());
+                bool changed = false;
+                ImGui::PushID(id);
+                if (ImGui::ColorButton("##swatch", ToLinear(color), ImGuiColorEditFlags_AlphaPreviewHalf, size)) {
+                    ImGui::OpenPopup(kPickerId);
+                }
+                if (ImGui::BeginPopup(kPickerId)) {
+                    changed = ImGui::ColorPicker4("##picker", rgba, ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreviewHalf);
+                    ImGui::EndPopup();
+                }
+                ImGui::PopID();
+                color = Vector4{ rgba[0], rgba[1], rgba[2], rgba[3] };
+                return changed;
+                });
         }
 
         // ---------------------------------------------------------------- 状態

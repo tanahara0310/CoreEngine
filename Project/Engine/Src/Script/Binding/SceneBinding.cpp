@@ -7,13 +7,13 @@
 #include "Math/Vector/Vector3.h"
 #include "Scene/SceneManager.h"
 #include "Script/Binding/BindingRegistrar.h"
+#include "Script/Binding/ScriptRefCounted.h"
 #include "Utility/Logger/Logger.h"
 #include "WinApp/WinApp.h"
 
 #include <angelscript.h>
 #include <algorithm>
 #include <cmath>
-#include <new>
 #include <string>
 
 namespace CoreEngine::Script
@@ -55,21 +55,6 @@ namespace CoreEngine::Script
             bool hideUI = false;
             bool duckBgm = true;
         };
-
-        void ConstructTransition(ScriptSceneTransition* self)
-        {
-            new (self) ScriptSceneTransition();
-        }
-
-        void CopyConstructTransition(const ScriptSceneTransition& other, ScriptSceneTransition* self)
-        {
-            new (self) ScriptSceneTransition(other);
-        }
-
-        void DestructTransition(ScriptSceneTransition* self)
-        {
-            self->~ScriptSceneTransition();
-        }
 
         /// @brief 引数なしの ChangeScene が使う遷移（Project.json の defaultTransition）
         ScriptSceneTransition GetDefaultTransition()
@@ -120,10 +105,10 @@ namespace CoreEngine::Script
             r.EnumValue("TransitionType", "Effect", static_cast<int>(SceneTransition::TransitionType::Effect));
 
             r.ValueType("SceneTransition", sizeof(Transition), asOBJ_VALUE | asGetTypeTraits<Transition>());
-            r.Behaviour("SceneTransition", asBEHAVE_CONSTRUCT, "void f()", asFUNCTION(ConstructTransition), asCALL_CDECL_OBJLAST);
+            r.Behaviour("SceneTransition", asBEHAVE_CONSTRUCT, "void f()", asFUNCTION(ConstructDefault<Transition>), asCALL_CDECL_OBJLAST);
             r.Behaviour("SceneTransition", asBEHAVE_CONSTRUCT, "void f(const SceneTransition &in)",
-                asFUNCTION(CopyConstructTransition), asCALL_CDECL_OBJLAST);
-            r.Behaviour("SceneTransition", asBEHAVE_DESTRUCT, "void f()", asFUNCTION(DestructTransition), asCALL_CDECL_OBJLAST);
+                asFUNCTION(ConstructCopy<Transition>), asCALL_CDECL_OBJLAST);
+            r.Behaviour("SceneTransition", asBEHAVE_DESTRUCT, "void f()", asFUNCTION(DestructValue<Transition>), asCALL_CDECL_OBJLAST);
             r.Method("SceneTransition", "SceneTransition &opAssign(const SceneTransition &in)",
                 asMETHODPR(Transition, operator=, (const Transition&), Transition&), asCALL_THISCALL);
             r.Property("SceneTransition", "TransitionType type", asOFFSET(Transition, type));
@@ -149,22 +134,10 @@ namespace CoreEngine::Script
         }
 
         /// @brief ゲーム視点のカメラの口（使うたびに今のシーンのゲーム視点のカメラを引き直す）
-        class ScriptGameCamera
+        class ScriptGameCamera : public ScriptRefCounted<ScriptGameCamera>
         {
         public:
             ScriptGameCamera() = default;
-
-            ScriptGameCamera(const ScriptGameCamera&) = delete;
-            ScriptGameCamera& operator=(const ScriptGameCamera&) = delete;
-
-            void AddRef() const { ++refCount_; }
-
-            void Release() const
-            {
-                if (--refCount_ == 0) {
-                    delete this;
-                }
-            }
 
             /// @brief 今のシーンにゲーム視点のカメラがあるか
             bool Exists() const { return Find() != nullptr; }
@@ -299,6 +272,7 @@ namespace CoreEngine::Script
             }
 
         private:
+            friend class ScriptRefCounted<ScriptGameCamera>;
             ~ScriptGameCamera() = default;
 
             /// @brief 画面座標（x・y はピクセル、z はカメラの前方への距離）をワールド座標へ写す
@@ -335,7 +309,6 @@ namespace CoreEngine::Script
                 return camera;
             }
 
-            mutable int refCount_ = 1;
             mutable bool warned_ = false;
         };
 
@@ -366,8 +339,7 @@ namespace CoreEngine::Script
 
         BindingRegistrar r(engine);
         r.ReferenceType("GameCamera", asOBJ_REF);
-        r.Behaviour("GameCamera", asBEHAVE_ADDREF, "void f()", asMETHOD(ScriptGameCamera, AddRef), asCALL_THISCALL);
-        r.Behaviour("GameCamera", asBEHAVE_RELEASE, "void f()", asMETHOD(ScriptGameCamera, Release), asCALL_THISCALL);
+        r.RefCountBehaviours<ScriptGameCamera>("GameCamera");
         r.Method("GameCamera", "bool get_exists() const property", asMETHOD(ScriptGameCamera, Exists), asCALL_THISCALL);
         r.Method("GameCamera", "Vector3 get_position() const property", asMETHOD(ScriptGameCamera, GetPosition), asCALL_THISCALL);
         r.Method("GameCamera", "void set_position(const Vector3 &in) property", asMETHOD(ScriptGameCamera, SetPosition), asCALL_THISCALL);

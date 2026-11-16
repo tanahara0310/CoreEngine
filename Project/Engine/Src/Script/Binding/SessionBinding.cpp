@@ -2,6 +2,7 @@
 #include "Script/Binding/SessionBinding.h"
 
 #include "Script/Binding/BindingRegistrar.h"
+#include "Script/Binding/ScriptRefCounted.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Session/SessionValues.h"
@@ -15,6 +16,7 @@
 
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 
 namespace CoreEngine::Script
@@ -118,9 +120,25 @@ namespace CoreEngine::Script
             return true;
         }
 
+        /// @brief JSON の値を T として読めるか（int は整数、float は数、bool は真偽、std::string は文字列）
+        template <class T>
+        bool IsJsonOf(const json& value)
+        {
+            if constexpr (std::is_same_v<T, int>) {
+                return value.is_number_integer();
+            } else if constexpr (std::is_same_v<T, float>) {
+                return value.is_number();
+            } else if constexpr (std::is_same_v<T, bool>) {
+                return value.is_boolean();
+            } else {
+                static_assert(std::is_same_v<T, std::string>);
+                return value.is_string();
+            }
+        }
+
         /// @brief JSON ファイル 1 つ（読み込んだ中身を持ち、Save で書き出す）
         /// @details SaveFile（`Application/Saved` の下・遊んだ記録）と DataFile（`Application/Assets` の下・ゲームのデータ）が使う。
-        class ScriptJsonFile
+        class ScriptJsonFile : public ScriptRefCounted<ScriptJsonFile>
         {
         public:
             /// @param root 置き場（プロジェクトの根からの相対。末尾は /）
@@ -140,18 +158,6 @@ namespace CoreEngine::Script
                 }
             }
 
-            ScriptJsonFile(const ScriptJsonFile&) = delete;
-            ScriptJsonFile& operator=(const ScriptJsonFile&) = delete;
-
-            void AddRef() const { ++refCount_; }
-
-            void Release() const
-            {
-                if (--refCount_ == 0) {
-                    delete this;
-                }
-            }
-
             const std::string& GetPath() const { return relativePath_; }
 
             /// @brief 作ったときにファイルがあったか
@@ -159,86 +165,14 @@ namespace CoreEngine::Script
 
             bool Has(const std::string& key) const { return data_.contains(key); }
 
-            int GetInt(const std::string& key, int fallback) const
-            {
-                const auto it = data_.find(key);
-                return (it != data_.end() && it->is_number_integer()) ? it->get<int>() : fallback;
-            }
+            int GetInt(const std::string& key, int fallback) const { return Get(key, fallback); }
+            float GetFloat(const std::string& key, float fallback) const { return Get(key, fallback); }
+            bool GetBool(const std::string& key, bool fallback) const { return Get(key, fallback); }
+            std::string GetString(const std::string& key, const std::string& fallback) const { return Get(key, fallback); }
 
-            float GetFloat(const std::string& key, float fallback) const
-            {
-                const auto it = data_.find(key);
-                return (it != data_.end() && it->is_number()) ? it->get<float>() : fallback;
-            }
-
-            bool GetBool(const std::string& key, bool fallback) const
-            {
-                const auto it = data_.find(key);
-                return (it != data_.end() && it->is_boolean()) ? it->get<bool>() : fallback;
-            }
-
-            std::string GetString(const std::string& key, const std::string& fallback) const
-            {
-                const auto it = data_.find(key);
-                return (it != data_.end() && it->is_string()) ? it->get<std::string>() : fallback;
-            }
-
-            /// @brief 整数の配列（無いか配列でなければ空の配列。整数でない要素は飛ばす）
-            CScriptArray* GetIntArray(const std::string& key) const
-            {
-                CScriptArray* const result = CreateArray("array<int>");
-                const auto it = data_.find(key);
-                if (!result || it == data_.end() || !it->is_array()) {
-                    return result;
-                }
-                // 要素の数だけ先に取ってから足す
-                result->Reserve(static_cast<asUINT>(it->size()));
-                for (const json& element : *it) {
-                    if (element.is_number_integer()) {
-                        int value = element.get<int>();
-                        result->InsertLast(&value);
-                    }
-                }
-                return result;
-            }
-
-            /// @brief 小数の配列（無いか配列でなければ空の配列。数でない要素は飛ばす）
-            CScriptArray* GetFloatArray(const std::string& key) const
-            {
-                CScriptArray* const result = CreateArray("array<float>");
-                const auto it = data_.find(key);
-                if (!result || it == data_.end() || !it->is_array()) {
-                    return result;
-                }
-                // 要素の数だけ先に取ってから足す
-                result->Reserve(static_cast<asUINT>(it->size()));
-                for (const json& element : *it) {
-                    if (element.is_number()) {
-                        float value = element.get<float>();
-                        result->InsertLast(&value);
-                    }
-                }
-                return result;
-            }
-
-            /// @brief 文字列の配列（無いか配列でなければ空の配列。文字列でない要素は飛ばす）
-            CScriptArray* GetStringArray(const std::string& key) const
-            {
-                CScriptArray* const result = CreateArray("array<string>");
-                const auto it = data_.find(key);
-                if (!result || it == data_.end() || !it->is_array()) {
-                    return result;
-                }
-                // 要素の数だけ先に取ってから足す
-                result->Reserve(static_cast<asUINT>(it->size()));
-                for (const json& element : *it) {
-                    if (element.is_string()) {
-                        std::string value = element.get<std::string>();
-                        result->InsertLast(&value);
-                    }
-                }
-                return result;
-            }
+            CScriptArray* GetIntArray(const std::string& key) const { return GetArray<int>(key, "array<int>"); }
+            CScriptArray* GetFloatArray(const std::string& key) const { return GetArray<float>(key, "array<float>"); }
+            CScriptArray* GetStringArray(const std::string& key) const { return GetArray<std::string>(key, "array<string>"); }
 
             /// @brief 入っているキーの一覧
             CScriptArray* GetKeys() const
@@ -259,32 +193,9 @@ namespace CoreEngine::Script
             void SetBool(const std::string& key, bool value) { data_[key] = value; }
             void SetString(const std::string& key, const std::string& value) { data_[key] = value; }
 
-            void SetIntArray(const std::string& key, const CScriptArray& values)
-            {
-                json elements = json::array();
-                for (asUINT i = 0; i < values.GetSize(); ++i) {
-                    elements.push_back(*static_cast<const int*>(values.At(i)));
-                }
-                data_[key] = std::move(elements);
-            }
-
-            void SetFloatArray(const std::string& key, const CScriptArray& values)
-            {
-                json elements = json::array();
-                for (asUINT i = 0; i < values.GetSize(); ++i) {
-                    elements.push_back(*static_cast<const float*>(values.At(i)));
-                }
-                data_[key] = std::move(elements);
-            }
-
-            void SetStringArray(const std::string& key, const CScriptArray& values)
-            {
-                json elements = json::array();
-                for (asUINT i = 0; i < values.GetSize(); ++i) {
-                    elements.push_back(*static_cast<const std::string*>(values.At(i)));
-                }
-                data_[key] = std::move(elements);
-            }
+            void SetIntArray(const std::string& key, const CScriptArray& values) { SetArray<int>(key, values); }
+            void SetFloatArray(const std::string& key, const CScriptArray& values) { SetArray<float>(key, values); }
+            void SetStringArray(const std::string& key, const CScriptArray& values) { SetArray<std::string>(key, values); }
 
             void Remove(const std::string& key) { data_.erase(key); }
 
@@ -308,16 +219,56 @@ namespace CoreEngine::Script
             }
 
         private:
+            friend class ScriptRefCounted<ScriptJsonFile>;
             ~ScriptJsonFile() = default;
 
             std::string FullPath() const { return root_ + relativePath_; }
+
+            /// @brief キーの値（無いか T として読めなければ fallback）
+            template <class T>
+            T Get(const std::string& key, const T& fallback) const
+            {
+                const auto it = data_.find(key);
+                return (it != data_.end() && IsJsonOf<T>(*it)) ? it->get<T>() : fallback;
+            }
+
+            /// @brief 配列（無いか配列でなければ空の配列。T として読めない要素は飛ばす）
+            /// @param declaration 作る配列の型の宣言（`array<int>` など）
+            template <class T>
+            CScriptArray* GetArray(const std::string& key, const char* declaration) const
+            {
+                CScriptArray* const result = CreateArray(declaration);
+                const auto it = data_.find(key);
+                if (!result || it == data_.end() || !it->is_array()) {
+                    return result;
+                }
+                // 要素の数だけ先に取ってから足す
+                result->Reserve(static_cast<asUINT>(it->size()));
+                for (const json& element : *it) {
+                    if (IsJsonOf<T>(element)) {
+                        T value = element.get<T>();
+                        result->InsertLast(&value);
+                    }
+                }
+                return result;
+            }
+
+            /// @brief スクリプトの配列の要素を JSON の配列にしてキーへ入れる
+            template <class T>
+            void SetArray(const std::string& key, const CScriptArray& values)
+            {
+                json elements = json::array();
+                for (asUINT i = 0; i < values.GetSize(); ++i) {
+                    elements.push_back(*static_cast<const T*>(values.At(i)));
+                }
+                data_[key] = std::move(elements);
+            }
 
             std::string root_;
             std::string relativePath_;
             bool isAsset_ = false;
             bool existed_ = false;
             json data_;
-            mutable int refCount_ = 1;
         };
 
         ScriptJsonFile* CreateSaveFile(const std::string& relativePath)
@@ -369,8 +320,7 @@ namespace CoreEngine::Script
             const auto method = [&r, type](const char* declaration, const asSFuncPtr& function) {
                 r.Method(type, declaration, function, asCALL_THISCALL);
             };
-            r.Behaviour(type, asBEHAVE_ADDREF, "void f()", asMETHOD(ScriptJsonFile, AddRef), asCALL_THISCALL);
-            r.Behaviour(type, asBEHAVE_RELEASE, "void f()", asMETHOD(ScriptJsonFile, Release), asCALL_THISCALL);
+            r.RefCountBehaviours<ScriptJsonFile>(type);
             method("const string &get_path() const property", asMETHOD(ScriptJsonFile, GetPath));
             method("bool get_exists() const property", asMETHOD(ScriptJsonFile, Exists));
             method("bool Has(const string &in key) const", asMETHOD(ScriptJsonFile, Has));

@@ -2,6 +2,7 @@
 
 #include "Collision/CollisionLayer.h"
 #include "Math/Vector/Vector3.h"
+#include "Script/Binding/ScriptRefCounted.h"
 
 class asIScriptEngine;
 
@@ -17,18 +18,12 @@ namespace CoreEngine::Script
 
     /// @brief スクリプトへ渡す接触の情報
     /// @details 相手の GameObject のハンドルと、通知したときの値の写しを持つ。スクリプトが控えても値は変わらない。
-    class ScriptCollision
+    class ScriptCollision : public ScriptRefCounted<ScriptCollision>
     {
     public:
         /// @param trigger どちらかのコライダーがトリガーか
         /// @return 参照を 1 つ持ったオブジェクト
         static ScriptCollision* Create(const CollisionInfo& info, bool trigger);
-
-        ScriptCollision(const ScriptCollision&) = delete;
-        ScriptCollision& operator=(const ScriptCollision&) = delete;
-
-        void AddRef() const;
-        void Release() const;
 
         /// @brief 相手の GameObject のハンドル（参照を 1 つ足して返す。相手が無ければ nullptr）
         ScriptGameObject* GetGameObject() const;
@@ -55,6 +50,7 @@ namespace CoreEngine::Script
         bool IsTrigger() const { return trigger_; }
 
     private:
+        friend class ScriptRefCounted<ScriptCollision>;
         ScriptCollision() = default;
         ~ScriptCollision();
 
@@ -66,7 +62,6 @@ namespace CoreEngine::Script
         CollisionLayer layer_ = CollisionLayer::Default;
         CollisionLayer selfLayer_ = CollisionLayer::Default;
         bool trigger_ = false;
-        mutable int refCount_ = 1;
     };
 
     /// @brief 当たり判定の型と関数をスクリプトへ登録する
