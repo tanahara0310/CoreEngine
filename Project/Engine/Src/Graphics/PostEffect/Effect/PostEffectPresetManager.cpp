@@ -23,7 +23,8 @@ namespace
         "r.GrayScale", "r.Blur", "r.RadialBlur", "r.Shockwave", "r.Vignette",
         "r.ColorGrading", "r.ChromaticAberration", "r.Sepia", "r.Invert",
         "r.Random", "r.RasterScroll", "r.Fade", "r.Bloom", "r.LensFlare",
-        "r.Outline", "r.Dissolve", "r.AutoExposure",
+        "r.Outline", "r.Dissolve", "r.AutoExposure", "r.ToneMapping",
+        "r.LocalExposure", "r.ColorLUT", "r.DoF", "r.MotionBlur", "r.FilmGrain",
     };
 }
 
