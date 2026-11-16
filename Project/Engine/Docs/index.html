@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.89.1">
+<meta name="engine-version" content="0.89.2">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11437,6 +11437,14 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-89-2">v0.89.2 <span class="dim">（2026-11-16）</span></h3>
+  <p>ポストエフェクトのプリセットと、エディタの 2 か所の不具合を直した版です。</p>
+  <ul>
+    <li><strong>プリセットに入らない効果があった</strong>：<a href="#api-PostProcess">ポストエフェクト</a> のプリセットに、ToneMapping・LocalExposure・ColorLUT・DoF（被写界深度）・MotionBlur・FilmGrain の 6 つの値が保存されず、読み込んでも変わりませんでした。6 つとも保存と読み込みの対象に入れました。前に保存したプリセットにはこの 6 つの値が無いので、読み込んでも 6 つは今の値のままです。</li>
+    <li><strong>Render Pass の表示</strong>：<span class="ui">Window ▸ Rendering ▸ Render Pass</span> の「Lighting / 最終合成」で、ポストエフェクトの中間ターゲットがあると、サムネイルの名前が解放済みの文字列を指していました（名前が崩れて出たり、落ちたりすることがありえました）。名前の文字列を、足しても動かない入れ物に置くようにしました。</li>
+    <li><strong>Scene ビューへのドロップ</strong>：モデル・プレハブ・画像のファイルを Scene ビューへ落としたとき、受け取ったデータの長さを確かめずにファイル名として読んでいました。ほかのドロップ先と同じく、受け取った大きさの範囲で読むようにしました。</li>
+  </ul>
 
   <h3 id="changelog-v0-89-1">v0.89.1 <span class="dim">（2026-11-16）</span></h3>
   <p>空気遠近感（遠くの物ほど大気で霞む効果）が、カメラの近くの物にも 2km 先と同じ霞をかけていたのを直した版です（<a href="#api-SkyBox">空と大気散乱</a>）。</p>

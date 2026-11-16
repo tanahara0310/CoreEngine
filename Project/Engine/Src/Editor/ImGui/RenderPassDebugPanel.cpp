@@ -14,6 +14,7 @@
 
 #include <imgui.h>
 #include <imgui_internal.h>
+#include <deque>
 #include <vector>
 
 namespace CoreEngine
@@ -137,7 +138,8 @@ namespace CoreEngine
             const float thumbW = (availW - ImGui::GetStyle().ItemSpacing.x * (columns - 1)) / columns;
             const float thumbH = thumbW * (9.0f / 16.0f);
 
-            std::vector<std::string> outputLabels;
+            // BufferEntry が指すラベルの文字列は、末尾に足しても既存の要素が動かない入れ物に置く
+            std::deque<std::string> outputLabels;
             std::vector<BufferEntry> outputEntries;
             auto AppendTargetEntry = [&](const std::string& targetName, const char* label, const char* tooltip) {
                 auto* rt = renderTargetManager_->GetRenderTarget(targetName);
