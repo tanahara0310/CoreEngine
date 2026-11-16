@@ -6,6 +6,10 @@
 
 #include "Math/MathCore.h"
 
+#ifdef CORE_EDITOR
+#include "Editor/Inspector/InspectorLayout.h"
+#endif
+
 #ifdef _DEBUG
 #include "Graphics/Line/LineManager.h"
 #include "Graphics/Render/Line/LineRendererPipeline.h"
@@ -518,11 +522,7 @@ namespace CoreEngine
         static const char* shapeTypeNames[] = {
         "点", "ボックス", "球体", "円", "コーン", "半球", "リング", "ライン", "円柱", "エッジ", "半円"
         };
-        int currentShapeType = static_cast<int>(data_.shapeType);
-        if (ImGui::Combo("形状", &currentShapeType, shapeTypeNames, IM_ARRAYSIZE(shapeTypeNames))) {
-            data_.shapeType = static_cast<ShapeType>(currentShapeType);
-            changed = true;
-        }
+        changed |= InspectorLayout::EnumCombo("形状", data_.shapeType, shapeTypeNames);
         UI::SameLine();
         UI::HelpMarker("パーティクルが生成される範囲の形。\n無効にするとエミッター位置の1点から放出されます。");
 
@@ -552,11 +552,7 @@ namespace CoreEngine
             changed |= UI::DragFloat("半径", data_.radius, 0.1f, 0.1f, 20.0f);
             {
                 const char* planeNames[] = { "XZ（地面と平行）", "XY（正面向き）", "YZ（横向き）" };
-                int curPlane = static_cast<int>(data_.circlePlane);
-                if (ImGui::Combo("平面", &curPlane, planeNames, IM_ARRAYSIZE(planeNames))) {
-                    data_.circlePlane = static_cast<CirclePlane>(curPlane);
-                    changed = true;
-                }
+                changed |= InspectorLayout::EnumCombo("平面", data_.circlePlane, planeNames);
             }
             break;
 
@@ -575,11 +571,7 @@ namespace CoreEngine
             changed |= UI::DragFloat("内径", data_.innerRadius, 0.1f, 0.0f, data_.radius);
             {
                 const char* planeNames[] = { "XZ（地面と平行）", "XY（正面向き）", "YZ（横向き）" };
-                int curPlane = static_cast<int>(data_.circlePlane);
-                if (ImGui::Combo("平面", &curPlane, planeNames, IM_ARRAYSIZE(planeNames))) {
-                    data_.circlePlane = static_cast<CirclePlane>(curPlane);
-                    changed = true;
-                }
+                changed |= InspectorLayout::EnumCombo("平面", data_.circlePlane, planeNames);
             }
             break;
 

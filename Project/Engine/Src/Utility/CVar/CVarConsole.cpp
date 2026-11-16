@@ -76,19 +76,6 @@ namespace CoreEngine::CVarConsole
             return (stream >> extra) ? limit + 1 : count;
         }
 
-        const char* TypeName(CVarType type)
-        {
-            switch (type) {
-            case CVarType::Bool:    return "bool";
-            case CVarType::Int:     return "int";
-            case CVarType::Float:   return "float";
-            case CVarType::Vector2: return "Vector2";
-            case CVarType::Vector3: return "Vector3";
-            case CVarType::Color:   return "Color";
-            }
-            return "?";
-        }
-
         /// @brief 一覧の 1 行（名前 = 値）
         std::string Summarize(const ICVar& cvar)
         {
@@ -100,7 +87,7 @@ namespace CoreEngine::CVarConsole
         {
             std::vector<std::string> lines;
             lines.push_back(Summarize(cvar));
-            lines.push_back(std::string("  型: ") + TypeName(cvar.GetType()) +
+            lines.push_back(std::string("  型: ") + CVarTypeName(cvar.GetType()) +
                 "  既定: " + cvar.DefaultToString() + (cvar.IsModified() ? "（変更されています）" : ""));
             if (const CVarRange range = cvar.GetRange(); range.valid) {
                 lines.push_back("  範囲: " + std::to_string(range.min) + " 〜 " + std::to_string(range.max));
@@ -115,15 +102,6 @@ namespace CoreEngine::CVarConsole
                 lines.push_back("  " + flags);
             }
             return lines;
-        }
-
-        /// @brief 書き込みを Undo へ積んで確定させる
-        void Commit(ICVar& cvar, const void* value)
-        {
-            CVarUndoStack::Get().BeginEdit(&cvar);
-            cvar.SetFromPointer(value);
-            CVarUndoStack::Get().CommitEdit(&cvar);
-            CVarRegistry::Get().NotifyCommit();
         }
 
         std::vector<std::string> Usage()
@@ -147,7 +125,7 @@ namespace CoreEngine::CVarConsole
                 reason = "bool には true / false / on / off / 1 / 0 を渡します";
                 return false;
             }
-            Commit(cvar, &value);
+            AssignWithUndoFromPointer(cvar, &value);
             return true;
         }
         case CVarType::Int: {
@@ -156,7 +134,7 @@ namespace CoreEngine::CVarConsole
                 return false;
             }
             const int value = static_cast<int>(numbers[0]);
-            Commit(cvar, &value);
+            AssignWithUndoFromPointer(cvar, &value);
             return true;
         }
         case CVarType::Float: {
@@ -164,7 +142,7 @@ namespace CoreEngine::CVarConsole
                 reason = "float には数値を 1 つ渡します";
                 return false;
             }
-            Commit(cvar, &numbers[0]);
+            AssignWithUndoFromPointer(cvar, &numbers[0]);
             return true;
         }
         case CVarType::Vector2: {
@@ -173,7 +151,7 @@ namespace CoreEngine::CVarConsole
                 return false;
             }
             const Vector2 value{ numbers[0], numbers[1] };
-            Commit(cvar, &value);
+            AssignWithUndoFromPointer(cvar, &value);
             return true;
         }
         case CVarType::Vector3: {
@@ -182,7 +160,7 @@ namespace CoreEngine::CVarConsole
                 return false;
             }
             const Vector3 value{ numbers[0], numbers[1], numbers[2] };
-            Commit(cvar, &value);
+            AssignWithUndoFromPointer(cvar, &value);
             return true;
         }
         case CVarType::Color: {
@@ -194,7 +172,7 @@ namespace CoreEngine::CVarConsole
             const Vector4* const current = cvar.AsColor();
             const Vector4 value{ numbers[0], numbers[1], numbers[2],
                 count == 4 ? numbers[3] : (current ? current->w : 1.0f) };
-            Commit(cvar, &value);
+            AssignWithUndoFromPointer(cvar, &value);
             return true;
         }
         }

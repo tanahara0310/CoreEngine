@@ -57,6 +57,29 @@ namespace CoreEngine
 
     CE_ENUM_FLAG_OPERATORS(CVarFlags)
 
+    /// @brief 型の名前（"bool" / "int" / "float" / "Vector2" / "Vector3" / "Color"）
+    const char* CVarTypeName(CVarType type) noexcept;
+
+    /// @brief CVarType から値の型を選んで fn を呼ぶ
+    /// @param fn 値の型 T へのポインタ（nullptr）を受け取る呼び出し可能物。Color は Vector4 として渡る
+    /// @return fn の戻り値（type が範囲外なら fn を呼ばず、戻り値の型の既定値）
+    template <class Fn>
+    auto VisitCVarType(CVarType type, Fn&& fn)
+    {
+        using Result = decltype(fn(static_cast<bool*>(nullptr)));
+        switch (type) {
+        case CVarType::Bool:    return fn(static_cast<bool*>(nullptr));
+        case CVarType::Int:     return fn(static_cast<int*>(nullptr));
+        case CVarType::Float:   return fn(static_cast<float*>(nullptr));
+        case CVarType::Vector2: return fn(static_cast<Vector2*>(nullptr));
+        case CVarType::Vector3: return fn(static_cast<Vector3*>(nullptr));
+        case CVarType::Color:   return fn(static_cast<Vector4*>(nullptr));
+        }
+        return Result();
+    }
+
+    template <class T> class CVar;
+
     /// @brief CVar の型非依存インターフェース
     /// @details UI とシリアライズはこの型だけを見て動くので、対応型を増やしても呼び出し側は変わらない。
     class ICVar
@@ -116,6 +139,12 @@ namespace CoreEngine
         const Vector3* AsVector3() const noexcept { return type_ == CVarType::Vector3 ? static_cast<const Vector3*>(storage_) : nullptr; }
         const Vector4* AsColor()   const noexcept { return type_ == CVarType::Color   ? static_cast<const Vector4*>(storage_) : nullptr; }
 
+        /// @brief 型を確かめて CVar<T> として返す
+        /// @tparam T bool / int / float / Vector2 / Vector3 / Vector4（色）のいずれか
+        /// @return 型が一致しなければ nullptr
+        template <class T> CVar<T>* As() noexcept;
+        template <class T> const CVar<T>* As() const noexcept;
+
     protected:
         ICVar(const char* name, const char* description, CVarType type,
               void* storage, const void* defaultStorage, CVarRange range, CVarFlags flags);
@@ -157,6 +186,10 @@ namespace CoreEngine
         bool CVarValueEquals(const Vector3& a, const Vector3& b) noexcept;
         bool CVarValueEquals(const Vector4& a, const Vector4& b) noexcept;
     }
+
+    /// @brief C++ の型から CVarType を引く（Vector4 は Color）
+    template <class T>
+    inline constexpr CVarType kCVarTypeOf = detail::CVarTypeTraits<T>::kType;
 
     /// @brief 型付きコンソール変数
     /// @tparam T bool / int / float / Vector3 / Vector4（色）のいずれか
@@ -215,4 +248,16 @@ namespace CoreEngine
         T value_;
         T default_;
     };
+
+    template <class T>
+    CVar<T>* ICVar::As() noexcept
+    {
+        return type_ == detail::CVarTypeTraits<T>::kType ? static_cast<CVar<T>*>(this) : nullptr;
+    }
+
+    template <class T>
+    const CVar<T>* ICVar::As() const noexcept
+    {
+        return type_ == detail::CVarTypeTraits<T>::kType ? static_cast<const CVar<T>*>(this) : nullptr;
+    }
 }

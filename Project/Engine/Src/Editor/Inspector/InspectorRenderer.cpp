@@ -7,6 +7,7 @@
 #include "Editor/Command/EditorCommandStack.h"
 #include "Editor/ImGui/EditorTheme.h"
 #include "Editor/ImGui/ImGuiAll.h"
+#include "Editor/ImGui/Widgets/DragDropPayload.h"
 #include "Editor/Inspector/InspectorLayout.h"
 #include "GameObject/Component/Core/ObjectRef.h"
 #include "GameObject/GameObject.h"
@@ -21,7 +22,6 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
-#include <cstring>
 #include <format>
 #include <memory>
 #include <numbers>
@@ -507,14 +507,10 @@ namespace CoreEngine
             if (!open) {
                 // 閉じた欄へ Hierarchy のオブジェクトを落とすと繋ぎ替える
                 if (ImGui::BeginDragDropTarget()) {
-                    if (const ImGuiPayload* payload =
-                            ImGui::AcceptDragDropPayload(InspectorRenderer::kObjectDragPayload)) {
-                        std::uint64_t droppedId = 0;
-                        if (objects && payload->DataSize == sizeof(droppedId)) {
-                            std::memcpy(&droppedId, payload->Data, sizeof(droppedId));
-                            if (const GameObject* dropped = objects->FindObject(ObjectId{ droppedId })) {
-                                edited = Retarget(ref, *dropped, p);
-                            }
+                    if (const auto droppedId = UI::AcceptPayload<std::uint64_t>(InspectorRenderer::kObjectDragPayload);
+                        droppedId && objects) {
+                        if (const GameObject* dropped = objects->FindObject(ObjectId{ *droppedId })) {
+                            edited = Retarget(ref, *dropped, p);
                         }
                     }
                     ImGui::EndDragDropTarget();
@@ -630,11 +626,8 @@ namespace CoreEngine
                 // 閉じた欄へ ProjectView の同じ種類のファイルを落とすと指し直す
                 const char* payloadType = FileDragPayloadOf(p.assetType);
                 if (payloadType && ImGui::BeginDragDropTarget()) {
-                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(payloadType)) {
-                        const auto* data = static_cast<const char*>(payload->Data);
-                        const std::string fileName(
-                            data, strnlen(data, static_cast<size_t>(payload->DataSize)));
-                        const AssetInfo* dropped = FindAssetInfo(fileName);
+                    if (const auto fileName = UI::AcceptPayload<std::string>(payloadType)) {
+                        const AssetInfo* dropped = FindAssetInfo(*fileName);
                         if (dropped && dropped->type == p.assetType) {
                             edited = RetargetAsset(ref, *dropped);
                         }

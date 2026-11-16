@@ -79,14 +79,23 @@ Vector3 Collider::GetWorldCenter() const
     return owner_->GetWorldPosition() + rotatedOffset;
 }
 
+float MaxAbsScale(const Vector3& scale)
+{
+    return (std::max)({ std::abs(scale.x), std::abs(scale.y), std::abs(scale.z) });
+}
+
+float WorldCapsuleRadius(const CollisionShape& shape, const Vector3& scale)
+{
+    return shape.radius * (std::max)(std::abs(scale.x), std::abs(scale.z));
+}
+
 namespace {
     /// @brief カプセルの半径と、円筒部分の半分の長さをワールド寸法で出す
     /// @note 太さは横方向のスケール、長さは上方向のスケールで伸ばす。
     void WorldCapsuleMetrics(const CollisionShape& shape, const Vector3& scale,
                              float& outRadius, float& outHalfLength)
     {
-        const float radialScale = (std::max)(std::abs(scale.x), std::abs(scale.z));
-        outRadius = shape.radius * radialScale;
+        outRadius = WorldCapsuleRadius(shape, scale);
         outHalfLength = shape.CylinderLength() * std::abs(scale.y) * 0.5f;
     }
 }
@@ -94,7 +103,7 @@ namespace {
 Geometry::Sphere Collider::GetWorldSphere() const
 {
     const Vector3 scale = GetWorldScale();
-    const float maxScale = (std::max)({ std::abs(scale.x), std::abs(scale.y), std::abs(scale.z) });
+    const float maxScale = MaxAbsScale(scale);
 
     if (shape_.type == ColliderShapeType::Capsule) {
         float radius = 0.0f, halfLength = 0.0f;
@@ -122,8 +131,7 @@ Geometry::AABB Collider::GetWorldAABB() const
     const Vector3 scale = GetWorldScale();
 
     if (shape_.type == ColliderShapeType::Sphere) {
-        const float maxScale = (std::max)({ std::abs(scale.x), std::abs(scale.y), std::abs(scale.z) });
-        const float r = shape_.radius * maxScale;
+        const float r = shape_.radius * MaxAbsScale(scale);
         const Vector3 extent{ r, r, r };
         return Geometry::AABB{ center - extent, center + extent };
     }
@@ -140,9 +148,7 @@ Geometry::OBB Collider::GetWorldOBB() const
 
     if (shape_.type == ColliderShapeType::Sphere) {
         // 球を箱として見るときは外接する立方体にする
-        const float maxScale =
-            (std::max)({ std::abs(scale.x), std::abs(scale.y), std::abs(scale.z) });
-        const float radius = shape_.radius * maxScale;
+        const float radius = shape_.radius * MaxAbsScale(scale);
         obb.halfExtents = Vector3{ radius, radius, radius };
         return obb;
     }

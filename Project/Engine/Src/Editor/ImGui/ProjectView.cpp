@@ -15,6 +15,7 @@
 #include "Editor/ImGui/ImGuiAll.h"
 #include <imgui_internal.h>
 #include "Editor/ImGui/Widgets/EditorBars.h"
+#include "Editor/ImGui/Widgets/ModalDialog.h"
 #include "Editor/Inspector/PrefabAssetInspector.h"
 #include "Editor/Inspector/TextureImportInspector.h"
 #include "Editor/Inspector/ShaderMaterialInspector.h"
@@ -1103,46 +1104,25 @@ namespace CoreEngine
 
     void ProjectView::DrawNewFolderDialog()
     {
-        constexpr const char* kTitle = "新しいフォルダ";
-        if (showNewFolderDialog_ && !ImGui::IsPopupOpen(kTitle)) {
-            ImGui::OpenPopup(kTitle);
-        }
+        std::filesystem::path created;
+        UI::DrawModalDialog({ .title = "新しいフォルダ", .width = 420.0f, .commitLabel = "作成",
+                              .show = &showNewFolderDialog_, .error = &newFolderError_ },
+            [this] {
+                ImGui::Text("%s の中に作ります", GetRelativePath(currentPath_).c_str());
+                UI::Separator();
 
-        ImGui::SetNextWindowSize(ImVec2(420.0f, 0.0f), ImGuiCond_FirstUseEver);
-        if (!ImGui::BeginPopupModal(kTitle, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            return;
-        }
-
-        ImGui::Text("%s の中に作ります", GetRelativePath(currentPath_).c_str());
-        UI::Separator();
-
-        const bool enterPressed = UI::InputText("名前", newFolderName_, sizeof(newFolderName_),
-            ImGuiInputTextFlags_EnterReturnsTrue);
-
-        if (!newFolderError_.empty()) {
-            ImGui::TextColored(Theme::kError, "%s", newFolderError_.c_str());
-        }
-
-        UI::Separator();
-        if (ImGui::Button("作成") || enterPressed) {
-            std::filesystem::path created;
-            if (Editor::AssetFileOperations::CreateFolder(currentPath_, newFolderName_,
-                    &created, &newFolderError_)) {
-                showNewFolderDialog_ = false;
-                ImGui::CloseCurrentPopup();
+                return UI::InputText("名前", newFolderName_, sizeof(newFolderName_),
+                    ImGuiInputTextFlags_EnterReturnsTrue);
+            },
+            [this, &created] {
+                return Editor::AssetFileOperations::CreateFolder(currentPath_, newFolderName_,
+                    &created, &newFolderError_);
+            },
+            [this, &created] {
                 selection_.assign(1, created);
                 selectedPath_ = created;
                 currentEntries_ = GetCurrentDirectoryContents();
-            }
-        }
-        UI::SameLine();
-        if (ImGui::Button("やめる")) {
-            showNewFolderDialog_ = false;
-            newFolderError_.clear();
-            ImGui::CloseCurrentPopup();
-        }
-
-        ImGui::EndPopup();
+            });
     }
 
     void ProjectView::DrawEntryContextMenu(const Entry& entry)
@@ -1285,49 +1265,27 @@ namespace CoreEngine
 
     void ProjectView::DrawRenameDialog()
     {
-        constexpr const char* kTitle = "名前を変更";
-        if (showRenameDialog_ && !ImGui::IsPopupOpen(kTitle)) {
-            ImGui::OpenPopup(kTitle);
-        }
+        std::filesystem::path result;
+        UI::DrawModalDialog({ .title = "名前を変更", .width = 420.0f, .commitLabel = "変更",
+                              .show = &showRenameDialog_, .error = &renameError_ },
+            [this] {
+                UI::Hint("実物のファイルの名前が変わります。GUID を持つ .meta も一緒に付いていきます。");
+                if (renameTarget_.extension() == ".as") {
+                    UI::Hint("スクリプトはクラス名とファイル名を合わせてください（中のクラス名は変わりません）。");
+                }
+                UI::Separator();
 
-        ImGui::SetNextWindowSize(ImVec2(420.0f, 0.0f), ImGuiCond_FirstUseEver);
-        if (!ImGui::BeginPopupModal(kTitle, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            return;
-        }
-
-        UI::Hint("実物のファイルの名前が変わります。GUID を持つ .meta も一緒に付いていきます。");
-        if (renameTarget_.extension() == ".as") {
-            UI::Hint("スクリプトはクラス名とファイル名を合わせてください（中のクラス名は変わりません）。");
-        }
-        UI::Separator();
-
-        const bool enterPressed = UI::InputText("新しい名前", renameBuffer_, sizeof(renameBuffer_),
-            ImGuiInputTextFlags_EnterReturnsTrue);
-
-        if (!renameError_.empty()) {
-            ImGui::TextColored(Theme::kError, "%s", renameError_.c_str());
-        }
-
-        UI::Separator();
-        const bool commit = ImGui::Button("変更") || enterPressed;
-        if (commit) {
-            std::filesystem::path result;
-            if (Editor::AssetFileOperations::Rename(renameTarget_, renameBuffer_, &result, &renameError_)) {
-                showRenameDialog_ = false;
-                ImGui::CloseCurrentPopup();
+                return UI::InputText("新しい名前", renameBuffer_, sizeof(renameBuffer_),
+                    ImGuiInputTextFlags_EnterReturnsTrue);
+            },
+            [this, &result] {
+                return Editor::AssetFileOperations::Rename(renameTarget_, renameBuffer_, &result, &renameError_);
+            },
+            [this, &result] {
                 selection_.assign(1, result);
                 selectedPath_ = result;
                 currentEntries_ = GetCurrentDirectoryContents();
-            }
-        }
-        UI::SameLine();
-        if (ImGui::Button("やめる")) {
-            showRenameDialog_ = false;
-            renameError_.clear();
-            ImGui::CloseCurrentPopup();
-        }
-
-        ImGui::EndPopup();
+            });
     }
 
     void ProjectView::OpenDeleteDialog(std::vector<std::filesystem::path> targets)
@@ -1342,79 +1300,59 @@ namespace CoreEngine
 
     void ProjectView::DrawDeleteDialog()
     {
-        constexpr const char* kTitle = "削除";
-        if (showDeleteDialog_ && !ImGui::IsPopupOpen(kTitle)) {
-            ImGui::OpenPopup(kTitle);
-        }
-
-        ImGui::SetNextWindowSize(ImVec2(440.0f, 0.0f), ImGuiCond_FirstUseEver);
-        if (!ImGui::BeginPopupModal(kTitle, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            return;
-        }
-
-        Logger& logger = Logger::GetInstance();
-        std::error_code ec;
-        bool anyDirectory = false;
-        for (const std::filesystem::path& target : deleteTargets_) {
-            anyDirectory = anyDirectory || std::filesystem::is_directory(target, ec);
-        }
-
-        if (deleteTargets_.size() == 1) {
-            ImGui::Text("%s を削除しますか？",
-                logger.PathToUtf8(deleteTargets_.front().filename()).c_str());
-        } else {
-            ImGui::Text("%zu 件を削除しますか？", deleteTargets_.size());
-            // 多いときは頭だけ出す（窓が縦に伸び続けないように）
-            constexpr std::size_t kShowAtMost = 8;
-            for (std::size_t i = 0; i < deleteTargets_.size() && i < kShowAtMost; ++i) {
-                ImGui::BulletText("%s", logger.PathToUtf8(deleteTargets_[i].filename()).c_str());
-            }
-            if (deleteTargets_.size() > kShowAtMost) {
-                ImGui::BulletText("ほか %zu 件", deleteTargets_.size() - kShowAtMost);
-            }
-        }
-        if (anyDirectory) {
-            ImGui::TextColored(Theme::kError, "フォルダの中身もまとめて消えます。");
-        }
-        UI::Hint("ごみ箱へ送るので、間違えたらエクスプローラのごみ箱から戻せます。");
-
-        if (!deleteError_.empty()) {
-            ImGui::TextColored(Theme::kError, "%s", deleteError_.c_str());
-        }
-
-        UI::Separator();
-        if (ImGui::Button("削除")) {
-            std::vector<std::filesystem::path> left;
-            std::string lastError;
-            for (const std::filesystem::path& target : deleteTargets_) {
-                std::string error;
-                if (Editor::AssetFileOperations::MoveToRecycleBin(target, &error)) {
-                    std::erase(selection_, target);
-                    std::erase(clipboardPaths_, target);
-                    if (selectedPath_ == target) { selectedPath_.clear(); }
-                } else {
-                    left.push_back(target);
-                    lastError = error;
+        UI::DrawModalDialog({ .title = "削除", .width = 440.0f, .commitLabel = "削除",
+                              .show = &showDeleteDialog_, .error = &deleteError_ },
+            [this] {
+                Logger& logger = Logger::GetInstance();
+                std::error_code ec;
+                bool anyDirectory = false;
+                for (const std::filesystem::path& target : deleteTargets_) {
+                    anyDirectory = anyDirectory || std::filesystem::is_directory(target, ec);
                 }
-            }
-            currentEntries_ = GetCurrentDirectoryContents();
-            if (left.empty()) {
-                showDeleteDialog_ = false;
-                ImGui::CloseCurrentPopup();
-            } else {
+
+                if (deleteTargets_.size() == 1) {
+                    ImGui::Text("%s を削除しますか？",
+                        logger.PathToUtf8(deleteTargets_.front().filename()).c_str());
+                } else {
+                    ImGui::Text("%zu 件を削除しますか？", deleteTargets_.size());
+                    // 多いときは頭だけ出す（窓が縦に伸び続けないように）
+                    constexpr std::size_t kShowAtMost = 8;
+                    for (std::size_t i = 0; i < deleteTargets_.size() && i < kShowAtMost; ++i) {
+                        ImGui::BulletText("%s", logger.PathToUtf8(deleteTargets_[i].filename()).c_str());
+                    }
+                    if (deleteTargets_.size() > kShowAtMost) {
+                        ImGui::BulletText("ほか %zu 件", deleteTargets_.size() - kShowAtMost);
+                    }
+                }
+                if (anyDirectory) {
+                    ImGui::TextColored(Theme::kError, "フォルダの中身もまとめて消えます。");
+                }
+                UI::Hint("ごみ箱へ送るので、間違えたらエクスプローラのごみ箱から戻せます。");
+                return false;
+            },
+            [this] {
+                std::vector<std::filesystem::path> left;
+                std::string lastError;
+                for (const std::filesystem::path& target : deleteTargets_) {
+                    std::string error;
+                    if (Editor::AssetFileOperations::MoveToRecycleBin(target, &error)) {
+                        std::erase(selection_, target);
+                        std::erase(clipboardPaths_, target);
+                        if (selectedPath_ == target) { selectedPath_.clear(); }
+                    } else {
+                        left.push_back(target);
+                        lastError = error;
+                    }
+                }
+                currentEntries_ = GetCurrentDirectoryContents();
+                if (left.empty()) {
+                    return true;
+                }
                 // 消せなかったものだけ残して、訳を出したまま開いておく
                 deleteTargets_ = std::move(left);
                 deleteError_ = lastError;
-            }
-        }
-        UI::SameLine();
-        if (ImGui::Button("やめる")) {
-            showDeleteDialog_ = false;
-            deleteError_.clear();
-            ImGui::CloseCurrentPopup();
-        }
-
-        ImGui::EndPopup();
+                return false;
+            });
     }
 
     void ProjectView::DrawCreateContextMenu()
@@ -1471,49 +1409,38 @@ namespace CoreEngine
 
     void ProjectView::DrawNewScriptDialog()
     {
-        constexpr const char* kTitle = "新しいスクリプト";
-        if (showNewScriptDialog_ && !ImGui::IsPopupOpen(kTitle)) {
-            ImGui::OpenPopup(kTitle);
-        }
+        std::filesystem::path created;
+        UI::DrawModalDialog({ .title = "新しいスクリプト", .width = 460.0f, .commitLabel = "作成",
+                              .show = &showNewScriptDialog_, .error = &newScriptError_ },
+            [this] {
+                UI::Hint("クラス名がそのままファイル名とコンポーネントの型名になります。");
+                UI::Separator();
 
-        ImGui::SetNextWindowSize(ImVec2(460.0f, 0.0f), ImGuiCond_FirstUseEver);
-        if (!ImGui::BeginPopupModal(kTitle, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            return;
-        }
+                UI::InputText("置き先", newScriptFolder_, sizeof(newScriptFolder_));
+                UI::InputText("クラス名", newScriptName_, sizeof(newScriptName_));
 
-        UI::Hint("クラス名がそのままファイル名とコンポーネントの型名になります。");
-        UI::Separator();
-
-        UI::InputText("置き先", newScriptFolder_, sizeof(newScriptFolder_));
-        UI::InputText("クラス名", newScriptName_, sizeof(newScriptName_));
-
-        const std::vector<Editor::ScriptTemplate::Entry> templates = Editor::ScriptTemplate::List();
-        if (templates.empty()) {
-            UI::Hint("雛形が見つかりません（Engine/Templates/Scripts）。中身の無いクラスを作ります。");
-        } else {
-            ImGui::TextUnformatted("雛形");
-            for (const auto& entry : templates) {
-                ImGui::PushID(entry.id.c_str());
-                if (ImGui::RadioButton(entry.label.c_str(), newScriptTemplate_ == entry.id)) {
-                    newScriptTemplate_ = entry.id;
+                const std::vector<Editor::ScriptTemplate::Entry> templates = Editor::ScriptTemplate::List();
+                if (templates.empty()) {
+                    UI::Hint("雛形が見つかりません（Engine/Templates/Scripts）。中身の無いクラスを作ります。");
+                } else {
+                    ImGui::TextUnformatted("雛形");
+                    for (const auto& entry : templates) {
+                        ImGui::PushID(entry.id.c_str());
+                        if (ImGui::RadioButton(entry.label.c_str(), newScriptTemplate_ == entry.id)) {
+                            newScriptTemplate_ = entry.id;
+                        }
+                        ImGui::PopID();
+                    }
                 }
-                ImGui::PopID();
-            }
-        }
 
-        ImGui::Checkbox("作ったら VS Code で開く", &openNewScriptAfterCreate_);
-
-        if (!newScriptError_.empty()) {
-            ImGui::TextColored(Theme::kError, "%s", newScriptError_.c_str());
-        }
-
-        UI::Separator();
-        if (ImGui::Button("作成")) {
-            std::filesystem::path created;
-            if (Editor::ScriptTemplate::Create(std::filesystem::path(newScriptFolder_),
-                    newScriptName_, newScriptTemplate_, &created, &newScriptError_)) {
-                showNewScriptDialog_ = false;
-                ImGui::CloseCurrentPopup();
+                ImGui::Checkbox("作ったら VS Code で開く", &openNewScriptAfterCreate_);
+                return false;
+            },
+            [this, &created] {
+                return Editor::ScriptTemplate::Create(std::filesystem::path(newScriptFolder_),
+                    newScriptName_, newScriptTemplate_, &created, &newScriptError_);
+            },
+            [this, &created] {
                 // 作った場所を開いて、そのファイルを選んでおく
                 NavigateToDirectory(created.parent_path());
                 selection_.assign(1, created);
@@ -1521,16 +1448,7 @@ namespace CoreEngine
                 if (openNewScriptAfterCreate_) {
                     Editor::OpenInCodeEditor(created);
                 }
-            }
-        }
-        UI::SameLine();
-        if (ImGui::Button("やめる")) {
-            showNewScriptDialog_ = false;
-            newScriptError_.clear();
-            ImGui::CloseCurrentPopup();
-        }
-
-        ImGui::EndPopup();
+            });
     }
 
     void ProjectView::OpenNewMaterialDialog()
@@ -1542,62 +1460,42 @@ namespace CoreEngine
 
     void ProjectView::DrawNewMaterialDialog()
     {
-        constexpr const char* kTitle = "新しいマテリアル";
-        if (showNewMaterialDialog_ && !ImGui::IsPopupOpen(kTitle)) {
-            ImGui::OpenPopup(kTitle);
-        }
+        std::filesystem::path created;
+        UI::DrawModalDialog({ .title = "新しいマテリアル", .width = 460.0f, .commitLabel = "作成",
+                              .show = &showNewMaterialDialog_, .error = &newMaterialError_ },
+            [this] {
+                UI::Hint("今開いているフォルダへ、マテリアル（.mat）を作ります。付ける先は後から変えられません。");
+                UI::Separator();
 
-        ImGui::SetNextWindowSize(ImVec2(460.0f, 0.0f), ImGuiCond_FirstUseEver);
-        if (!ImGui::BeginPopupModal(kTitle, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            return;
-        }
+                if (ImGui::RadioButton("スプライト／UI 画像", !newMaterialForModel_)) {
+                    newMaterialForModel_ = false;
+                }
+                UI::SameLine();
+                if (ImGui::RadioButton("3D モデル", newMaterialForModel_)) {
+                    newMaterialForModel_ = true;
+                }
 
-        UI::Hint("今開いているフォルダへ、マテリアル（.mat）を作ります。付ける先は後から変えられません。");
-        UI::Separator();
-
-        if (ImGui::RadioButton("スプライト／UI 画像", !newMaterialForModel_)) {
-            newMaterialForModel_ = false;
-        }
-        UI::SameLine();
-        if (ImGui::RadioButton("3D モデル", newMaterialForModel_)) {
-            newMaterialForModel_ = true;
-        }
-
-        if (ImGui::IsWindowAppearing()) {
-            ImGui::SetKeyboardFocusHere();
-        }
-        const bool enterPressed = UI::InputText("名前", newMaterialName_, sizeof(newMaterialName_),
-            ImGuiInputTextFlags_EnterReturnsTrue);
-        ImGui::Checkbox(newMaterialForModel_ ? "シェーダの雛形も作る（名前.Surface.hlsl）"
-                                             : "ピクセルシェーダの雛形も作る（名前.PS.hlsl）",
-            &newMaterialWithShader_);
-
-        if (!newMaterialError_.empty()) {
-            ImGui::TextColored(Theme::kError, "%s", newMaterialError_.c_str());
-        }
-
-        UI::Separator();
-        if (ImGui::Button("作成") || enterPressed) {
-            std::filesystem::path created;
-            const auto target = newMaterialForModel_ ? Editor::ShaderMaterialInspector::MaterialTarget::Model
-                                                     : Editor::ShaderMaterialInspector::MaterialTarget::Sprite;
-            if (Editor::ShaderMaterialInspector::Create(GetCurrentFolder(), newMaterialName_,
-                    target, newMaterialWithShader_, &created, &newMaterialError_)) {
-                showNewMaterialDialog_ = false;
-                ImGui::CloseCurrentPopup();
+                if (ImGui::IsWindowAppearing()) {
+                    ImGui::SetKeyboardFocusHere();
+                }
+                const bool enterPressed = UI::InputText("名前", newMaterialName_, sizeof(newMaterialName_),
+                    ImGuiInputTextFlags_EnterReturnsTrue);
+                ImGui::Checkbox(newMaterialForModel_ ? "シェーダの雛形も作る（名前.Surface.hlsl）"
+                                                     : "ピクセルシェーダの雛形も作る（名前.PS.hlsl）",
+                    &newMaterialWithShader_);
+                return enterPressed;
+            },
+            [this, &created] {
+                const auto target = newMaterialForModel_ ? Editor::ShaderMaterialInspector::MaterialTarget::Model
+                                                         : Editor::ShaderMaterialInspector::MaterialTarget::Sprite;
+                return Editor::ShaderMaterialInspector::Create(GetCurrentFolder(), newMaterialName_,
+                    target, newMaterialWithShader_, &created, &newMaterialError_);
+            },
+            [this, &created] {
                 NavigateToDirectory(created.parent_path());
                 selection_.assign(1, created);
                 selectedPath_ = created;
-            }
-        }
-        UI::SameLine();
-        if (ImGui::Button("やめる")) {
-            showNewMaterialDialog_ = false;
-            newMaterialError_.clear();
-            ImGui::CloseCurrentPopup();
-        }
-
-        ImGui::EndPopup();
+            });
     }
 
     void ProjectView::OpenNewShaderGraphDialog(bool subGraph)
@@ -1611,81 +1509,60 @@ namespace CoreEngine
 
     void ProjectView::DrawNewShaderGraphDialog()
     {
-        const char* const kTitle = newShaderGraphSubGraph_ ? "新しいシェーダーサブグラフ###NewShaderGraph" : "新しいシェーダーグラフ###NewShaderGraph";
-        if (showNewShaderGraphDialog_ && !ImGui::IsPopupOpen(kTitle)) {
-            ImGui::OpenPopup(kTitle);
-        }
-
-        ImGui::SetNextWindowSize(ImVec2(480.0f, 0.0f), ImGuiCond_FirstUseEver);
-        if (!ImGui::BeginPopupModal(kTitle, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            return;
-        }
-
         const bool subGraph = newShaderGraphSubGraph_;
-        if (subGraph) {
-            UI::Hint("今開いているフォルダへ、サブグラフ（名前.shadersubgraph）を作ります。シェーダと .mat は作りません。");
-            UI::Hint("グラフの検索の Sub Graphs から置くか、シェーダーグラフの窓へドラッグして使います。");
-            UI::Hint("下で選ぶのはサブグラフの窓のプレビューの目標です。後から変えられます。");
-        } else {
-            UI::Hint("今開いているフォルダへ、グラフ（名前.shadergraph）と、グラフが作るシェーダ、");
-            UI::Hint("それを使うマテリアル（名前.mat）を作ります。目標は後から変えられません（3D の Lit と Unlit の間だけは変えられます）。");
-        }
-        UI::Separator();
+        std::filesystem::path created;
+        UI::DrawModalDialog({ .title = subGraph ? "新しいシェーダーサブグラフ###NewShaderGraph" : "新しいシェーダーグラフ###NewShaderGraph",
+                              .width = 480.0f, .commitLabel = "作成",
+                              .show = &showNewShaderGraphDialog_, .error = &newShaderGraphError_ },
+            [this, subGraph] {
+                if (subGraph) {
+                    UI::Hint("今開いているフォルダへ、サブグラフ（名前.shadersubgraph）を作ります。シェーダと .mat は作りません。");
+                    UI::Hint("グラフの検索の Sub Graphs から置くか、シェーダーグラフの窓へドラッグして使います。");
+                    UI::Hint("下で選ぶのはサブグラフの窓のプレビューの目標です。後から変えられます。");
+                } else {
+                    UI::Hint("今開いているフォルダへ、グラフ（名前.shadergraph）と、グラフが作るシェーダ、");
+                    UI::Hint("それを使うマテリアル（名前.mat）を作ります。目標は後から変えられません（3D の Lit と Unlit の間だけは変えられます）。");
+                }
+                UI::Separator();
 
-        for (const Editor::ShaderGraph::Target target : Editor::ShaderGraph::kAllTargetList) {
-            if (target != Editor::ShaderGraph::kAllTargetList[0]) {
-                UI::SameLine();
-            }
-            if (ImGui::RadioButton(Editor::ShaderGraph::DisplayName(target), newShaderGraphTarget_ == static_cast<int>(target))) {
-                newShaderGraphTarget_ = static_cast<int>(target);
-            }
-        }
-        const auto newTarget = static_cast<Editor::ShaderGraph::Target>(newShaderGraphTarget_);
-        if (subGraph) {
-            UI::Hint("使える目標は中のノードで決まります。");
-        } else if (newTarget == Editor::ShaderGraph::Target::PostEffect) {
-            UI::Hint("シェーダは 名前.Graph.CS.hlsl。グラフの Inspector から Project.json の postEffects へ足すと画面に掛かります。");
-        } else if (Editor::ShaderGraph::Is3D(newTarget)) {
-            UI::Hint("シェーダは 名前.Graph.Surface.hlsl。MeshRenderer のマテリアルに .mat を付けて使います。");
-        } else {
-            UI::Hint("シェーダは 名前.Graph.PS.hlsl。スプライトと UI 画像に .mat を付けて使います。");
-        }
-        UI::Separator();
+                for (const Editor::ShaderGraph::Target target : Editor::ShaderGraph::kAllTargetList) {
+                    if (target != Editor::ShaderGraph::kAllTargetList[0]) {
+                        UI::SameLine();
+                    }
+                    if (ImGui::RadioButton(Editor::ShaderGraph::DisplayName(target), newShaderGraphTarget_ == static_cast<int>(target))) {
+                        newShaderGraphTarget_ = static_cast<int>(target);
+                    }
+                }
+                const auto newTarget = static_cast<Editor::ShaderGraph::Target>(newShaderGraphTarget_);
+                if (subGraph) {
+                    UI::Hint("使える目標は中のノードで決まります。");
+                } else if (newTarget == Editor::ShaderGraph::Target::PostEffect) {
+                    UI::Hint("シェーダは 名前.Graph.CS.hlsl。グラフの Inspector から Project.json の postEffects へ足すと画面に掛かります。");
+                } else if (Editor::ShaderGraph::Is3D(newTarget)) {
+                    UI::Hint("シェーダは 名前.Graph.Surface.hlsl。MeshRenderer のマテリアルに .mat を付けて使います。");
+                } else {
+                    UI::Hint("シェーダは 名前.Graph.PS.hlsl。スプライトと UI 画像に .mat を付けて使います。");
+                }
+                UI::Separator();
 
-        if (ImGui::IsWindowAppearing()) {
-            ImGui::SetKeyboardFocusHere();
-        }
-        const bool enterPressed = UI::InputText("名前", newShaderGraphName_, sizeof(newShaderGraphName_),
-            ImGuiInputTextFlags_EnterReturnsTrue);
-
-        if (!newShaderGraphError_.empty()) {
-            ImGui::TextColored(Theme::kError, "%s", newShaderGraphError_.c_str());
-        }
-
-        UI::Separator();
-        if (ImGui::Button("作成") || enterPressed) {
-            std::filesystem::path created;
-            const auto target = static_cast<Editor::ShaderGraph::Target>(newShaderGraphTarget_);
-            const bool made = subGraph
-                ? Editor::ShaderGraph::CreateSubGraph(GetCurrentFolder(), newShaderGraphName_, target, &created, &newShaderGraphError_)
-                : Editor::ShaderGraph::CreateGraph(GetCurrentFolder(), newShaderGraphName_, target, &created, &newShaderGraphError_);
-            if (made) {
-                showNewShaderGraphDialog_ = false;
-                ImGui::CloseCurrentPopup();
+                if (ImGui::IsWindowAppearing()) {
+                    ImGui::SetKeyboardFocusHere();
+                }
+                return UI::InputText("名前", newShaderGraphName_, sizeof(newShaderGraphName_),
+                    ImGuiInputTextFlags_EnterReturnsTrue);
+            },
+            [this, subGraph, &created] {
+                const auto target = static_cast<Editor::ShaderGraph::Target>(newShaderGraphTarget_);
+                return subGraph
+                    ? Editor::ShaderGraph::CreateSubGraph(GetCurrentFolder(), newShaderGraphName_, target, &created, &newShaderGraphError_)
+                    : Editor::ShaderGraph::CreateGraph(GetCurrentFolder(), newShaderGraphName_, target, &created, &newShaderGraphError_);
+            },
+            [this, &created] {
                 NavigateToDirectory(created.parent_path());
                 selection_.assign(1, created);
                 selectedPath_ = created;
                 Editor::ShaderGraph::ShaderGraphEditor::Get().Open(created);
-            }
-        }
-        UI::SameLine();
-        if (ImGui::Button("やめる")) {
-            showNewShaderGraphDialog_ = false;
-            newShaderGraphError_.clear();
-            ImGui::CloseCurrentPopup();
-        }
-
-        ImGui::EndPopup();
+            });
     }
 
     void ProjectView::OpenFile(const std::filesystem::path& filePath)

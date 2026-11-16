@@ -1468,6 +1468,8 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Editor\Panel\EditorDockArea.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\EditorTheme.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\EditorBars.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\DragDropPayload.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\ModalDialog.h" />
     <ClInclude Include="Engine\Src\Editor\External\ExternalCodeEditor.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\ProfilerPanel.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\ProjectSettingsWindow.h" />
@@ -1596,6 +1598,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\EngineSystem\Settings\ProjectSettings.h" />
     <ClInclude Include="Engine\Src\Utility\Asset\NamedAssetLibrary.h" />
     <ClInclude Include="Engine\Src\Utility\CVar\CVar.h" />
+    <ClInclude Include="Engine\Src\Utility\CVar\CVarMemberBinding.h" />
     <ClInclude Include="Engine\Src\Utility\CVar\CVarConsole.h" />
     <ClInclude Include="Engine\Src\Utility\CVar\CVarRegistry.h" />
     <ClInclude Include="Engine\Src\Utility\CVar\CVarScope.h" />
@@ -2082,6 +2085,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Utility\FrameRate\FrameRateController.h" />
     <ClInclude Include="Engine\Src\Utility\FrameRate\Time.h" />
     <ClInclude Include="Engine\Src\Utility\JsonManager\JsonManager.h" />
+    <ClInclude Include="Engine\Src\Utility\JsonManager\JsonFields.h" />
     <ClInclude Include="Engine\Src\Utility\Lifetime\ScopedRegistration.h" />
     <ClInclude Include="Engine\Src\Utility\Macro\UniqueName.h" />
     <ClInclude Include="Engine\Src\Utility\Logger\Logger.h" />

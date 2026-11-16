@@ -5,6 +5,10 @@
 #include <numbers>
 #include <algorithm>
 
+#ifdef CORE_EDITOR
+#include "Editor/Inspector/InspectorLayout.h"
+#endif
+
 // コンストラクタでデフォルトパラメータを設定
 
 namespace CoreEngine
@@ -132,11 +136,7 @@ bool RotationModule::ShowImGui() {
         static const char* directionNames[] = {
             "時計回り", "反時計回り", "ランダム", "両方向"
         };
-        int currentDirection = static_cast<int>(data_.rotationDirection);
-        if (ImGui::Combo("回転方向", &currentDirection, directionNames, IM_ARRAYSIZE(directionNames))) {
-            data_.rotationDirection = static_cast<RotationData::RotationDirection>(currentDirection);
-            changed = true;
-        }
+        changed |= InspectorLayout::EnumCombo("回転方向", data_.rotationDirection, directionNames);
     } else {
         // 3D回転設定
         changed |= UI::DragVec3("回転速度（rad/秒）", data_.rotationSpeed, 0.1f, -10.0f, 10.0f);

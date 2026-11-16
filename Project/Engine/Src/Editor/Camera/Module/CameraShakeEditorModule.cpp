@@ -4,6 +4,7 @@
 #ifdef CORE_EDITOR
 
 #include "Editor/ImGui/ImGuiAll.h"
+#include "Editor/Inspector/InspectorLayout.h"
 #include <algorithm>
 #include <cstdio>
 
@@ -22,45 +23,16 @@ namespace CoreEngine
             "Sine (規則的)",
             "Kick (減衰振動)"
         };
-        constexpr int kWaveformCount = static_cast<int>(sizeof(kWaveformLabels) / sizeof(kWaveformLabels[0]));
 
         constexpr const char* kSpaceLabels[] = {
             "カメラローカル",
             "ワールド"
         };
-        constexpr int kSpaceCount = static_cast<int>(sizeof(kSpaceLabels) / sizeof(kSpaceLabels[0]));
 
         constexpr const char* kTimeModeLabels[] = {
             "Scaled (スローの影響を受ける)",
             "Unscaled (ポーズ中も進む)"
         };
-        constexpr int kTimeModeCount = static_cast<int>(sizeof(kTimeModeLabels) / sizeof(kTimeModeLabels[0]));
-
-        /// @brief 列挙値を選ぶコンボ。変わったら true
-        template<typename Enum>
-        bool EnumCombo(const char* label, Enum& value, const char* const* labels, int count)
-        {
-            int index = static_cast<int>(value);
-            if (index < 0 || index >= count) {
-                index = 0;
-            }
-
-            bool changed = false;
-            if (ImGui::BeginCombo(label, labels[index])) {
-                for (int i = 0; i < count; ++i) {
-                    const bool selected = (i == index);
-                    if (ImGui::Selectable(labels[i], selected)) {
-                        value = static_cast<Enum>(i);
-                        changed = true;
-                    }
-                    if (selected) {
-                        ImGui::SetItemDefaultFocus();
-                    }
-                }
-                ImGui::EndCombo();
-            }
-            return changed;
-        }
     }
 
     void CameraShakeEditorModule::Update(const CameraEditorContext& context)
@@ -191,9 +163,9 @@ namespace CoreEngine
         UI::Hint("0 で無限（明示的に止めるまで続く）");
         changed |= UI::DragFloat("立ち上がり (秒)", params->attack, 0.01f, 0.0f, 5.0f, "%.2f");
 
-        changed |= EnumCombo("波形", params->waveform, kWaveformLabels, kWaveformCount);
-        changed |= EnumCombo("座標系", params->space, kSpaceLabels, kSpaceCount);
-        changed |= EnumCombo("時間軸", params->timeMode, kTimeModeLabels, kTimeModeCount);
+        changed |= InspectorLayout::EnumCombo("波形", params->waveform, kWaveformLabels);
+        changed |= InspectorLayout::EnumCombo("座標系", params->space, kSpaceLabels);
+        changed |= InspectorLayout::EnumCombo("時間軸", params->timeMode, kTimeModeLabels);
 
         UI::SectionHeader("方向性");
         changed |= UI::DragVec3("向き", params->direction, 0.05f, -1.0f, 1.0f);

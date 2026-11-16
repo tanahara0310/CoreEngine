@@ -9,6 +9,7 @@
 #include "Graphics/Asset/AssetRef.h"
 #include "Reflection/PropertySerializer.h"
 #include "Reflection/TypeDescriptor.h"
+#include "Utility/Algorithm/FindIfPtr.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
 
@@ -104,10 +105,9 @@ namespace CoreEngine::PrefabSystem
 
         const Slot* FindSlot(const std::vector<Slot>& slots, std::string_view type, std::size_t ordinal)
         {
-            const auto it = std::find_if(slots.begin(), slots.end(), [&](const Slot& slot) {
+            return FindIfPtr(slots, [&](const Slot& slot) {
                 return slot.ordinal == ordinal && slot.type == type;
             });
-            return it != slots.end() ? &*it : nullptr;
         }
 
         /// @brief 型名と順番を `型名` / `型名[n]` の形にする

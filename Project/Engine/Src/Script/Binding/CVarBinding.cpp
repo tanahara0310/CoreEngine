@@ -30,20 +30,6 @@ namespace CoreEngine::Script
             return WarnedNames().insert(key).second;
         }
 
-        /// @brief 型の名前（食い違いの訳に出す）
-        const char* TypeName(CVarType type)
-        {
-            switch (type) {
-            case CVarType::Bool:    return "bool";
-            case CVarType::Int:     return "int";
-            case CVarType::Float:   return "float";
-            case CVarType::Vector2: return "Vector2";
-            case CVarType::Vector3: return "Vector3";
-            case CVarType::Color:   return "Color";
-            }
-            return "不明";
-        }
-
         /// @brief 名前で引く（無ければ一度だけ警告して nullptr）
         ICVar* Find(const std::string& name)
         {
@@ -55,43 +41,44 @@ namespace CoreEngine::Script
             return cvar;
         }
 
-        /// @brief 期待した型かを確かめる（違えば一度だけ警告）
-        bool HasType(ICVar* cvar, CVarType expected, const std::string& name)
+        /// @brief 名前で引いて期待した型の CVar として返す（無いか型が違えば一度だけ警告して nullptr）
+        template <class T>
+        CVar<T>* FindAs(const std::string& name)
         {
-            if (!cvar || cvar->GetType() == expected) {
-                return cvar != nullptr;
+            ICVar* const cvar = Find(name);
+            if (!cvar) {
+                return nullptr;
+            }
+            if (CVar<T>* const typed = cvar->As<T>()) {
+                return typed;
             }
             Logger& logger = Logger::GetInstance();
             if (ShouldWarn("type:" + name)) {
                 logger.Logf(LogLevel::Warn, LogCategory::Script,
                     "CVar {} の型は {} です（スクリプトは {} として触りました）",
-                    name, TypeName(cvar->GetType()), TypeName(expected));
+                    name, CVarTypeName(cvar->GetType()), CVarTypeName(kCVarTypeOf<T>));
             }
-            return false;
+            return nullptr;
         }
 
         /// @brief 型ごとの読み出し
         template <class T>
-        T Get(const std::string& name, CVarType type, const T* (ICVar::*accessor)() const noexcept, T fallback)
+        T Get(const std::string& name, T fallback)
         {
-            ICVar* const cvar = Find(name);
-            if (!HasType(cvar, type, name)) {
-                return fallback;
-            }
-            const T* const value = (cvar->*accessor)();
-            return value ? *value : fallback;
+            const CVar<T>* const cvar = FindAs<T>(name);
+            return cvar ? cvar->Get() : fallback;
         }
 
         /// @brief 型ごとの書き込み
         template <class T>
-        bool Set(const std::string& name, CVarType type, const T& value)
+        bool Set(const std::string& name, const T& value)
         {
-            ICVar* const cvar = Find(name);
-            if (!HasType(cvar, type, name)) {
+            CVar<T>* const cvar = FindAs<T>(name);
+            if (!cvar) {
                 return false;
             }
             // 範囲のはみ出しは CVar 側が丸める。通番も進むので自動保存と UI が追従する
-            cvar->SetFromPointer(&value);
+            cvar->Set(value);
             return true;
         }
 
@@ -110,19 +97,19 @@ namespace CoreEngine::Script
             return true;
         }
 
-        bool    GetBool(const std::string& name, bool fallback) { return Get<bool>(name, CVarType::Bool, &ICVar::AsBool, fallback); }
-        int     GetInt(const std::string& name, int fallback) { return Get<int>(name, CVarType::Int, &ICVar::AsInt, fallback); }
-        float   GetFloat(const std::string& name, float fallback) { return Get<float>(name, CVarType::Float, &ICVar::AsFloat, fallback); }
-        Vector2 GetVector2(const std::string& name) { return Get<Vector2>(name, CVarType::Vector2, &ICVar::AsVector2, Vector2{}); }
-        Vector3 GetVector3(const std::string& name) { return Get<Vector3>(name, CVarType::Vector3, &ICVar::AsVector3, Vector3{}); }
-        Vector4 GetColor(const std::string& name) { return Get<Vector4>(name, CVarType::Color, &ICVar::AsColor, Vector4{}); }
+        bool    GetBool(const std::string& name, bool fallback) { return Get<bool>(name, fallback); }
+        int     GetInt(const std::string& name, int fallback) { return Get<int>(name, fallback); }
+        float   GetFloat(const std::string& name, float fallback) { return Get<float>(name, fallback); }
+        Vector2 GetVector2(const std::string& name) { return Get<Vector2>(name, Vector2{}); }
+        Vector3 GetVector3(const std::string& name) { return Get<Vector3>(name, Vector3{}); }
+        Vector4 GetColor(const std::string& name) { return Get<Vector4>(name, Vector4{}); }
 
-        bool SetBool(const std::string& name, bool value) { return Set(name, CVarType::Bool, value); }
-        bool SetInt(const std::string& name, int value) { return Set(name, CVarType::Int, value); }
-        bool SetFloat(const std::string& name, float value) { return Set(name, CVarType::Float, value); }
-        bool SetVector2(const std::string& name, const Vector2& value) { return Set(name, CVarType::Vector2, value); }
-        bool SetVector3(const std::string& name, const Vector3& value) { return Set(name, CVarType::Vector3, value); }
-        bool SetColor(const std::string& name, const Vector4& value) { return Set(name, CVarType::Color, value); }
+        bool SetBool(const std::string& name, bool value) { return Set(name, value); }
+        bool SetInt(const std::string& name, int value) { return Set(name, value); }
+        bool SetFloat(const std::string& name, float value) { return Set(name, value); }
+        bool SetVector2(const std::string& name, const Vector2& value) { return Set(name, value); }
+        bool SetVector3(const std::string& name, const Vector3& value) { return Set(name, value); }
+        bool SetColor(const std::string& name, const Vector4& value) { return Set(name, value); }
     }
 
     bool RegisterCVarBinding(asIScriptEngine* engine)

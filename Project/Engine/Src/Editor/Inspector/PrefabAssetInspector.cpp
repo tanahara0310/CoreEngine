@@ -278,10 +278,9 @@ namespace CoreEngine::Editor::PrefabAssetInspector
             json after = MakeComponentsJson(state);
             if (!PrefabSystem::SameValue(before, after) && WritePrefab(prefab, after)) {
                 state.source = after;
-                EditorCommandStack::Get().Push(std::make_unique<FunctionCommand>(
-                    prefabName + ".prefab を編集",
-                    [prefab, before] { WritePrefab(prefab, before); },
-                    [prefab, after] { WritePrefab(prefab, after); },
+                EditorCommandStack::Get().Push(MakeValueCommand(prefabName + ".prefab を編集",
+                    std::move(before), std::move(after),
+                    [prefab](const json& value) { WritePrefab(prefab, value); },
                     false, true));
             } else {
                 Rebuild(state, state.source);

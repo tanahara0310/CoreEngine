@@ -53,7 +53,7 @@ namespace CoreEngine
         const GameObject* const owner = GetOwner();
         const Vector3 scale = owner ? owner->GetWorldScale() : Vector3{ 1.0f, 1.0f, 1.0f };
         const Vector3 absScale{ std::abs(scale.x), std::abs(scale.y), std::abs(scale.z) };
-        const float maxScale = (std::max)({ absScale.x, absScale.y, absScale.z });
+        const float maxScale = MaxAbsScale(scale);
         const auto* const colliders = Sibling<ColliderComponent>();
         const Collider* const collider = colliders ? colliders->GetFirst() : nullptr;
 
@@ -66,7 +66,7 @@ namespace CoreEngine
             volume = extent.x * extent.y * extent.z;
         } else if (collider && collider->GetShapeType() == ColliderShapeType::Capsule) {
             const CollisionShape& shape = collider->GetShape();
-            const float radius = shape.radius * (std::max)(absScale.x, absScale.z);
+            const float radius = WorldCapsuleRadius(shape, scale);
             const float height = (std::max)(shape.height * absScale.y, 2.0f * radius);
             extent = { 2.0f * radius, height, 2.0f * radius };
             volume = kPi * radius * radius * (height - 2.0f * radius) + (4.0f / 3.0f) * kPi * radius * radius * radius;

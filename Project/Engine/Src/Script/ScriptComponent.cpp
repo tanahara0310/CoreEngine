@@ -28,32 +28,12 @@ namespace CoreEngine
         /// @brief 型に合わせて値を 1 つ写す（参照と配列の型は写さない）
         void CopyValue(Reflection::PropertyType type, const void* from, void* to)
         {
-            switch (type) {
-            case Reflection::PropertyType::Bool:
-                *static_cast<bool*>(to) = *static_cast<const bool*>(from);
-                break;
-            case Reflection::PropertyType::Int:
-                *static_cast<int*>(to) = *static_cast<const int*>(from);
-                break;
-            case Reflection::PropertyType::Float:
-                *static_cast<float*>(to) = *static_cast<const float*>(from);
-                break;
-            case Reflection::PropertyType::String:
-                *static_cast<std::string*>(to) = *static_cast<const std::string*>(from);
-                break;
-            case Reflection::PropertyType::Vector2:
-                *static_cast<Vector2*>(to) = *static_cast<const Vector2*>(from);
-                break;
-            case Reflection::PropertyType::Vector3:
-                *static_cast<Vector3*>(to) = *static_cast<const Vector3*>(from);
-                break;
-            case Reflection::PropertyType::Vector4:
-            case Reflection::PropertyType::Color:
-                *static_cast<Vector4*>(to) = *static_cast<const Vector4*>(from);
-                break;
-            default:
-                break;
-            }
+            Reflection::VisitPropertyType(type, [from, to](auto* tag) {
+                using T = std::remove_pointer_t<decltype(tag)>;
+                if constexpr (Reflection::kIsAlternativeOf<T, Reflection::ArrayValue::Element>) {
+                    *static_cast<T*>(to) = *static_cast<const T*>(from);
+                }
+            });
         }
 
         /// @brief スクリプトの配列を記述子の配列の値へ写す

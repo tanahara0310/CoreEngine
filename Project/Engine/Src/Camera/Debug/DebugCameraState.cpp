@@ -3,7 +3,7 @@
 
 #include "Camera/Camera.h"
 #include "Camera/Control/OrbitFlyController.h"
-#include "Utility/JsonManager/JsonManager.h"
+#include "Utility/JsonManager/JsonFields.h"
 
 namespace CoreEngine
 {
@@ -34,47 +34,28 @@ namespace CoreEngine
         }
 
         /// @brief 保存する項目を保存キーと一緒に 1 つずつ渡す
-        template <class SnapshotType, class Visitor>
-        void VisitFields(SnapshotType& snapshot, Visitor&& visit)
-        {
-            visit("rotationSensitivity", snapshot.settings.rotationSensitivity);
-            visit("panSensitivity", snapshot.settings.panSensitivity);
-            visit("zoomSensitivity", snapshot.settings.zoomSensitivity);
-            visit("minDistance", snapshot.settings.minDistance);
-            visit("maxDistance", snapshot.settings.maxDistance);
-            visit("invertY", snapshot.settings.invertY);
-            visit("smoothMovement", snapshot.settings.smoothMovement);
-            visit("smoothingFactor", snapshot.settings.smoothingFactor);
-            visit("flySpeed", snapshot.settings.flySpeed);
-            visit("flySpeedBoost", snapshot.settings.flySpeedBoost);
-            visit("maxHorizontalExtent", snapshot.settings.maxHorizontalExtent);
-            visit("minHeight", snapshot.settings.minHeight);
-            visit("maxHeight", snapshot.settings.maxHeight);
-            visit("target", snapshot.state.target);
-            visit("distance", snapshot.state.distance);
-            visit("pitch", snapshot.state.pitch);
-            visit("yaw", snapshot.state.yaw);
-            visit("fov", snapshot.fov);
-            visit("nearClip", snapshot.nearClip);
-            visit("farClip", snapshot.farClip);
-        }
-
-        nlohmann::json ToJsonValue(float value) { return value; }
-        nlohmann::json ToJsonValue(bool value) { return value; }
-        nlohmann::json ToJsonValue(const Vector3& value) { return JsonManager::Vector3ToJson(value); }
-
-        void ReadJsonValue(const nlohmann::json& in, const char* key, float& value)
-        {
-            value = JsonManager::SafeGet(in, key, value);
-        }
-        void ReadJsonValue(const nlohmann::json& in, const char* key, bool& value)
-        {
-            value = JsonManager::SafeGet(in, key, value);
-        }
-        void ReadJsonValue(const nlohmann::json& in, const char* key, Vector3& value)
-        {
-            value = JsonManager::SafeGetVector3(in, key, value);
-        }
+        constexpr auto kSnapshotFields = [](auto& snapshot, auto&& field) {
+            field("rotationSensitivity", snapshot.settings.rotationSensitivity);
+            field("panSensitivity", snapshot.settings.panSensitivity);
+            field("zoomSensitivity", snapshot.settings.zoomSensitivity);
+            field("minDistance", snapshot.settings.minDistance);
+            field("maxDistance", snapshot.settings.maxDistance);
+            field("invertY", snapshot.settings.invertY);
+            field("smoothMovement", snapshot.settings.smoothMovement);
+            field("smoothingFactor", snapshot.settings.smoothingFactor);
+            field("flySpeed", snapshot.settings.flySpeed);
+            field("flySpeedBoost", snapshot.settings.flySpeedBoost);
+            field("maxHorizontalExtent", snapshot.settings.maxHorizontalExtent);
+            field("minHeight", snapshot.settings.minHeight);
+            field("maxHeight", snapshot.settings.maxHeight);
+            field("target", snapshot.state.target);
+            field("distance", snapshot.state.distance);
+            field("pitch", snapshot.state.pitch);
+            field("yaw", snapshot.state.yaw);
+            field("fov", snapshot.fov);
+            field("nearClip", snapshot.nearClip);
+            field("farClip", snapshot.farClip);
+        };
     }
 
     void DebugCameraState::RestoreTo(Camera& camera, OrbitFlyController& controller)
@@ -115,16 +96,12 @@ namespace CoreEngine
 
     void DebugCameraState::Save(nlohmann::json& out)
     {
-        VisitFields(Stored(), [&out](const char* key, const auto& value) {
-            out[key] = ToJsonValue(value);
-        });
+        JsonFields::WriteFields(out, Stored(), kSnapshotFields);
     }
 
     void DebugCameraState::Load(const nlohmann::json& in)
     {
-        VisitFields(Stored(), [&in](const char* key, auto& value) {
-            ReadJsonValue(in, key, value);
-        });
+        JsonFields::ReadFields(in, Stored(), kSnapshotFields);
         ++StoredRevision();
     }
 

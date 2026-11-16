@@ -8,6 +8,7 @@
 #include "Editor/ImGui/ImGuiManager.h"
 #include "Editor/ImGui/ProjectView.h"
 #include "Editor/ImGui/Widgets/EditorBars.h"
+#include "Editor/ImGui/Widgets/ModalDialog.h"
 #include "Editor/Inspector/ComponentInspectors.h"
 #include "Editor/Panel/EditorMenuRegistry.h"
 #include "Editor/Panel/EditorPanelRegistry.h"
@@ -720,52 +721,33 @@ namespace CoreEngine
 
     void GameDebugUI::DrawNewSceneDialog()
     {
-        constexpr const char* kTitle = "新しいシーン";
-        if (showNewSceneDialog_ && !ImGui::IsPopupOpen(kTitle)) {
-            ImGui::OpenPopup(kTitle);
-        }
+        UI::DrawModalDialog({ .title = "新しいシーン", .width = 380.0f, .commitLabel = "作成",
+                              .show = &showNewSceneDialog_, .error = &newSceneError_ },
+            [this] {
+                UI::Hint("Application/Assets/Scenes の下にフォルダを作り、その場で開きます。");
+                ImGui::Separator();
 
-        ImGui::SetNextWindowSize(ImVec2(380.0f, 0.0f), ImGuiCond_FirstUseEver);
-        if (!ImGui::BeginPopupModal(kTitle, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            return;
-        }
-
-        UI::Hint("Application/Assets/Scenes の下にフォルダを作り、その場で開きます。");
-        ImGui::Separator();
-
-        UI::InputText("名前", newSceneName_, sizeof(newSceneName_));
-        ImGui::RadioButton("空", &newSceneTemplate_, 0);
-        UI::SameLine();
-        ImGui::RadioButton("基本（太陽と床）", &newSceneTemplate_, 1);
-        UI::SameLine();
-        ImGui::RadioButton("2D", &newSceneTemplate_, 2);
-        if (newSceneTemplate_ == 2) {
-            UI::Hint("平行投影のカメラを正面に置き、背景を単色にし、指定した色がそのまま出る見た目にします（床と雲もなし）。");
-        }
-
-        if (!newSceneError_.empty()) {
-            ImGui::TextColored(Editor::Theme::kError, "%s", newSceneError_.c_str());
-        }
-
-        ImGui::Separator();
-        if (ImGui::Button("作成")) {
-            std::string error;
-            if (SceneSaveSystem::IsValidSceneName(newSceneName_, &error)) {
+                UI::InputText("名前", newSceneName_, sizeof(newSceneName_));
+                ImGui::RadioButton("空", &newSceneTemplate_, 0);
+                UI::SameLine();
+                ImGui::RadioButton("基本（太陽と床）", &newSceneTemplate_, 1);
+                UI::SameLine();
+                ImGui::RadioButton("2D", &newSceneTemplate_, 2);
+                if (newSceneTemplate_ == 2) {
+                    UI::Hint("平行投影のカメラを正面に置き、背景を単色にし、指定した色がそのまま出る見た目にします（床と雲もなし）。");
+                }
+                return false;
+            },
+            [this] {
+                std::string error;
+                if (!SceneSaveSystem::IsValidSceneName(newSceneName_, &error)) {
+                    newSceneError_ = error;
+                    return false;
+                }
                 newSceneError_.clear();
-                showNewSceneDialog_ = false;
-                ImGui::CloseCurrentPopup();
-                RequestCreateScene(newSceneName_, newSceneTemplate_);
-            } else {
-                newSceneError_ = error;
-            }
-        }
-        UI::SameLine();
-        if (ImGui::Button("やめる")) {
-            showNewSceneDialog_ = false;
-            ImGui::CloseCurrentPopup();
-        }
-
-        ImGui::EndPopup();
+                return true;
+            },
+            [this] { RequestCreateScene(newSceneName_, newSceneTemplate_); });
     }
 
     void GameDebugUI::DrawUnsavedChangesDialog()

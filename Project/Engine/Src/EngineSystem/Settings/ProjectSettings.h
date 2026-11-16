@@ -109,6 +109,10 @@ namespace CoreEngine
         ProjectSettings(const ProjectSettings&) = delete;
         ProjectSettings& operator=(const ProjectSettings&) = delete;
 
+        /// @brief 起動の画面とローディング画面の項目（空なら書かない）を保存キーと一緒に 1 つずつ渡す
+        template <class Self, class Visitor>
+        static void VisitOptionalFields(Self& self, Visitor&& visit);
+
         std::string name_;
         std::string initialSceneName_;
         std::string splashImage_;

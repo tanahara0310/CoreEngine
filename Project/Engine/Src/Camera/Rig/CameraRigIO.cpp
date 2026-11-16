@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "CameraRigIO.h"
 
-#include "Utility/Enum/EnumNames.h"
+#include "Utility/JsonManager/JsonFields.h"
 #include "Utility/JsonManager/JsonManager.h"
 
 #include <algorithm>
@@ -19,34 +19,73 @@ namespace CoreEngine
         constexpr int kDistanceSourceCount = static_cast<int>(CameraRigDistanceSource::CameraToAim) + 1;
         constexpr int kDampingModeCount = static_cast<int>(CameraRigDampingMode::Spring) + 1;
 
-        /// @brief 対象参照を JSON へ
-        json TargetToJson(const CameraRigTargetRef& target)
-        {
-            json jsonData;
-            jsonData["objectName"] = target.objectName;
-            jsonData["offset"] = JsonManager::Vector3ToJson(target.offset);
-            jsonData["weight"] = target.weight;
-            return jsonData;
-        }
+        // ベクトルの項目は欄があるときだけ配列として読む（kIfPresent）
 
-        /// @brief JSON から対象参照へ
-        CameraRigTargetRef JsonToTarget(const json& jsonData)
-        {
-            CameraRigTargetRef target{};
-            target.objectName = JsonManager::SafeGet(jsonData, "objectName", std::string{});
-            if (jsonData.contains("offset")) {
-                target.offset = JsonManager::JsonToVector3(jsonData["offset"]);
-            }
-            target.weight = JsonManager::SafeGet(jsonData, "weight", 1.0f);
-            return target;
-        }
+        /// @brief 対象参照の項目
+        constexpr auto kTargetFields = [](auto& target, auto&& field) {
+            field("objectName", target.objectName);
+            field("offset", target.offset, JsonFields::kIfPresent);
+            field("weight", target.weight);
+        };
+
+        /// @brief 軸ごとの追従の項目
+        constexpr auto kFollowFields = [](auto& follow, auto&& field) {
+            field("weight", follow.weight, JsonFields::kIfPresent);
+            field("anchor", follow.anchor, JsonFields::kIfPresent);
+        };
+
+        /// @brief 居場所の項目（主対象・対象の並び・寄せる位置・レールの制御点は別に読み書きする）
+        constexpr auto kBodyFields = [](auto& body, auto&& field) {
+            field("mode", body.mode, kBodyModeCount, CameraRigBodyMode::FollowTarget);
+            field("position", body.position, JsonFields::kIfPresent);
+            field("rotation", body.rotation, JsonFields::kIfPresent);
+            field("offset", body.offset, JsonFields::kIfPresent);
+            field("offsetSpace", body.offsetSpace, kOffsetSpaceCount, CameraRigOffsetSpace::World);
+            field("orbitDistance", body.orbitDistance);
+            field("orbitYaw", body.orbitYaw);
+            field("orbitPitch", body.orbitPitch);
+            field("framePullBackPerMeter", body.framePullBackPerMeter);
+            field("framePullBackMax", body.framePullBackMax);
+            field("railLoop", body.railLoop);
+            field("railFollowTarget", body.railFollowTarget);
+            field("railPosition", body.railPosition);
+            field("railOffset", body.railOffset, JsonFields::kIfPresent);
+        };
+
+        /// @brief 向きの項目（主対象・対象の並びは別に読み書きする）
+        constexpr auto kAimFields = [](auto& aim, auto&& field) {
+            field("mode", aim.mode, kAimModeCount, CameraRigAimMode::FollowBody);
+            field("screenX", aim.screenX);
+            field("screenY", aim.screenY);
+            field("roll", aim.roll);
+        };
+
+        /// @brief 視野角の項目
+        constexpr auto kLensFields = [](auto& lens, auto&& field) {
+            field("mode", lens.mode, kLensModeCount, CameraRigLensMode::Fixed);
+            field("fovDegrees", lens.fovDegrees);
+            field("inputMin", lens.inputMin);
+            field("inputMax", lens.inputMax);
+            field("fovMinDegrees", lens.fovMinDegrees);
+            field("fovMaxDegrees", lens.fovMaxDegrees);
+            field("distanceSource", lens.distanceSource, kDistanceSourceCount, CameraRigDistanceSource::TargetSpread);
+        };
+
+        /// @brief 減衰の項目
+        constexpr auto kDampingFields = [](auto& damping, auto&& field) {
+            field("position", damping.position);
+            field("rotation", damping.rotation);
+            field("fov", damping.fov);
+            field("aim", damping.aim);
+            field("mode", damping.mode, kDampingModeCount, CameraRigDampingMode::Exponential);
+        };
 
         /// @brief 対象参照の配列を JSON へ
         json TargetsToJson(const std::vector<CameraRigTargetRef>& targets)
         {
             json array = json::array();
             for (const auto& target : targets) {
-                array.push_back(TargetToJson(target));
+                array.push_back(JsonFields::ToJsonObject(target, kTargetFields));
             }
             return array;
         }
@@ -59,86 +98,34 @@ namespace CoreEngine
                 return targets;
             }
             for (const auto& element : parent[key]) {
-                targets.push_back(JsonToTarget(element));
+                targets.push_back(JsonFields::FromJsonObject<CameraRigTargetRef>(element, kTargetFields));
             }
             return targets;
         }
 
-        json FollowToJson(const CameraRigFollowAxes& follow)
-        {
-            json jsonData;
-            jsonData["weight"] = JsonManager::Vector3ToJson(follow.weight);
-            jsonData["anchor"] = JsonManager::Vector3ToJson(follow.anchor);
-            return jsonData;
-        }
-
-        CameraRigFollowAxes JsonToFollow(const json& jsonData)
-        {
-            CameraRigFollowAxes follow{};
-            if (jsonData.contains("weight")) {
-                follow.weight = JsonManager::JsonToVector3(jsonData["weight"]);
-            }
-            if (jsonData.contains("anchor")) {
-                follow.anchor = JsonManager::JsonToVector3(jsonData["anchor"]);
-            }
-            return follow;
-        }
-
         json BodyToJson(const CameraRigBody& body)
         {
-            json jsonData;
-            jsonData["mode"] = static_cast<int>(body.mode);
-            jsonData["position"] = JsonManager::Vector3ToJson(body.position);
-            jsonData["rotation"] = JsonManager::Vector3ToJson(body.rotation);
-            jsonData["target"] = TargetToJson(body.target);
-            jsonData["offset"] = JsonManager::Vector3ToJson(body.offset);
-            jsonData["offsetSpace"] = static_cast<int>(body.offsetSpace);
-            jsonData["orbitDistance"] = body.orbitDistance;
-            jsonData["orbitYaw"] = body.orbitYaw;
-            jsonData["orbitPitch"] = body.orbitPitch;
+            json jsonData = JsonFields::ToJsonObject(body, kBodyFields);
+            jsonData["target"] = JsonFields::ToJsonObject(body.target, kTargetFields);
             jsonData["targets"] = TargetsToJson(body.targets);
             jsonData["frameBias"] = JsonManager::Vector3ToJson(body.frameBias);
-            jsonData["framePullBackPerMeter"] = body.framePullBackPerMeter;
-            jsonData["framePullBackMax"] = body.framePullBackMax;
 
             json railPoints = json::array();
             for (const auto& point : body.railPoints) {
                 railPoints.push_back(JsonManager::Vector3ToJson(point));
             }
             jsonData["railPoints"] = railPoints;
-            jsonData["railLoop"] = body.railLoop;
-            jsonData["railFollowTarget"] = body.railFollowTarget;
-            jsonData["railPosition"] = body.railPosition;
-            jsonData["railOffset"] = JsonManager::Vector3ToJson(body.railOffset);
             return jsonData;
         }
 
         CameraRigBody JsonToBody(const json& jsonData)
         {
             // 既定値は型の初期値をそのまま使う。項目を後から足しても古いファイルが読める。
-            CameraRigBody body{};
-            body.mode = ToEnum(JsonManager::SafeGet(jsonData, "mode",
-                static_cast<int>(body.mode)), kBodyModeCount, CameraRigBodyMode::FollowTarget);
+            CameraRigBody body = JsonFields::FromJsonObject<CameraRigBody>(jsonData, kBodyFields);
 
-            if (jsonData.contains("position")) {
-                body.position = JsonManager::JsonToVector3(jsonData["position"]);
-            }
-            if (jsonData.contains("rotation")) {
-                body.rotation = JsonManager::JsonToVector3(jsonData["rotation"]);
-            }
             if (jsonData.contains("target")) {
-                body.target = JsonToTarget(jsonData["target"]);
+                body.target = JsonFields::FromJsonObject<CameraRigTargetRef>(jsonData["target"], kTargetFields);
             }
-            if (jsonData.contains("offset")) {
-                body.offset = JsonManager::JsonToVector3(jsonData["offset"]);
-            }
-            body.offsetSpace = ToEnum(JsonManager::SafeGet(jsonData, "offsetSpace",
-                static_cast<int>(body.offsetSpace)), kOffsetSpaceCount, CameraRigOffsetSpace::World);
-
-            body.orbitDistance = JsonManager::SafeGet(jsonData, "orbitDistance", body.orbitDistance);
-            body.orbitYaw = JsonManager::SafeGet(jsonData, "orbitYaw", body.orbitYaw);
-            body.orbitPitch = JsonManager::SafeGet(jsonData, "orbitPitch", body.orbitPitch);
-
             body.targets = JsonToTargets(jsonData, "targets");
             if (jsonData.contains("frameBias")) {
                 // 軸ごとにする前は 1 つの数値だった。古いファイルは全軸へ配る。
@@ -150,103 +137,31 @@ namespace CoreEngine
                     body.frameBias = JsonManager::JsonToVector3(biasJson);
                 }
             }
-            body.framePullBackPerMeter = JsonManager::SafeGet(jsonData,
-                "framePullBackPerMeter", body.framePullBackPerMeter);
-            body.framePullBackMax = JsonManager::SafeGet(jsonData,
-                "framePullBackMax", body.framePullBackMax);
 
             if (jsonData.contains("railPoints") && jsonData["railPoints"].is_array()) {
                 for (const auto& element : jsonData["railPoints"]) {
                     body.railPoints.push_back(JsonManager::JsonToVector3(element));
                 }
             }
-            body.railLoop = JsonManager::SafeGet(jsonData, "railLoop", body.railLoop);
-            body.railFollowTarget = JsonManager::SafeGet(jsonData, "railFollowTarget",
-                body.railFollowTarget);
-            body.railPosition = JsonManager::SafeGet(jsonData, "railPosition", body.railPosition);
-            if (jsonData.contains("railOffset")) {
-                body.railOffset = JsonManager::JsonToVector3(jsonData["railOffset"]);
-            }
             return body;
         }
 
         json AimToJson(const CameraRigAim& aim)
         {
-            json jsonData;
-            jsonData["mode"] = static_cast<int>(aim.mode);
-            jsonData["target"] = TargetToJson(aim.target);
+            json jsonData = JsonFields::ToJsonObject(aim, kAimFields);
+            jsonData["target"] = JsonFields::ToJsonObject(aim.target, kTargetFields);
             jsonData["targets"] = TargetsToJson(aim.targets);
-            jsonData["screenX"] = aim.screenX;
-            jsonData["screenY"] = aim.screenY;
-            jsonData["roll"] = aim.roll;
             return jsonData;
         }
 
         CameraRigAim JsonToAim(const json& jsonData)
         {
-            CameraRigAim aim{};
-            aim.mode = ToEnum(JsonManager::SafeGet(jsonData, "mode", static_cast<int>(aim.mode)),
-                kAimModeCount, CameraRigAimMode::FollowBody);
+            CameraRigAim aim = JsonFields::FromJsonObject<CameraRigAim>(jsonData, kAimFields);
             if (jsonData.contains("target")) {
-                aim.target = JsonToTarget(jsonData["target"]);
+                aim.target = JsonFields::FromJsonObject<CameraRigTargetRef>(jsonData["target"], kTargetFields);
             }
             aim.targets = JsonToTargets(jsonData, "targets");
-            aim.screenX = JsonManager::SafeGet(jsonData, "screenX", aim.screenX);
-            aim.screenY = JsonManager::SafeGet(jsonData, "screenY", aim.screenY);
-            aim.roll = JsonManager::SafeGet(jsonData, "roll", aim.roll);
             return aim;
-        }
-
-        json LensToJson(const CameraRigLens& lens)
-        {
-            json jsonData;
-            jsonData["mode"] = static_cast<int>(lens.mode);
-            jsonData["fovDegrees"] = lens.fovDegrees;
-            jsonData["inputMin"] = lens.inputMin;
-            jsonData["inputMax"] = lens.inputMax;
-            jsonData["fovMinDegrees"] = lens.fovMinDegrees;
-            jsonData["fovMaxDegrees"] = lens.fovMaxDegrees;
-            jsonData["distanceSource"] = static_cast<int>(lens.distanceSource);
-            return jsonData;
-        }
-
-        CameraRigLens JsonToLens(const json& jsonData)
-        {
-            CameraRigLens lens{};
-            lens.mode = ToEnum(JsonManager::SafeGet(jsonData, "mode",
-                static_cast<int>(lens.mode)), kLensModeCount, CameraRigLensMode::Fixed);
-            lens.fovDegrees = JsonManager::SafeGet(jsonData, "fovDegrees", lens.fovDegrees);
-            lens.inputMin = JsonManager::SafeGet(jsonData, "inputMin", lens.inputMin);
-            lens.inputMax = JsonManager::SafeGet(jsonData, "inputMax", lens.inputMax);
-            lens.fovMinDegrees = JsonManager::SafeGet(jsonData, "fovMinDegrees", lens.fovMinDegrees);
-            lens.fovMaxDegrees = JsonManager::SafeGet(jsonData, "fovMaxDegrees", lens.fovMaxDegrees);
-            lens.distanceSource = ToEnum(JsonManager::SafeGet(jsonData,
-                "distanceSource", static_cast<int>(lens.distanceSource)),
-                kDistanceSourceCount, CameraRigDistanceSource::TargetSpread);
-            return lens;
-        }
-
-        json DampingToJson(const CameraRigDamping& damping)
-        {
-            json jsonData;
-            jsonData["position"] = damping.position;
-            jsonData["rotation"] = damping.rotation;
-            jsonData["fov"] = damping.fov;
-            jsonData["aim"] = damping.aim;
-            jsonData["mode"] = static_cast<int>(damping.mode);
-            return jsonData;
-        }
-
-        CameraRigDamping JsonToDamping(const json& jsonData)
-        {
-            CameraRigDamping damping{};
-            damping.position = JsonManager::SafeGet(jsonData, "position", damping.position);
-            damping.rotation = JsonManager::SafeGet(jsonData, "rotation", damping.rotation);
-            damping.fov = JsonManager::SafeGet(jsonData, "fov", damping.fov);
-            damping.aim = JsonManager::SafeGet(jsonData, "aim", damping.aim);
-            damping.mode = ToEnum(JsonManager::SafeGet(jsonData, "mode",
-                static_cast<int>(damping.mode)), kDampingModeCount, CameraRigDampingMode::Exponential);
-            return damping;
         }
     }
 
@@ -276,9 +191,9 @@ namespace CoreEngine
         root["name"] = asset.name;
         root["body"] = BodyToJson(asset.body);
         root["aim"] = AimToJson(asset.aim);
-        root["lens"] = LensToJson(asset.lens);
-        root["damping"] = DampingToJson(asset.damping);
-        root["follow"] = FollowToJson(asset.follow);
+        root["lens"] = JsonFields::ToJsonObject(asset.lens, kLensFields);
+        root["damping"] = JsonFields::ToJsonObject(asset.damping, kDampingFields);
+        root["follow"] = JsonFields::ToJsonObject(asset.follow, kFollowFields);
 
         return JsonManager::GetInstance().SaveJson(filePath, root);
     }
@@ -305,14 +220,14 @@ namespace CoreEngine
             asset.aim = JsonToAim(root["aim"]);
         }
         if (root.contains("lens")) {
-            asset.lens = JsonToLens(root["lens"]);
+            asset.lens = JsonFields::FromJsonObject<CameraRigLens>(root["lens"], kLensFields);
         }
         if (root.contains("damping")) {
-            asset.damping = JsonToDamping(root["damping"]);
+            asset.damping = JsonFields::FromJsonObject<CameraRigDamping>(root["damping"], kDampingFields);
         }
         // 項目を持たない古いファイルは既定値（全軸そのまま追う）のままになる。
         if (root.contains("follow")) {
-            asset.follow = JsonToFollow(root["follow"]);
+            asset.follow = JsonFields::FromJsonObject<CameraRigFollowAxes>(root["follow"], kFollowFields);
         }
 
         // 手で編集されたファイルでも必ず評価できる状態にしてから返す。

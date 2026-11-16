@@ -65,6 +65,44 @@ namespace CoreEngine::Editor
         bool survivesSceneReload_ = false;
     };
 
+    /// @brief 前と後の値を持ち、Undo で前の値を・Redo で後の値を書き込むコマンド
+    /// @tparam T 値の型（コピー可能であること）
+    /// @tparam Apply 値を書き込む処理の型（const T& を受けて呼べること）
+    template <class T, class Apply>
+    class ValueCommand final : public IEditorCommand
+    {
+    public:
+        /// @param affectsScene シーンの保存対象を変える操作なら true
+        /// @param survivesSceneReload apply が相手を今のシーンから引き直すなら true
+        ValueCommand(std::string label, T before, T after, Apply apply,
+                     bool affectsScene = true, bool survivesSceneReload = false)
+            : label_(std::move(label)), before_(std::move(before)), after_(std::move(after)),
+              apply_(std::move(apply)), affectsScene_(affectsScene), survivesSceneReload_(survivesSceneReload) {}
+
+        void Undo() override { apply_(before_); }
+        void Redo() override { apply_(after_); }
+        std::string GetLabel() const override { return label_; }
+        bool AffectsScene() const override { return affectsScene_; }
+        bool SurvivesSceneReload() const override { return survivesSceneReload_; }
+
+    private:
+        std::string label_;
+        T before_;
+        T after_;
+        Apply apply_;
+        bool affectsScene_ = true;
+        bool survivesSceneReload_ = false;
+    };
+
+    /// @brief ValueCommand を作る（値の型と書き込む処理の型は引数から決める）
+    template <class T, class Apply>
+    std::unique_ptr<IEditorCommand> MakeValueCommand(std::string label, T before, T after, Apply apply,
+                                                     bool affectsScene = true, bool survivesSceneReload = false)
+    {
+        return std::make_unique<ValueCommand<T, Apply>>(std::move(label), std::move(before), std::move(after),
+            std::move(apply), affectsScene, survivesSceneReload);
+    }
+
     /// @brief 状態まるごとのスナップショットで戻すコマンド
     /// @tparam TState 状態の型（コピー可能であること）
     /// @details 積む時点では編集後の状態がまだ確定していない編集（ドラッグ中の値など）を

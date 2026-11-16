@@ -6,8 +6,29 @@
 #include "Utility/JsonManager/JsonManager.h"
 #include "externals/nlohmann/single_include/nlohmann/json.hpp"
 
+#include <iterator>
+#include <type_traits>
+
 namespace CoreEngine
 {
+    namespace
+    {
+        /// @brief Vector の成分（保存する配列の並び）
+        template <class T> struct VectorComponents;
+        template <> struct VectorComponents<Vector2>
+        {
+            static constexpr float Vector2::* kMembers[] = { &Vector2::x, &Vector2::y };
+        };
+        template <> struct VectorComponents<Vector3>
+        {
+            static constexpr float Vector3::* kMembers[] = { &Vector3::x, &Vector3::y, &Vector3::z };
+        };
+        template <> struct VectorComponents<Vector4>
+        {
+            static constexpr float Vector4::* kMembers[] = { &Vector4::x, &Vector4::y, &Vector4::z, &Vector4::w };
+        };
+    }
+
     void CVarSerialization::Save(nlohmann::json& out, std::string_view prefix, bool skipDefaults,
                                  std::string_view excludePrefix, CVarScope scope)
     {
@@ -27,33 +48,19 @@ namespace CoreEngine
             }
 
             const char* key = cvar->GetName();
-            switch (cvar->GetType())
-            {
-            case CVarType::Bool:
-                out[key] = *cvar->AsBool();
-                break;
-            case CVarType::Int:
-                out[key] = *cvar->AsInt();
-                break;
-            case CVarType::Float:
-                out[key] = *cvar->AsFloat();
-                break;
-            case CVarType::Vector2: {
-                const Vector2& v = *cvar->AsVector2();
-                out[key] = nlohmann::json::array({ v.x, v.y });
-                break;
-            }
-            case CVarType::Vector3: {
-                const Vector3& v = *cvar->AsVector3();
-                out[key] = nlohmann::json::array({ v.x, v.y, v.z });
-                break;
-            }
-            case CVarType::Color: {
-                const Vector4& v = *cvar->AsColor();
-                out[key] = nlohmann::json::array({ v.x, v.y, v.z, v.w });
-                break;
-            }
-            }
+            VisitCVarType(cvar->GetType(), [&](auto* tag) {
+                using T = std::remove_pointer_t<decltype(tag)>;
+                const T& value = cvar->As<T>()->Get();
+                if constexpr (std::is_arithmetic_v<T>) {
+                    out[key] = value;
+                } else {
+                    nlohmann::json components = nlohmann::json::array();
+                    for (const auto member : VectorComponents<T>::kMembers) {
+                        components.push_back(value.*member);
+                    }
+                    out[key] = std::move(components);
+                }
+            });
         }
     }
 
@@ -73,50 +80,26 @@ namespace CoreEngine
                 continue;  // 保存されていないキーは現在値（コードデフォルト）を維持する
             }
 
-            // 書き込みは SetFromPointer（唯一の変更経路）経由。等価判定と変更通知は
-            // Set() 側が行う。保存後に CVar の型を変えた場合は SafeGet が現在値を返すため壊れない
-            switch (cvar->GetType())
-            {
-            case CVarType::Bool: {
-                const bool v = JsonManager::SafeGet(in, key, *cvar->AsBool());
-                cvar->SetFromPointer(&v);
-                break;
-            }
-            case CVarType::Int: {
-                const int v = JsonManager::SafeGet(in, key, *cvar->AsInt());
-                cvar->SetFromPointer(&v);
-                break;
-            }
-            case CVarType::Float: {
-                const float v = JsonManager::SafeGet(in, key, *cvar->AsFloat());
-                cvar->SetFromPointer(&v);
-                break;
-            }
-            case CVarType::Vector2: {
-                const auto& node = in[key];
-                if (!node.is_array() || node.size() < 2) { break; }
-                const Vector2 v{ node[0].get<float>(), node[1].get<float>() };
-                cvar->SetFromPointer(&v);
-                break;
-            }
-            case CVarType::Vector3: {
-                const auto& node = in[key];
-                if (!node.is_array() || node.size() < 3) { break; }
-                const Vector3 v{
-                    node[0].get<float>(), node[1].get<float>(), node[2].get<float>() };
-                cvar->SetFromPointer(&v);
-                break;
-            }
-            case CVarType::Color: {
-                const auto& node = in[key];
-                if (!node.is_array() || node.size() < 4) { break; }
-                const Vector4 v{
-                    node[0].get<float>(), node[1].get<float>(),
-                    node[2].get<float>(), node[3].get<float>() };
-                cvar->SetFromPointer(&v);
-                break;
-            }
-            }
+            // 等価判定と変更通知は Set() 側が行う。保存後に CVar の型を変えた場合は
+            // SafeGet が現在値を返すため壊れない
+            VisitCVarType(cvar->GetType(), [&](auto* tag) {
+                using T = std::remove_pointer_t<decltype(tag)>;
+                CVar<T>& typed = *cvar->As<T>();
+                if constexpr (std::is_arithmetic_v<T>) {
+                    typed.Set(JsonManager::SafeGet(in, key, typed.Get()));
+                } else {
+                    const auto& node = in[key];
+                    constexpr auto& members = VectorComponents<T>::kMembers;
+                    if (!node.is_array() || node.size() < std::size(members)) {
+                        return;
+                    }
+                    T value{};
+                    for (size_t i = 0; i < std::size(members); ++i) {
+                        value.*members[i] = node[i].get<float>();
+                    }
+                    typed.Set(value);
+                }
+            });
         }
     }
 }

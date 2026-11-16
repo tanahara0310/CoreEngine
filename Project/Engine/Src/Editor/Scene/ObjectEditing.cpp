@@ -240,6 +240,54 @@ namespace CoreEngine::ObjectEditing
                 }
             }
         }
+
+        /// @brief 同じ名前があれば「名前 (n)」に、無ければそのままの名前を返す
+        std::string MakeUniqueName(const GameObjectManager& manager, const std::string& baseName)
+        {
+            return HasObjectNamed(manager, baseName) ? MakeCopyName(manager, baseName) : baseName;
+        }
+
+        /// @brief 名前のとおりのオブジェクトをシーンへ置き、コンポーネントを付けて「名前 を作る」のコマンドを積む
+        /// @param attach エディタが作るコンポーネントとして付ける処理（GameObject& を受ける）
+        /// @return 作ったオブジェクト（作れなければ nullptr）
+        template <class Attach>
+        GameObject* CreateObject(const Context& context, const std::string& name, Attach&& attach)
+        {
+            GameObjectManager& manager = *context.manager;
+            auto owned = std::make_unique<GameObject>();
+            owned->SetSerializeKey(MakeNewObjectKey(name));
+            owned->SetName(name);
+            GameObject* const object = manager.AddObject(std::move(owned));
+            if (!object) {
+                return nullptr;
+            }
+
+            // エディタが作るオブジェクトのコンポーネントとして付ける
+            {
+                ComponentHost::DataAttachScope dataScope(*object);
+                attach(*object);
+            }
+            manager.InvalidateReferences();
+
+            PushCreateCommand(*object, name + " を作る");
+            return object;
+        }
+
+        /// @brief トランスフォームを付けて位置を置く
+        void AddTransform(GameObject& object, const Vector3& position)
+        {
+            if (TransformComponent* const transform = object.AddComponent<TransformComponent>()) {
+                transform->SetTranslate(position);
+            }
+        }
+
+        /// @brief 作ったオブジェクトをログへ出す
+        /// @param kind 何のオブジェクトか（「空のオブジェクト」など）
+        void LogCreated(const char* kind, const GameObject& object)
+        {
+            Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
+                "ObjectEditing: {} \"{}\" を作りました", kind, object.GetName());
+        }
     }
 
     std::string MakeNewObjectKey(const std::string& name)
@@ -289,54 +337,17 @@ namespace CoreEngine::ObjectEditing
 
     GameObject* CreateEmpty(const Context& context, const Vector3& position)
     {
-        GameObjectManager& manager = *context.manager;
-        const std::string name = HasObjectNamed(manager, kEmptyObjectName)
-            ? MakeCopyName(manager, kEmptyObjectName) : std::string(kEmptyObjectName);
-        auto owned = std::make_unique<GameObject>();
-        owned->SetSerializeKey(MakeNewObjectKey(name));
-        owned->SetName(name);
-        GameObject* const object = manager.AddObject(std::move(owned));
-        if (!object) {
-            return nullptr;
+        GameObject* const object = CreateObject(context, MakeUniqueName(*context.manager, kEmptyObjectName),
+            [&position](GameObject& created) { AddTransform(created, position); });
+        if (object) {
+            LogCreated("空のオブジェクト", *object);
         }
-
-        // エディタが作るオブジェクトのコンポーネントとして付ける
-        {
-            ComponentHost::DataAttachScope dataScope(*object);
-            if (TransformComponent* const transform = object->AddComponent<TransformComponent>()) {
-                transform->SetTranslate(position);
-            }
-        }
-        manager.InvalidateReferences();
-
-        PushCreateCommand(*object, object->GetName() + " を作る");
-        Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
-            "ObjectEditing: 空のオブジェクト \"{}\" を作りました", object->GetName());
         return object;
     }
 
     GameObject* CreateNamed(const Context& context, const std::string& name, const Vector3& position)
     {
-        GameObjectManager& manager = *context.manager;
-        auto owned = std::make_unique<GameObject>();
-        owned->SetSerializeKey(MakeNewObjectKey(name));
-        owned->SetName(name);
-        GameObject* const object = manager.AddObject(std::move(owned));
-        if (!object) {
-            return nullptr;
-        }
-
-        // エディタが作るオブジェクトのコンポーネントとして付ける
-        {
-            ComponentHost::DataAttachScope dataScope(*object);
-            if (TransformComponent* const transform = object->AddComponent<TransformComponent>()) {
-                transform->SetTranslate(position);
-            }
-        }
-        manager.InvalidateReferences();
-
-        PushCreateCommand(*object, name + " を作る");
-        return object;
+        return CreateObject(context, name, [&position](GameObject& created) { AddTransform(created, position); });
     }
 
     GameObject* InstantiatePrefab(const Context& context, const std::string& prefabPath, const std::string& name)
@@ -357,135 +368,82 @@ namespace CoreEngine::ObjectEditing
 
     GameObject* CreateParticle(const Context& context, ParticleKind kind, const Vector3& position)
     {
-        GameObjectManager& manager = *context.manager;
         const char* const baseName = (kind == ParticleKind::Gpu) ? kGpuParticleObjectName : kParticleObjectName;
-        const std::string name = HasObjectNamed(manager, baseName)
-            ? MakeCopyName(manager, baseName) : std::string(baseName);
-        auto owned = std::make_unique<GameObject>();
-        owned->SetSerializeKey(MakeNewObjectKey(name));
-        owned->SetName(name);
-        GameObject* const object = manager.AddObject(std::move(owned));
-        if (!object) {
-            return nullptr;
-        }
 
-        // エディタが作るオブジェクトのコンポーネントとして、トランスフォームを先頭に付ける
-        {
-            ComponentHost::DataAttachScope dataScope(*object);
-            if (TransformComponent* const transform = object->AddComponent<TransformComponent>()) {
-                transform->SetTranslate(position);
-            }
-            if (kind == ParticleKind::Gpu) {
-                object->AddComponent<GpuParticleSystemComponent>();
-            } else {
-                object->AddComponent<ParticleSystemComponent>();
-            }
+        // トランスフォームを先頭に付ける
+        GameObject* const object = CreateObject(context, MakeUniqueName(*context.manager, baseName),
+            [kind, &position](GameObject& created) {
+                AddTransform(created, position);
+                if (kind == ParticleKind::Gpu) {
+                    created.AddComponent<GpuParticleSystemComponent>();
+                } else {
+                    created.AddComponent<ParticleSystemComponent>();
+                }
+            });
+        if (object) {
+            LogCreated("パーティクルのオブジェクト", *object);
         }
-        manager.InvalidateReferences();
-
-        PushCreateCommand(*object, object->GetName() + " を作る");
-        Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
-            "ObjectEditing: パーティクルのオブジェクト \"{}\" を作りました", object->GetName());
         return object;
     }
 
     GameObject* CreateFogVolume(const Context& context, const Vector3& groundPosition)
     {
-        GameObjectManager& manager = *context.manager;
-        const std::string name = HasObjectNamed(manager, kFogVolumeObjectName)
-            ? MakeCopyName(manager, kFogVolumeObjectName) : std::string(kFogVolumeObjectName);
-        auto owned = std::make_unique<GameObject>();
-        owned->SetSerializeKey(MakeNewObjectKey(name));
-        owned->SetName(name);
-        GameObject* const object = manager.AddObject(std::move(owned));
-        if (!object) {
-            return nullptr;
+        // トランスフォームを先頭に付ける。形の底が置いた所に着くよう、中心を大きさの半分だけ上げる
+        GameObject* const object = CreateObject(context, MakeUniqueName(*context.manager, kFogVolumeObjectName),
+            [&groundPosition](GameObject& created) {
+                TransformComponent* const transform = created.AddComponent<TransformComponent>();
+                const FogVolumeComponent* const volume = created.AddComponent<FogVolumeComponent>();
+                if (transform) {
+                    const float halfHeight = volume ? volume->GetSize().y * 0.5f : 0.0f;
+                    transform->SetTranslate(groundPosition + Vector3{ 0.0f, halfHeight, 0.0f });
+                }
+            });
+        if (object) {
+            LogCreated("局所の霧のオブジェクト", *object);
         }
-
-        // エディタが作るオブジェクトのコンポーネントとして、トランスフォームを先頭に付ける。
-        // 形の底が置いた所に着くよう、中心を大きさの半分だけ上げる
-        {
-            ComponentHost::DataAttachScope dataScope(*object);
-            TransformComponent* const transform = object->AddComponent<TransformComponent>();
-            const FogVolumeComponent* const volume = object->AddComponent<FogVolumeComponent>();
-            if (transform) {
-                const float halfHeight = volume ? volume->GetSize().y * 0.5f : 0.0f;
-                transform->SetTranslate(groundPosition + Vector3{ 0.0f, halfHeight, 0.0f });
-            }
-        }
-        manager.InvalidateReferences();
-
-        PushCreateCommand(*object, object->GetName() + " を作る");
-        Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
-            "ObjectEditing: 局所の霧のオブジェクト \"{}\" を作りました", object->GetName());
         return object;
     }
 
     GameObject* CreateSprite(const Context& context, const std::string& baseName, const std::string& texturePath,
                              std::optional<float> pixelsPerUnit, const Vector3& position)
     {
-        GameObjectManager& manager = *context.manager;
-        const std::string name = HasObjectNamed(manager, baseName) ? MakeCopyName(manager, baseName) : baseName;
-        auto owned = std::make_unique<GameObject>();
-        owned->SetSerializeKey(MakeNewObjectKey(name));
-        owned->SetName(name);
-        GameObject* const object = manager.AddObject(std::move(owned));
-        if (!object) {
-            return nullptr;
-        }
-
-        // エディタが作るオブジェクトのコンポーネントとして、トランスフォームを先頭に付ける
-        {
-            ComponentHost::DataAttachScope dataScope(*object);
-            if (TransformComponent* const transform = object->AddComponent<TransformComponent>()) {
-                transform->SetTranslate(position);
-            }
-            if (SpriteRendererComponent* const sprite = object->AddComponent<SpriteRendererComponent>()) {
-                if (pixelsPerUnit) {
-                    sprite->SetPixelsPerUnit(*pixelsPerUnit);
+        // トランスフォームを先頭に付ける
+        GameObject* const object = CreateObject(context, MakeUniqueName(*context.manager, baseName),
+            [&texturePath, pixelsPerUnit, &position](GameObject& created) {
+                AddTransform(created, position);
+                if (SpriteRendererComponent* const sprite = created.AddComponent<SpriteRendererComponent>()) {
+                    if (pixelsPerUnit) {
+                        sprite->SetPixelsPerUnit(*pixelsPerUnit);
+                    }
+                    sprite->SetTexture(texturePath);
                 }
-                sprite->SetTexture(texturePath);
-            }
+            });
+        if (object) {
+            Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
+                "ObjectEditing: スプライトのオブジェクト \"{}\" を作りました（{}）", object->GetName(), texturePath);
         }
-        manager.InvalidateReferences();
-
-        PushCreateCommand(*object, object->GetName() + " を作る");
-        Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
-            "ObjectEditing: スプライトのオブジェクト \"{}\" を作りました（{}）", object->GetName(), texturePath);
         return object;
     }
 
     GameObject* CreateUI(const Context& context, UIElementKind kind)
     {
-        GameObjectManager& manager = *context.manager;
         const char* const baseName = (kind == UIElementKind::Text) ? kTextObjectName : kImageObjectName;
-        const std::string name = HasObjectNamed(manager, baseName)
-            ? MakeCopyName(manager, baseName) : std::string(baseName);
-        auto owned = std::make_unique<GameObject>();
-        owned->SetSerializeKey(MakeNewObjectKey(name));
-        owned->SetName(name);
-        GameObject* const object = manager.AddObject(std::move(owned));
-        if (!object) {
-            return nullptr;
-        }
 
-        // エディタが作るオブジェクトのコンポーネントとして、UI トランスフォームを先頭に付ける
-        {
-            ComponentHost::DataAttachScope dataScope(*object);
-            object->AddComponent<RectTransformComponent>();
-            if (kind == UIElementKind::Text) {
-                if (UITextComponent* const text = object->AddComponent<UITextComponent>()) {
-                    text->SetText(kNewTextString);
+        // UI トランスフォームを先頭に付ける
+        GameObject* const object = CreateObject(context, MakeUniqueName(*context.manager, baseName),
+            [kind](GameObject& created) {
+                created.AddComponent<RectTransformComponent>();
+                if (kind == UIElementKind::Text) {
+                    if (UITextComponent* const text = created.AddComponent<UITextComponent>()) {
+                        text->SetText(kNewTextString);
+                    }
+                } else {
+                    created.AddComponent<UIImageComponent>();
                 }
-            } else {
-                object->AddComponent<UIImageComponent>();
-            }
+            });
+        if (object) {
+            LogCreated("UI のオブジェクト", *object);
         }
-        manager.InvalidateReferences();
-
-        PushCreateCommand(*object, object->GetName() + " を作る");
-        Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
-            "ObjectEditing: UI のオブジェクト \"{}\" を作りました", object->GetName());
         return object;
     }
 
@@ -573,20 +531,9 @@ namespace CoreEngine::ObjectEditing
             return false;
         }
 
-        const ObjectId id = object.GetObjectId();
-        Editor::EditorCommandStack::Get().Push(std::make_unique<Editor::FunctionCommand>(
-            before + " の名前を " + after + " に変える",
-            [id, before] {
-                if (GameObject* const target = Editor::SceneAccess::FindObject(id)) {
-                    target->SetName(before);
-                }
-            },
-            [id, after] {
-                if (GameObject* const target = Editor::SceneAccess::FindObject(id)) {
-                    target->SetName(after);
-                }
-            },
-            true, true));
+        Editor::EditorCommandStack::Get().Push(Editor::MakeObjectValueCommand(
+            before + " の名前を " + after + " に変える", object.GetObjectId(), before, after,
+            [](GameObject& target, const std::string& name) { target.SetName(name); }));
         return true;
     }
 
@@ -597,20 +544,9 @@ namespace CoreEngine::ObjectEditing
         }
         object.SetActive(active);
 
-        const ObjectId id = object.GetObjectId();
-        Editor::EditorCommandStack::Get().Push(std::make_unique<Editor::FunctionCommand>(
-            object.GetName() + (active ? " を有効にする" : " を無効にする"),
-            [id, active] {
-                if (GameObject* const target = Editor::SceneAccess::FindObject(id)) {
-                    target->SetActive(!active);
-                }
-            },
-            [id, active] {
-                if (GameObject* const target = Editor::SceneAccess::FindObject(id)) {
-                    target->SetActive(active);
-                }
-            },
-            true, true));
+        Editor::EditorCommandStack::Get().Push(Editor::MakeObjectValueCommand(
+            object.GetName() + (active ? " を有効にする" : " を無効にする"), object.GetObjectId(), !active, active,
+            [](GameObject& target, bool value) { target.SetActive(value); }));
         return true;
     }
 }

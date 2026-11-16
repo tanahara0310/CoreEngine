@@ -8,6 +8,7 @@
 #include "Camera/Rig/CameraRig.h"
 #include "Camera/Rig/CameraRigIO.h"
 #include "Editor/ImGui/ImGuiAll.h"
+#include "Editor/Inspector/InspectorLayout.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/GameObjectManager.h"
 #include "Utility/String/CopyToBuffer.h"
@@ -57,32 +58,6 @@ namespace CoreEngine
             "指数減衰（すぐ動き出す）",
             "バネ（飛び飛びの目標でもカクつかない）"
         };
-
-        /// @brief 番号付きの列挙をコンボで選ばせる
-        /// @return 選び直したら true
-        template <typename Enum, size_t Count>
-        bool EnumCombo(const char* label, Enum& value, const char* const (&labels)[Count])
-        {
-            const int current = static_cast<int>(value);
-            const char* preview = (current >= 0 && current < static_cast<int>(Count))
-                ? labels[current] : labels[0];
-
-            bool changed = false;
-            if (ImGui::BeginCombo(label, preview)) {
-                for (int i = 0; i < static_cast<int>(Count); ++i) {
-                    const bool selected = (i == current);
-                    if (ImGui::Selectable(labels[i], selected)) {
-                        value = static_cast<Enum>(i);
-                        changed = true;
-                    }
-                    if (selected) {
-                        ImGui::SetItemDefaultFocus();
-                    }
-                }
-                ImGui::EndCombo();
-            }
-            return changed;
-        }
 
         /// @brief ラジアンの値を度で編集させる
         bool DragAngleDegrees(const char* label, float& radians, float speed,
@@ -424,7 +399,7 @@ namespace CoreEngine
 
     void CameraRigEditorModule::DrawBody(const CameraEditorContext& context)
     {
-        bool changed = EnumCombo("決め方", rig_.body.mode, kBodyModeLabels);
+        bool changed = InspectorLayout::EnumCombo("決め方", rig_.body.mode, kBodyModeLabels);
 
         switch (rig_.body.mode) {
         case CameraRigBodyMode::Fixed:
@@ -444,7 +419,7 @@ namespace CoreEngine
         case CameraRigBodyMode::FollowTarget:
             changed |= DrawTargetRef("付いていく対象", rig_.body.target, context, false);
             changed |= UI::DragVec3("オフセット", rig_.body.offset, 0.1f);
-            changed |= EnumCombo("オフセットの向き", rig_.body.offsetSpace, kOffsetSpaceLabels);
+            changed |= InspectorLayout::EnumCombo("オフセットの向き", rig_.body.offsetSpace, kOffsetSpaceLabels);
             UI::Hint("背後に付く TPS なら「対象の向きに追従」、見下ろし固定なら「ワールド軸」。");
             break;
 
@@ -536,7 +511,7 @@ namespace CoreEngine
 
     void CameraRigEditorModule::DrawAim(const CameraEditorContext& context)
     {
-        bool changed = EnumCombo("決め方", rig_.aim.mode, kAimModeLabels);
+        bool changed = InspectorLayout::EnumCombo("決め方", rig_.aim.mode, kAimModeLabels);
 
         switch (rig_.aim.mode) {
         case CameraRigAimMode::FollowBody:
@@ -579,7 +554,7 @@ namespace CoreEngine
 
     void CameraRigEditorModule::DrawLens()
     {
-        bool changed = EnumCombo("決め方", rig_.lens.mode, kLensModeLabels);
+        bool changed = InspectorLayout::EnumCombo("決め方", rig_.lens.mode, kLensModeLabels);
 
         if (rig_.lens.mode == CameraRigLensMode::Fixed) {
             changed |= UI::SliderFloat("視野角", rig_.lens.fovDegrees,
@@ -587,7 +562,7 @@ namespace CoreEngine
         } else {
             const bool byDistance = (rig_.lens.mode == CameraRigLensMode::DistanceToFov);
             if (byDistance) {
-                changed |= EnumCombo("測る距離", rig_.lens.distanceSource, kDistanceSourceLabels);
+                changed |= InspectorLayout::EnumCombo("測る距離", rig_.lens.distanceSource, kDistanceSourceLabels);
             }
 
             const char* format = byDistance ? "%.2f m" : "%.2f m/s";
@@ -651,7 +626,7 @@ namespace CoreEngine
         UI::Spacing();
 
         bool changed = false;
-        changed |= EnumCombo("寄せ方", rig_.damping.mode, kDampingModeLabels);
+        changed |= InspectorLayout::EnumCombo("寄せ方", rig_.damping.mode, kDampingModeLabels);
         UI::Hint("バネは速度を持って寄るので、グリッド単位で飛ぶ対象を追ってもカクつかない。"
             "位置・注視先・視野角に効き、向きはその 2 つから引き直される。");
         UI::Spacing();

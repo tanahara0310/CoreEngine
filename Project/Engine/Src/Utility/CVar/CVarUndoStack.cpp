@@ -18,31 +18,7 @@ namespace CoreEngine
         /// @brief 型ごとの値サイズ [byte]
         size_t ValueSizeOf(CVarType type)
         {
-            switch (type)
-            {
-            case CVarType::Bool:    return sizeof(bool);
-            case CVarType::Int:     return sizeof(int);
-            case CVarType::Float:   return sizeof(float);
-            case CVarType::Vector2: return sizeof(Vector2);
-            case CVarType::Vector3: return sizeof(Vector3);
-            case CVarType::Color:   return sizeof(Vector4);
-            }
-            return 0;
-        }
-
-        /// @brief 型消去された読み取り（const ポインタ）
-        const void* ReadPointerOf(const ICVar* cvar)
-        {
-            switch (cvar->GetType())
-            {
-            case CVarType::Bool:    return cvar->AsBool();
-            case CVarType::Int:     return cvar->AsInt();
-            case CVarType::Float:   return cvar->AsFloat();
-            case CVarType::Vector2: return cvar->AsVector2();
-            case CVarType::Vector3: return cvar->AsVector3();
-            case CVarType::Color:   return cvar->AsColor();
-            }
-            return nullptr;
+            return VisitCVarType(type, [](auto* tag) { return sizeof(*tag); });
         }
 
 #ifdef CORE_EDITOR
@@ -65,9 +41,13 @@ namespace CoreEngine
     void CVarUndoStack::CopyValue(const ICVar* cvar, unsigned char* out)
     {
         std::memset(out, 0, kValueSize);
-        if (const void* p = ReadPointerOf(cvar)) {
-            std::memcpy(out, p, ValueSizeOf(cvar->GetType()));
-        }
+        VisitCVarType(cvar->GetType(), [cvar, out](auto* tag) {
+            using T = std::remove_pointer_t<decltype(tag)>;
+            static_assert(sizeof(T) <= kValueSize);
+            if (const CVar<T>* const typed = cvar->As<T>()) {
+                std::memcpy(out, &typed->Get(), sizeof(T));
+            }
+        });
     }
 
     bool CVarUndoStack::ValuesEqual(const ICVar* cvar,
@@ -115,6 +95,15 @@ namespace CoreEngine
                 [cvar, newValue] { ApplyValue(cvar, newValue); },
                 false, true));
 #endif
+    }
+
+    void AssignWithUndoFromPointer(ICVar& cvar, const void* value)
+    {
+        CVarUndoStack& undoStack = CVarUndoStack::Get();
+        undoStack.BeginEdit(&cvar);
+        cvar.SetFromPointer(value);
+        undoStack.CommitEdit(&cvar);
+        CVarRegistry::Get().NotifyCommit();
     }
 
 #ifdef CORE_EDITOR

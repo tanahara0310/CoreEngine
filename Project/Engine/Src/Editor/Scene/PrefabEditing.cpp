@@ -62,20 +62,9 @@ namespace CoreEngine::PrefabEditing
             if (!object.GetObjectManager()) {
                 return;
             }
-            const ObjectId id = object.GetObjectId();
-            Editor::EditorCommandStack::Get().Push(std::make_unique<Editor::FunctionCommand>(
-                std::move(label),
-                [id, before] {
-                    if (GameObject* target = Editor::SceneAccess::FindObject(id)) {
-                        target->SetPrefab(before);
-                    }
-                },
-                [id, after] {
-                    if (GameObject* target = Editor::SceneAccess::FindObject(id)) {
-                        target->SetPrefab(after);
-                    }
-                },
-                true, true));
+            Editor::EditorCommandStack::Get().Push(Editor::MakeObjectValueCommand(
+                std::move(label), object.GetObjectId(), std::move(before), std::move(after),
+                [](GameObject& target, const Reflection::AssetRefValue& prefab) { target.SetPrefab(prefab); }));
         }
 
         /// @brief プレハブの書き換えを履歴へ積む

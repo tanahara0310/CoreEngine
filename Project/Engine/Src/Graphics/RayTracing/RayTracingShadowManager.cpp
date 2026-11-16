@@ -14,6 +14,7 @@
 #include "Math/IntegerMath.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/CVar/CVar.h"
+#include "Utility/CVar/CVarMemberBinding.h"
 #include "Camera/View/ViewInfo.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
@@ -140,48 +141,47 @@ namespace CoreEngine
             "テンポラル蓄積の履歴を参照する（デバッグ用）。"
             "OFF にすると毎フレーム現フレームの空間前処理結果のみを使う",
             CVarRange{}, CVarFlags::NoSave };
+
+        // CVar と RayTracingShadowSettings の対応表（向きが逆の HistoryEnabled は含めない）
+        template <class Value>
+        using Binding = CVarMemberBinding<RayTracingShadowSettings, Value>;
+
+        constexpr Binding<int> kIntBindings[] = {
+            { &cvSoftShadowSamples, &RayTracingShadowSettings::softShadowSamples },
+            { &cvPenumbraSamples,   &RayTracingShadowSettings::penumbraSamples },
+            { &cvMaxHistoryFrames,  &RayTracingShadowSettings::maxHistoryFrames },
+            { &cvAtrousPassCount,   &RayTracingShadowSettings::atrousPassCount },
+        };
+
+        constexpr Binding<float> kFloatBindings[] = {
+            { &cvStillnessSigma,        &RayTracingShadowSettings::stillnessSigma },
+            { &cvLightRadius,           &RayTracingShadowSettings::lightRadius },
+            { &cvShadowBias,            &RayTracingShadowSettings::shadowBias },
+            { &cvMaxRayDistance,        &RayTracingShadowSettings::maxRayDistance },
+            { &cvDenoisePhiShadow,      &RayTracingShadowSettings::denoisePhiShadow },
+            { &cvHistoryClampSigma,     &RayTracingShadowSettings::historyClampSigma },
+            { &cvHistoryDepthTolerance, &RayTracingShadowSettings::historyDepthTolerance },
+            { &cvDenoisePhiDepth,       &RayTracingShadowSettings::denoisePhiDepth },
+            { &cvUpsamplePhiDepth,      &RayTracingShadowSettings::upsamplePhiDepth },
+        };
+
+        constexpr Binding<bool> kBoolBindings[] = {
+            { &cvScaleRayDistanceBySunElevation, &RayTracingShadowSettings::scaleRayDistanceBySunElevation },
+            { &cvHalfResolutionTrace,            &RayTracingShadowSettings::halfResolutionTrace },
+            { &cvCycleTraceOffset,               &RayTracingShadowSettings::cycleTraceOffset },
+        };
     }
 
     void RayTracingShadowManager::SyncSettingsFromCVars()
     {
-        settings_.softShadowSamples = cvSoftShadowSamples.Get();
-        settings_.penumbraSamples = cvPenumbraSamples.Get();
-        settings_.stillnessSigma = cvStillnessSigma.Get();
-        settings_.lightRadius = cvLightRadius.Get();
-        settings_.shadowBias = cvShadowBias.Get();
-        settings_.maxRayDistance = cvMaxRayDistance.Get();
-        settings_.scaleRayDistanceBySunElevation = cvScaleRayDistanceBySunElevation.Get();
-        settings_.maxHistoryFrames = cvMaxHistoryFrames.Get();
-        settings_.atrousPassCount = cvAtrousPassCount.Get();
-        settings_.denoisePhiShadow = cvDenoisePhiShadow.Get();
-        settings_.historyClampSigma = cvHistoryClampSigma.Get();
-        settings_.historyDepthTolerance = cvHistoryDepthTolerance.Get();
-        settings_.denoisePhiDepth = cvDenoisePhiDepth.Get();
-        settings_.halfResolutionTrace = cvHalfResolutionTrace.Get();
-        settings_.cycleTraceOffset = cvCycleTraceOffset.Get();
-        settings_.upsamplePhiDepth = cvUpsamplePhiDepth.Get();
+        LoadFromCVars(settings_, kIntBindings, kFloatBindings, kBoolBindings);
         settings_.disableHistory = !cvHistoryEnabled.Get();
     }
 
     void RayTracingShadowManager::SetSettings(const RayTracingShadowSettings& settings)
     {
         // CVar が唯一の保持者。書き戻すことで UI・自動保存にも反映される
-        cvSoftShadowSamples.Set(settings.softShadowSamples);
-        cvPenumbraSamples.Set(settings.penumbraSamples);
-        cvStillnessSigma.Set(settings.stillnessSigma);
-        cvLightRadius.Set(settings.lightRadius);
-        cvShadowBias.Set(settings.shadowBias);
-        cvMaxRayDistance.Set(settings.maxRayDistance);
-        cvScaleRayDistanceBySunElevation.Set(settings.scaleRayDistanceBySunElevation);
-        cvMaxHistoryFrames.Set(settings.maxHistoryFrames);
-        cvAtrousPassCount.Set(settings.atrousPassCount);
-        cvDenoisePhiShadow.Set(settings.denoisePhiShadow);
-        cvHistoryClampSigma.Set(settings.historyClampSigma);
-        cvHistoryDepthTolerance.Set(settings.historyDepthTolerance);
-        cvDenoisePhiDepth.Set(settings.denoisePhiDepth);
-        cvHalfResolutionTrace.Set(settings.halfResolutionTrace);
-        cvCycleTraceOffset.Set(settings.cycleTraceOffset);
-        cvUpsamplePhiDepth.Set(settings.upsamplePhiDepth);
+        StoreToCVars(settings, kIntBindings, kFloatBindings, kBoolBindings);
         cvHistoryEnabled.Set(!settings.disableHistory);
         SyncSettingsFromCVars();
     }

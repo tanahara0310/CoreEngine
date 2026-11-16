@@ -128,19 +128,17 @@ namespace CoreEngine::Script
         /// @brief 値の受け渡しに使う入れ物
         using Value = std::variant<bool, int, float, Vector2, Vector3, Vector4, std::string>;
 
-        /// @brief 型の初期値（戻り値の置き場に使う）
+        /// @brief 型の初期値（戻り値の置き場に使う。入れ物に無い型は文字列）
         Value DefaultValue(PropertyType type)
         {
-            switch (type) {
-            case PropertyType::Bool:    return false;
-            case PropertyType::Int:     return 0;
-            case PropertyType::Float:   return 0.0f;
-            case PropertyType::Vector2: return Vector2{};
-            case PropertyType::Vector3: return Vector3{};
-            case PropertyType::Vector4:
-            case PropertyType::Color:   return Vector4{};
-            default:                    return std::string{};
-            }
+            return Reflection::VisitPropertyType(type, [](auto* tag) {
+                using T = std::remove_pointer_t<decltype(tag)>;
+                if constexpr (Reflection::kIsAlternativeOf<T, Value>) {
+                    return Value(std::in_place_type<T>);
+                } else {
+                    return Value(std::in_place_type<std::string>);
+                }
+            });
         }
 
         /// @brief 汎用の呼び出しの戻り値へ値を入れる
