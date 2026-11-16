@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "CloudCVars.h"
 
-#include <algorithm>
+#include "Utility/CVar/CVarMemberBinding.h"
 
 namespace CoreEngine
 {
@@ -373,13 +373,10 @@ namespace CoreEngine
         {
             // CVar とパラメータの対応表。取り込みはこの表からのみ行うので、
             // パラメータを増やすときは CVar 定義とこの 1 行だけを足せばよい
-            template <class CVarType, class MemberType>
-            struct Binding {
-                CVarType* cvar;
-                MemberType VolumetricCloudParameters::* member;
-            };
+            template <class Value, class Member = Value>
+            using Binding = CVarMemberBinding<VolumetricCloudParameters, Value, Member>;
 
-            constexpr Binding<CVar<float>, float> kFloatBindings[] = {
+            constexpr Binding<float> kFloatBindings[] = {
                 { &LayerBottomAltitudeM,  &VolumetricCloudParameters::layerBottomAltitudeM },
                 { &LayerThicknessM,       &VolumetricCloudParameters::layerThicknessM },
                 { &GlobalCoverage,        &VolumetricCloudParameters::globalCoverage },
@@ -441,7 +438,7 @@ namespace CoreEngine
                 { &VoxelFaceShadeMin,      &VolumetricCloudParameters::voxelFaceShadeMin },
             };
 
-            constexpr Binding<CVar<int>, uint32_t> kUintBindings[] = {
+            constexpr Binding<int, uint32_t> kUintBindings[] = {
                 { &MaxSteps,          &VolumetricCloudParameters::maxSteps },
                 { &ResolutionDivisor, &VolumetricCloudParameters::resolutionDivisor },
                 { &GodRayStepCount,   &VolumetricCloudParameters::godRayStepCount },
@@ -452,7 +449,7 @@ namespace CoreEngine
                 { &ShadowMapSlices,   &VolumetricCloudParameters::shadowMapSlices },
             };
 
-            constexpr Binding<CVar<bool>, bool> kBoolBindings[] = {
+            constexpr Binding<bool> kBoolBindings[] = {
                 { &GodRayEnabled,     &VolumetricCloudParameters::godRayEnabled },
                 { &ReprojectEnabled,  &VolumetricCloudParameters::reprojectEnabled },
             };
@@ -460,15 +457,7 @@ namespace CoreEngine
 
         void LoadInto(VolumetricCloudParameters& params)
         {
-            for (const auto& b : kFloatBindings) {
-                params.*(b.member) = b.cvar->Get();
-            }
-            for (const auto& b : kUintBindings) {
-                params.*(b.member) = static_cast<uint32_t>(std::max(b.cvar->Get(), 0));
-            }
-            for (const auto& b : kBoolBindings) {
-                params.*(b.member) = b.cvar->Get();
-            }
+            LoadFromCVars(params, kFloatBindings, kUintBindings, kBoolBindings);
         }
     }
 }

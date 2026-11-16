@@ -2,6 +2,7 @@
 #include "EngineSystem/Settings/ProjectSettings.h"
 
 #include "Utility/Algorithm/AssignIfChanged.h"
+#include "Utility/JsonManager/JsonFields.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Path/ProjectPaths.h"
 #include "externals/nlohmann/single_include/nlohmann/json.hpp"
@@ -25,6 +26,14 @@ namespace CoreEngine
         constexpr const char* kPostEffectsKey = "postEffects";
         constexpr const char* kDefaultTransitionKey = "defaultTransition";
         constexpr const char* kExportExcludedScenesKey = "exportExcludedScenes";
+
+        /// @brief ポストエフェクト 1 つの項目（欄があるときだけ読む）
+        constexpr auto kPostEffectFields = [](auto& effect, auto&& field) {
+            field("name", effect.name, JsonFields::kIfPresent);
+            field("material", effect.material, JsonFields::kIfPresent);
+            field("stage", effect.stage, JsonFields::kIfPresent);
+            field("enabled", effect.enabled, JsonFields::kIfPresent);
+        };
 
         /// @brief 既定の遷移を読む（無ければ specified が false のまま）
         ProjectTransitionSettings ReadDefaultTransition(const nlohmann::json& root)
@@ -85,10 +94,8 @@ namespace CoreEngine
                     continue;
                 }
                 ProjectPostEffectSettings effect;
-                effect.name = entry.value("name", std::string());
-                effect.material = entry.value("material", std::string());
-                effect.stage = entry.value("stage", std::string("PostTonemap"));
-                effect.enabled = entry.value("enabled", true);
+                effect.stage = "PostTonemap";
+                JsonFields::ReadFields(entry, effect, kPostEffectFields);
                 if (!effect.name.empty() && !effect.material.empty()) {
                     effects.push_back(std::move(effect));
                 }
@@ -96,41 +103,31 @@ namespace CoreEngine
             return effects;
         }
 
-        /// @brief 文字列の配列の項目を読む（空の文字列は飛ばす）
-        std::vector<std::string> ReadStringArray(const nlohmann::json& root, const char* key)
+        /// @brief 文字列の配列の項目を読む（無い・配列でないときは空。空の文字列は飛ばす）
+        void ReadItem(const nlohmann::json& root, const char* key, std::vector<std::string>& values)
         {
-            std::vector<std::string> values;
+            values.clear();
             const auto found = root.find(key);
             if (found == root.end() || !found->is_array()) {
-                return values;
+                return;
             }
             for (const nlohmann::json& value : *found) {
                 if (value.is_string() && !value.get_ref<const std::string&>().empty()) {
                     values.push_back(value.get<std::string>());
                 }
             }
-            return values;
-        }
-
-        /// @brief 文字列の配列の項目を書く（空なら項目ごと消す）
-        void WriteStringArray(nlohmann::json& root, const char* key, const std::vector<std::string>& values)
-        {
-            if (values.empty()) {
-                root.erase(key);
-            } else {
-                root[key] = values;
-            }
         }
 
         /// @brief 文字列の項目を読む（無い・文字列でないときは空）
-        std::string ReadString(const nlohmann::json& root, const char* key)
+        void ReadItem(const nlohmann::json& root, const char* key, std::string& value)
         {
             const auto found = root.find(key);
-            return (found != root.end() && found->is_string()) ? found->get<std::string>() : std::string{};
+            value = (found != root.end() && found->is_string()) ? found->get<std::string>() : std::string{};
         }
 
-        /// @brief 文字列の項目を書く（空なら項目ごと消す）
-        void WriteString(nlohmann::json& root, const char* key, const std::string& value)
+        /// @brief 文字列か文字列の配列の項目を書く（空なら項目ごと消す）
+        template <class Value>
+        void WriteItem(nlohmann::json& root, const char* key, const Value& value)
         {
             if (value.empty()) {
                 root.erase(key);
@@ -148,6 +145,17 @@ namespace CoreEngine
         return instance;
     }
 
+    template <class Self, class Visitor>
+    void ProjectSettings::VisitOptionalFields(Self& self, Visitor&& visit)
+    {
+        visit(kSplashImageKey, self.splashImage_);
+        visit(kSplashTitleKey, self.splashTitle_);
+        visit(kSplashSubtitleKey, self.splashSubtitle_);
+        visit(kSplashTipsKey, self.splashTips_);
+        visit(kLoadingScreenShaderKey, self.loadingScreenShader_);
+        visit(kLoadingScreenImagesKey, self.loadingScreenImages_);
+    }
+
     std::string ProjectSettings::GetProjectName() const
     {
         if (!name_.empty()) {
@@ -161,12 +169,7 @@ namespace CoreEngine
     {
         name_.clear();
         initialSceneName_.clear();
-        splashImage_.clear();
-        splashTitle_.clear();
-        splashSubtitle_.clear();
-        splashTips_.clear();
-        loadingScreenShader_.clear();
-        loadingScreenImages_.clear();
+        VisitOptionalFields(*this, [](const char*, auto& value) { value.clear(); });
         postEffects_.clear();
         defaultTransition_ = ProjectTransitionSettings{};
         exportExcludedScenes_.clear();
@@ -176,23 +179,12 @@ namespace CoreEngine
         if (root.is_discarded() || !root.is_object()) {
             return;
         }
-        if (const auto found = root.find(kNameKey);
-            found != root.end() && found->is_string()) {
-            name_ = found->get<std::string>();
-        }
-        if (const auto found = root.find(kInitialSceneKey);
-            found != root.end() && found->is_string()) {
-            initialSceneName_ = found->get<std::string>();
-        }
-        splashImage_ = ReadString(root, kSplashImageKey);
-        splashTitle_ = ReadString(root, kSplashTitleKey);
-        splashSubtitle_ = ReadString(root, kSplashSubtitleKey);
-        splashTips_ = ReadStringArray(root, kSplashTipsKey);
-        loadingScreenShader_ = ReadString(root, kLoadingScreenShaderKey);
-        loadingScreenImages_ = ReadStringArray(root, kLoadingScreenImagesKey);
+        ReadItem(root, kNameKey, name_);
+        ReadItem(root, kInitialSceneKey, initialSceneName_);
+        VisitOptionalFields(*this, [&root](const char* key, auto& value) { ReadItem(root, key, value); });
         postEffects_ = ReadPostEffects(root);
         defaultTransition_ = ReadDefaultTransition(root);
-        exportExcludedScenes_ = ReadStringArray(root, kExportExcludedScenesKey);
+        ReadItem(root, kExportExcludedScenesKey, exportExcludedScenes_);
     }
 
     bool ProjectSettings::SetInitialSceneName(std::string sceneName)
@@ -268,10 +260,7 @@ namespace CoreEngine
             list = nlohmann::json::array();
         }
         nlohmann::json entry = nlohmann::json::object();
-        entry["name"] = effect.name;
-        entry["material"] = effect.material;
-        entry["stage"] = effect.stage;
-        entry["enabled"] = effect.enabled;
+        JsonFields::WriteFields(entry, effect, kPostEffectFields);
         list.push_back(std::move(entry));
         if (!WriteSettingsFile(path, root)) {
             return false;
@@ -288,13 +277,8 @@ namespace CoreEngine
         nlohmann::json root = ReadSettingsFile(path);
         root[kVersionKey] = kVersion;
         root[kInitialSceneKey] = initialSceneName_;
-        WriteString(root, kSplashImageKey, splashImage_);
-        WriteString(root, kSplashTitleKey, splashTitle_);
-        WriteString(root, kSplashSubtitleKey, splashSubtitle_);
-        WriteStringArray(root, kSplashTipsKey, splashTips_);
-        WriteString(root, kLoadingScreenShaderKey, loadingScreenShader_);
-        WriteStringArray(root, kLoadingScreenImagesKey, loadingScreenImages_);
-        WriteStringArray(root, kExportExcludedScenesKey, exportExcludedScenes_);
+        VisitOptionalFields(*this, [&root](const char* key, const auto& value) { WriteItem(root, key, value); });
+        WriteItem(root, kExportExcludedScenesKey, exportExcludedScenes_);
         return WriteSettingsFile(path, root);
     }
 }

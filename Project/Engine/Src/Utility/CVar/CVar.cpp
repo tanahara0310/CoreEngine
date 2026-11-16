@@ -89,6 +89,19 @@ namespace CoreEngine
         }
     }
 
+    const char* CVarTypeName(CVarType type) noexcept
+    {
+        switch (type) {
+        case CVarType::Bool:    return "bool";
+        case CVarType::Int:     return "int";
+        case CVarType::Float:   return "float";
+        case CVarType::Vector2: return "Vector2";
+        case CVarType::Vector3: return "Vector3";
+        case CVarType::Color:   return "Color";
+        }
+        return "?";
+    }
+
     std::string ICVar::ValueToString() const
     {
         return FormatValue(type_, storage_);

@@ -8,6 +8,7 @@
 
 #include <cstddef>
 #include <functional>
+#include <memory>
 #include <string>
 #include <utility>
 
@@ -57,6 +58,38 @@ namespace CoreEngine::Editor
         /// @brief 今のシーンから引く（無ければ nullptr）
         IComponent* Resolve() const;
     };
+
+    /// @brief オブジェクトの前と後の値を持ち、ID で今のシーンから引き直して書き込むコマンドを作る
+    /// @param apply 引いたオブジェクトと値を受けて書き込む処理（GameObject&, const T& を受ける）
+    /// @note シーンの保存対象を変え、シーンを組み直した後も使える操作になる
+    template <class T, class Apply>
+    std::unique_ptr<IEditorCommand> MakeObjectValueCommand(std::string label, ObjectId id, T before, T after,
+                                                           Apply apply)
+    {
+        return MakeValueCommand(std::move(label), std::move(before), std::move(after),
+            [id, apply = std::move(apply)](const T& value) {
+                if (GameObject* const target = SceneAccess::FindObject(id)) {
+                    apply(*target, value);
+                }
+            },
+            true, true);
+    }
+
+    /// @brief コンポーネントの前と後の値を持ち、目印で今のシーンから引き直して書き込むコマンドを作る
+    /// @param apply 引いたコンポーネントと値を受けて書き込む処理（IComponent&, const T& を受ける）
+    /// @note シーンの保存対象を変え、シーンを組み直した後も使える操作になる
+    template <class T, class Apply>
+    std::unique_ptr<IEditorCommand> MakeComponentValueCommand(std::string label, ComponentHandle handle,
+                                                              T before, T after, Apply apply)
+    {
+        return MakeValueCommand(std::move(label), std::move(before), std::move(after),
+            [handle = std::move(handle), apply = std::move(apply)](const T& value) {
+                if (IComponent* const target = handle.Resolve()) {
+                    apply(*target, value);
+                }
+            },
+            true, true);
+    }
 
     /// @brief 状態まるごとで戻す操作のうち、相手のコンポーネントを今のシーンから引き直すもの
     /// @tparam TComponent 相手のコンポーネントの型

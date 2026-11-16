@@ -8,6 +8,7 @@
 
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/ImguiManager.h"
+#include "Editor/Inspector/InspectorLayout.h"
 #endif
 
 
@@ -129,11 +130,7 @@ bool MainModule::ShowImGui() {
 
     {
         const char* spaceNames[] = { "ローカル（エミッターに追従）", "ワールド（放出後は独立）" };
-        int currentSpace = static_cast<int>(data_.simulationSpace);
-        if (ImGui::Combo("シミュレーション空間", &currentSpace, spaceNames, IM_ARRAYSIZE(spaceNames))) {
-            data_.simulationSpace = static_cast<SimulationSpace>(currentSpace);
-            changed = true;
-        }
+        changed |= InspectorLayout::EnumCombo("シミュレーション空間", data_.simulationSpace, spaceNames);
     }
 
     // ===== パーティクル初期値（Unityの Start～ に相当） =====

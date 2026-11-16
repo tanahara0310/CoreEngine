@@ -108,6 +108,34 @@ namespace CoreEngine::Reflection
     template <> struct PropertyTypeOf<ObjectRefValue> { static constexpr PropertyType kValue = PropertyType::ObjectRef; };
     template <> struct PropertyTypeOf<AssetRefValue>  { static constexpr PropertyType kValue = PropertyType::AssetRef; };
 
+    /// @brief T が std::variant の選択肢の 1 つか
+    template <class T, class Variant>
+    inline constexpr bool kIsAlternativeOf = false;
+    template <class T, class... Alternatives>
+    inline constexpr bool kIsAlternativeOf<T, std::variant<Alternatives...>> = (std::is_same_v<T, Alternatives> || ...);
+
+    /// @brief PropertyType から C++ の型を選んで fn を呼ぶ
+    /// @param fn 型 T へのポインタ（nullptr）を受け取る呼び出し可能物（Color は Vector4 として渡る）
+    /// @return fn の戻り値（type が範囲外なら float として呼ぶ）
+    template <class Fn>
+    auto VisitPropertyType(PropertyType type, Fn&& fn)
+    {
+        switch (type) {
+        case PropertyType::Bool:    return fn(static_cast<bool*>(nullptr));
+        case PropertyType::Int:     return fn(static_cast<int*>(nullptr));
+        case PropertyType::Float:   return fn(static_cast<float*>(nullptr));
+        case PropertyType::Vector2: return fn(static_cast<Vector2*>(nullptr));
+        case PropertyType::Vector3: return fn(static_cast<Vector3*>(nullptr));
+        case PropertyType::Vector4:
+        case PropertyType::Color:   return fn(static_cast<Vector4*>(nullptr));
+        case PropertyType::String:  return fn(static_cast<std::string*>(nullptr));
+        case PropertyType::ObjectRef: return fn(static_cast<ObjectRefValue*>(nullptr));
+        case PropertyType::AssetRef:  return fn(static_cast<AssetRefValue*>(nullptr));
+        case PropertyType::Array:     return fn(static_cast<ArrayValue*>(nullptr));
+        }
+        return fn(static_cast<float*>(nullptr));
+    }
+
     /// @brief 型ごとの値サイズ（Undo のスナップショットが使う）
     size_t SizeOfPropertyType(PropertyType type) noexcept;
 

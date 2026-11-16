@@ -2,7 +2,7 @@
 #include "CameraShakePresetLibrary.h"
 
 #include "Camera/Shake/CameraShakePresets.h"
-#include "Utility/Enum/EnumNames.h"
+#include "Utility/JsonManager/JsonFields.h"
 #include "Utility/JsonManager/JsonManager.h"
 
 #include <algorithm>
@@ -17,59 +17,27 @@ namespace CoreEngine
         constexpr int kTimeModeCount = 2;   // Scaled / Unscaled
         constexpr int kEasingCount = 64;    // EasingUtil::Type の上限としては十分に広い
 
-        json ParamsToJson(const CameraShakeParams& params)
-        {
-            json data;
-            data["positionAmplitude"] = JsonManager::Vector3ToJson(params.positionAmplitude);
-            data["rotationAmplitude"] = JsonManager::Vector3ToJson(params.rotationAmplitude);
-            data["fovAmplitude"] = params.fovAmplitude;
-            data["frequency"] = params.frequency;
-            data["frequencyScale"] = JsonManager::Vector3ToJson(params.frequencyScale);
-            data["duration"] = params.duration;
-            data["attack"] = params.attack;
-            data["decayEase"] = static_cast<int>(params.decayEase);
-            data["direction"] = JsonManager::Vector3ToJson(params.direction);
-            data["directionality"] = params.directionality;
-            data["useWorldFalloff"] = params.useWorldFalloff;
-            data["innerRadius"] = params.innerRadius;
-            data["outerRadius"] = params.outerRadius;
-            data["falloffEase"] = static_cast<int>(params.falloffEase);
-            data["waveform"] = static_cast<int>(params.waveform);
-            data["space"] = static_cast<int>(params.space);
-            data["timeMode"] = static_cast<int>(params.timeMode);
-            data["seed"] = params.seed;
-            return data;
-        }
-
-        CameraShakeParams JsonToParams(const json& data)
-        {
-            // 欠けた項目は構造体の既定値のまま残す。項目を足しても古いファイルが読める。
-            CameraShakeParams params{};
-            params.positionAmplitude = JsonManager::SafeGetVector3(data, "positionAmplitude", params.positionAmplitude);
-            params.rotationAmplitude = JsonManager::SafeGetVector3(data, "rotationAmplitude", params.rotationAmplitude);
-            params.fovAmplitude = JsonManager::SafeGet(data, "fovAmplitude", params.fovAmplitude);
-            params.frequency = JsonManager::SafeGet(data, "frequency", params.frequency);
-            params.frequencyScale = JsonManager::SafeGetVector3(data, "frequencyScale", params.frequencyScale);
-            params.duration = JsonManager::SafeGet(data, "duration", params.duration);
-            params.attack = JsonManager::SafeGet(data, "attack", params.attack);
-            params.decayEase = ToEnum(JsonManager::SafeGet(data, "decayEase", static_cast<int>(params.decayEase)),
-                kEasingCount, params.decayEase);
-            params.direction = JsonManager::SafeGetVector3(data, "direction", params.direction);
-            params.directionality = JsonManager::SafeGet(data, "directionality", params.directionality);
-            params.useWorldFalloff = JsonManager::SafeGet(data, "useWorldFalloff", params.useWorldFalloff);
-            params.innerRadius = JsonManager::SafeGet(data, "innerRadius", params.innerRadius);
-            params.outerRadius = JsonManager::SafeGet(data, "outerRadius", params.outerRadius);
-            params.falloffEase = ToEnum(JsonManager::SafeGet(data, "falloffEase", static_cast<int>(params.falloffEase)),
-                kEasingCount, params.falloffEase);
-            params.waveform = ToEnum(JsonManager::SafeGet(data, "waveform", static_cast<int>(params.waveform)),
-                kWaveformCount, params.waveform);
-            params.space = ToEnum(JsonManager::SafeGet(data, "space", static_cast<int>(params.space)),
-                kSpaceCount, params.space);
-            params.timeMode = ToEnum(JsonManager::SafeGet(data, "timeMode", static_cast<int>(params.timeMode)),
-                kTimeModeCount, params.timeMode);
-            params.seed = JsonManager::SafeGet(data, "seed", params.seed);
-            return params;
-        }
+        /// @brief シェイクの設定の項目（列挙は範囲の外なら型の初期値のまま）
+        constexpr auto kParamsFields = [](auto& params, auto&& field) {
+            field("positionAmplitude", params.positionAmplitude);
+            field("rotationAmplitude", params.rotationAmplitude);
+            field("fovAmplitude", params.fovAmplitude);
+            field("frequency", params.frequency);
+            field("frequencyScale", params.frequencyScale);
+            field("duration", params.duration);
+            field("attack", params.attack);
+            field("decayEase", params.decayEase, kEasingCount, params.decayEase);
+            field("direction", params.direction);
+            field("directionality", params.directionality);
+            field("useWorldFalloff", params.useWorldFalloff);
+            field("innerRadius", params.innerRadius);
+            field("outerRadius", params.outerRadius);
+            field("falloffEase", params.falloffEase, kEasingCount, params.falloffEase);
+            field("waveform", params.waveform, kWaveformCount, params.waveform);
+            field("space", params.space, kSpaceCount, params.space);
+            field("timeMode", params.timeMode, kTimeModeCount, params.timeMode);
+            field("seed", params.seed);
+        };
     }
 
     CameraShakePresetLibrary::CameraShakePresetLibrary()
@@ -159,7 +127,7 @@ namespace CoreEngine
         for (const auto& preset : presets_) {
             json entry;
             entry["name"] = preset.name;
-            entry["params"] = ParamsToJson(preset.params);
+            entry["params"] = JsonFields::ToJsonObject(preset.params, kParamsFields);
             presetsJson.push_back(entry);
         }
         root["presets"] = presetsJson;
@@ -189,7 +157,7 @@ namespace CoreEngine
                 continue;
             }
             if (entry.contains("params")) {
-                preset.params = JsonToParams(entry["params"]);
+                preset.params = JsonFields::FromJsonObject<CameraShakeParams>(entry["params"], kParamsFields);
             }
             loaded.push_back(std::move(preset));
         }

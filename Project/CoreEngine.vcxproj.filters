@@ -2196,6 +2196,12 @@
     <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\EditorBars.h">
       <Filter>Engine\Src\Editor\ImGui\Widgets</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\DragDropPayload.h">
+      <Filter>Engine\Src\Editor\ImGui\Widgets</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\ModalDialog.h">
+      <Filter>Engine\Src\Editor\ImGui\Widgets</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\External\ExternalCodeEditor.h">
       <Filter>Engine\Src\Editor\External</Filter>
     </ClInclude>
@@ -2578,6 +2584,9 @@
       <Filter>Engine\Src\Utility\Asset</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\CVar\CVar.h">
+      <Filter>Engine\Src\Utility\CVar</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\CVar\CVarMemberBinding.h">
       <Filter>Engine\Src\Utility\CVar</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\CVar\CVarConsole.h">
@@ -4036,6 +4045,9 @@
       <Filter>Engine\Src\Utility\FrameRate</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\JsonManager\JsonManager.h">
+      <Filter>Engine\Src\Utility\JsonManager</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\JsonManager\JsonFields.h">
       <Filter>Engine\Src\Utility\JsonManager</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Lifetime\ScopedRegistration.h">

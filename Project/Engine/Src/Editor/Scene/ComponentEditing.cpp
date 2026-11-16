@@ -396,21 +396,11 @@ namespace CoreEngine::ComponentEditing
         }
         component.SetEnabled(enabled);
 
-        const Editor::ComponentHandle handle = Editor::ComponentHandle::Of(component);
         const std::string displayName = Editor::ComponentInspectors::DisplayNameOf(component);
-        Editor::EditorCommandStack::Get().Push(std::make_unique<Editor::FunctionCommand>(
+        Editor::EditorCommandStack::Get().Push(Editor::MakeComponentValueCommand(
             object.GetName() + " の" + displayName + (enabled ? "を有効にする" : "を無効にする"),
-            [handle, enabled] {
-                if (IComponent* const target = handle.Resolve()) {
-                    target->SetEnabled(!enabled);
-                }
-            },
-            [handle, enabled] {
-                if (IComponent* const target = handle.Resolve()) {
-                    target->SetEnabled(enabled);
-                }
-            },
-            true, true));
+            Editor::ComponentHandle::Of(component), !enabled, enabled,
+            [](IComponent& target, bool value) { target.SetEnabled(value); }));
         return true;
     }
 

@@ -300,13 +300,10 @@ namespace CoreEngine
 
         if (collider->GetShapeType() == ColliderShapeType::Capsule) {
             // いちばん薄いのは横から見たときの太さ
-            const float radialScale = (std::max)(std::abs(scale.x), std::abs(scale.z));
-            return collider->GetShape().radius * radialScale;
+            return WorldCapsuleRadius(collider->GetShape(), scale);
         }
 
-        const float maxScale =
-            (std::max)({ std::abs(scale.x), std::abs(scale.y), std::abs(scale.z) });
-        return collider->GetShape().radius * maxScale;
+        return collider->GetShape().radius * MaxAbsScale(scale);
     }
 
     void RigidbodyComponent::RefreshInertia()
@@ -333,15 +330,13 @@ namespace CoreEngine
 
         if (collider && collider->GetShapeType() == ColliderShapeType::Capsule) {
             const CollisionShape& shape = collider->GetShape();
-            const float radialScale = (std::max)(std::abs(scale.x), std::abs(scale.z));
             localInverseInertia_ = Inertia::Invert(Inertia::ForCapsule(
-                mass_, shape.radius * radialScale, shape.CylinderLength() * std::abs(scale.y)));
+                mass_, WorldCapsuleRadius(shape, scale), shape.CylinderLength() * std::abs(scale.y)));
             return;
         }
 
         // 球、またはコライダーが無いとき
-        const float maxScale =
-            (std::max)({ std::abs(scale.x), std::abs(scale.y), std::abs(scale.z) });
+        const float maxScale = MaxAbsScale(scale);
         const float radius = collider ? (collider->GetShape().radius * maxScale) : (0.5f * maxScale);
         localInverseInertia_ = Inertia::Invert(Inertia::ForSphere(mass_, radius));
     }

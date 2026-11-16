@@ -8,6 +8,7 @@
 namespace CoreEngine
 {
     class ICVar;
+    template <class T> class CVar;
 
     /// @brief CVar 編集の Undo / Redo（Ctrl+Z / Ctrl+Y）
     /// @details 商用エンジンの「調整した瞬間に保存」は Undo とセットで初めて安全になる。
@@ -52,4 +53,17 @@ namespace CoreEngine
         ICVar*        pendingCVar_ = nullptr;
         unsigned char pendingOldValue_[kValueSize]{};
     };
+
+    /// @brief CVar へ値を入れて Undo を 1 件積み、確定を通知する（型を消した口）
+    /// @details BeginBatch〜EndBatch の中なら 1 回の Ctrl+Z にまとまる
+    /// @param value cvar の型と同じ型の値
+    void AssignWithUndoFromPointer(ICVar& cvar, const void* value);
+
+    /// @brief CVar へ値を入れて Undo を 1 件積み、確定を通知する
+    /// @details BeginBatch〜EndBatch の中なら 1 回の Ctrl+Z にまとまる
+    template <class T>
+    void AssignWithUndo(CVar<T>& cvar, const T& value)
+    {
+        AssignWithUndoFromPointer(cvar, &value);
+    }
 }

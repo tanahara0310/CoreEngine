@@ -148,16 +148,6 @@ int FindJerlovWaterType(const WaterProfile& profile) {
 	return -1;
 }
 
-/// @brief CVar へ値を入れ、Undo を 1 件積む（BatchScope の中なら 1 回の Ctrl+Z にまとまる）
-template <class T>
-void AssignWithUndo(CVar<T>& cvar, const T& value) {
-	auto& undoStack = CVarUndoStack::Get();
-	undoStack.BeginEdit(&cvar);
-	cvar.Set(value);
-	undoStack.CommitEdit(&cvar);
-	CVarRegistry::Get().NotifyCommit();
-}
-
 /// @brief 編集できない値の行（左にラベル、右に淡い文字）
 void InfoRow(const char* label, const std::string& value) {
 	InspectorLayout::BeginRow(label, Editor::Theme::kTextDim);

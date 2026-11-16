@@ -90,6 +90,19 @@ namespace CoreEngine::InspectorLayout
     /// @return 別の値を選んだら true
     bool EnumCombo(const char* id, int* value, const char* const* names, int count);
 
+    /// @brief 番号の列挙を名前の配列から選ぶ欄（名前の並びは列挙の番号の順）
+    /// @return 別の値を選んだら true
+    template <class E, std::size_t N>
+    bool EnumCombo(const char* id, E& value, const char* const (&names)[N])
+    {
+        int index = static_cast<int>(value);
+        if (!EnumCombo(id, &index, names, static_cast<int>(N))) {
+            return false;
+        }
+        value = static_cast<E>(index);
+        return true;
+    }
+
     /// @brief 注意書きの種類（左の帯と下地の色）
     enum class Message
     {

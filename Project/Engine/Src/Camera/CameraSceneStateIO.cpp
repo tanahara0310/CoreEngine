@@ -3,7 +3,7 @@
 
 #include "Camera/Camera.h"
 #include "Camera/CameraManager.h"
-#include "Utility/Enum/EnumNames.h"
+#include "Utility/JsonManager/JsonFields.h"
 #include "Utility/JsonManager/JsonManager.h"
 
 #include <filesystem>
@@ -18,36 +18,31 @@ namespace CoreEngine
         /// @brief 保存された投影の番号として読める範囲（0〜最後の値）
         constexpr int kProjectionTypeCount = static_cast<int>(CameraProjectionType::Orthographic) + 1;
 
-        json SnapshotToJson(const CameraSnapshot& snapshot)
-        {
-            json data;
-            data["position"] = JsonManager::Vector3ToJson(snapshot.position);
-            data["rotation"] = JsonManager::Vector3ToJson(snapshot.rotation);
-            data["scale"] = JsonManager::Vector3ToJson(snapshot.scale);
-            data["fov"] = snapshot.parameters.fov;
-            data["nearClip"] = snapshot.parameters.nearClip;
-            data["farClip"] = snapshot.parameters.farClip;
-            data["orthographicSize"] = snapshot.parameters.orthographicSize;
-            data["aspectRatio"] = snapshot.parameters.aspectRatio;
-            data["projectionType"] = static_cast<int>(snapshot.parameters.projectionType);
-            return data;
-        }
+        /// @brief スナップショットの項目
+        constexpr auto kSnapshotFields = [](auto& snapshot, auto&& field) {
+            field("position", snapshot.position);
+            field("rotation", snapshot.rotation);
+            field("scale", snapshot.scale);
+            field("fov", snapshot.parameters.fov);
+            field("nearClip", snapshot.parameters.nearClip);
+            field("farClip", snapshot.parameters.farClip);
+            field("orthographicSize", snapshot.parameters.orthographicSize);
+            field("aspectRatio", snapshot.parameters.aspectRatio);
+            field("projectionType", snapshot.parameters.projectionType,
+                kProjectionTypeCount, CameraProjectionType::Perspective);
+        };
+
+        /// @brief 軌道の状態の項目（"orbit" の欄。2D の視点は別に読み書きする）
+        constexpr auto kOrbitStateFields = [](auto& orbitState, auto&& field) {
+            field("target", orbitState.target);
+            field("distance", orbitState.distance);
+            field("pitch", orbitState.pitch);
+            field("yaw", orbitState.yaw);
+        };
 
         CameraSnapshot JsonToSnapshot(const json& data)
         {
-            CameraSnapshot snapshot{};
-            snapshot.position = JsonManager::SafeGetVector3(data, "position", snapshot.position);
-            snapshot.rotation = JsonManager::SafeGetVector3(data, "rotation", snapshot.rotation);
-            snapshot.scale = JsonManager::SafeGetVector3(data, "scale", snapshot.scale);
-            snapshot.parameters.fov = JsonManager::SafeGet(data, "fov", snapshot.parameters.fov);
-            snapshot.parameters.nearClip = JsonManager::SafeGet(data, "nearClip", snapshot.parameters.nearClip);
-            snapshot.parameters.farClip = JsonManager::SafeGet(data, "farClip", snapshot.parameters.farClip);
-            snapshot.parameters.orthographicSize =
-                JsonManager::SafeGet(data, "orthographicSize", snapshot.parameters.orthographicSize);
-            snapshot.parameters.aspectRatio = JsonManager::SafeGet(data, "aspectRatio", snapshot.parameters.aspectRatio);
-
-            snapshot.parameters.projectionType = ToEnum(JsonManager::SafeGet(data, "projectionType",
-                static_cast<int>(CameraProjectionType::Perspective)), kProjectionTypeCount, CameraProjectionType::Perspective);
+            CameraSnapshot snapshot = JsonFields::FromJsonObject<CameraSnapshot>(data, kSnapshotFields);
 
             // 壊れた値で射影行列が破綻しないよう、読み込み時に均しておく。
             if (snapshot.parameters.nearClip < 0.001f) {
@@ -169,14 +164,10 @@ namespace CoreEngine
         for (const auto& entry : state.cameras) {
             json cameraJson;
             cameraJson["name"] = entry.name;
-            cameraJson["snapshot"] = SnapshotToJson(entry.snapshot);
+            cameraJson["snapshot"] = JsonFields::ToJsonObject(entry.snapshot, kSnapshotFields);
 
             if (entry.hasOrbitState) {
-                json orbitJson;
-                orbitJson["target"] = JsonManager::Vector3ToJson(entry.orbitState.target);
-                orbitJson["distance"] = entry.orbitState.distance;
-                orbitJson["pitch"] = entry.orbitState.pitch;
-                orbitJson["yaw"] = entry.orbitState.yaw;
+                json orbitJson = JsonFields::ToJsonObject(entry.orbitState, kOrbitStateFields);
                 orbitJson["view2D"] = View2DToJson(entry.view2D);
                 cameraJson["orbit"] = orbitJson;
             }
@@ -225,10 +216,7 @@ namespace CoreEngine
             if (cameraJson.contains("orbit")) {
                 const auto& orbitJson = cameraJson["orbit"];
                 entry.hasOrbitState = true;
-                entry.orbitState.target = JsonManager::SafeGetVector3(orbitJson, "target", entry.orbitState.target);
-                entry.orbitState.distance = JsonManager::SafeGet(orbitJson, "distance", entry.orbitState.distance);
-                entry.orbitState.pitch = JsonManager::SafeGet(orbitJson, "pitch", entry.orbitState.pitch);
-                entry.orbitState.yaw = JsonManager::SafeGet(orbitJson, "yaw", entry.orbitState.yaw);
+                JsonFields::ReadFields(orbitJson, entry.orbitState, kOrbitStateFields);
                 if (orbitJson.contains("view2D")) {
                     entry.view2D = JsonToView2D(orbitJson["view2D"]);
                 }

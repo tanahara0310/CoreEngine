@@ -3,6 +3,10 @@
 #include "Particle/Core/Particle.h"
 #include <algorithm>
 
+#ifdef CORE_EDITOR
+#include "Editor/Inspector/InspectorLayout.h"
+#endif
+
 // コンストラクタでデフォルトパラメータを設定
 
 namespace CoreEngine
@@ -75,11 +79,7 @@ bool SizeModule::ShowImGui() {
         static const char* sizeCurveNames[] = {
             "線形", "加速（イーズイン）", "減速（イーズアウト）", "加減速（イーズインアウト）", "一定（開始サイズを維持）"
         };
-        int currentCurve = static_cast<int>(data_.sizeCurve);
-        if (ImGui::Combo("変化カーブ", &currentCurve, sizeCurveNames, IM_ARRAYSIZE(sizeCurveNames))) {
-            data_.sizeCurve = static_cast<SizeData::SizeCurve>(currentCurve);
-            changed = true;
-        }
+        changed |= InspectorLayout::EnumCombo("変化カーブ", data_.sizeCurve, sizeCurveNames);
 
         // サイズ制限
         changed |= UI::DragFloat("最小サイズ", data_.minSize, 0.01f, 0.0f, 1.0f);

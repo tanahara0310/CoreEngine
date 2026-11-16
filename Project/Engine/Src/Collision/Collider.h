@@ -129,6 +129,12 @@ private:
     float          lastImpulse_ = 0.0f;
 };
 
+/// @brief スケールの 3 軸の大きさのうち最大のもの（球の半径に掛ける倍率）
+float MaxAbsScale(const Vector3& scale);
+
+/// @brief カプセルのワールドの半径（半径に横 2 軸のスケールの大きさのうち大きい方を掛ける）
+float WorldCapsuleRadius(const CollisionShape& shape, const Vector3& scale);
+
 /// @brief コライダーの形の種類に合うワールド空間の形状を取り出して f に渡す
 /// @details 球は Geometry::Sphere、カプセルは Geometry::Capsule、それ以外は Geometry::OBB を渡し、f の戻り値を返す。
 template <typename Func>

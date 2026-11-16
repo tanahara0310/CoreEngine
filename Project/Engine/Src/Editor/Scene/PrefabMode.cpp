@@ -105,16 +105,10 @@ namespace CoreEngine::Editor
 
         // 開いてから閉じるまでの書き換えを、シーンの履歴の 1 件にする
         if (edited_) {
-            stack.Push(std::make_unique<FunctionCommand>(
-                fileName_ + " を編集",
-                [prefab = prefab_, before = opened_] {
+            stack.Push(MakeValueCommand(fileName_ + " を編集", opened_, written_,
+                [prefab = prefab_](const json& value) {
                     if (GameObjectManager* const objects = SceneAccess::Objects()) {
-                        WritePrefab(*objects, prefab, before);
-                    }
-                },
-                [prefab = prefab_, after = written_] {
-                    if (GameObjectManager* const objects = SceneAccess::Objects()) {
-                        WritePrefab(*objects, prefab, after);
+                        WritePrefab(*objects, prefab, value);
                     }
                 },
                 false, true));

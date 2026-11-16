@@ -11,6 +11,7 @@
 #include "Modules/RotationModule.h"
 #include "Modules/NoiseModule.h"
 #include "Modules/CollisionModule.h"
+#include "Utility/JsonManager/JsonFields.h"
 #include "Utility/Logger/Logger.h"
 #include <filesystem>
 
@@ -31,31 +32,148 @@ namespace
     constexpr const char* kPresetVersion = "2.2";
 
     /// @brief モジュール 1 つの設定と有効を、プリセットの key の欄へ書く
-    /// @param write 設定の値を欄へ書く（`void(json&, const 設定&)`）
-    template <class TModule, class Write>
-    void SaveModule(json& presetData, const char* key, const TModule& module, Write&& write)
+    /// @param fields 設定の項目の並び（JsonFields の形）
+    template <class TModule, class Fields>
+    void SaveModule(json& presetData, const char* key, const TModule& module, Fields&& fields)
     {
         json moduleJson;
-        write(moduleJson, module.GetData());
+        JsonFields::WriteFields(moduleJson, module.GetData(), fields);
         moduleJson["enabled"] = module.IsEnabled();
         presetData[key] = moduleJson;
     }
 
     /// @brief プリセットの key の欄から、モジュール 1 つの設定と有効を読む（欄が無ければ何もしない）
     /// @param defaultEnabled 欄に有効が無いときの有効
-    /// @param read 既定の値の設定へ欄の値を読む（`void(const json&, 設定&)`）
-    template <class TModule, class Read>
-    void LoadModule(const json& presetData, const char* key, TModule& module, bool defaultEnabled, Read&& read)
+    /// @param fields 設定の項目の並び（既定の値の設定へ欄の値を読む）
+    template <class TModule, class Fields>
+    void LoadModule(const json& presetData, const char* key, TModule& module, bool defaultEnabled, Fields&& fields)
     {
         if (!presetData.contains(key)) {
             return;
         }
         const json& moduleJson = presetData[key];
         typename TModule::Data data;
-        read(moduleJson, data);
+        JsonFields::ReadFields(moduleJson, data, fields);
         module.SetData(data);
         module.SetEnabled(JsonManager::SafeGet(moduleJson, "enabled", defaultEnabled));
     }
+
+    /// @brief MainModule の設定の項目（シミュレーション空間は欄が無ければローカル）
+    constexpr auto kMainFields = [](auto& data, auto&& field) {
+        field("duration", data.duration);
+        field("looping", data.looping);
+        field("playOnAwake", data.playOnAwake);
+        field("maxParticles", data.maxParticles);
+        field("simulationSpace", data.simulationSpace, JsonFields::IfMissing(MainModule::SimulationSpace::Local));
+        field("startLifetime", data.startLifetime);
+        field("startLifetimeRandomness", data.startLifetimeRandomness);
+        field("startSpeed", data.startSpeed);
+        field("startSpeedRandomness", data.startSpeedRandomness);
+        field("startSize", data.startSize);
+        field("startSizeRandomness", data.startSizeRandomness);
+        field("startRotation", data.startRotation);
+        field("startRotationRandomness", data.startRotationRandomness);
+        field("startColor", data.startColor);
+        field("startColorRandomness", data.startColorRandomness);
+        field("gravityModifier", data.gravityModifier);
+    };
+
+    /// @brief EmissionModule の設定の項目
+    constexpr auto kEmissionFields = [](auto& data, auto&& field) {
+        field("rateOverTime", data.rateOverTime);
+        field("burstCount", data.burstCount);
+        field("burstTime", data.burstTime);
+    };
+
+    /// @brief ShapeModule の設定の項目
+    constexpr auto kShapeFields = [](auto& data, auto&& field) {
+        field("shapeType", data.shapeType);
+        field("scale", data.scale);
+        field("radius", data.radius);
+        field("innerRadius", data.innerRadius);
+        field("height", data.height);
+        field("angle", data.angle);
+        field("randomPositionRange", data.randomPositionRange);
+        field("emitFromSurface", data.emitFromSurface);
+        field("emissionDirection", data.emissionDirection);
+        field("circlePlane", data.circlePlane);
+    };
+
+    /// @brief VelocityModule の設定の項目
+    constexpr auto kVelocityFields = [](auto& data, auto&& field) {
+        field("startSpeed", data.startSpeed);
+        field("randomSpeedRange", data.randomSpeedRange);
+        field("useRandomDirection", data.useRandomDirection);
+    };
+
+    /// @brief ColorModule の設定の項目
+    constexpr auto kColorFields = [](auto& data, auto&& field) {
+        field("endColor", data.endColor);
+        field("useGradient", data.useGradient);
+        field("startRatio", data.startRatio);
+    };
+
+    /// @brief ForceModule の設定の項目
+    constexpr auto kForceFields = [](auto& data, auto&& field) {
+        field("gravity", data.gravity);
+        field("wind", data.wind);
+        field("drag", data.drag);
+        field("acceleration", data.acceleration);
+        field("areaMin", data.area.min);
+        field("areaMax", data.area.max);
+        field("useAccelerationField", data.useAccelerationField);
+    };
+
+    /// @brief SizeModule の設定の項目
+    constexpr auto kSizeFields = [](auto& data, auto&& field) {
+        field("endSize", data.endSize);
+        field("sizeOverLifetime", data.sizeOverLifetime);
+        field("endSize3D", data.endSize3D);
+        field("use3DSize", data.use3DSize);
+        field("sizeCurve", data.sizeCurve);
+        field("minSize", data.minSize);
+        field("maxSize", data.maxSize);
+        field("uniformScaling", data.uniformScaling);
+    };
+
+    /// @brief RotationModule の設定の項目
+    constexpr auto kRotationFields = [](auto& data, auto&& field) {
+        field("rotationSpeed", data.rotationSpeed);
+        field("rotationSpeedRandomness", data.rotationSpeedRandomness);
+        field("use2DRotation", data.use2DRotation);
+        field("rotation2DSpeed", data.rotation2DSpeed);
+        field("rotation2DSpeedRandomness", data.rotation2DSpeedRandomness);
+        field("rotationDirection", data.rotationDirection);
+        field("rotationOverLifetime", data.rotationOverLifetime);
+        field("startRotationSpeedMultiplier", data.startRotationSpeedMultiplier);
+        field("endRotationSpeedMultiplier", data.endRotationSpeedMultiplier);
+        field("limitRotationRange", data.limitRotationRange);
+        field("minRotation", data.minRotation);
+        field("maxRotation", data.maxRotation);
+        field("alignToVelocity", data.alignToVelocity);
+        field("velocityAlignmentStrength", data.velocityAlignmentStrength);
+    };
+
+    /// @brief NoiseModule の設定の項目
+    constexpr auto kNoiseFields = [](auto& data, auto&& field) {
+        field("strength", data.strength);
+        field("frequency", data.frequency);
+        field("scrollSpeed", data.scrollSpeed);
+        field("damping", data.damping);
+        field("positionAmount", data.positionAmount);
+    };
+
+    /// @brief CollisionModule の設定の項目
+    constexpr auto kCollisionFields = [](auto& data, auto&& field) {
+        field("planeHeight", data.planeHeight);
+        field("contactOffset", data.contactOffset);
+        field("bounce", data.bounce);
+        field("friction", data.friction);
+        field("restSpeed", data.restSpeed);
+        field("roll", data.roll);
+        field("rollRadius", data.rollRadius);
+        field("useParticleScale", data.useParticleScale);
+    };
 }
 
 json ParticlePresetManager::ToJson(IParticleSystem& particleSystem)
@@ -66,133 +184,20 @@ json ParticlePresetManager::ToJson(IParticleSystem& particleSystem)
     presetData["billboardType"] = static_cast<int>(particleSystem.GetBillboardType());
     presetData["blendMode"] = static_cast<int>(particleSystem.GetBlendMode());
 
-    // MainModuleの保存
-    SaveModule(presetData, "main", particleSystem.GetMainModule(),
-        [](json& mainJson, const MainModule::MainData& mainData) {
-            mainJson["duration"] = mainData.duration;
-            mainJson["looping"] = mainData.looping;
-            mainJson["playOnAwake"] = mainData.playOnAwake;
-            mainJson["maxParticles"] = mainData.maxParticles;
-            mainJson["simulationSpace"] = static_cast<int>(mainData.simulationSpace);
-            mainJson["startLifetime"] = mainData.startLifetime;
-            mainJson["startLifetimeRandomness"] = mainData.startLifetimeRandomness;
-            mainJson["startSpeed"] = mainData.startSpeed;
-            mainJson["startSpeedRandomness"] = mainData.startSpeedRandomness;
-            mainJson["startSize"] = JsonManager::Vector3ToJson(mainData.startSize);
-            mainJson["startSizeRandomness"] = mainData.startSizeRandomness;
-            mainJson["startRotation"] = JsonManager::Vector3ToJson(mainData.startRotation);
-            mainJson["startRotationRandomness"] = mainData.startRotationRandomness;
-            mainJson["startColor"] = JsonManager::Vector4ToJson(mainData.startColor);
-            mainJson["startColorRandomness"] = mainData.startColorRandomness;
-            mainJson["gravityModifier"] = mainData.gravityModifier;
-        });
-
-    // EmissionModuleの保存
-    SaveModule(presetData, "emission", particleSystem.GetEmissionModule(),
-        [](json& emissionJson, const EmissionModule::EmissionData& emissionData) {
-            emissionJson["rateOverTime"] = emissionData.rateOverTime;
-            emissionJson["burstCount"] = emissionData.burstCount;
-            emissionJson["burstTime"] = emissionData.burstTime;
-        });
-
-    // ShapeModuleの保存
-    SaveModule(presetData, "shape", particleSystem.GetShapeModule(),
-        [](json& shapeJson, const ShapeModule::ShapeData& shapeData) {
-            shapeJson["shapeType"] = static_cast<int>(shapeData.shapeType);
-            shapeJson["scale"] = JsonManager::Vector3ToJson(shapeData.scale);
-            shapeJson["radius"] = shapeData.radius;
-            shapeJson["innerRadius"] = shapeData.innerRadius;
-            shapeJson["height"] = shapeData.height;
-            shapeJson["angle"] = shapeData.angle;
-            shapeJson["randomPositionRange"] = shapeData.randomPositionRange;
-            shapeJson["emitFromSurface"] = shapeData.emitFromSurface;
-            shapeJson["emissionDirection"] = JsonManager::Vector3ToJson(shapeData.emissionDirection);
-            shapeJson["circlePlane"] = static_cast<int>(shapeData.circlePlane);
-        });
-
-    // VelocityModuleの保存
-    SaveModule(presetData, "velocity", particleSystem.GetVelocityModule(),
-        [](json& velocityJson, const VelocityModule::VelocityData& velocityData) {
-            velocityJson["startSpeed"] = JsonManager::Vector3ToJson(velocityData.startSpeed);
-            velocityJson["randomSpeedRange"] = JsonManager::Vector3ToJson(velocityData.randomSpeedRange);
-            velocityJson["useRandomDirection"] = velocityData.useRandomDirection;
-        });
-
-    // ColorModuleの保存
-    SaveModule(presetData, "color", particleSystem.GetColorModule(),
-        [](json& colorJson, const ColorModule::ColorOverLifetime& colorData) {
-            colorJson["endColor"] = JsonManager::Vector4ToJson(colorData.endColor);
-            colorJson["useGradient"] = colorData.useGradient;
-            colorJson["startRatio"] = colorData.startRatio;
-        });
-
-    // ForceModuleの保存
-    SaveModule(presetData, "force", particleSystem.GetForceModule(),
-        [](json& forceJson, const ForceModule::ForceData& forceData) {
-            forceJson["gravity"] = JsonManager::Vector3ToJson(forceData.gravity);
-            forceJson["wind"] = JsonManager::Vector3ToJson(forceData.wind);
-            forceJson["drag"] = forceData.drag;
-            forceJson["acceleration"] = JsonManager::Vector3ToJson(forceData.acceleration);
-            forceJson["areaMin"] = JsonManager::Vector3ToJson(forceData.area.min);
-            forceJson["areaMax"] = JsonManager::Vector3ToJson(forceData.area.max);
-            forceJson["useAccelerationField"] = forceData.useAccelerationField;
-        });
-
-    // SizeModuleの保存
-    SaveModule(presetData, "size", particleSystem.GetSizeModule(),
-        [](json& sizeJson, const SizeModule::SizeData& sizeData) {
-            sizeJson["endSize"] = sizeData.endSize;
-            sizeJson["sizeOverLifetime"] = sizeData.sizeOverLifetime;
-            sizeJson["endSize3D"] = JsonManager::Vector3ToJson(sizeData.endSize3D);
-            sizeJson["use3DSize"] = sizeData.use3DSize;
-            sizeJson["sizeCurve"] = static_cast<int>(sizeData.sizeCurve);
-            sizeJson["minSize"] = sizeData.minSize;
-            sizeJson["maxSize"] = sizeData.maxSize;
-            sizeJson["uniformScaling"] = sizeData.uniformScaling;
-        });
-
-    // RotationModuleの保存
-    SaveModule(presetData, "rotation", particleSystem.GetRotationModule(),
-        [](json& rotationJson, const RotationModule::RotationData& rotationData) {
-            rotationJson["rotationSpeed"] = JsonManager::Vector3ToJson(rotationData.rotationSpeed);
-            rotationJson["rotationSpeedRandomness"] = JsonManager::Vector3ToJson(rotationData.rotationSpeedRandomness);
-            rotationJson["use2DRotation"] = rotationData.use2DRotation;
-            rotationJson["rotation2DSpeed"] = rotationData.rotation2DSpeed;
-            rotationJson["rotation2DSpeedRandomness"] = rotationData.rotation2DSpeedRandomness;
-            rotationJson["rotationDirection"] = static_cast<int>(rotationData.rotationDirection);
-            rotationJson["rotationOverLifetime"] = rotationData.rotationOverLifetime;
-            rotationJson["startRotationSpeedMultiplier"] = rotationData.startRotationSpeedMultiplier;
-            rotationJson["endRotationSpeedMultiplier"] = rotationData.endRotationSpeedMultiplier;
-            rotationJson["limitRotationRange"] = rotationData.limitRotationRange;
-            rotationJson["minRotation"] = JsonManager::Vector3ToJson(rotationData.minRotation);
-            rotationJson["maxRotation"] = JsonManager::Vector3ToJson(rotationData.maxRotation);
-            rotationJson["alignToVelocity"] = rotationData.alignToVelocity;
-            rotationJson["velocityAlignmentStrength"] = rotationData.velocityAlignmentStrength;
-        });
-
-    // NoiseModuleの保存
-    SaveModule(presetData, "noise", particleSystem.GetNoiseModule(),
-        [](json& noiseJson, const NoiseModule::NoiseData& noiseData) {
-            noiseJson["strength"] = noiseData.strength;
-            noiseJson["frequency"] = noiseData.frequency;
-            noiseJson["scrollSpeed"] = noiseData.scrollSpeed;
-            noiseJson["damping"] = noiseData.damping;
-            noiseJson["positionAmount"] = JsonManager::Vector3ToJson(noiseData.positionAmount);
-        });
+    // 各モジュールの保存
+    SaveModule(presetData, "main", particleSystem.GetMainModule(), kMainFields);
+    SaveModule(presetData, "emission", particleSystem.GetEmissionModule(), kEmissionFields);
+    SaveModule(presetData, "shape", particleSystem.GetShapeModule(), kShapeFields);
+    SaveModule(presetData, "velocity", particleSystem.GetVelocityModule(), kVelocityFields);
+    SaveModule(presetData, "color", particleSystem.GetColorModule(), kColorFields);
+    SaveModule(presetData, "force", particleSystem.GetForceModule(), kForceFields);
+    SaveModule(presetData, "size", particleSystem.GetSizeModule(), kSizeFields);
+    SaveModule(presetData, "rotation", particleSystem.GetRotationModule(), kRotationFields);
+    SaveModule(presetData, "noise", particleSystem.GetNoiseModule(), kNoiseFields);
 
     // CollisionModuleの保存（床との当たり判定。CPU版だけが持つ）
     if (CollisionModule* const collision = particleSystem.GetCollisionModule()) {
-        SaveModule(presetData, "collision", *collision,
-            [](json& collisionJson, const CollisionModule::CollisionData& collisionData) {
-                collisionJson["planeHeight"] = collisionData.planeHeight;
-                collisionJson["contactOffset"] = collisionData.contactOffset;
-                collisionJson["bounce"] = collisionData.bounce;
-                collisionJson["friction"] = collisionData.friction;
-                collisionJson["restSpeed"] = collisionData.restSpeed;
-                collisionJson["roll"] = collisionData.roll;
-                collisionJson["rollRadius"] = collisionData.rollRadius;
-                collisionJson["useParticleScale"] = collisionData.useParticleScale;
-            });
+        SaveModule(presetData, "collision", *collision, kCollisionFields);
     }
 
     // メタデータ
@@ -235,145 +240,21 @@ void ParticlePresetManager::FromJson(IParticleSystem& particleSystem, const json
         particleSystem.SetBlendMode(static_cast<BlendMode>(blend));
     }
 
-    // MainModuleの読み込み
-    LoadModule(presetData, "main", particleSystem.GetMainModule(), true,
-        [](const json& mainJson, MainModule::MainData& mainData) {
-            mainData.duration = JsonManager::SafeGet(mainJson, "duration", 5.0f);
-            mainData.looping = JsonManager::SafeGet(mainJson, "looping", true);
-            mainData.playOnAwake = JsonManager::SafeGet(mainJson, "playOnAwake", true);
-            mainData.maxParticles = JsonManager::SafeGet(mainJson, "maxParticles", 1000u);
-            mainData.simulationSpace = static_cast<MainModule::SimulationSpace>(
-                JsonManager::SafeGet(mainJson, "simulationSpace", 0));
-
-            mainData.startLifetime = JsonManager::SafeGet(mainJson, "startLifetime", 1.0f);
-            mainData.startLifetimeRandomness = JsonManager::SafeGet(mainJson, "startLifetimeRandomness", 0.0f);
-
-            mainData.startSpeed = JsonManager::SafeGet(mainJson, "startSpeed", 5.0f);
-            mainData.startSpeedRandomness = JsonManager::SafeGet(mainJson, "startSpeedRandomness", 0.0f);
-
-            mainData.startSize = JsonManager::SafeGetVector3(mainJson, "startSize", { 1.0f, 1.0f, 1.0f });
-            mainData.startSizeRandomness = JsonManager::SafeGet(mainJson, "startSizeRandomness", 0.0f);
-
-            mainData.startRotation = JsonManager::SafeGetVector3(mainJson, "startRotation", { 0.0f, 0.0f, 0.0f });
-            mainData.startRotationRandomness = JsonManager::SafeGet(mainJson, "startRotationRandomness", 0.0f);
-
-            mainData.startColor = JsonManager::SafeGetVector4(mainJson, "startColor", { 1.0f, 1.0f, 1.0f, 1.0f });
-            mainData.startColorRandomness = JsonManager::SafeGet(mainJson, "startColorRandomness", 0.0f);
-
-            mainData.gravityModifier = JsonManager::SafeGet(mainJson, "gravityModifier", 0.0f);
-        });
-
-    // EmissionModuleの読み込み
-    LoadModule(presetData, "emission", particleSystem.GetEmissionModule(), true,
-        [](const json& emissionJson, EmissionModule::EmissionData& emissionData) {
-            emissionData.rateOverTime = JsonManager::SafeGet(emissionJson, "rateOverTime", 10u);
-            emissionData.burstCount = JsonManager::SafeGet(emissionJson, "burstCount", 0u);
-            emissionData.burstTime = JsonManager::SafeGet(emissionJson, "burstTime", 0.0f);
-        });
-
-    // ShapeModuleの読み込み
-    LoadModule(presetData, "shape", particleSystem.GetShapeModule(), true,
-        [](const json& shapeJson, ShapeModule::ShapeData& shapeData) {
-            shapeData.shapeType = static_cast<ShapeModule::ShapeType>(
-                JsonManager::SafeGet(shapeJson, "shapeType", 0));
-            shapeData.scale = JsonManager::SafeGetVector3(shapeJson, "scale", { 1.0f, 1.0f, 1.0f });
-            shapeData.radius = JsonManager::SafeGet(shapeJson, "radius", 1.0f);
-            shapeData.innerRadius = JsonManager::SafeGet(shapeJson, "innerRadius", 0.5f);
-            shapeData.height = JsonManager::SafeGet(shapeJson, "height", 2.0f);
-            shapeData.angle = JsonManager::SafeGet(shapeJson, "angle", 25.0f);
-            shapeData.randomPositionRange = JsonManager::SafeGet(shapeJson, "randomPositionRange", 0.0f);
-            shapeData.emitFromSurface = JsonManager::SafeGet(shapeJson, "emitFromSurface", false);
-            shapeData.emissionDirection = JsonManager::SafeGetVector3(shapeJson, "emissionDirection", { 0.0f, 1.0f, 0.0f });
-            shapeData.circlePlane = static_cast<ShapeModule::CirclePlane>(
-                JsonManager::SafeGet(shapeJson, "circlePlane", 0));
-        });
-
-    // VelocityModuleの読み込み
-    LoadModule(presetData, "velocity", particleSystem.GetVelocityModule(), true,
-        [](const json& velocityJson, VelocityModule::VelocityData& velocityData) {
-            velocityData.startSpeed = JsonManager::SafeGetVector3(velocityJson, "startSpeed", { 0.0f, 1.0f, 0.0f });
-            velocityData.randomSpeedRange = JsonManager::SafeGetVector3(velocityJson, "randomSpeedRange", { 1.0f, 1.0f, 1.0f });
-            velocityData.useRandomDirection = JsonManager::SafeGet(velocityJson, "useRandomDirection", true);
-        });
-
-    // ColorModuleの読み込み
-    LoadModule(presetData, "color", particleSystem.GetColorModule(), true,
-        [](const json& colorJson, ColorModule::ColorOverLifetime& colorData) {
-            colorData.endColor = JsonManager::SafeGetVector4(colorJson, "endColor", { 1.0f, 1.0f, 1.0f, 0.0f });
-            colorData.useGradient = JsonManager::SafeGet(colorJson, "useGradient", true);
-            colorData.startRatio = JsonManager::SafeGet(colorJson, "startRatio", 0.0f);
-        });
-
-    // ForceModuleの読み込み
-    LoadModule(presetData, "force", particleSystem.GetForceModule(), true,
-        [](const json& forceJson, ForceModule::ForceData& forceData) {
-            forceData.gravity = JsonManager::SafeGetVector3(forceJson, "gravity", { 0.0f, -9.8f, 0.0f });
-            forceData.wind = JsonManager::SafeGetVector3(forceJson, "wind", { 0.0f, 0.0f, 0.0f });
-            forceData.drag = JsonManager::SafeGet(forceJson, "drag", 0.0f);
-            forceData.acceleration = JsonManager::SafeGetVector3(forceJson, "acceleration", { 0.0f, 0.0f, 0.0f });
-            forceData.area.min = JsonManager::SafeGetVector3(forceJson, "areaMin", { -1.0f, -1.0f, -1.0f });
-            forceData.area.max = JsonManager::SafeGetVector3(forceJson, "areaMax", { 1.0f, 1.0f, 1.0f });
-            forceData.useAccelerationField = JsonManager::SafeGet(forceJson, "useAccelerationField", false);
-        });
-
-    // SizeModuleの読み込み
-    LoadModule(presetData, "size", particleSystem.GetSizeModule(), true,
-        [](const json& sizeJson, SizeModule::SizeData& sizeData) {
-            sizeData.endSize = JsonManager::SafeGet(sizeJson, "endSize", 0.0f);
-            sizeData.sizeOverLifetime = JsonManager::SafeGet(sizeJson, "sizeOverLifetime", true);
-            sizeData.endSize3D = JsonManager::SafeGetVector3(sizeJson, "endSize3D", { 0.0f, 0.0f, 0.0f });
-            sizeData.use3DSize = JsonManager::SafeGet(sizeJson, "use3DSize", false);
-            sizeData.sizeCurve = static_cast<SizeModule::SizeData::SizeCurve>(
-                JsonManager::SafeGet(sizeJson, "sizeCurve", 0));
-            sizeData.minSize = JsonManager::SafeGet(sizeJson, "minSize", 0.01f);
-            sizeData.maxSize = JsonManager::SafeGet(sizeJson, "maxSize", 10.0f);
-            sizeData.uniformScaling = JsonManager::SafeGet(sizeJson, "uniformScaling", true);
-        });
-
-    // RotationModuleの読み込み
-    LoadModule(presetData, "rotation", particleSystem.GetRotationModule(), true,
-        [](const json& rotationJson, RotationModule::RotationData& rotationData) {
-            rotationData.rotationSpeed = JsonManager::SafeGetVector3(rotationJson, "rotationSpeed", { 0.0f, 0.0f, 0.0f });
-            rotationData.rotationSpeedRandomness = JsonManager::SafeGetVector3(rotationJson, "rotationSpeedRandomness", { 0.0f, 0.0f, 0.0f });
-            rotationData.use2DRotation = JsonManager::SafeGet(rotationJson, "use2DRotation", true);
-            rotationData.rotation2DSpeed = JsonManager::SafeGet(rotationJson, "rotation2DSpeed", 0.0f);
-            rotationData.rotation2DSpeedRandomness = JsonManager::SafeGet(rotationJson, "rotation2DSpeedRandomness", 0.0f);
-            rotationData.rotationDirection = static_cast<RotationModule::RotationData::RotationDirection>(
-                JsonManager::SafeGet(rotationJson, "rotationDirection", 2));
-            rotationData.rotationOverLifetime = JsonManager::SafeGet(rotationJson, "rotationOverLifetime", false);
-            rotationData.startRotationSpeedMultiplier = JsonManager::SafeGet(rotationJson, "startRotationSpeedMultiplier", 1.0f);
-            rotationData.endRotationSpeedMultiplier = JsonManager::SafeGet(rotationJson, "endRotationSpeedMultiplier", 1.0f);
-            rotationData.limitRotationRange = JsonManager::SafeGet(rotationJson, "limitRotationRange", false);
-            rotationData.minRotation = JsonManager::SafeGetVector3(rotationJson, "minRotation", { -180.0f, -180.0f, -180.0f });
-            rotationData.maxRotation = JsonManager::SafeGetVector3(rotationJson, "maxRotation", { 180.0f, 180.0f, 180.0f });
-            rotationData.alignToVelocity = JsonManager::SafeGet(rotationJson, "alignToVelocity", false);
-            rotationData.velocityAlignmentStrength = JsonManager::SafeGet(rotationJson, "velocityAlignmentStrength", 1.0f);
-        });
-
-    // NoiseModuleの読み込み
-    LoadModule(presetData, "noise", particleSystem.GetNoiseModule(), true,
-        [](const json& noiseJson, NoiseModule::NoiseData& noiseData) {
-            noiseData.strength = JsonManager::SafeGet(noiseJson, "strength", 1.0f);
-            noiseData.frequency = JsonManager::SafeGet(noiseJson, "frequency", 1.0f);
-            noiseData.scrollSpeed = JsonManager::SafeGet(noiseJson, "scrollSpeed", 0.0f);
-            noiseData.damping = JsonManager::SafeGet(noiseJson, "damping", true);
-            noiseData.positionAmount = JsonManager::SafeGetVector3(noiseJson, "positionAmount", { 1.0f, 1.0f, 1.0f });
-        });
+    // 各モジュールの読み込み
+    LoadModule(presetData, "main", particleSystem.GetMainModule(), true, kMainFields);
+    LoadModule(presetData, "emission", particleSystem.GetEmissionModule(), true, kEmissionFields);
+    LoadModule(presetData, "shape", particleSystem.GetShapeModule(), true, kShapeFields);
+    LoadModule(presetData, "velocity", particleSystem.GetVelocityModule(), true, kVelocityFields);
+    LoadModule(presetData, "color", particleSystem.GetColorModule(), true, kColorFields);
+    LoadModule(presetData, "force", particleSystem.GetForceModule(), true, kForceFields);
+    LoadModule(presetData, "size", particleSystem.GetSizeModule(), true, kSizeFields);
+    LoadModule(presetData, "rotation", particleSystem.GetRotationModule(), true, kRotationFields);
+    LoadModule(presetData, "noise", particleSystem.GetNoiseModule(), true, kNoiseFields);
 
     // CollisionModuleの読み込み（床との当たり判定。CPU版だけが持つ）
     // 既定は無効なので、collision セクションが無いプリセットは触らない
     if (CollisionModule* const collision = particleSystem.GetCollisionModule()) {
-        LoadModule(presetData, "collision", *collision, false,
-            [](const json& collisionJson, CollisionModule::CollisionData& collisionData) {
-                collisionData.planeHeight = JsonManager::SafeGet(collisionJson, "planeHeight", 0.0f);
-                collisionData.contactOffset = JsonManager::SafeGet(collisionJson, "contactOffset", 0.0f);
-                collisionData.bounce = JsonManager::SafeGet(collisionJson, "bounce", 0.3f);
-                collisionData.friction = JsonManager::SafeGet(collisionJson, "friction", 3.0f);
-                collisionData.restSpeed = JsonManager::SafeGet(collisionJson, "restSpeed", 0.6f);
-                collisionData.roll = JsonManager::SafeGet(collisionJson, "roll", true);
-                collisionData.rollRadius = JsonManager::SafeGet(collisionJson, "rollRadius", 0.2f);
-                collisionData.useParticleScale = JsonManager::SafeGet(collisionJson, "useParticleScale", true);
-            });
+        LoadModule(presetData, "collision", *collision, false, kCollisionFields);
     }
 }
 

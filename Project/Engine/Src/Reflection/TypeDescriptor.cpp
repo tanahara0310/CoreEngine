@@ -49,37 +49,14 @@ namespace CoreEngine::Reflection
 
     size_t SizeOfPropertyType(PropertyType type) noexcept
     {
-        switch (type) {
-        case PropertyType::Bool:    return sizeof(bool);
-        case PropertyType::Int:     return sizeof(int);
-        case PropertyType::Float:   return sizeof(float);
-        case PropertyType::Vector2: return sizeof(Vector2);
-        case PropertyType::Vector3: return sizeof(Vector3);
-        case PropertyType::Vector4: return sizeof(Vector4);
-        case PropertyType::Color:   return sizeof(Vector4);
-        case PropertyType::String:  return sizeof(std::string);
-        case PropertyType::ObjectRef: return sizeof(ObjectRefValue);
-        case PropertyType::AssetRef:  return sizeof(AssetRefValue);
-        case PropertyType::Array:     return sizeof(ArrayValue);
-        }
-        return 0;
+        return VisitPropertyType(type, [](auto* tag) { return sizeof(*tag); });
     }
 
     bool IsArrayElementType(PropertyType type) noexcept
     {
-        switch (type) {
-        case PropertyType::Bool:
-        case PropertyType::Int:
-        case PropertyType::Float:
-        case PropertyType::Vector2:
-        case PropertyType::Vector3:
-        case PropertyType::Vector4:
-        case PropertyType::Color:
-        case PropertyType::String:
-            return true;
-        default:
-            return false;
-        }
+        return VisitPropertyType(type, [](auto* tag) {
+            return kIsAlternativeOf<std::remove_pointer_t<decltype(tag)>, ArrayValue::Element>;
+            });
     }
 
     const PropertyDescriptor* TypeDescriptor::Find(const char* propertyName) const

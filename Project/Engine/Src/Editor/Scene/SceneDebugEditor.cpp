@@ -34,27 +34,16 @@
 #include "Graphics/Asset/AssetRef.h"
 #include "Editor/ImGui/EditorTheme.h"
 #include "Editor/ImGui/ImGuiAll.h"
+#include "Editor/ImGui/Widgets/DragDropPayload.h"
 #include "Editor/ImGui/Widgets/EditorBars.h"
 #include "Editor/ImGui/Gizmo.h"
 #include "Math/Geometry/RayCast.h"
 #include "Utility/Logger/Logger.h"
 #include <algorithm>
-#include <cstring>
 #include <filesystem>
 
 namespace
 {
-    /// @brief ドロップされたファイル名を、受け取ったデータの大きさの範囲で文字列にする
-    /// @return データが無ければ空の文字列
-    std::string PayloadFileName(const ImGuiPayload& payload)
-    {
-        const auto* data = static_cast<const char*>(payload.Data);
-        if (!data || payload.DataSize <= 0) {
-            return {};
-        }
-        return std::string(data, strnlen(data, static_cast<size_t>(payload.DataSize)));
-    }
-
     /// @brief 選んだ行へ送るのを続けるフレーム数
     /// @details 一覧の高さが確定するまで待つ。1 フレームだと上限で丸められて届かない。
     constexpr int kScrollFrames = 3;
@@ -405,26 +394,20 @@ namespace CoreEngine
             std::clamp((mousePos.y - viewportPos.y) / viewportSize.y, 0.0f, 1.0f));
 
         bool accepted = false;
-        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_FILE")) {
-            const std::string droppedFilename = PayloadFileName(*payload);
-            if (!droppedFilename.empty()) {
-                SpawnModelFromFile(droppedFilename, &normalizedDropPos);
-                accepted = true;
-            }
+        if (const auto droppedFilename = UI::AcceptPayload<std::string>("MODEL_FILE");
+            droppedFilename && !droppedFilename->empty()) {
+            SpawnModelFromFile(*droppedFilename, &normalizedDropPos);
+            accepted = true;
         }
-        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("PREFAB_FILE")) {
-            const std::string droppedFilename = PayloadFileName(*payload);
-            if (!droppedFilename.empty()) {
-                SpawnPrefabFromFile(droppedFilename, &normalizedDropPos);
-                accepted = true;
-            }
+        if (const auto droppedFilename = UI::AcceptPayload<std::string>("PREFAB_FILE");
+            droppedFilename && !droppedFilename->empty()) {
+            SpawnPrefabFromFile(*droppedFilename, &normalizedDropPos);
+            accepted = true;
         }
-        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("TEXTURE_FILE")) {
-            const std::string droppedFilename = PayloadFileName(*payload);
-            if (!droppedFilename.empty()) {
-                SpawnSpriteFromTexture(droppedFilename, &normalizedDropPos);
-                accepted = true;
-            }
+        if (const auto droppedFilename = UI::AcceptPayload<std::string>("TEXTURE_FILE");
+            droppedFilename && !droppedFilename->empty()) {
+            SpawnSpriteFromTexture(*droppedFilename, &normalizedDropPos);
+            accepted = true;
         }
 
         ImGui::EndDragDropTarget();

@@ -11,6 +11,7 @@
 #include "Math/IntegerMath.h"
 #include "Math/MathCore.h"
 #include "Utility/CVar/CVar.h"
+#include "Utility/CVar/CVarMemberBinding.h"
 #include "Utility/CVar/CVarRegistry.h"
 
 #include <algorithm>
@@ -136,6 +137,39 @@ namespace CoreEngine
         CVar<bool> cvSkySpecularEnabled{
             "r.Atmosphere.SkySpecularEnabled", true,
             "空スペキュラ IBL（プリフィルタ環境マップ）を有効にする" };
+
+        // CVar と AtmosphereParameters の対応表（groundLevelY は含めない）
+        template <class Value>
+        using Binding = CVarMemberBinding<AtmosphereParameters, Value>;
+
+        constexpr Binding<float> kFloatBindings[] = {
+            { &cvPlanetRadius,             &AtmosphereParameters::planetRadius },
+            { &cvAtmosphereTopRadius,      &AtmosphereParameters::atmosphereTopRadius },
+            { &cvRayleighScaleHeight,      &AtmosphereParameters::rayleighScaleHeight },
+            { &cvMieScattering,            &AtmosphereParameters::mieScattering },
+            { &cvMieAbsorption,            &AtmosphereParameters::mieAbsorption },
+            { &cvMieScaleHeight,           &AtmosphereParameters::mieScaleHeight },
+            { &cvMiePhaseG,                &AtmosphereParameters::miePhaseG },
+            { &cvOzoneLayerCenter,         &AtmosphereParameters::ozoneLayerCenter },
+            { &cvOzoneLayerHalfWidth,      &AtmosphereParameters::ozoneLayerHalfWidth },
+            { &cvSunDiskAngularRadiusDeg,  &AtmosphereParameters::sunDiskAngularRadiusDeg },
+            { &cvSunDiskLuminanceScale,    &AtmosphereParameters::sunDiskLuminanceScale },
+            { &cvMoonDiskAngularRadiusDeg, &AtmosphereParameters::moonDiskAngularRadiusDeg },
+            { &cvMoonDiskLuminanceScale,   &AtmosphereParameters::moonDiskLuminanceScale },
+            { &cvStarIntensity,            &AtmosphereParameters::starIntensity },
+            { &cvMultiScatteringFactor,    &AtmosphereParameters::multiScatteringFactor },
+            { &cvApKmPerSlice,             &AtmosphereParameters::apKmPerSlice },
+        };
+
+        constexpr Binding<Vector3> kVector3Bindings[] = {
+            { &cvRayleighScattering, &AtmosphereParameters::rayleighScattering },
+            { &cvOzoneAbsorption,    &AtmosphereParameters::ozoneAbsorption },
+            { &cvGroundAlbedo,       &AtmosphereParameters::groundAlbedo },
+        };
+
+        constexpr Binding<bool> kBoolBindings[] = {
+            { &cvMoonPhaseFromSun, &AtmosphereParameters::moonPhaseFromSun },
+        };
     }
 
     namespace {
@@ -1000,26 +1034,7 @@ namespace CoreEngine
     void AtmosphereManager::SetParametersFromEditor(const AtmosphereParameters& params)
     {
         // CVar が唯一の保持者。書き戻すことで UI 表示・自動保存にも反映される
-        cvPlanetRadius.Set(params.planetRadius);
-        cvAtmosphereTopRadius.Set(params.atmosphereTopRadius);
-        cvRayleighScattering.Set(params.rayleighScattering);
-        cvRayleighScaleHeight.Set(params.rayleighScaleHeight);
-        cvMieScattering.Set(params.mieScattering);
-        cvMieAbsorption.Set(params.mieAbsorption);
-        cvMieScaleHeight.Set(params.mieScaleHeight);
-        cvMiePhaseG.Set(params.miePhaseG);
-        cvOzoneAbsorption.Set(params.ozoneAbsorption);
-        cvOzoneLayerCenter.Set(params.ozoneLayerCenter);
-        cvOzoneLayerHalfWidth.Set(params.ozoneLayerHalfWidth);
-        cvGroundAlbedo.Set(params.groundAlbedo);
-        cvSunDiskAngularRadiusDeg.Set(params.sunDiskAngularRadiusDeg);
-        cvSunDiskLuminanceScale.Set(params.sunDiskLuminanceScale);
-        cvMoonDiskAngularRadiusDeg.Set(params.moonDiskAngularRadiusDeg);
-        cvMoonDiskLuminanceScale.Set(params.moonDiskLuminanceScale);
-        cvMoonPhaseFromSun.Set(params.moonPhaseFromSun);
-        cvStarIntensity.Set(params.starIntensity);
-        cvMultiScatteringFactor.Set(params.multiScatteringFactor);
-        cvApKmPerSlice.Set(params.apKmPerSlice);
+        StoreToCVars(params, kFloatBindings, kVector3Bindings, kBoolBindings);
         // groundLevelY はシーン所有なので CVar 化していない。そのまま反映する
         SetParameters(params);
     }
@@ -1058,26 +1073,7 @@ namespace CoreEngine
         lastCVarRevision_ = revision;
 
         AtmosphereParameters p = parameters_;
-        p.planetRadius             = cvPlanetRadius.Get();
-        p.atmosphereTopRadius      = cvAtmosphereTopRadius.Get();
-        p.rayleighScattering       = cvRayleighScattering.Get();
-        p.rayleighScaleHeight      = cvRayleighScaleHeight.Get();
-        p.mieScattering            = cvMieScattering.Get();
-        p.mieAbsorption            = cvMieAbsorption.Get();
-        p.mieScaleHeight           = cvMieScaleHeight.Get();
-        p.miePhaseG                = cvMiePhaseG.Get();
-        p.ozoneAbsorption          = cvOzoneAbsorption.Get();
-        p.ozoneLayerCenter         = cvOzoneLayerCenter.Get();
-        p.ozoneLayerHalfWidth      = cvOzoneLayerHalfWidth.Get();
-        p.groundAlbedo             = cvGroundAlbedo.Get();
-        p.sunDiskAngularRadiusDeg  = cvSunDiskAngularRadiusDeg.Get();
-        p.sunDiskLuminanceScale    = cvSunDiskLuminanceScale.Get();
-        p.moonDiskAngularRadiusDeg = cvMoonDiskAngularRadiusDeg.Get();
-        p.moonDiskLuminanceScale   = cvMoonDiskLuminanceScale.Get();
-        p.moonPhaseFromSun         = cvMoonPhaseFromSun.Get();
-        p.starIntensity            = cvStarIntensity.Get();
-        p.multiScatteringFactor    = cvMultiScatteringFactor.Get();
-        p.apKmPerSlice             = cvApKmPerSlice.Get();
+        LoadFromCVars(p, kFloatBindings, kVector3Bindings, kBoolBindings);
         // groundLevelY はシーン所有の値なので CVar 化していない（上書きしない）
         SetParameters(p);
 

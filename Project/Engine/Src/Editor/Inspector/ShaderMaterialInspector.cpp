@@ -5,6 +5,7 @@
 
 #include "EngineSystem/EngineSystem.h"
 #include "Editor/ImGui/ImGuiAll.h"
+#include "Editor/ImGui/Widgets/DragDropPayload.h"
 #include "Editor/Inspector/InspectorLayout.h"
 #include "Editor/Scene/EditorSceneAccess.h"
 #include "Editor/ShaderGraph/ShaderGraphAsset.h"
@@ -21,6 +22,7 @@
 #include "Graphics/Render/RenderManager.h"
 #include "Graphics/Render/Sprite/SpriteRenderer.h"
 #include "Graphics/Shader/ShaderCompiler.h"
+#include "Utility/Algorithm/FindIfPtr.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
@@ -28,7 +30,6 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <cstring>
 #include <fstream>
 #include <map>
 #include <memory>
@@ -170,9 +171,8 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
             if (!graph) {
                 return nullptr;
             }
-            const auto found = std::find_if(graph->properties.begin(), graph->properties.end(),
+            return FindIfPtr(graph->properties,
                 [&name](const ShaderGraph::PropertyHint& hint) { return hint.name == name; });
-            return found != graph->properties.end() ? &*found : nullptr;
         }
 
         /// @brief 色として出す項目か
@@ -328,10 +328,8 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
                 changed = true;
             }
             if (ImGui::BeginDragDropTarget()) {
-                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("TEXTURE_FILE")) {
-                    const auto* data = static_cast<const char*>(payload->Data);
-                    const std::string fileName(data, strnlen(data, static_cast<size_t>(payload->DataSize)));
-                    if (const AssetInfo* const dropped = FindAssetInfo(fileName, AssetType::Texture)) {
+                if (const auto fileName = UI::AcceptPayload<std::string>("TEXTURE_FILE")) {
+                    if (const AssetInfo* const dropped = FindAssetInfo(*fileName, AssetType::Texture)) {
                         texture.path = ToAssetPath(*dropped);
                         changed = true;
                     }

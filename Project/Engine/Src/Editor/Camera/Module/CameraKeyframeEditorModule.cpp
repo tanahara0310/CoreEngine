@@ -7,6 +7,7 @@
 
 #include "Editor/Command/EditorCommandStack.h"
 #include "Editor/ImGui/ImGuiAll.h"
+#include "Editor/Inspector/InspectorLayout.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -34,8 +35,6 @@ namespace CoreEngine
             "ブレンド"
         };
 
-        constexpr int kShotTransitionLabelCount = static_cast<int>(sizeof(kShotTransitionLabels) / sizeof(kShotTransitionLabels[0]));
-
         // 補間方式の表示名。CameraSequenceInterpolation の値をそのまま添字に使う。
         constexpr const char* kInterpolationLabels[] = {
             "ステップ (補間しない)",
@@ -43,16 +42,12 @@ namespace CoreEngine
             "スムーズ (Catmull-Rom)"
         };
 
-        constexpr int kInterpolationLabelCount = static_cast<int>(sizeof(kInterpolationLabels) / sizeof(kInterpolationLabels[0]));
-
         // 向きの決め方の表示名。CameraSequenceAimMode の値をそのまま添字に使う。
         constexpr const char* kAimModeLabels[] = {
             "キーの回転を使う",
             "注視点を向く",
             "オブジェクトを向く"
         };
-
-        constexpr int kAimModeLabelCount = static_cast<int>(sizeof(kAimModeLabels) / sizeof(kAimModeLabels[0]));
 
         // イベント種別の表示名。CameraSequenceEventType の値をそのまま添字に使う。
         constexpr const char* kEventTypeLabels[] = {
@@ -465,24 +460,11 @@ namespace CoreEngine
     void CameraKeyframeEditorModule::DrawKeyAim(const CameraEditorContext& context,
         CameraSequenceKeyframe& key, bool& playheadChanged)
     {
-        int aimIndex = static_cast<int>(key.aimMode);
-        if (aimIndex < 0 || aimIndex >= kAimModeLabelCount) {
-            aimIndex = 0;
-        }
-
-        if (ImGui::BeginCombo("注視モード", kAimModeLabels[aimIndex])) {
-            for (int i = 0; i < kAimModeLabelCount; ++i) {
-                const bool selected = (i == aimIndex);
-                if (ImGui::Selectable(kAimModeLabels[i], selected)) {
-                    PushUndoState();
-                    key.aimMode = static_cast<CameraSequenceAimMode>(i);
-                    playheadChanged = true;
-                }
-                if (selected) {
-                    ImGui::SetItemDefaultFocus();
-                }
-            }
-            ImGui::EndCombo();
+        CameraSequenceAimMode aimMode = key.aimMode;
+        if (InspectorLayout::EnumCombo("注視モード", aimMode, kAimModeLabels)) {
+            PushUndoState();
+            key.aimMode = aimMode;
+            playheadChanged = true;
         }
 
         if (key.aimMode == CameraSequenceAimMode::Euler) {
@@ -567,24 +549,11 @@ namespace CoreEngine
 
     void CameraKeyframeEditorModule::DrawKeyTransition(CameraSequenceKeyframe& key, bool& playheadChanged)
     {
-        int interpolationIndex = static_cast<int>(key.interpolation);
-        if (interpolationIndex < 0 || interpolationIndex >= kInterpolationLabelCount) {
-            interpolationIndex = static_cast<int>(CameraSequenceInterpolation::Linear);
-        }
-
-        if (ImGui::BeginCombo("補間方式", kInterpolationLabels[interpolationIndex])) {
-            for (int i = 0; i < kInterpolationLabelCount; ++i) {
-                const bool selected = (i == interpolationIndex);
-                if (ImGui::Selectable(kInterpolationLabels[i], selected)) {
-                    PushUndoState();
-                    key.interpolation = static_cast<CameraSequenceInterpolation>(i);
-                    playheadChanged = true;
-                }
-                if (selected) {
-                    ImGui::SetItemDefaultFocus();
-                }
-            }
-            ImGui::EndCombo();
+        CameraSequenceInterpolation interpolation = key.interpolation;
+        if (InspectorLayout::EnumCombo("補間方式", interpolation, kInterpolationLabels)) {
+            PushUndoState();
+            key.interpolation = interpolation;
+            playheadChanged = true;
         }
         UI::Hint("スムーズは前後のキーも見て曲線でつなぎます（キーの上は必ず通ります）。");
 
@@ -708,22 +677,10 @@ namespace CoreEngine
             sequence_.Sanitize();
         }
 
-        int transitionIndex = static_cast<int>(shot.transitionType);
-        if (transitionIndex < 0 || transitionIndex >= kShotTransitionLabelCount) {
-            transitionIndex = 0;
-        }
-        if (ImGui::BeginCombo("遷移", kShotTransitionLabels[transitionIndex])) {
-            for (int i = 0; i < kShotTransitionLabelCount; ++i) {
-                const bool selected = (i == transitionIndex);
-                if (ImGui::Selectable(kShotTransitionLabels[i], selected)) {
-                    PushUndoState();
-                    shot.transitionType = static_cast<CameraSequenceTransitionType>(i);
-                }
-                if (selected) {
-                    ImGui::SetItemDefaultFocus();
-                }
-            }
-            ImGui::EndCombo();
+        CameraSequenceTransitionType transitionType = shot.transitionType;
+        if (InspectorLayout::EnumCombo("遷移", transitionType, kShotTransitionLabels)) {
+            PushUndoState();
+            shot.transitionType = transitionType;
         }
 
         if (shot.transitionType == CameraSequenceTransitionType::Blend) {
@@ -1075,19 +1032,10 @@ namespace CoreEngine
             return;
         }
 
-        int typeIndex = std::clamp(static_cast<int>(event.type), 0, kEventTypeLabelCount - 1);
-        if (ImGui::BeginCombo("種類", kEventTypeLabels[typeIndex])) {
-            for (int i = 0; i < kEventTypeLabelCount; ++i) {
-                const bool selected = (i == typeIndex);
-                if (ImGui::Selectable(kEventTypeLabels[i], selected)) {
-                    PushUndoState();
-                    event.type = static_cast<CameraSequenceEventType>(i);
-                }
-                if (selected) {
-                    ImGui::SetItemDefaultFocus();
-                }
-            }
-            ImGui::EndCombo();
+        CameraSequenceEventType eventType = event.type;
+        if (InspectorLayout::EnumCombo("種類", eventType, kEventTypeLabels)) {
+            PushUndoState();
+            event.type = eventType;
         }
 
         switch (event.type) {

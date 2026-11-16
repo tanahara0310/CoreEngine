@@ -191,20 +191,6 @@ namespace CoreEngine::Editor::ShaderGraph
             return connected ? ImNodesPinShape_CircleFilled : ImNodesPinShape_Circle;
         }
 
-        const char* ValueTypeName(ValueType type)
-        {
-            switch (type) {
-            case ValueType::Float: return "Float";
-            case ValueType::Vector2: return "Vector2";
-            case ValueType::Vector3: return "Vector3";
-            case ValueType::Vector4: return "Vector4";
-            case ValueType::Dynamic: return "Dynamic";
-            case ValueType::Texture2D: return "Texture2D";
-            case ValueType::SamplerState: return "SamplerState";
-            }
-            return "?";
-        }
-
         /// @brief from の出力を to の入力へつなげるか（数どうしは幅を直してつなぐ）
         bool CanConnect(ValueType from, ValueType to)
         {
@@ -1975,8 +1961,8 @@ namespace CoreEngine::Editor::ShaderGraph
         // つないでいない Redirect の出力は、まだ種類が決まっていないので何へでもつなぐ
         const bool openRedirect = fromDesc->type == kRedirectNodeType && !document.graph.FindLinkTo(from.node, "In");
         if (!openRedirect && !InputAccepts(*toDesc, to.index, fromType)) {
-            document.notice = std::string("種類が合わないので、つなぎませんでした（") + ValueTypeName(fromType)
-                + " → " + ValueTypeName(toType) + "）。";
+            document.notice = std::string("種類が合わないので、つなぎませんでした（") + ToString(fromType)
+                + " → " + ToString(toType) + "）。";
             return;
         }
         const std::string toPin(toDesc->inputs[to.index].name);

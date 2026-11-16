@@ -502,11 +502,7 @@ namespace CoreEngine {
             if (params.cloudTopVariation <= 0.0f) {
                 ImGui::SameLine();
                 if (ImGui::SmallButton("有効化")) {
-                    auto& undoStack = CVarUndoStack::Get();
-                    undoStack.BeginEdit(&CloudCVars::CloudTopVariation);
-                    CloudCVars::CloudTopVariation.Set(0.4f);
-                    undoStack.CommitEdit(&CloudCVars::CloudTopVariation);
-                    CVarRegistry::Get().NotifyCommit();
+                    AssignWithUndo(CloudCVars::CloudTopVariation, 0.4f);
                 }
                 HelpMarker("CloudTopVariation を 0.4 にして雲頂の高さを効くようにします。");
             }
@@ -551,14 +547,9 @@ namespace CoreEngine {
             const Vector3 cam = manager.GetCameraWorldPosition();
             auto& undoStack = CVarUndoStack::Get();
             undoStack.BeginBatch();
-            undoStack.BeginEdit(&CloudCVars::PaintRegionCenterX);
-            CloudCVars::PaintRegionCenterX.Set(cam.x);
-            undoStack.CommitEdit(&CloudCVars::PaintRegionCenterX);
-            undoStack.BeginEdit(&CloudCVars::PaintRegionCenterZ);
-            CloudCVars::PaintRegionCenterZ.Set(cam.z);
-            undoStack.CommitEdit(&CloudCVars::PaintRegionCenterZ);
+            AssignWithUndo(CloudCVars::PaintRegionCenterX, cam.x);
+            AssignWithUndo(CloudCVars::PaintRegionCenterZ, cam.z);
             undoStack.EndBatch();
-            CVarRegistry::Get().NotifyCommit();
         }
         HelpMarker("ペイント領域の中心を現在のカメラ位置へ移します。\n"
             "既に描いたペイントはテクスチャ側に残るため、領域ごと移動します。");
@@ -735,11 +726,7 @@ namespace CoreEngine {
         int style = CloudCVars::Style.Get();
         if (ImGui::Combo("雲のスタイル", &style, kCloudStyleNames,
                 static_cast<int>(CloudStyle::Count))) {
-            auto& undoStack = CVarUndoStack::Get();
-            undoStack.BeginEdit(&CloudCVars::Style);
-            CloudCVars::Style.Set(style);
-            undoStack.CommitEdit(&CloudCVars::Style);
-            CVarRegistry::Get().NotifyCommit();
+            AssignWithUndo(CloudCVars::Style, style);
         }
         HelpMarker("雲の形の作り方を切り替えます。天候・雲層・風・配置ペイントは全スタイル共通です。\n"
             "ボクセル: 立方体で構成された塊。\n"
@@ -787,11 +774,7 @@ namespace CoreEngine {
         // 取りこぼす余地が残る。1.5 倍にして粗ステップをボクセルの 3/4 に収める
         const float fixedThicknessM = cellMin * 1.5f;
         if (ImGui::SmallButton("層の厚みを下げて解消")) {
-            auto& undoStack = CVarUndoStack::Get();
-            undoStack.BeginEdit(&CloudCVars::LayerThicknessM);
-            CloudCVars::LayerThicknessM.Set(fixedThicknessM);
-            undoStack.CommitEdit(&CloudCVars::LayerThicknessM);
-            CVarRegistry::Get().NotifyCommit();
+            AssignWithUndo(CloudCVars::LayerThicknessM, fixedThicknessM);
         }
         ImGui::SameLine();
         ImGui::TextDisabled("層の厚み → %.0fm", fixedThicknessM);
