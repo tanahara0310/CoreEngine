@@ -25,8 +25,8 @@ namespace CoreEngine
             return;
         }
 
-        auto* taa = context.renderingTechniqueManager->GetTechnique<TAATechnique>(RenderingTechniqueNames::TAA);
-        if (!taa || !taa->IsEnabled()) {
+        auto* taa = context.renderingTechniqueManager->GetEnabledTechnique<TAATechnique>(RenderingTechniqueNames::TAA);
+        if (!taa) {
             return;
         }
 

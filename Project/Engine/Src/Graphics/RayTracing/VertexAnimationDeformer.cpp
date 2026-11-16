@@ -18,6 +18,7 @@
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
+#include "Math/IntegerMath.h"
 #include "Math/MathCore.h"
 #include "Utility/Logger/Logger.h"
 
@@ -281,7 +282,7 @@ namespace CoreEngine
                 }
                 binder.SetConstants(bindings[VertexAnimationDeformBind::gDeform], constants);
                 binder.ValidateBeforeDraw(bindings);
-                cmdList->Dispatch((subMesh.indexCount + kThreadGroupSize - 1) / kThreadGroupSize, 1, 1);
+                cmdList->Dispatch(DivRoundUp(subMesh.indexCount, kThreadGroupSize), 1, 1);
             }
 
             // BLAS の入力とレイトレーシングのシェーダーからの読み取りは NON_PIXEL_SHADER_RESOURCE

@@ -4,6 +4,7 @@
 #include "EngineSystem/Settings/ProjectSettings.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Texture/TextureManager.h"
+#include "Math/IntegerMath.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
@@ -123,8 +124,8 @@ namespace CoreEngine
             }
         }
 
-        const uint32_t groupX = (width + 7) / 8;
-        const uint32_t groupY = (height + 7) / 8;
+        const uint32_t groupX = DivRoundUp(width, 8);
+        const uint32_t groupY = DivRoundUp(height, 8);
         cmdList->Dispatch(groupX, groupY, 1);
     }
 

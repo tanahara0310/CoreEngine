@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "CameraSequenceIO.h"
 
+#include "Utility/Enum/EnumNames.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include "Math/MathCore.h"
 
@@ -12,6 +13,12 @@ namespace CoreEngine
 {
     namespace
     {
+        // 保存された番号として読める範囲（0〜最後の値）
+        constexpr int kInterpolationCount = static_cast<int>(CameraSequenceInterpolation::Smooth) + 1;
+        constexpr int kAimModeCount = static_cast<int>(CameraSequenceAimMode::LookAtObject) + 1;
+        constexpr int kEventTypeCount = static_cast<int>(CameraSequenceEventType::TimeScale) + 1;
+        constexpr int kTransitionTypeCount = static_cast<int>(CameraSequenceTransitionType::Blend) + 1;
+
         /// @brief スナップショットを JSON へ変換
         json SnapshotToJson(const CameraSnapshot& snapshot)
         {
@@ -68,32 +75,6 @@ namespace CoreEngine
             return snapshot;
         }
 
-        /// @brief 保存された番号を補間方式へ戻す（未知の値は直線扱い）
-        CameraSequenceInterpolation ToInterpolation(int value)
-        {
-            switch (value) {
-            case static_cast<int>(CameraSequenceInterpolation::Step):
-                return CameraSequenceInterpolation::Step;
-            case static_cast<int>(CameraSequenceInterpolation::Smooth):
-                return CameraSequenceInterpolation::Smooth;
-            default:
-                return CameraSequenceInterpolation::Linear;
-            }
-        }
-
-        /// @brief 保存された番号を向きの決め方へ戻す（未知の値は Euler 扱い）
-        CameraSequenceAimMode ToAimMode(int value)
-        {
-            switch (value) {
-            case static_cast<int>(CameraSequenceAimMode::LookAtPoint):
-                return CameraSequenceAimMode::LookAtPoint;
-            case static_cast<int>(CameraSequenceAimMode::LookAtObject):
-                return CameraSequenceAimMode::LookAtObject;
-            default:
-                return CameraSequenceAimMode::Euler;
-            }
-        }
-
         /// @brief ショット情報を JSON へ変換
         json ShotToJson(const CameraSequenceShot& shot)
         {
@@ -105,23 +86,6 @@ namespace CoreEngine
             jsonData["transitionType"] = static_cast<int>(shot.transitionType);
             jsonData["blendDuration"] = shot.blendDuration;
             return jsonData;
-        }
-
-        /// @brief 保存された番号をイベント種別へ戻す（未知の値は Callback 扱い）
-        /// @details 知らない種別を落とすと、新しいエンジンで作ったシーケンスを
-        ///          古いエンジンで開いたときイベントが黙って消える。Callback へ倒して残す。
-        CameraSequenceEventType ToEventType(int value)
-        {
-            switch (value) {
-            case static_cast<int>(CameraSequenceEventType::Shake):
-                return CameraSequenceEventType::Shake;
-            case static_cast<int>(CameraSequenceEventType::Trauma):
-                return CameraSequenceEventType::Trauma;
-            case static_cast<int>(CameraSequenceEventType::TimeScale):
-                return CameraSequenceEventType::TimeScale;
-            default:
-                return CameraSequenceEventType::Callback;
-            }
         }
 
         /// @brief イベントを JSON へ変換
@@ -142,8 +106,8 @@ namespace CoreEngine
         {
             CameraSequenceEvent event{};
             event.time = JsonManager::SafeGet(jsonData, "time", 0.0f);
-            event.type = ToEventType(JsonManager::SafeGet(jsonData, "type",
-                static_cast<int>(CameraSequenceEventType::Shake)));
+            event.type = ToEnum(JsonManager::SafeGet(jsonData, "type",
+                static_cast<int>(CameraSequenceEventType::Shake)), kEventTypeCount, CameraSequenceEventType::Callback);
             event.enabled = JsonManager::SafeGet(jsonData, "enabled", true);
             event.name = JsonManager::SafeGet(jsonData, "name", std::string());
             event.value = JsonManager::SafeGet(jsonData, "value", 1.0f);
@@ -160,10 +124,8 @@ namespace CoreEngine
             shot.endTime = JsonManager::SafeGet(jsonData, "endTime", 1.0f);
             shot.enabled = JsonManager::SafeGet(jsonData, "enabled", true);
 
-            const int transition = JsonManager::SafeGet(jsonData, "transitionType", 0);
-            shot.transitionType = (transition == 1)
-                ? CameraSequenceTransitionType::Blend
-                : CameraSequenceTransitionType::Cut;
+            shot.transitionType = ToEnum(JsonManager::SafeGet(jsonData, "transitionType", 0),
+                kTransitionTypeCount, CameraSequenceTransitionType::Cut);
             shot.blendDuration = JsonManager::SafeGet(jsonData, "blendDuration", 0.2f);
             return shot;
         }
@@ -258,14 +220,15 @@ namespace CoreEngine
                 // 「シーケンス既定の緩急・直線」になり、従来どおりの見た目になる。
                 key.label = JsonManager::SafeGet(keyJson, "label", std::string());
                 key.easingTypeIndex = JsonManager::SafeGet(keyJson, "easingTypeIndex", kUseSequenceEasing);
-                key.interpolation = ToInterpolation(
+                key.interpolation = ToEnum(
                     JsonManager::SafeGet(keyJson, "interpolation",
-                        static_cast<int>(CameraSequenceInterpolation::Linear)));
+                        static_cast<int>(CameraSequenceInterpolation::Linear)),
+                    kInterpolationCount, CameraSequenceInterpolation::Linear);
 
                 // 注視の指定はバージョン 2.2 から。持っていないファイルは Euler になり、
                 // 保存された回転がそのまま使われる（従来どおりの見た目）。
-                key.aimMode = ToAimMode(JsonManager::SafeGet(keyJson, "aimMode",
-                    static_cast<int>(CameraSequenceAimMode::Euler)));
+                key.aimMode = ToEnum(JsonManager::SafeGet(keyJson, "aimMode",
+                    static_cast<int>(CameraSequenceAimMode::Euler)), kAimModeCount, CameraSequenceAimMode::Euler);
                 key.aimPoint = JsonManager::SafeGetVector3(keyJson, "aimPoint");
                 key.aimObjectName = JsonManager::SafeGet(keyJson, "aimObjectName", std::string());
                 key.aimOffset = JsonManager::SafeGetVector3(keyJson, "aimOffset");

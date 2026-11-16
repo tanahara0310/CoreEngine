@@ -4,6 +4,7 @@
 #ifdef CORE_EDITOR
 
 #include "Editor/ShaderGraph/ShaderGraphCodeGen.h"
+#include "Utility/Algorithm/AssignIfChanged.h"
 
 #include <algorithm>
 #include <cctype>
@@ -194,9 +195,7 @@ namespace CoreEngine::Editor::ShaderGraph
         }
         bool changed = false;
         const auto set = [&](const char* name, const std::string& value) {
-            std::string& current = node->settings[name];
-            if (current != value) {
-                current = value;
+            if (AssignIfChanged(node->settings[name], value)) {
                 changed = true;
             }
         };

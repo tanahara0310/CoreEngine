@@ -3,6 +3,7 @@
 
 #include "GameObject/Component/Core/ComponentFactory.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
+#include "GameObject/GameObject.h"
 
 REFLECT_REGISTER(CoreEngine::MaterialComponent)
 COMPONENT_REGISTER(CoreEngine::MaterialComponent)
@@ -11,7 +12,7 @@ namespace CoreEngine
 {
     bool MaterialComponent::RequiresComponent(const IComponent& other) const
     {
-        return dynamic_cast<const MeshRendererComponent*>(&other) != nullptr;
+        return IsAnyOf<MeshRendererComponent>(other);
     }
 
     void MaterialComponent::Start()
@@ -43,10 +44,8 @@ namespace CoreEngine
 
     bool MaterialComponent::ForEachMaterial(const std::function<void(MaterialInstance*)>& fn) const
     {
-        if (!renderer_) {
-            renderer_ = Sibling<MeshRendererComponent>();
-        }
-        Model* model = renderer_ ? renderer_->GetModel() : nullptr;
+        MeshRendererComponent* const renderer = CachedSibling(renderer_);
+        Model* model = renderer ? renderer->GetModel() : nullptr;
         if (!model) {
             return false;
         }
@@ -56,10 +55,8 @@ namespace CoreEngine
 
     MaterialInstance* MaterialComponent::GetMaterial() const
     {
-        if (!renderer_) {
-            renderer_ = Sibling<MeshRendererComponent>();
-        }
-        Model* model = renderer_ ? renderer_->GetModel() : nullptr;
+        MeshRendererComponent* const renderer = CachedSibling(renderer_);
+        Model* model = renderer ? renderer->GetModel() : nullptr;
         return model ? model->GetMaterial() : nullptr;
     }
 

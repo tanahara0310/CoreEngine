@@ -15,6 +15,7 @@
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
+#include "Math/IntegerMath.h"
 #include "Utility/Logger/Logger.h"
 
 #include <cstring>
@@ -327,8 +328,8 @@ namespace CoreEngine
 
         const D3D12_RESOURCE_DESC desc = sceneColor.Desc();
         cmdList->Dispatch(
-            (static_cast<UINT>(desc.Width) + kThreadGroupSize - 1) / kThreadGroupSize,
-            (desc.Height + kThreadGroupSize - 1) / kThreadGroupSize,
+            DivRoundUp(static_cast<UINT>(desc.Width), kThreadGroupSize),
+            DivRoundUp(desc.Height, kThreadGroupSize),
             1);
 
         // 書き込み完了を待たせてから、後続パス（Transparent 等）の想定状態へ戻す

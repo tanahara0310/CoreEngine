@@ -5,6 +5,7 @@
 #include "Text/DirectWriteFontFace.h"
 #include "Threading/ThreadBudget.h"
 #include "Threading/ThreadPool.h"
+#include "Utility/Hash/Fnv1a.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
 
@@ -16,10 +17,6 @@ namespace CoreEngine
 {
     namespace
     {
-        // ── FNV-1a 64bit ────────────────────────────────────────
-        constexpr uint64_t kFnvOffsetBasis = 14695981039346656037ULL;
-        constexpr uint64_t kFnvPrime = 1099511628211ULL;
-
         /// @brief DirectWrite が開けるフォントファイルの拡張子か
         /// @note エクスプローラから入れたファイルは ".TTF" のこともあるので小文字化して比べる
         bool IsFontFileExtension(const std::filesystem::path& extension)
@@ -30,22 +27,6 @@ namespace CoreEngine
 
             return lowered == L".ttf" || lowered == L".otf"
                 || lowered == L".ttc" || lowered == L".otc";
-        }
-
-        void HashBytes(uint64_t& hash, const void* data, size_t size)
-        {
-            const auto* bytes = static_cast<const uint8_t*>(data);
-            for (size_t i = 0; i < size; ++i) {
-                hash ^= bytes[i];
-                hash *= kFnvPrime;
-            }
-        }
-
-        template <class T>
-        void HashValue(uint64_t& hash, const T& value)
-        {
-            static_assert(std::is_trivially_copyable_v<T>);
-            HashBytes(hash, &value, sizeof(T));
         }
     } // namespace
 
@@ -251,23 +232,23 @@ namespace CoreEngine
 
     uint64_t FontManager::ComputeRequestHash(const MsdfFontDesc& desc)
     {
-        uint64_t hash = kFnvOffsetBasis;
+        uint64_t hash = Fnv1a::kOffsetBasis;
 
-        HashBytes(hash, desc.filePath.data(), desc.filePath.size() * sizeof(wchar_t));
-        HashValue(hash, desc.faceIndex);
+        Fnv1a::MixBytes(hash, desc.filePath.data(), desc.filePath.size() * sizeof(wchar_t));
+        Fnv1a::MixValue(hash, desc.faceIndex);
 
         for (const std::wstring& name : desc.systemFamilyNames) {
-            HashBytes(hash, name.data(), name.size() * sizeof(wchar_t));
-            HashValue(hash, '|');
+            Fnv1a::MixBytes(hash, name.data(), name.size() * sizeof(wchar_t));
+            Fnv1a::MixValue(hash, '|');
         }
 
-        HashBytes(hash, desc.charsetUtf8.data(), desc.charsetUtf8.size());
-        HashValue(hash, desc.includeAscii);
-        HashValue(hash, desc.bake.glyphPixelSize);
-        HashValue(hash, desc.bake.pxRange);
-        HashValue(hash, desc.bake.atlasWidth);
-        HashValue(hash, desc.bake.atlasHeight);
-        HashValue(hash, desc.bake.padding);
+        Fnv1a::MixBytes(hash, desc.charsetUtf8.data(), desc.charsetUtf8.size());
+        Fnv1a::MixValue(hash, desc.includeAscii);
+        Fnv1a::MixValue(hash, desc.bake.glyphPixelSize);
+        Fnv1a::MixValue(hash, desc.bake.pxRange);
+        Fnv1a::MixValue(hash, desc.bake.atlasWidth);
+        Fnv1a::MixValue(hash, desc.bake.atlasHeight);
+        Fnv1a::MixValue(hash, desc.bake.padding);
 
         return hash;
     }

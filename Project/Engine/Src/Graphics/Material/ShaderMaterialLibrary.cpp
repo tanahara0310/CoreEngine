@@ -5,6 +5,7 @@
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Graphics/Asset/AssetRef.h"
 #include "Graphics/Material/ShaderMaterial.h"
+#include "Utility/Algorithm/AssignIfChanged.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
 
@@ -103,8 +104,7 @@ namespace CoreEngine
             const auto found = shaderWriteTimes_.find(key);
             if (found == shaderWriteTimes_.end()) {
                 shaderWriteTimes_.emplace(key, time);
-            } else if (found->second != time) {
-                found->second = time;
+            } else if (AssignIfChanged(found->second, time)) {
                 changed = true;
             }
         }

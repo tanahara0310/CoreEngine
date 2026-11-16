@@ -2,6 +2,7 @@
 #include "CameraShakePresetLibrary.h"
 
 #include "Camera/Shake/CameraShakePresets.h"
+#include "Utility/Enum/EnumNames.h"
 #include "Utility/JsonManager/JsonManager.h"
 
 #include <algorithm>
@@ -11,13 +12,6 @@ namespace CoreEngine
 {
     namespace
     {
-        /// @brief 列挙値を int で保存し、範囲外なら既定へ倒す
-        template<typename Enum>
-        Enum ToEnum(int value, int count, Enum fallback)
-        {
-            return (value >= 0 && value < count) ? static_cast<Enum>(value) : fallback;
-        }
-
         constexpr int kWaveformCount = 4;   // Perlin / Random / Sine / Kick
         constexpr int kSpaceCount = 2;      // CameraLocal / World
         constexpr int kTimeModeCount = 2;   // Scaled / Unscaled

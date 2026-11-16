@@ -4,6 +4,7 @@
 
 #include "GameObject/GameObject.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
+#include "GameObject/Component/Core/ComponentService.h"
 #include "Graphics/Material/MaterialInstance.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
@@ -98,8 +99,7 @@ namespace CoreEngine
         meshRenderer_->SetBlendMode(BlendMode::kBlendModeNormal);
 
         // 定数の置き場所をつなぐ
-        auto* engine = owner->GetEngineSystem();
-        auto* dxCommon = engine ? engine->GetService<GraphicsCore>() : nullptr;
+        auto* dxCommon = FindService<GraphicsCore>(*this);
         if (dxCommon) {
             constantBuffers_.Initialize(dxCommon->GetUploadRing());
             UploadWaterConstants();
@@ -187,10 +187,8 @@ namespace CoreEngine
     }
 
     void WaterSurfaceComponent::RebuildWaterShaderPipeline() {
-        GameObject* const owner = GetOwner();
-        auto* engine = owner ? owner->GetEngineSystem() : nullptr;
-        auto* dxCommon = engine ? engine->GetService<GraphicsCore>() : nullptr;
-        auto* modelManager = engine ? engine->GetService<ModelManager>() : nullptr;
+        auto* dxCommon = FindService<GraphicsCore>(*this);
+        auto* modelManager = FindService<ModelManager>(*this);
         if (!dxCommon || !modelManager) {
             return;
         }

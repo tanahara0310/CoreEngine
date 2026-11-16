@@ -148,8 +148,7 @@ namespace CoreEngine
                 snapshotFps_ = fc->GetCurrentFPS();
                 snapshotDeltaTimeMs_ = Time::UnscaledDeltaTime() * 1000.0f;
                 snapshotTargetFps_ = fc->GetTargetFPS();
-                fpsHistory_[fpsHistoryIndex_] = snapshotFps_;
-                fpsHistoryIndex_ = (fpsHistoryIndex_ + 1) % kFpsHistorySize;
+                fpsHistory_.Push(snapshotFps_);
             }
         }
 
@@ -165,8 +164,7 @@ namespace CoreEngine
             snapshotGpu_ = gpuProfiler_->GetResults();
             // フレーム合計の履歴を記録
             const uint32_t totalSlot = static_cast<uint32_t>(GpuTimestampSlot::Total);
-            gpuTotalHistory_[gpuHistoryIndex_] = snapshotGpu_[totalSlot].gpuMs;
-            gpuHistoryIndex_ = (gpuHistoryIndex_ + 1) % kGpuHistorySize;
+            gpuTotalHistory_.Push(snapshotGpu_[totalSlot].gpuMs);
 
             // 一定間隔でパス別タイミングを更新（毎フレーム変化を抑制）
             timingAccumTime_ += snapshotDeltaTimeMs_ * 0.001f; // ms → 秒
@@ -278,9 +276,9 @@ namespace CoreEngine
         ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.10f, 0.10f, 0.10f, 1.0f));
         ImGui::PlotLines(
             "##fps_graph",
-            fpsHistory_,
+            fpsHistory_.Data(),
             kFpsHistorySize,
-            fpsHistoryIndex_,
+            fpsHistory_.Head(),
             nullptr,
             0.0f,
             targetFPS * 1.2f,
@@ -489,7 +487,7 @@ namespace CoreEngine
         char gpuOverlay[32];
         snprintf(gpuOverlay, sizeof(gpuOverlay), "%.2f ms", gpuTotalMs);
         ImGui::PlotLines("##gpu_graph",
-            gpuTotalHistory_, kGpuHistorySize, gpuHistoryIndex_,
+            gpuTotalHistory_.Data(), kGpuHistorySize, gpuTotalHistory_.Head(),
             gpuOverlay, 0.0f, 33.3f, ImVec2(-1.0f, 48.0f));
         ImGui::PopStyleColor(2);
 

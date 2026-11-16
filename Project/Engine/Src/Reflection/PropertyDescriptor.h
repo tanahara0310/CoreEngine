@@ -5,6 +5,7 @@
 #include "Math/Vector/Vector2.h"
 #include "Math/Vector/Vector3.h"
 #include "Math/Vector/Vector4.h"
+#include "Utility/Enum/EnumFlags.h"
 
 #include <cstdint>
 #include <string>
@@ -93,15 +94,7 @@ namespace CoreEngine::Reflection
         Direction = 1 << 5, ///< Vector2 を XZ の向きとして角度（度）で編集する（書き込む値は長さ 1）
     };
 
-    constexpr PropertyFlags operator|(PropertyFlags a, PropertyFlags b) noexcept
-    {
-        return static_cast<PropertyFlags>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
-    }
-
-    constexpr bool HasFlag(PropertyFlags value, PropertyFlags flag) noexcept
-    {
-        return (static_cast<uint32_t>(value) & static_cast<uint32_t>(flag)) != 0;
-    }
+    CE_ENUM_FLAG_OPERATORS(PropertyFlags)
 
     /// @brief C++ の型から PropertyType を引く
     template <class T> struct PropertyTypeOf;

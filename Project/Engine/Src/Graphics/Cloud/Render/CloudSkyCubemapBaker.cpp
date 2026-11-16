@@ -8,6 +8,7 @@
 #include "Graphics/Cloud/Render/CloudStageScope.h"
 #include "Graphics/Cloud/Resource/CloudResources.h"
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
+#include "Math/IntegerMath.h"
 
 namespace CoreEngine
 {
@@ -39,7 +40,7 @@ namespace CoreEngine
         }
 
         constexpr uint32_t kCubemapSize = AtmosphereManager::kSkyCubemapSize;
-        ctx.cmdList->Dispatch((kCubemapSize + 7) / 8, (kCubemapSize + 7) / 8, 6);
+        ctx.cmdList->Dispatch(DivRoundUp(kCubemapSize, 8), DivRoundUp(kCubemapSize, 8), 6);
         // 空キューブマップは後段のプリフィルタ（PrefilterSkyEnvironment）が SRV 遷移で同期する。
         // 雲だけのキューブは次の焼き込みが読むので、書き込みの完了をここで待たせる
         Barrier::UAV(ctx.cmdList, res.cloudCube);

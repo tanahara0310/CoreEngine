@@ -2,6 +2,7 @@
 #include "LoadingScreenEffect.h"
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
+#include "Math/IntegerMath.h"
 #include "Utility/CVar/CVar.h"
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
@@ -180,8 +181,8 @@ namespace CoreEngine
         if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(MakeParams()));
         if (screenIdx >= 0)  cmdList->SetComputeRootConstantBufferView(screenIdx, GetScreenSizeCbAddress());
 
-        uint32_t groupX = (width  + 7) / 8;
-        uint32_t groupY = (height + 7) / 8;
+        uint32_t groupX = DivRoundUp(width, 8);
+        uint32_t groupY = DivRoundUp(height, 8);
         cmdList->Dispatch(groupX, groupY, 1);
     }
 

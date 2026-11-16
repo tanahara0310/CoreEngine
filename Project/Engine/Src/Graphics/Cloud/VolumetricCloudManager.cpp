@@ -5,6 +5,7 @@
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Cloud/Settings/CloudCVars.h"
 #include "Graphics/RHI/GraphicsCore.h"
+#include "Math/IntegerMath.h"
 #include "Utility/Logger/Logger.h"
 
 #include <algorithm>
@@ -566,7 +567,7 @@ namespace CoreEngine
             shadowSliceCursor_ = 0;
         } else {
             // 帯の行数は生成 CS のスレッドグループの高さ（8）の倍数にそろえる
-            const uint32_t rowsPerSlice = ((kMapSize + slices - 1u) / slices + 7u) & ~7u;
+            const uint32_t rowsPerSlice = AlignUp(DivRoundUp(kMapSize, slices), 8u);
             if (shadowSliceCursor_ * rowsPerSlice >= kMapSize) {
                 shadowSliceCursor_ = 0;
             }

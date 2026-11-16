@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "EngineSystem/Settings/ProjectSettings.h"
 
+#include "Utility/Algorithm/AssignIfChanged.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Path/ProjectPaths.h"
 #include "externals/nlohmann/single_include/nlohmann/json.hpp"
@@ -196,73 +197,65 @@ namespace CoreEngine
 
     bool ProjectSettings::SetInitialSceneName(std::string sceneName)
     {
-        if (initialSceneName_ == sceneName) {
+        if (!AssignIfChanged(initialSceneName_, std::move(sceneName))) {
             return true;
         }
-        initialSceneName_ = std::move(sceneName);
         return Save();
     }
 
     bool ProjectSettings::SetSplashImage(std::string path)
     {
-        if (splashImage_ == path) {
+        if (!AssignIfChanged(splashImage_, std::move(path))) {
             return true;
         }
-        splashImage_ = std::move(path);
         return Save();
     }
 
     bool ProjectSettings::SetSplashTitle(std::string title)
     {
-        if (splashTitle_ == title) {
+        if (!AssignIfChanged(splashTitle_, std::move(title))) {
             return true;
         }
-        splashTitle_ = std::move(title);
         return Save();
     }
 
     bool ProjectSettings::SetSplashSubtitle(std::string subtitle)
     {
-        if (splashSubtitle_ == subtitle) {
+        if (!AssignIfChanged(splashSubtitle_, std::move(subtitle))) {
             return true;
         }
-        splashSubtitle_ = std::move(subtitle);
         return Save();
     }
 
     bool ProjectSettings::SetSplashTips(std::vector<std::string> tips)
     {
-        if (splashTips_ == tips) {
+        if (!AssignIfChanged(splashTips_, std::move(tips))) {
             return true;
         }
-        splashTips_ = std::move(tips);
         return Save();
     }
 
     bool ProjectSettings::SetLoadingScreenShader(std::string path)
     {
-        if (loadingScreenShader_ == path) {
+        if (!AssignIfChanged(loadingScreenShader_, std::move(path))) {
             return true;
         }
-        loadingScreenShader_ = std::move(path);
         return Save();
     }
 
     bool ProjectSettings::SetLoadingScreenImages(std::vector<std::string> images)
     {
-        if (loadingScreenImages_ == images) {
+        if (!AssignIfChanged(loadingScreenImages_, std::move(images))) {
             return true;
         }
-        loadingScreenImages_ = std::move(images);
         return Save();
     }
 
     bool ProjectSettings::SetExportExcludedScenes(std::vector<std::string> scenes)
     {
-        if (exportExcludedScenes_ == scenes) {
+        if (!AssignIfChanged(exportExcludedScenes_, std::move(scenes))) {
             return true;
         }
-        exportExcludedScenes_ = std::move(scenes);
         return Save();
     }
 

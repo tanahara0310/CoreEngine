@@ -37,9 +37,26 @@
 #include "Graphics/Shader/ShaderProgram.h"
 
 #include <memory>
+#include <utility>
 
 namespace CoreEngine
 {
+    namespace
+    {
+        /// @brief レンダラーを作って Initialize を呼び、描画パスへ登録する
+        /// @param initArgs Initialize へ渡す引数
+        /// @return 登録したレンダラー（所有は RenderManager）
+        template <typename T, typename... Args>
+        T* CreateAndRegisterRenderer(RenderManager& renderManager, RenderPassType type, Args&&... initArgs)
+        {
+            auto renderer = std::make_unique<T>();
+            renderer->Initialize(std::forward<Args>(initArgs)...);
+            T* const ptr = renderer.get();
+            renderManager.RegisterRenderer(type, std::move(renderer));
+            return ptr;
+        }
+    }
+
     /// @brief ステップ間で受け渡す中間ポインタ
     /// @note 所有権は EngineSystem 側（RegisterComponent 済み）。ここが持つのは生ポインタだけ。
     struct GraphicsSetupState {
@@ -81,16 +98,12 @@ namespace CoreEngine
             desc.maxRTVDescriptors = config.maxRTVDescriptors;
             desc.maxDSVDescriptors = config.maxDSVDescriptors;
 
-            auto graphicsCore = std::make_unique<GraphicsCore>();
-            graphicsCore->Initialize(desc);
-            state->dx = graphicsCore.get();
+            state->dx = enginePtr->CreateAndRegisterComponent<GraphicsCore>(EngineSystem::FactoryKey{}, desc);
 
             // ウィンドウリサイズ → 基盤の再作成。配線は上位（ここ）の責務
             winApp->SetResizeCallback([dx = state->dx](int32_t width, int32_t height) {
                 dx->OnWindowResize(width, height);
             });
-
-            enginePtr->RegisterComponent(EngineSystem::FactoryKey{}, std::move(graphicsCore));
         });
 
         // ──────────────────────────────────────────────────────────
@@ -105,15 +118,11 @@ namespace CoreEngine
             // ModelManager の生成。描画依存コンテキスト（SetRenderContext）は
             // 全レンダラーの登録後でないと作れないので、後段の別ステップで行う。
             // リソースのロード自体はここまでで足りる
-            auto modelManager = std::make_unique<ModelManager>();
-            modelManager->Initialize(state->dx);
-            enginePtr->RegisterComponent(EngineSystem::FactoryKey{}, std::move(modelManager));
+            enginePtr->CreateAndRegisterComponent<ModelManager>(EngineSystem::FactoryKey{}, state->dx);
 
             // MSDF フォントの所有・共有・キャッシュはここが一元管理する。
             // シーンが MsdfFont を直接持つと、シーンをまたぐたびに焼き直しになる
-            auto fontManager = std::make_unique<FontManager>();
-            fontManager->Initialize(state->dx);
-            enginePtr->RegisterComponent(EngineSystem::FactoryKey{}, std::move(fontManager));
+            enginePtr->CreateAndRegisterComponent<FontManager>(EngineSystem::FactoryKey{}, state->dx);
         });
 
         return state;
@@ -128,10 +137,8 @@ namespace CoreEngine
 
         sequence.Add("シェーダープログラムキャッシュ", [enginePtr, state] {
             // DXC（IDxcUtils / IDxcCompiler3）はここで 1 回だけ作る
-            auto cache = std::make_unique<ShaderProgramCache>();
-            cache->Initialize();
-            state->shaderProgramCache = cache.get();
-            enginePtr->RegisterComponent(EngineSystem::FactoryKey{}, std::move(cache));
+            state->shaderProgramCache =
+                enginePtr->CreateAndRegisterComponent<ShaderProgramCache>(EngineSystem::FactoryKey{});
         });
 
         sequence.Add("レンダードメイン（GBuffer / シャドウ / RT）", [enginePtr, state] {
@@ -153,23 +160,19 @@ namespace CoreEngine
         sequence.Add("Render（RTV / DSV）", [enginePtr, state] {
             // Render の作成と初期化（オフスクリーンターゲットが共有するシーン深度が必要）。
             // Render は自分で RegisterResizable / UnregisterResizable する
-            auto render = std::make_unique<Render>();
-            render->Initialize(state->dx, enginePtr->GetRenderDomainContext()->GetSceneDepth());
-            state->render = render.get();
-            enginePtr->RegisterComponent(EngineSystem::FactoryKey{}, std::move(render));
+            state->render = enginePtr->CreateAndRegisterComponent<Render>(EngineSystem::FactoryKey{},
+                state->dx, enginePtr->GetRenderDomainContext()->GetSceneDepth());
         });
 
         // ──────────────────────────────────────────────────────────
         // 描画キューとレンダラー群
         // ──────────────────────────────────────────────────────────
         sequence.Add("RenderManager", [enginePtr, state] {
-            auto renderManager = std::make_unique<RenderManager>();
-            renderManager->Initialize(state->dx->GetDevice());
-            state->renderManager = renderManager.get();
             // 元は全レンダラー登録後にまとめて登録していたが、ステップをまたいで
             // unique_ptr を持ち回すのを避けるためここで先に登録する。
             // 間で RenderManager を読む処理は無いので順序上の影響はない
-            enginePtr->RegisterComponent(EngineSystem::FactoryKey{}, std::move(renderManager));
+            state->renderManager = enginePtr->CreateAndRegisterComponent<RenderManager>(
+                EngineSystem::FactoryKey{}, state->dx->GetDevice());
 
             // フォワード受影用 RT シャドウマスクの初期値: white1x1（= 影なし）。
             // 実マスクは毎フレーム DeferredLightingPass::Setup が供給する。
@@ -184,68 +187,52 @@ namespace CoreEngine
                 sceneDepth->SetFarTexture(state->whiteFallback);
             }
 
-            auto modelRenderer = std::make_unique<ModelRenderer>();
-            modelRenderer->Initialize(state->dx->GetDevice());
+            auto* const modelRenderer = CreateAndRegisterRenderer<ModelRenderer>(
+                *state->renderManager, RenderPassType::Model, state->dx->GetDevice());
             modelRenderer->SetRTShadowMask(state->whiteFallback);
             modelRenderer->SetSceneDepth(sceneDepth);
-            state->renderManager->RegisterRenderer(RenderPassType::Model, std::move(modelRenderer));
 
-            auto skinnedRenderer = std::make_unique<SkinnedModelRenderer>();
-            skinnedRenderer->Initialize(state->dx->GetDevice());
+            auto* const skinnedRenderer = CreateAndRegisterRenderer<SkinnedModelRenderer>(
+                *state->renderManager, RenderPassType::SkinnedModel, state->dx->GetDevice());
             skinnedRenderer->SetRTShadowMask(state->whiteFallback);
             skinnedRenderer->SetSceneDepth(sceneDepth);
-            state->renderManager->RegisterRenderer(RenderPassType::SkinnedModel, std::move(skinnedRenderer));
         });
 
         sequence.Add("レンダラー: スカイボックス / スプライト / UI", [enginePtr, state] {
             SceneDepth* const sceneDepth = enginePtr->GetRenderDomainContext()->GetSceneDepth();
 
-            auto skyBoxRenderer = std::make_unique<SkyBoxRenderer>();
-            skyBoxRenderer->Initialize(state->dx->GetDevice());
-            state->renderManager->RegisterRenderer(RenderPassType::SkyBox, std::move(skyBoxRenderer));
+            CreateAndRegisterRenderer<SkyBoxRenderer>(
+                *state->renderManager, RenderPassType::SkyBox, state->dx->GetDevice());
 
-            auto spriteRenderer = std::make_unique<SpriteRenderer>();
-            spriteRenderer->Initialize(state->dx);
+            auto* const spriteRenderer = CreateAndRegisterRenderer<SpriteRenderer>(
+                *state->renderManager, RenderPassType::Sprite, state->dx);
             spriteRenderer->SetSceneDepth(sceneDepth);
-            state->renderManager->RegisterRenderer(RenderPassType::Sprite, std::move(spriteRenderer));
 
             // UI パスは最前面・スクリーン固定座標
-            auto uiRenderer = std::make_unique<UIRenderer>();
-            uiRenderer->Initialize(state->dx);
+            auto* const uiRenderer = CreateAndRegisterRenderer<UIRenderer>(
+                *state->renderManager, RenderPassType::UI, state->dx);
             uiRenderer->SetSceneDepth(sceneDepth);
-            state->renderManager->RegisterRenderer(RenderPassType::UI, std::move(uiRenderer));
 
             // MSDF テキストは UI と同じ座標系だが PSO が別なので独立パスにする
-            auto textRenderer = std::make_unique<TextRenderer>();
-            textRenderer->Initialize(state->dx);
-            state->renderManager->RegisterRenderer(RenderPassType::UIText, std::move(textRenderer));
+            CreateAndRegisterRenderer<TextRenderer>(*state->renderManager, RenderPassType::UIText, state->dx);
 
             // 同じ MSDF フォントをワールド空間へ描くパス。
             // アトラスと距離場は UI 版と共有し、変換と深度の扱いだけが違う
-            auto text3DRenderer = std::make_unique<Text3DRenderer>();
-            text3DRenderer->Initialize(state->dx);
-            state->renderManager->RegisterRenderer(RenderPassType::Text3D, std::move(text3DRenderer));
+            CreateAndRegisterRenderer<Text3DRenderer>(*state->renderManager, RenderPassType::Text3D, state->dx);
         });
 
         sequence.Add("レンダラー: パーティクル", [state] {
-            auto particleRenderer = std::make_unique<ParticleRenderer>();
-            particleRenderer->Initialize(state->dx->GetDevice());
-            state->renderManager->RegisterRenderer(RenderPassType::Particle, std::move(particleRenderer));
-
-            auto modelParticleRenderer = std::make_unique<ModelParticleRenderer>();
-            modelParticleRenderer->Initialize(state->dx->GetDevice());
-            state->renderManager->RegisterRenderer(RenderPassType::ModelParticle, std::move(modelParticleRenderer));
-
-            auto gpuParticleRenderer = std::make_unique<GpuParticleRenderer>();
-            gpuParticleRenderer->Initialize(state->dx->GetDevice());
-            state->renderManager->RegisterRenderer(RenderPassType::GpuParticle, std::move(gpuParticleRenderer));
+            CreateAndRegisterRenderer<ParticleRenderer>(
+                *state->renderManager, RenderPassType::Particle, state->dx->GetDevice());
+            CreateAndRegisterRenderer<ModelParticleRenderer>(
+                *state->renderManager, RenderPassType::ModelParticle, state->dx->GetDevice());
+            CreateAndRegisterRenderer<GpuParticleRenderer>(
+                *state->renderManager, RenderPassType::GpuParticle, state->dx->GetDevice());
         });
 
         sequence.Add("レンダラー: ライン", [state] {
-            auto lineRendererPipeline = std::make_unique<LineRendererPipeline>();
-            lineRendererPipeline->Initialize(state->dx);
-            state->lineRenderer = lineRendererPipeline.get();
-            state->renderManager->RegisterRenderer(RenderPassType::Line, std::move(lineRendererPipeline));
+            state->lineRenderer = CreateAndRegisterRenderer<LineRendererPipeline>(
+                *state->renderManager, RenderPassType::Line, state->dx);
 
             // LineManager の初期化（シングルトン、RenderManager 登録後に実行）
             LineManager::GetInstance().Initialize(state->lineRenderer);
@@ -254,24 +241,20 @@ namespace CoreEngine
         sequence.Add("レンダラー: グリッド", [state] {
             // 解析グリッド（フルスクリーン三角形 1 枚をピクセルシェーダーで評価する床グリッド）。
             // 既定は非表示で、エディタの GridFeature が表示を切り替える。
-            auto gridRenderer = std::make_unique<GridRenderer>();
-            gridRenderer->Initialize(state->dx);
-            state->renderManager->RegisterRenderer(RenderPassType::Grid, std::move(gridRenderer));
+            CreateAndRegisterRenderer<GridRenderer>(*state->renderManager, RenderPassType::Grid, state->dx);
         });
 
         // ──────────────────────────────────────────────────────────
         // ポストエフェクト・レンダリング技術・モデル
         // ──────────────────────────────────────────────────────────
         sequence.Add("ポストエフェクト", [enginePtr, state] {
-            auto postEffectManager = std::make_unique<PostEffectManager>();
-            postEffectManager->Initialize(state->dx, state->render, state->shaderProgramCache);
-            enginePtr->RegisterComponent(EngineSystem::FactoryKey{}, std::move(postEffectManager));
+            enginePtr->CreateAndRegisterComponent<PostEffectManager>(EngineSystem::FactoryKey{},
+                state->dx, state->render, state->shaderProgramCache);
         });
 
         sequence.Add("レンダリング技術", [enginePtr, state] {
-            auto renderingTechniqueManager = std::make_unique<RenderingTechniqueManager>();
-            renderingTechniqueManager->Initialize(state->dx, state->shaderProgramCache);
-            enginePtr->RegisterComponent(EngineSystem::FactoryKey{}, std::move(renderingTechniqueManager));
+            enginePtr->CreateAndRegisterComponent<RenderingTechniqueManager>(EngineSystem::FactoryKey{},
+                state->dx, state->shaderProgramCache);
 
             // ポストエフェクトとレンダリング技術を作り終えた時点での効き具合を残す
             state->shaderProgramCache->LogSummary();
@@ -283,10 +266,9 @@ namespace CoreEngine
             //（Model インスタンス生成時に各 Model へ注入される）
             ModelRenderContext modelCtx;
             modelCtx.dxCommon = state->dx;
-            modelCtx.modelRenderer =
-                dynamic_cast<BaseModelRenderer*>(state->renderManager->GetRenderer(RenderPassType::Model));
+            modelCtx.modelRenderer = state->renderManager->GetRendererAs<BaseModelRenderer>(RenderPassType::Model);
             modelCtx.skinnedRenderer =
-                dynamic_cast<BaseModelRenderer*>(state->renderManager->GetRenderer(RenderPassType::SkinnedModel));
+                state->renderManager->GetRendererAs<BaseModelRenderer>(RenderPassType::SkinnedModel);
             modelCtx.hiZOcclusion = enginePtr->GetHiZOcclusionSystem();
             enginePtr->GetService<ModelManager>()->SetRenderContext(modelCtx);
         });

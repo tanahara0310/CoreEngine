@@ -70,6 +70,9 @@ namespace CoreEngine::Editor::ShaderGraph
     /// @brief プロパティの種類の名前（ファイルに書く綴り）
     const char* ToString(PropertyType type);
 
+    /// @brief ファイルに書く綴りからプロパティの種類を読む（知らない綴りなら false で type はそのまま）
+    bool ParsePropertyType(std::string_view text, PropertyType& type);
+
     /// @brief プロパティの種類の値の幅（テクスチャは 0）
     int WidthOf(PropertyType type);
 

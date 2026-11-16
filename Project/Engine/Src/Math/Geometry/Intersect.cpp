@@ -42,6 +42,18 @@ namespace Geometry
             outContact->point  = centerA + normal * (radiusA - outContact->depth * 0.5f);
             return true;
         }
+
+        /// @brief 引数を入れ替えて反対向きの判定を呼び、法線を反転して返す
+        /// @details 深さと接触点は反対向きの判定の値をそのまま返す。
+        template <typename A, typename B>
+        bool IntersectSwapped(const A& a, const B& b, Contact* outContact)
+        {
+            const bool hit = Intersect(b, a, outContact);
+            if (hit && outContact) {
+                outContact->normal = outContact->normal * -1.0f;
+            }
+            return hit;
+        }
     }
 
     //================================================
@@ -206,12 +218,7 @@ namespace Geometry
 
     bool Intersect(const AABB& box, const Sphere& sphere, Contact* outContact)
     {
-        // 実装は Sphere×AABB に一本化。引数順が逆なので法線を反転する。
-        const bool hit = Intersect(sphere, box, outContact);
-        if (hit && outContact) {
-            outContact->normal = outContact->normal * -1.0f;
-        }
-        return hit;
+        return IntersectSwapped(box, sphere, outContact);
     }
 
     //================================================
@@ -267,12 +274,7 @@ namespace Geometry
 
     bool Intersect(const OBB& box, const Sphere& sphere, Contact* outContact)
     {
-        // 実装は Sphere×OBB に一本化。引数順が逆なので法線を反転する。
-        const bool hit = Intersect(sphere, box, outContact);
-        if (hit && outContact) {
-            outContact->normal = outContact->normal * -1.0f;
-        }
-        return hit;
+        return IntersectSwapped(box, sphere, outContact);
     }
 
     //================================================
@@ -410,11 +412,7 @@ namespace Geometry
 
     bool Intersect(const Sphere& sphere, const Capsule& capsule, Contact* outContact)
     {
-        const bool hit = Intersect(capsule, sphere, outContact);
-        if (hit && outContact) {
-            outContact->normal = outContact->normal * -1.0f;
-        }
-        return hit;
+        return IntersectSwapped(sphere, capsule, outContact);
     }
 
     //================================================
@@ -465,11 +463,7 @@ namespace Geometry
 
     bool Intersect(const OBB& box, const Capsule& capsule, Contact* outContact)
     {
-        const bool hit = Intersect(capsule, box, outContact);
-        if (hit && outContact) {
-            outContact->normal = outContact->normal * -1.0f;
-        }
-        return hit;
+        return IntersectSwapped(box, capsule, outContact);
     }
 
     bool Intersect(const Capsule& capsule, const AABB& box, Contact* outContact)
@@ -479,11 +473,7 @@ namespace Geometry
 
     bool Intersect(const AABB& box, const Capsule& capsule, Contact* outContact)
     {
-        const bool hit = Intersect(capsule, box, outContact);
-        if (hit && outContact) {
-            outContact->normal = outContact->normal * -1.0f;
-        }
-        return hit;
+        return IntersectSwapped(box, capsule, outContact);
     }
 }
 }

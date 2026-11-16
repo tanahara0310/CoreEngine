@@ -2,6 +2,7 @@
 #include "Graphics/RHI/Resource/UploadRing.h"
 
 #include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Math/IntegerMath.h"
 #include "Utility/Logger/Logger.h"
 
 #include <algorithm>
@@ -9,15 +10,6 @@
 
 namespace CoreEngine
 {
-    namespace
-    {
-        /// @brief value を alignment の倍数へ切り上げる（alignment は 2 のべき乗）
-        constexpr uint32_t AlignUp(uint32_t value, uint32_t alignment)
-        {
-            return (value + alignment - 1u) & ~(alignment - 1u);
-        }
-    }
-
     UploadRing::~UploadRing()
     {
         Shutdown();

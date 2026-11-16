@@ -5,6 +5,7 @@
 #include "SkinCluster.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Math/IntegerMath.h"
 #include <cassert>
 #include <stdexcept>
 
@@ -93,7 +94,7 @@ namespace CoreEngine
             cmdList->SetComputeRootConstantBufferView(skinningParamsIdx_, skinCluster.skinningParamsCB->GetGPUVirtualAddress());
         }
 
-        const UINT groupCount = (vertexCount + 63) / 64;
+        const UINT groupCount = DivRoundUp(vertexCount, 64);
         cmdList->Dispatch(groupCount, 1, 1);
 
         // 出力バッファを頂点バッファとして、前の姿勢の位置を頂点シェーダの SRV として読めるように遷移

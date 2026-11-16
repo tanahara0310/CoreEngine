@@ -3,6 +3,9 @@
 
 #ifdef CORE_EDITOR
 
+#include "Utility/Algorithm/FindIfPtr.h"
+#include "Utility/Enum/EnumNames.h"
+
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
@@ -13,6 +16,25 @@ namespace CoreEngine::Editor::ShaderGraph
 {
     namespace
     {
+        /// @brief 出口の種類とファイルに書く綴りの表
+        constexpr EnumName<Target> kTargetNames[] = {
+            { Target::Sprite, "Sprite" },
+            { Target::PostEffect, "PostEffect" },
+            { Target::Lit, "Lit" },
+            { Target::Unlit, "Unlit" },
+        };
+
+        /// @brief プロパティの種類とファイルに書く綴りの表
+        constexpr EnumName<PropertyType> kPropertyTypeNames[] = {
+            { PropertyType::Float, "Float" },
+            { PropertyType::Vector2, "Vector2" },
+            { PropertyType::Vector3, "Vector3" },
+            { PropertyType::Vector4, "Vector4" },
+            { PropertyType::Color, "Color" },
+            { PropertyType::Texture2D, "Texture2D" },
+            { PropertyType::SamplerState, "SamplerState" },
+        };
+
         /// @brief プロパティの名前に使えない HLSL の予約語と、生成するコードが使う名前
         constexpr std::string_view kReservedNames[] = {
             "bool", "int", "uint", "float", "half", "double", "min16float", "vector", "matrix",
@@ -37,26 +59,7 @@ namespace CoreEngine::Editor::ShaderGraph
 
         bool ParseTarget(const std::string& text, Target& target)
         {
-            for (const Target candidate : kAllTargetList) {
-                if (text == ToString(candidate)) {
-                    target = candidate;
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        bool ParsePropertyType(const std::string& text, PropertyType& type)
-        {
-            for (const PropertyType candidate : { PropertyType::Float, PropertyType::Vector2, PropertyType::Vector3,
-                                                  PropertyType::Vector4, PropertyType::Color, PropertyType::Texture2D,
-                                                  PropertyType::SamplerState }) {
-                if (text == ToString(candidate)) {
-                    type = candidate;
-                    return true;
-                }
-            }
-            return false;
+            return TryParseName(kTargetNames, text, target);
         }
 
         /// @brief 数 1〜4 個の配列を読む（足りない分は 0）
@@ -91,13 +94,7 @@ namespace CoreEngine::Editor::ShaderGraph
 
     const char* ToString(Target target)
     {
-        switch (target) {
-        case Target::Sprite: return "Sprite";
-        case Target::PostEffect: return "PostEffect";
-        case Target::Lit: return "Lit";
-        case Target::Unlit: return "Unlit";
-        }
-        return "Sprite";
+        return NameOf(kTargetNames, target, "Sprite").data();
     }
 
     const char* DisplayName(Target target)
@@ -113,16 +110,12 @@ namespace CoreEngine::Editor::ShaderGraph
 
     const char* ToString(PropertyType type)
     {
-        switch (type) {
-        case PropertyType::Float:     return "Float";
-        case PropertyType::Vector2:   return "Vector2";
-        case PropertyType::Vector3:   return "Vector3";
-        case PropertyType::Vector4:   return "Vector4";
-        case PropertyType::Color:     return "Color";
-        case PropertyType::Texture2D: return "Texture2D";
-        case PropertyType::SamplerState: return "SamplerState";
-        }
-        return "Float";
+        return NameOf(kPropertyTypeNames, type, "Float").data();
+    }
+
+    bool ParsePropertyType(std::string_view text, PropertyType& type)
+    {
+        return TryParseName(kPropertyTypeNames, text, type);
     }
 
     int WidthOf(PropertyType type)
@@ -141,63 +134,47 @@ namespace CoreEngine::Editor::ShaderGraph
 
     Node* Graph::FindNode(int id)
     {
-        const auto found = std::find_if(nodes.begin(), nodes.end(), [id](const Node& node) { return node.id == id; });
-        return found == nodes.end() ? nullptr : &*found;
+        return FindIfPtr(nodes, [id](const Node& node) { return node.id == id; });
     }
 
     const Node* Graph::FindNode(int id) const
     {
-        const auto found = std::find_if(nodes.begin(), nodes.end(), [id](const Node& node) { return node.id == id; });
-        return found == nodes.end() ? nullptr : &*found;
+        return FindIfPtr(nodes, [id](const Node& node) { return node.id == id; });
     }
 
     Property* Graph::FindProperty(std::string_view id)
     {
-        const auto found = std::find_if(properties.begin(), properties.end(),
-            [id](const Property& property) { return property.id == id; });
-        return found == properties.end() ? nullptr : &*found;
+        return FindIfPtr(properties, [id](const Property& property) { return property.id == id; });
     }
 
     const Property* Graph::FindProperty(std::string_view id) const
     {
-        const auto found = std::find_if(properties.begin(), properties.end(),
-            [id](const Property& property) { return property.id == id; });
-        return found == properties.end() ? nullptr : &*found;
+        return FindIfPtr(properties, [id](const Property& property) { return property.id == id; });
     }
 
     const Property* Graph::FindPropertyByName(std::string_view name) const
     {
-        const auto found = std::find_if(properties.begin(), properties.end(),
-            [name](const Property& property) { return property.name == name; });
-        return found == properties.end() ? nullptr : &*found;
+        return FindIfPtr(properties, [name](const Property& property) { return property.name == name; });
     }
 
     const Node* Graph::FindMaster() const
     {
-        const auto found = std::find_if(nodes.begin(), nodes.end(),
-            [](const Node& node) { return node.type == kMasterNodeType; });
-        return found == nodes.end() ? nullptr : &*found;
+        return FindIfPtr(nodes, [](const Node& node) { return node.type == kMasterNodeType; });
     }
 
     const Node* Graph::FindVertexMaster() const
     {
-        const auto found = std::find_if(nodes.begin(), nodes.end(),
-            [](const Node& node) { return node.type == kVertexMasterNodeType; });
-        return found == nodes.end() ? nullptr : &*found;
+        return FindIfPtr(nodes, [](const Node& node) { return node.type == kVertexMasterNodeType; });
     }
 
     const Node* Graph::FindSubGraphOutput() const
     {
-        const auto found = std::find_if(nodes.begin(), nodes.end(),
-            [](const Node& node) { return node.type == kSubGraphOutputType; });
-        return found == nodes.end() ? nullptr : &*found;
+        return FindIfPtr(nodes, [](const Node& node) { return node.type == kSubGraphOutputType; });
     }
 
     const Link* Graph::FindLinkTo(int node, std::string_view pin) const
     {
-        const auto found = std::find_if(links.begin(), links.end(),
-            [node, pin](const Link& link) { return link.toNode == node && link.toPin == pin; });
-        return found == links.end() ? nullptr : &*found;
+        return FindIfPtr(links, [node, pin](const Link& link) { return link.toNode == node && link.toPin == pin; });
     }
 
     int Graph::NextNodeId() const
@@ -252,22 +229,19 @@ namespace CoreEngine::Editor::ShaderGraph
 
     Group* Graph::FindGroup(int id)
     {
-        const auto found = std::find_if(groups.begin(), groups.end(), [id](const Group& group) { return group.id == id; });
-        return found == groups.end() ? nullptr : &*found;
+        return FindIfPtr(groups, [id](const Group& group) { return group.id == id; });
     }
 
     const Group* Graph::FindGroup(int id) const
     {
-        const auto found = std::find_if(groups.begin(), groups.end(), [id](const Group& group) { return group.id == id; });
-        return found == groups.end() ? nullptr : &*found;
+        return FindIfPtr(groups, [id](const Group& group) { return group.id == id; });
     }
 
     const Group* Graph::FindGroupOf(int node) const
     {
-        const auto found = std::find_if(groups.begin(), groups.end(), [node](const Group& group) {
+        return FindIfPtr(groups, [node](const Group& group) {
             return std::find(group.nodes.begin(), group.nodes.end(), node) != group.nodes.end();
         });
-        return found == groups.end() ? nullptr : &*found;
     }
 
     int Graph::NextGroupId() const

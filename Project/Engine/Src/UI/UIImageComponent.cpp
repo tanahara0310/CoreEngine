@@ -3,6 +3,7 @@
 
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
+#include "GameObject/Component/Core/ComponentService.h"
 #include "GameObject/GameObject.h"
 #include "Graphics/Model/VertexData.h"
 #include "Graphics/Render/DrawViewInfo.h"
@@ -11,6 +12,7 @@
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
 #include "UI/RectTransformComponent.h"
+#include "Utility/Algorithm/AssignIfChanged.h"
 #include "Utility/FrameRate/Time.h"
 
 #include <algorithm>
@@ -48,11 +50,9 @@ namespace CoreEngine
 
     void UIImageComponent::ResolveRenderer()
     {
-        GameObject* const owner = GetOwner();
-        EngineSystem* const engine = owner ? owner->GetEngineSystem() : nullptr;
-        auto* const renderManager = engine ? engine->GetService<RenderManager>() : nullptr;
+        auto* const renderManager = FindService<RenderManager>(*this);
         if (renderManager) {
-            renderer_ = dynamic_cast<UIRenderer*>(renderManager->GetRenderer(RenderPassType::UI));
+            renderer_ = renderManager->GetRendererAs<UIRenderer>(RenderPassType::UI);
         }
     }
 
@@ -131,8 +131,7 @@ namespace CoreEngine
 
     void UIImageComponent::SetFrame(int frame)
     {
-        if (frame_ != frame) {
-            frame_ = frame;
+        if (AssignIfChanged(frame_, frame)) {
             verticesDirty_ = true;
         }
     }
@@ -164,15 +163,12 @@ namespace CoreEngine
 
     bool UIImageComponent::RequiresComponent(const IComponent& other) const
     {
-        return dynamic_cast<const RectTransformComponent*>(&other) != nullptr;
+        return IsAnyOf<RectTransformComponent>(other);
     }
 
     RectTransformComponent* UIImageComponent::GetRectTransform() const
     {
-        if (!rect_) {
-            rect_ = Sibling<RectTransformComponent>();
-        }
-        return rect_;
+        return CachedSibling(rect_);
     }
 
     void UIImageComponent::UpdateVertexData(const Vector2& pivot)

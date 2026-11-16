@@ -7,6 +7,7 @@
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Camera/View/ViewInfo.h"
+#include "Math/IntegerMath.h"
 #include "Utility/CVar/CVar.h"
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
@@ -50,12 +51,6 @@ namespace CoreEngine
         // フレアバッファの解像度分割数（1/4 解像度。ゴーストはブラーで滲ませるため十分）
         constexpr uint32_t kFlareResolutionDivisor = 4;
         constexpr uint32_t kGroupSize = 8;
-
-    /// @brief スレッドグループ数（8x8 スレッドで size を覆う）
-        constexpr uint32_t DispatchCount(uint32_t size)
-        {
-            return (size + kGroupSize - 1) / kGroupSize;
-        }
 
         // 既定値の根拠は LensFlare.h の LensFlareConstants のコメントを参照
         CVar<float> cvIntensity{
@@ -406,7 +401,7 @@ namespace CoreEngine
             if (flareIdx >= 0) cmdList->SetComputeRootDescriptorTable(flareIdx, inputSrvHandle);
             if (outIdx >= 0)   cmdList->SetComputeRootDescriptorTable(outIdx, outputUavHandle);
             if (cbIdx >= 0)    cmdList->SetComputeRootConstantBufferView(cbIdx, UploadConstants(c));
-            cmdList->Dispatch(DispatchCount(width), DispatchCount(height), 1);
+            cmdList->Dispatch(DivRoundUp(width, kGroupSize), DivRoundUp(height, kGroupSize), 1);
             return;
         }
 
@@ -414,8 +409,8 @@ namespace CoreEngine
         const D3D12_GPU_VIRTUAL_ADDRESS paramsAddress =
             UploadConstants(BuildConstants(width, height, targetsWidth_, targetsHeight_));
 
-        const uint32_t flareGroupsX = DispatchCount(targetsWidth_);
-        const uint32_t flareGroupsY = DispatchCount(targetsHeight_);
+        const uint32_t flareGroupsX = DivRoundUp(targetsWidth_, kGroupSize);
+        const uint32_t flareGroupsY = DivRoundUp(targetsHeight_, kGroupSize);
 
         // ===== Pass 1: 輝度抽出 + ダウンサンプル（入力 → brightBuffer_） =====
         Barrier::Transition(cmdList, brightBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -518,7 +513,7 @@ namespace CoreEngine
             if (outIdx >= 0)   cmdList->SetComputeRootDescriptorTable(outIdx, outputUavHandle);
             if (cbIdx >= 0)    cmdList->SetComputeRootConstantBufferView(cbIdx, paramsAddress);
         }
-        cmdList->Dispatch(DispatchCount(width), DispatchCount(height), 1);
+        cmdList->Dispatch(DivRoundUp(width, kGroupSize), DivRoundUp(height, kGroupSize), 1);
 
         // 次フレームの Pass 1〜3 に備えて内部バッファを UAV 状態へ戻す
         Barrier::Transition(cmdList, brightBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);

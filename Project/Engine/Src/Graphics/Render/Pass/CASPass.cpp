@@ -21,8 +21,8 @@ namespace CoreEngine
             return;
         }
 
-        auto* cas = context.renderingTechniqueManager->GetTechnique<CASTechnique>(RenderingTechniqueNames::CAS);
-        if (!cas || !cas->IsEnabled()) {
+        auto* cas = context.renderingTechniqueManager->GetEnabledTechnique<CASTechnique>(RenderingTechniqueNames::CAS);
+        if (!cas) {
             return;
         }
 

@@ -2,6 +2,7 @@
 #include "SkeletonSocketComponent.h"
 
 #include "GameObject/Component/Core/ComponentFactory.h"
+#include "GameObject/GameObject.h"
 #include "Math/MathCore.h"
 
 REFLECT_REGISTER(CoreEngine::SkeletonSocketComponent)
@@ -15,10 +16,7 @@ namespace CoreEngine
         if (!animator || jointName_.empty()) {
             return;
         }
-        if (!transform_) {
-            transform_ = Sibling<TransformComponent>();
-            if (!transform_) { return; }
-        }
+        if (!CachedSibling(transform_)) { return; }
 
         const std::optional<Matrix4x4> jointWorld = animator->GetJointWorldMatrix(jointName_);
         if (!jointWorld) {

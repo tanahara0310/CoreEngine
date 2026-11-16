@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "InputBinding.h"
+#include "Utility/Enum/EnumNames.h"
 #include <cstring>
 #include <charconv>
 #include <format>
@@ -9,8 +10,7 @@ namespace CoreEngine {
     namespace {
 
         // ─── キーボード名テーブル ─────────────────────────────────────
-        struct KeyEntry { uint8_t code; const char* name; };
-        static const KeyEntry kKeyTable[] = {
+        constexpr EnumName<uint8_t> kKeyTable[] = {
             { DIK_A, "A" }, { DIK_B, "B" }, { DIK_C, "C" }, { DIK_D, "D" },
             { DIK_E, "E" }, { DIK_F, "F" }, { DIK_G, "G" }, { DIK_H, "H" },
             { DIK_I, "I" }, { DIK_J, "J" }, { DIK_K, "K" }, { DIK_L, "L" },
@@ -39,25 +39,8 @@ namespace CoreEngine {
             { DIK_PRIOR,    "PageUp"    }, { DIK_NEXT,     "PageDown" },
         };
 
-        /// @brief DirectInput のキーコードを保存用の文字列へ
-        const char* KeyCodeToName(uint8_t code) {
-            for (const auto& e : kKeyTable) {
-                if (e.code == code) return e.name;
-            }
-            return nullptr;
-        }
-
-        /// @brief 文字列から DirectInput のキーコードへ
-        uint8_t KeyNameToCode(std::string_view name) {
-            for (const auto& e : kKeyTable) {
-                if (name == e.name) return e.code;
-            }
-            return 0;
-        }
-
         // ─── マウスボタン名テーブル ────────────────────────────────────
-        struct MouseButtonEntry { MouseButton btn; const char* name; };
-        static const MouseButtonEntry kMouseButtonTable[] = {
+        constexpr EnumName<MouseButton> kMouseButtonTable[] = {
             { MouseButton::Left,     "Left"     },
             { MouseButton::Right,    "Right"    },
             { MouseButton::Middle,   "Middle"   },
@@ -65,25 +48,8 @@ namespace CoreEngine {
             { MouseButton::XButton2, "XButton2" },
         };
 
-        /// @brief マウスボタンを保存用の文字列へ
-        const char* MouseButtonToName(MouseButton btn) {
-            for (const auto& e : kMouseButtonTable) {
-                if (e.btn == btn) return e.name;
-            }
-            return nullptr;
-        }
-
-        /// @brief 文字列からマウスボタンへ
-        MouseButton MouseButtonFromName(std::string_view name) {
-            for (const auto& e : kMouseButtonTable) {
-                if (name == e.name) return e.btn;
-            }
-            return MouseButton::Left;
-        }
-
         // ─── ゲームパッドボタン名テーブル ─────────────────────────────
-        struct GamepadButtonEntry { GamepadButton btn; const char* name; };
-        static const GamepadButtonEntry kGamepadButtonTable[] = {
+        constexpr EnumName<GamepadButton> kGamepadButtonTable[] = {
             { GamepadButton::A,             "A"             },
             { GamepadButton::B,             "B"             },
             { GamepadButton::X,             "X"             },
@@ -100,25 +66,8 @@ namespace CoreEngine {
             { GamepadButton::RightShoulder, "RightShoulder" },
         };
 
-        /// @brief ゲームパッドボタンを保存用の文字列へ
-        const char* GamepadButtonToName(GamepadButton btn) {
-            for (const auto& e : kGamepadButtonTable) {
-                if (e.btn == btn) return e.name;
-            }
-            return nullptr;
-        }
-
-        /// @brief 文字列からゲームパッドボタンへ
-        GamepadButton GamepadButtonFromName(std::string_view name) {
-            for (const auto& e : kGamepadButtonTable) {
-                if (name == e.name) return e.btn;
-            }
-            return GamepadButton::A;
-        }
-
         // ─── ゲームパッド軸名テーブル ──────────────────────────────────
-        struct GamepadAxisEntry { GamepadAxis axis; const char* name; };
-        static const GamepadAxisEntry kGamepadAxisTable[] = {
+        constexpr EnumName<GamepadAxis> kGamepadAxisTable[] = {
             { GamepadAxis::LeftStickX,  "LeftStickX"  },
             { GamepadAxis::LeftStickY,  "LeftStickY"  },
             { GamepadAxis::RightStickX, "RightStickX" },
@@ -126,22 +75,6 @@ namespace CoreEngine {
             { GamepadAxis::LeftTrigger, "LeftTrigger" },
             { GamepadAxis::RightTrigger,"RightTrigger"},
         };
-
-        /// @brief ゲームパッド軸を保存用の文字列へ
-        const char* GamepadAxisToName(GamepadAxis axis) {
-            for (const auto& e : kGamepadAxisTable) {
-                if (e.axis == axis) return e.name;
-            }
-            return nullptr;
-        }
-
-        /// @brief 文字列からゲームパッド軸へ
-        GamepadAxis GamepadAxisFromName(std::string_view name) {
-            for (const auto& e : kGamepadAxisTable) {
-                if (name == e.name) return e.axis;
-            }
-            return GamepadAxis::LeftStickX;
-        }
 
     } // namespace
 
@@ -188,23 +121,24 @@ namespace CoreEngine {
     std::string InputBinding::SerializeBody() const {
         switch (type) {
         case BindingType::Keyboard: {
-            if (const char* name = KeyCodeToName(static_cast<uint8_t>(code))) {
+            const std::string_view name = NameOf(kKeyTable, static_cast<uint8_t>(code));
+            if (!name.empty()) {
                 return std::format("Key:{}", name);
             }
             return std::format("Key:0x{:02X}", code);
         }
         case BindingType::MouseButton: {
-            const char* name = MouseButtonToName(static_cast<MouseButton>(code));
-            return std::format("Mouse:{}", name ? name : "Left");
+            const std::string_view name = NameOf(kMouseButtonTable, static_cast<MouseButton>(code), "Left");
+            return std::format("Mouse:{}", name);
         }
         case BindingType::GamepadButton: {
-            const char* name = GamepadButtonToName(static_cast<GamepadButton>(code));
-            return std::format("Gamepad:{}", name ? name : "A");
+            const std::string_view name = NameOf(kGamepadButtonTable, static_cast<GamepadButton>(code), "A");
+            return std::format("Gamepad:{}", name);
         }
         case BindingType::GamepadAxis: {
-            const char* name = GamepadAxisToName(static_cast<GamepadAxis>(code));
+            const std::string_view name = NameOf(kGamepadAxisTable, static_cast<GamepadAxis>(code), "LeftStickX");
             const char* sign = (axisSign >= 0.0f) ? "+" : "-";
-            return std::format("Axis:{}{}", name ? name : "LeftStickX", sign);
+            return std::format("Axis:{}{}", name, sign);
         }
         }
         return "Key:A";
@@ -250,18 +184,19 @@ namespace CoreEngine {
                 std::from_chars(value.data() + 2, value.data() + value.size(), code, 16);
                 return FromKey(static_cast<uint8_t>(code));
             }
-            return FromKey(KeyNameToCode(value));
+            return FromKey(ParseName(kKeyTable, value, uint8_t{ 0 }));
         }
         if (prefix == "Mouse") {
-            return FromMouseButton(MouseButtonFromName(value));
+            return FromMouseButton(ParseName(kMouseButtonTable, value, MouseButton::Left));
         }
         if (prefix == "Gamepad") {
-            return FromGamepadButton(GamepadButtonFromName(value));
+            return FromGamepadButton(ParseName(kGamepadButtonTable, value, GamepadButton::A));
         }
         if (prefix == "Axis" && !value.empty()) {
             const char sign = value.back();
             const bool positive = (sign != '-');
-            return FromGamepadAxis(GamepadAxisFromName(value.substr(0, value.size() - 1)), positive);
+            return FromGamepadAxis(
+                ParseName(kGamepadAxisTable, value.substr(0, value.size() - 1), GamepadAxis::LeftStickX), positive);
         }
         return FromKey(0);
     }

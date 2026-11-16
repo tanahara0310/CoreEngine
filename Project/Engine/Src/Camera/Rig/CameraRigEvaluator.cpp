@@ -3,6 +3,7 @@
 
 #include "Math/Easing/EasingUtil.h"
 #include "Math/MathCore.h"
+#include "Math/Spline/CatmullRom.h"
 
 #include <algorithm>
 #include <cmath>
@@ -21,27 +22,6 @@ namespace CoreEngine
         /// @details 細かくすれば近づくが毎フレーム回る。カメラの位置決めとしては
         ///          これで十分で、足りない分は減衰が均す。
         constexpr int kRailSamplesPerSegment = 16;
-
-        /// @brief 一様 Catmull-Rom の基底（Math/Spline/Spline.cpp と同じ式）
-        float CatmullRom(float p0, float p1, float p2, float p3, float t)
-        {
-            const float t2 = t * t;
-            const float t3 = t2 * t;
-            return p0 * (-0.5f * t3 + t2 - 0.5f * t)
-                 + p1 * (1.5f * t3 - 2.5f * t2 + 1.0f)
-                 + p2 * (-1.5f * t3 + 2.0f * t2 + 0.5f * t)
-                 + p3 * (0.5f * t3 - 0.5f * t2);
-        }
-
-        Vector3 CatmullRom(const Vector3& p0, const Vector3& p1, const Vector3& p2,
-            const Vector3& p3, float t)
-        {
-            return {
-                CatmullRom(p0.x, p1.x, p2.x, p3.x, t),
-                CatmullRom(p0.y, p1.y, p2.y, p3.y, t),
-                CatmullRom(p0.z, p1.z, p2.z, p3.z, t)
-            };
-        }
 
         /// @brief 範囲外の添字を端へ丸める／環状なら巻き戻して制御点を取り出す
         const Vector3& RailPointAt(const std::vector<Vector3>& points, bool loop, int index)
@@ -269,7 +249,7 @@ namespace CoreEngine
         segment = (std::min)(segment, segments - 1);
         const float local = scaled - static_cast<float>(segment);
 
-        return CatmullRom(
+        return MathCore::CatmullRom(
             RailPointAt(points, loop, segment - 1),
             RailPointAt(points, loop, segment),
             RailPointAt(points, loop, segment + 1),

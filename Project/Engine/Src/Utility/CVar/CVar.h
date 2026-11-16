@@ -3,6 +3,7 @@
 #include "Math/Vector/Vector2.h"
 #include "Math/Vector/Vector3.h"
 #include "Math/Vector/Vector4.h"
+#include "Utility/Enum/EnumFlags.h"
 #include <cstdint>
 #include <functional>
 #include <string>
@@ -54,14 +55,7 @@ namespace CoreEngine
         NoUI   = 1 << 1,
     };
 
-    constexpr CVarFlags operator|(CVarFlags a, CVarFlags b) noexcept
-    {
-        return static_cast<CVarFlags>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
-    }
-    constexpr bool HasFlag(CVarFlags value, CVarFlags flag) noexcept
-    {
-        return (static_cast<uint32_t>(value) & static_cast<uint32_t>(flag)) != 0;
-    }
+    CE_ENUM_FLAG_OPERATORS(CVarFlags)
 
     /// @brief CVar の型非依存インターフェース
     /// @details UI とシリアライズはこの型だけを見て動くので、対応型を増やしても呼び出し側は変わらない。

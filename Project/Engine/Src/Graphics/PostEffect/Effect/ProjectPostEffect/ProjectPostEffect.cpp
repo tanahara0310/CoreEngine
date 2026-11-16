@@ -12,6 +12,7 @@
 #include "Graphics/Shader/ShaderProgram.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
+#include "Math/IntegerMath.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
 
@@ -255,7 +256,7 @@ namespace CoreEngine
             cmdList->SetComputeRootConstantBufferView(sceneDepthParamsSlot_.index, UploadConstants(depthParams));
         }
 
-        cmdList->Dispatch((width + kGroupSize - 1) / kGroupSize, (height + kGroupSize - 1) / kGroupSize, 1);
+        cmdList->Dispatch(DivRoundUp(width, kGroupSize), DivRoundUp(height, kGroupSize), 1);
     }
 
     void ProjectPostEffect::DrawImGui()

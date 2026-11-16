@@ -8,6 +8,7 @@
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
 #include "Utility/Logger/Logger.h"
+#include "Math/IntegerMath.h"
 #include "Math/MathCore.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/CVar/CVarRegistry.h"
@@ -615,8 +616,8 @@ namespace CoreEngine
         }
 
         cmdList->Dispatch(
-            (kTransmittanceLUTWidth + 7) / 8,
-            (kTransmittanceLUTHeight + 7) / 8,
+            DivRoundUp(kTransmittanceLUTWidth, 8),
+            DivRoundUp(kTransmittanceLUTHeight, 8),
             1);
 
         // Multi-Scattering パスが SRV として読めるよう遷移
@@ -646,8 +647,8 @@ namespace CoreEngine
         }
 
         cmdList->Dispatch(
-            (kMultiScatteringLUTSize + 7) / 8,
-            (kMultiScatteringLUTSize + 7) / 8,
+            DivRoundUp(kMultiScatteringLUTSize, 8),
+            DivRoundUp(kMultiScatteringLUTSize, 8),
             1);
 
         // 描画シェーダーから参照できるよう SRV 状態へ遷移
@@ -684,8 +685,8 @@ namespace CoreEngine
         }
 
         cmdList->Dispatch(
-            (kSkyViewLUTWidth + 7) / 8,
-            (kSkyViewLUTHeight + 7) / 8,
+            DivRoundUp(kSkyViewLUTWidth, 8),
+            DivRoundUp(kSkyViewLUTHeight, 8),
             1);
 
         Barrier::UAV(cmdList, skyViewLUT_);
@@ -776,8 +777,8 @@ namespace CoreEngine
         }
 
         cmdList->Dispatch(
-            (kSkyCubemapSize + 7) / 8,
-            (kSkyCubemapSize + 7) / 8,
+            DivRoundUp(kSkyCubemapSize, 8),
+            DivRoundUp(kSkyCubemapSize, 8),
             6);
 
         // 直後に雲の前乗算合成（同じ UAV への読み書き）が入るため UAV バリアで区切る
@@ -820,7 +821,7 @@ namespace CoreEngine
                     static_cast<UINT>(uavSlot), skySpecularUavHandles_[mip].gpuHandle);
             }
             const uint32_t mipSize = kSkyCubemapSize >> mip;
-            cmdList->Dispatch((mipSize + 7) / 8, (mipSize + 7) / 8, 6);
+            cmdList->Dispatch(DivRoundUp(mipSize, 8), DivRoundUp(mipSize, 8), 6);
         }
 
         // ピクセルシェーダー（DeferredLighting / Water.PS）から読める状態へ
@@ -851,7 +852,7 @@ namespace CoreEngine
                     static_cast<UINT>(destSlot), skyCubemapUavHandles_[mip].gpuHandle);
             }
             const uint32_t mipSize = kSkyCubemapSize >> mip;
-            cmdList->Dispatch((mipSize + 7) / 8, (mipSize + 7) / 8, 6);
+            cmdList->Dispatch(DivRoundUp(mipSize, 8), DivRoundUp(mipSize, 8), 6);
 
             // 次の段はこの段を読むので UAV バリアで区切る
             Barrier::UAV(cmdList, skyCubemap_);
@@ -887,9 +888,9 @@ namespace CoreEngine
         }
 
         cmdList->Dispatch(
-            (kCameraVolumeSize + 3) / 4,
-            (kCameraVolumeSize + 3) / 4,
-            (kCameraVolumeSize + 3) / 4);
+            DivRoundUp(kCameraVolumeSize, 4),
+            DivRoundUp(kCameraVolumeSize, 4),
+            DivRoundUp(kCameraVolumeSize, 4));
 
         Barrier::UAV(cmdList, cameraVolumeLUT_);
         Barrier::Transition(cmdList, cameraVolumeLUT_, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -980,8 +981,8 @@ namespace CoreEngine
         }
 
         cmdList->Dispatch(
-            (static_cast<UINT>(apResultWidth_) + 7) / 8,
-            (apResultHeight_ + 7) / 8,
+            DivRoundUp(static_cast<UINT>(apResultWidth_), 8),
+            DivRoundUp(apResultHeight_, 8),
             1);
 
         // ===== 結果を SceneColor へコピーバック =====

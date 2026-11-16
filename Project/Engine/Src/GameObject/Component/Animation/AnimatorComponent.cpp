@@ -3,6 +3,7 @@
 
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
+#include "GameObject/Component/Core/ComponentService.h"
 #include "GameObject/GameObject.h"
 #include "Graphics/Line/LineManager.h"
 #include "Graphics/Model/Animation/AnimationPlayer.h"
@@ -84,8 +85,7 @@ namespace CoreEngine
         }
 
         GameObject* owner = GetOwner();
-        EngineSystem* engine = owner ? owner->GetEngineSystem() : nullptr;
-        auto* modelMgr = engine ? engine->GetService<ModelManager>() : nullptr;
+        auto* modelMgr = FindService<ModelManager>(*this);
         if (!modelMgr) { return; }
 
         // スケルトン生成より前に全クリップを読む（同じ ModelResource へ名前付きで登録される）。
@@ -109,8 +109,8 @@ namespace CoreEngine
 
     void AnimatorComponent::ResolveSiblings() const
     {
-        if (!renderer_) { renderer_ = Sibling<MeshRendererComponent>(); }
-        if (!transform_) { transform_ = Sibling<TransformComponent>(); }
+        CachedSibling(renderer_);
+        CachedSibling(transform_);
     }
 
     void AnimatorComponent::Start()

@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "RootSignatureBuilder.h"
+#include "Math/IntegerMath.h"
 #include "Utility/Logger/Logger.h"
 #include <cassert>
 #include <algorithm>
@@ -165,7 +166,7 @@ namespace CoreEngine
                     num32BitValues = *resourceConfig->rootConstantsCount;
                 } else {
                     // サイズから推定（4バイト単位）
-                    num32BitValues = (cbv.size + 3) / 4;
+                    num32BitValues = DivRoundUp(cbv.size, 4);
                 }
 
                 D3D12_ROOT_PARAMETER param{};

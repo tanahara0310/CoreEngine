@@ -22,6 +22,7 @@
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Graphics/Shader/ShaderProgram.h"
+#include "Math/IntegerMath.h"
 #include "Math/MathCore.h"
 #include "Utility/Logger/Logger.h"
 
@@ -29,9 +30,6 @@ namespace CoreEngine
 {
     namespace
     {
-        /// @brief 8x8 のスレッドグループで要るグループの数
-        UINT DispatchGroupCount(UINT pixels) { return (pixels + 7) / 8; }
-
         /// @brief 日なたとみなす距離の余裕（画素の幅の何倍か）
         constexpr float kBiasTexels = 2.0f;
 
@@ -372,7 +370,7 @@ namespace CoreEngine
             binder.Set(bindings_[RTVolumetricShadowBind::gSunDepth], uav_.gpuHandle);
             binder.ValidateBeforeDraw(bindings_);
         }
-        cmdList->Dispatch(DispatchGroupCount(resolution), DispatchGroupCount(resolution), 1);
+        cmdList->Dispatch(DivRoundUp(resolution, 8), DivRoundUp(resolution, 8), 1);
         Barrier::UAV(cmdList, texture_);
         Barrier::Transition(cmdList, texture_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 

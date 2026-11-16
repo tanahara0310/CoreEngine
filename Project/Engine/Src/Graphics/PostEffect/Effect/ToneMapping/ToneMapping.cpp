@@ -7,6 +7,7 @@
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Math/IntegerMath.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/CVar/CVar.h"
 #ifdef CORE_EDITOR
@@ -384,8 +385,8 @@ namespace CoreEngine
         if (outputIdx >= 0)       cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
         if (screenParamsIdx >= 0) cmdList->SetComputeRootConstantBufferView(screenParamsIdx, screenParams);
 
-        uint32_t groupX = (width + 7) / 8;
-        uint32_t groupY = (height + 7) / 8;
+        uint32_t groupX = DivRoundUp(width, 8);
+        uint32_t groupY = DivRoundUp(height, 8);
         cmdList->Dispatch(groupX, groupY, 1);
     }
 

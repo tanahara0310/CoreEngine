@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Spline.h"
 #include "Math/MathCore.h"
+#include "Math/Spline/CatmullRom.h"
 #include <algorithm>
 #include <cmath>
 
@@ -236,7 +237,7 @@ Vector3 Spline::CalculateCatmullRomPosition(float t) const
         i3 = (std::min)(maxIndex, segmentIndex + 2);
     }
 
-    return CatmullRomInterpolation(
+    return MathCore::CatmullRom(
         controlPoints_[i0].position,
         controlPoints_[i1].position,
         controlPoints_[i2].position,
@@ -297,20 +298,6 @@ Vector3 Spline::CalculateHermitePosition(float t) const
     float h4 = t3 - t2;
 
     return p0 * h1 + p1 * h2 + t0 * h3 + t1 * h4;
-}
-
-Vector3 Spline::CatmullRomInterpolation(const Vector3& p0, const Vector3& p1, const Vector3& p2, const Vector3& p3, float t) const
-{
-    float t2 = t * t;
-    float t3 = t2 * t;
-
-    // Catmull-Rom基底関数
-    float b0 = -0.5f * t3 + t2 - 0.5f * t;
-    float b1 = 1.5f * t3 - 2.5f * t2 + 1.0f;
-    float b2 = -1.5f * t3 + 2.0f * t2 + 0.5f * t;
-    float b3 = 0.5f * t3 - 0.5f * t2;
-
-    return p0 * b0 + p1 * b1 + p2 * b2 + p3 * b3;
 }
 
 float Spline::NormalizeParameter(float t) const

@@ -206,8 +206,7 @@ namespace CoreEngine
         // UIRenderer から「基準解像度」を取得（Game ビューが UI 配置に使っているのと同じサイズ）
         Vector2 referenceSize = { 1280.0f, 720.0f };
         if (auto* renderManager = engine_->GetService<RenderManager>()) {
-            if (auto* uiRenderer = dynamic_cast<UIRenderer*>(
-                    renderManager->GetRenderer(RenderPassType::UI))) {
+            if (auto* uiRenderer = renderManager->GetRendererAs<UIRenderer>(RenderPassType::UI)) {
                 referenceSize = uiRenderer->GetScreenSize();
             }
         }

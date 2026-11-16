@@ -16,7 +16,7 @@ namespace CoreEngine
 {
     bool RigidbodyComponent::RequiresComponent(const IComponent& other) const
     {
-        return dynamic_cast<const TransformComponent*>(&other) != nullptr;
+        return IsAnyOf<TransformComponent>(other);
     }
 
     void RigidbodyComponent::Start()
@@ -354,9 +354,6 @@ namespace CoreEngine
 
     TransformComponent* RigidbodyComponent::FindTransform()
     {
-        if (!transform_) {
-            transform_ = Sibling<TransformComponent>();
-        }
-        return transform_;
+        return CachedSibling(transform_);
     }
 }

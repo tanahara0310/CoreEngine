@@ -6,6 +6,7 @@
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
+#include "GameObject/Component/Core/ComponentService.h"
 #include "Utility/Logger/Logger.h"
 
 #include <algorithm>
@@ -115,9 +116,7 @@ namespace CoreEngine
         if (audio_) {
             return audio_;
         }
-        const GameObject* const owner = GetOwner();
-        EngineSystem* const engine = owner ? owner->GetEngineSystem() : nullptr;
-        audio_ = engine ? engine->GetService<AudioSystem>() : nullptr;
+        audio_ = FindService<AudioSystem>(*this);
         return audio_;
     }
 

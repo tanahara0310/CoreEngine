@@ -7,6 +7,7 @@
 #include "Graphics/Cloud/Render/CloudStageScope.h"
 #include "Graphics/Cloud/Resource/CloudResources.h"
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
+#include "Math/IntegerMath.h"
 #include "Utility/Logger/Logger.h"
 
 #include <algorithm>
@@ -70,7 +71,7 @@ namespace CoreEngine
                 binder.ValidateBeforeDraw(pass.bindings);
 
                 const uint32_t extent = std::max(size >> mip, 1u);
-                const UINT groups = (extent + 3u) / 4u;   // numthreads(4,4,4)
+                const UINT groups = DivRoundUp(extent, 4u);   // numthreads(4,4,4)
                 cmdList->Dispatch(groups, groups, groups);
             }
 

@@ -19,6 +19,7 @@
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
+#include "Math/IntegerMath.h"
 #include "Scene/Environment/WindCVars.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
@@ -74,11 +75,6 @@ namespace CoreEngine
                 return false;
             }
             return true;
-        }
-
-        uint32_t DivideRoundUp(uint32_t value, uint32_t divisor)
-        {
-            return (value + divisor - 1) / divisor;
         }
 
         static_assert(VolumetricFog::kMaxLocalLights
@@ -557,8 +553,8 @@ namespace CoreEngine
         }
 
         const uint32_t pixelSize = static_cast<uint32_t>(std::clamp(VolumetricFogCVars::GridPixelSize.Get(), 4, 64));
-        const uint32_t sizeX = DivideRoundUp(input.screenWidth, pixelSize);
-        const uint32_t sizeY = DivideRoundUp(input.screenHeight, pixelSize);
+        const uint32_t sizeX = DivRoundUp(input.screenWidth, pixelSize);
+        const uint32_t sizeY = DivRoundUp(input.screenHeight, pixelSize);
         const uint32_t sizeZ = static_cast<uint32_t>(std::clamp(VolumetricFogCVars::GridSizeZ.Get(), 8, 256));
         if (!EnsureVolumes(sizeX, sizeY, sizeZ)) {
             return false;
@@ -660,9 +656,9 @@ namespace CoreEngine
             binder.ValidateBeforeDraw(injectBindings_);
         }
         cmdList->Dispatch(
-            DivideRoundUp(gridSize_[0], kCellGroupSize),
-            DivideRoundUp(gridSize_[1], kCellGroupSize),
-            DivideRoundUp(gridSize_[2], kCellGroupSize));
+            DivRoundUp(gridSize_[0], kCellGroupSize),
+            DivRoundUp(gridSize_[1], kCellGroupSize),
+            DivRoundUp(gridSize_[2], kCellGroupSize));
         Barrier::UAV(cmdList, vBuffer_.texture);
         Barrier::UAV(cmdList, emissive_.texture);
         Barrier::Transition(cmdList, vBuffer_.texture, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -704,9 +700,9 @@ namespace CoreEngine
             binder.ValidateBeforeDraw(lightScatteringBindings_);
         }
         cmdList->Dispatch(
-            DivideRoundUp(gridSize_[0], kCellGroupSize),
-            DivideRoundUp(gridSize_[1], kCellGroupSize),
-            DivideRoundUp(gridSize_[2], kCellGroupSize));
+            DivRoundUp(gridSize_[0], kCellGroupSize),
+            DivRoundUp(gridSize_[1], kCellGroupSize),
+            DivRoundUp(gridSize_[2], kCellGroupSize));
         Barrier::UAV(cmdList, current.texture);
         Barrier::Transition(cmdList, current.texture, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         // 奥の光の画像は全画面の合成（CS）と前方描画（PS）が読む
@@ -732,8 +728,8 @@ namespace CoreEngine
             binder.ValidateBeforeDraw(integrateBindings_);
         }
         cmdList->Dispatch(
-            DivideRoundUp(gridSize_[0], kColumnGroupSize),
-            DivideRoundUp(gridSize_[1], kColumnGroupSize),
+            DivRoundUp(gridSize_[0], kColumnGroupSize),
+            DivRoundUp(gridSize_[1], kColumnGroupSize),
             1);
         Barrier::UAV(cmdList, integrated_.texture);
         // 積み上げた格子は全画面の合成（CS）と前方描画（PS）が読む

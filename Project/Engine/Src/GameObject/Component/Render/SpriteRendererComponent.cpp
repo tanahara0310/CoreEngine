@@ -4,6 +4,7 @@
 #include "Camera/View/ViewInfo.h"
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
+#include "GameObject/Component/Core/ComponentService.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "GameObject/GameObject.h"
 #include "Graphics/Asset/AssetRef.h"
@@ -13,6 +14,7 @@
 #include "Graphics/Render/Sprite/SpriteRenderer.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
+#include "Utility/Algorithm/AssignIfChanged.h"
 #include "Utility/FrameRate/Time.h"
 
 #include <algorithm>
@@ -112,11 +114,9 @@ namespace CoreEngine
 
     void SpriteRendererComponent::ResolveRenderer()
     {
-        GameObject* owner = GetOwner();
-        EngineSystem* engine = owner ? owner->GetEngineSystem() : nullptr;
-        auto* renderManager = engine ? engine->GetService<RenderManager>() : nullptr;
+        auto* renderManager = FindService<RenderManager>(*this);
         if (renderManager) {
-            spriteRenderer_ = dynamic_cast<SpriteRenderer*>(renderManager->GetRenderer(RenderPassType::Sprite));
+            spriteRenderer_ = renderManager->GetRendererAs<SpriteRenderer>(RenderPassType::Sprite);
         }
     }
 
@@ -190,8 +190,7 @@ namespace CoreEngine
 
     void SpriteRendererComponent::SetFrame(int frame)
     {
-        if (frame_ != frame) {
-            frame_ = frame;
+        if (AssignIfChanged(frame_, frame)) {
             vertexDataDirty_ = true;
         }
     }
@@ -258,15 +257,12 @@ namespace CoreEngine
 
     bool SpriteRendererComponent::RequiresComponent(const IComponent& other) const
     {
-        return dynamic_cast<const TransformComponent*>(&other) != nullptr;
+        return IsAnyOf<TransformComponent>(other);
     }
 
     TransformComponent* SpriteRendererComponent::GetTransform() const
     {
-        if (!transform_) {
-            transform_ = Sibling<TransformComponent>();
-        }
-        return transform_;
+        return CachedSibling(transform_);
     }
 
     Matrix4x4 SpriteRendererComponent::GetQuadWorldMatrix() const
@@ -539,16 +535,14 @@ namespace CoreEngine
 
     void SpriteRendererComponent::SetFlipX(bool flip)
     {
-        if (flipX_ != flip) {
-            flipX_ = flip;
+        if (AssignIfChanged(flipX_, flip)) {
             vertexDataDirty_ = true;
         }
     }
 
     void SpriteRendererComponent::SetFlipY(bool flip)
     {
-        if (flipY_ != flip) {
-            flipY_ = flip;
+        if (AssignIfChanged(flipY_, flip)) {
             vertexDataDirty_ = true;
         }
     }

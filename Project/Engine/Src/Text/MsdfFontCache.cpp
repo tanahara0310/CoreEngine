@@ -2,6 +2,7 @@
 #include "Text/MsdfFontCache.h"
 
 #include "Text/MsdfFont.h"
+#include "Utility/Hash/Fnv1a.h"
 #include "Utility/Logger/Logger.h"
 
 #include <cstdio>
@@ -41,26 +42,6 @@ namespace CoreEngine
             int32_t  allocatorShelfHeight;
         };
 
-        // ── FNV-1a 64bit ────────────────────────────────────────
-        constexpr uint64_t kFnvOffsetBasis = 14695981039346656037ULL;
-        constexpr uint64_t kFnvPrime = 1099511628211ULL;
-
-        void HashBytes(uint64_t& hash, const void* data, size_t size)
-        {
-            const auto* bytes = static_cast<const uint8_t*>(data);
-            for (size_t i = 0; i < size; ++i) {
-                hash ^= bytes[i];
-                hash *= kFnvPrime;
-            }
-        }
-
-        template <class T>
-        void HashValue(uint64_t& hash, const T& value)
-        {
-            static_assert(std::is_trivially_copyable_v<T>);
-            HashBytes(hash, &value, sizeof(T));
-        }
-
         /// @brief RAII で閉じる FILE*
         struct FileHandle
         {
@@ -73,14 +54,14 @@ namespace CoreEngine
     uint64_t MsdfFontCache::ComputeKey(const MsdfFontDesc& desc,
         const std::vector<std::wstring>& resolvedChain)
     {
-        uint64_t hash = kFnvOffsetBasis;
+        uint64_t hash = Fnv1a::kOffsetBasis;
 
-        HashValue(hash, kCacheVersion);
+        Fnv1a::MixValue(hash, kCacheVersion);
 
         // 実際に開けたフォント名（順序込み）
         for (const std::wstring& name : resolvedChain) {
-            HashBytes(hash, name.data(), name.size() * sizeof(wchar_t));
-            HashValue(hash, '|');
+            Fnv1a::MixBytes(hash, name.data(), name.size() * sizeof(wchar_t));
+            Fnv1a::MixValue(hash, '|');
         }
 
         // ファイル指定のフォントは中身が差し替わることがあるので更新時刻も混ぜる
@@ -89,19 +70,19 @@ namespace CoreEngine
             const auto writeTime = std::filesystem::last_write_time(desc.filePath, ec);
             if (!ec) {
                 const auto ticks = writeTime.time_since_epoch().count();
-                HashValue(hash, ticks);
+                Fnv1a::MixValue(hash, ticks);
             }
-            HashValue(hash, desc.faceIndex);
+            Fnv1a::MixValue(hash, desc.faceIndex);
         }
 
-        HashValue(hash, desc.bake.glyphPixelSize);
-        HashValue(hash, desc.bake.pxRange);
-        HashValue(hash, desc.bake.atlasWidth);
-        HashValue(hash, desc.bake.atlasHeight);
-        HashValue(hash, desc.bake.padding);
-        HashValue(hash, desc.includeAscii);
+        Fnv1a::MixValue(hash, desc.bake.glyphPixelSize);
+        Fnv1a::MixValue(hash, desc.bake.pxRange);
+        Fnv1a::MixValue(hash, desc.bake.atlasWidth);
+        Fnv1a::MixValue(hash, desc.bake.atlasHeight);
+        Fnv1a::MixValue(hash, desc.bake.padding);
+        Fnv1a::MixValue(hash, desc.includeAscii);
 
-        HashBytes(hash, desc.charsetUtf8.data(), desc.charsetUtf8.size());
+        Fnv1a::MixBytes(hash, desc.charsetUtf8.data(), desc.charsetUtf8.size());
 
         return hash;
     }

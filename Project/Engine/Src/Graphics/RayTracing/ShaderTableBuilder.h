@@ -37,8 +37,6 @@ namespace CoreEngine
         bool IsBuilt() const { return buffer_ != nullptr; }
 
     private:
-        static UINT64 Align(UINT64 size, UINT64 alignment);
-
         const wchar_t* rayGenName_ = nullptr;
         std::vector<const wchar_t*> missNames_;
         std::vector<const wchar_t*> hitGroupNames_;

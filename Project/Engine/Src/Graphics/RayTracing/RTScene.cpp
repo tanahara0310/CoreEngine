@@ -14,6 +14,7 @@
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/CVar/CVar.h"
+#include "Utility/Hash/Fnv1a.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
@@ -369,19 +370,13 @@ namespace CoreEngine
 
     uint64_t RTScene::ComputeStaticSolidSignature() const
     {
-        uint64_t signature = 14695981039346656037ull;
-        auto mix = [&signature](const void* data, size_t bytes) {
-            const auto* p = static_cast<const unsigned char*>(data);
-            for (size_t i = 0; i < bytes; ++i) {
-                signature = (signature ^ p[i]) * 1099511628211ull;
-            }
-        };
+        uint64_t signature = Fnv1a::kOffsetBasis;
         for (const AccelerationStructureManager::InstanceDesc& inst : tlasInstances_) {
             if ((inst.instanceMask & RTInstanceMask::kStaticSolid) == 0) {
                 continue;
             }
-            mix(&inst.blasAddress, sizeof(inst.blasAddress));
-            mix(inst.transform, sizeof(inst.transform));
+            Fnv1a::MixBytes(signature, &inst.blasAddress, sizeof(inst.blasAddress));
+            Fnv1a::MixBytes(signature, inst.transform, sizeof(inst.transform));
         }
         return signature;
     }

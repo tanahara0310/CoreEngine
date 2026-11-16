@@ -91,7 +91,7 @@ namespace CoreEngine
         // UIRenderer はサービスではなく RenderManager が持つ
         auto* const renderManager = ctx.engine->GetService<RenderManager>();
         auto* const renderer = renderManager
-            ? dynamic_cast<UIRenderer*>(renderManager->GetRenderer(RenderPassType::UI))
+            ? renderManager->GetRendererAs<UIRenderer>(RenderPassType::UI)
             : nullptr;
         if (!renderer) {
             return;

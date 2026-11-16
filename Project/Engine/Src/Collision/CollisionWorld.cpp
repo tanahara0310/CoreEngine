@@ -211,13 +211,9 @@ namespace CoreEngine
         bool RaycastCollider(const Collider& collider, const Geometry::Ray& ray,
                              float maxDistance, Geometry::RayHit& outHit)
         {
-            if (collider.GetShapeType() == ColliderShapeType::Sphere) {
-                return Geometry::Raycast(ray, collider.GetWorldSphere(), &outHit, 0.0f, maxDistance);
-            }
-            if (collider.GetShapeType() == ColliderShapeType::Capsule) {
-                return Geometry::Raycast(ray, collider.GetWorldCapsule(), &outHit, 0.0f, maxDistance);
-            }
-            return Geometry::Raycast(ray, collider.GetWorldOBB(), &outHit, 0.0f, maxDistance);
+            return VisitWorldShape(collider, [&](const auto& shape) {
+                return Geometry::Raycast(ray, shape, &outHit, 0.0f, maxDistance);
+            });
         }
     }
 
@@ -275,18 +271,9 @@ namespace CoreEngine
         for (Collider* collider : colliders_) {
             if (!collider->IsEnabled() || !MatchesLayer(*collider, layerMask)) { continue; }
 
-            bool hit = false;
-            switch (collider->GetShapeType()) {
-            case ColliderShapeType::Sphere:
-                hit = Geometry::Intersect(sphere, collider->GetWorldSphere());
-                break;
-            case ColliderShapeType::Capsule:
-                hit = Geometry::Intersect(sphere, collider->GetWorldCapsule());
-                break;
-            default:
-                hit = Geometry::Intersect(sphere, collider->GetWorldOBB());
-                break;
-            }
+            const bool hit = VisitWorldShape(*collider, [&](const auto& shape) {
+                return Geometry::Intersect(sphere, shape);
+            });
             if (hit) { outColliders.push_back(collider); }
         }
     }
@@ -300,18 +287,9 @@ namespace CoreEngine
         for (Collider* collider : colliders_) {
             if (!collider->IsEnabled() || !MatchesLayer(*collider, layerMask)) { continue; }
 
-            bool hit = false;
-            switch (collider->GetShapeType()) {
-            case ColliderShapeType::Sphere:
-                hit = Geometry::Intersect(collider->GetWorldSphere(), queryBox);
-                break;
-            case ColliderShapeType::Capsule:
-                hit = Geometry::Intersect(collider->GetWorldCapsule(), queryBox);
-                break;
-            default:
-                hit = Geometry::Intersect(queryBox, collider->GetWorldOBB());
-                break;
-            }
+            const bool hit = VisitWorldShape(*collider, [&](const auto& shape) {
+                return Geometry::Intersect(queryBox, shape);
+            });
             if (hit) { outColliders.push_back(collider); }
         }
     }

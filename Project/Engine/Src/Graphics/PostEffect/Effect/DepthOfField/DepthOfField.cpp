@@ -5,6 +5,7 @@
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h"
 #include "Graphics/Render/FrameBlackboard.h"
 #include "Camera/View/ViewInfo.h"
+#include "Math/IntegerMath.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/Logger/Logger.h"
 #ifdef CORE_EDITOR
@@ -51,9 +52,6 @@ namespace CoreEngine
 
         /// @brief フルサイズセンサーの横幅 [mm]
         constexpr float kSensorWidthMm = 36.0f;
-
-        /// @brief 8x8 スレッドグループでの必要グループ数
-        constexpr uint32_t DispatchCount(uint32_t size) { return (size + 7) / 8; }
     }
 
     void DepthOfField::OnCreateResources()
@@ -193,7 +191,7 @@ namespace CoreEngine
         if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
         if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
 
-        cmdList->Dispatch(DispatchCount(halfWidth_), DispatchCount(halfHeight_), 1);
+        cmdList->Dispatch(DivRoundUp(halfWidth_, 8), DivRoundUp(halfHeight_, 8), 1);
     }
 
     void DepthOfField::RecordGather(const PostEffectPassContext& context)
@@ -220,7 +218,7 @@ namespace CoreEngine
         if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
         if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
 
-        cmdList->Dispatch(DispatchCount(halfWidth_), DispatchCount(halfHeight_), 1);
+        cmdList->Dispatch(DivRoundUp(halfWidth_, 8), DivRoundUp(halfHeight_, 8), 1);
     }
 
     void DepthOfField::RecordComposite(const PostEffectPassContext& context)
@@ -257,7 +255,7 @@ namespace CoreEngine
         if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
         if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
 
-        cmdList->Dispatch(DispatchCount(context.width), DispatchCount(context.height), 1);
+        cmdList->Dispatch(DivRoundUp(context.width, 8), DivRoundUp(context.height, 8), 1);
     }
 
     void DepthOfField::DrawImGui()

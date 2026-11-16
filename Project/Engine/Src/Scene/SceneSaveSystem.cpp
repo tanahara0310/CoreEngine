@@ -20,6 +20,7 @@
 #include "Scene/Feature/LightingFeature.h"
 #include "Scene/PrefabSystem.h"
 #include "Scene/SceneEnvironmentIO.h"
+#include "Utility/Hash/Fnv1a.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
@@ -56,17 +57,6 @@ namespace CoreEngine
         /// @brief オブジェクト個別ファイルのパス
         std::string MakeObjectPath(const std::string& sceneName, const std::string& key) {
             return MakeSceneDir(sceneName) + "/" + key + ".json";
-        }
-
-        /// @brief 文字列のハッシュ（64bit FNV-1a）
-        std::uint64_t HashText(std::string_view text)
-        {
-            std::uint64_t hash = 14695981039346656037ull;
-            for (const char c : text) {
-                hash ^= static_cast<unsigned char>(c);
-                hash *= 1099511628211ull;
-            }
-            return hash;
         }
 
         /// @brief ファイルを文字列で読む（テキストの JSON なら改行の CR は除く。MessagePack はそのまま）
@@ -214,7 +204,7 @@ namespace CoreEngine
                 if (ReadText(entry.path(), text)) {
                     file.data = JsonManager::Parse(text);
                 }
-                file.hash = HashText(text);
+                file.hash = Fnv1a::Hash(text);
                 if (file.data.is_discarded() || !file.data.is_object()) {
                     log.Logf(LogLevel::Error, LogCategory::Resource,
                         "SceneSaveSystem: \"{}\" の {}.json を読めないので飛ばします", sceneName, key);
@@ -531,7 +521,7 @@ namespace CoreEngine
             if (!ReadText(path, text)) {
                 return std::nullopt;
             }
-            return HashText(text);
+            return Fnv1a::Hash(text);
         }
 
         /// @brief 書く・消す前に、外の変更とぶつかるかを決める
@@ -639,7 +629,7 @@ namespace CoreEngine
             const std::int64_t order = OrderFor(known, key, nextOrder);
             data[kOrderKey] = order;
             const std::string text = JsonManager::ToFileText(data);
-            const std::uint64_t mine = HashText(text);
+            const std::uint64_t mine = Fnv1a::Hash(text);
 
             const SceneSaveSystem::FileWrite action = DecideFileWrite(
                 ProjectPaths::Resolve(MakeObjectPath(sceneName, key)), KnownHash(known, key), mine);
@@ -1241,7 +1231,7 @@ namespace CoreEngine
             keys.insert(key);
             data[kOrderKey] = OrderFor(known, key, nextOrder);
             const FileWrite action = DecideFileWrite(ProjectPaths::Resolve(MakeObjectPath(sceneName_, key)),
-                KnownHash(known, key), HashText(JsonManager::ToFileText(data)));
+                KnownHash(known, key), Fnv1a::Hash(JsonManager::ToFileText(data)));
             if (action == FileWrite::Conflict) {
                 conflicts.push_back(key + ".json");
             }
@@ -1287,7 +1277,7 @@ namespace CoreEngine
             }
         }
         return DecideFileWrite(ProjectPaths::Resolve(MakeSceneDir(sceneName) + "/" + fileName), known,
-            HashText(normalized));
+            Fnv1a::Hash(normalized));
     }
 
     std::vector<SceneSaveSystem::ExternalChange> SceneSaveSystem::FindExternalChanges(const std::string& sceneName)

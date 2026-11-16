@@ -15,6 +15,7 @@
 #include "Graphics/Shader/ShaderProgram.h"
 #include "Graphics/Water/RayTracing/WaterRayTracingPassBase.h"
 #include "Graphics/Water/WaterSurfaceData.h"
+#include "Math/IntegerMath.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
@@ -149,7 +150,7 @@ namespace CoreEngine
         binder.Set(bindings_[DisplacementBind::gShoreMeshDisplacementOutput], uav_.gpuHandle);
         binder.ValidateBeforeDraw(bindings_);
 
-        const UINT groups = (kVertexCount + kThreadGroupSize - 1) / kThreadGroupSize;
+        const UINT groups = DivRoundUp(kVertexCount, kThreadGroupSize);
         cmdList->Dispatch(groups, groups, 1);
         Barrier::Transition(cmdList, texture_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     }

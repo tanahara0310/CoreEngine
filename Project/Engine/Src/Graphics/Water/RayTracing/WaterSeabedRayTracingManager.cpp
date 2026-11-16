@@ -9,6 +9,7 @@
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Graphics/Water/WaterCVars.h"
+#include "Math/IntegerMath.h"
 
 namespace CoreEngine
 {
@@ -100,7 +101,7 @@ namespace CoreEngine
             rowStride = refreshFrames;
             nextRowGroup_ = (rowOffset + 1) % refreshFrames;
         }
-        const UINT launchHeight = (kResolution - rowOffset + rowStride - 1) / rowStride;
+        const UINT launchHeight = DivRoundUp(kResolution - rowOffset, rowStride);
 
         WaterSeabedConstants constants{};
         constants.windowOriginXZ[0] = window_.originX;

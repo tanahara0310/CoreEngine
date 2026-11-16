@@ -4,6 +4,7 @@
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
+#include "GameObject/Component/Core/ComponentService.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "Graphics/Light/LightManager.h"
 
@@ -126,9 +127,7 @@ namespace CoreEngine
         if (lightManager_) {
             return lightManager_;
         }
-        GameObject* const owner = GetOwner();
-        EngineSystem* const engine = owner ? owner->GetEngineSystem() : nullptr;
-        lightManager_ = engine ? engine->GetService<LightManager>() : nullptr;
+        lightManager_ = FindService<LightManager>(*this);
         return lightManager_;
     }
 }

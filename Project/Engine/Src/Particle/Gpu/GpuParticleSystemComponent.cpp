@@ -4,6 +4,7 @@
 #include "Camera/Camera.h"
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
+#include "GameObject/Component/Core/ComponentService.h"
 #include "GameObject/Component/Transform/ITransformSource.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "GameObject/GameObject.h"
@@ -134,9 +135,8 @@ namespace CoreEngine
             owner->AddComponent<TransformComponent>();
         }
 
-        EngineSystem* const engine = owner->GetEngineSystem();
-        GraphicsCore* const graphics = engine ? engine->GetService<GraphicsCore>() : nullptr;
-        RenderManager* const renderManager = engine ? engine->GetService<RenderManager>() : nullptr;
+        GraphicsCore* const graphics = FindService<GraphicsCore>(*this);
+        RenderManager* const renderManager = FindService<RenderManager>(*this);
         if (!graphics || !renderManager) { return; }
 
         graphics_ = graphics;
@@ -145,7 +145,7 @@ namespace CoreEngine
                 "GpuParticleSystemComponent: \"{}\" の GPU バッファを作れませんでした", owner->GetName());
             return;
         }
-        renderer_ = dynamic_cast<GpuParticleRenderer*>(renderManager->GetRenderer(RenderPassType::GpuParticle));
+        renderer_ = renderManager->GetRendererAs<GpuParticleRenderer>(RenderPassType::GpuParticle);
 
         awoken_ = true;
         LoadTexture();
@@ -516,7 +516,7 @@ namespace CoreEngine
 
     bool GpuParticleSystemComponent::RequiresComponent(const IComponent& other) const
     {
-        return dynamic_cast<const ITransformSource*>(&other) != nullptr;
+        return IsAnyOf<ITransformSource>(other);
     }
 
     void GpuParticleSystemComponent::SaveModulesToJson(json& parameters) const

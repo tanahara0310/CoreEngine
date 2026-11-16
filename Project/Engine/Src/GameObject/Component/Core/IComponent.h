@@ -144,6 +144,12 @@ public:
 protected:
     IComponent() = default;
 
+    /// @brief 控えたポインタが空なら兄弟から探して控え、控えたものを返す
+    /// @param cache 控える先（見つからなければ nullptr のまま）
+    /// @note 定義は GameObject.h の末尾（`Sibling<T>()` と同じ）。
+    template <typename T>
+    T* CachedSibling(T*& cache) const;
+
 private:
     /// @brief 生き死にの段階（ComponentHost が進める）
     enum class Lifecycle {
@@ -175,4 +181,12 @@ private:
 
     friend class ComponentHost;
 };
+
+/// @brief コンポーネントが Ts のどれかの型か（左の型から順に確かめる）
+/// @tparam Ts 確かめる型（`IComponent` を継承していないミックスインでもよい）
+template <typename... Ts>
+bool IsAnyOf(const IComponent& component)
+{
+    return ((dynamic_cast<const Ts*>(&component) != nullptr) || ...);
+}
 }

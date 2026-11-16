@@ -13,6 +13,7 @@
 #include "Graphics/RHI/Resource/UploadRing.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
+#include "Math/IntegerMath.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
@@ -342,7 +343,7 @@ namespace CoreEngine
                 static_cast<UINT>(slot), dxCommon_->GetUploadRing().AllocateConstants(constants));
         }
 
-        const UINT groups = (kResolution + 7) / 8;
+        const UINT groups = DivRoundUp(kResolution, 8);
         cmdList->Dispatch(groups, groups, kLevelCount);
 
         Barrier::Transition(cmdList, foam_[writeIndex], kAnyShaderResource);
@@ -520,7 +521,7 @@ namespace CoreEngine
             cmdList->SetComputeRootConstantBufferView(
                 static_cast<UINT>(slot), dxCommon_->GetUploadRing().AllocateConstants(constants));
         }
-        const UINT groups = (kStatisticsSampleResolution + 7) / 8;
+        const UINT groups = DivRoundUp(kStatisticsSampleResolution, 8);
         cmdList->Dispatch(groups, groups, 1);
 
         // CPU は同じ枠が回ってきたフレームで読む。最後は次のフレームの 0 の写し込みに備えて写し先へ戻す

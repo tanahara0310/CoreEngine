@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "TextureImporter.h"
 #include "Graphics/Texture/Load/TextureImageProcessor.h"
+#include "Utility/Enum/EnumNames.h"
 #include "Utility/Logger/Logger.h"
 
 #include <externals/DirectXTex/DirectXTex.h>
@@ -9,40 +10,27 @@
 
 namespace CoreEngine
 {
+    namespace
+    {
+        /// @brief 圧縮の形式と取り込み設定の文字列の表
+        constexpr EnumName<TextureCompression> kCompressionNames[] = {
+            { TextureCompression::Auto, "auto" },
+            { TextureCompression::BC7,  "bc7" },
+            { TextureCompression::BC3,  "bc3" },
+            { TextureCompression::BC1,  "bc1" },
+            { TextureCompression::BC5,  "bc5" },
+            { TextureCompression::None, "none" },
+        };
+    }
+
     TextureCompression TextureImporter::ParseCompression(std::string_view setting)
     {
-        if (setting == "auto") {
-            return TextureCompression::Auto;
-        }
-        if (setting == "bc7") {
-            return TextureCompression::BC7;
-        }
-        if (setting == "bc3") {
-            return TextureCompression::BC3;
-        }
-        if (setting == "bc1") {
-            return TextureCompression::BC1;
-        }
-        if (setting == "bc5") {
-            return TextureCompression::BC5;
-        }
-        if (setting == "none") {
-            return TextureCompression::None;
-        }
-        return kDefaultCompression;
+        return ParseName(kCompressionNames, setting, kDefaultCompression);
     }
 
     const char* TextureImporter::CompressionName(TextureCompression compression)
     {
-        switch (compression) {
-        case TextureCompression::Auto: return "auto";
-        case TextureCompression::BC7: return "bc7";
-        case TextureCompression::BC3: return "bc3";
-        case TextureCompression::BC1: return "bc1";
-        case TextureCompression::BC5: return "bc5";
-        case TextureCompression::None: return "none";
-        }
-        return "auto";
+        return NameOf(kCompressionNames, compression, "auto").data();
     }
 
     std::string TextureImporter::Settings(TextureColorSpace colorSpace, TextureCompression compression)

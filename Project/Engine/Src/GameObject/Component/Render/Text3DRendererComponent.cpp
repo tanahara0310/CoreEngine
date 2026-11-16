@@ -4,12 +4,14 @@
 #include "Camera/View/ViewInfo.h"
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
+#include "GameObject/Component/Core/ComponentService.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "GameObject/GameObject.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Math/MathCore.h"
 #include "Text/FontManager.h"
 #include "Text/MsdfFont.h"
+#include "Utility/Algorithm/AssignIfChanged.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
 
@@ -115,7 +117,7 @@ namespace CoreEngine
 
     bool Text3DRendererComponent::RequiresComponent(const IComponent& other) const
     {
-        return dynamic_cast<const TransformComponent*>(&other) != nullptr;
+        return IsAnyOf<TransformComponent>(other);
     }
 
     void Text3DRendererComponent::Awake()
@@ -131,21 +133,15 @@ namespace CoreEngine
 
     void Text3DRendererComponent::ResolveRenderer()
     {
-        GameObject* owner = GetOwner();
-        EngineSystem* engine = owner ? owner->GetEngineSystem() : nullptr;
-        auto* renderManager = engine ? engine->GetService<RenderManager>() : nullptr;
+        auto* renderManager = FindService<RenderManager>(*this);
         if (renderManager) {
-            renderer_ = dynamic_cast<Text3DRenderer*>(
-                renderManager->GetRenderer(RenderPassType::Text3D));
+            renderer_ = renderManager->GetRendererAs<Text3DRenderer>(RenderPassType::Text3D);
         }
     }
 
     TransformComponent* Text3DRendererComponent::ResolveTransform() const
     {
-        if (!transform_) {
-            transform_ = Sibling<TransformComponent>();
-        }
-        return transform_;
+        return CachedSibling(transform_);
     }
 
     void Text3DRendererComponent::EnsureFont()
@@ -158,17 +154,14 @@ namespace CoreEngine
     void Text3DRendererComponent::SetFont(MsdfFont* font, const std::string& fontName)
     {
         fontName_ = fontName;
-        if (font_ != font) {
-            font_ = font;
+        if (AssignIfChanged(font_, font)) {
             geometryDirty_ = true;
         }
     }
 
     void Text3DRendererComponent::SetFontByName(const std::string& fontName)
     {
-        GameObject* owner = GetOwner();
-        EngineSystem* engine = owner ? owner->GetEngineSystem() : nullptr;
-        auto* fontManager = engine ? engine->GetService<FontManager>() : nullptr;
+        auto* fontManager = FindService<FontManager>(*this);
         if (!fontManager) { return; }
 
         MsdfFont* resolved = fontManager->AcquireNamed(fontName);
@@ -179,9 +172,7 @@ namespace CoreEngine
 
     void Text3DRendererComponent::SetText(const std::string& textUtf8)
     {
-        if (textUtf8_ == textUtf8) { return; }
-        textUtf8_ = textUtf8;
-        geometryDirty_ = true;
+        if (AssignIfChanged(textUtf8_, textUtf8)) { geometryDirty_ = true; }
     }
 
     void Text3DRendererComponent::SetFontSize(float worldUnitsPerEm)
@@ -197,9 +188,7 @@ namespace CoreEngine
     void Text3DRendererComponent::SetWrapWidth(float worldUnits)
     {
         const float clamped = (std::max)(worldUnits, 0.0f);
-        if (wrapWidth_ == clamped) { return; }
-        wrapWidth_ = clamped;
-        geometryDirty_ = true;
+        if (AssignIfChanged(wrapWidth_, clamped)) { geometryDirty_ = true; }
     }
 
     void Text3DRendererComponent::SetFieldSize(const Vector2& sizeWorld)
@@ -211,9 +200,7 @@ namespace CoreEngine
 
     void Text3DRendererComponent::SetFieldAutoFit(bool enable)
     {
-        if (fieldAutoFit_ == enable) { return; }
-        fieldAutoFit_ = enable;
-        geometryDirty_ = true;
+        if (AssignIfChanged(fieldAutoFit_, enable)) { geometryDirty_ = true; }
     }
 
     void Text3DRendererComponent::SetAlign(TextAlignH horizontal, TextAlignV vertical)
@@ -226,9 +213,7 @@ namespace CoreEngine
 
     void Text3DRendererComponent::SetLineSpacing(float scale)
     {
-        if (lineSpacing_ == scale) { return; }
-        lineSpacing_ = scale;
-        geometryDirty_ = true;
+        if (AssignIfChanged(lineSpacing_, scale)) { geometryDirty_ = true; }
     }
 
     void Text3DRendererComponent::SetPivot(const Vector2& pivot)
@@ -408,9 +393,7 @@ namespace CoreEngine
 
         UI::SectionHeader("フォント");
         {
-            GameObject* owner = GetOwner();
-            EngineSystem* engine = owner ? owner->GetEngineSystem() : nullptr;
-            auto* fontManager = engine ? engine->GetService<FontManager>() : nullptr;
+            auto* fontManager = FindService<FontManager>(*this);
 
             // Engine/Assets/Font のファイルと、登録済みフォントから選ぶ
             if (fontManager) {

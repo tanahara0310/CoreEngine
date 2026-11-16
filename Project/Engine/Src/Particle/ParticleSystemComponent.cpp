@@ -4,6 +4,7 @@
 #include "Camera/Camera.h"
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
+#include "GameObject/Component/Core/ComponentService.h"
 #include "GameObject/Component/Transform/ITransformSource.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "GameObject/GameObject.h"
@@ -114,9 +115,8 @@ namespace CoreEngine
             owner->AddComponent<TransformComponent>();
         }
 
-        EngineSystem* const engine = owner->GetEngineSystem();
-        GraphicsCore* const graphics = engine ? engine->GetService<GraphicsCore>() : nullptr;
-        RenderManager* const renderManager = engine ? engine->GetService<RenderManager>() : nullptr;
+        GraphicsCore* const graphics = FindService<GraphicsCore>(*this);
+        RenderManager* const renderManager = FindService<RenderManager>(*this);
         if (!graphics || !renderManager) { return; }
 
         // 最大数ぶんを先に確保して、粒が増えるたびの確保をなくす
@@ -125,8 +125,8 @@ namespace CoreEngine
         resourceManager_ = std::make_unique<ParticleResourceManager>();
         resourceManager_->Initialize(graphics, kNumMaxInstance);
 
-        billboardRenderer_ = dynamic_cast<BaseParticleRenderer*>(renderManager->GetRenderer(RenderPassType::Particle));
-        modelRenderer_ = dynamic_cast<BaseParticleRenderer*>(renderManager->GetRenderer(RenderPassType::ModelParticle));
+        billboardRenderer_ = renderManager->GetRendererAs<BaseParticleRenderer>(RenderPassType::Particle);
+        modelRenderer_ = renderManager->GetRendererAs<BaseParticleRenderer>(RenderPassType::ModelParticle);
 
         awoken_ = true;
         LoadTexture();
@@ -194,8 +194,7 @@ namespace CoreEngine
 #ifdef _DEBUG
         // 放出形状の線を足す
         if (shapeModule_->IsDebugDrawEnabled()) {
-            EngineSystem* const engine = owner->GetEngineSystem();
-            RenderManager* const renderManager = engine ? engine->GetService<RenderManager>() : nullptr;
+            RenderManager* const renderManager = FindService<RenderManager>(*this);
             auto* const pipeline = renderManager
                 ? static_cast<LineRendererPipeline*>(renderManager->GetRenderer(RenderPassType::Line)) : nullptr;
             if (pipeline) {
@@ -287,9 +286,7 @@ namespace CoreEngine
 
         model_.reset();
         if (modelAsset_.IsSet()) {
-            const GameObject* const owner = GetOwner();
-            EngineSystem* const engine = owner ? owner->GetEngineSystem() : nullptr;
-            if (ModelManager* const models = engine ? engine->GetService<ModelManager>() : nullptr) {
+            if (ModelManager* const models = FindService<ModelManager>(*this)) {
                 model_ = models->CreateStaticModel(modelAsset_.GetPath());
             }
         }
@@ -339,7 +336,7 @@ namespace CoreEngine
 
     bool ParticleSystemComponent::RequiresComponent(const IComponent& other) const
     {
-        return dynamic_cast<const ITransformSource*>(&other) != nullptr;
+        return IsAnyOf<ITransformSource>(other);
     }
 
     void ParticleSystemComponent::SaveModulesToJson(json& parameters) const

@@ -30,6 +30,7 @@
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
+#include "Math/IntegerMath.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
 
@@ -1038,7 +1039,7 @@ namespace CoreEngine::Editor::ShaderGraph
             const D3D12_GPU_DESCRIPTOR_HANDLE handle = loaded && loaded->gpuHandle.ptr != 0 ? loaded->gpuHandle : white;
             commandList->SetComputeRootDescriptorTable(pipeline.textureSlots[index].index, handle);
         }
-        commandList->Dispatch((size_ + kGroupSize - 1) / kGroupSize, (size_ + kGroupSize - 1) / kGroupSize, 1);
+        commandList->Dispatch(DivRoundUp(size_, kGroupSize), DivRoundUp(size_, kGroupSize), 1);
         offscreen->End(commandList);
         drawn_ = true;
         drawnTarget_ = target_;

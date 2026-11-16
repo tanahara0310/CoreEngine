@@ -75,8 +75,7 @@ public:
     /// @brief 兄弟のメッシュ描画とトランスフォームを使う
     bool RequiresComponent(const IComponent& other) const override
     {
-        return dynamic_cast<const MeshRendererComponent*>(&other) != nullptr ||
-            dynamic_cast<const TransformComponent*>(&other) != nullptr;
+        return IsAnyOf<MeshRendererComponent, TransformComponent>(other);
     }
 
     /// @brief アニメーションを 1 フレーム進める

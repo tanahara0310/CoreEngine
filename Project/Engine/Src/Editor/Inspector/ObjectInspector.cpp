@@ -20,6 +20,7 @@
 #include "Reflection/TypeDescriptor.h"
 #include "Scene/PrefabSystem.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/String/CopyToBuffer.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -91,7 +92,7 @@ namespace CoreEngine::Editor::ObjectInspector
             ImGui::SetNextItemWidth((std::max)(1.0f, ImGui::GetContentRegionAvail().x - menuWidth - style.ItemSpacing.x));
             char nameBuf[128];
             const std::string& shownName = object.GetName().empty() ? object.GetSerializeKey() : object.GetName();
-            snprintf(nameBuf, sizeof(nameBuf), "%s", shownName.c_str());
+            CopyToBuffer(nameBuf, shownName);
             const std::string nameBeforeInput = object.GetName();
             if (ImGui::InputText("##objName", nameBuf, sizeof(nameBuf))) {
                 object.SetName(nameBuf);

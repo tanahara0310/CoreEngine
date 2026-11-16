@@ -16,6 +16,7 @@
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Graphics/Shader/ShaderProgram.h"
+#include "Math/IntegerMath.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/Logger/Logger.h"
 
@@ -77,9 +78,6 @@ namespace CoreEngine
 
         /// @brief 1 画素に撃つレイの本数の上限（RTAO.CS.hlsl の kMaxSamples と同じ）
         constexpr int kMaxSamples = 16;
-
-        /// @brief 8x8 のスレッドグループで要るグループの数
-        UINT DispatchGroupCount(UINT pixels) { return (pixels + 7) / 8; }
 
         /// @brief RTAO.CS.hlsl の RTAOConstants
         struct alignas(16) RTAOConstants {
@@ -227,8 +225,8 @@ namespace CoreEngine
         SyncSettingsFromCVars();
 
         const UINT traceScale = GetTraceScale();
-        const UINT traceWidth = (width + traceScale - 1) / traceScale;
-        const UINT traceHeight = (height + traceScale - 1) / traceScale;
+        const UINT traceWidth = DivRoundUp(width, traceScale);
+        const UINT traceHeight = DivRoundUp(height, traceScale);
         const int sampleCount = std::clamp(settings_.sampleCount, 1, kMaxSamples);
         const int newPixelSampleCount = std::clamp(settings_.newPixelSampleCount, 1, kMaxSamples);
 
@@ -313,7 +311,7 @@ namespace CoreEngine
         binder.Set(bindings_[RTAOBind::gAOHistory], denoiser_.GetPreviousHistorySRV(kDenoiseChannel));
         binder.Set(bindings_[RTAOBind::gAOOutput], denoiser_.GetInputUAV(kDenoiseChannel));
         binder.ValidateBeforeDraw(bindings_);
-        cmdList->Dispatch(DispatchGroupCount(traceWidth), DispatchGroupCount(traceHeight), 1);
+        cmdList->Dispatch(DivRoundUp(traceWidth, 8), DivRoundUp(traceHeight, 8), 1);
 
         // 時間の蓄積が読む前に書き込みの完了を待つ
         denoiser_.EndInputWrite(cmdList, kDenoiseChannel);

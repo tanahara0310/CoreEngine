@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.89.3">
+<meta name="engine-version" content="0.89.4">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11437,6 +11437,17 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-89-4">v0.89.4 <span class="dim">（2026-11-16）</span></h3>
+  <p>同じ形で何か所にも書いていた小さな処理を、テンプレートの補助にまとめた版です。見た目・動き・シーンの書き方・CVar・スクリプトは変わりません。</p>
+  <ul>
+    <li><strong>整数の切り上げと整列</strong>：切り上げの割り算と整列を <code>DivRoundUp</code>・<code>AlignUp</code>（<span class="path">Math/IntegerMath.h</span>）にまとめ、後処理・雲・霧・水・レイトレのディスパッチの数や、定数バッファとシェーダテーブルの整列をこれで求めるようにしました。</li>
+    <li><strong>列挙型と名前の変換</strong>：値と名前の表から両方向に変換する補助（<span class="path">Utility/Enum/EnumNames.h</span>）を足し、カメラの保存・入力・シェーダーグラフ・アセットの種類・テクスチャの圧縮の変換をこれに揃えました。書き出す名前と、知らない名前のときの値は変わりません。フラグの列挙型の演算子は <code>CE_ENUM_FLAG_OPERATORS</code> の 1 行で付きます（<span class="path">Utility/Enum/EnumFlags.h</span>）。</li>
+    <li><strong>小さな共通の補助</strong>：FNV-1a のハッシュ（<span class="path">Utility/Hash/Fnv1a.h</span>）、固定長の文字の配列への写し、値が変わったときだけ書き換える処理、条件に合う要素を探す処理、決まった数だけ残す履歴（統計とプロファイラの窓）を 1 つずつにしました。ハッシュの値は前の版と同じなので、フォントのキャッシュは作り直しません。</li>
+    <li><strong>コンポーネントとレンダラーを引く補助</strong>：コンポーネントからエンジンのサービスを引く <code>FindService&lt;T&gt;</code>（<span class="path">GameObject/Component/Core/ComponentService.h</span>）、型を指定してレンダラーを引く <code>RenderManager::GetRendererAs&lt;T&gt;</code>、付けられる相手かを確かめる <code>IsAnyOf&lt;Ts...&gt;</code>、同じオブジェクトのコンポーネントを 1 回だけ探して控える <code>CachedSibling</code>、有効なときだけ技法を返す <code>GetEnabledTechnique&lt;T&gt;</code> を足し、同じ形で書いていた所を置き換えました。</li>
+    <li><strong>起動の処理</strong>：エンジンのコンポーネントとレンダラーを「作る → 初期化 → 登録」する処理を 1 つずつにし、サブシステムの数は作る型の並びから決まるようにしました。作る順は変わりません。</li>
+    <li><strong>当たり判定・アニメーション・スプライン</strong>：引数の向きが逆の当たり判定、コライダーのワールドの形の取り出し、キーフレームの補間と読み込み、Catmull-Rom の曲線（<span class="path">Math/Spline/CatmullRom.h</span>）を、それぞれ 1 か所にまとめました。</li>
+  </ul>
 
   <h3 id="changelog-v0-89-3">v0.89.3 <span class="dim">（2026-11-16）</span></h3>
   <p>シェーダを直すたびに古いパイプラインが溜まっていたのを直し、まだ表に出ていなかった不具合のもとを片付けた版です。</p>

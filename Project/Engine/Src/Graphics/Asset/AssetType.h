@@ -1,6 +1,8 @@
 #pragma once
 #include <string>
 
+#include "Utility/Enum/EnumNames.h"
+
 namespace CoreEngine
 {
     // アセットの種類
@@ -23,46 +25,37 @@ namespace CoreEngine
         ShaderGraph
     };
 
+    // AssetType と保存に使う名前の表（Unknown は載せない）
+    inline const auto& AssetTypeNames()
+    {
+        static constexpr EnumName<AssetType> kNames[] = {
+            { AssetType::Texture,         "Texture" },
+            { AssetType::Model,           "Model" },
+            { AssetType::Shader,          "Shader" },
+            { AssetType::Audio,           "Audio" },
+            { AssetType::Material,        "Material" },
+            { AssetType::Scene,           "Scene" },
+            { AssetType::Prefab,          "Prefab" },
+            { AssetType::Animation,       "Animation" },
+            { AssetType::MaterialLibrary, "MaterialLibrary" },
+            { AssetType::Json,            "Json" },
+            { AssetType::Csv,             "Csv" },
+            { AssetType::PhysicsMaterial, "PhysicsMaterial" },
+            { AssetType::WaterProfile,    "WaterProfile" },
+            { AssetType::ShaderGraph,     "ShaderGraph" },
+        };
+        return kNames;
+    }
+
     // AssetType を文字列に変換
     inline std::string AssetTypeToString(AssetType type)
     {
-        switch (type)
-        {
-        case AssetType::Texture:         return "Texture";
-        case AssetType::Model:           return "Model";
-        case AssetType::Shader:          return "Shader";
-        case AssetType::Audio:           return "Audio";
-        case AssetType::Material:        return "Material";
-        case AssetType::Scene:           return "Scene";
-        case AssetType::Prefab:          return "Prefab";
-        case AssetType::Animation:       return "Animation";
-        case AssetType::MaterialLibrary: return "MaterialLibrary";
-        case AssetType::Json:            return "Json";
-        case AssetType::Csv:             return "Csv";
-        case AssetType::PhysicsMaterial: return "PhysicsMaterial";
-        case AssetType::WaterProfile:    return "WaterProfile";
-        case AssetType::ShaderGraph:     return "ShaderGraph";
-        default:                         return "Unknown";
-        }
+        return std::string(NameOf(AssetTypeNames(), type, "Unknown"));
     }
 
     // 文字列を AssetType に変換
     inline AssetType StringToAssetType(const std::string& typeStr)
     {
-        if (typeStr == "Texture")         return AssetType::Texture;
-        if (typeStr == "Model")           return AssetType::Model;
-        if (typeStr == "Shader")          return AssetType::Shader;
-        if (typeStr == "Audio")           return AssetType::Audio;
-        if (typeStr == "Material")        return AssetType::Material;
-        if (typeStr == "Scene")           return AssetType::Scene;
-        if (typeStr == "Prefab")          return AssetType::Prefab;
-        if (typeStr == "Animation")       return AssetType::Animation;
-        if (typeStr == "MaterialLibrary") return AssetType::MaterialLibrary;
-        if (typeStr == "Json")            return AssetType::Json;
-        if (typeStr == "Csv")             return AssetType::Csv;
-        if (typeStr == "PhysicsMaterial") return AssetType::PhysicsMaterial;
-        if (typeStr == "WaterProfile")    return AssetType::WaterProfile;
-        if (typeStr == "ShaderGraph")     return AssetType::ShaderGraph;
-        return AssetType::Unknown;
+        return ParseName(AssetTypeNames(), typeStr, AssetType::Unknown);
     }
 }

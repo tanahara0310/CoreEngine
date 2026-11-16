@@ -2,6 +2,7 @@
 #include "Diagnostics/EngineStats.h"
 #include "Graphics/RHI/Debug/GpuTimestampProfiler.h"
 #include "Diagnostics/GpuTimingStatsCollector.h"
+#include "Utility/Container/RingHistory.h"
 #include <array>
 #include <string>
 
@@ -54,13 +55,11 @@ namespace CoreEngine
         GpuTimestampProfiler* gpuProfiler_ = nullptr;
 
         static constexpr int kFpsHistorySize = 120;
-        float fpsHistory_[kFpsHistorySize] = {};
-        int fpsHistoryIndex_ = 0;
+        RingHistory<float, kFpsHistorySize> fpsHistory_;
 
         // GPU タイミング履歴（フレーム合計のグラフ用）
         static constexpr int kGpuHistorySize = 120;
-        float gpuTotalHistory_[kGpuHistorySize] = {};
-        int gpuHistoryIndex_ = 0;
+        RingHistory<float, kGpuHistorySize> gpuTotalHistory_;
 
         // 前フレーム描画完了後のスナップショット（Draw 時はこちらを参照）
         RenderStats       snapshotRender_;

@@ -14,10 +14,12 @@
 #include "Editor/External/ExternalCodeEditor.h"
 #include "Editor/ImGui/EditorTheme.h"
 #include "Editor/ImGui/Widgets/EditorBars.h"
+#include "Utility/Algorithm/AssignIfChanged.h"
 #include "Utility/CVar/CVarConsole.h"
 #include "Utility/FrameRate/FrameRateController.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/String/CopyToBuffer.h"
 
 #include <sstream>
 #include <algorithm>
@@ -130,8 +132,7 @@ void ConsoleUI::Draw()
     // 絞り込みが変わったら、件数と表示する行を作り直す
     bool changed = viewDirty_;
     for (int i = 0; i < kLevelCount; ++i) {
-        if (prevShowLevel_[i] != showLevel_[i]) {
-            prevShowLevel_[i] = showLevel_[i];
+        if (AssignIfChanged(prevShowLevel_[i], showLevel_[i])) {
             changed = true;
         }
     }
@@ -141,7 +142,7 @@ void ConsoleUI::Draw()
         changed = true;
     }
     if (strcmp(prevFilterBuf_, filter_.InputBuf) != 0) {
-        snprintf(prevFilterBuf_, sizeof(prevFilterBuf_), "%s", filter_.InputBuf);
+        CopyToBuffer(prevFilterBuf_, filter_.InputBuf);
         changed = true;
     }
     if (changed) {

@@ -75,6 +75,25 @@
 
 namespace CoreEngine
 {
+    namespace
+    {
+        /// @brief 型の並び
+        template <typename... Ts>
+        struct TypeList {
+            /// 並びの型の数
+            static constexpr size_t kCount = sizeof...(Ts);
+        };
+
+        /// @brief エンジンが持つサブシステム（この順に生成して初期化する）
+#ifdef CORE_EDITOR
+        // エディタ設定の自動保存（EditorSettingsSubsystem）はセクション登録元より先に生成しておく
+        using EngineSubsystems =
+            TypeList<RayTracingSubsystem, ScriptSubsystem, EditorSettingsSubsystem, DebugSubsystem>;
+#else
+        using EngineSubsystems = TypeList<RayTracingSubsystem, ScriptSubsystem>;
+#endif // CORE_EDITOR
+    }
+
     EngineSystem::EngineSystem() = default;
     EngineSystem::~EngineSystem() = default;
 
@@ -190,24 +209,14 @@ namespace CoreEngine
         // 「全部生成してから初期化」の順序は崩さないこと。
         // 初期化時点で全サブシステムが生成済みである前提のコードがある。
         sequence.Add("サブシステム生成", [this] {
-            RegisterSubsystem<RayTracingSubsystem>();
-            RegisterSubsystem<ScriptSubsystem>();
-#ifdef CORE_EDITOR
-            // エディタ設定の自動保存（セクション登録元より先に生成しておく）
-            RegisterSubsystem<EditorSettingsSubsystem>();
-            RegisterSubsystem<DebugSubsystem>();
-#endif // CORE_EDITOR
+            RegisterSubsystems(EngineSubsystems{});
         });
 
         // 生成ステップが積む個数は静的に決まるので、インデックス指定で
         // 1 サブシステム 1 ステップに切り出せる。
         // （実行中にステップを追加すると StartupSequence の内部 vector が
         //   再確保され、実行中エントリの参照が壊れるので絶対にやらない）
-#ifdef CORE_EDITOR
-        constexpr size_t kSubsystemCount = 4;
-#else
-        constexpr size_t kSubsystemCount = 2;
-#endif
+        constexpr size_t kSubsystemCount = EngineSubsystems::kCount;
         for (size_t i = 0; i < kSubsystemCount; ++i) {
             sequence.Add(
                 // 表示名は実行直前に問い合わせられるので、生成ステップ後なら実名が出る

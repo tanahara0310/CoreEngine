@@ -13,7 +13,7 @@ namespace CoreEngine
 class GameObject;
 
 /// @brief 衝突判定の 1 単位（仮想関数を持たないデータクラス）
-/// @details 形状は CollisionShape のタグで持ち、判定は Math/Geometry へディスパッチ表経由で委譲する。
+/// @details 形状は CollisionShape のタグで持ち、判定は VisitWorldShape で取り出したワールド形状を Math/Geometry へ渡して行う。
 /// @note 所有権は GameObject（ColliderComponent）側。CollisionWorld は借用するだけ。
 class Collider {
 public:
@@ -128,4 +128,22 @@ private:
     bool           isSimulated_ = false;
     float          lastImpulse_ = 0.0f;
 };
+
+/// @brief コライダーの形の種類に合うワールド空間の形状を取り出して f に渡す
+/// @details 球は Geometry::Sphere、カプセルは Geometry::Capsule、それ以外は Geometry::OBB を渡し、f の戻り値を返す。
+template <typename Func>
+decltype(auto) VisitWorldShape(const Collider& collider, Func&& f)
+{
+    static_assert(static_cast<int>(ColliderShapeType::Count) == 3,
+        "ColliderShapeType を足したら VisitWorldShape に case を足す");
+
+    switch (collider.GetShapeType()) {
+    case ColliderShapeType::Sphere:
+        return f(collider.GetWorldSphere());
+    case ColliderShapeType::Capsule:
+        return f(collider.GetWorldCapsule());
+    default:
+        return f(collider.GetWorldOBB());
+    }
+}
 }

@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "GameObject/ObjectId.h"
+#include "Utility/Hash/Fnv1a.h"
 
 #include <charconv>
 #include <system_error>
@@ -35,11 +36,7 @@ namespace CoreEngine
 
     ObjectId ObjectId::FromKey(std::string_view key)
     {
-        std::uint64_t hash = 14695981039346656037ull;
-        for (const char c : key) {
-            hash ^= static_cast<unsigned char>(c);
-            hash *= 1099511628211ull;
-        }
+        const std::uint64_t hash = Fnv1a::Hash(key);
         return ObjectId{ hash != 0 ? hash : 1 };
     }
 }

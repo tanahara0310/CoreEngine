@@ -2,6 +2,7 @@
 #include "CameraSequenceEvaluator.h"
 
 #include "Math/MathCore.h"
+#include "Math/Spline/CatmullRom.h"
 
 #include <algorithm>
 #include <cmath>
@@ -43,26 +44,6 @@ namespace CoreEngine
             return index >= 0 && index < kEasingOptionCount;
         }
 
-        /// @brief 一様 Catmull-Rom の基底（Math/Spline/Spline.cpp と同じ式）
-        float CatmullRom(float p0, float p1, float p2, float p3, float t)
-        {
-            const float t2 = t * t;
-            const float t3 = t2 * t;
-            return p0 * (-0.5f * t3 + t2 - 0.5f * t)
-                 + p1 * (1.5f * t3 - 2.5f * t2 + 1.0f)
-                 + p2 * (-1.5f * t3 + 2.0f * t2 + 0.5f * t)
-                 + p3 * (0.5f * t3 - 0.5f * t2);
-        }
-
-        Vector3 CatmullRom(const Vector3& p0, const Vector3& p1, const Vector3& p2, const Vector3& p3, float t)
-        {
-            return {
-                CatmullRom(p0.x, p1.x, p2.x, p3.x, t),
-                CatmullRom(p0.y, p1.y, p2.y, p3.y, t),
-                CatmullRom(p0.z, p1.z, p2.z, p3.z, t)
-            };
-        }
-
         /// @brief 基準角から ±π 以内へ寄せた等価な角度を返す
         /// @details 角度を素のままスプラインへ入れると、359 度 → 1 度 の境目で値が
         ///          1 周ぶん飛び、カメラが高速に回ってしまう。
@@ -79,7 +60,7 @@ namespace CoreEngine
             const float u0 = Unwrap(u1, a0);
             const float u2 = Unwrap(u1, a2);
             const float u3 = Unwrap(u2, a3);
-            return MathCore::NormalizeAngle(CatmullRom(u0, u1, u2, u3, t));
+            return MathCore::NormalizeAngle(MathCore::CatmullRom(u0, u1, u2, u3, t));
         }
 
         /// @brief 範囲外の添字を端へ丸めてキーを取り出す
@@ -175,8 +156,8 @@ namespace CoreEngine
             const float easedT = EasingUtil::Apply(t, easing);
 
             CameraSnapshot result{};
-            result.position = CatmullRom(s0.position, s1.position, s2.position, s3.position, easedT);
-            result.scale = CatmullRom(s0.scale, s1.scale, s2.scale, s3.scale, easedT);
+            result.position = MathCore::CatmullRom(s0.position, s1.position, s2.position, s3.position, easedT);
+            result.scale = MathCore::CatmullRom(s0.scale, s1.scale, s2.scale, s3.scale, easedT);
             result.rotation = {
                 CatmullRomAngle(s0.rotation.x, s1.rotation.x, s2.rotation.x, s3.rotation.x, easedT),
                 CatmullRomAngle(s0.rotation.y, s1.rotation.y, s2.rotation.y, s3.rotation.y, easedT),
@@ -184,7 +165,7 @@ namespace CoreEngine
             };
 
             result.parameters = s1.parameters;
-            result.parameters.fov = CatmullRom(s0.parameters.fov, s1.parameters.fov,
+            result.parameters.fov = MathCore::CatmullRom(s0.parameters.fov, s1.parameters.fov,
                 s2.parameters.fov, s3.parameters.fov, easedT);
 
             // クリップ距離とアスペクトは行き過ぎると即破綻するので、曲線に乗せず直線で繋ぐ。

@@ -5,6 +5,7 @@
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
+#include "GameObject/Component/Core/ComponentService.h"
 #include "GameObject/GameObject.h"
 #include "Graphics/Asset/AssetInfo.h"
 #include "Graphics/Material/MaterialInstance.h"
@@ -301,9 +302,7 @@ namespace CoreEngine
     {
         if (source_ == Source::None) { return; }
 
-        GameObject* owner = GetOwner();
-        EngineSystem* engine = owner ? owner->GetEngineSystem() : nullptr;
-        auto* modelMgr = engine ? engine->GetService<ModelManager>() : nullptr;
+        auto* modelMgr = FindService<ModelManager>(*this);
         if (!modelMgr) { return; }
 
         switch (source_) {
@@ -336,10 +335,8 @@ namespace CoreEngine
     {
         if (!customShaderProvider_ || !model_) { return; }
 
-        GameObject* owner = GetOwner();
-        EngineSystem* engine = owner ? owner->GetEngineSystem() : nullptr;
-        auto* dxCommon = engine ? engine->GetService<GraphicsCore>() : nullptr;
-        auto* modelMgr = engine ? engine->GetService<ModelManager>() : nullptr;
+        auto* dxCommon = FindService<GraphicsCore>(*this);
+        auto* modelMgr = FindService<ModelManager>(*this);
         if (!dxCommon || !modelMgr) { return; }
 
         const ModelRenderContext& ctx = modelMgr->GetRenderContext();
@@ -382,9 +379,7 @@ namespace CoreEngine
             return;
         }
 
-        GameObject* owner = GetOwner();
-        EngineSystem* engine = owner ? owner->GetEngineSystem() : nullptr;
-        auto* modelMgr = engine ? engine->GetService<ModelManager>() : nullptr;
+        auto* modelMgr = FindService<ModelManager>(*this);
         SurfaceMaterialPipelineCache* cache = modelMgr ? modelMgr->GetSurfaceMaterialPipelineCache() : nullptr;
         if (!cache) {
             return;
@@ -465,10 +460,7 @@ namespace CoreEngine
 
     TransformComponent* MeshRendererComponent::ResolveTransform() const
     {
-        if (!transform_) {
-            transform_ = Sibling<TransformComponent>();
-        }
-        return transform_;
+        return CachedSibling(transform_);
     }
 
     // ローカル AABB をワールドへ変換したもの（カリングの判定単位）

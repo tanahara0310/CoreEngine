@@ -33,6 +33,7 @@
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Graphics/Shader/ShaderProgram.h"
+#include "Math/IntegerMath.h"
 #include "Math/Matrix/Matrix4x4.h"
 #include "Math/Vector/Vector4.h"
 #include "Utility/Logger/Logger.h"
@@ -634,8 +635,8 @@ namespace CoreEngine
             if (traceOnly) {
                 cmdList->Dispatch(1, 1, 1);
             } else {
-                cmdList->Dispatch((width + kThreadGroupSize - 1) / kThreadGroupSize,
-                    (height + kThreadGroupSize - 1) / kThreadGroupSize, 1);
+                cmdList->Dispatch(DivRoundUp(width, kThreadGroupSize),
+                    DivRoundUp(height, kThreadGroupSize), 1);
             }
             Barrier::UAV(cmdList, data_);
         };
@@ -721,8 +722,8 @@ namespace CoreEngine
         binder.Set(bindings[VisualizeBind::gOutput], outputs_.GetUAVHandle(kViewSlot));
         binder.Set(bindings[VisualizeBind::gDebugData], dataUav_.gpuHandle);
         binder.ValidateBeforeDraw(bindings);
-        cmdList->Dispatch((width + kThreadGroupSize - 1) / kThreadGroupSize,
-            (height + kThreadGroupSize - 1) / kThreadGroupSize, 1);
+        cmdList->Dispatch(DivRoundUp(width, kThreadGroupSize),
+            DivRoundUp(height, kThreadGroupSize), 1);
         Barrier::UAV(cmdList, data_);
         Barrier::Transition(cmdList, output, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 

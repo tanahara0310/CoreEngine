@@ -23,6 +23,7 @@
 // 表に書き漏らすと全体サイズ検査が必ず落ちるので、この表は腐らない。
 //========================================================================================
 
+#include "Math/IntegerMath.h"
 #include "Math/Matrix/Matrix4x4.h"
 #include "Math/Vector/Vector2.h"
 #include "Math/Vector/Vector3.h"
@@ -35,10 +36,6 @@
 #include <type_traits>
 
 namespace CoreEngine::Cb {
-
-    constexpr size_t AlignUp(size_t value, size_t alignment) {
-        return (value + alignment - 1) / alignment * alignment;
-    }
 
     /// @brief HLSL 側の型 1 個分の性質
     struct TypeDesc {

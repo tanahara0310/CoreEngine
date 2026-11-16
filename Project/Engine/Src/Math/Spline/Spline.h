@@ -130,9 +130,6 @@ private:
     /// @return 位置
     Vector3 CalculateHermitePosition(float t) const;
 
-    /// @brief セグメント内での補間計算（p0〜p3 は制御点、t は 0.0f〜1.0f）
-    Vector3 CatmullRomInterpolation(const Vector3& p0, const Vector3& p1, const Vector3& p2, const Vector3& p3, float t) const;
-
     /// @brief パラメータの正規化（ループ対応）
     /// @param t パラメータ
     /// @return 正規化されたパラメータ
