@@ -175,8 +175,7 @@ namespace CoreEngine
                 ? context.dxCommon->GetUploadRing().AllocateConstants(sky.params)
                 : 0;
             for (auto passType : { RenderPassType::Model, RenderPassType::SkinnedModel }) {
-                if (auto* renderer = dynamic_cast<BaseModelRenderer*>(
-                        context.renderManager->GetRenderer(passType))) {
+                if (auto* renderer = context.renderManager->GetRendererAs<BaseModelRenderer>(passType)) {
                     renderer->SetRTShadowMask(mainLightMask);
                     renderer->SetSkyAmbient(skyAmbientCBV, sky.irradianceSH, sky.specularMap);
                 }

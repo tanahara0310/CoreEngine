@@ -2,6 +2,7 @@
 #include "Blur.h"
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
+#include "Math/IntegerMath.h"
 #include "Utility/CVar/CVar.h"
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
@@ -71,8 +72,8 @@ namespace CoreEngine
         }
 
         // スレッドグループ数 = ceil(解像度 / 8)
-        uint32_t groupX = (width  + 7) / 8;
-        uint32_t groupY = (height + 7) / 8;
+        uint32_t groupX = DivRoundUp(width, 8);
+        uint32_t groupY = DivRoundUp(height, 8);
         cmdList->Dispatch(groupX, groupY, 1);
     }
 

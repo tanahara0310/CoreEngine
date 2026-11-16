@@ -73,7 +73,7 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
             }
             RenderManager* const renderManager = engine ? engine->GetService<RenderManager>() : nullptr;
             auto* const sprites = renderManager
-                ? dynamic_cast<SpriteRenderer*>(renderManager->GetRenderer(RenderPassType::Sprite)) : nullptr;
+                ? renderManager->GetRendererAs<SpriteRenderer>(RenderPassType::Sprite) : nullptr;
             const ShaderMaterialPipeline* const pipeline = sprites ? sprites->GetMaterialPipeline(material) : nullptr;
             return pipeline ? &pipeline->GetLayout() : nullptr;
         }

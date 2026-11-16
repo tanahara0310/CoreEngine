@@ -8,6 +8,7 @@
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/String/CopyToBuffer.h"
 
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/EditorTheme.h"
@@ -1279,10 +1280,7 @@ namespace CoreEngine
         renameTarget_ = target;
         renameError_.clear();
 
-        const std::string name = Logger::GetInstance().PathToUtf8(target.filename());
-        const std::size_t length = (std::min)(name.size(), sizeof(renameBuffer_) - 1);
-        std::memcpy(renameBuffer_, name.data(), length);
-        renameBuffer_[length] = '\0';
+        CopyToBuffer(renameBuffer_, Logger::GetInstance().PathToUtf8(target.filename()));
     }
 
     void ProjectView::DrawRenameDialog()
@@ -1460,10 +1458,7 @@ namespace CoreEngine
         if (fromRoot.empty() || *fromRoot.begin() == "..") {
             folder = scriptRoot;
         }
-        const std::string text = folder.generic_string();
-        const std::size_t length = (std::min)(text.size(), sizeof(newScriptFolder_) - 1);
-        std::memcpy(newScriptFolder_, text.data(), length);
-        newScriptFolder_[length] = '\0';
+        CopyToBuffer(newScriptFolder_, folder.generic_string());
 
         if (newScriptTemplate_.empty()) {
             const std::vector<Editor::ScriptTemplate::Entry> templates = Editor::ScriptTemplate::List();

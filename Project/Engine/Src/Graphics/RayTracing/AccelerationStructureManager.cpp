@@ -5,6 +5,7 @@
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/Model/ModelResource.h"
 #include "Graphics/Model/VertexData.h"
+#include "Math/IntegerMath.h"
 #include "Utility/Logger/Logger.h"
 #include <algorithm>
 #include <cassert>
@@ -547,7 +548,7 @@ namespace CoreEngine
     D3D12_GPU_VIRTUAL_ADDRESS AccelerationStructureManager::AllocateDynamicScratch(UINT64 len)
     {
         constexpr UINT64 kAlign = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT;
-        len = (std::max)(kAlign, (len + kAlign - 1) / kAlign * kAlign);
+        len = (std::max)(kAlign, AlignUp(len, kAlign));
         dynamicScratchDemand_ += len;
         if (len > dynamicScratchSize_) {
             // 1 本でスクラッチを超えるときは張り直す（前の構築は退避した古いバッファを使い続ける）

@@ -17,6 +17,7 @@
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Graphics/Shader/ShaderProgram.h"
+#include "Math/IntegerMath.h"
 #include "Math/MathCore.h"
 #include "Utility/Logger/Logger.h"
 
@@ -172,8 +173,8 @@ namespace CoreEngine
     bool WaterReflectionRayTracingManager::EnsureColorPyramid(UINT screenWidth, UINT screenHeight)
     {
         // 段 0 は画面の半分の解像度
-        const UINT width = (std::max)((screenWidth + 1) / 2, 1u);
-        const UINT height = (std::max)((screenHeight + 1) / 2, 1u);
+        const UINT width = (std::max)(DivRoundUp(screenWidth, 2), 1u);
+        const UINT height = (std::max)(DivRoundUp(screenHeight, 2), 1u);
         if (colorPyramid_.IsValid() && width == colorPyramidWidth_ && height == colorPyramidHeight_) {
             return true;
         }
@@ -316,7 +317,7 @@ namespace CoreEngine
                 skyCoveragePyramidMipUav_[mip].gpuHandle);
             binder.SetConstants(colorPyramidBindings_[ColorPyramidBind::PyramidConstants], constants);
             binder.ValidateBeforeDraw(colorPyramidBindings_);
-            cmdList->Dispatch((destWidth + 7) / 8, (destHeight + 7) / 8, 1);
+            cmdList->Dispatch(DivRoundUp(destWidth, 8), DivRoundUp(destHeight, 8), 1);
 
             // 次の段が読む前に書き込みの完了を待つ
             Barrier::UAV(cmdList, colorPyramid_);

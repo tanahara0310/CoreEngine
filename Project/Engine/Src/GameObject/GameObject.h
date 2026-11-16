@@ -210,4 +210,12 @@ namespace CoreEngine
     T* IComponent::Sibling() const {
         return owner_ ? owner_->GetComponent<T>() : nullptr;
     }
+
+    template <typename T>
+    T* IComponent::CachedSibling(T*& cache) const {
+        if (!cache) {
+            cache = Sibling<T>();
+        }
+        return cache;
+    }
 }

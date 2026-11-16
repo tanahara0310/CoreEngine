@@ -11,6 +11,7 @@
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
+#include "Math/IntegerMath.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/CVar/CVar.h"
 #include "Camera/View/ViewInfo.h"
@@ -595,8 +596,8 @@ namespace CoreEngine
         auto& view = views_[vi][shadowSlot];
 
         const UINT traceScale = GetTraceScale();
-        const UINT traceWidth = (width + traceScale - 1) / traceScale;
-        const UINT traceHeight = (height + traceScale - 1) / traceScale;
+        const UINT traceWidth = DivRoundUp(width, traceScale);
+        const UINT traceHeight = DivRoundUp(height, traceScale);
 
         // 診断情報を毎回リセットしてから埋める（失敗経路でも状態が UI に出るようにする）
         const int numSamples = std::clamp(settings_.softShadowSamples, 1, 16);

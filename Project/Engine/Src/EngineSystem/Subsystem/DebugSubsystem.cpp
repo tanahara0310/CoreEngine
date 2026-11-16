@@ -47,6 +47,7 @@
 #include "Editor/ImGui/Wrappers/ImGuiInput.h"
 #include "EngineSystem/Startup/SplashScreen.h"
 #include "Utility/Path/ProjectPaths.h"
+#include "Utility/String/CopyToBuffer.h"
 #include <algorithm>
 #include <chrono>
 #include <cwctype>
@@ -97,8 +98,7 @@ namespace CoreEngine
             for (std::size_t i = 0; i < editing.size(); ++i) {
                 ImGui::PushID(static_cast<int>(i));
                 char buffer[64] = {};
-                const std::size_t length = (std::min)(editing[i].size(), sizeof(buffer) - 1);
-                std::memcpy(buffer, editing[i].data(), length);
+                CopyToBuffer(buffer, editing[i]);
 
                 const bool isDefault = (i == 0);
                 ImGui::BeginDisabled(isDefault);

@@ -1,6 +1,7 @@
 #pragma once
 #include <functional>
 #include <memory>
+#include <utility>
 #include <vector>
 #include <typeindex>
 
@@ -109,6 +110,19 @@ public:
         serviceRegistry_.Register(ptr);
     }
 
+    /// @brief コンポーネントを作って Initialize を呼び、登録する（ファクトリだけが呼べる）
+    /// @tparam T コンポーネントの型
+    /// @param initArgs Initialize へ渡す引数
+    /// @return 登録したコンポーネント（所有は EngineSystem）
+    template<typename T, typename... Args>
+    T* CreateAndRegisterComponent(FactoryKey key, Args&&... initArgs) {
+        auto component = std::make_unique<T>();
+        component->Initialize(std::forward<Args>(initArgs)...);
+        T* ptr = component.get();
+        RegisterComponent(key, std::move(component));
+        return ptr;
+    }
+
     // ──────────────────────────────────────────────────────────
     // コンポーネントアクセッサ
     // ──────────────────────────────────────────────────────────
@@ -182,6 +196,12 @@ private:
         subsystems_.push_back(std::move(subsystem));
         subsystemIndex_.Register<T>(ptr);
         return ptr;
+    }
+
+    /// @brief 型の並び（`List<Ts...>`）の順にサブシステムを生成して登録する
+    template<template<typename...> class List, typename... Ts>
+    void RegisterSubsystems(List<Ts...>) {
+        ((void)RegisterSubsystem<Ts>(), ...);
     }
 
     // ──────────────────────────────────────────────────────────

@@ -41,6 +41,13 @@ namespace CoreEngine
         template<typename T>
         const T* GetTechnique(const std::string& name) const;
 
+        /// @brief 有効なレンダリング技術を取得
+        /// @tparam T 取得する技術の型
+        /// @param name 技術の名前
+        /// @return 技術のポインタ（存在しない・無効の場合nullptr）
+        template<typename T>
+        T* GetEnabledTechnique(const std::string& name);
+
         /// @brief レンダリング技術が存在するか確認
         /// @param name 技術の名前
         /// @return 存在する場合true
@@ -104,5 +111,12 @@ namespace CoreEngine
             return dynamic_cast<const T*>(it->second.get());
         }
         return nullptr;
+    }
+
+    template<typename T>
+    T* RenderingTechniqueManager::GetEnabledTechnique(const std::string& name)
+    {
+        T* const technique = GetTechnique<T>(name);
+        return (technique && technique->IsEnabled()) ? technique : nullptr;
     }
 }

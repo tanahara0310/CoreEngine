@@ -6,6 +6,7 @@
 #include "Editor/Scene/SceneDebugEditor.h"
 #include "EngineSystem/PlaybackState.h"
 #include "GameObject/GameObject.h"
+#include "Utility/Algorithm/AssignIfChanged.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/CVar/CVarConsole.h"
 #include "Utility/CVar/CVarRegistry.h"
@@ -200,12 +201,9 @@ namespace CoreEngine
 
     void DockingUI::SetLayoutPreset(DockLayoutPreset preset)
     {
-        if (layoutPreset_ == preset) {
-            return;
+        if (AssignIfChanged(layoutPreset_, preset)) {
+            layoutDirty_ = true;
         }
-
-        layoutPreset_ = preset;
-        layoutDirty_ = true;
     }
 
     ImGuiID DockingUI::FindNodeForArea(Editor::DockArea area) const

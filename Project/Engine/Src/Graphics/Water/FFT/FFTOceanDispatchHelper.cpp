@@ -2,6 +2,7 @@
 #include "FFTOceanDispatchHelper.h"
 
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
+#include "Math/IntegerMath.h"
 
 namespace CoreEngine
 {
@@ -48,8 +49,8 @@ namespace CoreEngine
                 simulationConstantsAddress);
         }
 
-        const UINT dispatchX = (resolution + 7) / 8;
-        const UINT dispatchY = (resolution + 7) / 8;
+        const UINT dispatchX = DivRoundUp(resolution, 8);
+        const UINT dispatchY = DivRoundUp(resolution, 8);
         cmdList->Dispatch(dispatchX, dispatchY, 1);
 
         Barrier::UAV(cmdList, spectrumA[0]);
@@ -87,8 +88,8 @@ namespace CoreEngine
                 ifftConstantsGpuAddress);
         }
 
-        const UINT dispatchX = (resolution + 7) / 8;
-        const UINT dispatchY = (resolution + 7) / 8;
+        const UINT dispatchX = DivRoundUp(resolution, 8);
+        const UINT dispatchY = DivRoundUp(resolution, 8);
         cmdList->Dispatch(dispatchX, dispatchY, 1);
         Barrier::UAV(cmdList, output);
     }
@@ -142,8 +143,8 @@ namespace CoreEngine
                 simulationConstantsAddress);
         }
 
-        const UINT dispatchX = (resolution + 7) / 8;
-        const UINT dispatchY = (resolution + 7) / 8;
+        const UINT dispatchX = DivRoundUp(resolution, 8);
+        const UINT dispatchY = DivRoundUp(resolution, 8);
         cmdList->Dispatch(dispatchX, dispatchY, 1);
     }
 }

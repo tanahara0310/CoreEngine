@@ -2,6 +2,7 @@
 #include "Sepia.h"
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
+#include "Math/IntegerMath.h"
 #include "Utility/CVar/CVar.h"
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
@@ -64,8 +65,8 @@ namespace CoreEngine
         if (sepiaParamsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(sepiaParamsIdx, UploadConstants(MakeParams()));
         if (screenParamsIdx >= 0) cmdList->SetComputeRootConstantBufferView(screenParamsIdx, GetScreenSizeCbAddress());
 
-        uint32_t groupX = (width  + 7) / 8;
-        uint32_t groupY = (height + 7) / 8;
+        uint32_t groupX = DivRoundUp(width, 8);
+        uint32_t groupY = DivRoundUp(height, 8);
         cmdList->Dispatch(groupX, groupY, 1);
     }
 

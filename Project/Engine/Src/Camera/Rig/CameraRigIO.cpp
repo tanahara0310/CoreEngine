@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "CameraRigIO.h"
 
+#include "Utility/Enum/EnumNames.h"
 #include "Utility/JsonManager/JsonManager.h"
 
 #include <algorithm>
@@ -10,6 +11,14 @@ namespace CoreEngine
 {
     namespace
     {
+        // 保存された番号として読める範囲（0〜最後の値）
+        constexpr int kBodyModeCount = static_cast<int>(CameraRigBodyMode::Rail) + 1;
+        constexpr int kAimModeCount = static_cast<int>(CameraRigAimMode::FrameTargets) + 1;
+        constexpr int kLensModeCount = static_cast<int>(CameraRigLensMode::SpeedToFov) + 1;
+        constexpr int kOffsetSpaceCount = static_cast<int>(CameraRigOffsetSpace::Target) + 1;
+        constexpr int kDistanceSourceCount = static_cast<int>(CameraRigDistanceSource::CameraToAim) + 1;
+        constexpr int kDampingModeCount = static_cast<int>(CameraRigDampingMode::Spring) + 1;
+
         /// @brief 対象参照を JSON へ
         json TargetToJson(const CameraRigTargetRef& target)
         {
@@ -53,65 +62,6 @@ namespace CoreEngine
                 targets.push_back(JsonToTarget(element));
             }
             return targets;
-        }
-
-        /// @brief 保存された番号を Body のモードへ戻す（未知の値は FollowTarget 扱い）
-        CameraRigBodyMode ToBodyMode(int value)
-        {
-            switch (value) {
-            case static_cast<int>(CameraRigBodyMode::Fixed):        return CameraRigBodyMode::Fixed;
-            case static_cast<int>(CameraRigBodyMode::OrbitTarget):  return CameraRigBodyMode::OrbitTarget;
-            case static_cast<int>(CameraRigBodyMode::FrameTargets): return CameraRigBodyMode::FrameTargets;
-            case static_cast<int>(CameraRigBodyMode::Rail):         return CameraRigBodyMode::Rail;
-            default:                                                return CameraRigBodyMode::FollowTarget;
-            }
-        }
-
-        /// @brief 保存された番号を Aim のモードへ戻す（未知の値は FollowBody 扱い）
-        /// @details 未知の値で LookAt 系へ落とすと、対象が空のまま評価が失敗し続ける。
-        ///          対象を要らない FollowBody なら、少なくとも画は出る。
-        CameraRigAimMode ToAimMode(int value)
-        {
-            switch (value) {
-            case static_cast<int>(CameraRigAimMode::LookAtTarget): return CameraRigAimMode::LookAtTarget;
-            case static_cast<int>(CameraRigAimMode::FrameTargets): return CameraRigAimMode::FrameTargets;
-            default:                                               return CameraRigAimMode::FollowBody;
-            }
-        }
-
-        /// @brief 保存された番号を Lens のモードへ戻す（未知の値は Fixed 扱い）
-        CameraRigLensMode ToLensMode(int value)
-        {
-            switch (value) {
-            case static_cast<int>(CameraRigLensMode::DistanceToFov): return CameraRigLensMode::DistanceToFov;
-            case static_cast<int>(CameraRigLensMode::SpeedToFov):    return CameraRigLensMode::SpeedToFov;
-            default:                                                 return CameraRigLensMode::Fixed;
-            }
-        }
-
-        /// @brief 保存された番号をオフセットの解釈へ戻す（未知の値は World 扱い）
-        CameraRigOffsetSpace ToOffsetSpace(int value)
-        {
-            return (value == static_cast<int>(CameraRigOffsetSpace::Target))
-                ? CameraRigOffsetSpace::Target
-                : CameraRigOffsetSpace::World;
-        }
-
-        /// @brief 保存された番号を距離の種類へ戻す（未知の値は TargetSpread 扱い）
-        CameraRigDistanceSource ToDistanceSource(int value)
-        {
-            return (value == static_cast<int>(CameraRigDistanceSource::CameraToAim))
-                ? CameraRigDistanceSource::CameraToAim
-                : CameraRigDistanceSource::TargetSpread;
-        }
-
-        /// @brief 保存された番号を寄せ方へ戻す（未知の値は Exponential 扱い）
-        /// @details 指定を持たない古いファイルもここを通って従来の挙動になる。
-        CameraRigDampingMode ToDampingMode(int value)
-        {
-            return (value == static_cast<int>(CameraRigDampingMode::Spring))
-                ? CameraRigDampingMode::Spring
-                : CameraRigDampingMode::Exponential;
         }
 
         json FollowToJson(const CameraRigFollowAxes& follow)
@@ -167,8 +117,8 @@ namespace CoreEngine
         {
             // 既定値は型の初期値をそのまま使う。項目を後から足しても古いファイルが読める。
             CameraRigBody body{};
-            body.mode = ToBodyMode(JsonManager::SafeGet(jsonData, "mode",
-                static_cast<int>(body.mode)));
+            body.mode = ToEnum(JsonManager::SafeGet(jsonData, "mode",
+                static_cast<int>(body.mode)), kBodyModeCount, CameraRigBodyMode::FollowTarget);
 
             if (jsonData.contains("position")) {
                 body.position = JsonManager::JsonToVector3(jsonData["position"]);
@@ -182,8 +132,8 @@ namespace CoreEngine
             if (jsonData.contains("offset")) {
                 body.offset = JsonManager::JsonToVector3(jsonData["offset"]);
             }
-            body.offsetSpace = ToOffsetSpace(JsonManager::SafeGet(jsonData, "offsetSpace",
-                static_cast<int>(body.offsetSpace)));
+            body.offsetSpace = ToEnum(JsonManager::SafeGet(jsonData, "offsetSpace",
+                static_cast<int>(body.offsetSpace)), kOffsetSpaceCount, CameraRigOffsetSpace::World);
 
             body.orbitDistance = JsonManager::SafeGet(jsonData, "orbitDistance", body.orbitDistance);
             body.orbitYaw = JsonManager::SafeGet(jsonData, "orbitYaw", body.orbitYaw);
@@ -235,7 +185,8 @@ namespace CoreEngine
         CameraRigAim JsonToAim(const json& jsonData)
         {
             CameraRigAim aim{};
-            aim.mode = ToAimMode(JsonManager::SafeGet(jsonData, "mode", static_cast<int>(aim.mode)));
+            aim.mode = ToEnum(JsonManager::SafeGet(jsonData, "mode", static_cast<int>(aim.mode)),
+                kAimModeCount, CameraRigAimMode::FollowBody);
             if (jsonData.contains("target")) {
                 aim.target = JsonToTarget(jsonData["target"]);
             }
@@ -262,15 +213,16 @@ namespace CoreEngine
         CameraRigLens JsonToLens(const json& jsonData)
         {
             CameraRigLens lens{};
-            lens.mode = ToLensMode(JsonManager::SafeGet(jsonData, "mode",
-                static_cast<int>(lens.mode)));
+            lens.mode = ToEnum(JsonManager::SafeGet(jsonData, "mode",
+                static_cast<int>(lens.mode)), kLensModeCount, CameraRigLensMode::Fixed);
             lens.fovDegrees = JsonManager::SafeGet(jsonData, "fovDegrees", lens.fovDegrees);
             lens.inputMin = JsonManager::SafeGet(jsonData, "inputMin", lens.inputMin);
             lens.inputMax = JsonManager::SafeGet(jsonData, "inputMax", lens.inputMax);
             lens.fovMinDegrees = JsonManager::SafeGet(jsonData, "fovMinDegrees", lens.fovMinDegrees);
             lens.fovMaxDegrees = JsonManager::SafeGet(jsonData, "fovMaxDegrees", lens.fovMaxDegrees);
-            lens.distanceSource = ToDistanceSource(JsonManager::SafeGet(jsonData,
-                "distanceSource", static_cast<int>(lens.distanceSource)));
+            lens.distanceSource = ToEnum(JsonManager::SafeGet(jsonData,
+                "distanceSource", static_cast<int>(lens.distanceSource)),
+                kDistanceSourceCount, CameraRigDistanceSource::TargetSpread);
             return lens;
         }
 
@@ -292,8 +244,8 @@ namespace CoreEngine
             damping.rotation = JsonManager::SafeGet(jsonData, "rotation", damping.rotation);
             damping.fov = JsonManager::SafeGet(jsonData, "fov", damping.fov);
             damping.aim = JsonManager::SafeGet(jsonData, "aim", damping.aim);
-            damping.mode = ToDampingMode(JsonManager::SafeGet(jsonData, "mode",
-                static_cast<int>(damping.mode)));
+            damping.mode = ToEnum(JsonManager::SafeGet(jsonData, "mode",
+                static_cast<int>(damping.mode)), kDampingModeCount, CameraRigDampingMode::Exponential);
             return damping;
         }
     }

@@ -26,9 +26,9 @@ namespace CoreEngine
             return;
         }
 
-        auto* caustics = context.renderingTechniqueManager->GetTechnique<WaterCausticsTechnique>(
+        auto* caustics = context.renderingTechniqueManager->GetEnabledTechnique<WaterCausticsTechnique>(
             RenderingTechniqueNames::WaterCaustics);
-        if (!caustics || !caustics->IsEnabled()) {
+        if (!caustics) {
             return;
         }
 

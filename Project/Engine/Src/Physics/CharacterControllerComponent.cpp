@@ -69,21 +69,15 @@ namespace {
     bool IntersectWithCollider(const Geometry::Capsule& capsule, const Collider& other,
                                Geometry::Contact& outContact)
     {
-        switch (other.GetShapeType()) {
-        case ColliderShapeType::Sphere:
-            return Geometry::Intersect(capsule, other.GetWorldSphere(), &outContact);
-        case ColliderShapeType::Capsule:
-            return Geometry::Intersect(capsule, other.GetWorldCapsule(), &outContact);
-        default:
-            return Geometry::Intersect(capsule, other.GetWorldOBB(), &outContact);
-        }
+        return VisitWorldShape(other, [&](const auto& shape) {
+            return Geometry::Intersect(capsule, shape, &outContact);
+        });
     }
 }
 
     bool CharacterControllerComponent::RequiresComponent(const IComponent& other) const
     {
-        return dynamic_cast<const TransformComponent*>(&other) != nullptr
-            || dynamic_cast<const ColliderComponent*>(&other) != nullptr;
+        return IsAnyOf<TransformComponent, ColliderComponent>(other);
     }
 
     void CharacterControllerComponent::Start()
@@ -101,9 +95,7 @@ namespace {
         if (!FindTransform() || !world_) {
             return;
         }
-        if (!colliders_) {
-            colliders_ = Sibling<ColliderComponent>();
-        }
+        CachedSibling(colliders_);
 
         // 1 回の移動が太さを超えると薄いものを飛び越えるので、割って進める
         // （フレームが重くて一度に大きく動く場面で効く）
@@ -384,9 +376,6 @@ namespace {
 
     TransformComponent* CharacterControllerComponent::FindTransform()
     {
-        if (!transform_) {
-            transform_ = Sibling<TransformComponent>();
-        }
-        return transform_;
+        return CachedSibling(transform_);
     }
 }

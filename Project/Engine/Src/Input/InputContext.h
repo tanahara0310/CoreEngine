@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Utility/Enum/EnumFlags.h"
+
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -19,23 +21,13 @@ namespace CoreEngine
         All    = 0b111,
     };
 
-    constexpr InputContext operator|(InputContext a, InputContext b)
-    {
-        return static_cast<InputContext>(static_cast<std::uint8_t>(a) | static_cast<std::uint8_t>(b));
-    }
+    CE_ENUM_FLAG_OPERATORS(InputContext)
 
-    constexpr InputContext operator&(InputContext a, InputContext b)
-    {
-        return static_cast<InputContext>(static_cast<std::uint8_t>(a) & static_cast<std::uint8_t>(b));
-    }
-
+    /// @brief All の中で反転する
     constexpr InputContext operator~(InputContext a)
     {
         return static_cast<InputContext>(~static_cast<std::uint8_t>(a) & static_cast<std::uint8_t>(InputContext::All));
     }
-
-    constexpr InputContext& operator|=(InputContext& a, InputContext b) { a = a | b; return a; }
-    constexpr InputContext& operator&=(InputContext& a, InputContext b) { a = a & b; return a; }
 
     /// @brief 重なりがあるか
     constexpr bool Overlaps(InputContext a, InputContext b) { return (a & b) != InputContext::None; }

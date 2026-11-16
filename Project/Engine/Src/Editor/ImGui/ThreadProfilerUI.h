@@ -2,7 +2,8 @@
 
 #ifdef CORE_EDITOR
 
-#include <array>
+#include "Utility/Container/RingHistory.h"
+
 #include <functional>
 #include <string>
 #include <vector>
@@ -35,9 +36,8 @@ namespace CoreEngine
             std::string name;
             std::function<ThreadPool*()> getter;
 
-            std::array<float, kHistorySize> activeHistory = {};
-            std::array<float, kHistorySize> pendingHistory = {};
-            int      historyOffset = 0;
+            RingHistory<float, kHistorySize> activeHistory;
+            RingHistory<float, kHistorySize> pendingHistory;
             uint32_t peakActive = 0;
 
             /// @brief 表の折り畳み状態（既定は閉じて縦を節約する）

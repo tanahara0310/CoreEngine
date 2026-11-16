@@ -8,6 +8,7 @@
 #include "Graphics/RHI/Command/UploadContext.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Math/IntegerMath.h"
 #include "Threading/ThreadPool.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
@@ -19,12 +20,6 @@ namespace CoreEngine
 {
     namespace
     {
-        /// @brief 値を alignment の倍数へ切り上げる
-        constexpr uint64_t AlignUp(uint64_t value, uint64_t alignment)
-        {
-            return (value + alignment - 1) / alignment * alignment;
-        }
-
         /// 1 回のベイクで処理する上限。多量の新規文字が一度に来ても、
         /// 定期的にアトラスへ反映して画面が徐々に埋まるようにする
         constexpr size_t kMaxGlyphsPerBakeBatch = 64;

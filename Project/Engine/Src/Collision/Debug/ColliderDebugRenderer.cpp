@@ -40,6 +40,31 @@ namespace CoreEngine
         CVar<int> cvSphereSegments{
             "d.Collision.DebugSphereSegments", 16,
             "球コライダーの分割数", CVarRange{ 4.0f, 48.0f } };
+
+        /// @brief 球の枠の線を作る
+        std::vector<Line> GenerateShapeLines(const Geometry::Sphere& sphere,
+            const Vector3& color, float alpha, int segments)
+        {
+            return LineManager::GenerateSphereLines(
+                sphere.center, sphere.radius, color, alpha, segments);
+        }
+
+        /// @brief カプセルの枠の線を作る
+        std::vector<Line> GenerateShapeLines(const Geometry::Capsule& capsule,
+            const Vector3& color, float alpha, int segments)
+        {
+            return LineManager::GenerateCapsuleLines(
+                capsule.start, capsule.end, capsule.radius, color, alpha, segments);
+        }
+
+        /// @brief 向き付きの箱の枠の線を作る（分割数は使わない）
+        std::vector<Line> GenerateShapeLines(const Geometry::OBB& box,
+            const Vector3& color, float alpha, int /*segments*/)
+        {
+            return LineManager::GenerateBoxLines(
+                box.center, box.halfExtents * 2.0f,
+                box.axes[0], box.axes[1], box.axes[2], color, alpha);
+        }
     }
 
     void ColliderDebugRenderer::SubmitLines(LineRendererPipeline& pipeline, const Camera* camera)
@@ -69,23 +94,10 @@ namespace CoreEngine
             const Vector3 color = touching ? cvColorHit.Get()
                 : (collider->IsTrigger() ? cvColorTrigger.Get() : cvColorIdle.Get());
 
-            if (collider->GetShapeType() == ColliderShapeType::Sphere) {
-                const Geometry::Sphere sphere = collider->GetWorldSphere();
-                auto shape = LineManager::GenerateSphereLines(
-                    sphere.center, sphere.radius, color, alpha, segments);
-                lines.insert(lines.end(), shape.begin(), shape.end());
-            } else if (collider->GetShapeType() == ColliderShapeType::Capsule) {
-                const Geometry::Capsule capsule = collider->GetWorldCapsule();
-                auto shape = LineManager::GenerateCapsuleLines(
-                    capsule.start, capsule.end, capsule.radius, color, alpha, segments);
-                lines.insert(lines.end(), shape.begin(), shape.end());
-            } else {
-                const Geometry::OBB box = collider->GetWorldOBB();
-                auto shape = LineManager::GenerateBoxLines(
-                    box.center, box.halfExtents * 2.0f,
-                    box.axes[0], box.axes[1], box.axes[2], color, alpha);
-                lines.insert(lines.end(), shape.begin(), shape.end());
-            }
+            const auto shape = VisitWorldShape(*collider, [&](const auto& worldShape) {
+                return GenerateShapeLines(worldShape, color, alpha, segments);
+            });
+            lines.insert(lines.end(), shape.begin(), shape.end());
         }
 
         if (!lines.empty()) {

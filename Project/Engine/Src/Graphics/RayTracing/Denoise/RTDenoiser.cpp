@@ -19,6 +19,7 @@
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Graphics/Shader/ShaderProgram.h"
+#include "Math/IntegerMath.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
@@ -131,9 +132,6 @@ namespace CoreEngine
             outM33 = projection.m[2][2];
             outM43 = projection.m[3][2];
         }
-
-        /// @brief 8x8 のスレッドグループで要るグループの数
-        UINT DispatchGroupCount(UINT pixels) { return (pixels + 7) / 8; }
     }
 
     bool BuildRTDenoiseGuides(const RenderContext& context, RTDenoiseGuides& out)
@@ -231,8 +229,8 @@ namespace CoreEngine
     bool RTDenoiser::EnsureTextures(uint32_t channel, UINT width, UINT height, UINT traceScale)
     {
         Channel& state = channels_[channel];
-        const UINT traceWidth = (width + traceScale - 1) / traceScale;
-        const UINT traceHeight = (height + traceScale - 1) / traceScale;
+        const UINT traceWidth = DivRoundUp(width, traceScale);
+        const UINT traceHeight = DivRoundUp(height, traceScale);
         if (width == state.width && height == state.height
             && traceWidth == state.traceWidth && traceHeight == state.traceHeight
             && textures_.HasTexture(SlotIndex(channel, Texture::Output))) {
@@ -405,7 +403,7 @@ namespace CoreEngine
         binder.SetConstants(table[Bind::RTDenoiseTemporalConstants], tc);
 
         binder.ValidateBeforeDraw(table);
-        cmdList->Dispatch(DispatchGroupCount(state.traceWidth), DispatchGroupCount(state.traceHeight), 1);
+        cmdList->Dispatch(DivRoundUp(state.traceWidth, 8), DivRoundUp(state.traceHeight, 8), 1);
 
         // A-Trous が読むので書き込みの完了を待ってから読み取りへ
         BarrierBatch curToSrv(cmdList);
@@ -433,8 +431,8 @@ namespace CoreEngine
 
             namespace Bind = RTDenoiseATrousBind;
             const BindingTable& table = atrousPass_.bindings;
-            const UINT groupX = DispatchGroupCount(state.traceWidth);
-            const UINT groupY = DispatchGroupCount(state.traceHeight);
+            const UINT groupX = DivRoundUp(state.traceWidth, 8);
+            const UINT groupY = DivRoundUp(state.traceHeight, 8);
 
             for (int pass = 0; pass < numPasses; ++pass) {
                 const Texture inTexture = lastTexture;
@@ -529,7 +527,7 @@ namespace CoreEngine
         binder.SetConstants(table[Bind::RTDenoiseResolveConstants], rc);
 
         binder.ValidateBeforeDraw(table);
-        cmdList->Dispatch(DispatchGroupCount(state.width), DispatchGroupCount(state.height), 1);
+        cmdList->Dispatch(DivRoundUp(state.width, 8), DivRoundUp(state.height, 8), 1);
 
         Barrier::UAV(cmdList, outputRes);
     }

@@ -3,6 +3,7 @@
 
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
+#include "GameObject/Component/Core/ComponentService.h"
 #include "GameObject/GameObject.h"
 #include "Graphics/Render/DrawViewInfo.h"
 #include "Graphics/Render/RenderManager.h"
@@ -10,25 +11,18 @@
 #include "Text/MsdfFont.h"
 #include "Text/TextGeometryBuilder.h"
 #include "UI/RectTransformComponent.h"
+#include "Utility/Algorithm/AssignIfChanged.h"
 #include "Utility/Logger/Logger.h"
 
 #include <algorithm>
 
 namespace
 {
-    /// @brief コンポーネントの持ち主からフォントの管理を引く
-    CoreEngine::FontManager* FindFontManager(const CoreEngine::IComponent& component)
-    {
-        const CoreEngine::GameObject* const owner = component.GetOwner();
-        CoreEngine::EngineSystem* const engine = owner ? owner->GetEngineSystem() : nullptr;
-        return engine ? engine->GetService<CoreEngine::FontManager>() : nullptr;
-    }
-
     /// @brief フォントの欄に出す候補（登録名とフォントフォルダのファイル名）
     std::vector<std::string> ListFontNames(const void* instance)
     {
         const auto& text = *static_cast<const CoreEngine::UITextComponent*>(instance);
-        const CoreEngine::FontManager* const fonts = FindFontManager(text);
+        const CoreEngine::FontManager* const fonts = CoreEngine::FindService<CoreEngine::FontManager>(text);
         return fonts ? fonts->GetSelectableFontNames() : std::vector<std::string>{};
     }
 }
@@ -85,10 +79,8 @@ namespace CoreEngine
             rect_->SetSizeDriven(fieldAutoFit_);
         }
 
-        if (EngineSystem* const engine = owner->GetEngineSystem()) {
-            if (auto* const renderManager = engine->GetService<RenderManager>()) {
-                renderer_ = dynamic_cast<TextRenderer*>(renderManager->GetRenderer(RenderPassType::UIText));
-            }
+        if (auto* const renderManager = FindService<RenderManager>(*this)) {
+            renderer_ = renderManager->GetRendererAs<TextRenderer>(RenderPassType::UIText);
         }
 
         // フォントは直後にコードから名前を変えられることがあるので、最初に描くときに引く
@@ -104,7 +96,7 @@ namespace CoreEngine
 
     void UITextComponent::ResolveFont()
     {
-        FontManager* const fonts = FindFontManager(*this);
+        FontManager* const fonts = FindService<FontManager>(*this);
         if (!fonts) { return; }
 
         MsdfFont* const resolved = fonts->AcquireNamed(fontName_);
@@ -128,9 +120,7 @@ namespace CoreEngine
 
     void UITextComponent::SetText(const std::string& textUtf8)
     {
-        if (text_ == textUtf8) { return; }
-        text_ = textUtf8;
-        geometryDirty_ = true;
+        if (AssignIfChanged(text_, textUtf8)) { geometryDirty_ = true; }
     }
 
     void UITextComponent::SetFontSize(float pixelSize)
@@ -150,9 +140,7 @@ namespace CoreEngine
 
     void UITextComponent::SetLineSpacing(float scale)
     {
-        if (lineSpacing_ == scale) { return; }
-        lineSpacing_ = scale;
-        geometryDirty_ = true;
+        if (AssignIfChanged(lineSpacing_, scale)) { geometryDirty_ = true; }
     }
 
     void UITextComponent::SetFieldAutoFit(bool enable)
@@ -169,23 +157,17 @@ namespace CoreEngine
     void UITextComponent::SetWrapWidth(float pixelWidth)
     {
         pixelWidth = (std::max)(pixelWidth, 0.0f);
-        if (wrapWidth_ == pixelWidth) { return; }
-        wrapWidth_ = pixelWidth;
-        geometryDirty_ = true;
+        if (AssignIfChanged(wrapWidth_, pixelWidth)) { geometryDirty_ = true; }
     }
 
     void UITextComponent::SetAlignH(TextAlignH alignment)
     {
-        if (alignH_ == alignment) { return; }
-        alignH_ = alignment;
-        geometryDirty_ = true;
+        if (AssignIfChanged(alignH_, alignment)) { geometryDirty_ = true; }
     }
 
     void UITextComponent::SetAlignV(TextAlignV alignment)
     {
-        if (alignV_ == alignment) { return; }
-        alignV_ = alignment;
-        geometryDirty_ = true;
+        if (AssignIfChanged(alignV_, alignment)) { geometryDirty_ = true; }
     }
 
     void UITextComponent::SetAlign(TextAlignH horizontal, TextAlignV vertical)
@@ -212,15 +194,12 @@ namespace CoreEngine
 
     bool UITextComponent::RequiresComponent(const IComponent& other) const
     {
-        return dynamic_cast<const RectTransformComponent*>(&other) != nullptr;
+        return IsAnyOf<RectTransformComponent>(other);
     }
 
     RectTransformComponent* UITextComponent::GetRectTransform() const
     {
-        if (!rect_) {
-            rect_ = Sibling<RectTransformComponent>();
-        }
-        return rect_;
+        return CachedSibling(rect_);
     }
 
     void UITextComponent::UpdateGeometry(RectTransformComponent& rect)

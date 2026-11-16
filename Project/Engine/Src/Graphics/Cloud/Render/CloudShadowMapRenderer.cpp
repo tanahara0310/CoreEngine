@@ -7,6 +7,7 @@
 #include "Graphics/Cloud/Render/CloudStageScope.h"
 #include "Graphics/Cloud/Resource/CloudResources.h"
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
+#include "Math/IntegerMath.h"
 
 namespace CoreEngine
 {
@@ -38,8 +39,8 @@ namespace CoreEngine
         }
 
         cmdList->Dispatch(
-            (CloudResources::kCloudShadowMapSize + 7) / 8,
-            (ctx.cloudShadowRowCount + 7) / 8,
+            DivRoundUp(CloudResources::kCloudShadowMapSize, 8),
+            DivRoundUp(ctx.cloudShadowRowCount, 8),
             1);
 
         // Deferred ライティングとゴッドレイが SRV として読む

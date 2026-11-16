@@ -6,6 +6,7 @@
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h"
+#include "Math/IntegerMath.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/Logger/Logger.h"
 #ifdef CORE_EDITOR
@@ -49,11 +50,6 @@ namespace CoreEngine
             CVarRange{}, CVarFlags::NoUI };
 
         constexpr const char* kCVarPrefix = "r.Bloom";
-    }
-
-    namespace {
-        /// @brief 8x8 スレッドグループでの必要グループ数
-        constexpr uint32_t DispatchCount(uint32_t size) { return (size + 7) / 8; }
     }
 
     void Bloom::OnCreateResources()
@@ -131,7 +127,7 @@ namespace CoreEngine
         if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, dirtUavHandle_.gpuHandle);
         if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
 
-        cmdList->Dispatch(DispatchCount(kDirtTextureSize), DispatchCount(kDirtTextureSize), 1);
+        cmdList->Dispatch(DivRoundUp(kDirtTextureSize, 8), DivRoundUp(kDirtTextureSize, 8), 1);
 
         {
             BarrierBatch batch(cmdList);
@@ -262,7 +258,7 @@ namespace CoreEngine
         if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
         if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
 
-        cmdList->Dispatch(DispatchCount(context.width), DispatchCount(context.height), 1);
+        cmdList->Dispatch(DivRoundUp(context.width, 8), DivRoundUp(context.height, 8), 1);
     }
 
     void Bloom::RecordUpsample(const PostEffectPassContext& context, int upIndex)
@@ -290,7 +286,7 @@ namespace CoreEngine
         if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
         if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
 
-        cmdList->Dispatch(DispatchCount(context.width), DispatchCount(context.height), 1);
+        cmdList->Dispatch(DivRoundUp(context.width, 8), DivRoundUp(context.height, 8), 1);
     }
 
     void Bloom::RecordComposite(const PostEffectPassContext& context)
@@ -328,7 +324,7 @@ namespace CoreEngine
         if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
         if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
 
-        cmdList->Dispatch(DispatchCount(context.width), DispatchCount(context.height), 1);
+        cmdList->Dispatch(DivRoundUp(context.width, 8), DivRoundUp(context.height, 8), 1);
     }
 
     void Bloom::DrawImGui()

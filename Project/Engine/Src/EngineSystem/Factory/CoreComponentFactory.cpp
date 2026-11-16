@@ -17,16 +17,13 @@ namespace CoreEngine
 {
     void CoreComponentFactory::SetupFrameRate(EngineSystem& engine)
     {
-        auto frameRate = std::make_unique<FrameRateController>();
-        frameRate->Initialize(); // 60FPS固定
-        engine.RegisterComponent(EngineSystem::FactoryKey{}, std::move(frameRate));
+        engine.CreateAndRegisterComponent<FrameRateController>(EngineSystem::FactoryKey{}); // 60FPS固定
     }
 
     void CoreComponentFactory::SetupInput(EngineSystem& engine)
     {
-        auto inputManager = std::make_unique<InputManager>();
-        inputManager->Initialize(engine.GetWinApp()->GetInstance(), engine.GetWinApp()->GetHwnd());
-        engine.RegisterComponent(EngineSystem::FactoryKey{}, std::move(inputManager));
+        engine.CreateAndRegisterComponent<InputManager>(EngineSystem::FactoryKey{},
+            engine.GetWinApp()->GetInstance(), engine.GetWinApp()->GetHwnd());
     }
 
     void CoreComponentFactory::SetupAudio(EngineSystem& engine)
@@ -47,26 +44,21 @@ namespace CoreEngine
     {
         auto* dxCommon = engine.GetService<GraphicsCore>();
 
-        auto lightManager = std::make_unique<LightManager>();
-        lightManager->Initialize(*dxCommon);
-
         // デフォルトライトは作成しない（各シーンで個別に作成する）
-
-        LightManager* lightManagerPtr = lightManager.get();
-        engine.RegisterComponent(EngineSystem::FactoryKey{}, std::move(lightManager));
+        LightManager* lightManagerPtr =
+            engine.CreateAndRegisterComponent<LightManager>(EngineSystem::FactoryKey{}, *dxCommon);
 
         // Model / SkinnedModel の両レンダラーに LightManager を一括設定
         if (auto* renderManager = engine.GetService<RenderManager>()) {
             for (auto passType : { RenderPassType::Model, RenderPassType::SkinnedModel }) {
-                if (auto* r = dynamic_cast<BaseModelRenderer*>(renderManager->GetRenderer(passType))) {
+                if (auto* r = renderManager->GetRendererAs<BaseModelRenderer>(passType)) {
                     r->SetLightManager(lightManagerPtr);
                 }
             }
 
             // モデルパーティクルは形状由来の法線を持つのでライティングする
             // （板ポリパーティクルは常にカメラを向くため対象外）
-            if (auto* r = dynamic_cast<ModelParticleRenderer*>(
-                    renderManager->GetRenderer(RenderPassType::ModelParticle))) {
+            if (auto* r = renderManager->GetRendererAs<ModelParticleRenderer>(RenderPassType::ModelParticle)) {
                 r->SetLightManager(lightManagerPtr);
             }
         }

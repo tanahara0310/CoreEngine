@@ -45,7 +45,7 @@ public:
     /// @brief トランスフォームを使う
     bool RequiresComponent(const IComponent& other) const override
     {
-        return dynamic_cast<const TransformComponent*>(&other) != nullptr;
+        return IsAnyOf<TransformComponent>(other);
     }
 
     REFLECT_DECLARE(MeshRendererComponent)

@@ -28,7 +28,7 @@ namespace CoreEngine
 
     bool UIButtonComponent::RequiresComponent(const IComponent& other) const
     {
-        return dynamic_cast<const RectTransformComponent*>(&other) != nullptr;
+        return IsAnyOf<RectTransformComponent>(other);
     }
 
     bool UIButtonComponent::WasClicked() const

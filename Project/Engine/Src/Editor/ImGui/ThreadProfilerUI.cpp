@@ -128,9 +128,8 @@ namespace CoreEngine
 
         entry.peakActive = (std::max)(entry.peakActive, stats.activeTasks);
 
-        entry.activeHistory[entry.historyOffset] = static_cast<float>(stats.activeTasks);
-        entry.pendingHistory[entry.historyOffset] = static_cast<float>(stats.pendingTasks);
-        entry.historyOffset = (entry.historyOffset + 1) % kHistorySize;
+        entry.activeHistory.Push(static_cast<float>(stats.activeTasks));
+        entry.pendingHistory.Push(static_cast<float>(stats.pendingTasks));
 
         // ─── ヘッダ: 名前とこのプールの成績を 1 行で ───────────────
         // 「占有率」と「直列比」をヘッダに出すのが今回の要点。
@@ -175,8 +174,8 @@ namespace CoreEngine
         if (ImGui::SmallButton("統計リセット")) {
             pool->ResetStats();
             entry.peakActive = 0;
-            entry.activeHistory.fill(0.0f);
-            entry.pendingHistory.fill(0.0f);
+            entry.activeHistory.Fill(0.0f);
+            entry.pendingHistory.Fill(0.0f);
         }
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip(
@@ -205,8 +204,8 @@ namespace CoreEngine
         ImGui::PushStyleColor(ImGuiCol_PlotLines, kColGraph);
         ImGui::PushStyleColor(ImGuiCol_FrameBg, kColFrameBg);
         const float maxActive = static_cast<float>(workerCount > 0 ? workerCount : 1);
-        ImGui::PlotLines("##active", entry.activeHistory.data(), kHistorySize,
-            entry.historyOffset, "実行中タスク数", 0.0f, maxActive,
+        ImGui::PlotLines("##active", entry.activeHistory.Data(), kHistorySize,
+            entry.activeHistory.Head(), "実行中タスク数", 0.0f, maxActive,
             ImVec2(-1.0f, 34.0f));
         ImGui::PopStyleColor(2);
 

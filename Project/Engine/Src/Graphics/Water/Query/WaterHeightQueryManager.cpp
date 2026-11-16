@@ -16,6 +16,7 @@
 #include "Graphics/RootSignature/ShaderBinder.h"
 #include "Graphics/Shader/ShaderProgram.h"
 #include "Graphics/Water/WaterSurfaceData.h"
+#include "Math/IntegerMath.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
@@ -285,7 +286,7 @@ namespace CoreEngine
             binder.Set(bindings_[QueryBind::gQueryDisplacement], fftOceanInput.displacementSRV);
             binder.Set(bindings_[QueryBind::gQueryResults], resultsUav_.gpuHandle);
             binder.ValidateBeforeDraw(bindings_);
-            cmdList->Dispatch((pointCount + kThreadGroupSize - 1) / kThreadGroupSize, 1, 1);
+            cmdList->Dispatch(DivRoundUp(pointCount, kThreadGroupSize), 1, 1);
 
             Barrier::Transition(cmdList, results_, D3D12_RESOURCE_STATE_COPY_SOURCE);
             cmdList->CopyBufferRegion(

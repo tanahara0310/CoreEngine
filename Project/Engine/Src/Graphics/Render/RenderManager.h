@@ -38,6 +38,15 @@ namespace CoreEngine
         /// @return レンダラーポインタ
         IRenderer* GetRenderer(RenderPassType type);
 
+        /// @brief レンダラーを型を指定して取得
+        /// @tparam T 取得したいレンダラーの型
+        /// @param type 描画パスタイプ
+        /// @return 未登録か T でなければ nullptr
+        template <typename T>
+        T* GetRendererAs(RenderPassType type) {
+            return dynamic_cast<T*>(GetRenderer(type));
+        }
+
         /// @brief 今フレームのビュー群を設定（EngineSystem がフレーム先頭で 1 回呼ぶ）
         /// @details 描画キュー実行はここから ViewInfo を引く。カメラを直接参照しないため、
         ///          パスごとに違う行列を使う事故が起きない。

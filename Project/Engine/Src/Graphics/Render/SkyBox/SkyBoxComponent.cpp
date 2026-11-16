@@ -5,6 +5,7 @@
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
+#include "GameObject/Component/Core/ComponentService.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Render/DrawViewInfo.h"
 #include "Graphics/Render/RenderDomainContext.h"
@@ -37,15 +38,13 @@ SkyBoxComponent::~SkyBoxComponent()
 
 void SkyBoxComponent::Awake()
 {
-    GameObject* const owner = GetOwner();
-    EngineSystem* const engine = owner ? owner->GetEngineSystem() : nullptr;
-    GraphicsCore* const graphics = engine ? engine->GetService<GraphicsCore>() : nullptr;
-    RenderManager* const renderManager = engine ? engine->GetService<RenderManager>() : nullptr;
+    GraphicsCore* const graphics = FindService<GraphicsCore>(*this);
+    RenderManager* const renderManager = FindService<RenderManager>(*this);
     if (!graphics || !renderManager) {
         return;
     }
 
-    renderer_ = dynamic_cast<SkyBoxRenderer*>(renderManager->GetRenderer(RenderPassType::SkyBox));
+    renderer_ = renderManager->GetRendererAs<SkyBoxRenderer>(RenderPassType::SkyBox);
     CreateBoxBuffers(graphics->GetDevice());
     CreateTransformBuffers(graphics->GetDevice());
 }

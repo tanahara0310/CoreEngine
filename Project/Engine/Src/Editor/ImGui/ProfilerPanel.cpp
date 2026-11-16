@@ -92,15 +92,7 @@ namespace CoreEngine
             sample.gpuMs = total.gpuMs;
         }
 
-        history_[static_cast<size_t>(historyHead_)] = sample;
-        historyHead_ = (historyHead_ + 1) % kHistorySize;
-        historyCount_ = (std::min)(historyCount_ + 1, kHistorySize);
-    }
-
-    const ProfilerPanel::FrameSample& ProfilerPanel::SampleAt(int i) const
-    {
-        const int oldest = (historyHead_ - historyCount_ + kHistorySize) % kHistorySize;
-        return history_[static_cast<size_t>((oldest + i) % kHistorySize)];
+        history_.Push(sample);
     }
 
     void ProfilerPanel::Draw()
@@ -153,7 +145,7 @@ namespace CoreEngine
         }
         ImGui::SameLine();
         ImGui::AlignTextToFramePadding();
-        ImGui::TextColored(Theme::kTextMute, "%d / %d フレーム", historyCount_, kHistorySize);
+        ImGui::TextColored(Theme::kTextMute, "%d / %d フレーム", history_.Count(), kHistorySize);
 
         UI::Bar::Separator();
         if (UI::Bar::Button("CPU", showCpu_)) { showCpu_ = !showCpu_; }
@@ -196,12 +188,12 @@ namespace CoreEngine
 
         // 縦軸の上限（予算の 2 倍か、控えの最大の 1.1 倍）
         float top = kBudgetMs * 2.0f;
-        for (int i = 0; i < historyCount_; ++i) {
-            top = (std::max)(top, SampleAt(i).frameMs * 1.1f);
+        for (int i = 0; i < history_.Count(); ++i) {
+            top = (std::max)(top, history_.At(i).frameMs * 1.1f);
         }
         const auto yOf = [&](float ms) { return max.y - 2.0f - (ms / top) * (size.y - 4.0f); };
         const auto xOf = [&](int slot) { return min.x + (static_cast<float>(slot) / (kHistorySize - 1)) * size.x; };
-        const int firstSlot = kHistorySize - historyCount_;
+        const int firstSlot = kHistorySize - history_.Count();
 
         // 予算の線
         const float budgetY = yOf(kBudgetMs);
@@ -212,11 +204,11 @@ namespace CoreEngine
 
         // 系列
         std::vector<ImVec2> points;
-        points.reserve(static_cast<size_t>(historyCount_));
+        points.reserve(static_cast<size_t>(history_.Count()));
         const auto series = [&](const auto& valueOf, const ImVec4& color, float thickness) {
             points.clear();
-            for (int i = 0; i < historyCount_; ++i) {
-                points.emplace_back(xOf(firstSlot + i), yOf(valueOf(SampleAt(i))));
+            for (int i = 0; i < history_.Count(); ++i) {
+                points.emplace_back(xOf(firstSlot + i), yOf(valueOf(history_.At(i))));
             }
             if (points.size() >= 2) {
                 draw->AddPolyline(points.data(), static_cast<int>(points.size()),
@@ -236,10 +228,10 @@ namespace CoreEngine
         }
 
         // カーソルの位置のフレームの値
-        if (hovered && historyCount_ > 0) {
+        if (hovered && history_.Count() > 0) {
             const float t = (ImGui::GetMousePos().x - min.x) / size.x;
             const int slot = std::clamp(static_cast<int>(t * (kHistorySize - 1) + 0.5f), firstSlot, kHistorySize - 1);
-            const FrameSample& sample = SampleAt(slot - firstSlot);
+            const FrameSample& sample = history_.At(slot - firstSlot);
             draw->AddLine(ImVec2(xOf(slot), min.y), ImVec2(xOf(slot), max.y), ImGui::GetColorU32(Theme::kOutline));
 
             auto tooltip = UI::Scope::TooltipScope();
@@ -264,11 +256,11 @@ namespace CoreEngine
 
     void ProfilerPanel::DrawFrameBreakdown()
     {
-        if (historyCount_ == 0) {
+        if (history_.Count() == 0) {
             UI::Hint("まだ記録していません");
             return;
         }
-        const FrameSample& latest = SampleAt(historyCount_ - 1);
+        const FrameSample& latest = history_.At(history_.Count() - 1);
 
         UI::SectionHeader("フレーム合計");
         ValueRow("フレーム", Theme::kText, std::format("{:.2f} ms", latest.frameMs),
@@ -395,8 +387,8 @@ namespace CoreEngine
         }
 
         file << "frame,frame_ms,update_cpu_ms,render_cpu_ms,script_ms,gpu_ms\n";
-        for (int i = 0; i < historyCount_; ++i) {
-            const FrameSample& s = SampleAt(i);
+        for (int i = 0; i < history_.Count(); ++i) {
+            const FrameSample& s = history_.At(i);
             file << std::format("{},{:.3f},{:.3f},{:.3f},{:.3f},{:.3f}\n",
                 i, s.frameMs, s.updateMs, s.renderMs, s.scriptMs, s.gpuMs);
         }

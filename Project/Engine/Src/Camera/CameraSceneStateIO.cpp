@@ -3,6 +3,7 @@
 
 #include "Camera/Camera.h"
 #include "Camera/CameraManager.h"
+#include "Utility/Enum/EnumNames.h"
 #include "Utility/JsonManager/JsonManager.h"
 
 #include <filesystem>
@@ -13,6 +14,9 @@ namespace CoreEngine
     {
         /// @brief シーンごとのエディタの視点を置くフォルダ（自分だけの状態）
         constexpr const char* kViewRoot = "Application/Saved/EditorSettings/SceneViews/";
+
+        /// @brief 保存された投影の番号として読める範囲（0〜最後の値）
+        constexpr int kProjectionTypeCount = static_cast<int>(CameraProjectionType::Orthographic) + 1;
 
         json SnapshotToJson(const CameraSnapshot& snapshot)
         {
@@ -42,11 +46,8 @@ namespace CoreEngine
                 JsonManager::SafeGet(data, "orthographicSize", snapshot.parameters.orthographicSize);
             snapshot.parameters.aspectRatio = JsonManager::SafeGet(data, "aspectRatio", snapshot.parameters.aspectRatio);
 
-            const int projection = JsonManager::SafeGet(data, "projectionType",
-                static_cast<int>(CameraProjectionType::Perspective));
-            snapshot.parameters.projectionType = (projection == static_cast<int>(CameraProjectionType::Orthographic))
-                ? CameraProjectionType::Orthographic
-                : CameraProjectionType::Perspective;
+            snapshot.parameters.projectionType = ToEnum(JsonManager::SafeGet(data, "projectionType",
+                static_cast<int>(CameraProjectionType::Perspective)), kProjectionTypeCount, CameraProjectionType::Perspective);
 
             // 壊れた値で射影行列が破綻しないよう、読み込み時に均しておく。
             if (snapshot.parameters.nearClip < 0.001f) {

@@ -49,7 +49,7 @@ namespace CoreEngine
 {
     bool ColliderComponent::RequiresComponent(const IComponent& other) const
     {
-        return dynamic_cast<const ITransformSource*>(&other) != nullptr;
+        return IsAnyOf<ITransformSource>(other);
     }
 
     Collider& ColliderComponent::Add(const CollisionShape& shape, CollisionLayer layer)

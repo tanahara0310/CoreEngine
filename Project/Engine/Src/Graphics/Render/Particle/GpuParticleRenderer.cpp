@@ -7,6 +7,7 @@
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/RootSignature/ShaderBinder.h"
+#include "Math/IntegerMath.h"
 
 #include <cassert>
 #include <stdexcept>
@@ -160,7 +161,7 @@ namespace CoreEngine
             binder.Set(emitFreeList_, system->GetFreeListUavHandleGPU());
             binder.Set(emitParams_, system->GetParamsGPUAddress());
 
-            const UINT groupCount = (emitCount + 63) / 64;
+            const UINT groupCount = DivRoundUp(emitCount, 64);
             cmdList_->Dispatch(groupCount, 1, 1);
 
             // Emit の書き込み（粒子・カウンタ・フリーリスト）を Update から見えるようにする
@@ -180,7 +181,7 @@ namespace CoreEngine
             binder.Set(updateParams_, system->GetParamsGPUAddress());
         }
 
-        const UINT groupCount = (GpuParticleSystemComponent::kMaxParticles + 63) / 64;
+        const UINT groupCount = DivRoundUp(GpuParticleSystemComponent::kMaxParticles, 64);
         cmdList_->Dispatch(groupCount, 1, 1);
 
         // Update の書き込み完了待ち

@@ -3,6 +3,7 @@
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h"
+#include "Math/IntegerMath.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/Logger/Logger.h"
 #ifdef CORE_EDITOR
@@ -49,9 +50,6 @@ namespace CoreEngine
             CVarRange{ 0.25f, 4.0f } };
 
         constexpr const char* kCVarPrefix = "r.LocalExposure";
-
-        /// @brief 8x8 スレッドグループでの必要グループ数
-        constexpr uint32_t DispatchCount(uint32_t size) { return (size + 7) / 8; }
     }
 
     void LocalExposure::OnCreateResources()
@@ -163,7 +161,7 @@ namespace CoreEngine
         if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
         if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
 
-        cmdList->Dispatch(DispatchCount(lowResWidth_), DispatchCount(lowResHeight_), 1);
+        cmdList->Dispatch(DivRoundUp(lowResWidth_, 8), DivRoundUp(lowResHeight_, 8), 1);
     }
 
     // 分離ガウス。横 → 縦の 2 回に分けることで、サンプル数が O(n^2) から O(n) になる
@@ -191,7 +189,7 @@ namespace CoreEngine
         if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
         if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
 
-        cmdList->Dispatch(DispatchCount(lowResWidth_), DispatchCount(lowResHeight_), 1);
+        cmdList->Dispatch(DivRoundUp(lowResWidth_, 8), DivRoundUp(lowResHeight_, 8), 1);
     }
 
     // 適用パス。ぼかしたベース層をフル解像度輝度をガイドに再構成してからトーンを圧縮する
@@ -228,7 +226,7 @@ namespace CoreEngine
         if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
         if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
 
-        cmdList->Dispatch(DispatchCount(context.width), DispatchCount(context.height), 1);
+        cmdList->Dispatch(DivRoundUp(context.width, 8), DivRoundUp(context.height, 8), 1);
     }
 
     void LocalExposure::DrawImGui()

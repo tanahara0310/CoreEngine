@@ -10,6 +10,7 @@
 #include "Editor/ImGui/ImGuiAll.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/GameObjectManager.h"
+#include "Utility/String/CopyToBuffer.h"
 
 #include <filesystem>
 #include <memory>
@@ -155,7 +156,7 @@ namespace CoreEngine
             rig_.name = name;
         }
 
-        std::snprintf(nameBuffer_, sizeof(nameBuffer_), "%s", rig_.name.c_str());
+        CopyToBuffer(nameBuffer_, rig_.name);
         dirty_ = true;
         statusMessage_ = "読み込みました: " + name;
         return true;
@@ -267,7 +268,7 @@ namespace CoreEngine
         UI::SameLine();
         if (ImGui::SmallButton("新規")) {
             rig_ = CameraRigAsset{};
-            std::snprintf(nameBuffer_, sizeof(nameBuffer_), "NewCameraRig");
+            CopyToBuffer(nameBuffer_, "NewCameraRig");
             selectedRigIndex_ = -1;
             dirty_ = true;
             statusMessage_ = "新しいリグを作りました";

@@ -3,61 +3,13 @@
 #include "GameObject/GameObject.h"
 
 #include <algorithm>
-#include <array>
 #include <cmath>
 
 namespace CoreEngine
 {
 namespace {
-
-    //================================================
-    // 形状ペアごとの判定ディスパッチ
-    //================================================
-    /// 実装は Math/Geometry 側の 1 箇所にあり、ここはワールド形状を作って渡すだけ。
-    /// 表の行と列の数は並べた関数の数で決まる。形状の数と合わないと（行ごとに数が違っても）コンパイルが止まる。
-
-    bool SphereVsSphere(const Collider& a, const Collider& b, Geometry::Contact* c) {
-        return Geometry::Intersect(a.GetWorldSphere(), b.GetWorldSphere(), c);
-    }
-    bool SphereVsBox(const Collider& a, const Collider& b, Geometry::Contact* c) {
-        return Geometry::Intersect(a.GetWorldSphere(), b.GetWorldOBB(), c);
-    }
-    bool BoxVsSphere(const Collider& a, const Collider& b, Geometry::Contact* c) {
-        return Geometry::Intersect(a.GetWorldOBB(), b.GetWorldSphere(), c);
-    }
-    bool BoxVsBox(const Collider& a, const Collider& b, Geometry::Contact* c) {
-        return Geometry::Intersect(a.GetWorldOBB(), b.GetWorldOBB(), c);
-    }
-    bool SphereVsCapsule(const Collider& a, const Collider& b, Geometry::Contact* c) {
-        return Geometry::Intersect(a.GetWorldSphere(), b.GetWorldCapsule(), c);
-    }
-    bool CapsuleVsSphere(const Collider& a, const Collider& b, Geometry::Contact* c) {
-        return Geometry::Intersect(a.GetWorldCapsule(), b.GetWorldSphere(), c);
-    }
-    bool BoxVsCapsule(const Collider& a, const Collider& b, Geometry::Contact* c) {
-        return Geometry::Intersect(a.GetWorldOBB(), b.GetWorldCapsule(), c);
-    }
-    bool CapsuleVsBox(const Collider& a, const Collider& b, Geometry::Contact* c) {
-        return Geometry::Intersect(a.GetWorldCapsule(), b.GetWorldOBB(), c);
-    }
-    bool CapsuleVsCapsule(const Collider& a, const Collider& b, Geometry::Contact* c) {
-        return Geometry::Intersect(a.GetWorldCapsule(), b.GetWorldCapsule(), c);
-    }
-
     constexpr int kShapeCount = static_cast<int>(ColliderShapeType::Count);
 
-    constexpr std::array kDispatch = {
-        /*                       相手: Sphere      Box           Capsule          */
-        /* Sphere  */ std::array{ SphereVsSphere,  SphereVsBox,  SphereVsCapsule  },
-        /* Box     */ std::array{ BoxVsSphere,     BoxVsBox,     BoxVsCapsule     },
-        /* Capsule */ std::array{ CapsuleVsSphere, CapsuleVsBox, CapsuleVsCapsule },
-    };
-    static_assert(kDispatch.size() == static_cast<size_t>(kShapeCount) &&
-                  kDispatch.front().size() == static_cast<size_t>(kShapeCount),
-        "形状の組み合わせの判定が埋まっていない（ColliderShapeType を足したら kDispatch に行と列を足す）");
-}
-
-namespace {
     /// @brief 一意 ID の発番。0 は「無効」に予約するので 1 から始める。
     /// @note 再利用しないので ABA が原理的に起きない。64bit なので枯渇は現実的に無い。
     uint64_t NextColliderId()
@@ -91,7 +43,11 @@ bool Collider::Intersects(const Collider& other, Geometry::Contact* outContact) 
     if (a < 0 || a >= kShapeCount || b < 0 || b >= kShapeCount) {
         return false;
     }
-    return kDispatch[static_cast<size_t>(a)][static_cast<size_t>(b)](*this, other, outContact);
+    return VisitWorldShape(*this, [&](const auto& selfShape) {
+        return VisitWorldShape(other, [&](const auto& otherShape) {
+            return Geometry::Intersect(selfShape, otherShape, outContact);
+        });
+    });
 }
 
 //================================================

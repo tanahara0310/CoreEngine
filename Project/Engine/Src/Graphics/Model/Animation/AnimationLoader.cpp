@@ -8,6 +8,34 @@
 
 namespace CoreEngine
 {
+namespace {
+    /// @brief Assimp のベクトルをエンジンの Vector3 に写す
+    Vector3 ToEngineValue(const aiVector3D& value) {
+        return { value.x, value.y, value.z };
+    }
+
+    /// @brief Assimp のクォータニオンをエンジンの Quaternion に写す
+    Quaternion ToEngineValue(const aiQuaternion& value) {
+        return { value.x, value.y, value.z, value.w };
+    }
+
+    /// @brief Assimp のキー列を秒単位のキーフレームにしてカーブの末尾へ足す
+    /// @note 値は変換せずに写す（左手系への変換は読み込み時の aiProcess_ConvertToLeftHanded が済ませている）。
+    template <typename T, typename AssimpKey>
+    void AppendKeys(const AssimpKey* keys, unsigned int keyCount, double ticksPerSecond, AnimationCurve<T>& outCurve) {
+        for (uint32_t keyIndex = 0; keyIndex < keyCount; ++keyIndex) {
+            const AssimpKey& keyAssimp = keys[keyIndex];
+            Keyframe<T> keyframe;
+
+            // 時刻を秒に変換
+            keyframe.time = static_cast<float>(keyAssimp.mTime / ticksPerSecond);
+            keyframe.value = ToEngineValue(keyAssimp.mValue);
+
+            outCurve.keyframes.push_back(keyframe);
+        }
+    }
+}
+
 bool AnimationLoader::LoadAllAnimations(const std::filesystem::path& filePath,
     std::vector<std::pair<std::string, Animation>>& outAnimations, uint32_t& outMeshCount) {
     // Assimp はパスを UTF-8 とみなす
@@ -78,47 +106,9 @@ Animation AnimationLoader::ParseAnimation(const aiScene* scene, unsigned int ani
 NodeAnimation AnimationLoader::ConvertNodeAnimation(const aiNodeAnim* aiNodeAnim, double ticksPerSecond) {
     NodeAnimation nodeAnimation;
 
-    // === Translate（平行移動）のキーフレーム ===
-    for (uint32_t keyIndex = 0; keyIndex < aiNodeAnim->mNumPositionKeys; ++keyIndex) {
-        const aiVectorKey& keyAssimp = aiNodeAnim->mPositionKeys[keyIndex];
-        KeyframeVector3 keyframe;
-
-        // 時刻を秒に変換
-        keyframe.time = static_cast<float>(keyAssimp.mTime / ticksPerSecond);
-
-        // 値を取得（座標変換は不要：モデルロード時にaiProcess_ConvertToLeftHandedで処理済み）
-        keyframe.value = { keyAssimp.mValue.x, keyAssimp.mValue.y, keyAssimp.mValue.z };
-
-        nodeAnimation.translate.keyframes.push_back(keyframe);
-    }
-
-    // === Rotate（回転）のキーフレーム ===
-    for (uint32_t keyIndex = 0; keyIndex < aiNodeAnim->mNumRotationKeys; ++keyIndex) {
-        const aiQuatKey& keyAssimp = aiNodeAnim->mRotationKeys[keyIndex];
-        KeyframeQuaternion keyframe;
-
-        // 時刻を秒に変換
-        keyframe.time = static_cast<float>(keyAssimp.mTime / ticksPerSecond);
-
-        // 値を取得（座標変換は不要：モデルロード時にaiProcess_ConvertToLeftHandedで処理済み）
-        keyframe.value = { keyAssimp.mValue.x, keyAssimp.mValue.y, keyAssimp.mValue.z, keyAssimp.mValue.w };
-
-        nodeAnimation.rotate.keyframes.push_back(keyframe);
-    }
-
-    // === Scale（スケール）のキーフレーム ===
-    for (uint32_t keyIndex = 0; keyIndex < aiNodeAnim->mNumScalingKeys; ++keyIndex) {
-        const aiVectorKey& keyAssimp = aiNodeAnim->mScalingKeys[keyIndex];
-        KeyframeVector3 keyframe;
-
-        // 時刻を秒に変換
-        keyframe.time = static_cast<float>(keyAssimp.mTime / ticksPerSecond);
-
-        // スケールはそのまま
-        keyframe.value = { keyAssimp.mValue.x, keyAssimp.mValue.y, keyAssimp.mValue.z };
-
-        nodeAnimation.scale.keyframes.push_back(keyframe);
-    }
+    AppendKeys(aiNodeAnim->mPositionKeys, aiNodeAnim->mNumPositionKeys, ticksPerSecond, nodeAnimation.translate);
+    AppendKeys(aiNodeAnim->mRotationKeys, aiNodeAnim->mNumRotationKeys, ticksPerSecond, nodeAnimation.rotate);
+    AppendKeys(aiNodeAnim->mScalingKeys, aiNodeAnim->mNumScalingKeys, ticksPerSecond, nodeAnimation.scale);
 
     return nodeAnimation;
 }

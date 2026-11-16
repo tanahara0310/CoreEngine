@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "ShaderTableBuilder.h"
+#include "Math/IntegerMath.h"
 #include "Utility/Logger/Logger.h"
 
 #include <cassert>
@@ -41,7 +42,7 @@ namespace CoreEngine
         assert(rayGenName_);
 
         // 1 レコード = ShaderIdentifier（32 bytes）をレコードアライメントに切り上げ
-        recordSize_ = Align(
+        recordSize_ = AlignUp<UINT64>(
             D3D12_SHADER_IDENTIFIER_SIZE_IN_BYTES,
             D3D12_RAYTRACING_SHADER_RECORD_BYTE_ALIGNMENT);
 
@@ -49,9 +50,9 @@ namespace CoreEngine
         // バッファ内レイアウト: [RayGen セクション][Miss セクション][HitGroup セクション]
         const UINT64 kTableAlign = D3D12_RAYTRACING_SHADER_TABLE_BYTE_ALIGNMENT;
 
-        UINT64 rayGenSectionSize = Align(recordSize_, kTableAlign);
-        UINT64 missSectionSize = Align(missNames_.size() * recordSize_, kTableAlign);
-        UINT64 hitGroupSectionSize = Align(hitGroupNames_.size() * recordSize_, kTableAlign);
+        UINT64 rayGenSectionSize = AlignUp(recordSize_, kTableAlign);
+        UINT64 missSectionSize = AlignUp(missNames_.size() * recordSize_, kTableAlign);
+        UINT64 hitGroupSectionSize = AlignUp(hitGroupNames_.size() * recordSize_, kTableAlign);
         UINT64 totalSize = rayGenSectionSize + missSectionSize + hitGroupSectionSize;
 
         // オフセット（StartAddress 計算用）
@@ -158,13 +159,5 @@ namespace CoreEngine
         desc.Depth = depth;
 
         return desc;
-    }
-
-    // =========================================================================
-    // ヘルパー
-    // =========================================================================
-    UINT64 ShaderTableBuilder::Align(UINT64 size, UINT64 alignment)
-    {
-        return (size + alignment - 1) & ~(alignment - 1);
     }
 }

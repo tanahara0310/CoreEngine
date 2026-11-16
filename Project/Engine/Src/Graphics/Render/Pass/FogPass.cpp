@@ -62,8 +62,7 @@ namespace CoreEngine
             const FogVolumetricResources& volumetric = fog.GetForwardVolumetricResources();
 
             for (const auto passType : { RenderPassType::Model, RenderPassType::SkinnedModel }) {
-                if (auto* renderer = dynamic_cast<BaseModelRenderer*>(
-                        context.renderManager->GetRenderer(passType))) {
+                if (auto* renderer = context.renderManager->GetRendererAs<BaseModelRenderer>(passType)) {
                     renderer->SetFogConstants(full, additive, disabled, volumetric);
                 }
             }
@@ -74,8 +73,7 @@ namespace CoreEngine
             for (const auto passType : { RenderPassType::Particle,
                                         RenderPassType::ModelParticle,
                                         RenderPassType::GpuParticle }) {
-                if (auto* renderer = dynamic_cast<BaseParticleRenderer*>(
-                        context.renderManager->GetRenderer(passType))) {
+                if (auto* renderer = context.renderManager->GetRendererAs<BaseParticleRenderer>(passType)) {
                     renderer->SetFogConstants(additive, disabled, volumetric);
                 }
             }

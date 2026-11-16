@@ -3444,7 +3444,16 @@
     <ClInclude Include="Engine\Src\Math\Vector\Vector4.h">
       <Filter>Engine\Src\Math\Vector</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Math\IntegerMath.h">
+      <Filter>Engine\Src\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Math\Spline\CatmullRom.h">
+      <Filter>Engine\Src\Math\Spline</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Core\ComponentFactory.h">
+      <Filter>Engine\Src\GameObject\Component\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\Component\Core\ComponentService.h">
       <Filter>Engine\Src\GameObject\Component\Core</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\Component\Core\ComponentHost.h">
@@ -3974,6 +3983,27 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Debug\CrashDump.h">
       <Filter>Engine\Src\Utility\Debug</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Algorithm\AssignIfChanged.h">
+      <Filter>Engine\Src\Utility\Algorithm</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Algorithm\FindIfPtr.h">
+      <Filter>Engine\Src\Utility\Algorithm</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Container\RingHistory.h">
+      <Filter>Engine\Src\Utility\Container</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Enum\EnumFlags.h">
+      <Filter>Engine\Src\Utility\Enum</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Enum\EnumNames.h">
+      <Filter>Engine\Src\Utility\Enum</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Hash\Fnv1a.h">
+      <Filter>Engine\Src\Utility\Hash</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\String\CopyToBuffer.h">
+      <Filter>Engine\Src\Utility\String</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RHI\GraphicsCore.h">
       <Filter>Engine\Src\Graphics\RHI</Filter>
@@ -5099,6 +5129,9 @@
     <Filter Include="Engine\Src\Utility">
       <UniqueIdentifier>{46B344B6-CF7F-4BA4-AD45-446450F55874}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Src\Utility\Algorithm">
+      <UniqueIdentifier>{18149CCE-0971-40F7-AD7A-11776DF10076}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Engine\Src\Utility\Asset">
       <UniqueIdentifier>{A8B005CD-2D36-4460-AE1A-C213375311C2}</UniqueIdentifier>
     </Filter>
@@ -5108,11 +5141,17 @@
     <Filter Include="Engine\Src\Utility\Compression">
       <UniqueIdentifier>{A4EE7D68-1223-4F45-BC86-729CDA4123D3}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Src\Utility\Container">
+      <UniqueIdentifier>{BCCECA22-50F4-4583-B4DE-CB24CE0FDF58}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Engine\Src\Utility\CVar">
       <UniqueIdentifier>{3C1F7A62-5D48-4B0E-9E21-7A6C0B4D8F13}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Utility\Debug">
       <UniqueIdentifier>{8A2D5BE0-0975-4A68-995C-266173813571}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Utility\Enum">
+      <UniqueIdentifier>{5B9BD884-45C6-45A7-931B-B8AEBB9BD370}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Utility\Event">
       <UniqueIdentifier>{380A44FF-EB23-4116-AE4E-B33F867E6613}</UniqueIdentifier>
@@ -5122,6 +5161,9 @@
     </Filter>
     <Filter Include="Engine\Src\Utility\FrameRate">
       <UniqueIdentifier>{3EF43F6A-B47E-49FA-89A8-2EC239EA2398}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Utility\Hash">
+      <UniqueIdentifier>{CAAF7F94-B228-4529-B6FB-4444FFB9FEAA}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Utility\JsonManager">
       <UniqueIdentifier>{DDF59094-F412-4879-A350-D360A6435BCD}</UniqueIdentifier>
@@ -5146,6 +5188,9 @@
     </Filter>
     <Filter Include="Engine\Src\Utility\Session">
       <UniqueIdentifier>{A45F329B-F0A3-4B9E-BC5E-F9AEE2A0FF64}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Utility\String">
+      <UniqueIdentifier>{4EA43C12-F2B3-4823-8499-C7C66743170D}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Utility\Timer">
       <UniqueIdentifier>{139020EE-B17F-427B-AB95-76D25BBBABD6}</UniqueIdentifier>

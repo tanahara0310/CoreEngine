@@ -22,6 +22,7 @@
 #include "Editor/ImGui/Gizmo.h"
 #include "Graphics/Line/LineManager.h"
 #include "Utility/JsonManager/JsonManager.h"
+#include "Utility/String/CopyToBuffer.h"
 
 namespace CoreEngine
 {
@@ -366,7 +367,7 @@ namespace CoreEngine
 
         // ---- 名前と時刻 ----
         if (editingKeyLabelIndex_ != selectedIndex_) {
-            std::snprintf(keyLabelBuffer_, sizeof(keyLabelBuffer_), "%s", key.label.c_str());
+            CopyToBuffer(keyLabelBuffer_, key.label);
             editingKeyLabelIndex_ = selectedIndex_;
         }
         ImGui::SetNextItemWidth(180.0f);
@@ -682,7 +683,7 @@ namespace CoreEngine
         CameraSequenceShot& shot = sequence_.shots[selectedShotIndex_];
 
         if (editingShotNameIndex_ != selectedShotIndex_) {
-            std::snprintf(shotNameBuffer_, sizeof(shotNameBuffer_), "%s", shot.name.c_str());
+            CopyToBuffer(shotNameBuffer_, shot.name);
             editingShotNameIndex_ = selectedShotIndex_;
         }
         if (UI::InputText("名前", shotNameBuffer_, sizeof(shotNameBuffer_))) {
@@ -1150,7 +1151,7 @@ namespace CoreEngine
 
         case CameraSequenceEventType::Callback: {
             if (editingEventNameIndex_ != selectedEventIndex_) {
-                std::snprintf(eventNameBuffer_, sizeof(eventNameBuffer_), "%s", event.name.c_str());
+                CopyToBuffer(eventNameBuffer_, event.name);
                 editingEventNameIndex_ = selectedEventIndex_;
             }
             if (UI::InputText("イベント名", eventNameBuffer_, sizeof(eventNameBuffer_))) {

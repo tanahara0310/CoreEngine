@@ -17,6 +17,7 @@
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
+#include "Math/IntegerMath.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
@@ -531,7 +532,7 @@ namespace CoreEngine
 
             const uint32_t mipW = (std::max)(hiZWidth_ >> mip, 1u);
             const uint32_t mipH = (std::max)(hiZHeight_ >> mip, 1u);
-            cmdList->Dispatch((mipW + 7) / 8, (mipH + 7) / 8, 1);
+            cmdList->Dispatch(DivRoundUp(mipW, 8), DivRoundUp(mipH, 8), 1);
 
             // 次の段（および判定 CS）がこのミップを読むため書き込み完了を保証する
             Barrier::UAV(cmdList, hiZTexture_);
@@ -559,7 +560,7 @@ namespace CoreEngine
             static_cast<UINT>(cullParamsIdx_),
             cullParamsUpload_[frameIndex]->GetGPUVirtualAddress());
 
-        cmdList->Dispatch((queryCount + 63) / 64, 1, 1);
+        cmdList->Dispatch(DivRoundUp(queryCount, 64), 1, 1);
 
         // 判定結果を Readback バッファへコピー（CPU は同リングインデックスの次回フレームで読む）
         Barrier::UAV(cmdList, visibilityBuffer_);

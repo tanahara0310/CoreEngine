@@ -2,7 +2,8 @@
 
 #ifdef CORE_EDITOR
 
-#include <array>
+#include "Utility/Container/RingHistory.h"
+
 #include <string>
 
 namespace CoreEngine
@@ -49,16 +50,11 @@ namespace CoreEngine
         /// @return 書けたら true（`outPath` に書いた先）
         bool ExportCsv(std::string& outPath) const;
 
-        /// @brief 古い順に i 番目の控え
-        const FrameSample& SampleAt(int i) const;
-
         EngineSystem* engine_ = nullptr;
         GpuTimestampProfiler* gpuProfiler_ = nullptr;
         ThreadProfilerUI* threadProfiler_ = nullptr;
 
-        std::array<FrameSample, kHistorySize> history_{};
-        int historyHead_ = 0;   // 次に書く位置
-        int historyCount_ = 0;  // 控えた数
+        RingHistory<FrameSample, kHistorySize> history_;
 
         bool firstDraw_ = true;
         bool recording_ = true;

@@ -7,6 +7,7 @@
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h"
 #include "Graphics/Asset/AssetDatabase.h"
+#include "Math/IntegerMath.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/Logger/Logger.h"
 #ifdef CORE_EDITOR
@@ -275,7 +276,7 @@ namespace CoreEngine
         if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, lutUavHandle_.gpuHandle);
         if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
 
-        const uint32_t groups = (lutSizeLoaded_ + 3) / 4;
+        const uint32_t groups = DivRoundUp(lutSizeLoaded_, 4);
         cmdList->Dispatch(groups, groups, groups);
 
         // 書き込み完了 → SRV で読める状態へ（UAV バリアと遷移を 1 回にまとめる）
@@ -322,7 +323,7 @@ namespace CoreEngine
         if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
         if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
 
-        cmdList->Dispatch((width + 7) / 8, (height + 7) / 8, 1);
+        cmdList->Dispatch(DivRoundUp(width, 8), DivRoundUp(height, 8), 1);
     }
 
     void ColorLUT::DrawImGui()

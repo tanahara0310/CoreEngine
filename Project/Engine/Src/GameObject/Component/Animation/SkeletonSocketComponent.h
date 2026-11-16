@@ -35,7 +35,7 @@ public:
     /// @brief トランスフォームを使う
     bool RequiresComponent(const IComponent& other) const override
     {
-        return dynamic_cast<const TransformComponent*>(&other) != nullptr;
+        return IsAnyOf<TransformComponent>(other);
     }
 
     /// @brief ジョイントのワールド行列にオフセットを掛けて自分のワールド行列を上書きする

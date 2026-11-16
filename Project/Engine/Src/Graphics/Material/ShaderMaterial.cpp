@@ -2,6 +2,7 @@
 #include "ShaderMaterial.h"
 
 #include "Graphics/Asset/AssetRef.h"
+#include "Utility/Algorithm/AssignIfChanged.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
@@ -313,16 +314,14 @@ namespace CoreEngine
 
     void ShaderMaterial::SetShaderPath(std::string path)
     {
-        if (shaderPath_ != path) {
-            shaderPath_ = std::move(path);
+        if (AssignIfChanged(shaderPath_, std::move(path))) {
             ++revision_;
         }
     }
 
     void ShaderMaterial::SetVertexShaderPath(std::string path)
     {
-        if (vertexShaderPath_ != path) {
-            vertexShaderPath_ = std::move(path);
+        if (AssignIfChanged(vertexShaderPath_, std::move(path))) {
             ++revision_;
         }
     }

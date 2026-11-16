@@ -90,9 +90,8 @@ namespace CoreEngine
                 return false;
             }
 
-            const auto* taa = context.renderingTechniqueManager->GetTechnique<TAATechnique>(
-                RenderingTechniqueNames::TAA);
-            return taa && taa->IsEnabled();
+            return context.renderingTechniqueManager->GetEnabledTechnique<TAATechnique>(
+                RenderingTechniqueNames::TAA) != nullptr;
         }
 
         // CAS が今フレームこの View で走るか
@@ -105,9 +104,8 @@ namespace CoreEngine
                 return false;
             }
 
-            const auto* cas = context.renderingTechniqueManager->GetTechnique<CASTechnique>(
-                RenderingTechniqueNames::CAS);
-            return cas && cas->IsEnabled();
+            return context.renderingTechniqueManager->GetEnabledTechnique<CASTechnique>(
+                RenderingTechniqueNames::CAS) != nullptr;
         }
 
     /// @brief CAS 出力用ターゲットを画面サイズに合わせて用意する

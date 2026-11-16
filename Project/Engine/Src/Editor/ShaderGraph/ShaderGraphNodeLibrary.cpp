@@ -3,6 +3,8 @@
 
 #ifdef CORE_EDITOR
 
+#include "Utility/Enum/EnumNames.h"
+
 #include <algorithm>
 #include <charconv>
 #include <cmath>
@@ -1602,29 +1604,33 @@ namespace CoreEngine::Editor::ShaderGraph
         return &cache.emplace(key, std::move(owned)).first->second->desc;
     }
 
+    namespace
+    {
+        /// @brief ピンの値の種類とファイルに書く綴りの表
+        constexpr EnumName<ValueType> kValueTypeNames[] = {
+            { ValueType::Float, "Float" },
+            { ValueType::Vector2, "Vector2" },
+            { ValueType::Vector3, "Vector3" },
+            { ValueType::Vector4, "Vector4" },
+            { ValueType::Dynamic, "Dynamic" },
+            { ValueType::Texture2D, "Texture2D" },
+            { ValueType::SamplerState, "SamplerState" },
+        };
+    }
+
     const char* ToString(ValueType type)
     {
-        switch (type) {
-        case ValueType::Float: return "Float";
-        case ValueType::Vector2: return "Vector2";
-        case ValueType::Vector3: return "Vector3";
-        case ValueType::Vector4: return "Vector4";
-        case ValueType::Dynamic: return "Dynamic";
-        case ValueType::Texture2D: return "Texture2D";
-        case ValueType::SamplerState: return "SamplerState";
-        }
-        return "Float";
+        return NameOf(kValueTypeNames, type, "Float").data();
     }
 
     bool ParseValueType(std::string_view text, ValueType& type)
     {
-        for (const ValueType candidate : { F, V2, V3, V4, Tex, Smp }) {
-            if (text == ToString(candidate)) {
-                type = candidate;
-                return true;
-            }
+        ValueType parsed = ValueType::Float;
+        if (!TryParseName(kValueTypeNames, text, parsed) || parsed == ValueType::Dynamic) {
+            return false;
         }
-        return false;
+        type = parsed;
+        return true;
     }
 
     std::vector<FunctionPin> ParseFunctionPins(std::string_view text)
@@ -1678,8 +1684,6 @@ namespace CoreEngine::Editor::ShaderGraph
             const size_t end = value.find_last_not_of(" \t\r\n");
             return value.substr(begin, end - begin + 1);
         };
-        constexpr PropertyType kTypes[] = { PropertyType::Float, PropertyType::Vector2, PropertyType::Vector3,
-            PropertyType::Vector4, PropertyType::Color, PropertyType::Texture2D, PropertyType::SamplerState };
         std::vector<SubGraphPin> pins;
         std::set<std::string, std::less<>> keys;
         size_t begin = 0;
@@ -1691,16 +1695,14 @@ namespace CoreEngine::Editor::ShaderGraph
             if (typeEnd == std::string_view::npos) {
                 continue;
             }
-            const std::string_view typeText = item.substr(0, typeEnd);
-            const auto type = std::find_if(std::begin(kTypes), std::end(kTypes),
-                [typeText](PropertyType candidate) { return typeText == ToString(candidate); });
-            if (type == std::end(kTypes)) {
+            PropertyType type = PropertyType::Float;
+            if (!ParsePropertyType(item.substr(0, typeEnd), type)) {
                 continue;
             }
             const std::string_view rest = trim(item.substr(typeEnd + 1));
             const size_t keyEnd = (std::min)(rest.find_first_of(" \t"), rest.size());
             SubGraphPin pin;
-            pin.type = *type;
+            pin.type = type;
             pin.key = std::string(rest.substr(0, keyEnd));
             pin.label = std::string(trim(rest.substr(keyEnd)));
             if (pin.key.empty() || !keys.insert(pin.key).second) {

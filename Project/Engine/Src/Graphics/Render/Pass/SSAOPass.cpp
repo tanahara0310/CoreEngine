@@ -43,11 +43,11 @@ namespace CoreEngine
             return;
         }
 
-        auto* ssao = context.renderingTechniqueManager->GetTechnique<SSAOTechnique>(RenderingTechniqueNames::SSAO);
+        auto* ssao = context.renderingTechniqueManager->GetEnabledTechnique<SSAOTechnique>(RenderingTechniqueNames::SSAO);
         auto* ssaoTemporal = context.renderingTechniqueManager->GetTechnique<SSAOTemporalTechnique>(RenderingTechniqueNames::SSAOTemporal);
         auto* ssaoBlur = context.renderingTechniqueManager->GetTechnique<SSAOBlurTechnique>(RenderingTechniqueNames::SSAOBlur);
 
-        if (!ssao || !ssao->IsEnabled()) {
+        if (!ssao) {
             return;
         }
 

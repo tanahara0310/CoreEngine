@@ -4,6 +4,7 @@
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Math/IntegerMath.h"
 #include "Utility/Logger/Logger.h"
 
 #include <algorithm>
@@ -274,8 +275,8 @@ namespace CoreEngine
         }
 
         const uint64_t div = std::max(resolutionDivisor, 1u);
-        const uint32_t halfW = static_cast<uint32_t>((sceneDesc.Width + div - 1) / div);
-        const uint32_t halfH = static_cast<uint32_t>((sceneDesc.Height + div - 1) / div);
+        const uint32_t halfW = static_cast<uint32_t>(DivRoundUp<uint64_t>(sceneDesc.Width, div));
+        const uint32_t halfH = static_cast<uint32_t>(DivRoundUp<uint64_t>(sceneDesc.Height, div));
 
         // 現在の SceneColor サイズと分割数で確保済みなら再利用する
         if (godRayBuffer && cloudBuffers[0] && cloudBuffers[1] &&

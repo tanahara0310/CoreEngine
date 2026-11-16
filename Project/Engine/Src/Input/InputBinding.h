@@ -2,6 +2,7 @@
 #include "IInputDevice.h"
 #include "MouseInput.h"
 #include "GamepadInput.h"
+#include "Utility/Enum/EnumFlags.h"
 #include <cstdint>
 #include <string>
 
@@ -26,18 +27,12 @@ namespace CoreEngine {
         Alt   = 1 << 2,
     };
 
-    constexpr InputModifier operator|(InputModifier a, InputModifier b)
-    {
-        return static_cast<InputModifier>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b));
-    }
-
-    constexpr InputModifier& operator|=(InputModifier& a, InputModifier b) { a = a | b; return a; }
+    CE_ENUM_FLAG_OPERATORS(InputModifier)
 
     /// @brief 指定した修飾キーをすべて含むか
     constexpr bool HasModifier(InputModifier value, InputModifier required)
     {
-        return (static_cast<uint8_t>(value) & static_cast<uint8_t>(required))
-            == static_cast<uint8_t>(required);
+        return EnumFlags::HasAll(value, required);
     }
 
     /// @brief 物理入力1件のバインディング定義

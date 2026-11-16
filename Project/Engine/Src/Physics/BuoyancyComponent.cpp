@@ -17,7 +17,7 @@ namespace CoreEngine
 {
     bool BuoyancyComponent::RequiresComponent(const IComponent& other) const
     {
-        return dynamic_cast<const RigidbodyComponent*>(&other) != nullptr;
+        return IsAnyOf<RigidbodyComponent>(other);
     }
 
     void BuoyancyComponent::OnEnable()

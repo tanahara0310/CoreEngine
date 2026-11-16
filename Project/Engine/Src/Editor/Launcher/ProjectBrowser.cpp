@@ -7,6 +7,7 @@
 #include "Editor/ImGui/EditorTheme.h"
 #include "Editor/Launcher/ProjectThumbnails.h"
 #include "Utility/Path/ProjectPaths.h"
+#include "Utility/String/CopyToBuffer.h"
 
 #include <shellapi.h>
 #include <shobjidl.h>
@@ -38,15 +39,6 @@ namespace CoreEngine::Editor
         std::filesystem::path FromUtf8(const std::string& text)
         {
             return std::filesystem::path(std::u8string(text.begin(), text.end()));
-        }
-
-        /// @brief UTF-8 の文字列を入力欄の固定長の場所へ写す（入り切らない分は落とす）
-        template <size_t N>
-        void CopyToBuffer(char (&buffer)[N], const std::string& text)
-        {
-            const size_t length = std::min(text.size(), N - 1);
-            std::memcpy(buffer, text.data(), length);
-            buffer[length] = '\0';
         }
 
         /// @brief ASCII の英字だけ大文字小文字を無視して、text が query を含むか

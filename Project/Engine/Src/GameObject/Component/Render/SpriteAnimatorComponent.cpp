@@ -28,7 +28,7 @@ namespace CoreEngine
 {
     bool SpriteAnimatorComponent::RequiresComponent(const IComponent& other) const
     {
-        return dynamic_cast<const SpriteRendererComponent*>(&other) != nullptr;
+        return IsAnyOf<SpriteRendererComponent>(other);
     }
 
     void SpriteAnimatorComponent::Start()
