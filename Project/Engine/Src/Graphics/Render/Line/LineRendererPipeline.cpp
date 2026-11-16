@@ -124,16 +124,13 @@ namespace CoreEngine
 
         // このフラッシュ専用の領域を取る。次のパスのフラッシュは別の領域を取るので、
         // GPU が実行する前に上書きされることがない
-        const uint32_t byteSize = static_cast<uint32_t>(sizeof(LineVertex) * vertices.size());
-        const UploadAllocation allocation = dxCommon_->GetUploadRing().Allocate(byteSize, 16);
+        const UploadAllocation allocation = dxCommon_->GetUploadRing().AllocateArray<LineVertex>(vertices);
         if (!allocation.IsValid()) {
             return;
         }
 
-        std::memcpy(allocation.cpu, vertices.data(), byteSize);
-
         vbView_.BufferLocation = allocation.gpuAddress;
-        vbView_.SizeInBytes = byteSize;
+        vbView_.SizeInBytes = allocation.size;
     }
 
     int LineRendererPipeline::GetRootParamIndex(const std::string& resourceName) const {

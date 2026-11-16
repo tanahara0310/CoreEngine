@@ -2,7 +2,6 @@
 #include "FadeEffect.h"
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Math/IntegerMath.h"
 #include "Utility/CVar/CVar.h"
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
@@ -87,25 +86,7 @@ namespace CoreEngine
         uint32_t width,
         uint32_t height)
     {
-        UpdateScreenSizeConstants(width, height);
-
-        auto* cmdList = graphicsCore_->GetCommandList();
-        cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
-        cmdList->SetPipelineState(computePso_.Get());
-
-        int textureIdx = GetRootParamIndex("gTexture");
-        int outputIdx  = GetRootParamIndex("gOutput");
-        int fadeIdx    = GetRootParamIndex("FadeParams");
-        int screenIdx  = GetRootParamIndex("ScreenParams");
-
-        if (textureIdx >= 0) cmdList->SetComputeRootDescriptorTable(textureIdx, inputSrvHandle);
-        if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
-        if (fadeIdx >= 0)    cmdList->SetComputeRootConstantBufferView(fadeIdx, UploadConstants(MakeParams()));
-        if (screenIdx >= 0)  cmdList->SetComputeRootConstantBufferView(screenIdx, GetScreenSizeCbAddress());
-
-        uint32_t groupX = DivRoundUp(width, 8);
-        uint32_t groupY = DivRoundUp(height, 8);
-        cmdList->Dispatch(groupX, groupY, 1);
+        DispatchScreenPass(inputSrvHandle, outputUavHandle, width, height, "FadeParams", MakeParams());
     }
 
     void FadeEffect::DrawImGui()

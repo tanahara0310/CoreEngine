@@ -28,10 +28,6 @@ COMPONENT_REGISTER(CoreEngine::MeshRendererComponent)
 
 namespace
 {
-    /// @brief ブレンドの名前（`BlendMode` の並び）
-    constexpr const char* kBlendModeNames[] = { "なし", "アルファ", "加算", "減算", "乗算", "スクリーン" };
-    static_assert(std::size(kBlendModeNames) == CoreEngine::kBlendModeCount);
-
     /// @brief モデルファイルを指していないときにモデルの欄へ出す文字（プリミティブならその形）
     std::string DescribeUnsetModel(const void* instance)
     {
@@ -47,7 +43,7 @@ REFLECT_DEFINE_BEGIN(CoreEngine::MeshRendererComponent, "メッシュ描画")
         p.assetType = ::CoreEngine::AssetType::Model, p.emptyText = &DescribeUnsetModel)
     REFLECT_ACCESSOR("texture", "テクスチャ", GetTextureAsset, SetTextureAsset,
         p.assetType = ::CoreEngine::AssetType::Texture)
-    REFLECT_ENUM_ACCESSOR("blendMode", "ブレンド", GetBlendMode, SetBlendMode, kBlendModeNames)
+    REFLECT_ENUM_ACCESSOR("blendMode", "ブレンド", GetBlendMode, SetBlendMode, ::CoreEngine::kBlendModeNames)
     REFLECT_ACCESSOR("material", "マテリアル", GetMaterialAsset, SetMaterialAsset,
         p.assetType = ::CoreEngine::AssetType::Material,
         p.tooltip = "描き方を決めるシェーダ（名前.Surface.hlsl）と値（.mat）。指さなければモデルのテクスチャとマテリアルの値で描く")

@@ -5,65 +5,56 @@
 
 namespace CoreEngine
 {
+/// @brief シミュレーション空間（MainModule）
+enum class ParticleSimulationSpace {
+    Local,  // ローカル空間（エミッターに追従）
+    World   // ワールド空間（エミッターから独立）
+};
+
+/// @brief メインモジュールのデータ
+struct ParticleMainData {
+    // ===== システム設定 =====
+    float duration = 5.0f;   // 持続時間（秒）
+    bool looping = true;// ループするか
+    bool playOnAwake = true; // 開始時に自動再生するか
+    uint32_t maxParticles = 1000;       // 最大パーティクル数
+    ParticleSimulationSpace simulationSpace = ParticleSimulationSpace::World;  // シミュレーション空間
+
+    // ===== パーティクルの初期設定（Start～） =====
+
+    // 寿命
+    float startLifetime = 1.0f;       // 初期寿命（秒）
+    float startLifetimeRandomness = 0.0f;// 寿命のランダム性（0.0～1.0）
+
+    // 速度
+    float startSpeed = 5.0f; // 初期速度の大きさ
+    float startSpeedRandomness = 0.0f;  // 速度のランダム性（0.0～1.0）
+
+    // サイズ
+    Vector3 startSize = { 1.0f, 1.0f, 1.0f };  // 初期サイズ
+    float startSizeRandomness = 0.0f;   // サイズのランダム性（0.0～1.0）
+
+    // 回転
+    Vector3 startRotation = { 0.0f, 0.0f, 0.0f };  // 初期回転（度数）
+    float startRotationRandomness = 0.0f;  // 回転のランダム性（0.0～1.0）
+
+    // 色
+    Vector4 startColor = { 1.0f, 1.0f, 1.0f, 1.0f };  // 初期色
+    float startColorRandomness = 0.0f;  // 色のランダム性（0.0～1.0）
+
+    // ===== スケーリング設定 =====
+    float gravityModifier = 0.0f;   // 重力の影響度（削除予定：ForceModuleに移行）
+};
+
 /// @brief パーティクルシステムのメインモジュール
 /// Unityの「Main Module」に相当
-class MainModule : public ParticleModule {
+class MainModule : public ParticleModuleT<ParticleMainData> {
 public:
-    /// @brief シミュレーション空間
-    enum class SimulationSpace {
-        Local,  // ローカル空間（エミッターに追従）
-        World   // ワールド空間（エミッターから独立）
-    };
-
-    /// @brief メインモジュールのデータ
-    struct MainData {
-        // ===== システム設定 =====
-        float duration = 5.0f;   // 持続時間（秒）
-        bool looping = true;// ループするか
-        bool playOnAwake = true; // 開始時に自動再生するか
-        uint32_t maxParticles = 1000;       // 最大パーティクル数
-        SimulationSpace simulationSpace = SimulationSpace::World;  // シミュレーション空間
-
-        // ===== パーティクルの初期設定（Start～） =====
-        
-        // 寿命
-        float startLifetime = 1.0f;       // 初期寿命（秒）
-        float startLifetimeRandomness = 0.0f;// 寿命のランダム性（0.0～1.0）
-
-        // 速度
-        float startSpeed = 5.0f; // 初期速度の大きさ
-        float startSpeedRandomness = 0.0f;  // 速度のランダム性（0.0～1.0）
-
-        // サイズ
-        Vector3 startSize = { 1.0f, 1.0f, 1.0f };  // 初期サイズ
-        float startSizeRandomness = 0.0f;   // サイズのランダム性（0.0～1.0）
-
-        // 回転
-        Vector3 startRotation = { 0.0f, 0.0f, 0.0f };  // 初期回転（度数）
-        float startRotationRandomness = 0.0f;  // 回転のランダム性（0.0～1.0）
-
-        // 色
-        Vector4 startColor = { 1.0f, 1.0f, 1.0f, 1.0f };  // 初期色
-        float startColorRandomness = 0.0f;  // 色のランダム性（0.0～1.0）
-
-        // ===== スケーリング設定 =====
-        float gravityModifier = 0.0f;   // 重力の影響度（削除予定：ForceModuleに移行）
-    };
+    using SimulationSpace = ParticleSimulationSpace;
+    using MainData = ParticleMainData;
 
     MainModule();
     ~MainModule() = default;
-
-    /// @brief メインデータを設定
-    /// @param data メインデータ
-    void SetMainData(const MainData& data) { mainData_ = data; }
-
-    /// @brief メインデータを取得
-    /// @return メインデータの参照
-    const MainData& GetMainData() const { return mainData_; }
-
-    /// @brief メインデータを取得（書き換え可能）
-    /// @return メインデータの参照
-    MainData& GetMainData() { return mainData_; }
 
     /// @brief 最大パーティクル数のハード上限（バッファ容量）を設定
     /// @note 所有するパーティクルシステムが初期化時に設定する。
@@ -100,7 +91,6 @@ public:
 #endif
 
 private:
-    MainData mainData_;
     uint32_t capacityLimit_ = 0;  // maxParticlesのハード上限（0 = 未設定）
 
     /// @brief ランダム値を生成（-range ～ +range）

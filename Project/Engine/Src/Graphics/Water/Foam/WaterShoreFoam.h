@@ -63,16 +63,16 @@ namespace CoreEngine
 
         /// @brief 岸の泡の SRV（今フレームに書く側。(被覆率, 寄せ・引きのずれ x, z, 0)）
         D3D12_GPU_DESCRIPTOR_HANDLE GetSRVHandle() const {
-            return foam_[frameIndex_ & 1u].srv.gpuHandle;
+            return foam_.Write().srv.gpuHandle;
         }
 
         /// @brief 岸の泡の、直近に書いた側の SRV
         D3D12_GPU_DESCRIPTOR_HANDLE GetLatestSRVHandle() const {
-            return foam_[(frameIndex_ + 1u) & 1u].srv.gpuHandle;
+            return foam_.Read().srv.gpuHandle;
         }
 
         /// @brief 岸の泡の、直近に書いた側のテクスチャ（ステート追跡つき）
-        GpuResource& GetLatestResource() { return foam_[(frameIndex_ + 1u) & 1u]; }
+        GpuResource& GetLatestResource() { return foam_.Read(); }
 
     private:
         /// @brief 岸の泡のパスの定数（WaterShoreFoam.CS.hlsl の WaterShoreFoamConstants）
@@ -159,9 +159,8 @@ namespace CoreEngine
         // ---- 岸の泡（カメラの周りの範囲。水の粒の静止位置ごと）----
         CustomShaderPipeline foamPipeline_{};
         FoamShaderProvider foamShaderProvider_{};
-        /// @brief 書き込み先は frameIndex_ & 1
+        /// @brief 書き込み先は Dispatch ごとに入れ替える
         FFTOceanPingPong foam_{};
-        uint32_t frameIndex_ = 0;
         bool resetPending_ = true;
         float previousTimeSeconds_ = 0.0f;
         uint32_t spectrumRevision_ = 0;

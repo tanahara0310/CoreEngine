@@ -566,7 +566,7 @@ namespace CoreEngine
         const float ambientScale = VolumetricFogCVars::AmbientScale.Get();
         const Matrix4x4 viewProj = UnjitteredViewProjection(view);
 
-        currentLight_ ^= 1u;
+        lightScattering_.Swap();
         ++frameIndex_;
 
         Constants constants{};
@@ -671,8 +671,8 @@ namespace CoreEngine
             return;
         }
         namespace B = VolumetricFogLightScatteringBind;
-        Volume& current = lightScattering_[currentLight_];
-        Volume& previous = lightScattering_[currentLight_ ^ 1u];
+        Volume& current = lightScattering_.Write();
+        Volume& previous = lightScattering_.Read();
 
         Barrier::Transition(cmdList, previous.texture, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         Barrier::Transition(cmdList, current.texture, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -723,7 +723,7 @@ namespace CoreEngine
         {
             ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
             binder.Set(integrateBindings_[B::gVolumetricFog], frameConstants_);
-            binder.Set(integrateBindings_[B::gLightScattering], lightScattering_[currentLight_].srv.gpuHandle);
+            binder.Set(integrateBindings_[B::gLightScattering], lightScattering_.Write().srv.gpuHandle);
             binder.Set(integrateBindings_[B::gIntegrated], integrated_.uav.gpuHandle);
             binder.ValidateBeforeDraw(integrateBindings_);
         }

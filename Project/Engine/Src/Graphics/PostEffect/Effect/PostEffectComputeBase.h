@@ -25,8 +25,7 @@ namespace CoreEngine {
 
         /// @brief 画面サイズ定数バッファのレイアウト
         /// @details HLSL 側の `cbuffer ScreenParams : register(b1)` と一致させること。
-        ///          以前は同じ定義が 15 エフェクトにコピーされており、バッファの生成・
-        ///          更新コードもそれぞれ持っていた。共通の入れ物なので基底が 1 つだけ持つ。
+        ///          全エフェクトで共通の入れ物なので、基底が 1 つだけ持つ。
         struct ScreenSizeConstants {
             uint32_t screenWidth  = 1280;
             uint32_t screenHeight = 720;
@@ -56,6 +55,46 @@ namespace CoreEngine {
 
         /// @brief 直前の UpdateScreenSizeConstants が確保した GPU アドレス（ルートへ渡す用）
         D3D12_GPU_VIRTUAL_ADDRESS GetScreenSizeCbAddress() const { return screenSizeCbAddress_; }
+
+        /// @brief 入力 1 枚・出力 1 枚・固有の定数・画面サイズを差し、画面全体を 8×8 のグループで Dispatch する
+        /// @details 差す先は "gTexture"・"gOutput"・paramsName・"ScreenParams"。シェーダーに無い名前は差さない
+        /// @param inputSrvHandle  入力テクスチャの SRV
+        /// @param outputUavHandle 出力テクスチャの UAV
+        /// @param width           出力幅
+        /// @param height          出力高さ
+        /// @param paramsName      固有の定数バッファのシェーダー側の名前
+        /// @param params          固有の定数（今フレームの UploadRing へ置いてから差す）
+        template <class TParams>
+        void DispatchScreenPass(
+            D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle,
+            D3D12_GPU_DESCRIPTOR_HANDLE outputUavHandle,
+            uint32_t width,
+            uint32_t height,
+            const char* paramsName,
+            const TParams& params)
+        {
+            DispatchScreenPassWithAddress(
+                inputSrvHandle, outputUavHandle, width, height, paramsName, UploadConstants(params));
+        }
+
+        /// @brief 固有の定数を持たないエフェクト用。"gTexture"・"gOutput"・"ScreenParams" だけを差して Dispatch する
+        void DispatchScreenPass(
+            D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle,
+            D3D12_GPU_DESCRIPTOR_HANDLE outputUavHandle,
+            uint32_t width,
+            uint32_t height);
+
+        /// @brief DispatchScreenPass の本体。固有の定数は置き終えた GPU アドレスで受け取る
+        /// @param paramsName    固有の定数バッファのシェーダー側の名前（nullptr なら差さない）
+        /// @param paramsAddress paramsName へ差す GPU アドレス
+        void DispatchScreenPassWithAddress(
+            D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle,
+            D3D12_GPU_DESCRIPTOR_HANDLE outputUavHandle,
+            uint32_t width,
+            uint32_t height,
+            const char* paramsName,
+            D3D12_GPU_VIRTUAL_ADDRESS paramsAddress);
+
         Microsoft::WRL::ComPtr<ID3D12PipelineState> computePso_; ///< CS用PSO
 
     private:

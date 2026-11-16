@@ -2676,6 +2676,9 @@
     <ClInclude Include="Engine\Src\Graphics\Material\SurfaceMaterialPipeline.h">
       <Filter>Engine\Src\Graphics\Material</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Material\RevisionedPipelineCache.h">
+      <Filter>Engine\Src\Graphics\Material</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Material\UIMaterialInstance.h">
       <Filter>Engine\Src\Graphics\Material</Filter>
     </ClInclude>
@@ -2836,6 +2839,9 @@
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\Debug\RTDebugRegistry.h">
+      <Filter>Engine\Src\Graphics\RayTracing\Debug</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\Debug\RTDebugCollect.h">
       <Filter>Engine\Src\Graphics\RayTracing\Debug</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\Effect\RTEffect.h">
@@ -3993,6 +3999,9 @@
     <ClInclude Include="Engine\Src\Utility\Container\RingHistory.h">
       <Filter>Engine\Src\Utility\Container</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Container\PingPong.h">
+      <Filter>Engine\Src\Utility\Container</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Enum\EnumFlags.h">
       <Filter>Engine\Src\Utility\Enum</Filter>
     </ClInclude>
@@ -4138,6 +4147,9 @@
       <Filter>Engine\Src\Graphics\RHI\Resource</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RHI\Resource\PerFrameStructuredBuffer.h">
+      <Filter>Engine\Src\Graphics\RHI\Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RHI\Resource\ReadbackRing.h">
       <Filter>Engine\Src\Graphics\RHI\Resource</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\WorldTransform\WorldTransform.h">

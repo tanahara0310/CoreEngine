@@ -151,19 +151,19 @@ void CreateBasicEffect() {
     
     // エミッションの設定
     auto& emissionModule = ps->GetEmissionModule();
-    auto emissionData = emissionModule.GetEmissionData();
+    auto emissionData = emissionModule.GetData();
     emissionData.rateOverTime = 50;
     emissionData.shapeType = EmissionModule::ShapeType::Sphere;
     emissionData.radius = 1.0f;
-    emissionModule.SetEmissionData(emissionData);
+    emissionModule.SetData(emissionData);
     
     // 色の設定
     auto& colorModule = ps->GetColorModule();
-    auto colorData = colorModule.GetColorData();
+    auto colorData = colorModule.GetData();
     colorData.startColor = {1.0f, 0.5f, 0.2f, 1.0f}; // オレンジ
     colorData.endColor = {1.0f, 0.1f, 0.1f, 0.0f};   // 赤→透明
     colorData.useGradient = true;
-    colorModule.SetColorData(colorData);
+    colorModule.SetData(colorData);
     
     ps->Play();
 }

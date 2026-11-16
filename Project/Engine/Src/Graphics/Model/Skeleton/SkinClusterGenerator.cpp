@@ -41,16 +41,42 @@ CoreEngine::SkinCluster SkinClusterGenerator::CreateSkinCluster(
     skinCluster.palette.Initialize(graphics, UINT(skeleton.joints.size()), "SkinCluster Palette");
     skinCluster.prevPalette.Initialize(graphics, UINT(skeleton.joints.size()), "SkinCluster PrevPalette");
 
-    // influence用のResourceを確保。頂点ごとにinfluence情報を追加できるようにする
-    skinCluster.influenceResource = ResourceFactory::CreateBufferResource(device, sizeof(VertexInfluence) * modelData.vertices.size());
-    VertexInfluence* mappedInfluence = nullptr;
-    skinCluster.influenceResource->Map(0, nullptr, reinterpret_cast<void**>(&mappedInfluence));
-    std::memset(mappedInfluence, 0, sizeof(VertexInfluence) * modelData.vertices.size()); // 0埋め。weightを0にしておく
-    skinCluster.mappedInfluence = { mappedInfluence, modelData.vertices.size() };
+    // InverseBindPoseMatrixの格納領域を作成して、単位行列で埋める
+    skinCluster.inverseBindPoseMatrices.resize(skeleton.joints.size());
+    std::generate(skinCluster.inverseBindPoseMatrices.begin(), skinCluster.inverseBindPoseMatrices.end(), CoreEngine::MathCore::Matrix::Identity);
+
+    // 頂点ごとのinfluence情報。0埋めしてweightを0にしておく
+    std::vector<VertexInfluence> influences(modelData.vertices.size());
+
+    // ModelDataのSkinCluster情報を解析してInfluenceの中身を埋める
+    for (const auto& jointWeight : modelData.skinClusterData) { // ModelのSkinClusterの情報を解析
+        auto it = skeleton.jointMap.find(jointWeight.first); // jointWeight.firstはjoint名なので、Skeltonに対象となるjointが含まれているか判断
+        if (it == skeleton.jointMap.end()) {
+            continue; //そんな名前のjointは存在しない。なので次に回す
+        }
+
+        //(*it).secondにはjointのIndexが入っているので、該当のIndexのinverseBindPoseMatrixを代入
+        skinCluster.inverseBindPoseMatrices[(*it).second] = jointWeight.second.inverseBindPoseMatrix;
+        for (const auto& vertexWeight : jointWeight.second.vertexWeights) {
+            auto& currentInfluence = influences[vertexWeight.vertexIndex]; // 該当のvertexIndexのinfluence情報を参照
+
+            for (uint32_t index = 0; index < kNumMaxInfluence; ++index) { //空いてる所に入れる
+                if (currentInfluence.weights[index] == 0.0f) { //weiht == 0が空いてる状態なので、その場所にweightとjointのindexを代入
+                    currentInfluence.weights[index] = vertexWeight.weight;
+                    currentInfluence.jointIndices[index] = (*it).second; // jointのIndexを代入
+                    break; // 入れたら抜ける
+                }
+            }
+        }
+    }
+
+    // influence用のResourceを確保し、組んだinfluence情報を写す
+    const std::span<const VertexInfluence> influenceSpan = influences;
+    skinCluster.influenceResource = ResourceFactory::CreateStaticBuffer<VertexInfluence>(device, influenceSpan);
 
     // Influence用のVBVを作成
     skinCluster.influenceBufferView.BufferLocation = skinCluster.influenceResource->GetGPUVirtualAddress();
-    skinCluster.influenceBufferView.SizeInBytes = UINT(sizeof(VertexInfluence) * modelData.vertices.size());
+    skinCluster.influenceBufferView.SizeInBytes = UINT(influenceSpan.size_bytes());
     skinCluster.influenceBufferView.StrideInBytes = sizeof(VertexInfluence);
 
     // Influence用のSRVを作成（GPUスキニング(CS)が読み取るため）
@@ -172,38 +198,8 @@ CoreEngine::SkinCluster SkinClusterGenerator::CreateSkinCluster(
             CB_FIELD(SkinningParamsCB, vertexCount), CB_FIELD(SkinningParamsCB, pad),
         };
         CB_VERIFY_LAYOUT(SkinningParamsCB, kSkinningParamsFields);
-        skinCluster.skinningParamsCB = ResourceFactory::CreateBufferResource(device, sizeof(SkinningParamsCB));
-        SkinningParamsCB* mapped = nullptr;
-        skinCluster.skinningParamsCB->Map(0, nullptr, reinterpret_cast<void**>(&mapped));
-        mapped->vertexCount = vertexCount;
-        mapped->pad[0] = mapped->pad[1] = mapped->pad[2] = 0;
-        skinCluster.skinningParamsCB->Unmap(0, nullptr);
-    }
-
-    // InverseBindPoseMatrixの格納領域を作成して、単位行列で埋める
-    skinCluster.inverseBindPoseMatrices.resize(skeleton.joints.size());
-    std::generate(skinCluster.inverseBindPoseMatrices.begin(), skinCluster.inverseBindPoseMatrices.end(), CoreEngine::MathCore::Matrix::Identity);
-
-    // ModelDataのSkinCluster情報を解析してInfluenceの中身を埋める
-    for (const auto& jointWeight : modelData.skinClusterData) { // ModelのSkinClusterの情報を解析
-        auto it = skeleton.jointMap.find(jointWeight.first); // jointWeight.firstはjoint名なので、Skeltonに対象となるjointが含まれているか判断
-        if (it == skeleton.jointMap.end()) {
-            continue; //そんな名前のjointは存在しない。なので次に回す
-        }
-
-        //(*it).secondにはjointのIndexが入っているので、該当のIndexのinverseBindPoseMatrixを代入
-        skinCluster.inverseBindPoseMatrices[(*it).second] = jointWeight.second.inverseBindPoseMatrix;
-        for (const auto& vertexWeight : jointWeight.second.vertexWeights) {
-            auto& currentInfluence = skinCluster.mappedInfluence[vertexWeight.vertexIndex]; // 該当のvertexIndexのinfluence情報を参照
-
-            for (uint32_t index = 0; index < kNumMaxInfluence; ++index) { //空いてる所に入れる
-                if (currentInfluence.weights[index] == 0.0f) { //weiht == 0が空いてる状態なので、その場所にweightとjointのindexを代入
-                    currentInfluence.weights[index] = vertexWeight.weight;
-                    currentInfluence.jointIndices[index] = (*it).second; // jointのIndexを代入
-                    break; // 入れたら抜ける
-                }
-            }
-        }
+        skinCluster.skinningParamsCB = ResourceFactory::CreateStaticBuffer<SkinningParamsCB>(
+            device, SkinningParamsCB{ vertexCount, { 0, 0, 0 } });
     }
 
     return skinCluster;

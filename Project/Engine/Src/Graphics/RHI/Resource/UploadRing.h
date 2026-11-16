@@ -4,6 +4,7 @@
 #include <wrl.h>
 #include <cstdint>
 #include <cstring>
+#include <span>
 #include <type_traits>
 #include <vector>
 
@@ -28,6 +29,9 @@ namespace CoreEngine
     public:
         /// @brief 1 フレームあたりの既定容量（足りなければ自動で増える）
         static constexpr uint32_t kDefaultBytesPerFrame = 1u * 1024u * 1024u;
+
+        /// @brief AllocateArray の既定の先頭アライメント（頂点・インデックス・構造化バッファ向け）
+        static constexpr uint32_t kDefaultArrayAlignment = 16u;
 
         UploadRing() = default;
         ~UploadRing();
@@ -69,6 +73,24 @@ namespace CoreEngine
             static_assert(std::is_trivially_copyable_v<T>,
                 "UploadRing::AllocateConstants: 定数バッファ構造体は trivially copyable であること");
             return AllocateConstants(&value, static_cast<uint32_t>(sizeof(T)));
+        }
+
+        /// @brief 配列を 1 つ確保して要素を先頭から並べてコピーする（頂点・インデックス・構造化バッファ）
+        /// @param values 写す要素（呼び出し側は AllocateArray<要素の型>(vector など) と型を書く）
+        /// @param alignment 先頭アライメント
+        /// @return 書き込み先と GPU アドレス。size は values のバイト数。空・失敗のときは IsValid() が false
+        template <class T>
+        UploadAllocation AllocateArray(std::span<const T> values,
+            uint32_t alignment = kDefaultArrayAlignment)
+        {
+            static_assert(std::is_trivially_copyable_v<T>,
+                "UploadRing::AllocateArray: 要素は trivially copyable であること");
+            const uint32_t size = static_cast<uint32_t>(values.size_bytes());
+            const UploadAllocation allocation = Allocate(size, alignment);
+            if (allocation.IsValid()) {
+                std::memcpy(allocation.cpu, values.data(), size);
+            }
+            return allocation;
         }
 
         /// @brief Reset のたびに 1 つ進む番号（確保した場所が記録中のフレームのものかを見分ける）

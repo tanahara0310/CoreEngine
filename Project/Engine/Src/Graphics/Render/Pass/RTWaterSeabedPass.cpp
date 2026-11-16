@@ -2,6 +2,7 @@
 #include "RTWaterSeabedPass.h"
 
 #include "Graphics/Render/RenderGraph.h"
+#include "Graphics/RayTracing/Debug/RTDebugCollect.h"
 #include "Graphics/RayTracing/Debug/RTDebugRegistry.h"
 #include "Graphics/RayTracing/Effect/RTEffectRegistry.h"
 #include "Graphics/RayTracing/Effect/RTEffectSet.h"
@@ -23,11 +24,7 @@ namespace CoreEngine
         .cvarPrefix = nullptr,
         .passNames = { "RTWaterSeabedPass" },
         .stageLabels = { "トレース" },
-        .collect = [](const RTDebugQuery& query, std::vector<RTDebugEffectRow>& rows) {
-            if (auto* manager = query.domain ? query.domain->GetRTEffects().Find<WaterSeabedRayTracingManager>() : nullptr) {
-                rows.push_back({ "ゲームの画面", manager->GetDispatchInfo() });
-            }
-        });
+        .collect = CollectGameViewDispatch<WaterSeabedRayTracingManager>);
 
     RT_DEBUG_CHANNEL_REGISTER(
         .effect = "海底の高さ",

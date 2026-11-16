@@ -50,7 +50,6 @@ struct SkinCluster {
 
     Microsoft::WRL::ComPtr<ID3D12Resource> influenceResource;  // Influence用リソース
     D3D12_VERTEX_BUFFER_VIEW influenceBufferView;              // InfluenceのBufferView
-    std::span<VertexInfluence> mappedInfluence;                // Influenceデータをマップしたもの
     UniqueDescriptor influenceSrvHandle; // InfluenceのSRV（CS読み取り用）
 
     PerFrameStructuredBuffer<WellForGPU> palette; // Palette（Joint数分。GPU へは SRV を引いたフレームの置き場へ写す）

@@ -11,6 +11,7 @@
 
 namespace CoreEngine
 {
+class GraphicsCore;
 class SkyBoxRenderer;
 
 /// @brief 空（大気散乱）を描くコンポーネント
@@ -20,7 +21,7 @@ class SkyBoxRenderer;
 class SkyBoxComponent : public IComponent, public IRenderableComponent {
 public:
     SkyBoxComponent() = default;
-    ~SkyBoxComponent() override;
+    ~SkyBoxComponent() override = default;
 
     const char* GetTypeName() const override { return "SkyBox"; }
 
@@ -29,7 +30,7 @@ public:
         REFLECT_PROPERTY(rotation_, "向き", p.range = Speed(0.01f), p.displayScale = kDegreesPerRadian)
     REFLECT_END()
 
-    /// @brief 頂点・インデックス・定数バッファを作り、レンダラーを引く
+    /// @brief 頂点・インデックスバッファを作り、レンダラーを引く
     void Awake() override;
 
     // ===== IRenderableComponent =====
@@ -49,17 +50,15 @@ private:
     /// @brief 内向きの箱の頂点・インデックスバッファを作る
     void CreateBoxBuffers(ID3D12Device* device);
 
-    /// @brief ビューごとの変換行列の定数バッファを作る
-    void CreateTransformBuffers(ID3D12Device* device);
-
+    /// @brief 描画ごとに UploadRing へ置く変換行列（HLSL 側 gTransformationMatrix と一致）
     struct TransformationMatrix {
         Matrix4x4 WVP;
     };
 
-    static constexpr UINT kTransformBufferCount = 4;
     static constexpr UINT kVertexCount = 24;
     static constexpr UINT kIndexCount = 36;
 
+    GraphicsCore* graphics_ = nullptr;
     SkyBoxRenderer* renderer_ = nullptr;
 
     Vector3 rotation_ = { 0.0f, 0.0f, 0.0f };
@@ -68,10 +67,5 @@ private:
     D3D12_VERTEX_BUFFER_VIEW vertexBufferView_{};
     Microsoft::WRL::ComPtr<ID3D12Resource> indexBuffer_;
     D3D12_INDEX_BUFFER_VIEW indexBufferView_{};
-
-    /// 描画のたびに別の定数バッファを巡回して使う
-    std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kTransformBufferCount> transformBuffers_{};
-    std::array<TransformationMatrix*, kTransformBufferCount> transformData_{};
-    UINT transformBufferIndex_ = 0;
 };
 }

@@ -76,19 +76,14 @@ namespace CoreEngine
             {.position = { -1.0f, -1.0f, 0.0f, 1.0f }, .texcoord = { 0.0f, 1.0f }, .normal = { 0.0f, 0.0f, -1.0f } }  // 左下
         };
 
-        size_t vertexBufferSize = sizeof(VertexData) * particleVertices.size();
+        const std::span<const VertexData> vertices = particleVertices;
 
-        // 頂点バッファのリソースを作成
-        vertexBuffer_ = ResourceFactory::CreateBufferResource(device_, vertexBufferSize);
-
-        // 頂点バッファにデータをコピー
-        VertexData* vertexData = nullptr;
-        vertexBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
-        std::memcpy(vertexData, particleVertices.data(), vertexBufferSize);
+        // 頂点バッファのリソースを作成し、データを写す
+        vertexBuffer_ = ResourceFactory::CreateStaticBuffer<VertexData>(device_, vertices);
 
         // 頂点バッファビューの設定
         vertexBufferView_.BufferLocation = vertexBuffer_->GetGPUVirtualAddress();
-        vertexBufferView_.SizeInBytes = static_cast<UINT>(vertexBufferSize);
+        vertexBufferView_.SizeInBytes = static_cast<UINT>(vertices.size_bytes());
         vertexBufferView_.StrideInBytes = sizeof(VertexData);
     }
 }

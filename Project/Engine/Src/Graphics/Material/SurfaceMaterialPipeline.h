@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Graphics/Material/RevisionedPipelineCache.h"
 #include "Graphics/Material/ShaderMaterialPipeline.h"
 #include "Graphics/Pipeline/PipelineStateManager.h"
 #include "Graphics/RootSignature/RootSignatureManager.h"
@@ -14,7 +15,6 @@
 #include <memory>
 #include <string>
 #include <string_view>
-#include <unordered_map>
 #include <vector>
 
 namespace CoreEngine
@@ -196,15 +196,9 @@ namespace CoreEngine
         SurfaceMaterialPipeline* GetError() { return Get(kErrorSurfaceShader); }
 
     private:
-        struct Entry
-        {
-            std::unique_ptr<SurfaceMaterialPipeline> pipeline;
-            uint64_t shaderRevision = 0;
-        };
-
         GraphicsCore* graphics_ = nullptr;
         ShaderCompiler* compiler_ = nullptr;
         ShaderReflectionBuilder* reflectionBuilder_ = nullptr;
-        std::unordered_map<std::string, Entry> entries_;
+        RevisionedPipelineCache<SurfaceMaterialPipeline> pipelines_;
     };
 }

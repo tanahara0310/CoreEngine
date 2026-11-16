@@ -4,6 +4,7 @@
 #include "Camera/View/ViewInfo.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RayTracing/AO/RTAmbientOcclusion.h"
+#include "Graphics/RayTracing/Debug/RTDebugCollect.h"
 #include "Graphics/RayTracing/Debug/RTDebugRegistry.h"
 #include "Graphics/RayTracing/Effect/RTEffectRegistry.h"
 #include "Graphics/RayTracing/Effect/RTEffectSet.h"
@@ -32,14 +33,7 @@ namespace CoreEngine
         .cvarPrefix = "r.RTAO",
         .passNames = { "RTAOTrace", "RTAOTemporal", "RTAODenoise" },
         .stageLabels = { "トレース", "時間の蓄積", "デノイズと仕上げ" },
-        .collect = [](const RTDebugQuery& query, std::vector<RTDebugEffectRow>& rows) {
-            RTAmbientOcclusion* ao = query.domain
-                ? query.domain->GetRTEffects().Find<RTAmbientOcclusion>() : nullptr;
-            if (!ao || !ao->IsInitialized() || ao->GetDispatchInfo().status == RayTracingDispatchStatus::None) {
-                return;
-            }
-            rows.push_back({ "ゲームの画面", ao->GetDispatchInfo() });
-        });
+        .collect = CollectGameViewDispatch<RTAmbientOcclusion, RTDebugGameViewRow::OnlyDispatched>);
 
     bool IsRayTracedAOSelected(const RenderContext& context)
     {

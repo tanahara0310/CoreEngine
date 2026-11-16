@@ -48,4 +48,27 @@ protected:
         return baseValue + random_.GetFloat(-randomness, randomness);
     }
 };
+
+/// @brief 設定の構造体を 1 つ持つパーティクルモジュールの基底
+/// @tparam TData 設定の構造体
+template <class TData>
+class ParticleModuleT : public ParticleModule {
+public:
+    using Data = TData;
+
+    /// @brief 設定を差し替える
+    /// @param data 設定
+    void SetData(const TData& data) { data_ = data; }
+
+    /// @brief 設定を取得
+    /// @return 設定の参照
+    const TData& GetData() const { return data_; }
+
+    /// @brief 設定を取得（書き換え可能）
+    /// @return 設定の参照
+    TData& GetData() { return data_; }
+
+protected:
+    TData data_;
+};
 }

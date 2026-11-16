@@ -13,6 +13,7 @@
 #include "Graphics/RHI/Command/FrameSync.h"
 #include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include "Graphics/RHI/Resource/GpuResource.h"
+#include "Graphics/RHI/Resource/ReadbackRing.h"
 #include "Graphics/RayTracing/Debug/RTDebugRegistry.h"
 #include "Graphics/RayTracing/RayTracingOutputViewSet.h"
 #include "Graphics/RootSignature/RootSignatureManager.h"
@@ -284,8 +285,6 @@ namespace CoreEngine
 
         /// @brief 読み戻しの枠 1 つ分の記録
         struct PendingFrame {
-            bool pending = false;
-            uint64_t fenceBeforeSubmit = 0;
             uint64_t frame = 0;
             bool view = false;
             int viewChannel = -1;
@@ -356,8 +355,7 @@ namespace CoreEngine
         GpuResource data_{};
         DescriptorHandle dataUav_{};
         Microsoft::WRL::ComPtr<ID3D12Resource> dataInit_;
-        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kMaxFramesInFlight> readback_{};
-        std::array<PendingFrame, kMaxFramesInFlight> pendingFrames_{};
+        ReadbackRing<PendingFrame> readback_{};
         std::vector<uint32_t> readbackScratch_;
 
         // 効果のレイの記録の、選んだ画素とディスパッチの番号の写し元（フレームインフライトぶん。常に Map）

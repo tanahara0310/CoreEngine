@@ -4,6 +4,7 @@
 #include "Camera/View/ViewInfo.h"
 #include "Graphics/Fog/FogManager.h"
 #include "Graphics/Fog/Volumetric/VolumetricFogCVars.h"
+#include "Graphics/RayTracing/Debug/RTDebugCollect.h"
 #include "Graphics/RayTracing/Debug/RTDebugRegistry.h"
 #include "Graphics/RayTracing/Effect/RTEffectRegistry.h"
 #include "Graphics/RayTracing/Effect/RTEffectSet.h"
@@ -28,14 +29,7 @@ namespace CoreEngine
         .cvarPrefix = "r.Fog.Volumetric",
         .passNames = { "RTVolumetricShadow" },
         .stageLabels = { "トレース" },
-        .collect = [](const RTDebugQuery& query, std::vector<RTDebugEffectRow>& rows) {
-            RTVolumetricShadow* shadow = query.domain
-                ? query.domain->GetRTEffects().Find<RTVolumetricShadow>() : nullptr;
-            if (!shadow || !shadow->IsInitialized() || shadow->GetDispatchInfo().status == RayTracingDispatchStatus::None) {
-                return;
-            }
-            rows.push_back({ "ゲームの画面", shadow->GetDispatchInfo() });
-        });
+        .collect = CollectGameViewDispatch<RTVolumetricShadow, RTDebugGameViewRow::OnlyDispatched>);
 
     bool IsVolumetricShadowSelected(const RenderContext& context)
     {

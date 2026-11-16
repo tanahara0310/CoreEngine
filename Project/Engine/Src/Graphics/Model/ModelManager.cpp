@@ -43,14 +43,9 @@ namespace CoreEngine
         customShaderPipelineCache_ = std::make_unique<CustomShaderPipelineCache>();
 
         // 頂点の色を持たないモデルが読む白（RGBA8 の全ビットが 1）
-        whiteVertexColorBuffer_ = ResourceFactory::CreateBufferResource(dxCommon_->GetDevice(), sizeof(uint32_t));
+        constexpr uint32_t kWhite = 0xFFFFFFFFu;
+        whiteVertexColorBuffer_ = ResourceFactory::CreateStaticBuffer<uint32_t>(dxCommon_->GetDevice(), kWhite);
         if (whiteVertexColorBuffer_) {
-            void* mapped = nullptr;
-            if (SUCCEEDED(whiteVertexColorBuffer_->Map(0, nullptr, &mapped))) {
-                const uint32_t white = 0xFFFFFFFFu;
-                memcpy(mapped, &white, sizeof(white));
-                whiteVertexColorBuffer_->Unmap(0, nullptr);
-            }
             if (DescriptorAllocator* descriptors = dxCommon_->GetDescriptorAllocator()) {
                 D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
                 srvDesc.Format = DXGI_FORMAT_UNKNOWN;

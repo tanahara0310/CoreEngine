@@ -18,16 +18,16 @@ namespace CoreEngine
     using namespace CoreEngine::MathCore;
 
     ShapeModule::ShapeModule() {
-        shapeData_.shapeType = ShapeType::Point;
-        shapeData_.scale = { 1.0f, 1.0f, 1.0f };
-        shapeData_.radius = 1.0f;
-        shapeData_.innerRadius = 0.5f;
-        shapeData_.height = 2.0f;
-        shapeData_.angle = 25.0f;
-        shapeData_.randomPositionRange = 0.0f;
-        shapeData_.emitFromSurface = false;
-        shapeData_.emissionDirection = { 0.0f, 1.0f, 0.0f };
-        shapeData_.circlePlane = CirclePlane::XZ;
+        data_.shapeType = ShapeType::Point;
+        data_.scale = { 1.0f, 1.0f, 1.0f };
+        data_.radius = 1.0f;
+        data_.innerRadius = 0.5f;
+        data_.height = 2.0f;
+        data_.angle = 25.0f;
+        data_.randomPositionRange = 0.0f;
+        data_.emitFromSurface = false;
+        data_.emissionDirection = { 0.0f, 1.0f, 0.0f };
+        data_.circlePlane = CirclePlane::XZ;
     }
 
     Vector3 ShapeModule::GeneratePosition(const Vector3& emitterPosition) {
@@ -37,7 +37,7 @@ namespace CoreEngine
 
         Vector3 position;
 
-        switch (shapeData_.shapeType) {
+        switch (data_.shapeType) {
         case ShapeType::Box:
             position = GenerateBoxPosition(emitterPosition);
             break;
@@ -75,10 +75,10 @@ namespace CoreEngine
         }
 
         // 追加のランダム位置範囲を適用
-        if (shapeData_.randomPositionRange > 0.0f) {
-            position.x += random_.GetFloat(-shapeData_.randomPositionRange, shapeData_.randomPositionRange);
-            position.y += random_.GetFloat(-shapeData_.randomPositionRange, shapeData_.randomPositionRange);
-            position.z += random_.GetFloat(-shapeData_.randomPositionRange, shapeData_.randomPositionRange);
+        if (data_.randomPositionRange > 0.0f) {
+            position.x += random_.GetFloat(-data_.randomPositionRange, data_.randomPositionRange);
+            position.y += random_.GetFloat(-data_.randomPositionRange, data_.randomPositionRange);
+            position.z += random_.GetFloat(-data_.randomPositionRange, data_.randomPositionRange);
         }
 
         return position;
@@ -90,9 +90,9 @@ namespace CoreEngine
 
     Vector3 ShapeModule::GenerateBoxPosition(const Vector3& emitterPosition) {
         Vector3 randomOffset = {
-              random_.GetFloatSigned() * shapeData_.scale.x,
-          random_.GetFloatSigned() * shapeData_.scale.y,
-              random_.GetFloatSigned() * shapeData_.scale.z
+              random_.GetFloatSigned() * data_.scale.x,
+          random_.GetFloatSigned() * data_.scale.y,
+              random_.GetFloatSigned() * data_.scale.z
         };
 
         return {
@@ -120,10 +120,10 @@ namespace CoreEngine
 
         // 半径内の均等分布（表面のみか内部も含むか）
         float r;
-        if (shapeData_.emitFromSurface) {
-            r = shapeData_.radius;
+        if (data_.emitFromSurface) {
+            r = data_.radius;
         } else {
-            r = std::cbrt(random_.GetFloat()) * shapeData_.radius;
+            r = std::cbrt(random_.GetFloat()) * data_.radius;
         }
 
         return {
@@ -135,10 +135,10 @@ namespace CoreEngine
 
     Vector3 ShapeModule::GenerateCirclePosition(const Vector3& emitterPosition) {
         float angle = random_.GetFloat(0.0f, Constants::kTwoPi);
-        float r = std::sqrt(random_.GetFloat()) * shapeData_.radius;
+        float r = std::sqrt(random_.GetFloat()) * data_.radius;
 
         // 平面に応じた座標計算
-        switch (shapeData_.circlePlane) {
+        switch (data_.circlePlane) {
         case CirclePlane::XZ:
             return {
              emitterPosition.x + std::cos(angle) * r,
@@ -168,8 +168,8 @@ namespace CoreEngine
 
     Vector3 ShapeModule::GenerateConePosition(const Vector3& emitterPosition) {
         float circleAngle = random_.GetFloat(0.0f, Constants::kTwoPi);
-        float height = random_.GetFloat() * shapeData_.height;
-        float coneRadius = height * std::tan(shapeData_.angle * Constants::kDegToRad);
+        float height = random_.GetFloat() * data_.height;
+        float coneRadius = height * std::tan(data_.angle * Constants::kDegToRad);
         float r = std::sqrt(random_.GetFloat()) * coneRadius;
 
         return {
@@ -200,10 +200,10 @@ namespace CoreEngine
 
         // 半径内の均等分布
         float r;
-        if (shapeData_.emitFromSurface) {
-            r = shapeData_.radius;
+        if (data_.emitFromSurface) {
+            r = data_.radius;
         } else {
-            r = std::cbrt(random_.GetFloat()) * shapeData_.radius;
+            r = std::cbrt(random_.GetFloat()) * data_.radius;
         }
 
         return {
@@ -215,11 +215,11 @@ namespace CoreEngine
 
     Vector3 ShapeModule::GenerateRingPosition(const Vector3& emitterPosition) {
         float angle = random_.GetFloat(0.0f, Constants::kTwoPi);
-        float minR = shapeData_.innerRadius;
-        float maxR = shapeData_.radius;
+        float minR = data_.innerRadius;
+        float maxR = data_.radius;
         float r = minR + std::sqrt(random_.GetFloat()) * (maxR - minR);
 
-        switch (shapeData_.circlePlane) {
+        switch (data_.circlePlane) {
         case CirclePlane::XZ:
             return {
             emitterPosition.x + std::cos(angle) * r,
@@ -248,7 +248,7 @@ namespace CoreEngine
     }
 
     Vector3 ShapeModule::GenerateLinePosition(const Vector3& emitterPosition) {
-        Vector3 direction = shapeData_.emissionDirection;
+        Vector3 direction = data_.emissionDirection;
         float length = CoreEngine::Length(direction);
         if (length > 0.0f) {
             direction.x /= length;
@@ -258,7 +258,7 @@ namespace CoreEngine
             direction = { 0.0f, 1.0f, 0.0f };
         }
 
-        float linePosition = random_.GetFloatSigned() * shapeData_.scale.x;
+        float linePosition = random_.GetFloatSigned() * data_.scale.x;
 
         return {
          emitterPosition.x + direction.x * linePosition,
@@ -269,18 +269,18 @@ namespace CoreEngine
 
     Vector3 ShapeModule::GenerateCylinderPosition(const Vector3& emitterPosition) {
         float angle = random_.GetFloat(0.0f, Constants::kTwoPi);
-        float height = random_.GetFloatSigned() * (shapeData_.height * 0.5f);
+        float height = random_.GetFloatSigned() * (data_.height * 0.5f);
 
         float r;
-        if (shapeData_.emitFromSurface) {
+        if (data_.emitFromSurface) {
             if (random_.GetBool(0.8f)) {
-                r = shapeData_.radius;
+                r = data_.radius;
             } else {
-                r = std::sqrt(random_.GetFloat()) * shapeData_.radius;
-                height = (height > 0) ? (shapeData_.height * 0.5f) : (-shapeData_.height * 0.5f);
+                r = std::sqrt(random_.GetFloat()) * data_.radius;
+                height = (height > 0) ? (data_.height * 0.5f) : (-data_.height * 0.5f);
             }
         } else {
-            r = std::sqrt(random_.GetFloat()) * shapeData_.radius;
+            r = std::sqrt(random_.GetFloat()) * data_.radius;
         }
 
         return {
@@ -305,9 +305,9 @@ namespace CoreEngine
         }
 
         return {
-            emitterPosition.x + direction.x * shapeData_.radius,
-            emitterPosition.y + direction.y * shapeData_.radius,
-            emitterPosition.z + direction.z * shapeData_.radius
+            emitterPosition.x + direction.x * data_.radius,
+            emitterPosition.y + direction.y * data_.radius,
+            emitterPosition.z + direction.z * data_.radius
         };
     }
 
@@ -332,9 +332,9 @@ namespace CoreEngine
         }
 
         float angle = random_.GetFloat(minAngle, maxAngle);
-        float r = shapeData_.radius;
+        float r = data_.radius;
 
-        switch (shapeData_.circlePlane) {
+        switch (data_.circlePlane) {
         case CirclePlane::XZ:
             return {
                 emitterPosition.x + std::cos(angle) * r,
@@ -376,7 +376,7 @@ namespace CoreEngine
         // 形状ごとにライン配列を生成してバッチに追加
         std::vector<Line> lines;
 
-        switch (shapeData_.shapeType) {
+        switch (data_.shapeType) {
         case ShapeType::Point:
             // 点：小さな十字を描画
         {
@@ -400,17 +400,17 @@ namespace CoreEngine
         break;
 
         case ShapeType::Box:
-            lines = LineManager::GenerateBoxLines(emitterPosition, shapeData_.scale, color, alpha);
+            lines = LineManager::GenerateBoxLines(emitterPosition, data_.scale, color, alpha);
             break;
 
         case ShapeType::Sphere:
-            lines = LineManager::GenerateSphereLines(emitterPosition, shapeData_.radius, color, alpha);
+            lines = LineManager::GenerateSphereLines(emitterPosition, data_.radius, color, alpha);
             break;
 
         case ShapeType::Circle:
         {
             Vector3 normal;
-            switch (shapeData_.circlePlane) {
+            switch (data_.circlePlane) {
             case CirclePlane::XZ:
                 normal = { 0.0f, 1.0f, 0.0f };
                 break;
@@ -424,19 +424,19 @@ namespace CoreEngine
                 normal = { 0.0f, 1.0f, 0.0f };
                 break;
             }
-            lines = LineManager::GenerateCircleLines(emitterPosition, shapeData_.radius, normal, color, alpha);
+            lines = LineManager::GenerateCircleLines(emitterPosition, data_.radius, normal, color, alpha);
         }
         break;
 
         case ShapeType::Cone:
             lines = LineManager::GenerateConeLines(emitterPosition, { 0.0f, 1.0f, 0.0f },
-                shapeData_.height, shapeData_.angle, color, alpha);
+                data_.height, data_.angle, color, alpha);
             break;
 
         case ShapeType::Hemisphere:
         {
-            auto sphereLines = LineManager::GenerateSphereLines(emitterPosition, shapeData_.radius, color, alpha, 16);
-            auto circleLines = LineManager::GenerateCircleLines(emitterPosition, shapeData_.radius,
+            auto sphereLines = LineManager::GenerateSphereLines(emitterPosition, data_.radius, color, alpha, 16);
+            auto circleLines = LineManager::GenerateCircleLines(emitterPosition, data_.radius,
                 { 0.0f, 1.0f, 0.0f }, color, alpha);
             lines.insert(lines.end(), sphereLines.begin(), sphereLines.end());
             lines.insert(lines.end(), circleLines.begin(), circleLines.end());
@@ -446,7 +446,7 @@ namespace CoreEngine
         case ShapeType::Ring:
         {
             Vector3 normal;
-            switch (shapeData_.circlePlane) {
+            switch (data_.circlePlane) {
             case CirclePlane::XZ:
                 normal = { 0.0f, 1.0f, 0.0f };
                 break;
@@ -460,8 +460,8 @@ namespace CoreEngine
                 normal = { 0.0f, 1.0f, 0.0f };
                 break;
             }
-            auto outerLines = LineManager::GenerateCircleLines(emitterPosition, shapeData_.radius, normal, color, alpha);
-            auto innerLines = LineManager::GenerateCircleLines(emitterPosition, shapeData_.innerRadius, normal, color, alpha);
+            auto outerLines = LineManager::GenerateCircleLines(emitterPosition, data_.radius, normal, color, alpha);
+            auto innerLines = LineManager::GenerateCircleLines(emitterPosition, data_.innerRadius, normal, color, alpha);
             lines.insert(lines.end(), outerLines.begin(), outerLines.end());
             lines.insert(lines.end(), innerLines.begin(), innerLines.end());
         }
@@ -469,7 +469,7 @@ namespace CoreEngine
 
         case ShapeType::Line:
         {
-            Vector3 direction = shapeData_.emissionDirection;
+            Vector3 direction = data_.emissionDirection;
             float length = CoreEngine::Length(direction);
             if (length > 0.0f) {
                 direction.x /= length;
@@ -479,7 +479,7 @@ namespace CoreEngine
                 direction = { 0.0f, 1.0f, 0.0f };
             }
 
-            float halfLength = shapeData_.scale.x * 0.5f;
+            float halfLength = data_.scale.x * 0.5f;
             Vector3 lineStart = {
                 emitterPosition.x - direction.x * halfLength,
                 emitterPosition.y - direction.y * halfLength,
@@ -496,8 +496,8 @@ namespace CoreEngine
         break;
 
         case ShapeType::Cylinder:
-            lines = LineManager::GenerateCylinderLines(emitterPosition, shapeData_.radius,
-                shapeData_.height, { 0.0f, 1.0f, 0.0f }, color, alpha);
+            lines = LineManager::GenerateCylinderLines(emitterPosition, data_.radius,
+                data_.height, { 0.0f, 1.0f, 0.0f }, color, alpha);
             break;
 
         default:
@@ -518,30 +518,30 @@ namespace CoreEngine
         static const char* shapeTypeNames[] = {
         "点", "ボックス", "球体", "円", "コーン", "半球", "リング", "ライン", "円柱", "エッジ", "半円"
         };
-        int currentShapeType = static_cast<int>(shapeData_.shapeType);
+        int currentShapeType = static_cast<int>(data_.shapeType);
         if (ImGui::Combo("形状", &currentShapeType, shapeTypeNames, IM_ARRAYSIZE(shapeTypeNames))) {
-            shapeData_.shapeType = static_cast<ShapeType>(currentShapeType);
+            data_.shapeType = static_cast<ShapeType>(currentShapeType);
             changed = true;
         }
         UI::SameLine();
         UI::HelpMarker("パーティクルが生成される範囲の形。\n無効にするとエミッター位置の1点から放出されます。");
 
         // 形状ごとのパラメータ表示
-        switch (shapeData_.shapeType) {
+        switch (data_.shapeType) {
         case ShapeType::Point:
             UI::Hint("エミッター位置の1点から放出します（追加設定なし）");
             break;
 
         case ShapeType::Box:
-            changed |= UI::DragVec3("ボックスサイズ", shapeData_.scale, 0.1f, 0.1f, 20.0f);
-            changed |= UI::Widgets::ToggleSwitch("表面のみから放出", &shapeData_.emitFromSurface);
+            changed |= UI::DragVec3("ボックスサイズ", data_.scale, 0.1f, 0.1f, 20.0f);
+            changed |= UI::Widgets::ToggleSwitch("表面のみから放出", &data_.emitFromSurface);
             break;
 
         case ShapeType::Sphere:
         case ShapeType::Edge:
-            changed |= UI::DragFloat("半径", shapeData_.radius, 0.1f, 0.1f, 20.0f);
-            if (shapeData_.shapeType == ShapeType::Sphere) {
-                changed |= UI::Widgets::ToggleSwitch("表面のみから放出", &shapeData_.emitFromSurface);
+            changed |= UI::DragFloat("半径", data_.radius, 0.1f, 0.1f, 20.0f);
+            if (data_.shapeType == ShapeType::Sphere) {
+                changed |= UI::Widgets::ToggleSwitch("表面のみから放出", &data_.emitFromSurface);
             } else {
                 UI::Hint("エッジ: 球の表面上から放出します");
             }
@@ -549,53 +549,53 @@ namespace CoreEngine
 
         case ShapeType::Circle:
         case ShapeType::CircleHalf:
-            changed |= UI::DragFloat("半径", shapeData_.radius, 0.1f, 0.1f, 20.0f);
+            changed |= UI::DragFloat("半径", data_.radius, 0.1f, 0.1f, 20.0f);
             {
                 const char* planeNames[] = { "XZ（地面と平行）", "XY（正面向き）", "YZ（横向き）" };
-                int curPlane = static_cast<int>(shapeData_.circlePlane);
+                int curPlane = static_cast<int>(data_.circlePlane);
                 if (ImGui::Combo("平面", &curPlane, planeNames, IM_ARRAYSIZE(planeNames))) {
-                    shapeData_.circlePlane = static_cast<CirclePlane>(curPlane);
+                    data_.circlePlane = static_cast<CirclePlane>(curPlane);
                     changed = true;
                 }
             }
             break;
 
         case ShapeType::Cone:
-            changed |= UI::DragFloat("角度（度）", shapeData_.angle, 1.0f, 0.0f, 90.0f, "%.1f");
-            changed |= UI::DragFloat("高さ", shapeData_.height, 0.1f, 0.1f, 20.0f);
+            changed |= UI::DragFloat("角度（度）", data_.angle, 1.0f, 0.0f, 90.0f, "%.1f");
+            changed |= UI::DragFloat("高さ", data_.height, 0.1f, 0.1f, 20.0f);
             break;
 
         case ShapeType::Hemisphere:
-            changed |= UI::DragFloat("半径", shapeData_.radius, 0.1f, 0.1f, 20.0f);
-            changed |= UI::Widgets::ToggleSwitch("表面のみから放出", &shapeData_.emitFromSurface);
+            changed |= UI::DragFloat("半径", data_.radius, 0.1f, 0.1f, 20.0f);
+            changed |= UI::Widgets::ToggleSwitch("表面のみから放出", &data_.emitFromSurface);
             break;
 
         case ShapeType::Ring:
-            changed |= UI::DragFloat("外径", shapeData_.radius, 0.1f, 0.1f, 20.0f);
-            changed |= UI::DragFloat("内径", shapeData_.innerRadius, 0.1f, 0.0f, shapeData_.radius);
+            changed |= UI::DragFloat("外径", data_.radius, 0.1f, 0.1f, 20.0f);
+            changed |= UI::DragFloat("内径", data_.innerRadius, 0.1f, 0.0f, data_.radius);
             {
                 const char* planeNames[] = { "XZ（地面と平行）", "XY（正面向き）", "YZ（横向き）" };
-                int curPlane = static_cast<int>(shapeData_.circlePlane);
+                int curPlane = static_cast<int>(data_.circlePlane);
                 if (ImGui::Combo("平面", &curPlane, planeNames, IM_ARRAYSIZE(planeNames))) {
-                    shapeData_.circlePlane = static_cast<CirclePlane>(curPlane);
+                    data_.circlePlane = static_cast<CirclePlane>(curPlane);
                     changed = true;
                 }
             }
             break;
 
         case ShapeType::Line:
-            changed |= UI::DragFloat("長さ", shapeData_.scale.x, 0.1f, 0.1f, 20.0f);
-            changed |= UI::DragVec3("方向", shapeData_.emissionDirection, 0.1f);
+            changed |= UI::DragFloat("長さ", data_.scale.x, 0.1f, 0.1f, 20.0f);
+            changed |= UI::DragVec3("方向", data_.emissionDirection, 0.1f);
             break;
 
         case ShapeType::Cylinder:
-            changed |= UI::DragFloat("半径", shapeData_.radius, 0.1f, 0.1f, 20.0f);
-            changed |= UI::DragFloat("高さ", shapeData_.height, 0.1f, 0.1f, 20.0f);
-            changed |= UI::Widgets::ToggleSwitch("表面のみから放出", &shapeData_.emitFromSurface);
+            changed |= UI::DragFloat("半径", data_.radius, 0.1f, 0.1f, 20.0f);
+            changed |= UI::DragFloat("高さ", data_.height, 0.1f, 0.1f, 20.0f);
+            changed |= UI::Widgets::ToggleSwitch("表面のみから放出", &data_.emitFromSurface);
             break;
         }
 
-        changed |= UI::DragFloat("位置の追加ランダム", shapeData_.randomPositionRange, 0.01f, 0.0f, 2.0f);
+        changed |= UI::DragFloat("位置の追加ランダム", data_.randomPositionRange, 0.01f, 0.0f, 2.0f);
         UI::SameLine();
         UI::HelpMarker("形状で決まった生成位置に、さらに各軸±この値のランダムなずれを加えます。");
 

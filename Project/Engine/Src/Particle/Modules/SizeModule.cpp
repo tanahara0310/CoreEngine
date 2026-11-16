@@ -8,18 +8,18 @@
 namespace CoreEngine
 {
 SizeModule::SizeModule() {
-    sizeData_.endSize = 0.0f;
-    sizeData_.sizeOverLifetime = true;
-    sizeData_.use3DSize = false;
-    sizeData_.endSize3D = { 0.0f, 0.0f, 0.0f };
-    sizeData_.uniformScaling = true;
-    sizeData_.minSize = 0.0f;
-    sizeData_.maxSize = 100.0f;
+    data_.endSize = 0.0f;
+    data_.sizeOverLifetime = true;
+    data_.use3DSize = false;
+    data_.endSize3D = { 0.0f, 0.0f, 0.0f };
+    data_.uniformScaling = true;
+    data_.minSize = 0.0f;
+    data_.maxSize = 100.0f;
 }
 
 void SizeModule::UpdateSize(Particle& particle)
 {
-    if (!enabled_ || !sizeData_.sizeOverLifetime) {
+    if (!enabled_ || !data_.sizeOverLifetime) {
         return;
     }
 
@@ -27,26 +27,26 @@ void SizeModule::UpdateSize(Particle& particle)
   float lifetimeRatio = GetLifetimeRatio(particle);
     
     // カーブを適用
-    float curveValue = ApplyCurve(lifetimeRatio, sizeData_.sizeCurve);
+    float curveValue = ApplyCurve(lifetimeRatio, data_.sizeCurve);
 
-    if (sizeData_.use3DSize) {
+    if (data_.use3DSize) {
         // 3Dサイズでの補間
         // MainModuleで設定された初期サイズを使用
         Vector3 startSize = particle.initialScale;
-        Vector3 currentSize = MathCore::Lerp(startSize, sizeData_.endSize3D, curveValue);
+        Vector3 currentSize = MathCore::Lerp(startSize, data_.endSize3D, curveValue);
         
       // サイズ制限を適用
-        currentSize.x = std::clamp(currentSize.x, sizeData_.minSize, sizeData_.maxSize);
-        currentSize.y = std::clamp(currentSize.y, sizeData_.minSize, sizeData_.maxSize);
-      currentSize.z = std::clamp(currentSize.z, sizeData_.minSize, sizeData_.maxSize);
+        currentSize.x = std::clamp(currentSize.x, data_.minSize, data_.maxSize);
+        currentSize.y = std::clamp(currentSize.y, data_.minSize, data_.maxSize);
+      currentSize.z = std::clamp(currentSize.z, data_.minSize, data_.maxSize);
         
         particle.transform.scale = currentSize;
     } else {
         // 1Dサイズでの補間（線形補間）
         // MainModuleで設定された初期サイズを使用（均等スケーリング想定）
         float startSize = particle.initialScale.x;
-   float currentSize = startSize + (sizeData_.endSize - startSize) * curveValue;
-      currentSize = std::clamp(currentSize, sizeData_.minSize, sizeData_.maxSize);
+   float currentSize = startSize + (data_.endSize - startSize) * curveValue;
+      currentSize = std::clamp(currentSize, data_.minSize, data_.maxSize);
         particle.transform.scale = {currentSize, currentSize, currentSize};
     }
 }
@@ -55,18 +55,18 @@ void SizeModule::UpdateSize(Particle& particle)
 bool SizeModule::ShowImGui() {
     bool changed = false;
 
-    changed |= UI::Widgets::ToggleSwitch("寿命に応じてサイズを変化", &sizeData_.sizeOverLifetime);
+    changed |= UI::Widgets::ToggleSwitch("寿命に応じてサイズを変化", &data_.sizeOverLifetime);
     UI::Tooltip("開始サイズ（メインの「サイズ」）から終了サイズへ、寿命に沿って変化させます");
 
     {
-        UI::Scope::DisabledScope ds(!sizeData_.sizeOverLifetime);
+        UI::Scope::DisabledScope ds(!data_.sizeOverLifetime);
 
-        changed |= UI::Widgets::ToggleSwitch("XYZ個別に設定", &sizeData_.use3DSize);
+        changed |= UI::Widgets::ToggleSwitch("XYZ個別に設定", &data_.use3DSize);
 
-        if (sizeData_.use3DSize) {
-            changed |= UI::DragVec3("終了サイズ", sizeData_.endSize3D, 0.01f, 0.0f, 10.0f);
+        if (data_.use3DSize) {
+            changed |= UI::DragVec3("終了サイズ", data_.endSize3D, 0.01f, 0.0f, 10.0f);
         } else {
-            changed |= UI::DragFloat("終了サイズ", sizeData_.endSize, 0.01f, 0.0f, 10.0f);
+            changed |= UI::DragFloat("終了サイズ", data_.endSize, 0.01f, 0.0f, 10.0f);
         }
         UI::SameLine();
         UI::HelpMarker("寿命が尽きる瞬間のサイズ。\n0 にすると縮みながら消えます。\n開始サイズはメインモジュールの「サイズ」です。");
@@ -75,15 +75,15 @@ bool SizeModule::ShowImGui() {
         static const char* sizeCurveNames[] = {
             "線形", "加速（イーズイン）", "減速（イーズアウト）", "加減速（イーズインアウト）", "一定（開始サイズを維持）"
         };
-        int currentCurve = static_cast<int>(sizeData_.sizeCurve);
+        int currentCurve = static_cast<int>(data_.sizeCurve);
         if (ImGui::Combo("変化カーブ", &currentCurve, sizeCurveNames, IM_ARRAYSIZE(sizeCurveNames))) {
-            sizeData_.sizeCurve = static_cast<SizeData::SizeCurve>(currentCurve);
+            data_.sizeCurve = static_cast<SizeData::SizeCurve>(currentCurve);
             changed = true;
         }
 
         // サイズ制限
-        changed |= UI::DragFloat("最小サイズ", sizeData_.minSize, 0.01f, 0.0f, 1.0f);
-        changed |= UI::DragFloat("最大サイズ", sizeData_.maxSize, 0.1f, 1.0f, 100.0f);
+        changed |= UI::DragFloat("最小サイズ", data_.minSize, 0.01f, 0.0f, 1.0f);
+        changed |= UI::DragFloat("最大サイズ", data_.maxSize, 0.1f, 1.0f, 100.0f);
     }
 
     return changed;

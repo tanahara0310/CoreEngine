@@ -4,6 +4,7 @@
 #include <cstring>
 #include <format>
 #include <stdexcept>
+#include <vector>
 #include <dxgi.h>
 
 #include "Utility/Logger/Logger.h"
@@ -66,6 +67,26 @@ Microsoft::WRL::ComPtr<ID3D12Resource> ResourceFactory::CreateBufferResource(
     return bufferResource;
 }
 
+Microsoft::WRL::ComPtr<ID3D12Resource> ResourceFactory::CreateStaticBufferFromBytes(
+    const Microsoft::WRL::ComPtr<ID3D12Device>& device,
+    const void* data,
+    size_t sizeInBytes)
+{
+    Microsoft::WRL::ComPtr<ID3D12Resource> bufferResource = CreateBufferResource(device, sizeInBytes);
+
+    void* mapped = nullptr;
+    if (FAILED(bufferResource->Map(0, nullptr, &mapped)) || !mapped) {
+        Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Graphics,
+            "CreateStaticBuffer: バッファの Map に失敗しました（size={}）", sizeInBytes);
+        return bufferResource;
+    }
+    if (data && sizeInBytes > 0) {
+        std::memcpy(mapped, data, sizeInBytes);
+    }
+    bufferResource->Unmap(0, nullptr);
+    return bufferResource;
+}
+
 Microsoft::WRL::ComPtr<ID3D12Resource> ResourceFactory::CreateTextureResource(
     const Microsoft::WRL::ComPtr<ID3D12Device>& device,
     const D3D12_RESOURCE_DESC& desc,
@@ -107,18 +128,26 @@ Microsoft::WRL::ComPtr<ID3D12Resource> ResourceFactory::CreateTextureResource(
 
 Microsoft::WRL::ComPtr<ID3D12Resource> ResourceFactory::CreateQuadIndexBuffer(
     const Microsoft::WRL::ComPtr<ID3D12Device>& device,
-    D3D12_INDEX_BUFFER_VIEW& outView)
+    D3D12_INDEX_BUFFER_VIEW& outView,
+    uint32_t quadCount)
 {
-    constexpr uint32_t kIndices[6] = { 0, 1, 2, 1, 3, 2 };
-    Microsoft::WRL::ComPtr<ID3D12Resource> indexResource = CreateBufferResource(device, sizeof(kIndices));
+    assert(quadCount > 0 && "CreateQuadIndexBuffer: quadCount は 1 以上");
 
-    uint32_t* indexData = nullptr;
-    indexResource->Map(0, nullptr, reinterpret_cast<void**>(&indexData));
-    std::memcpy(indexData, kIndices, sizeof(kIndices));
-    indexResource->Unmap(0, nullptr);
+    constexpr uint32_t kQuadIndices[6] = { 0, 1, 2, 1, 3, 2 };
+    std::vector<uint32_t> indices(static_cast<size_t>(quadCount) * std::size(kQuadIndices));
+    for (uint32_t quad = 0; quad < quadCount; ++quad) {
+        const uint32_t baseVertex = quad * 4;
+        uint32_t* destination = indices.data() + static_cast<size_t>(quad) * std::size(kQuadIndices);
+        for (size_t i = 0; i < std::size(kQuadIndices); ++i) {
+            destination[i] = baseVertex + kQuadIndices[i];
+        }
+    }
+
+    const std::span<const uint32_t> indexSpan = indices;
+    Microsoft::WRL::ComPtr<ID3D12Resource> indexResource = CreateStaticBuffer<uint32_t>(device, indexSpan);
 
     outView.BufferLocation = indexResource->GetGPUVirtualAddress();
-    outView.SizeInBytes = sizeof(kIndices);
+    outView.SizeInBytes = static_cast<UINT>(indexSpan.size_bytes());
     outView.Format = DXGI_FORMAT_R32_UINT;
     return indexResource;
 }

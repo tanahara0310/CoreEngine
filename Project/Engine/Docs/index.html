@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.89.4">
+<meta name="engine-version" content="0.89.5">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11437,6 +11437,17 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-89-5">v0.89.5 <span class="dim">（2026-11-16）</span></h3>
+  <p>描画の処理で、同じ形で何か所にも書いていた所をテンプレートの補助にまとめた版です。見た目・動き・シーンの書き方・CVar・スクリプトは変わりません。</p>
+  <ul>
+    <li><strong>ポストエフェクトの Dispatch</strong>：入力と出力と定数を差して画面全体を Dispatch する手順を <code>PostEffectComputeBase::DispatchScreenPass</code> にまとめ、同じ手順のエフェクト 14 本がこれを呼ぶようにしました。</li>
+    <li><strong>GPU へ値を積む処理</strong>：配列を毎フレームの置き場へ写す <code>UploadRing::AllocateArray&lt;T&gt;</code> と、一度だけ作るバッファの <code>ResourceFactory::CreateStaticBuffer&lt;T&gt;</code> を足し、文字・線・パーティクル・空・モデル・スキン・レンズフレア・Hi-Z の手書きをこれと既存の補助に揃えました。空の変換行列も、ほかの物と同じ毎フレームの置き場に置きます。</li>
+    <li><strong>読み戻しと 2 枚の入れ替え</strong>：GPU から CPU へ読み戻すリング（<span class="path">Graphics/RHI/Resource/ReadbackRing.h</span>）を水の高さ・レイトレのデバッグ・白波の泡で、2 枚を交互に使う入れ物（<span class="path">Utility/Container/PingPong.h</span>）を雲・霧・岸の泡・白波・FFT の海で使うようにしました。</li>
+    <li><strong>レイトレのデバッグの行</strong>：効果の直近のディスパッチを集める処理を <code>CollectGameViewDispatch&lt;T&gt;</code>（<span class="path">Graphics/RayTracing/Debug/RTDebugCollect.h</span>）にまとめ、水と RTAO と霧の影の 7 本のパスがこれを使います。</li>
+    <li><strong>パイプラインのキャッシュ・ライト・.cmesh</strong>：シェーダの版で組み直すキャッシュを <code>RevisionedPipelineCache&lt;T&gt;</code> に、ライト 4 種類のバッファを 1 つの形に、.cmesh の書き出しと読み込みを 1 回だけ書いた形にしました。.cmesh のファイルの中身は変わりません。</li>
+    <li><strong>パーティクルの部品</strong>：10 個の部品が同じ基底 <code>ParticleModuleT&lt;TData&gt;</code> を継ぎます。C++ から部品の値を読み書きする関数は <code>GetData()</code>・<code>SetData()</code> になりました（<code>GetMainData()</code> などは無くなりました）。ブレンドモードの表示名の表は 1 つ（<code>kBlendModeNames</code>）にしました。</li>
+  </ul>
 
   <h3 id="changelog-v0-89-4">v0.89.4 <span class="dim">（2026-11-16）</span></h3>
   <p>同じ形で何か所にも書いていた小さな処理を、テンプレートの補助にまとめた版です。見た目・動き・シーンの書き方・CVar・スクリプトは変わりません。</p>

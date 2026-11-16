@@ -7,6 +7,7 @@
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Graphics/Shader/ShaderBindingContract.h"
 #include "Math/MathCore.h"
+#include "Utility/Container/PingPong.h"
 
 #include <d3d12.h>
 #include <cstdint>
@@ -442,7 +443,7 @@ namespace CoreEngine
 
         Volume vBuffer_{};
         Volume emissive_{};           ///< 局所の霧の発光（rgb）
-        Volume lightScattering_[2]{}; ///< 今フレームと前フレームの光を交互に使う
+        PingPong<Volume> lightScattering_{}; ///< 今フレームと前フレームの光を交互に使う（書く側 = 今フレームの光）
         Volume integrated_{};
         Volume farLight_{};
         uint32_t gridSize_[3]{};
@@ -467,8 +468,6 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE sunDepthSrv_{};
         bool integratedThisFrame_ = false;
 
-        /// @brief 今フレームに光を書く方の lightScattering_ の番号
-        uint32_t currentLight_ = 0;
         /// @brief 格子を作った回数（ずらし方の列の番号）
         uint32_t frameIndex_ = 0;
 

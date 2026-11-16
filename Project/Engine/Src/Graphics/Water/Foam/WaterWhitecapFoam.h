@@ -2,6 +2,7 @@
 
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
 #include "Graphics/RHI/Command/FrameSync.h"
+#include "Graphics/RHI/Resource/ReadbackRing.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Graphics/Shader/ICustomShaderProvider.h"
@@ -78,7 +79,7 @@ namespace CoreEngine
 
         /// @brief 白波の泡の SRV（直近に書き終わった側。今フレームの書き込み先ではない方）
         D3D12_GPU_DESCRIPTOR_HANDLE GetSRVHandle() const {
-            return foam_[(frameIndex_ + 1u) & 1u].srv.gpuHandle;
+            return foam_.Read().srv.gpuHandle;
         }
 
         /// @brief GetSRVHandle の格子の段ごとの XZ の最小の角 [m]（近く xy・遠く zw。風下へ流した座標）
@@ -285,7 +286,7 @@ namespace CoreEngine
         // ---- 白波（カメラの周りの格子の上の残りの泡）----
         CustomShaderPipeline foamPipeline_{};
         FoamShaderProvider foamShaderProvider_{};
-        /// @brief 書き込み先は frameIndex_ & 1。SRV / UAV とも全段を 1 ビューで見せる（x = 被覆率・y = 砕けた直後の厚い泡の量）
+        /// @brief 書き込み先は Dispatch ごとに入れ替える（frameIndex_ & 1 と同じ側）。SRV / UAV とも全段を 1 ビューで見せる（x = 被覆率・y = 砕けた直後の厚い泡の量）
         FFTOceanPingPong foam_{};
         uint32_t frameIndex_ = 0;
         bool resetPending_ = true;
@@ -307,10 +308,8 @@ namespace CoreEngine
         DescriptorHandle statisticsUav_{};
         /// @brief 統計のバッファを 0 にするための写し元（作ったまま書かない）
         Microsoft::WRL::ComPtr<ID3D12Resource> statisticsZero_;
-        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kMaxFramesInFlight> statisticsReadback_{};
-        std::array<bool, kMaxFramesInFlight> statisticsPending_{};
-        /// @brief 枠ごとの、記録したときの calibrationEpoch_
-        std::array<uint32_t, kMaxFramesInFlight> statisticsEpoch_{};
+        /// @brief 枠ごとの読み戻し。記録は、記録したときの calibrationEpoch_
+        ReadbackRing<uint32_t> statisticsReadback_{};
         /// @brief 最後に読み戻した合成ヤコビアンのヒストグラム
         std::vector<uint32_t> histogram_;
         float measuredCoverage_ = 0.0f;

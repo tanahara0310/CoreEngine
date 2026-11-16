@@ -1628,6 +1628,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\Material\ShaderMaterialPipeline.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\ShaderMaterialSlot.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\SurfaceMaterialPipeline.h" />
+    <ClInclude Include="Engine\Src\Graphics\Material\RevisionedPipelineCache.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\UIMaterialInstance.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Animation\IAnimationControllerFactory.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Animation\SkeletonAnimatorFactory.h" />
@@ -1682,6 +1683,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RTHitShading.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RTScene.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\Debug\RTDebugRegistry.h" />
+    <ClInclude Include="Engine\Src\Graphics\RayTracing\Debug\RTDebugCollect.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\Effect\RTEffect.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\Effect\RTEffectRegistry.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\Effect\RTEffectSet.h" />
@@ -2067,6 +2069,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Utility\Algorithm\AssignIfChanged.h" />
     <ClInclude Include="Engine\Src\Utility\Algorithm\FindIfPtr.h" />
     <ClInclude Include="Engine\Src\Utility\Container\RingHistory.h" />
+    <ClInclude Include="Engine\Src\Utility\Container\PingPong.h" />
     <ClInclude Include="Engine\Src\Utility\Enum\EnumFlags.h" />
     <ClInclude Include="Engine\Src\Utility\Enum\EnumNames.h" />
     <ClInclude Include="Engine\Src\Utility\Hash\Fnv1a.h" />
@@ -2116,6 +2119,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\RHI\Resource\ConstantBufferPool.h" />
     <ClInclude Include="Engine\Src\Graphics\RHI\Resource\PerFrameConstants.h" />
     <ClInclude Include="Engine\Src\Graphics\RHI\Resource\PerFrameStructuredBuffer.h" />
+    <ClInclude Include="Engine\Src\Graphics\RHI\Resource\ReadbackRing.h" />
     <ClInclude Include="Engine\Src\WorldTransform\WorldTransform.h" />
     <ClInclude Include="Engine\Src\Scene\SceneManager.h" />
     <ClInclude Include="Engine\Src\Launch\MyGame.h" />

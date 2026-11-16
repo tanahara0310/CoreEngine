@@ -12,6 +12,7 @@
 #include "Diagnostics/EngineStats.h"
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/UploadRing.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/RootSignature/RootSignatureManager.h"
 #include "Graphics/Shader/ShaderCompiler.h"
@@ -136,17 +137,8 @@ namespace CoreEngine
         buildParamsBuffer_.Reset();
         buildParamsMapped_ = nullptr;
 
+        bounds_.Release();
         for (uint32_t i = 0; i < kFrameRing; ++i) {
-            if (boundsUpload_[i] && boundsMapped_[i]) {
-                boundsUpload_[i]->Unmap(0, nullptr);
-            }
-            boundsUpload_[i].Reset();
-            boundsMapped_[i] = nullptr;
-            if (cullParamsUpload_[i] && cullParamsMapped_[i]) {
-                cullParamsUpload_[i]->Unmap(0, nullptr);
-            }
-            cullParamsUpload_[i].Reset();
-            cullParamsMapped_[i] = nullptr;
             readback_[i].Reset();
             ringIds_[i].clear();
             ringPending_[i] = false;
@@ -318,30 +310,11 @@ namespace CoreEngine
             visibilityUavGpu_ = descriptorAllocator_->CreateUAV(visibilityBuffer_.Get(), uavDesc, "HiZOcclusionVisibility");
         }
 
-        // フレームリング: AABB アップロード + 判定 CS 定数 + Readback
+        // AABB（フレームスロットごとの UPLOAD バッファと構造化バッファの SRV）
+        bounds_.Initialize(*dxCommon_, kMaxQueries, "HiZOcclusionBounds");
+
+        // フレームリング: Readback
         for (uint32_t i = 0; i < kFrameRing; ++i) {
-            boundsUpload_[i] = ResourceFactory::CreateBufferResource(
-                device, sizeof(BoundsGPU) * kMaxQueries);
-            if (FAILED(boundsUpload_[i]->Map(
-                    0, nullptr, reinterpret_cast<void**>(&boundsMapped_[i])))) {
-                return false;
-            }
-
-            D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-            srvDesc.Format = DXGI_FORMAT_UNKNOWN;
-            srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-            srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-            srvDesc.Buffer.NumElements = kMaxQueries;
-            srvDesc.Buffer.StructureByteStride = sizeof(BoundsGPU);
-            boundsSrvGpu_[i] = descriptorAllocator_->CreateSRV(boundsUpload_[i].Get(), srvDesc, "HiZOcclusionBounds");
-
-            cullParamsUpload_[i] = ResourceFactory::CreateBufferResource(
-                device, sizeof(CullParamsGPU));
-            if (FAILED(cullParamsUpload_[i]->Map(
-                    0, nullptr, reinterpret_cast<void**>(&cullParamsMapped_[i])))) {
-                return false;
-            }
-
             readback_[i] = ResourceFactory::CreateBufferResource(
                 device, sizeof(uint32_t) * kMaxQueries, D3D12_HEAP_TYPE_READBACK);
             ringIds_[i].reserve(256);
@@ -474,11 +447,12 @@ namespace CoreEngine
             return;
         }
 
-        // 1) AABB と定数のアップロード（永続マップ済みリングスロットへ書くだけ）
+        // 1) AABB と定数のアップロード（AABB は判定 CS の SRV を引くときに今フレームのスロットへ写る）
         std::vector<uint32_t>& ids = ringIds_[frameIndex];
         ids.clear();
+        const std::span<BoundsGPU> bounds = bounds_.Write(queryCount);
         for (uint32_t i = 0; i < queryCount; ++i) {
-            boundsMapped_[frameIndex][i] = pendingQueries_[i].bounds;
+            bounds[i] = pendingQueries_[i].bounds;
             ids.push_back(pendingQueries_[i].id);
         }
 
@@ -490,7 +464,11 @@ namespace CoreEngine
         cullParams.queryCount = queryCount;
         cullParams.depthBias = kDepthBias;
         cullParams.minRectTexels = kMinRectTexels;
-        *cullParamsMapped_[frameIndex] = cullParams;
+        const D3D12_GPU_VIRTUAL_ADDRESS cullParamsAddress = dxCommon->GetUploadRing().AllocateConstants(cullParams);
+        if (cullParamsAddress == 0) {
+            ringPending_[frameIndex] = false;
+            return;
+        }
 
         // SRV ヒープはフレーム先頭で CommandContext が 1 回バインドする（個別バインドは不要）
 
@@ -498,7 +476,7 @@ namespace CoreEngine
         BuildHiZPyramid(cmdList, depthSRV);
 
         // 3) 遮蔽判定 + Readback コピー
-        DispatchCull(cmdList, frameIndex, queryCount);
+        DispatchCull(cmdList, frameIndex, queryCount, cullParamsAddress);
 
         ringPending_[frameIndex] = true;
     }
@@ -544,21 +522,21 @@ namespace CoreEngine
     }
 
     void HiZOcclusionSystem::DispatchCull(
-        ID3D12GraphicsCommandList* cmdList, uint32_t frameIndex, uint32_t queryCount)
+        ID3D12GraphicsCommandList* cmdList, uint32_t frameIndex, uint32_t queryCount,
+        D3D12_GPU_VIRTUAL_ADDRESS cullParamsAddress)
     {
         Barrier::Transition(cmdList, visibilityBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
         cmdList->SetPipelineState(cullPso_.Get());
         cmdList->SetComputeRootSignature(cullRootSignatureMg_->GetRootSignature());
         cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(cullBoundsIdx_), boundsSrvGpu_[frameIndex].gpuHandle);
+            static_cast<UINT>(cullBoundsIdx_), bounds_.Srv());
         cmdList->SetComputeRootDescriptorTable(
             static_cast<UINT>(cullHiZIdx_), hiZFullSrvGpu_.gpuHandle);
         cmdList->SetComputeRootDescriptorTable(
             static_cast<UINT>(cullVisibilityIdx_), visibilityUavGpu_.gpuHandle);
         cmdList->SetComputeRootConstantBufferView(
-            static_cast<UINT>(cullParamsIdx_),
-            cullParamsUpload_[frameIndex]->GetGPUVirtualAddress());
+            static_cast<UINT>(cullParamsIdx_), cullParamsAddress);
 
         cmdList->Dispatch(DivRoundUp(queryCount, 64), 1, 1);
 

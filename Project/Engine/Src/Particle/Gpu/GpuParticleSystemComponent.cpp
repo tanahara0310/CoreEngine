@@ -27,10 +27,6 @@
 
 namespace
 {
-    /// @brief ブレンドの名前（`BlendMode` の並び）
-    constexpr const char* kBlendModeNames[] = { "なし", "アルファ", "加算", "減算", "乗算", "スクリーン" };
-    static_assert(std::size(kBlendModeNames) == CoreEngine::kBlendModeCount);
-
     /// @brief ビルボードの名前（`BillboardType` の並び）
     constexpr const char* kBillboardNames[] = { "なし（粒の回転だけ）", "カメラの正面", "Y 軸だけ回す", "画面と平行" };
 
@@ -51,7 +47,7 @@ REFLECT_DEFINE_BEGIN(CoreEngine::GpuParticleSystemComponent, "GPU パーティ�
     REFLECT_JSON(SaveModulesToJson, LoadModulesFromJson)
     REFLECT_ACCESSOR("texture", "テクスチャ", GetTextureAsset, SetTextureAsset,
         p.assetType = ::CoreEngine::AssetType::Texture, p.emptyText = &DescribeDefaultTexture)
-    REFLECT_ENUM_ACCESSOR("blendMode", "ブレンド", GetBlendMode, SetBlendMode, kBlendModeNames,
+    REFLECT_ENUM_ACCESSOR("blendMode", "ブレンド", GetBlendMode, SetBlendMode, ::CoreEngine::kBlendModeNames,
         p.tooltip = "背景との合成のしかた。炎や光は「加算」、煙は「アルファ」が向く")
     REFLECT_ENUM_ACCESSOR("billboard", "ビルボード", GetBillboardType, SetBillboardType, kBillboardNames,
         p.tooltip = "板ポリの向き。草や炎の柱のように立てたいものは「Y 軸だけ回す」")
@@ -277,14 +273,14 @@ namespace CoreEngine
 
     void GpuParticleSystemComponent::Start()
     {
-        if (mainModule_->GetMainData().playOnAwake) {
+        if (mainModule_->GetData().playOnAwake) {
             Play();
         }
     }
 
     uint32_t GpuParticleSystemComponent::GetEffectiveCapacity() const
     {
-        return std::clamp(mainModule_->GetMainData().maxParticles, 1u, kMaxParticles);
+        return std::clamp(mainModule_->GetData().maxParticles, 1u, kMaxParticles);
     }
 
     void GpuParticleSystemComponent::Update()
@@ -298,7 +294,7 @@ namespace CoreEngine
             return;
         }
 
-        const uint32_t emitCount = playback_.Advance(deltaTime, mainModule_->GetMainData(), emissionModule_->GetEmissionData());
+        const uint32_t emitCount = playback_.Advance(deltaTime, mainModule_->GetData(), emissionModule_->GetData());
         if (emissionModule_->IsEnabled()) {
             // 容量を超えた分は放出の CS が捨てるので、1 フレームの放出数は容量までにする
             emitCountThisFrame_ = (std::min)(emitCount, GetEffectiveCapacity());
@@ -367,14 +363,14 @@ namespace CoreEngine
         const Matrix4x4 viewMatrix = camera->GetViewMatrix();
         const Matrix4x4 projectionMatrix = camera->GetProjectionMatrix();
 
-        const auto& mainData = mainModule_->GetMainData();
-        const auto& shapeData = shapeModule_->GetShapeData();
-        const auto& velocityData = velocityModule_->GetVelocityData();
-        const auto& colorData = colorModule_->GetColorData();
-        const auto& forceData = forceModule_->GetForceData();
-        const auto& sizeData = sizeModule_->GetSizeData();
-        const auto& rotationData = rotationModule_->GetRotationData();
-        const auto& noiseData = noiseModule_->GetNoiseData();
+        const auto& mainData = mainModule_->GetData();
+        const auto& shapeData = shapeModule_->GetData();
+        const auto& velocityData = velocityModule_->GetData();
+        const auto& colorData = colorModule_->GetData();
+        const auto& forceData = forceModule_->GetData();
+        const auto& sizeData = sizeModule_->GetData();
+        const auto& rotationData = rotationModule_->GetData();
+        const auto& noiseData = noiseModule_->GetData();
 
         GpuParticleParams& p = params_;
 

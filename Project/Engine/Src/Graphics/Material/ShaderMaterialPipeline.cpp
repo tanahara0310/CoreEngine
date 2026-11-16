@@ -308,19 +308,14 @@ namespace CoreEngine
 
         const uint64_t revision = ShaderMaterialLibrary::GetInstance().GetShaderRevision();
         const std::string key = material.GetShaderPath() + "|" + material.GetVertexShaderPath();
-        Entry& entry = entries_[key];
-        if (entry.shaderRevision == revision) {
-            return entry.pipeline.get();
-        }
-        entry.shaderRevision = revision;
-
-        auto pipeline = std::make_unique<ShaderMaterialPipeline>();
-        const bool built = pipeline->Build(graphics.GetDevice(), compiler, reflectionBuilder,
-            material.GetShaderPath(), material.GetVertexShaderPath(), target_);
-        graphics.DeferredRelease().PushForCurrentFrame(std::move(entry.pipeline));
-        if (built) {
-            entry.pipeline = std::move(pipeline);
-        }
-        return entry.pipeline.get();
+        return pipelines_.Get(graphics.DeferredRelease(), key, revision,
+            [&](const ShaderMaterialPipeline*) -> std::unique_ptr<ShaderMaterialPipeline> {
+                auto pipeline = std::make_unique<ShaderMaterialPipeline>();
+                if (!pipeline->Build(graphics.GetDevice(), compiler, reflectionBuilder,
+                        material.GetShaderPath(), material.GetVertexShaderPath(), target_)) {
+                    return nullptr;
+                }
+                return pipeline;
+            });
     }
 }

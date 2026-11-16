@@ -13,8 +13,9 @@
 #include "Graphics/Render/SkyBox/SkyBoxRenderer.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/UploadRing.h"
 
-#include <cstring>
+#include <span>
 
 REFLECT_REGISTER(CoreEngine::SkyBoxComponent)
 COMPONENT_REGISTER(CoreEngine::SkyBoxComponent)
@@ -27,15 +28,6 @@ namespace {
     };
 }
 
-SkyBoxComponent::~SkyBoxComponent()
-{
-    for (UINT i = 0; i < kTransformBufferCount; ++i) {
-        if (transformBuffers_[i] && transformData_[i]) {
-            transformBuffers_[i]->Unmap(0, nullptr);
-        }
-    }
-}
-
 void SkyBoxComponent::Awake()
 {
     GraphicsCore* const graphics = FindService<GraphicsCore>(*this);
@@ -44,9 +36,9 @@ void SkyBoxComponent::Awake()
         return;
     }
 
+    graphics_ = graphics;
     renderer_ = renderManager->GetRendererAs<SkyBoxRenderer>(RenderPassType::SkyBox);
     CreateBoxBuffers(graphics->GetDevice());
-    CreateTransformBuffers(graphics->GetDevice());
 }
 
 void SkyBoxComponent::CreateBoxBuffers(ID3D12Device* device)
@@ -102,34 +94,17 @@ void SkyBoxComponent::CreateBoxBuffers(ID3D12Device* device)
         20, 21, 22, 22, 21, 23,   // 下面
     };
 
-    vertexBuffer_ = ResourceFactory::CreateBufferResource(device, sizeof(vertices));
+    const std::span<const SkyBoxVertex> vertexSpan = vertices;
+    vertexBuffer_ = ResourceFactory::CreateStaticBuffer<SkyBoxVertex>(device, vertexSpan);
     vertexBufferView_.BufferLocation = vertexBuffer_->GetGPUVirtualAddress();
-    vertexBufferView_.SizeInBytes = sizeof(vertices);
+    vertexBufferView_.SizeInBytes = static_cast<UINT>(vertexSpan.size_bytes());
     vertexBufferView_.StrideInBytes = sizeof(SkyBoxVertex);
 
-    SkyBoxVertex* vertexData = nullptr;
-    vertexBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&vertexData));
-    std::memcpy(vertexData, vertices, sizeof(vertices));
-    vertexBuffer_->Unmap(0, nullptr);
-
-    indexBuffer_ = ResourceFactory::CreateBufferResource(device, sizeof(indices));
+    const std::span<const uint32_t> indexSpan = indices;
+    indexBuffer_ = ResourceFactory::CreateStaticBuffer<uint32_t>(device, indexSpan);
     indexBufferView_.BufferLocation = indexBuffer_->GetGPUVirtualAddress();
-    indexBufferView_.SizeInBytes = sizeof(indices);
+    indexBufferView_.SizeInBytes = static_cast<UINT>(indexSpan.size_bytes());
     indexBufferView_.Format = DXGI_FORMAT_R32_UINT;
-
-    uint32_t* indexData = nullptr;
-    indexBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&indexData));
-    std::memcpy(indexData, indices, sizeof(indices));
-    indexBuffer_->Unmap(0, nullptr);
-}
-
-void SkyBoxComponent::CreateTransformBuffers(ID3D12Device* device)
-{
-    // 描画のたびに別のスロットへ書き、記録済みのドローが参照する CBV を書き潰さない。
-    for (UINT i = 0; i < kTransformBufferCount; ++i) {
-        transformBuffers_[i] = ResourceFactory::CreateBufferResource(device, sizeof(TransformationMatrix));
-        transformBuffers_[i]->Map(0, nullptr, reinterpret_cast<void**>(&transformData_[i]));
-    }
 }
 
 void SkyBoxComponent::Render(const DrawViewInfo& view)
@@ -137,7 +112,7 @@ void SkyBoxComponent::Render(const DrawViewInfo& view)
     const GameObject* const owner = GetOwner();
     const Camera* const camera = view.GetCamera();
     ID3D12GraphicsCommandList* const commandList = view.cmdList;
-    if (!owner || !owner->IsActive() || !camera || !commandList || !renderer_ || !vertexBuffer_) {
+    if (!owner || !owner->IsActive() || !camera || !commandList || !renderer_ || !vertexBuffer_ || !graphics_) {
         return;
     }
 
@@ -169,12 +144,17 @@ void SkyBoxComponent::Render(const DrawViewInfo& view)
     viewNoTranslation.m[3][1] = 0.0f;
     viewNoTranslation.m[3][2] = 0.0f;
 
-    transformBufferIndex_ = (transformBufferIndex_ + 1) % kTransformBufferCount;
-    transformData_[transformBufferIndex_]->WVP = worldMatrix * viewNoTranslation * camera->GetProjectionMatrix();
+    // 描画のたびに記録中のフレームの UploadRing へ置き、記録済みのドローが参照する CBV を書き潰さない
+    TransformationMatrix transformation{};
+    transformation.WVP = worldMatrix * viewNoTranslation * camera->GetProjectionMatrix();
+    const D3D12_GPU_VIRTUAL_ADDRESS transformAddress = graphics_->GetUploadRing().AllocateConstants(transformation);
+    if (transformAddress == 0) {
+        return;
+    }
 
     commandList->SetGraphicsRootConstantBufferView(
         renderer_->GetRootParamIndex("gTransformationMatrix"),
-        transformBuffers_[transformBufferIndex_]->GetGPUVirtualAddress());
+        transformAddress);
     commandList->SetGraphicsRootConstantBufferView(
         renderer_->GetRootParamIndex("gAtmosphere"),
         atmosphereManager->GetConstantBufferGPUAddress());

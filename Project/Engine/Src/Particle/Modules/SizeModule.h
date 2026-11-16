@@ -5,44 +5,38 @@
 
 namespace CoreEngine
 {
+/// @brief サイズ変化の設定（SizeModule）
+struct ParticleSizeData {
+    float endSize = 0.0f;  // 終了サイズ（ライフタイムで線形補間）
+    bool sizeOverLifetime = true;      // ライフタイムでサイズ変化させるか
+    Vector3 endSize3D = {0.0f, 0.0f, 0.0f};   // 3D終了サイズ
+    bool use3DSize = false;    // 3Dサイズを使用するか
+
+    // サイズカーブ（線形補間のバリエーション）
+    enum class SizeCurve {
+        Linear,      // 線形変化
+        EaseIn,      // 加速（最初ゆっくり、後半速く）
+        EaseOut,     // 減速（最初速く、後半ゆっくり）
+        EaseInOut,   // S字カーブ（最初と最後がゆっくり）
+        Constant     // 一定（サイズ変化なし）
+    };
+    SizeCurve sizeCurve = SizeCurve::Linear;
+
+    // 追加パラメータ
+    float minSize = 0.01f;          // 最小サイズ制限
+    float maxSize = 10.0f; // 最大サイズ制限
+    bool uniformScaling = true;    // 均等スケーリング（3D使用時）
+};
+
 /// @brief パーティクルのサイズ制御モジュール
 /// 注意: 初期サイズの設定はMainModuleで行います
 /// このモジュールはサイズの変化（Over Lifetime）のみを担当します
-class SizeModule : public ParticleModule {
+class SizeModule : public ParticleModuleT<ParticleSizeData> {
 public:
-    /// @brief サイズ変化の設定
-    struct SizeData {
-   float endSize = 0.0f;  // 終了サイズ（ライフタイムで線形補間）
-        bool sizeOverLifetime = true;      // ライフタイムでサイズ変化させるか
-        Vector3 endSize3D = {0.0f, 0.0f, 0.0f};   // 3D終了サイズ
-        bool use3DSize = false;    // 3Dサイズを使用するか
-      
-        // サイズカーブ（線形補間のバリエーション）
-        enum class SizeCurve {
-  Linear,      // 線形変化
-  EaseIn,      // 加速（最初ゆっくり、後半速く）
-        EaseOut,     // 減速（最初速く、後半ゆっくり）
-            EaseInOut,   // S字カーブ（最初と最後がゆっくり）
-          Constant     // 一定（サイズ変化なし）
-  };
-      SizeCurve sizeCurve = SizeCurve::Linear;
-        
-        // 追加パラメータ
-        float minSize = 0.01f;          // 最小サイズ制限
-        float maxSize = 10.0f; // 最大サイズ制限
-        bool uniformScaling = true;    // 均等スケーリング（3D使用時）
-    };
+    using SizeData = ParticleSizeData;
 
     SizeModule();
     ~SizeModule() = default;
-
-    /// @brief サイズデータを設定
-/// @param data サイズデータ
-    void SetSizeData(const SizeData& data) { sizeData_ = data; }
-
-    /// @brief サイズデータを取得
-    /// @return サイズデータの参照
-    const SizeData& GetSizeData() const { return sizeData_; }
 
     /// @brief パーティクルのサイズを更新
   /// @param particle 対象のパーティクル
@@ -55,8 +49,6 @@ public:
 #endif
 
 private:
-    SizeData sizeData_;
-
     /// @brief ライフタイム係数を取得
     /// @param particle パーティクル
     /// @return ライフタイム係数（0.0f - 1.0f）
