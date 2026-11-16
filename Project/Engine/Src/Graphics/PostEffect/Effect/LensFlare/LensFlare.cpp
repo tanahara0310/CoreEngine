@@ -161,18 +161,8 @@ namespace CoreEngine
         auto* device = graphicsCore_->GetDevice();
 
         // ブラー方向 CB（水平/垂直。内容は不変なので初期化時に書いて以後更新しない）
-        const UINT dirSize = (sizeof(BlurDirection) + 255) & ~255u;
-        blurDirHCB_ = ResourceFactory::CreateBufferResource(device, dirSize);
-        blurDirVCB_ = ResourceFactory::CreateBufferResource(device, dirSize);
-        BlurDirection* mappedDir = nullptr;
-        HRESULT hr = blurDirHCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedDir));
-        assert(SUCCEEDED(hr));
-        *mappedDir = BlurDirection{ { 1.0f, 0.0f }, {} };
-        blurDirHCB_->Unmap(0, nullptr);
-        hr = blurDirVCB_->Map(0, nullptr, reinterpret_cast<void**>(&mappedDir));
-        assert(SUCCEEDED(hr));
-        *mappedDir = BlurDirection{ { 0.0f, 1.0f }, {} };
-        blurDirVCB_->Unmap(0, nullptr);
+        blurDirHCB_ = ResourceFactory::CreateStaticBuffer<BlurDirection>(device, BlurDirection{ { 1.0f, 0.0f }, {} });
+        blurDirVCB_ = ResourceFactory::CreateStaticBuffer<BlurDirection>(device, BlurDirection{ { 0.0f, 1.0f }, {} });
 
         internalPipelinesReady_ = CreateInternalPipelines() && EnsureSourcePosTarget();
         if (!internalPipelinesReady_) {

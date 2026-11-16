@@ -4,6 +4,7 @@
 #include "Graphics/RootSignature/RootSignatureManager.h"
 #include "Graphics/RootSignature/RootSlot.h"
 #include "Graphics/Shader/CBufferLayout.h"
+#include "Graphics/Material/RevisionedPipelineCache.h"
 #include "Graphics/Material/ShaderMaterial.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Math/MathCore.h"
@@ -14,7 +15,6 @@
 #include <functional>
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 namespace CoreEngine
@@ -166,13 +166,7 @@ namespace CoreEngine
             ShaderReflectionBuilder& reflectionBuilder, const ShaderMaterial& material);
 
     private:
-        struct Entry
-        {
-            std::unique_ptr<ShaderMaterialPipeline> pipeline;
-            uint64_t shaderRevision = 0;
-        };
-
         ShaderMaterialPipeline::Target target_;
-        std::unordered_map<std::string, Entry> entries_;
+        RevisionedPipelineCache<ShaderMaterialPipeline> pipelines_;
     };
 }

@@ -2,6 +2,7 @@
 #include "RTWaterRefractionPass.h"
 
 #include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RayTracing/Debug/RTDebugCollect.h"
 #include "Graphics/RayTracing/Debug/RTDebugRegistry.h"
 #include "Graphics/RayTracing/Effect/RTEffectRegistry.h"
 #include "Graphics/RayTracing/Effect/RTEffectSet.h"
@@ -29,11 +30,7 @@ namespace CoreEngine
         .cvarPrefix = "r.Water.Refraction",
         .passNames = { "RTWaterRefractionPass" },
         .stageLabels = { "トレース" },
-        .collect = [](const RTDebugQuery& query, std::vector<RTDebugEffectRow>& rows) {
-            if (auto* manager = query.domain ? query.domain->GetRTEffects().Find<WaterRefractionRayTracingManager>() : nullptr) {
-                rows.push_back({ "ゲームの画面", manager->GetDispatchInfo() });
-            }
-        });
+        .collect = CollectGameViewDispatch<WaterRefractionRayTracingManager>);
 
     RT_DEBUG_CHANNEL_REGISTER(
         .effect = "水の屈折",

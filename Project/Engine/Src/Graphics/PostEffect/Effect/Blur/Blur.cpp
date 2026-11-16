@@ -2,7 +2,6 @@
 #include "Blur.h"
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Math/IntegerMath.h"
 #include "Utility/CVar/CVar.h"
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
@@ -45,36 +44,7 @@ namespace CoreEngine
         uint32_t width,
         uint32_t height)
     {
-        UpdateScreenSizeConstants(width, height);
-
-        auto* cmdList = graphicsCore_->GetCommandList();
-
-        cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
-        cmdList->SetPipelineState(computePso_.Get());
-
-        // リソースをバインド（リフレクションでインデックスを取得）
-        int textureIdx      = GetRootParamIndex("gTexture");
-        int outputIdx       = GetRootParamIndex("gOutput");
-        int blurParamsIdx   = GetRootParamIndex("BlurParams");
-        int screenParamsIdx = GetRootParamIndex("ScreenParams");
-
-        if (textureIdx >= 0) {
-            cmdList->SetComputeRootDescriptorTable(textureIdx, inputSrvHandle);
-        }
-        if (outputIdx >= 0) {
-            cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
-        }
-        if (blurParamsIdx >= 0) {
-            cmdList->SetComputeRootConstantBufferView(blurParamsIdx, UploadConstants(MakeParams()));
-        }
-        if (screenParamsIdx >= 0) {
-            cmdList->SetComputeRootConstantBufferView(screenParamsIdx, GetScreenSizeCbAddress());
-        }
-
-        // スレッドグループ数 = ceil(解像度 / 8)
-        uint32_t groupX = DivRoundUp(width, 8);
-        uint32_t groupY = DivRoundUp(height, 8);
-        cmdList->Dispatch(groupX, groupY, 1);
+        DispatchScreenPass(inputSrvHandle, outputUavHandle, width, height, "BlurParams", MakeParams());
     }
 
     void Blur::DrawImGui()

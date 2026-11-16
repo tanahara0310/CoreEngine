@@ -129,13 +129,13 @@ void ParticleSystemDebugUI::ShowStatusHeader(IParticleSystem& system, bool isGpu
         ImGui::TextDisabled("停止中");
         break;
     }
-    const auto& mainData = system.GetMainModule().GetMainData();
+    const auto& mainData = system.GetMainModule().GetData();
     UI::SameLine();
     ImGui::TextDisabled("経過 %.2f / %.1f 秒", playback.GetElapsedTime(), mainData.duration);
 
     // 今の周期のバースト（継続時間より後の時刻は周期の終わりに出る）
     const EmissionModule& emission = system.GetEmissionModule();
-    const auto& emissionData = emission.GetEmissionData();
+    const auto& emissionData = emission.GetData();
     if (playback.IsPlaying() && emission.IsEnabled() && emissionData.burstCount > 0) {
         if (playback.IsBurstDone()) {
             UI::Hint("この周期のバーストは済み");

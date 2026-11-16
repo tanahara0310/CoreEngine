@@ -247,14 +247,14 @@ namespace CoreEngine
             std::memset(zeroMapped, 0, static_cast<size_t>(kBytes));
             statisticsZero_->Unmap(0, nullptr);
 
-            for (auto& readback : statisticsReadback_) {
-                readback = ResourceFactory::CreateBufferResource(device, kBytes, D3D12_HEAP_TYPE_READBACK);
+            if (!statisticsReadback_.Create(device, static_cast<size_t>(kBytes))) {
+                return false;
             }
         }
         catch (const std::exception&) {
             return false;
         }
-        statisticsPending_.fill(false);
+        statisticsReadback_.DiscardAll();
         histogram_.assign(kHistogramBins, 0u);
         return true;
     }
@@ -319,12 +319,12 @@ namespace CoreEngine
 
         // 書き込み先はフレームの偶奇で決める。読む側は前のフレームの結果で、
         // 同じフレームの水面のピクセルシェーダーも読む
-        const uint32_t writeIndex = frameIndex_ & 1u;
-        const uint32_t readIndex = writeIndex ^ 1u;
+        FFTOceanGpuTexture& writeFoam = foam_.Write();
+        FFTOceanGpuTexture& readFoam = foam_.Read();
         constexpr D3D12_RESOURCE_STATES kAnyShaderResource =
             D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-        Barrier::Transition(cmdList, foam_[writeIndex], D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        Barrier::Transition(cmdList, foam_[readIndex], kAnyShaderResource);
+        Barrier::Transition(cmdList, writeFoam, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, readFoam, kAnyShaderResource);
 
         cmdList->SetPipelineState(foamPipeline_.GetComputePSO());
         cmdList->SetComputeRootSignature(foamPipeline_.GetComputeRootSignature());
@@ -333,10 +333,10 @@ namespace CoreEngine
             cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), jacobianSRV);
         }
         if (const int slot = foamPipeline_.GetComputeRootParamIndex("gFoamPrev"); slot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), foam_[readIndex].srv.gpuHandle);
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), readFoam.srv.gpuHandle);
         }
         if (const int slot = foamPipeline_.GetComputeRootParamIndex("gFoamOutput"); slot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), foam_[writeIndex].uav.gpuHandle);
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), writeFoam.uav.gpuHandle);
         }
         if (const int slot = foamPipeline_.GetComputeRootParamIndex("FFTOceanFoamConstants"); slot >= 0) {
             cmdList->SetComputeRootConstantBufferView(
@@ -346,32 +346,35 @@ namespace CoreEngine
         const UINT groups = DivRoundUp(kResolution, 8);
         cmdList->Dispatch(groups, groups, kLevelCount);
 
-        Barrier::Transition(cmdList, foam_[writeIndex], kAnyShaderResource);
+        Barrier::Transition(cmdList, writeFoam, kAnyShaderResource);
         ++frameIndex_;
+        foam_.Swap();
     }
 
     bool WaterWhitecapFoam::ReadStatistics(uint32_t frameIndex)
     {
-        if (!statisticsPending_[frameIndex]) {
+        if (!statisticsReadback_.TakePending(frameIndex)) {
             return false;
         }
-        statisticsPending_[frameIndex] = false;
-        if (statisticsEpoch_[frameIndex] != calibrationEpoch_) {
+        if (statisticsReadback_.Meta(frameIndex) != calibrationEpoch_) {
             return false;
         }
 
         // 同じ枠が回ってきた時点で、前にこの枠へ記録した GPU の処理は済んでいる
-        uint32_t* words = nullptr;
-        const D3D12_RANGE readRange{ 0, sizeof(uint32_t) * kStatisticsWords };
-        if (FAILED(statisticsReadback_[frameIndex]->Map(0, &readRange, reinterpret_cast<void**>(&words)))) {
+        uint32_t coverageSum = 0;
+        uint32_t instantSum = 0;
+        uint32_t residueSum = 0;
+        const bool read = statisticsReadback_.Read(frameIndex, sizeof(uint32_t) * kStatisticsWords,
+            [&](const void* mapped) {
+                const uint32_t* words = static_cast<const uint32_t*>(mapped);
+                std::memcpy(histogram_.data(), words, sizeof(uint32_t) * kHistogramBins);
+                coverageSum = words[kHistogramBins];
+                instantSum = words[kHistogramBins + 1];
+                residueSum = words[kHistogramBins + 2];
+            });
+        if (!read) {
             return false;
         }
-        std::memcpy(histogram_.data(), words, sizeof(uint32_t) * kHistogramBins);
-        const uint32_t coverageSum = words[kHistogramBins];
-        const uint32_t instantSum = words[kHistogramBins + 1];
-        const uint32_t residueSum = words[kHistogramBins + 2];
-        const D3D12_RANGE writtenRange{ 0, 0 };
-        statisticsReadback_[frameIndex]->Unmap(0, &writtenRange);
 
         constexpr float kSampleCount =
             static_cast<float>(kStatisticsSampleResolution) * static_cast<float>(kStatisticsSampleResolution);
@@ -526,9 +529,9 @@ namespace CoreEngine
 
         // CPU は同じ枠が回ってきたフレームで読む。最後は次のフレームの 0 の写し込みに備えて写し先へ戻す
         Barrier::Transition(cmdList, statistics_, D3D12_RESOURCE_STATE_COPY_SOURCE);
-        cmdList->CopyBufferRegion(statisticsReadback_[frameIndex].Get(), 0, statistics_.Get(), 0, kBytes);
+        cmdList->CopyBufferRegion(statisticsReadback_.Buffer(frameIndex), 0, statistics_.Get(), 0, kBytes);
         Barrier::Transition(cmdList, statistics_, D3D12_RESOURCE_STATE_COPY_DEST);
-        statisticsPending_[frameIndex] = true;
-        statisticsEpoch_[frameIndex] = calibrationEpoch_;
+        statisticsReadback_.MarkPending(frameIndex);
+        statisticsReadback_.Meta(frameIndex) = calibrationEpoch_;
     }
 }

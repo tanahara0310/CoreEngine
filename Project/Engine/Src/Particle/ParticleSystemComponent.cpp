@@ -31,10 +31,6 @@
 
 namespace
 {
-    /// @brief ブレンドの名前（`BlendMode` の並び）
-    constexpr const char* kBlendModeNames[] = { "なし", "アルファ", "加算", "減算", "乗算", "スクリーン" };
-    static_assert(std::size(kBlendModeNames) == CoreEngine::kBlendModeCount);
-
     /// @brief ビルボードの名前（`BillboardType` の並び）
     constexpr const char* kBillboardNames[] = { "なし（粒の回転だけ）", "カメラの正面", "Y 軸だけ回す", "画面と平行" };
 
@@ -56,7 +52,7 @@ REFLECT_DEFINE_BEGIN(CoreEngine::ParticleSystemComponent, "パーティクル")
     REFLECT_ACCESSOR("model", "モデル", GetModelAsset, SetModelAsset,
         p.assetType = ::CoreEngine::AssetType::Model,
         p.tooltip = "指すと、板ポリの代わりにこのモデルを粒として描く")
-    REFLECT_ENUM_ACCESSOR("blendMode", "ブレンド", GetBlendMode, SetBlendMode, kBlendModeNames,
+    REFLECT_ENUM_ACCESSOR("blendMode", "ブレンド", GetBlendMode, SetBlendMode, ::CoreEngine::kBlendModeNames,
         p.tooltip = "背景との合成のしかた。炎や光は「加算」、煙は「アルファ」が向く")
     REFLECT_ENUM_ACCESSOR("billboard", "ビルボード", GetBillboardType, SetBillboardType, kBillboardNames,
         p.tooltip = "板ポリの向き。草や炎の柱のように立てたいものは「Y 軸だけ回す」。モデルの粒では使わない")
@@ -135,7 +131,7 @@ namespace CoreEngine
 
     void ParticleSystemComponent::Start()
     {
-        if (mainModule_->GetMainData().playOnAwake) {
+        if (mainModule_->GetData().playOnAwake) {
             Play();
         }
     }
@@ -151,8 +147,8 @@ namespace CoreEngine
 
         statistics_.systemRuntime += deltaTime;
 
-        const auto& mainData = mainModule_->GetMainData();
-        const uint32_t emitCount = playback_.Advance(deltaTime, mainData, emissionModule_->GetEmissionData());
+        const auto& mainData = mainModule_->GetData();
+        const uint32_t emitCount = playback_.Advance(deltaTime, mainData, emissionModule_->GetData());
         if (emissionModule_->IsEnabled()) {
             Emit(emitCount);
         }
@@ -310,7 +306,7 @@ namespace CoreEngine
 
     uint32_t ParticleSystemComponent::GetMaxParticleCount() const
     {
-        return (std::min)(mainModule_->GetMainData().maxParticles, kNumMaxInstance);
+        return (std::min)(mainModule_->GetData().maxParticles, kNumMaxInstance);
     }
 
     uint32_t ParticleSystemComponent::CollectWorldMatrices(Matrix4x4* outMatrices, uint32_t maxCount) const

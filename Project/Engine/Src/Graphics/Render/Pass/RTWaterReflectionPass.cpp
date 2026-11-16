@@ -4,6 +4,7 @@
 #include "Graphics/Atmosphere/AtmosphereManager.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RayTracing/Debug/RTDebugCollect.h"
 #include "Graphics/RayTracing/Debug/RTDebugRegistry.h"
 #include "Graphics/RayTracing/Effect/RTEffectRegistry.h"
 #include "Graphics/RayTracing/Effect/RTEffectSet.h"
@@ -27,11 +28,7 @@ namespace CoreEngine
         .cvarPrefix = nullptr,
         .passNames = { "RTWaterReflectionPass" },
         .stageLabels = { "トレース" },
-        .collect = [](const RTDebugQuery& query, std::vector<RTDebugEffectRow>& rows) {
-            if (auto* manager = query.domain ? query.domain->GetRTEffects().Find<WaterReflectionRayTracingManager>() : nullptr) {
-                rows.push_back({ "ゲームの画面", manager->GetDispatchInfo() });
-            }
-        });
+        .collect = CollectGameViewDispatch<WaterReflectionRayTracingManager>);
 
     RT_DEBUG_CHANNEL_REGISTER(
         .effect = "水の反射",

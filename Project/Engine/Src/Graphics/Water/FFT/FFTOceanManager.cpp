@@ -459,8 +459,7 @@ namespace CoreEngine
         FFTOceanPingPong& textures,
         uint32_t initialIndex)
     {
-        uint32_t readIndex = initialIndex;
-        uint32_t writeIndex = (initialIndex + 1) % kPingPongCount;
+        textures.SetReadIndex(initialIndex);
         const uint32_t log2Resolution = GetLog2Resolution();
 
         auto dispatchStage = [&](uint32_t stageIndex, bool isHorizontal, float normalizationScale) {
@@ -468,12 +467,12 @@ namespace CoreEngine
                 UploadIFFTConstants(stageIndex, isHorizontal, normalizationScale);
             FFTOceanDispatchHelper::DispatchIFFTPass(
                 cmdList,
-                textures[readIndex],
-                textures[writeIndex],
+                textures.Read(),
+                textures.Write(),
                 ifftPipeline_,
                 constantsAddress,
                 GetSettings().resolution);
-            std::swap(readIndex, writeIndex);
+            textures.Swap();
         };
 
         // 横方向IFFT。
@@ -489,7 +488,7 @@ namespace CoreEngine
             dispatchStage(stageIndex, false, normalizationScale);
         }
 
-        return readIndex;
+        return textures.ReadIndex();
     }
 
     void FFTOceanManager::DispatchFinalizePass(

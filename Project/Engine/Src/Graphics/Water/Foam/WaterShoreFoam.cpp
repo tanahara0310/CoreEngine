@@ -287,10 +287,10 @@ namespace CoreEngine
             Barrier::Transition(cmdList, swash_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         }
 
-        const uint32_t writeIndex = frameIndex_ & 1u;
-        const uint32_t readIndex = writeIndex ^ 1u;
-        Barrier::Transition(cmdList, foam_[writeIndex], D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        Barrier::Transition(cmdList, foam_[readIndex], kAnyShaderResource);
+        FFTOceanGpuTexture& writeFoam = foam_.Write();
+        FFTOceanGpuTexture& readFoam = foam_.Read();
+        Barrier::Transition(cmdList, writeFoam, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        Barrier::Transition(cmdList, readFoam, kAnyShaderResource);
 
         cmdList->SetPipelineState(foamPipeline_.GetComputePSO());
         cmdList->SetComputeRootSignature(foamPipeline_.GetComputeRootSignature());
@@ -302,13 +302,13 @@ namespace CoreEngine
             cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), input.fftDisplacementSRV);
         }
         if (const int slot = foamPipeline_.GetComputeRootParamIndex("gShoreFoamPrev"); slot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), foam_[readIndex].srv.gpuHandle);
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), readFoam.srv.gpuHandle);
         }
         if (const int slot = foamPipeline_.GetComputeRootParamIndex("gSwashDisplacement"); slot >= 0) {
             cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), swash_.srv.gpuHandle);
         }
         if (const int slot = foamPipeline_.GetComputeRootParamIndex("gShoreFoamOutput"); slot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), foam_[writeIndex].uav.gpuHandle);
+            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), writeFoam.uav.gpuHandle);
         }
         if (const int slot = foamPipeline_.GetComputeRootParamIndex("WaterShoreFoamConstants"); slot >= 0) {
             cmdList->SetComputeRootConstantBufferView(
@@ -318,7 +318,7 @@ namespace CoreEngine
         const UINT groups = DivRoundUp(kResolution, 8);
         cmdList->Dispatch(groups, groups, 1);
 
-        Barrier::Transition(cmdList, foam_[writeIndex], kAnyShaderResource);
-        ++frameIndex_;
+        Barrier::Transition(cmdList, writeFoam, kAnyShaderResource);
+        foam_.Swap();
     }
 }

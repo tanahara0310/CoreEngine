@@ -7,33 +7,27 @@ struct Particle;
 
 namespace CoreEngine
 {
+/// @brief 初速の設定（方向とランダム範囲。VelocityModule）
+struct ParticleVelocityData {
+    // 速度の方向（自動的に正規化されます）
+    Vector3 startSpeed = { 0.0f, 1.0f, 0.0f };
+
+    // 方向のランダム範囲（正規化後に適用）
+    Vector3 randomSpeedRange = { 1.0f, 1.0f, 1.0f };
+
+    // 完全ランダム方向を使用するか
+    bool useRandomDirection = true;
+};
+
 /// @brief パーティクルの速度モジュール
 /// 注意: 初期速度の大きさはMainModuleで設定します
 /// このモジュールは速度の方向のみを決定します
-class VelocityModule : public ParticleModule {
+class VelocityModule : public ParticleModuleT<ParticleVelocityData> {
 public:
-    /// @brief 初速の設定（方向とランダム範囲）
-    struct VelocityData {
-        // 速度の方向（自動的に正規化されます）
-        Vector3 startSpeed = { 0.0f, 1.0f, 0.0f };
-        
-        // 方向のランダム範囲（正規化後に適用）
-        Vector3 randomSpeedRange = { 1.0f, 1.0f, 1.0f };
-        
-        // 完全ランダム方向を使用するか
-        bool useRandomDirection = true;
-    };
+    using VelocityData = ParticleVelocityData;
 
     VelocityModule();
     ~VelocityModule() = default;
-
-    /// @brief 速度データを設定
-    /// @param data 速度データ
-    void SetVelocityData(const VelocityData& data) { velocityData_ = data; }
-
-    /// @brief 速度データを取得
-    /// @return 速度データの参照
-    const VelocityData& GetVelocityData() const { return velocityData_; }
 
     /// @brief パーティクルに初期速度を適用
     /// @param particle 対象のパーティクル
@@ -46,8 +40,6 @@ public:
 #endif
 
 private:
-    VelocityData velocityData_;
-
     /// @brief ランダムな方向ベクトルを生成
     /// @return ランダムな方向ベクトル
     Vector3 GenerateRandomDirection();

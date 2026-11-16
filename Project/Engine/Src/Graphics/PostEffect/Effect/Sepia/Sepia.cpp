@@ -2,7 +2,6 @@
 #include "Sepia.h"
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Math/IntegerMath.h"
 #include "Utility/CVar/CVar.h"
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
@@ -49,25 +48,7 @@ namespace CoreEngine
         uint32_t width,
         uint32_t height)
     {
-        UpdateScreenSizeConstants(width, height);
-
-        auto* cmdList = graphicsCore_->GetCommandList();
-        cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
-        cmdList->SetPipelineState(computePso_.Get());
-
-        int textureIdx      = GetRootParamIndex("gTexture");
-        int outputIdx       = GetRootParamIndex("gOutput");
-        int sepiaParamsIdx  = GetRootParamIndex("SepiaParams");
-        int screenParamsIdx = GetRootParamIndex("ScreenParams");
-
-        if (textureIdx >= 0)      cmdList->SetComputeRootDescriptorTable(textureIdx, inputSrvHandle);
-        if (outputIdx >= 0)       cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
-        if (sepiaParamsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(sepiaParamsIdx, UploadConstants(MakeParams()));
-        if (screenParamsIdx >= 0) cmdList->SetComputeRootConstantBufferView(screenParamsIdx, GetScreenSizeCbAddress());
-
-        uint32_t groupX = DivRoundUp(width, 8);
-        uint32_t groupY = DivRoundUp(height, 8);
-        cmdList->Dispatch(groupX, groupY, 1);
+        DispatchScreenPass(inputSrvHandle, outputUavHandle, width, height, "SepiaParams", MakeParams());
     }
 
     void Sepia::DrawImGui()

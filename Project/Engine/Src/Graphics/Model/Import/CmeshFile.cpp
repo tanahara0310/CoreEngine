@@ -7,6 +7,8 @@
 #include <cstring>
 #include <fstream>
 #include <stdexcept>
+#include <string>
+#include <string_view>
 #include <type_traits>
 
 namespace CoreEngine
@@ -55,6 +57,8 @@ namespace CoreEngine
         class Writer
         {
         public:
+            static constexpr bool kReading = false;
+
             void Bytes(const void* data, size_t size)
             {
                 const auto* bytes = static_cast<const uint8_t*>(data);
@@ -69,7 +73,13 @@ namespace CoreEngine
             }
 
             void U32(uint32_t value) { Pod(value); }
-            void F32(float value) { Pod(value); }
+
+            /// @brief 真偽を 4 バイトの 1 か 0 で書く
+            void Bool32(bool value) { U32(value ? 1u : 0u); }
+
+            /// @brief 列挙を 4 バイトで書く
+            template<typename E>
+            void Enum32(E value) { U32(static_cast<uint32_t>(value)); }
 
             void Str(const std::string& text)
             {
@@ -85,6 +95,14 @@ namespace CoreEngine
                 if (!values.empty()) {
                     Bytes(values.data(), values.size() * sizeof(T));
                 }
+            }
+
+            /// @brief 要素を数を付けずに生のまま並べる（チャンクの残り全部になる）
+            template<typename T>
+            void Rest(const std::vector<T>& values)
+            {
+                static_assert(std::is_trivially_copyable_v<T>);
+                Bytes(values.data(), values.size() * sizeof(T));
             }
 
             /// @brief チャンクを始める（16 バイト境界に揃えてから見出しを置く）
@@ -119,6 +137,8 @@ namespace CoreEngine
         class Reader
         {
         public:
+            static constexpr bool kReading = true;
+
             Reader(const uint8_t* data, size_t size) : cursor_(data), end_(data + size) {}
 
             void Bytes(void* out, size_t size)
@@ -139,18 +159,30 @@ namespace CoreEngine
                 return value;
             }
 
-            uint32_t U32() { return Pod<uint32_t>(); }
-            float F32() { return Pod<float>(); }
+            template<typename T>
+            void Pod(T& value)
+            {
+                static_assert(std::is_trivially_copyable_v<T>);
+                Bytes(&value, sizeof(T));
+            }
 
-            std::string Str()
+            uint32_t U32() { return Pod<uint32_t>(); }
+
+            /// @brief 4 バイトの数を読み、0 でなければ真にする
+            void Bool32(bool& value) { value = U32() != 0; }
+
+            /// @brief 4 バイトの数を列挙として読む
+            template<typename E>
+            void Enum32(E& value) { value = static_cast<E>(U32()); }
+
+            void Str(std::string& text)
             {
                 const uint32_t size = U32();
                 if (size > kMaxStringLength || size > Remaining()) {
                     throw std::runtime_error("cmesh の文字列の長さが壊れています");
                 }
-                std::string text(size, '\0');
+                text.assign(size, '\0');
                 Bytes(text.data(), size);
-                return text;
             }
 
             template<typename T>
@@ -194,172 +226,167 @@ namespace CoreEngine
             const uint8_t* end_;
         };
 
-        void WriteNode(Writer& writer, const Node& node)
+        /// @brief 書く側（Writer）なら const T&、読む側（Reader）なら T&
+        template<class Ar, class T>
+        using Ref = std::conditional_t<Ar::kReading, T&, const T&>;
+
+        /// @brief 要素の数（4 バイト）と、要素を 1 つずつ書くか読む（読むときは後ろへ足す）
+        /// @param brokenMessage 読んだ数が残りのバイト数より多いときの例外の文
+        /// @param element 要素 1 つを書くか読む
+        template<class Ar, class Vector, class Element>
+        void Records(Ar& ar, Vector& values, const char* brokenMessage, Element&& element)
         {
-            writer.Str(node.name);
-            writer.Pod(node.transform.scale);
-            writer.Pod(node.transform.rotate);
-            writer.Pod(node.transform.translate);
-            writer.Pod(node.localMatrix);
-            writer.U32(static_cast<uint32_t>(node.children.size()));
-            for (const Node& child : node.children) {
-                WriteNode(writer, child);
+            if constexpr (Ar::kReading) {
+                const uint32_t count = ar.U32();
+                if (count > ar.Remaining()) {
+                    throw std::runtime_error(brokenMessage);
+                }
+                values.reserve(count);
+                for (uint32_t i = 0; i < count; ++i) {
+                    element(values.emplace_back());
+                }
+            } else {
+                ar.U32(static_cast<uint32_t>(values.size()));
+                for (auto& value : values) {
+                    element(value);
+                }
             }
         }
 
-        Node ReadNode(Reader& reader)
+        /// @brief 要素の数（4 バイト）と、名前（文字列）の付いた要素を 1 つずつ書くか読む（名前で引く表）
+        /// @param brokenMessage 読んだ数が残りのバイト数より多いときの例外の文
+        /// @param element 要素 1 つ（名前の後ろ）を書くか読む
+        template<class Ar, class Map, class Element>
+        void NamedRecords(Ar& ar, Map& values, const char* brokenMessage, Element&& element)
         {
-            Node node;
-            node.name = reader.Str();
-            node.transform.scale = reader.Pod<Vector3>();
-            node.transform.rotate = reader.Pod<Quaternion>();
-            node.transform.translate = reader.Pod<Vector3>();
-            node.localMatrix = reader.Pod<Matrix4x4>();
-            const uint32_t childCount = reader.U32();
-            if (childCount > reader.Remaining()) {
-                throw std::runtime_error("cmesh のノードの数が壊れています");
-            }
-            node.children.reserve(childCount);
-            for (uint32_t i = 0; i < childCount; ++i) {
-                node.children.push_back(ReadNode(reader));
-            }
-            return node;
-        }
-
-        void WriteMaterial(Writer& writer, const MaterialAsset& material)
-        {
-            writer.Str(material.name);
-            writer.Str(material.baseColorTexture);
-            writer.Str(material.metallicRoughnessTexture);
-            writer.Str(material.normalTexture);
-            writer.Str(material.occlusionTexture);
-            writer.Str(material.emissiveTexture);
-            writer.Pod(material.baseColorFactor);
-            writer.F32(material.metallicFactor);
-            writer.F32(material.roughnessFactor);
-            writer.Pod(material.emissiveFactor);
-            writer.F32(material.alphaCutoff);
-            writer.U32(material.alphaMask ? 1u : 0u);
-            writer.U32(static_cast<uint32_t>(material.vertexAnimation));
-            writer.F32(material.vertexAnimStrength);
-            writer.F32(material.vertexAnimSpeed);
-        }
-
-        MaterialAsset ReadMaterial(Reader& reader)
-        {
-            MaterialAsset material;
-            material.name = reader.Str();
-            material.baseColorTexture = reader.Str();
-            material.metallicRoughnessTexture = reader.Str();
-            material.normalTexture = reader.Str();
-            material.occlusionTexture = reader.Str();
-            material.emissiveTexture = reader.Str();
-            material.baseColorFactor = reader.Pod<Vector4>();
-            material.metallicFactor = reader.F32();
-            material.roughnessFactor = reader.F32();
-            material.emissiveFactor = reader.Pod<Vector3>();
-            material.alphaCutoff = reader.F32();
-            material.alphaMask = reader.U32() != 0;
-            material.vertexAnimation = static_cast<VertexAnimationType>(reader.U32());
-            material.vertexAnimStrength = reader.F32();
-            material.vertexAnimSpeed = reader.F32();
-            return material;
-        }
-
-        void WriteAnimation(Writer& writer, const std::string& name, const Animation& animation)
-        {
-            writer.Str(name);
-            writer.F32(animation.duration);
-            writer.U32(static_cast<uint32_t>(animation.nodeAnimations.size()));
-            for (const auto& [nodeName, nodeAnimation] : animation.nodeAnimations) {
-                writer.Str(nodeName);
-                writer.Array(nodeAnimation.translate.keyframes);
-                writer.Array(nodeAnimation.rotate.keyframes);
-                writer.Array(nodeAnimation.scale.keyframes);
+            if constexpr (Ar::kReading) {
+                const uint32_t count = ar.U32();
+                if (count > ar.Remaining()) {
+                    throw std::runtime_error(brokenMessage);
+                }
+                for (uint32_t i = 0; i < count; ++i) {
+                    std::string name;
+                    ar.Str(name);
+                    element(values[name]);
+                }
+            } else {
+                ar.U32(static_cast<uint32_t>(values.size()));
+                for (const auto& [name, value] : values) {
+                    ar.Str(name);
+                    element(value);
+                }
             }
         }
 
-        std::pair<std::string, Animation> ReadAnimation(Reader& reader)
+        template<class Ar>
+        void Transfer(Ar& ar, Ref<Ar, Node> node)
         {
-            std::pair<std::string, Animation> result;
-            result.first = reader.Str();
-            Animation& animation = result.second;
-            animation.duration = reader.F32();
-            const uint32_t nodeCount = reader.U32();
-            if (nodeCount > reader.Remaining()) {
-                throw std::runtime_error("cmesh のアニメーションのノードの数が壊れています");
-            }
-            for (uint32_t i = 0; i < nodeCount; ++i) {
-                const std::string nodeName = reader.Str();
-                NodeAnimation& nodeAnimation = animation.nodeAnimations[nodeName];
-                reader.Array(nodeAnimation.translate.keyframes);
-                reader.Array(nodeAnimation.rotate.keyframes);
-                reader.Array(nodeAnimation.scale.keyframes);
-            }
-            return result;
+            ar.Str(node.name);
+            ar.Pod(node.transform.scale);
+            ar.Pod(node.transform.rotate);
+            ar.Pod(node.transform.translate);
+            ar.Pod(node.localMatrix);
+            Records(ar, node.children, "cmesh のノードの数が壊れています",
+                [&](auto& child) { Transfer(ar, child); });
         }
 
-        /// @brief チャンク 1 つを読む（知らない名前は何もしない）
-        void ReadChunk(const ChunkHeader& header, Reader& reader, MeshAsset& asset)
+        template<class Ar>
+        void Transfer(Ar& ar, Ref<Ar, MaterialAsset> material)
         {
-            ModelData& model = asset.model;
-            const std::string_view id(header.id, 4);
+            ar.Str(material.name);
+            ar.Str(material.baseColorTexture);
+            ar.Str(material.metallicRoughnessTexture);
+            ar.Str(material.normalTexture);
+            ar.Str(material.occlusionTexture);
+            ar.Str(material.emissiveTexture);
+            ar.Pod(material.baseColorFactor);
+            ar.Pod(material.metallicFactor);
+            ar.Pod(material.roughnessFactor);
+            ar.Pod(material.emissiveFactor);
+            ar.Pod(material.alphaCutoff);
+            ar.Bool32(material.alphaMask);
+            ar.Enum32(material.vertexAnimation);
+            ar.Pod(material.vertexAnimStrength);
+            ar.Pod(material.vertexAnimSpeed);
+        }
+
+        template<class Ar>
+        void Transfer(Ar& ar, Ref<Ar, SubMeshData> subMesh)
+        {
+            ar.Str(subMesh.name);
+            ar.Pod(subMesh.startIndex);
+            ar.Pod(subMesh.indexCount);
+            ar.Pod(subMesh.materialIndex);
+            ar.Pod(subMesh.lodCount);
+            for (auto& lod : subMesh.lods) {
+                ar.Pod(lod);
+            }
+            if constexpr (Ar::kReading) {
+                if (subMesh.lodCount == 0 || subMesh.lodCount > SubMeshData::kMaxLodCount) {
+                    throw std::runtime_error("cmesh の LOD の段数が壊れています");
+                }
+            }
+        }
+
+        template<class Ar>
+        void Transfer(Ar& ar, Ref<Ar, JointWeightData> joint)
+        {
+            ar.Pod(joint.inverseBindPoseMatrix);
+            ar.Array(joint.vertexWeights);
+        }
+
+        template<class Ar>
+        void Transfer(Ar& ar, Ref<Ar, NodeAnimation> nodeAnimation)
+        {
+            ar.Array(nodeAnimation.translate.keyframes);
+            ar.Array(nodeAnimation.rotate.keyframes);
+            ar.Array(nodeAnimation.scale.keyframes);
+        }
+
+        template<class Ar>
+        void Transfer(Ar& ar, Ref<Ar, Animation> animation)
+        {
+            ar.Pod(animation.duration);
+            NamedRecords(ar, animation.nodeAnimations, "cmesh のアニメーションのノードの数が壊れています",
+                [&](auto& nodeAnimation) { Transfer(ar, nodeAnimation); });
+        }
+
+        /// @brief チャンク 1 つの中身を書くか読む（知らない名前は何もしない）
+        /// @details 読むとき、同じ名前のチャンクが前にもあれば、VERT・VCOL・INDX・SUBM・NODE は置き換え、
+        ///          MATL・ANIM は後ろへ足し、SKIN は同じ名前のジョイントを置き換える。
+        template<class Ar>
+        void TransferChunk(Ar& ar, std::string_view id, Ref<Ar, MeshAsset> asset)
+        {
+            auto& model = asset.model;
             if (id == "VERT") {
-                reader.Rest(model.vertices);
+                ar.Rest(model.vertices);
             } else if (id == "VCOL") {
-                reader.Rest(model.vertexColors);
+                ar.Rest(model.vertexColors);
             } else if (id == "INDX") {
-                reader.Rest(model.indices);
+                ar.Rest(model.indices);
             } else if (id == "SUBM") {
-                const uint32_t count = reader.U32();
-                if (count > reader.Remaining()) {
-                    throw std::runtime_error("cmesh のサブメッシュの数が壊れています");
+                if constexpr (Ar::kReading) {
+                    model.subMeshes.clear();
                 }
-                model.subMeshes.resize(count);
-                for (SubMeshData& subMesh : model.subMeshes) {
-                    subMesh.name = reader.Str();
-                    subMesh.startIndex = reader.U32();
-                    subMesh.indexCount = reader.U32();
-                    subMesh.materialIndex = reader.U32();
-                    subMesh.lodCount = reader.U32();
-                    for (SubMeshLodRange& lod : subMesh.lods) {
-                        lod = reader.Pod<SubMeshLodRange>();
-                    }
-                    if (subMesh.lodCount == 0 || subMesh.lodCount > SubMeshData::kMaxLodCount) {
-                        throw std::runtime_error("cmesh の LOD の段数が壊れています");
-                    }
-                }
+                Records(ar, model.subMeshes, "cmesh のサブメッシュの数が壊れています",
+                    [&](auto& subMesh) { Transfer(ar, subMesh); });
             } else if (id == "MATL") {
-                const uint32_t count = reader.U32();
-                if (count > reader.Remaining()) {
-                    throw std::runtime_error("cmesh のマテリアルの数が壊れています");
-                }
-                model.materials.reserve(count);
-                for (uint32_t i = 0; i < count; ++i) {
-                    model.materials.push_back(ReadMaterial(reader));
-                }
+                Records(ar, model.materials, "cmesh のマテリアルの数が壊れています",
+                    [&](auto& material) { Transfer(ar, material); });
             } else if (id == "NODE") {
-                model.rootNode = ReadNode(reader);
+                if constexpr (Ar::kReading) {
+                    model.rootNode = Node{};
+                }
+                Transfer(ar, model.rootNode);
             } else if (id == "SKIN") {
-                const uint32_t count = reader.U32();
-                if (count > reader.Remaining()) {
-                    throw std::runtime_error("cmesh のジョイントの数が壊れています");
-                }
-                for (uint32_t i = 0; i < count; ++i) {
-                    const std::string jointName = reader.Str();
-                    JointWeightData& joint = model.skinClusterData[jointName];
-                    joint.inverseBindPoseMatrix = reader.Pod<Matrix4x4>();
-                    reader.Array(joint.vertexWeights);
-                }
+                NamedRecords(ar, model.skinClusterData, "cmesh のジョイントの数が壊れています",
+                    [&](auto& joint) { Transfer(ar, joint); });
             } else if (id == "ANIM") {
-                const uint32_t count = reader.U32();
-                if (count > reader.Remaining()) {
-                    throw std::runtime_error("cmesh のアニメーションの数が壊れています");
-                }
-                asset.animations.reserve(count);
-                for (uint32_t i = 0; i < count; ++i) {
-                    asset.animations.push_back(ReadAnimation(reader));
-                }
+                Records(ar, asset.animations, "cmesh のアニメーションの数が壊れています",
+                    [&](auto& animation) {
+                        ar.Str(animation.first);
+                        Transfer(ar, animation.second);
+                    });
             }
         }
     }
@@ -377,67 +404,33 @@ namespace CoreEngine
         header.lod0IndexCount = asset.lod0IndexCount;
         writer.Pod(header);
 
+        const auto writeChunk = [&](const char (&id)[5]) {
+            const size_t at = writer.BeginChunk(id);
+            TransferChunk(writer, std::string_view(id, 4), asset);
+            writer.EndChunk(at);
+        };
+
         const ModelData& model = asset.model;
         if (asset.hasMesh) {
-            size_t at = writer.BeginChunk("VERT");
-            writer.Bytes(model.vertices.data(), model.vertices.size() * sizeof(VertexData));
-            writer.EndChunk(at);
+            writeChunk("VERT");
 
             // 頂点の色は持つモデルだけ（頂点と同じ数・同じ並び）
             if (!model.vertexColors.empty() && model.vertexColors.size() == model.vertices.size()) {
-                at = writer.BeginChunk("VCOL");
-                writer.Bytes(model.vertexColors.data(), model.vertexColors.size() * sizeof(uint32_t));
-                writer.EndChunk(at);
+                writeChunk("VCOL");
             }
 
-            at = writer.BeginChunk("INDX");
-            writer.Bytes(model.indices.data(), model.indices.size() * sizeof(int32_t));
-            writer.EndChunk(at);
-
-            at = writer.BeginChunk("SUBM");
-            writer.U32(static_cast<uint32_t>(model.subMeshes.size()));
-            for (const SubMeshData& subMesh : model.subMeshes) {
-                writer.Str(subMesh.name);
-                writer.U32(subMesh.startIndex);
-                writer.U32(subMesh.indexCount);
-                writer.U32(subMesh.materialIndex);
-                writer.U32(subMesh.lodCount);
-                for (const SubMeshLodRange& lod : subMesh.lods) {
-                    writer.Pod(lod);
-                }
-            }
-            writer.EndChunk(at);
-
-            at = writer.BeginChunk("MATL");
-            writer.U32(static_cast<uint32_t>(model.materials.size()));
-            for (const MaterialAsset& material : model.materials) {
-                WriteMaterial(writer, material);
-            }
-            writer.EndChunk(at);
-
-            at = writer.BeginChunk("NODE");
-            WriteNode(writer, model.rootNode);
-            writer.EndChunk(at);
+            writeChunk("INDX");
+            writeChunk("SUBM");
+            writeChunk("MATL");
+            writeChunk("NODE");
 
             if (!model.skinClusterData.empty()) {
-                at = writer.BeginChunk("SKIN");
-                writer.U32(static_cast<uint32_t>(model.skinClusterData.size()));
-                for (const auto& [jointName, joint] : model.skinClusterData) {
-                    writer.Str(jointName);
-                    writer.Pod(joint.inverseBindPoseMatrix);
-                    writer.Array(joint.vertexWeights);
-                }
-                writer.EndChunk(at);
+                writeChunk("SKIN");
             }
         }
 
         if (!asset.animations.empty()) {
-            const size_t at = writer.BeginChunk("ANIM");
-            writer.U32(static_cast<uint32_t>(asset.animations.size()));
-            for (const auto& [name, animation] : asset.animations) {
-                WriteAnimation(writer, name, animation);
-            }
-            writer.EndChunk(at);
+            writeChunk("ANIM");
         }
 
         std::vector<uint8_t>& data = writer.Data();
@@ -481,7 +474,7 @@ namespace CoreEngine
                     throw std::runtime_error("cmesh のチャンクの大きさが壊れています");
                 }
                 Reader chunkReader(reader.Cursor(), static_cast<size_t>(chunk.size));
-                ReadChunk(chunk, chunkReader, result);
+                TransferChunk(chunkReader, std::string_view(chunk.id, 4), result);
                 reader.Skip(static_cast<size_t>(chunk.size));
             }
 

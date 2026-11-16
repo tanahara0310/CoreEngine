@@ -24,10 +24,6 @@
 
 namespace
 {
-    /// @brief ブレンドの名前（`BlendMode` の並び）
-    constexpr const char* kBlendModeNames[] = { "なし", "アルファ", "加算", "減算", "乗算", "スクリーン" };
-    static_assert(std::size(kBlendModeNames) == CoreEngine::kBlendModeCount);
-
     /// @brief フィルタの名前（`SpriteFilter` の並び）
     constexpr const char* kFilterNames[] = { "線形", "ポイント" };
 
@@ -66,7 +62,7 @@ REFLECT_DEFINE_BEGIN(CoreEngine::SpriteRendererComponent, "スプライト描画
         p.range = Speed(0.01f), p.displayScale = kDegreesPerRadian)
     REFLECT_ACCESSOR("flipX", "左右反転", GetFlipX, SetFlipX)
     REFLECT_ACCESSOR("flipY", "上下反転", GetFlipY, SetFlipY)
-    REFLECT_ENUM_ACCESSOR("blendMode", "ブレンド", GetBlendMode, SetBlendMode, kBlendModeNames)
+    REFLECT_ENUM_ACCESSOR("blendMode", "ブレンド", GetBlendMode, SetBlendMode, ::CoreEngine::kBlendModeNames)
     REFLECT_ACCESSOR("sortingLayer", "ソートレイヤー", GetSortingLayer, SetSortingLayer,
         p.range = Range(-100.0f, 100.0f, 0.1f), p.tooltip = "大きいほど手前に描く")
     REFLECT_ACCESSOR("orderInLayer", "レイヤー内の順", GetOrderInLayer, SetOrderInLayer,

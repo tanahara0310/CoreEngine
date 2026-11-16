@@ -78,8 +78,6 @@ namespace CoreEngine
         const FFTOceanSpectrum& GetSpectrum() const { return spectrum_; }
 
     private:
-        static constexpr uint32_t kPingPongCount = 2;
-
         // HLSL 側 FFTOceanTimeEvolution.CS.hlsl の SpectrumSample と一致必須
         using SpectrumSample = FFTOceanSpectrum::SpectrumSample;
 

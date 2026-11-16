@@ -3,6 +3,7 @@
 
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RayTracing/Debug/RTDebugCollect.h"
 #include "Graphics/RayTracing/Debug/RTDebugRegistry.h"
 #include "Graphics/RayTracing/Effect/RTEffectRegistry.h"
 #include "Graphics/RayTracing/Effect/RTEffectSet.h"
@@ -54,11 +55,7 @@ namespace CoreEngine
         .cvarPrefix = "r.Water.Caustics",
         .passNames = { "RTWaterCausticsPass" },
         .stageLabels = { "トレース" },
-        .collect = [](const RTDebugQuery& query, std::vector<RTDebugEffectRow>& rows) {
-            if (auto* manager = query.domain ? query.domain->GetRTEffects().Find<WaterCausticsRayTracingManager>() : nullptr) {
-                rows.push_back({ "ゲームの画面", manager->GetDispatchInfo() });
-            }
-        });
+        .collect = CollectGameViewDispatch<WaterCausticsRayTracingManager>);
 
     RT_DEBUG_CHANNEL_REGISTER(
         .effect = "水のコースティクス",

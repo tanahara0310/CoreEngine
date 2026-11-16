@@ -9,12 +9,12 @@
 namespace CoreEngine
 {
     ColorModule::ColorModule() {
-        colorData_.endColor = { 1.0f, 1.0f, 1.0f, 0.0f };
-        colorData_.useGradient = true;
+        data_.endColor = { 1.0f, 1.0f, 1.0f, 0.0f };
+        data_.useGradient = true;
     }
 
     void ColorModule::UpdateColor(Particle& particle) {
-        if (!enabled_ || !colorData_.useGradient) {
+        if (!enabled_ || !data_.useGradient) {
             return;
         }
 
@@ -23,27 +23,27 @@ namespace CoreEngine
         const float lifeRatio = MathCore::Saturate(particle.currentTime / particle.lifeTime);
 
         // startRatio より手前は開始色のまま。そこから寿命の終わりまでで変化させる
-        const float start = std::clamp(colorData_.startRatio, 0.0f, 0.999f);
+        const float start = std::clamp(data_.startRatio, 0.0f, 0.999f);
         const float t = MathCore::Saturate((lifeRatio - start) / (1.0f - start));
 
         // particle.initialColorを開始色として使用
-        particle.color = MathCore::Lerp(particle.initialColor, colorData_.endColor, t);
+        particle.color = MathCore::Lerp(particle.initialColor, data_.endColor, t);
     }
 
 #ifdef CORE_EDITOR
     bool ColorModule::ShowImGui() {
         bool changed = false;
 
-        changed |= UI::Widgets::ToggleSwitch("寿命に応じて色を変化", &colorData_.useGradient);
+        changed |= UI::Widgets::ToggleSwitch("寿命に応じて色を変化", &data_.useGradient);
         UI::Tooltip("開始色（メインの「色」）から終了色へ、寿命に沿って線形補間します");
 
         {
-            UI::Scope::DisabledScope ds(!colorData_.useGradient);
-            changed |= UI::ColorEdit("終了色", colorData_.endColor);
+            UI::Scope::DisabledScope ds(!data_.useGradient);
+            changed |= UI::ColorEdit("終了色", data_.endColor);
             UI::SameLine();
             UI::HelpMarker("寿命が尽きる瞬間の色。\nアルファを0にするとフェードアウトになります。\n開始色はメインモジュールの「色」です。");
 
-            changed |= UI::SliderFloat("変化を始める割合", colorData_.startRatio, 0.0f, 0.99f, "%.2f");
+            changed |= UI::SliderFloat("変化を始める割合", data_.startRatio, 0.0f, 0.99f, "%.2f");
             UI::SameLine();
             UI::HelpMarker("寿命のどこから色を変え始めるか。\n0 で生まれた瞬間から、0.7 なら最後の 30% だけで変化します。\n消え際だけフェードさせたいときに上げます。");
         }

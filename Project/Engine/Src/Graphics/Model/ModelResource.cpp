@@ -112,44 +112,39 @@ namespace CoreEngine
         // UPLOAD ヒープはシステムメモリ常駐のため、毎フレームの頂点フェッチが PCIe を
         // 経由し、CPU・DWM・他プロセスと帯域を奪い合って GBuffer の時間が不安定になる。
         // テクスチャと同じく中間バッファ経由でコピーし、以後は VRAM から読ませる。
-        const size_t vertexBytes = sizeof(VertexData) * modelData_.vertices.size();
-        const size_t indexBytes = sizeof(uint32_t) * modelData_.indices.size();
+        const std::span<const VertexData> vertices = modelData_.vertices;
+        const std::span<const int32_t> indices = modelData_.indices;
+        const size_t vertexBytes = vertices.size_bytes();
+        const size_t indexBytes = indices.size_bytes();
         ID3D12Device* device = dxCommon_->GetDevice();
 
         vertexBuffer_.Reset(
             ResourceFactory::CreateBufferResource(device, vertexBytes, D3D12_HEAP_TYPE_DEFAULT),
             D3D12_RESOURCE_STATE_GENERIC_READ);
         Microsoft::WRL::ComPtr<ID3D12Resource> vertexUploadBuffer =
-            ResourceFactory::CreateBufferResource(device, vertexBytes);
+            ResourceFactory::CreateStaticBuffer<VertexData>(device, vertices);
 
         vertexBufferView_.BufferLocation = vertexBuffer_.GpuAddress();
         vertexBufferView_.SizeInBytes = static_cast<UINT>(vertexBytes);
         vertexBufferView_.StrideInBytes = sizeof(VertexData);
 
-        void* mapped = nullptr;
-        vertexUploadBuffer->Map(0, nullptr, &mapped);
-        memcpy(mapped, modelData_.vertices.data(), vertexBytes);
-        vertexUploadBuffer->Unmap(0, nullptr);
-
         indexBuffer_.Reset(
             ResourceFactory::CreateBufferResource(device, indexBytes, D3D12_HEAP_TYPE_DEFAULT),
             D3D12_RESOURCE_STATE_GENERIC_READ);
         Microsoft::WRL::ComPtr<ID3D12Resource> indexUploadBuffer =
-            ResourceFactory::CreateBufferResource(device, indexBytes);
+            ResourceFactory::CreateStaticBuffer<int32_t>(device, indices);
 
         indexBufferView_.BufferLocation = indexBuffer_.GpuAddress();
         indexBufferView_.SizeInBytes = static_cast<UINT>(indexBytes);
         indexBufferView_.Format = DXGI_FORMAT_R32_UINT;
 
-        void* mappedIndex = nullptr;
-        indexUploadBuffer->Map(0, nullptr, &mappedIndex);
-        memcpy(mappedIndex, modelData_.indices.data(), indexBytes);
-        indexUploadBuffer->Unmap(0, nullptr);
-
         // 頂点の色は頂点と同じ数だけあるモデルだけ、別の配列（StructuredBuffer<uint>）で持つ
         const bool hasColors = !modelData_.vertexColors.empty()
             && modelData_.vertexColors.size() == modelData_.vertices.size();
-        const size_t colorBytes = hasColors ? sizeof(uint32_t) * modelData_.vertexColors.size() : 0;
+        const std::span<const uint32_t> colors = hasColors
+            ? std::span<const uint32_t>(modelData_.vertexColors)
+            : std::span<const uint32_t>();
+        const size_t colorBytes = colors.size_bytes();
         Microsoft::WRL::ComPtr<ID3D12Resource> colorUploadBuffer;
         vertexColorBuffer_ = GpuResource();
         vertexColorSRV_ = UniqueDescriptor();
@@ -157,11 +152,7 @@ namespace CoreEngine
             vertexColorBuffer_.Reset(
                 ResourceFactory::CreateBufferResource(device, colorBytes, D3D12_HEAP_TYPE_DEFAULT),
                 D3D12_RESOURCE_STATE_GENERIC_READ);
-            colorUploadBuffer = ResourceFactory::CreateBufferResource(device, colorBytes);
-            void* mappedColor = nullptr;
-            colorUploadBuffer->Map(0, nullptr, &mappedColor);
-            memcpy(mappedColor, modelData_.vertexColors.data(), colorBytes);
-            colorUploadBuffer->Unmap(0, nullptr);
+            colorUploadBuffer = ResourceFactory::CreateStaticBuffer<uint32_t>(device, colors);
 
             if (DescriptorAllocator* descriptors = dxCommon_->GetDescriptorAllocator()) {
                 D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};

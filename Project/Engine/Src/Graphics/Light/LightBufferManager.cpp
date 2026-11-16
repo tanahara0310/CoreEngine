@@ -8,6 +8,39 @@
 
 namespace CoreEngine
 {
+    template <typename T>
+    void LightBufferManager::LightArray<T>::Initialize(GraphicsCore& graphics, uint32_t capacity)
+    {
+        buffer_.Initialize(graphics, capacity, bufferName_);
+    }
+
+    template <typename T>
+    uint32_t LightBufferManager::LightArray<T>::Set(const std::vector<T>& lights)
+    {
+        // 確保した数を超えた分は写さない。警告は超えている間に 1 回だけ出す
+        if (lights.size() > buffer_.Capacity()) {
+            if (!overflowLogged_) {
+                Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Graphics,
+                    "{} のライトが {} 個あり、バッファに入る {} 個を超えた分は描かない",
+                    typeName_, lights.size(), buffer_.Capacity());
+                overflowLogged_ = true;
+            }
+        } else {
+            overflowLogged_ = false;
+        }
+
+        return buffer_.Set(std::span<const T>(lights));
+    }
+
+    template <typename T>
+    void LightBufferManager::LightArray<T>::Bind(ShaderBinder& binder, RootSlot slot) const
+    {
+        // ハンドルが 0 のとき（初期化前）は差せないので、ここで弾く
+        if (const D3D12_GPU_DESCRIPTOR_HANDLE handle = buffer_.Srv(); handle.ptr != 0) {
+            binder.Set(slot, handle);
+        }
+    }
+
     // 種類ごとの配列と個数の置き場を作る。最大数は起動時に決め打ちで、以後変えない
     void LightBufferManager::Initialize(
         GraphicsCore& graphics,
@@ -17,34 +50,11 @@ namespace CoreEngine
         uint32_t maxAreaLights
     )
     {
-        directionalLights_.Initialize(graphics, maxDirectionalLights, "DirectionalLights");
-        pointLights_.Initialize(graphics, maxPointLights, "PointLights");
-        spotLights_.Initialize(graphics, maxSpotLights, "SpotLights");
-        areaLights_.Initialize(graphics, maxAreaLights, "AreaLights");
+        directionalLights_.Initialize(graphics, maxDirectionalLights);
+        pointLights_.Initialize(graphics, maxPointLights);
+        spotLights_.Initialize(graphics, maxSpotLights);
+        areaLights_.Initialize(graphics, maxAreaLights);
         lightCounts_.Initialize(graphics.GetUploadRing());
-    }
-
-    template <typename T>
-    uint32_t LightBufferManager::CopyLights(
-        PerFrameStructuredBuffer<T>& buffer,
-        const std::vector<T>& lights,
-        bool& overflowLogged,
-        const char* typeName
-    )
-    {
-        // 確保した数を超えた分は写さない。警告は超えている間に 1 回だけ出す
-        if (lights.size() > buffer.Capacity()) {
-            if (!overflowLogged) {
-                Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Graphics,
-                    "{} のライトが {} 個あり、バッファに入る {} 個を超えた分は描かない",
-                    typeName, lights.size(), buffer.Capacity());
-                overflowLogged = true;
-            }
-        } else {
-            overflowLogged = false;
-        }
-
-        return buffer.Set(std::span<const T>(lights));
     }
 
     void LightBufferManager::UpdateBuffers(
@@ -56,11 +66,10 @@ namespace CoreEngine
     {
         // 種別ごとに StructuredBuffer を持つ。シェーダーへ渡す数は写した数
         LightCounts counts{};
-        counts.directionalLightCount =
-            CopyLights(directionalLights_, directionalLights, directionalOverflowLogged_, "Directional");
-        counts.pointLightCount = CopyLights(pointLights_, pointLights, pointOverflowLogged_, "Point");
-        counts.spotLightCount = CopyLights(spotLights_, spotLights, spotOverflowLogged_, "Spot");
-        counts.areaLightCount = CopyLights(areaLights_, areaLights, areaOverflowLogged_, "Area");
+        counts.directionalLightCount = directionalLights_.Set(directionalLights);
+        counts.pointLightCount = pointLights_.Set(pointLights);
+        counts.spotLightCount = spotLights_.Set(spotLights);
+        counts.areaLightCount = areaLights_.Set(areaLights);
         lightCounts_.Set(counts);
     }
 
@@ -73,21 +82,13 @@ namespace CoreEngine
         RootSlot areaLights)
     {
         // 未解決スロット（そのシェーダーが参照しない種別）は ShaderBinder 側で no-op になる。
-        // アドレスやハンドルが 0 のとき（初期化前）は差せないので、ここで弾く。
+        // アドレスが 0 のとき（初期化前）は差せないので、ここで弾く。
         if (const D3D12_GPU_VIRTUAL_ADDRESS address = lightCounts_.Address(); address != 0) {
             binder.Set(lightCounts, address);
         }
-        if (const D3D12_GPU_DESCRIPTOR_HANDLE handle = directionalLights_.Srv(); handle.ptr != 0) {
-            binder.Set(directionalLights, handle);
-        }
-        if (const D3D12_GPU_DESCRIPTOR_HANDLE handle = pointLights_.Srv(); handle.ptr != 0) {
-            binder.Set(pointLights, handle);
-        }
-        if (const D3D12_GPU_DESCRIPTOR_HANDLE handle = spotLights_.Srv(); handle.ptr != 0) {
-            binder.Set(spotLights, handle);
-        }
-        if (const D3D12_GPU_DESCRIPTOR_HANDLE handle = areaLights_.Srv(); handle.ptr != 0) {
-            binder.Set(areaLights, handle);
-        }
+        directionalLights_.Bind(binder, directionalLights);
+        pointLights_.Bind(binder, pointLights);
+        spotLights_.Bind(binder, spotLights);
+        areaLights_.Bind(binder, areaLights);
     }
 }

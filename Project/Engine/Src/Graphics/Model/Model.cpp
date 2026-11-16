@@ -162,18 +162,17 @@ namespace CoreEngine
         const uint64_t frame = Time::FrameCount();
         const bool hasMotionHistory = IsMotionHistoryUsable(isGameView, frame);
 
-        // このフレームの UploadRing に書き込む（描くたびに別の場所を取る）
-        const UploadAllocation allocation = renderContext_.dxCommon->GetUploadRing().Allocate(
-            static_cast<uint32_t>(sizeof(TransformationMatrix)));
-        assert(allocation.IsValid());
-        TransformationMatrix* mappedData = static_cast<TransformationMatrix*>(allocation.cpu);
-        mappedData->world = worldMatrix;
+        TransformationMatrix transformation{};
+        transformation.world = worldMatrix;
         // 履歴が無い（初回・カリング明け・プールの使い回し）ときは
         // prevWVP = currentWVP にしてモーションベクター=0を保証する
-        mappedData->prevWVP = hasMotionHistory ? prevGameWVP_ : worldViewProjectionMatrix;
-        mappedData->WVP = worldViewProjectionMatrix;
-        mappedData->worldInverseTranspose = MathCore::Matrix::Transpose(MathCore::Matrix::Inverse(worldMatrix));
-        skinnedTransformAddress_ = allocation.gpuAddress;
+        transformation.prevWVP = hasMotionHistory ? prevGameWVP_ : worldViewProjectionMatrix;
+        transformation.WVP = worldViewProjectionMatrix;
+        transformation.worldInverseTranspose = MathCore::Matrix::Transpose(MathCore::Matrix::Inverse(worldMatrix));
+
+        // このフレームの UploadRing に書き込む（描くたびに別の場所を取る）
+        skinnedTransformAddress_ = renderContext_.dxCommon->GetUploadRing().AllocateConstants(transformation);
+        assert(skinnedTransformAddress_ != 0);
 
         // 今フレームのWVPを次フレームの prevWVP として保存
         if (isGameView) {

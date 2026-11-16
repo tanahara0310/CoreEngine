@@ -4,12 +4,19 @@
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
+#include "Math/IntegerMath.h"
 #include <cassert>
 #include <stdexcept>
 
 
 namespace CoreEngine
 {
+    namespace
+    {
+        /// @brief DispatchScreenPass のスレッドグループの一辺（シェーダー側の kGroupSize と同じ値）
+        constexpr uint32_t kScreenPassGroupSize = 8;
+    }
+
     void PostEffectComputeBase::Initialize(GraphicsCore* dxCommon)
     {
         assert(dxCommon);
@@ -56,5 +63,43 @@ namespace CoreEngine
         constants.screenWidth  = width;
         constants.screenHeight = height;
         screenSizeCbAddress_ = UploadConstants(constants);
+    }
+
+    void PostEffectComputeBase::DispatchScreenPass(
+        D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle,
+        D3D12_GPU_DESCRIPTOR_HANDLE outputUavHandle,
+        uint32_t width,
+        uint32_t height)
+    {
+        DispatchScreenPassWithAddress(inputSrvHandle, outputUavHandle, width, height, nullptr, 0);
+    }
+
+    void PostEffectComputeBase::DispatchScreenPassWithAddress(
+        D3D12_GPU_DESCRIPTOR_HANDLE inputSrvHandle,
+        D3D12_GPU_DESCRIPTOR_HANDLE outputUavHandle,
+        uint32_t width,
+        uint32_t height,
+        const char* paramsName,
+        D3D12_GPU_VIRTUAL_ADDRESS paramsAddress)
+    {
+        UpdateScreenSizeConstants(width, height);
+
+        auto* cmdList = graphicsCore_->GetCommandList();
+        cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
+        cmdList->SetPipelineState(computePso_.Get());
+
+        const int textureIdx = GetRootParamIndex("gTexture");
+        const int outputIdx  = GetRootParamIndex("gOutput");
+        const int paramsIdx  = paramsName ? GetRootParamIndex(paramsName) : -1;
+        const int screenIdx  = GetRootParamIndex("ScreenParams");
+
+        if (textureIdx >= 0) cmdList->SetComputeRootDescriptorTable(textureIdx, inputSrvHandle);
+        if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
+        if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, paramsAddress);
+        if (screenIdx >= 0)  cmdList->SetComputeRootConstantBufferView(screenIdx, GetScreenSizeCbAddress());
+
+        const uint32_t groupX = DivRoundUp(width, kScreenPassGroupSize);
+        const uint32_t groupY = DivRoundUp(height, kScreenPassGroupSize);
+        cmdList->Dispatch(groupX, groupY, 1);
     }
 }

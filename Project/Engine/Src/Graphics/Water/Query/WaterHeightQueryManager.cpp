@@ -10,7 +10,6 @@
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/RootSignature/ShaderBinder.h"
@@ -135,13 +134,7 @@ namespace CoreEngine
             return false;
         }
 
-        try {
-            for (auto& readback : readback_) {
-                readback = ResourceFactory::CreateBufferResource(
-                    device, static_cast<size_t>(kReadbackBytes), D3D12_HEAP_TYPE_READBACK);
-            }
-        }
-        catch (const std::exception&) {
+        if (!readback_.Create(device, static_cast<size_t>(kReadbackBytes))) {
             return false;
         }
         resultScratch_.resize(static_cast<size_t>(WaterQuery::kMaxPoints) * WaterQuery::kMaxSurfaces);
@@ -154,38 +147,27 @@ namespace CoreEngine
             return;
         }
         // 古い枠から順に返す（新しい結果ほど後に入る）
-        const uint32_t framesInFlight = dxCommon_->Frame().FramesInFlight();
-        const uint32_t current = dxCommon_->Frame().FrameIndex();
-        for (uint32_t offset = 1; offset <= framesInFlight; ++offset) {
-            CollectFrame((current + offset) % framesInFlight);
-        }
+        readback_.ForEachOldestFirst(dxCommon_->Frame(), [this](uint32_t frameIndex) { CollectFrame(frameIndex); });
     }
 
     void WaterHeightQueryManager::CollectFrame(uint32_t frameIndex)
     {
-        PendingFrame& frame = pendingFrames_[frameIndex];
-        if (!frame.pending) {
+        if (!readback_.TryTakeCompleted(frameIndex, dxCommon_->Frame())) {
             return;
         }
-        const FrameSync& sync = dxCommon_->Frame();
-        const uint64_t fence = sync.FenceValueOf(frameIndex);
-        if (fence == frame.fenceBeforeSubmit || sync.CompletedValue() < fence) {
-            return;
-        }
-        frame.pending = false;
+        const PendingFrame& frame = readback_.Meta(frameIndex);
 
         const size_t count = frame.submitted.size() * frame.surfaceCount;
         if (count == 0) {
             return;
         }
-        void* mapped = nullptr;
-        const D3D12_RANGE readRange{ 0, sizeof(WaterQuery::GpuResult) * count };
-        if (FAILED(readback_[frameIndex]->Map(0, &readRange, &mapped))) {
+        const size_t bytes = sizeof(WaterQuery::GpuResult) * count;
+        const bool read = readback_.Read(frameIndex, bytes, [this, bytes](const void* mapped) {
+            std::memcpy(resultScratch_.data(), mapped, bytes);
+        });
+        if (!read) {
             return;
         }
-        std::memcpy(resultScratch_.data(), mapped, sizeof(WaterQuery::GpuResult) * count);
-        const D3D12_RANGE writtenRange{ 0, 0 };
-        readback_[frameIndex]->Unmap(0, &writtenRange);
 
         query_->ApplyResults(
             frame.submitted, std::span<const WaterQuery::GpuResult>(resultScratch_.data(), count), frame.surfaceCount);
@@ -203,9 +185,9 @@ namespace CoreEngine
         CollectResults();
 
         const uint32_t frameIndex = dxCommon_->Frame().FrameIndex();
-        PendingFrame& frame = pendingFrames_[frameIndex];
+        PendingFrame& frame = readback_.Meta(frameIndex);
         // この枠に投げたまま GPU へ届かなかった記録は捨てる
-        frame.pending = false;
+        readback_.Discard(frameIndex);
 
         // 範囲のある水面だけ評価する（主の水が先頭）
         surfaceScratch_.clear();
@@ -220,9 +202,7 @@ namespace CoreEngine
 
         // 水面の無いフレームは、届く前の結果も含めて捨てる
         if (surfaceScratch_.empty()) {
-            for (PendingFrame& other : pendingFrames_) {
-                other.pending = false;
-            }
+            readback_.DiscardAll();
             query_->ClearResults();
             return;
         }
@@ -290,7 +270,7 @@ namespace CoreEngine
 
             Barrier::Transition(cmdList, results_, D3D12_RESOURCE_STATE_COPY_SOURCE);
             cmdList->CopyBufferRegion(
-                readback_[frameIndex].Get(), surfaceResultBytes * surfaceCount, results_.Get(), 0, surfaceResultBytes);
+                readback_.Buffer(frameIndex), surfaceResultBytes * surfaceCount, results_.Get(), 0, surfaceResultBytes);
             ++surfaceCount;
         }
         Barrier::Transition(cmdList, results_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -298,8 +278,7 @@ namespace CoreEngine
             return;
         }
 
-        frame.pending = true;
         frame.surfaceCount = surfaceCount;
-        frame.fenceBeforeSubmit = dxCommon_->Frame().FenceValueOf(frameIndex);
+        readback_.MarkSubmitted(frameIndex, dxCommon_->Frame());
     }
 }

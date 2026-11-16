@@ -7,34 +7,24 @@ struct Particle;
 
 namespace CoreEngine
 {
+/// @brief ノイズデータ構造体（NoiseModule）
+struct ParticleNoiseData {
+    float strength = 1.0f;     // ノイズの強度
+    float frequency = 1.0f;      // ノイズの周波数
+    float scrollSpeed = 0.0f;       // ノイズの移動速度
+    bool damping = true;   // ライフタイムに応じて減衰するか
+    Vector3 positionAmount = { 1.0f, 1.0f, 1.0f }; // 各軸のノイズ影響量
+};
+
 /// @brief パーティクルのノイズモジュール（Unity Noise Module相当）
 /// パーリンノイズによる位置の揺らぎを追加します
-class NoiseModule : public ParticleModule {
+class NoiseModule : public ParticleModuleT<ParticleNoiseData> {
 public:
-    /// @brief ノイズデータ構造体
-    struct NoiseData {
-        float strength = 1.0f;     // ノイズの強度
-        float frequency = 1.0f;      // ノイズの周波数
-        float scrollSpeed = 0.0f;       // ノイズの移動速度
-        bool damping = true;   // ライフタイムに応じて減衰するか
-        Vector3 positionAmount = { 1.0f, 1.0f, 1.0f }; // 各軸のノイズ影響量
-    };
+    using NoiseData = ParticleNoiseData;
 
     NoiseModule();
     ~NoiseModule() = default;
 
-    /// @brief ノイズデータを設定
-    /// @param data ノイズデータ
-    void SetNoiseData(const NoiseData& data) { noiseData_ = data; }
-
-    /// @brief ノイズデータを取得
-    /// @return ノイズデータの参照
-    const NoiseData& GetNoiseData() const { return noiseData_; }
-
-    /// @brief ノイズデータを取得（書き換え可能）
-    /// @return ノイズデータの参照
-    NoiseData& GetNoiseData() { return noiseData_; }
-    
     /// @brief パーティクルにノイズを適用
     /// @param particle 対象のパーティクル
     /// @param deltaTime フレーム時間
@@ -47,8 +37,6 @@ public:
 #endif
 
 private:
-    NoiseData noiseData_;
-
     /// @brief パーリンノイズ関数
     /// @param x X座標
     /// @param y Y座標

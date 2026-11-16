@@ -2,6 +2,7 @@
 #include "RTWaterSeaMapPass.h"
 
 #include "Graphics/RayTracing/RTScene.h"
+#include "Graphics/RayTracing/Debug/RTDebugCollect.h"
 #include "Graphics/RayTracing/Debug/RTDebugRegistry.h"
 #include "Graphics/RayTracing/Effect/RTEffectRegistry.h"
 #include "Graphics/RayTracing/Effect/RTEffectSet.h"
@@ -24,11 +25,7 @@ namespace CoreEngine
         .cvarPrefix = "r.Water.SeaMap",
         .passNames = { "RTWaterSeaMapPass" },
         .stageLabels = { "トレース" },
-        .collect = [](const RTDebugQuery& query, std::vector<RTDebugEffectRow>& rows) {
-            if (auto* manager = query.domain ? query.domain->GetRTEffects().Find<WaterSeaMapRayTracingManager>() : nullptr) {
-                rows.push_back({ "ゲームの画面", manager->GetDispatchInfo() });
-            }
-        });
+        .collect = CollectGameViewDispatch<WaterSeaMapRayTracingManager>);
 
     void RTWaterSeaMapPass::DeclareResources(RenderGraphBuilder& builder, [[maybe_unused]] const RenderContext& context)
     {

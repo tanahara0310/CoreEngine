@@ -65,28 +65,41 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE GetAreaLightsSRVHandle() const { return areaLights_.Srv(); }
 
     private:
-        /// @brief ライトをバッファに入る数まで写す
-        /// @param overflowLogged 超えている間に警告を出したか
-        /// @return 写した数
+        /// @brief 種類 1 つ分のライトの配列（StructuredBuffer）
+        /// @tparam T GPU へ写すライトの型
         template <typename T>
-        static uint32_t CopyLights(
-            PerFrameStructuredBuffer<T>& buffer,
-            const std::vector<T>& lights,
-            bool& overflowLogged,
-            const char* typeName
-        );
+        class LightArray
+        {
+        public:
+            /// @param bufferName バッファのデバッグ名
+            /// @param typeName 警告に出す種類の名前
+            LightArray(const char* bufferName, const char* typeName) : bufferName_(bufferName), typeName_(typeName) {}
 
-    private:
-        PerFrameStructuredBuffer<DirectionalLightData> directionalLights_;
-        PerFrameStructuredBuffer<PointLightData> pointLights_;
-        PerFrameStructuredBuffer<SpotLightData> spotLights_;
-        PerFrameStructuredBuffer<AreaLightData> areaLights_;
+            /// @brief フレームスロットの数だけ UPLOAD バッファと SRV を作る
+            /// @param capacity ライトの最大数
+            void Initialize(GraphicsCore& graphics, uint32_t capacity);
+
+            /// @brief ライトをバッファに入る数まで写す（超えている間に 1 回だけ警告する）
+            /// @return 写した数
+            uint32_t Set(const std::vector<T>& lights);
+
+            /// @brief 配列を差す（作る前は差さない）
+            void Bind(ShaderBinder& binder, RootSlot slot) const;
+
+            /// @brief SRV の GPU ハンドル（そのフレームの記録中だけ今の値を保つ）
+            D3D12_GPU_DESCRIPTOR_HANDLE Srv() const { return buffer_.Srv(); }
+
+        private:
+            PerFrameStructuredBuffer<T> buffer_;
+            const char* bufferName_;
+            const char* typeName_;
+            bool overflowLogged_ = false; ///< 確保した数を超えている間に警告を出したか
+        };
+
+        LightArray<DirectionalLightData> directionalLights_{ "DirectionalLights", "Directional" };
+        LightArray<PointLightData> pointLights_{ "PointLights", "Point" };
+        LightArray<SpotLightData> spotLights_{ "SpotLights", "Spot" };
+        LightArray<AreaLightData> areaLights_{ "AreaLights", "Area" };
         PerFrameConstants<LightCounts> lightCounts_;
-
-        // 種類ごとに、確保した数を超えている間に警告を出したか
-        bool directionalOverflowLogged_ = false;
-        bool pointOverflowLogged_ = false;
-        bool spotOverflowLogged_ = false;
-        bool areaOverflowLogged_ = false;
     };
 }

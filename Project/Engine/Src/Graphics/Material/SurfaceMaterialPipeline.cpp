@@ -376,27 +376,22 @@ namespace CoreEngine
         if (shaderPath.empty()) {
             return nullptr;
         }
-        Entry& entry = entries_[shaderPath];
         const bool engineShader = shaderPath == kErrorSurfaceShader;
         const uint64_t revision = ShaderMaterialLibrary::GetInstance().GetShaderRevision();
-        if (entry.shaderRevision == revision || (engineShader && entry.shaderRevision != 0)) {
-            return entry.pipeline.get();
-        }
-        entry.shaderRevision = revision;
-
-        if (!IsSurfaceShaderPath(shaderPath)) {
-            Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Shader,
-                "{} は 3D モデル用のシェーダではありません（名前を「名前.Surface.hlsl」にします）", shaderPath);
-            return nullptr;
-        }
-
-        auto pipeline = std::make_unique<SurfaceMaterialPipeline>(
-            graphics_->GetDevice(), *compiler_, *reflectionBuilder_, shaderPath);
-        const bool built = pipeline->Build() && (!entry.pipeline || pipeline->BuildVariantsUsedBy(*entry.pipeline));
-        graphics_->DeferredRelease().PushForCurrentFrame(std::move(entry.pipeline));
-        if (built) {
-            entry.pipeline = std::move(pipeline);
-        }
-        return entry.pipeline.get();
+        return pipelines_.Get(graphics_->DeferredRelease(), shaderPath, revision,
+            [&](const SurfaceMaterialPipeline* previous) -> std::unique_ptr<SurfaceMaterialPipeline> {
+                if (!IsSurfaceShaderPath(shaderPath)) {
+                    Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Shader,
+                        "{} は 3D モデル用のシェーダではありません（名前を「名前.Surface.hlsl」にします）", shaderPath);
+                    return nullptr;
+                }
+                auto pipeline = std::make_unique<SurfaceMaterialPipeline>(
+                    graphics_->GetDevice(), *compiler_, *reflectionBuilder_, shaderPath);
+                if (!pipeline->Build() || (previous && !pipeline->BuildVariantsUsedBy(*previous))) {
+                    return nullptr;
+                }
+                return pipeline;
+            },
+            engineShader ? PipelineRebuild::Once : PipelineRebuild::OnRevision);
     }
 }

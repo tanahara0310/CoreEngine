@@ -3,6 +3,7 @@
 #include <array>
 #include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include "Graphics/RHI/Resource/GpuResource.h"
+#include "Utility/Container/PingPong.h"
 #include <d3d12.h>
 #include <wrl.h>
 
@@ -16,7 +17,7 @@ namespace CoreEngine
     };
 
     /// @brief ping-pong ペア（IFFT の read/write 交互切替・泡の前後フレーム）
-    using FFTOceanPingPong = std::array<FFTOceanGpuTexture, 2>;
+    using FFTOceanPingPong = PingPong<FFTOceanGpuTexture>;
 
     /// @brief カスケード 1 本分の初期スペクトルバッファ一式
     /// @details CS が読むのは DEFAULT 常駐側（SRV も DEFAULT 側に作る）。

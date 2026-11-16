@@ -10,6 +10,7 @@
 #include "Graphics/RHI/Command/FrameSync.h"
 #include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include "Graphics/RHI/Resource/GpuResource.h"
+#include "Graphics/RHI/Resource/ReadbackRing.h"
 #include "Graphics/RootSignature/RootSignatureManager.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
@@ -75,9 +76,6 @@ namespace CoreEngine
 
         /// @brief フレームの枠 1 つ分の、読み戻し待ちの記録
         struct PendingFrame {
-            bool pending = false;
-            /// @brief 記録したときの枠のフェンス値（この値から変われば、そのフレームを GPU へ投げた）
-            uint64_t fenceBeforeSubmit = 0;
             std::vector<WaterQuery::Submitted> submitted;
             /// @brief 評価した水面の数（読み戻しには submitted.size() 個ずつ並ぶ）
             uint32_t surfaceCount = 0;
@@ -102,8 +100,7 @@ namespace CoreEngine
         /// @brief 計算シェーダーの出力（点ごとに WaterQuery::GpuResult）
         GpuResource results_{};
         DescriptorHandle resultsUav_{};
-        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kMaxFramesInFlight> readback_{};
-        std::array<PendingFrame, kMaxFramesInFlight> pendingFrames_{};
+        ReadbackRing<PendingFrame> readback_{};
         /// @brief 読み戻した結果の写し
         std::vector<WaterQuery::GpuResult> resultScratch_;
         /// @brief このフレームに評価する水面（毎フレーム使い回す）

@@ -3,6 +3,7 @@
 #include <d3d12.h>
 #include <dxcapi.h>
 #include <array>
+#include <iterator>
 #include <vector>
 #include <string>
 #include <wrl.h>
@@ -26,6 +27,10 @@ enum class BlendMode {
 
 /// @brief BlendMode の要素数（PipelineStateManager の固定長配列用）
 inline constexpr size_t kBlendModeCount = 6;
+
+/// @brief エディタに出すブレンドの名前（`BlendMode` の並び）
+inline constexpr const char* kBlendModeNames[] = { "なし", "アルファ", "加算", "減算", "乗算", "スクリーン" };
+static_assert(std::size(kBlendModeNames) == kBlendModeCount);
 
 // 前方宣言
 class PipelineStateManager;

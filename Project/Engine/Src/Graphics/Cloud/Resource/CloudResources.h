@@ -2,6 +2,7 @@
 
 #include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include "Graphics/RHI/Resource/GpuResource.h"
+#include "Utility/Container/PingPong.h"
 
 #include <cstdint>
 #include <d3d12.h>
@@ -92,33 +93,36 @@ namespace CoreEngine
         DescriptorHandle paintChannelSrvs[3]{};
 
         // ===== フレームターゲット（EnsureFrameTargets が確保する） =====
-        CloudGpuTexture cloudBuffers[2];      ///< 半解像度の雲（時間再投影の ping-pong）
-        CloudGpuTexture cloudDepthBuffers[2]; ///< cloudBuffers と対の距離（x=雲の代表距離, y=マーチの終端距離）
+        PingPong<CloudGpuTexture> cloudBuffers;      ///< 半解像度の雲（時間再投影の ping-pong）
+        PingPong<CloudGpuTexture> cloudDepthBuffers; ///< cloudBuffers と対の距離（x=雲の代表距離, y=マーチの終端距離）
         CloudGpuTexture traceColor;           ///< 今フレームにレイを撃ったセルごとの雲
         CloudGpuTexture traceDepth;           ///< traceColor と対の距離
         CloudGpuTexture godRayBuffer;         ///< 半解像度ゴッドレイ結果
 
         /// @brief 今フレームの書き込み先
-        CloudGpuTexture& CurrentCloudBuffer() { return cloudBuffers[writeIndex_]; }
+        CloudGpuTexture& CurrentCloudBuffer() { return cloudBuffers.Write(); }
 
         /// @brief 前フレームの雲（履歴）
-        CloudGpuTexture& HistoryCloudBuffer() { return cloudBuffers[writeIndex_ ^ 1]; }
+        CloudGpuTexture& HistoryCloudBuffer() { return cloudBuffers.Read(); }
 
         /// @brief 今フレームの距離の書き込み先
-        CloudGpuTexture& CurrentCloudDepthBuffer() { return cloudDepthBuffers[writeIndex_]; }
+        CloudGpuTexture& CurrentCloudDepthBuffer() { return cloudDepthBuffers.Write(); }
 
         /// @brief 前フレームの距離（履歴）
-        CloudGpuTexture& HistoryCloudDepthBuffer() { return cloudDepthBuffers[writeIndex_ ^ 1]; }
+        CloudGpuTexture& HistoryCloudDepthBuffer() { return cloudDepthBuffers.Read(); }
 
         /// @brief 書き込み先をフレーム番号の偶奇で決める（純粋関数。累積状態を持たない）
-        void SetFrameIndex(uint32_t frameIndex) { writeIndex_ = frameIndex & 1u; }
+        void SetFrameIndex(uint32_t frameIndex)
+        {
+            cloudBuffers.SelectByParity(frameIndex);
+            cloudDepthBuffers.SelectByParity(frameIndex);
+        }
 
         /// @brief 半解像度バッファの実サイズ
         uint32_t TargetsWidth() const { return targetsWidth_; }
         uint32_t TargetsHeight() const { return targetsHeight_; }
 
     private:
-        uint32_t writeIndex_ = 0;
         uint32_t targetsWidth_ = 0;
         uint32_t targetsHeight_ = 0;
     };

@@ -8,11 +8,11 @@ namespace CoreEngine
 
 using namespace CoreEngine::MathCore;
 NoiseModule::NoiseModule() {
-    noiseData_.strength = 1.0f;
-    noiseData_.frequency = 1.0f;
-    noiseData_.scrollSpeed = 0.0f;
-    noiseData_.damping = true;
-    noiseData_.positionAmount = { 1.0f, 1.0f, 1.0f };
+    data_.strength = 1.0f;
+    data_.frequency = 1.0f;
+    data_.scrollSpeed = 0.0f;
+    data_.damping = true;
+    data_.positionAmount = { 1.0f, 1.0f, 1.0f };
 }
 
 void NoiseModule::ApplyNoise(Particle& particle, float deltaTime) {
@@ -25,19 +25,19 @@ void NoiseModule::ApplyNoise(Particle& particle, float deltaTime) {
 
     // 減衰係数の計算
     float dampingFactor = 1.0f;
-    if (noiseData_.damping) {
+    if (data_.damping) {
         // ライフタイムが進むにつれてノイズを減衰
         dampingFactor = 1.0f - lifeRatio;
     }
 
     // 時間ベースのオフセット（パーティクルの経過時間を使用）
-    float timeOffset = particle.currentTime * noiseData_.scrollSpeed;
+    float timeOffset = particle.currentTime * data_.scrollSpeed;
 
     // ノイズ計算用の座標（パーティクルの位置と時間を使用）
     Vector3 noiseCoord = {
-        (particle.transform.translate.x + timeOffset) * noiseData_.frequency,
-        (particle.transform.translate.y + timeOffset) * noiseData_.frequency,
-      (particle.transform.translate.z + particle.currentTime) * noiseData_.frequency
+        (particle.transform.translate.x + timeOffset) * data_.frequency,
+        (particle.transform.translate.y + timeOffset) * data_.frequency,
+      (particle.transform.translate.z + particle.currentTime) * data_.frequency
     };
 
     // 各軸のノイズを計算
@@ -47,9 +47,9 @@ void NoiseModule::ApplyNoise(Particle& particle, float deltaTime) {
 
     // ノイズによるオフセットを計算
     Vector3 noiseOffset = {
-        noiseX * noiseData_.positionAmount.x * noiseData_.strength * dampingFactor,
-        noiseY * noiseData_.positionAmount.y * noiseData_.strength * dampingFactor,
-        noiseZ * noiseData_.positionAmount.z * noiseData_.strength * dampingFactor
+        noiseX * data_.positionAmount.x * data_.strength * dampingFactor,
+        noiseY * data_.positionAmount.y * data_.strength * dampingFactor,
+        noiseZ * data_.positionAmount.z * data_.strength * dampingFactor
     };
 
     // パーティクルの位置にノイズを適用
@@ -64,23 +64,23 @@ bool NoiseModule::ShowImGui() {
 
     UI::Hint("パーリンノイズで位置に揺らぎを加えます（煙・炎のゆらめき向け）");
 
-    changed |= UI::DragFloat("強度", noiseData_.strength, 0.1f, 0.0f, 10.0f);
+    changed |= UI::DragFloat("強度", data_.strength, 0.1f, 0.0f, 10.0f);
     UI::SameLine();
     UI::HelpMarker("揺らぎの大きさ。0で無効と同じ。");
 
-    changed |= UI::DragFloat("周波数", noiseData_.frequency, 0.01f, 0.01f, 5.0f);
+    changed |= UI::DragFloat("周波数", data_.frequency, 0.01f, 0.01f, 5.0f);
     UI::SameLine();
     UI::HelpMarker("揺らぎの細かさ。高いほど細かく震えます。");
 
-    changed |= UI::DragFloat("スクロール速度", noiseData_.scrollSpeed, 0.1f, -10.0f, 10.0f);
+    changed |= UI::DragFloat("スクロール速度", data_.scrollSpeed, 0.1f, -10.0f, 10.0f);
     UI::SameLine();
     UI::HelpMarker("ノイズパターン自体が流れる速さ。風に流される表現に使えます。");
 
-    changed |= UI::DragVec3("軸ごとの影響量", noiseData_.positionAmount, 0.1f, 0.0f, 5.0f);
+    changed |= UI::DragVec3("軸ごとの影響量", data_.positionAmount, 0.1f, 0.0f, 5.0f);
     UI::SameLine();
     UI::HelpMarker("X/Y/Z軸それぞれへの揺らぎの配分。\n例: (1,0,1) で水平方向のみ揺らす。");
 
-    changed |= UI::Widgets::ToggleSwitch("寿命に応じて減衰", &noiseData_.damping);
+    changed |= UI::Widgets::ToggleSwitch("寿命に応じて減衰", &data_.damping);
     UI::Tooltip("寿命の終わりに近づくほど揺らぎを弱めます");
 
     return changed;

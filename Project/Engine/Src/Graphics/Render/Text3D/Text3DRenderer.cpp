@@ -99,31 +99,11 @@ namespace CoreEngine
 
     void Text3DRenderer::CreateSharedIndexBuffer(ID3D12Device* device)
     {
-        constexpr uint32_t kIndexCount = kMaxGlyphsPerBatch * 6;
-
-        indexResource_ = ResourceFactory::CreateBufferResource(
-            device, sizeof(uint32_t) * kIndexCount);
+        // グリフ 1 つ = 四角形 1 枚。1 バッチの最大グリフ数ぶんを並べる
+        indexResource_ = ResourceFactory::CreateQuadIndexBuffer(device, indexBufferView_, kMaxGlyphsPerBatch);
         if (!indexResource_) {
             throw std::runtime_error("Failed to create Text3D shared index buffer");
         }
-
-        uint32_t* indices = nullptr;
-        indexResource_->Map(0, nullptr, reinterpret_cast<void**>(&indices));
-        for (uint32_t glyph = 0; glyph < kMaxGlyphsPerBatch; ++glyph) {
-            const uint32_t base = glyph * 4;
-            uint32_t* destination = indices + glyph * 6;
-            destination[0] = base + 0;
-            destination[1] = base + 1;
-            destination[2] = base + 2;
-            destination[3] = base + 1;
-            destination[4] = base + 3;
-            destination[5] = base + 2;
-        }
-        indexResource_->Unmap(0, nullptr);
-
-        indexBufferView_.BufferLocation = indexResource_->GetGPUVirtualAddress();
-        indexBufferView_.SizeInBytes = sizeof(uint32_t) * kIndexCount;
-        indexBufferView_.Format = DXGI_FORMAT_R32_UINT;
     }
 
     int Text3DRenderer::GetRootParamIndex(const std::string& resourceName) const
@@ -268,19 +248,16 @@ namespace CoreEngine
         }
 
         // ── 頂点（フレーム単位で巻き戻る UPLOAD ヒープへ積む）──────
-        const uint32_t byteSize =
-            static_cast<uint32_t>(sizeof(Text3DVertex) * batchVertices_.size());
-        const UploadAllocation allocation = uploadRing.Allocate(byteSize, 16);
+        const UploadAllocation allocation = uploadRing.AllocateArray<Text3DVertex>(batchVertices_);
         if (!allocation.IsValid()) {
             batchVertices_.clear();
             batchFont_ = nullptr;
             return;
         }
-        std::memcpy(allocation.cpu, batchVertices_.data(), byteSize);
 
         D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
         vertexBufferView.BufferLocation = allocation.gpuAddress;
-        vertexBufferView.SizeInBytes = byteSize;
+        vertexBufferView.SizeInBytes = allocation.size;
         vertexBufferView.StrideInBytes = sizeof(Text3DVertex);
 
         // 深度モードごとに PSO が違うので、バッチを描く直前に張る

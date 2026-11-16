@@ -389,8 +389,8 @@ namespace CoreEngine
             std::memcpy(static_cast<uint8_t*>(mapped) + kDataScan + kStatsMin, &maxKey, sizeof(maxKey));
             dataInit_->Unmap(0, nullptr);
 
-            for (auto& readback : readback_) {
-                readback = ResourceFactory::CreateBufferResource(device, kDataBytes, D3D12_HEAP_TYPE_READBACK);
+            if (!readback_.Create(device, kDataBytes)) {
+                return false;
             }
 
             // 記録の写し元（ディスパッチの番号は前もって並べておく）
@@ -483,12 +483,12 @@ namespace CoreEngine
     RTDebugSystem::PendingFrame& RTDebugSystem::BeginPendingFrame()
     {
         const uint32_t frameIndex = graphics_->Frame().FrameIndex();
-        PendingFrame& frame = pendingFrames_[frameIndex];
+        PendingFrame& frame = readback_.Meta(frameIndex);
         const uint64_t current = CurrentFrame();
         if (frame.frame != current) {
             // この枠の前の結果を読んでから使い直す
             ReadFrame(frameIndex);
-            frame = PendingFrame{};
+            readback_.Reset(frameIndex);
             frame.frame = current;
         }
         return frame;
@@ -831,14 +831,13 @@ namespace CoreEngine
 
         // 今フレームに積んだ分を読み戻しへ写す
         const uint32_t frameIndex = graphics_->Frame().FrameIndex();
-        PendingFrame& frame = pendingFrames_[frameIndex];
-        if (frame.frame == CurrentFrame() && !frame.pending
+        const PendingFrame& frame = readback_.Meta(frameIndex);
+        if (frame.frame == CurrentFrame() && !readback_.IsPending(frameIndex)
             && (frame.view || frame.scan || frame.scene || frame.trace || frame.rays)) {
             Barrier::Transition(cmdList, data_, D3D12_RESOURCE_STATE_COPY_SOURCE);
-            cmdList->CopyBufferRegion(readback_[frameIndex].Get(), 0, data_.Get(), 0, kDataBytes);
+            cmdList->CopyBufferRegion(readback_.Buffer(frameIndex), 0, data_.Get(), 0, kDataBytes);
             Barrier::Transition(cmdList, data_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-            frame.pending = true;
-            frame.fenceBeforeSubmit = graphics_->Frame().FenceValueOf(frameIndex);
+            readback_.MarkSubmitted(frameIndex, graphics_->Frame());
         }
         // 効果のレイの記録はこのビューで終える
         rayRecordFrame_ = 0;
@@ -850,35 +849,23 @@ namespace CoreEngine
             return;
         }
         // 古い枠から順に読む（新しい結果ほど後に入る）
-        const uint32_t framesInFlight = graphics_->Frame().FramesInFlight();
-        const uint32_t current = graphics_->Frame().FrameIndex();
-        for (uint32_t offset = 1; offset <= framesInFlight; ++offset) {
-            ReadFrame((current + offset) % framesInFlight);
-        }
+        readback_.ForEachOldestFirst(graphics_->Frame(), [this](uint32_t frameIndex) { ReadFrame(frameIndex); });
     }
 
     void RTDebugSystem::ReadFrame(uint32_t frameIndex)
     {
-        PendingFrame& frame = pendingFrames_[frameIndex];
-        if (!frame.pending) {
+        if (!readback_.TryTakeCompleted(frameIndex, graphics_->Frame())) {
             return;
         }
-        const FrameSync& sync = graphics_->Frame();
-        const uint64_t fence = sync.FenceValueOf(frameIndex);
-        if (fence == frame.fenceBeforeSubmit || sync.CompletedValue() < fence) {
-            return;
-        }
-        frame.pending = false;
+        PendingFrame& frame = readback_.Meta(frameIndex);
 
         readbackScratch_.resize(kDataBytes / sizeof(uint32_t));
-        void* mapped = nullptr;
-        const D3D12_RANGE readRange{ 0, kDataBytes };
-        if (FAILED(readback_[frameIndex]->Map(0, &readRange, &mapped)) || !mapped) {
+        const bool read = readback_.Read(frameIndex, kDataBytes, [this](const void* mapped) {
+            std::memcpy(readbackScratch_.data(), mapped, kDataBytes);
+        });
+        if (!read) {
             return;
         }
-        std::memcpy(readbackScratch_.data(), mapped, kDataBytes);
-        const D3D12_RANGE writtenRange{ 0, 0 };
-        readback_[frameIndex]->Unmap(0, &writtenRange);
 
         const uint32_t* data = readbackScratch_.data();
         auto word = [data](UINT byteOffset) { return data[byteOffset / sizeof(uint32_t)]; };
@@ -1131,7 +1118,7 @@ namespace CoreEngine
             return;
         }
         const uint32_t frameIndex = graphics_->Frame().FrameIndex();
-        PendingFrame& frame = pendingFrames_[frameIndex];
+        PendingFrame& frame = readback_.Meta(frameIndex);
         // 名前の数の上限を超えたら「名前なし」の番号を写す
         const bool named = frame.dispatches.size() < kMaxRecordedDispatches;
         const UINT source = named

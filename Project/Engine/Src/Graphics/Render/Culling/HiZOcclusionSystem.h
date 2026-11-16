@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Graphics/RHI/Resource/GpuResource.h"
+#include "Graphics/RHI/Resource/PerFrameStructuredBuffer.h"
 #include <d3d12.h>
 #include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include <wrl.h>
@@ -167,7 +168,8 @@ namespace CoreEngine
         bool CreateBuffers(ID3D12Device* device);
         bool EnsureHiZResources(ID3D12Device* device, uint32_t depthWidth, uint32_t depthHeight);
         void BuildHiZPyramid(ID3D12GraphicsCommandList* cmdList, D3D12_GPU_DESCRIPTOR_HANDLE depthSRV);
-        void DispatchCull(ID3D12GraphicsCommandList* cmdList, uint32_t frameIndex, uint32_t queryCount);
+        void DispatchCull(ID3D12GraphicsCommandList* cmdList, uint32_t frameIndex, uint32_t queryCount,
+                          D3D12_GPU_VIRTUAL_ADDRESS cullParamsAddress);
 
         // ---- CPU 状態 ----
         bool enabled_ = true;         // ユーザートグル（EngineStatsWindow から切替）
@@ -221,13 +223,8 @@ namespace CoreEngine
         Microsoft::WRL::ComPtr<ID3D12Resource> buildParamsBuffer_;
         uint8_t* buildParamsMapped_ = nullptr;
 
-        // AABB アップロード（フレームリング、永続マップ）+ 判定 CS 定数
-        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kFrameRing> boundsUpload_;
-        std::array<BoundsGPU*, kFrameRing> boundsMapped_{};
-        std::array<D3D12_CPU_DESCRIPTOR_HANDLE, kFrameRing> boundsSrvCpu_{};
-        std::array<DescriptorHandle, kFrameRing> boundsSrvGpu_{};
-        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kFrameRing> cullParamsUpload_;
-        std::array<CullParamsGPU*, kFrameRing> cullParamsMapped_{};
+        // 判定する AABB（フレームスロットごとの UPLOAD バッファと SRV。判定 CS の定数は UploadRing に置く）
+        PerFrameStructuredBuffer<BoundsGPU> bounds_;
 
         // 可視フラグ（Default ヒープ UAV）と Readback リング
         GpuResource visibilityBuffer_;
