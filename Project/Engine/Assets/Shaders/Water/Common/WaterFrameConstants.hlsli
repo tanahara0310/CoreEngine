@@ -112,6 +112,10 @@ cbuffer WaterFrameConstants : register(b5)
     float2 gFoamResidueInvSizes;     // 段ごとの一辺の長さの逆数 [1/m]（x = 近く・y = 遠く）
     float gFoamResidueMeanCoverage;  // 遠くの段より外で使う、残りの泡の被覆率の平均
     float gFoamPatternTime;          // 泡の模様を動かす時刻 [s]（FFT の時刻を kFoamPatternPeriodSeconds で巻き戻したもの）
+
+    // ---- 水面メッシュの範囲（岸の細かい格子の頂点をこの範囲へ寄せる。WaterShoreMesh.hlsli）----
+    float2 gMeshGridSizeXZ;   // 粗い格子の XZ の一辺の長さ [m]（最小の角は gMeshGridOriginXZ）
+    float2 gMeshGridPad;
 };
 
 #endif // WATER_FRAME_CONSTANTS_INCLUDED

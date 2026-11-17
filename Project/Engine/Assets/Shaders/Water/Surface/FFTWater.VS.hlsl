@@ -90,7 +90,7 @@ FFTWaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     TransformationMatrix mtx = gInstanceData[instanceID];
     float3x3 invWorld3 = transpose((float3x3)mtx.WorldInversTranspose);
 
-    // 岸の格子の頂点は、範囲の中の位置を静止水面の高さへ置く（範囲が無いときは描かない）
+    // 岸の格子の頂点は、範囲の中の位置を水面メッシュの範囲へ寄せて静止水面の高さへ置く（範囲が無いときは描かない）
     const bool shoreMeshVertex = IsShoreMeshVertex(input.animData);
     float4 localPosition = input.position;
     float3 baseWorldPos;
@@ -103,7 +103,8 @@ FFTWaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
             return culled;
         }
         const float3 meshOrigin = mul(float4(0.0f, 0.0f, 0.0f, 1.0f), mtx.World).xyz;
-        const float2 baseXZ = gSeabedOriginXZ + input.animData.xy / gSeabedInvSize;
+        const float2 baseXZ = ClampShoreMeshVertexToSurface(
+            gSeabedOriginXZ + input.animData.xy / gSeabedInvSize, gMeshGridOriginXZ, gMeshGridOriginXZ + gMeshGridSizeXZ);
         baseWorldPos = float3(baseXZ.x, meshOrigin.y, baseXZ.y);
         localPosition = float4(mul(baseWorldPos - meshOrigin, invWorld3), 1.0f);
     }

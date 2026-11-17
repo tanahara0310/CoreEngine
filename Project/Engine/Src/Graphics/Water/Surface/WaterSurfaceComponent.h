@@ -320,6 +320,12 @@ namespace CoreEngine
         /// @brief 粗い格子の 1 マスのワールドの大きさ（X, Z）[m]
         Vector2 GetMeshCellSizeXZ() const;
 
+        /// @brief 水面メッシュのワールドの XZ の最小の角 [m]（回転は扱わない）
+        Vector2 GetMeshOriginXZ() const;
+
+        /// @brief 水面メッシュのワールドの XZ の一辺の長さ [m]（回転は扱わない）
+        Vector2 GetMeshSizeXZ() const;
+
         /// @brief 分割数（記述子が扱える int で読み書きする）
         int GetResolutionValue() const { return static_cast<int>(resolution_); }
         void SetResolutionValue(int resolution) { resolution_ = static_cast<uint32_t>(resolution < 2 ? 2 : resolution); }

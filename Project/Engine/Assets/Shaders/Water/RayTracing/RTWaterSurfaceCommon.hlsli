@@ -326,18 +326,53 @@ float3 SampleShoreMeshVertexDisplacement(Texture2DArray<float4> displacementTex,
     return lerp(coarse, fine, blend);
 }
 
+/// @brief 岸の格子の頂点を寄せる水面メッシュの範囲（FFTWater.VS の ClampShoreMeshVertexToSurface に渡す範囲と同じ）
+/// @details 水面メッシュの範囲が分からないときは岸の格子の範囲を返す
+void GetShoreMeshSurfaceBounds(out float2 surfaceMinXZ, out float2 surfaceMaxXZ)
+{
+    if (gSurfaceRegionValid == 0)
+    {
+        surfaceMinXZ = gSurfaceShoreMeshOriginXZ;
+        surfaceMaxXZ = gSurfaceShoreMeshOriginXZ + gSurfaceShoreMeshSize;
+        return;
+    }
+    surfaceMinXZ = gSurfaceRegionCenterXZ - gSurfaceRegionHalfExtentXZ;
+    surfaceMaxXZ = gSurfaceRegionCenterXZ + gSurfaceRegionHalfExtentXZ;
+}
+
+/// @brief 岸の格子の頂点 (i, j) の変位前の位置（FFTWater.VS と同じく水面メッシュの範囲へ寄せる）
+float2 GetShoreMeshVertexBaseXZ(uint2 vertexIndex)
+{
+    float2 surfaceMinXZ;
+    float2 surfaceMaxXZ;
+    GetShoreMeshSurfaceBounds(surfaceMinXZ, surfaceMaxXZ);
+    return ClampShoreMeshVertexToSurface(
+        gSurfaceShoreMeshOriginXZ + float2(vertexIndex) * gSurfaceShoreMeshCellSize, surfaceMinXZ, surfaceMaxXZ);
+}
+
 /// @brief 岸の格子で、描かれた位置から変位前の格子上の位置を求めるときに水平変位をたどり直す回数
 static const int kShoreMeshInverseIterations = 2;
 
 /// @brief 岸の格子の頂点の変位を書いたテクスチャから、変位前の位置の変位を三角形で補間して返す
 /// @param shoreDisplacement テクセル (i, j) が岸の格子の頂点 (i, j) の変位（WaterShoreMeshDisplacement.CS）
-/// @details 三角形の分け方は FindWaterGridTriangle と同じ（各マスの対角は (1,0)-(0,1)）
+/// @details 三角形の分け方は FindWaterGridTriangle と同じ（各マスの対角は (1,0)-(0,1)）。
+///          頂点は水面メッシュの範囲へ寄せてあるので、範囲の端にかかるマスは範囲の中の部分へ縮めて補間する
 float3 InterpolateShoreMeshDisplacement(Texture2D<float4> shoreDisplacement, float2 baseXZ)
 {
     const float cellCount = round(gSurfaceShoreMeshSize / gSurfaceShoreMeshCellSize);
-    const float2 gridCoord = (baseXZ - gSurfaceShoreMeshOriginXZ) / gSurfaceShoreMeshCellSize;
+
+    // 頂点を寄せた範囲（格子の座標）
+    float2 surfaceMinXZ;
+    float2 surfaceMaxXZ;
+    GetShoreMeshSurfaceBounds(surfaceMinXZ, surfaceMaxXZ);
+    const float2 gridMin = max((surfaceMinXZ - gSurfaceShoreMeshOriginXZ) / gSurfaceShoreMeshCellSize, 0.0f);
+    const float2 gridMax = min((surfaceMaxXZ - gSurfaceShoreMeshOriginXZ) / gSurfaceShoreMeshCellSize, cellCount);
+
+    const float2 gridCoord = clamp((baseXZ - gSurfaceShoreMeshOriginXZ) / gSurfaceShoreMeshCellSize, gridMin, gridMax);
     const float2 cellIndex = clamp(floor(gridCoord), 0.0f, cellCount - 1.0f);
-    const float2 f = saturate(gridCoord - cellIndex);
+    const float2 cellMin = max(cellIndex, gridMin);
+    const float2 cellMax = min(cellIndex + 1.0f, gridMax);
+    const float2 f = saturate((gridCoord - cellMin) / max(cellMax - cellMin, 1.0e-6f));
     const int2 cell = int2(cellIndex);
 
     const float3 d10 = shoreDisplacement.Load(int3(cell + int2(1, 0), 0)).xyz;
