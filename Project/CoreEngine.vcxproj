@@ -467,6 +467,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Graphics\Primitive\CubeMeshGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Primitive\PlaneMeshGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Primitive\SphereMeshGenerator.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Primitive\PrimitiveMeshUtil.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\AccelerationStructureManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\VertexAnimationDeformer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RayTracing\RayTracingDispatchInfo.cpp" />
@@ -594,6 +595,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Particle\Modules\ShapeModule.cpp" />
     <ClCompile Include="Engine\Src\Particle\ParticlePresetManager.cpp" />
     <ClCompile Include="Engine\Src\Particle\ParticleSystemComponent.cpp" />
+    <ClCompile Include="Engine\Src\Particle\ParticleSystemComponentBase.cpp" />
     <ClCompile Include="Engine\Src\Particle\Gpu\GpuParticleSystemComponent.cpp" />
     <ClCompile Include="Engine\Src\Scene\Scene.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\LightingFeature.cpp" />
@@ -637,6 +639,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\UI\RectTransformComponent.cpp" />
     <ClCompile Include="Engine\Src\UI\UIImageComponent.cpp" />
     <ClCompile Include="Engine\Src\UI\UIButtonComponent.cpp" />
+    <ClCompile Include="Engine\Src\UI\UISelectableComponent.cpp" />
     <ClCompile Include="Engine\Src\UI\UIPointer.cpp" />
     <ClCompile Include="Engine\Src\UI\UINavigation.cpp" />
     <ClCompile Include="Engine\Src\UI\UISliderComponent.cpp" />
@@ -1679,6 +1682,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\Primitive\PlaneMeshGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\Primitive\RingMeshGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\Primitive\SphereMeshGenerator.h" />
+    <ClInclude Include="Engine\Src\Graphics\Primitive\PrimitiveMeshUtil.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\AccelerationStructureManager.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\VertexAnimationDeformer.h" />
     <ClInclude Include="Engine\Src\Graphics\RayTracing\RayTracingHitData.h" />
@@ -1942,6 +1946,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Particle\Modules\ShapeModule.h" />
     <ClInclude Include="Engine\Src\Particle\ParticlePresetManager.h" />
     <ClInclude Include="Engine\Src\Particle\ParticleSystemComponent.h" />
+    <ClInclude Include="Engine\Src\Particle\ParticleSystemComponentBase.h" />
     <ClInclude Include="Engine\Src\Particle\ParticleBillboardNames.h" />
     <ClInclude Include="Engine\Src\Particle\Gpu\GpuParticleSystemComponent.h" />
     <ClInclude Include="Engine\Src\Particle\Core\Particle.h" />
@@ -1989,6 +1994,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\UI\RectTransformComponent.h" />
     <ClInclude Include="Engine\Src\UI\UIImageComponent.h" />
     <ClInclude Include="Engine\Src\UI\UIButtonComponent.h" />
+    <ClInclude Include="Engine\Src\UI\UISelectableComponent.h" />
     <ClInclude Include="Engine\Src\UI\UIPointer.h" />
     <ClInclude Include="Engine\Src\UI\IUIInteractable.h" />
     <ClInclude Include="Engine\Src\UI\UINavigation.h" />
@@ -2089,12 +2095,16 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Utility\Enum\EnumNames.h" />
     <ClInclude Include="Engine\Src\Utility\Hash\Fnv1a.h" />
     <ClInclude Include="Engine\Src\Utility\String\CopyToBuffer.h" />
+    <ClInclude Include="Engine\Src\Utility\String\ContainsIgnoreCase.h" />
+    <ClInclude Include="Engine\Src\Utility\String\FailWith.h" />
+    <ClInclude Include="Engine\Src\Utility\String\Utf8.h" />
     <ClInclude Include="Engine\Src\Graphics\RHI\GraphicsCore.h" />
     <ClInclude Include="Engine\Src\Graphics\RHI\GraphicsCoreDesc.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\LeakChecker.h" />
     <ClInclude Include="Engine\Src\Utility\FrameRate\FrameRateController.h" />
     <ClInclude Include="Engine\Src\Utility\FrameRate\Time.h" />
     <ClInclude Include="Engine\Src\Utility\JsonManager\JsonManager.h" />
+    <ClInclude Include="Engine\Src\Utility\File\ReadFileText.h" />
     <ClInclude Include="Engine\Src\Utility\JsonManager\JsonFields.h" />
     <ClInclude Include="Engine\Src\Utility\Lifetime\ScopedRegistration.h" />
     <ClInclude Include="Engine\Src\Utility\Macro\UniqueName.h" />
@@ -2224,6 +2234,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Camera\CameraSceneStateIO.h" />
     <ClInclude Include="Engine\Src\Camera\Rig\CameraRig.h" />
     <ClInclude Include="Engine\Src\Camera\Rig\CameraRigEvaluator.h" />
+    <ClInclude Include="Engine\Src\Camera\CameraLookRotation.h" />
     <ClInclude Include="Engine\Src\Camera\Rig\CameraRigIO.h" />
     <ClInclude Include="Engine\Src\Camera\Rig\CameraRigLibrary.h" />
     <ClInclude Include="Engine\Src\Camera\Rig\CameraRigRuntime.h" />

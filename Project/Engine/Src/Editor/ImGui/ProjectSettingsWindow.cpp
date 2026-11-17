@@ -10,6 +10,7 @@
 #include "Editor/Panel/EditorPanelRegistry.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/CVar/CVarRegistry.h"
+#include "Utility/String/ContainsIgnoreCase.h"
 
 #include <algorithm>
 #include <cctype>
@@ -29,18 +30,6 @@ namespace CoreEngine
 
         /// 左のツリーの幅
         constexpr float kTreeWidth = 250.0f;
-
-        /// @brief 大文字小文字を無視した部分一致
-        bool ContainsIgnoreCase(std::string_view text, std::string_view query)
-        {
-            if (query.empty()) {
-                return true;
-            }
-            const auto lower = [](char c) { return static_cast<char>(std::tolower(static_cast<unsigned char>(c))); };
-            const auto found = std::search(text.begin(), text.end(), query.begin(), query.end(),
-                [&lower](char a, char b) { return lower(a) == lower(b); });
-            return found != text.end();
-        }
 
         /// @brief UI に出す CVar か
         bool IsListed(const ICVar* cvar)

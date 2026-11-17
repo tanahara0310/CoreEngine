@@ -7,6 +7,7 @@
 #include "Editor/ImGui/EditorTheme.h"
 #include "Editor/Launcher/ProjectThumbnails.h"
 #include "Utility/Path/ProjectPaths.h"
+#include "Utility/String/ContainsIgnoreCase.h"
 #include "Utility/String/CopyToBuffer.h"
 
 #include <shellapi.h>
@@ -39,20 +40,6 @@ namespace CoreEngine::Editor
         std::filesystem::path FromUtf8(const std::string& text)
         {
             return std::filesystem::path(std::u8string(text.begin(), text.end()));
-        }
-
-        /// @brief ASCII の英字だけ大文字小文字を無視して、text が query を含むか
-        bool ContainsIgnoreCase(std::string_view text, std::string_view query)
-        {
-            if (query.empty()) {
-                return true;
-            }
-            const auto lower = [](char c) {
-                return (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c;
-                };
-            const auto found = std::search(text.begin(), text.end(), query.begin(), query.end(),
-                [&lower](char a, char b) { return lower(a) == lower(b); });
-            return found != text.end();
         }
 
         /// @brief 開いた日時（"2026-09-26T12:00:00"）を一覧の表示にする

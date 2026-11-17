@@ -4,6 +4,7 @@
 #include "EngineSystem/EngineVersion.h"
 #include "EngineSystem/Settings/ProjectSettings.h"
 #include "Utility/Path/ProjectPaths.h"
+#include "Utility/String/Utf8.h"
 #include "WinApp/WinApp.h"
 
 #include <wincodec.h>
@@ -86,23 +87,6 @@ namespace CoreEngine
         // 画像が無いときの背景（上から下への縦のグラデーション）
         constexpr COLORREF kFallbackTopColor = RGB(27, 39, 56);
         constexpr COLORREF kFallbackBottomColor = RGB(11, 17, 24);
-
-        /// @brief UTF-8 を UTF-16 へ。GDI は wchar_t しか受け取らない
-        std::wstring Utf8ToWide(const std::string& text)
-        {
-            if (text.empty()) {
-                return {};
-            }
-            const int length = MultiByteToWideChar(
-                CP_UTF8, 0, text.c_str(), static_cast<int>(text.size()), nullptr, 0);
-            if (length <= 0) {
-                return {};
-            }
-            std::wstring result(static_cast<size_t>(length), L'\0');
-            MultiByteToWideChar(
-                CP_UTF8, 0, text.c_str(), static_cast<int>(text.size()), result.data(), length);
-            return result;
-        }
 
         /// @brief 96dpi 基準の値を実 DPI へスケールする
         int32_t Scale(int32_t value, uint32_t dpi)

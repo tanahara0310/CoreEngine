@@ -5,8 +5,6 @@
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
 #include "GameObject/Component/Core/ComponentService.h"
-#include "GameObject/Component/Transform/ITransformSource.h"
-#include "GameObject/Component/Transform/TransformComponent.h"
 #include "GameObject/GameObject.h"
 #include "Graphics/Render/DrawViewInfo.h"
 #include "Graphics/Render/Particle/GpuParticleRenderer.h"
@@ -17,28 +15,17 @@
 #include "Graphics/RHI/Resource/UploadRing.h"
 #include "Particle/Core/ParticleResourceManager.h" // ParticleForGPU（インスタンスデータレイアウト共有）
 #include "Particle/ParticleBillboardNames.h"
-#include "Particle/ParticlePresetManager.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
 
 #include <algorithm>
-#include <cmath>
 #include <iterator>
 #include <utility>
 #include <vector>
 
 namespace
 {
-    /// @brief テクスチャを指していないときに貼るテクスチャ
-    constexpr const char* kDefaultTexture = "circle.png";
-
     constexpr float kDegToRad = CoreEngine::MathCore::Constants::kDegToRad;
-
-    /// @brief テクスチャを指していないときにテクスチャの欄へ出す文字
-    std::string DescribeDefaultTexture(const void*)
-    {
-        return std::string(kDefaultTexture) + "（既定）";
-    }
 }
 
 REFLECT_DEFINE_BEGIN(CoreEngine::GpuParticleSystemComponent, "GPU パーティクル")
@@ -62,16 +49,6 @@ namespace CoreEngine
     using namespace CoreEngine::MathCore;
 
     GpuParticleSystemComponent::GpuParticleSystemComponent()
-        : mainModule_(std::make_unique<MainModule>())
-        , emissionModule_(std::make_unique<EmissionModule>())
-        , shapeModule_(std::make_unique<ShapeModule>())
-        , velocityModule_(std::make_unique<VelocityModule>())
-        , colorModule_(std::make_unique<ColorModule>())
-        , forceModule_(std::make_unique<ForceModule>())
-        , sizeModule_(std::make_unique<SizeModule>())
-        , rotationModule_(std::make_unique<RotationModule>())
-        , noiseModule_(std::make_unique<NoiseModule>())
-        , presetManager_(std::make_unique<ParticlePresetManager>())
     {
         // GPU で動くことをモジュールへ知らせる（インスペクタで CPU 専用の項目を隠す）
         ParticleModule* const modules[] = {
@@ -122,13 +99,8 @@ namespace CoreEngine
 
     void GpuParticleSystemComponent::Awake()
     {
-        GameObject* const owner = GetOwner();
+        GameObject* const owner = EnsureEmitterTransform();
         if (!owner) { return; }
-
-        // 放出位置は兄弟のトランスフォームから取る。無ければ足す
-        if (!owner->GetComponent<ITransformSource>()) {
-            owner->AddComponent<TransformComponent>();
-        }
 
         GraphicsCore* const graphics = FindService<GraphicsCore>(*this);
         RenderManager* const renderManager = FindService<RenderManager>(*this);
@@ -142,8 +114,7 @@ namespace CoreEngine
         }
         renderer_ = renderManager->GetRendererAs<GpuParticleRenderer>(RenderPassType::GpuParticle);
 
-        awoken_ = true;
-        LoadTexture();
+        FinishAwake();
     }
 
     bool GpuParticleSystemComponent::CreateGpuResources(GraphicsCore& graphics)
@@ -248,13 +219,6 @@ namespace CoreEngine
         return buffer;
     }
 
-    void GpuParticleSystemComponent::Start()
-    {
-        if (mainModule_->GetData().playOnAwake) {
-            Play();
-        }
-    }
-
     uint32_t GpuParticleSystemComponent::GetEffectiveCapacity() const
     {
         return std::clamp(mainModule_->GetData().maxParticles, 1u, kMaxParticles);
@@ -278,62 +242,11 @@ namespace CoreEngine
         }
     }
 
-    Matrix4x4 GpuParticleSystemComponent::MakeBillboardMatrix(const Matrix4x4& viewMatrix) const
-    {
-        // CPU 版 ParticleRenderDataBuilder::CreateBillboardMatrix と同じ式
-        Matrix4x4 billboardMatrix = Matrix::Identity();
-        switch (billboardType_) {
-        case BillboardType::ViewFacing:
-        {
-            billboardMatrix = Matrix::Inverse(viewMatrix);
-            billboardMatrix.m[3][0] = 0.0f;
-            billboardMatrix.m[3][1] = 0.0f;
-            billboardMatrix.m[3][2] = 0.0f;
-            break;
-        }
-        case BillboardType::YAxisOnly:
-        {
-            const Matrix4x4 invView = Matrix::Inverse(viewMatrix);
-            const Vector3 cameraPos = { invView.m[3][0], invView.m[3][1], invView.m[3][2] };
-            const float horizontalLength = std::sqrt(cameraPos.x * cameraPos.x + cameraPos.z * cameraPos.z);
-
-            Vector3 forward;
-            Vector3 right;
-            if (horizontalLength < 0.0001f) {
-                forward = { 0.0f, 0.0f, 1.0f };
-                right = { 1.0f, 0.0f, 0.0f };
-            } else {
-                forward = { cameraPos.x / horizontalLength, 0.0f, cameraPos.z / horizontalLength };
-                right = { -forward.z, 0.0f, forward.x };
-            }
-
-            billboardMatrix.m[0][0] = right.x;   billboardMatrix.m[0][1] = right.y;   billboardMatrix.m[0][2] = right.z;
-            billboardMatrix.m[1][0] = 0.0f;      billboardMatrix.m[1][1] = 1.0f;      billboardMatrix.m[1][2] = 0.0f;
-            billboardMatrix.m[2][0] = forward.x; billboardMatrix.m[2][1] = forward.y; billboardMatrix.m[2][2] = forward.z;
-            break;
-        }
-        case BillboardType::ScreenAligned:
-        {
-            const Matrix4x4 invView = Matrix::Inverse(viewMatrix);
-            for (int row = 0; row < 3; ++row) {
-                billboardMatrix.m[row][0] = invView.m[row][0];
-                billboardMatrix.m[row][1] = invView.m[row][1];
-                billboardMatrix.m[row][2] = invView.m[row][2];
-            }
-            break;
-        }
-        case BillboardType::None:
-        default:
-            break; // 単位行列（回転は粒自身の回転だけ）
-        }
-        return billboardMatrix;
-    }
-
     void GpuParticleSystemComponent::Render(const DrawViewInfo& view)
     {
         const GameObject* const owner = GetOwner();
         const Camera* const camera = view.GetCamera();
-        if (!owner || !owner->IsActive() || !camera || !awoken_) {
+        if (!owner || !owner->IsActive() || !camera || !IsAwoken()) {
             return;
         }
 
@@ -351,7 +264,7 @@ namespace CoreEngine
 
         GpuParticleParams& p = params_;
 
-        p.billboardMatrix = MakeBillboardMatrix(viewMatrix);
+        p.billboardMatrix = ParticleRenderDataBuilder::CreateBillboardMatrix(viewMatrix, billboardType_);
         p.viewProjection = viewMatrix * projectionMatrix;
 
         // ===== フレーム情報 =====
@@ -448,60 +361,5 @@ namespace CoreEngine
         if (renderer_) {
             renderer_->DrawGpu(this);
         }
-    }
-
-    bool GpuParticleSystemComponent::LoadPreset(const std::string& filePath)
-    {
-        return presetManager_->LoadPreset(this, filePath);
-    }
-
-    bool GpuParticleSystemComponent::SavePreset(const std::string& filePath)
-    {
-        return presetManager_->SavePreset(this, filePath);
-    }
-
-    void GpuParticleSystemComponent::SetTexture(const std::string& texturePath)
-    {
-        textureAsset_.SetPath(texturePath);
-        LoadTexture();
-    }
-
-    void GpuParticleSystemComponent::SetTextureAsset(const Reflection::AssetRefValue& value)
-    {
-        if (value == textureAsset_.GetValue()) { return; }
-        textureAsset_.SetValue(value);
-        LoadTexture();
-    }
-
-    void GpuParticleSystemComponent::LoadTexture()
-    {
-        // Awake より前は指す先だけを控え、Awake で読み込む
-        if (!awoken_) { return; }
-        texture_ = TextureManager::GetInstance().Load(
-            textureAsset_.IsSet() ? textureAsset_.GetPath() : std::string(kDefaultTexture));
-    }
-
-    Vector3 GpuParticleSystemComponent::GetEmitterPosition() const
-    {
-        const GameObject* const owner = GetOwner();
-        return owner ? owner->GetWorldPosition() : Vector3{ 0.0f, 0.0f, 0.0f };
-    }
-
-    bool GpuParticleSystemComponent::RequiresComponent(const IComponent& other) const
-    {
-        return IsAnyOf<ITransformSource>(other);
-    }
-
-    void GpuParticleSystemComponent::SaveModulesToJson(json& parameters) const
-    {
-        json settings = ParticlePresetManager::ToJson(const_cast<GpuParticleSystemComponent&>(*this));
-        settings.erase("billboardType");
-        settings.erase("blendMode");
-        parameters.update(settings);
-    }
-
-    void GpuParticleSystemComponent::LoadModulesFromJson(const json& parameters)
-    {
-        ParticlePresetManager::FromJson(*this, parameters);
     }
 }

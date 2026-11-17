@@ -5,8 +5,6 @@
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
 #include "GameObject/Component/Core/ComponentService.h"
-#include "GameObject/Component/Transform/ITransformSource.h"
-#include "GameObject/Component/Transform/TransformComponent.h"
 #include "GameObject/GameObject.h"
 #include "Graphics/Model/Model.h"
 #include "Graphics/Model/ModelManager.h"
@@ -20,7 +18,6 @@
 #include "Particle/Core/ParticleResourceManager.h"
 #include "Particle/Core/ParticleUpdater.h"
 #include "Particle/ParticleBillboardNames.h"
-#include "Particle/ParticlePresetManager.h"
 #include "Utility/FrameRate/Time.h"
 
 #include <algorithm>
@@ -29,18 +26,6 @@
 #ifdef _DEBUG
 #include "Graphics/Render/Line/LineRendererPipeline.h"
 #endif
-
-namespace
-{
-    /// @brief テクスチャを指していないときに貼るテクスチャ
-    constexpr const char* kDefaultTexture = "circle.png";
-
-    /// @brief テクスチャを指していないときにテクスチャの欄へ出す文字
-    std::string DescribeDefaultTexture(const void*)
-    {
-        return std::string(kDefaultTexture) + "（既定）";
-    }
-}
 
 REFLECT_DEFINE_BEGIN(CoreEngine::ParticleSystemComponent, "パーティクル")
     REFLECT_PARTIAL()
@@ -73,20 +58,10 @@ COMPONENT_REGISTER(CoreEngine::ParticleSystemComponent)
 namespace CoreEngine
 {
     ParticleSystemComponent::ParticleSystemComponent()
-        : mainModule_(std::make_unique<MainModule>())
-        , emissionModule_(std::make_unique<EmissionModule>())
-        , shapeModule_(std::make_unique<ShapeModule>())
-        , velocityModule_(std::make_unique<VelocityModule>())
-        , colorModule_(std::make_unique<ColorModule>())
-        , forceModule_(std::make_unique<ForceModule>())
-        , sizeModule_(std::make_unique<SizeModule>())
-        , rotationModule_(std::make_unique<RotationModule>())
-        , noiseModule_(std::make_unique<NoiseModule>())
-        , collisionModule_(std::make_unique<CollisionModule>())
+        : collisionModule_(std::make_unique<CollisionModule>())
         , particleEmitter_(std::make_unique<ParticleEmitter>())
         , particleUpdater_(std::make_unique<ParticleUpdater>())
         , renderDataBuilder_(std::make_unique<ParticleRenderDataBuilder>())
-        , presetManager_(std::make_unique<ParticlePresetManager>())
     {
         // インスペクタの最大数の欄をバッファの容量までにする
         mainModule_->SetCapacityLimit(kNumMaxInstance);
@@ -101,13 +76,7 @@ namespace CoreEngine
 
     void ParticleSystemComponent::Awake()
     {
-        GameObject* const owner = GetOwner();
-        if (!owner) { return; }
-
-        // 放出位置は兄弟のトランスフォームから取る。無ければ足す
-        if (!owner->GetComponent<ITransformSource>()) {
-            owner->AddComponent<TransformComponent>();
-        }
+        if (!EnsureEmitterTransform()) { return; }
 
         GraphicsCore* const graphics = FindService<GraphicsCore>(*this);
         RenderManager* const renderManager = FindService<RenderManager>(*this);
@@ -122,16 +91,8 @@ namespace CoreEngine
         billboardRenderer_ = renderManager->GetRendererAs<BaseParticleRenderer>(RenderPassType::Particle);
         modelRenderer_ = renderManager->GetRendererAs<BaseParticleRenderer>(RenderPassType::ModelParticle);
 
-        awoken_ = true;
-        LoadTexture();
+        FinishAwake();
         LoadModel();
-    }
-
-    void ParticleSystemComponent::Start()
-    {
-        if (mainModule_->GetData().playOnAwake) {
-            Play();
-        }
     }
 
     void ParticleSystemComponent::Update()
@@ -203,21 +164,6 @@ namespace CoreEngine
         }
     }
 
-    void ParticleSystemComponent::Play()
-    {
-        playback_.Play();
-    }
-
-    void ParticleSystemComponent::Stop()
-    {
-        playback_.Stop();
-    }
-
-    bool ParticleSystemComponent::IsPlaying() const
-    {
-        return playback_.IsPlaying();
-    }
-
     void ParticleSystemComponent::Clear()
     {
         particles_.clear();
@@ -227,38 +173,6 @@ namespace CoreEngine
     bool ParticleSystemComponent::IsFinished() const
     {
         return !playback_.IsPlaying() && particles_.empty();
-    }
-
-    bool ParticleSystemComponent::LoadPreset(const std::string& filePath)
-    {
-        return presetManager_->LoadPreset(this, filePath);
-    }
-
-    bool ParticleSystemComponent::SavePreset(const std::string& filePath)
-    {
-        return presetManager_->SavePreset(this, filePath);
-    }
-
-    void ParticleSystemComponent::SetTexture(const std::string& texturePath)
-    {
-        textureAsset_.SetPath(texturePath);
-        LoadTexture();
-    }
-
-    void ParticleSystemComponent::SetTextureAsset(const Reflection::AssetRefValue& value)
-    {
-        if (value == textureAsset_.GetValue()) { return; }
-        textureAsset_.SetValue(value);
-        LoadTexture();
-    }
-
-    void ParticleSystemComponent::LoadTexture()
-    {
-        // Awake より前は指す先だけを控え、Awake で読み込む
-        if (!awoken_) { return; }
-
-        texture_ = TextureManager::GetInstance().Load(
-            textureAsset_.IsSet() ? textureAsset_.GetPath() : std::string(kDefaultTexture));
     }
 
     void ParticleSystemComponent::SetModel(const std::string& modelPath)
@@ -276,7 +190,7 @@ namespace CoreEngine
 
     void ParticleSystemComponent::LoadModel()
     {
-        if (!awoken_) { return; }
+        if (!IsAwoken()) { return; }
 
         model_.reset();
         if (modelAsset_.IsSet()) {
@@ -289,12 +203,6 @@ namespace CoreEngine
     ModelResource* ParticleSystemComponent::GetModelResource() const
     {
         return model_ ? model_->GetModelResource() : nullptr;
-    }
-
-    Vector3 ParticleSystemComponent::GetEmitterPosition() const
-    {
-        const GameObject* const owner = GetOwner();
-        return owner ? owner->GetWorldPosition() : Vector3{ 0.0f, 0.0f, 0.0f };
     }
 
     D3D12_GPU_DESCRIPTOR_HANDLE ParticleSystemComponent::GetInstancingSrvHandleGPU() const
@@ -326,23 +234,5 @@ namespace CoreEngine
             ++count;
         }
         return count;
-    }
-
-    bool ParticleSystemComponent::RequiresComponent(const IComponent& other) const
-    {
-        return IsAnyOf<ITransformSource>(other);
-    }
-
-    void ParticleSystemComponent::SaveModulesToJson(json& parameters) const
-    {
-        json settings = ParticlePresetManager::ToJson(const_cast<ParticleSystemComponent&>(*this));
-        settings.erase("billboardType");
-        settings.erase("blendMode");
-        parameters.update(settings);
-    }
-
-    void ParticleSystemComponent::LoadModulesFromJson(const json& parameters)
-    {
-        ParticlePresetManager::FromJson(*this, parameters);
     }
 }

@@ -10,8 +10,10 @@
 #include "Graphics/Material/ShaderMaterialLibrary.h"
 #include "Graphics/Material/SurfaceMaterialPipeline.h"
 #include "Graphics/Shader/ShaderCompiler.h"
+#include "Utility/File/ReadFileText.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
+#include "Utility/String/FailWith.h"
 
 #include <algorithm>
 #include <cctype>
@@ -41,17 +43,6 @@ namespace CoreEngine::Editor::ShaderGraph
         bool EndsWith(const std::wstring& text, const std::wstring& suffix)
         {
             return text.size() >= suffix.size() && text.compare(text.size() - suffix.size(), suffix.size(), suffix) == 0;
-        }
-
-        std::string ReadText(const std::filesystem::path& path)
-        {
-            std::ifstream in(path, std::ios::binary);
-            if (!in) {
-                return {};
-            }
-            std::stringstream text;
-            text << in.rdbuf();
-            return text.str();
         }
 
         /// @brief ファイルの先頭のコメントの行を読む（コメントでない行で止める）
@@ -125,7 +116,7 @@ namespace CoreEngine::Editor::ShaderGraph
         {
             written = false;
             const std::filesystem::path shaderFile = GeneratedShaderPath(graphFile, target);
-            if (ReadText(shaderFile) == hlsl) {
+            if (ReadFileText(shaderFile) == hlsl) {
                 return {};
             }
             const std::string key = AssetDatabase::GetInstance().GetGUID(graphFile);
@@ -254,7 +245,7 @@ namespace CoreEngine::Editor::ShaderGraph
     bool LoadGraphFile(const std::filesystem::path& file, Graph& graph, std::string& error,
         std::vector<std::string>& warnings)
     {
-        const std::string text = ReadText(file);
+        const std::string text = ReadFileText(file);
         if (text.empty()) {
             error = "グラフのファイルを読めません";
             return false;
@@ -418,23 +409,17 @@ namespace CoreEngine::Editor::ShaderGraph
     bool CreateSubGraph(const std::filesystem::path& folder, const std::string& name, Target previewTarget,
         std::filesystem::path* created, std::string* error)
     {
-        const auto fail = [error](std::string message) {
-            if (error) {
-                *error = std::move(message);
-            }
-            return false;
-        };
         if (name.empty() || name.find_first_of("\\/:*?\"<>|.") != std::string::npos) {
-            return fail("名前に使えない文字があります（\\ / : * ? \" < > | . は使えません）。");
+            return FailWith(error, "名前に使えない文字があります（\\ / : * ? \" < > | . は使えません）。");
         }
         Logger& log = Logger::GetInstance();
         const std::filesystem::path base = folder.is_absolute() ? folder : ProjectPaths::Resolve(log.PathToUtf8(folder));
         const std::filesystem::path file = base / log.Utf8ToPath(name + kSubGraphExtension);
         if (std::filesystem::exists(file)) {
-            return fail("同じ名前のサブグラフがあります。");
+            return FailWith(error, "同じ名前のサブグラフがあります。");
         }
         if (!WriteFileReplacing(file, JsonManager::ToFileText(WriteGraph(MakeEmptySubGraph(previewTarget))))) {
-            return fail("サブグラフを書けません。");
+            return FailWith(error, "サブグラフを書けません。");
         }
         AssetDatabase::GetInstance().ImportAsset(file);
         if (created) {
@@ -492,7 +477,7 @@ namespace CoreEngine::Editor::ShaderGraph
             return regeneration;
         }
         const Target target = regeneration.graph.target;
-        if (ReadText(GeneratedShaderPath(graphFile, target)) == generated.hlsl) {
+        if (ReadFileText(GeneratedShaderPath(graphFile, target)) == generated.hlsl) {
             return regeneration;
         }
         const std::string key = AssetDatabase::GetInstance().GetGUID(graphFile);
@@ -531,14 +516,8 @@ namespace CoreEngine::Editor::ShaderGraph
     bool CreateGraph(const std::filesystem::path& folder, const std::string& name, Target target,
         std::filesystem::path* created, std::string* error)
     {
-        const auto fail = [error](std::string message) {
-            if (error) {
-                *error = std::move(message);
-            }
-            return false;
-        };
         if (name.empty() || name.find_first_of("\\/:*?\"<>|.") != std::string::npos) {
-            return fail("名前に使えない文字があります（\\ / : * ? \" < > | . は使えません）。");
+            return FailWith(error, "名前に使えない文字があります（\\ / : * ? \" < > | . は使えません）。");
         }
         Logger& log = Logger::GetInstance();
         const std::filesystem::path base = folder.is_absolute() ? folder : ProjectPaths::Resolve(log.PathToUtf8(folder));
@@ -546,13 +525,13 @@ namespace CoreEngine::Editor::ShaderGraph
         const std::filesystem::path shaderFile = GeneratedShaderPath(graphFile, target);
         const std::filesystem::path materialFile = base / log.Utf8ToPath(name + ".mat");
         if (std::filesystem::exists(graphFile)) {
-            return fail("同じ名前のグラフがあります。");
+            return FailWith(error, "同じ名前のグラフがあります。");
         }
         if (std::filesystem::exists(shaderFile)) {
-            return fail("同じ名前のシェーダがあります。");
+            return FailWith(error, "同じ名前のシェーダがあります。");
         }
         if (std::filesystem::exists(materialFile)) {
-            return fail("同じ名前のマテリアルがあります。");
+            return FailWith(error, "同じ名前のマテリアルがあります。");
         }
 
         const Graph graph = MakeEmptyGraph(target);
@@ -560,13 +539,13 @@ namespace CoreEngine::Editor::ShaderGraph
         options.sourcePath = ToAssetText(graphFile);
         const GenerateResult generated = Generate(graph, options);
         if (!generated.fatal.empty()) {
-            return fail(generated.fatal);
+            return FailWith(error, generated.fatal);
         }
         if (!WriteFileReplacing(graphFile, JsonManager::ToFileText(WriteGraph(graph)))) {
-            return fail("グラフを書けません。");
+            return FailWith(error, "グラフを書けません。");
         }
         if (!WriteFileReplacing(shaderFile, generated.hlsl)) {
-            return fail("シェーダを書けません。");
+            return FailWith(error, "シェーダを書けません。");
         }
         AssetDatabase::GetInstance().ImportAsset(graphFile);
         AssetDatabase::GetInstance().ImportAsset(shaderFile);
@@ -576,7 +555,7 @@ namespace CoreEngine::Editor::ShaderGraph
         material["values"] = json::object();
         material["textures"] = json::object();
         if (!WriteFileReplacing(materialFile, JsonManager::ToFileText(material))) {
-            return fail("マテリアルを書けません。");
+            return FailWith(error, "マテリアルを書けません。");
         }
         AssetDatabase::GetInstance().ImportAsset(materialFile);
 

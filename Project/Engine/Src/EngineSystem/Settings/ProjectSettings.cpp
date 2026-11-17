@@ -56,11 +56,9 @@ namespace CoreEngine
         /// @brief 設定のファイルを読む（無いか読めなければ空のオブジェクト）
         nlohmann::json ReadSettingsFile(const std::filesystem::path& path)
         {
-            if (std::ifstream in(path, std::ios::binary); in) {
-                nlohmann::json existing = nlohmann::json::parse(in, nullptr, /*allow_exceptions=*/false);
-                if (!existing.is_discarded() && existing.is_object()) {
-                    return existing;
-                }
+            nlohmann::json existing = JsonManager::ParseTextFile(path);
+            if (!existing.is_discarded() && existing.is_object()) {
+                return existing;
             }
             return nlohmann::json::object();
         }

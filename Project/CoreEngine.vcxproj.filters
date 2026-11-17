@@ -793,6 +793,9 @@
     <ClCompile Include="Engine\Src\Graphics\Primitive\SphereMeshGenerator.cpp">
       <Filter>Engine\Src\Graphics\Primitive</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Primitive\PrimitiveMeshUtil.cpp">
+      <Filter>Engine\Src\Graphics\Primitive</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RayTracing\AccelerationStructureManager.cpp">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClCompile>
@@ -1174,6 +1177,9 @@
     <ClCompile Include="Engine\Src\Particle\ParticleSystemComponent.cpp">
       <Filter>Engine\Src\Particle</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Particle\ParticleSystemComponentBase.cpp">
+      <Filter>Engine\Src\Particle</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Particle\Gpu\GpuParticleSystemComponent.cpp">
       <Filter>Engine\Src\Particle\Gpu</Filter>
     </ClCompile>
@@ -1301,6 +1307,9 @@
       <Filter>Engine\Src\UI</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\UI\UIButtonComponent.cpp">
+      <Filter>Engine\Src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\UI\UISelectableComponent.cpp">
       <Filter>Engine\Src\UI</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\UI\UIPointer.cpp">
@@ -2829,6 +2838,9 @@
     <ClInclude Include="Engine\Src\Graphics\Primitive\SphereMeshGenerator.h">
       <Filter>Engine\Src\Graphics\Primitive</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Primitive\PrimitiveMeshUtil.h">
+      <Filter>Engine\Src\Graphics\Primitive</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RayTracing\AccelerationStructureManager.h">
       <Filter>Engine\Src\Graphics\RayTracing</Filter>
     </ClInclude>
@@ -3618,6 +3630,9 @@
     <ClInclude Include="Engine\Src\Particle\ParticleSystemComponent.h">
       <Filter>Engine\Src\Particle</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Particle\ParticleSystemComponentBase.h">
+      <Filter>Engine\Src\Particle</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Particle\ParticleBillboardNames.h">
       <Filter>Engine\Src\Particle</Filter>
     </ClInclude>
@@ -3757,6 +3772,9 @@
       <Filter>Engine\Src\UI</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\UI\UIButtonComponent.h">
+      <Filter>Engine\Src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\UI\UISelectableComponent.h">
       <Filter>Engine\Src\UI</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\UI\UIPointer.h">
@@ -4059,6 +4077,15 @@
     <ClInclude Include="Engine\Src\Utility\String\CopyToBuffer.h">
       <Filter>Engine\Src\Utility\String</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\String\ContainsIgnoreCase.h">
+      <Filter>Engine\Src\Utility\String</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\String\FailWith.h">
+      <Filter>Engine\Src\Utility\String</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\String\Utf8.h">
+      <Filter>Engine\Src\Utility\String</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RHI\GraphicsCore.h">
       <Filter>Engine\Src\Graphics\RHI</Filter>
     </ClInclude>
@@ -4076,6 +4103,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\JsonManager\JsonManager.h">
       <Filter>Engine\Src\Utility\JsonManager</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\File\ReadFileText.h">
+      <Filter>Engine\Src\Utility\File</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\JsonManager\JsonFields.h">
       <Filter>Engine\Src\Utility\JsonManager</Filter>
@@ -4463,6 +4493,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Camera\Rig\CameraRigEvaluator.h">
       <Filter>Engine\Src\Camera\Rig</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Camera\CameraLookRotation.h">
+      <Filter>Engine\Src\Camera</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Camera\Rig\CameraRigIO.h">
       <Filter>Engine\Src\Camera\Rig</Filter>
@@ -5224,6 +5257,9 @@
     </Filter>
     <Filter Include="Engine\Src\Utility\Event">
       <UniqueIdentifier>{380A44FF-EB23-4116-AE4E-B33F867E6613}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Utility\File">
+      <UniqueIdentifier>{E8B67D5A-993E-43A0-BCA7-E942783634CD}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Utility\FileErrorDialog">
       <UniqueIdentifier>{F75A418E-5312-4734-8D71-95704517A093}</UniqueIdentifier>

@@ -10,29 +10,14 @@
 #include <string>
 #include <wrl.h>
 
-#include "GameObject/Component/Core/IComponent.h"
-#include "GameObject/Component/Render/IRenderableComponent.h"
-#include "Graphics/Asset/AssetRef.h"
-#include "Graphics/Texture/TextureManager.h"
 #include "Math/MathCore.h"
-#include "Particle/Core/EmitterPlayback.h"
-#include "Particle/IParticleSystem.h"
-#include "Particle/Modules/ColorModule.h"
-#include "Particle/Modules/EmissionModule.h"
-#include "Particle/Modules/ForceModule.h"
-#include "Particle/Modules/MainModule.h"
-#include "Particle/Modules/NoiseModule.h"
-#include "Particle/Modules/RotationModule.h"
-#include "Particle/Modules/ShapeModule.h"
-#include "Particle/Modules/SizeModule.h"
-#include "Particle/Modules/VelocityModule.h"
+#include "Particle/ParticleSystemComponentBase.h"
 #include "Reflection/Reflect.h"
 
 namespace CoreEngine
 {
     class GpuParticleRenderer;
     class GraphicsCore;
-    class ParticlePresetManager;
 
 /// @brief GPUパーティクル用定数バッファ（GpuParticle.hlsli の GpuParticleParams と一致・576バイト）
 struct GpuParticleParams {
@@ -206,7 +191,7 @@ CB_VERIFY_STRIDE(GpuParticleData, kGpuParticleDataFields);
 /// @details パラメータは CPU 版と同じモジュールで編集し、毎フレーム定数バッファへ詰めて GPU に渡す。
 ///          放出位置は兄弟のトランスフォームのワールド位置（無ければ Awake でトランスフォームを足す）。
 ///          粒の生存管理はフリーリスト、描画は ExecuteIndirect、生存数は 1 フレーム遅れのリードバックで読む。
-class GpuParticleSystemComponent : public IComponent, public IRenderableComponent, public IParticleSystem {
+class GpuParticleSystemComponent : public ParticleSystemComponentBase {
 public:
     // パーティクルバッファの物理容量（生存数の上限は MainModule.maxParticles でさらに制限）
     static constexpr uint32_t kMaxParticles = 65536;
@@ -232,78 +217,18 @@ public:
 
     REFLECT_DECLARE(GpuParticleSystemComponent)
 
-    /// @brief 放出位置を取るトランスフォームを使う
-    bool RequiresComponent(const IComponent& other) const override;
-
     /// @brief トランスフォームを確保し、GPU バッファ・UAV / SRV・レンダラー・テクスチャを用意する
     void Awake() override;
-
-    /// @brief 「起動時に再生」なら再生を始める
-    void Start() override;
 
     /// @brief 再生時間と放出数の管理（粒の更新は GPU）
     void Update() override;
 
-    /// @brief モジュールの値をプリセットと同じ形で書き出す（ビルボードとブレンドは記述子が保存する）
-    void SaveModulesToJson(json& parameters) const;
-
-    /// @brief モジュールの値を読む
-    void LoadModulesFromJson(const json& parameters);
-
     // ===== IRenderableComponent =====
 
     RenderPassType GetRenderPassType() const override { return RenderPassType::GpuParticle; }
-    BlendMode GetBlendMode() const override { return blendMode_; }
-    void SetBlendMode(BlendMode mode) override { blendMode_ = mode; }
 
     /// @brief 定数バッファを書き、レンダラーに放出・更新のディスパッチと描画を任せる
     void Render(const DrawViewInfo& view) override;
-
-    // ===== 再生 =====
-
-    /// @brief 最初から再生する（経過時間とバーストを戻す）
-    void Play() override { playback_.Play(); }
-
-    /// @brief 放出だけを止める（生きている粒は寿命まで更新する）
-    void Stop() override { playback_.Stop(); }
-
-    bool IsPlaying() const override { return playback_.IsPlaying(); }
-    const EmitterPlayback& GetPlayback() const override { return playback_; }
-
-    // ===== プリセット =====
-
-    bool LoadPreset(const std::string& filePath);
-    bool SavePreset(const std::string& filePath);
-    ParticlePresetManager& GetPresetManager() { return *presetManager_; }
-
-    // ===== 見た目 =====
-
-    /// @brief テクスチャをパスかファイル名で指す（空なら既定のテクスチャ）
-    void SetTexture(const std::string& texturePath) override;
-
-    Reflection::AssetRefValue GetTextureAsset() const { return textureAsset_.GetValue(); }
-    void SetTextureAsset(const Reflection::AssetRefValue& value);
-
-    D3D12_GPU_DESCRIPTOR_HANDLE GetTextureHandle() const { return texture_.gpuHandle; }
-
-    /// @brief 板ポリの向き
-    void SetBillboardType(BillboardType type) override { billboardType_ = type; }
-    BillboardType GetBillboardType() const override { return billboardType_; }
-
-    /// @brief 放出位置（兄弟のトランスフォームのワールド位置）
-    Vector3 GetEmitterPosition() const override;
-
-    // ===== モジュール =====
-
-    MainModule& GetMainModule() override { return *mainModule_; }
-    EmissionModule& GetEmissionModule() override { return *emissionModule_; }
-    ShapeModule& GetShapeModule() override { return *shapeModule_; }
-    VelocityModule& GetVelocityModule() override { return *velocityModule_; }
-    ColorModule& GetColorModule() override { return *colorModule_; }
-    ForceModule& GetForceModule() override { return *forceModule_; }
-    SizeModule& GetSizeModule() override { return *sizeModule_; }
-    RotationModule& GetRotationModule() override { return *rotationModule_; }
-    NoiseModule& GetNoiseModule() override { return *noiseModule_; }
 
     // ===== レンダラーが読む値 =====
 
@@ -362,12 +287,6 @@ private:
     /// @brief UAV付きDEFAULTヒープバッファを作成
     Microsoft::WRL::ComPtr<ID3D12Resource> CreateUavBuffer(ID3D12Device* device, size_t sizeInBytes);
 
-    /// @brief 指しているテクスチャ（無ければ既定）を読み込む
-    void LoadTexture();
-
-    /// @brief カメラの向きに合わせた板ポリの回転を作る
-    Matrix4x4 MakeBillboardMatrix(const Matrix4x4& viewMatrix) const;
-
     // ──────────────────────────────────────────────────────────
     // GPUリソース
     // ──────────────────────────────────────────────────────────
@@ -392,32 +311,7 @@ private:
 
     GraphicsCore* graphics_ = nullptr;  // GPU バッファを作った先（破棄時に返す）
     GpuParticleRenderer* renderer_ = nullptr;
-    bool awoken_ = false;
 
-    AssetRef<TextureAsset> textureAsset_;
-    TextureManager::LoadedTexture texture_{};
-
-    // ──────────────────────────────────────────────────────────
-    // モジュール（パラメータコンテナ + ImGui として使用）
-    // ──────────────────────────────────────────────────────────
-
-    std::unique_ptr<MainModule> mainModule_;
-    std::unique_ptr<EmissionModule> emissionModule_;
-    std::unique_ptr<ShapeModule> shapeModule_;
-    std::unique_ptr<VelocityModule> velocityModule_;
-    std::unique_ptr<ColorModule> colorModule_;
-    std::unique_ptr<ForceModule> forceModule_;
-    std::unique_ptr<SizeModule> sizeModule_;
-    std::unique_ptr<RotationModule> rotationModule_;
-    std::unique_ptr<NoiseModule> noiseModule_;
-
-    // プリセット管理（CPU版と共通のJSONフォーマット）
-    std::unique_ptr<ParticlePresetManager> presetManager_;
-
-    BillboardType billboardType_ = BillboardType::ViewFacing;
-    BlendMode blendMode_ = BlendMode::kBlendModeAdd;
-
-    EmitterPlayback playback_;
     bool resetPending_ = true;         // 初回フレームでバッファをGPU側初期化する
     uint32_t emitCountThisFrame_ = 0;
     uint32_t frameSeed_ = 0;

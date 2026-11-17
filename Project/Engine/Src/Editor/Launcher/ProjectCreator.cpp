@@ -3,7 +3,9 @@
 
 #ifdef CORE_EDITOR
 
+#include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Path/ProjectPaths.h"
+#include "Utility/String/FailWith.h"
 #include "externals/nlohmann/single_include/nlohmann/json.hpp"
 
 #include <algorithm>
@@ -132,11 +134,7 @@ namespace CoreEngine::Editor
             if (!entry.is_directory(ec)) {
                 continue;
             }
-            std::ifstream in(entry.path() / "Template.json", std::ios::binary);
-            if (!in) {
-                continue;
-            }
-            const nlohmann::json json = nlohmann::json::parse(in, nullptr, /*allow_exceptions=*/false);
+            const nlohmann::json json = JsonManager::ParseTextFile(entry.path() / "Template.json");
             if (json.is_discarded() || !json.is_object()) {
                 continue;
             }
@@ -232,26 +230,21 @@ namespace CoreEngine::Editor
                                 const std::filesystem::path& location, std::filesystem::path* outFolder,
                                 std::string* outError)
     {
-        const auto fail = [outError](std::string reason) {
-            if (outError) { *outError = std::move(reason); }
-            return false;
-            };
-
         if (std::string reason = Check(name, location, nullptr); !reason.empty()) {
-            return fail(std::move(reason));
+            return FailWith(outError, reason);
         }
 
         const std::filesystem::path folder = location / FromUtf8(name);
         std::error_code ec;
         if (!std::filesystem::create_directory(folder, ec) || ec) {
-            return fail("フォルダを作れませんでした");
+            return FailWith(outError, "フォルダを作れませんでした");
         }
 
         // ここから先で失敗したら、作ったフォルダを消す
-        const auto rollback = [&folder, &fail](std::string reason) {
+        const auto rollback = [&folder, outError](std::string reason) {
             std::error_code removeError;
             std::filesystem::remove_all(folder, removeError);
-            return fail(std::move(reason));
+            return FailWith(outError, reason);
             };
 
         std::filesystem::copy(projectTemplate.folder / "Application", folder / "Application",

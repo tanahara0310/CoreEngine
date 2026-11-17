@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "PlaneMeshGenerator.h"
-#include "Math/MathCore.h"
+#include "Graphics/Primitive/PrimitiveMeshUtil.h"
 #include <cstdio>
 
 namespace CoreEngine
@@ -30,12 +30,11 @@ namespace CoreEngine
                 float u = static_cast<float>(x) / subdivisionsX_;
                 float v = static_cast<float>(z) / subdivisionsZ_;
 
-                VertexData vertex{};
-                vertex.position = { -halfW + u * width_, 0.0f, -halfD + v * depth_, 1.0f };
-                vertex.texcoord = { u * uvTiling_, (1.0f - v) * uvTiling_ };
-                vertex.normal   = { 0.0f, 1.0f, 0.0f };
-                vertex.tangent  = { 1.0f, 0.0f, 0.0f };
-                data.vertices.push_back(vertex);
+                data.vertices.push_back(PrimitiveMeshUtil::MakeVertex(
+                    { -halfW + u * width_, 0.0f, -halfD + v * depth_, 1.0f },
+                    { u * uvTiling_, (1.0f - v) * uvTiling_ },
+                    { 0.0f, 1.0f, 0.0f },
+                    { 1.0f, 0.0f, 0.0f }));
             }
         }
 
@@ -48,34 +47,12 @@ namespace CoreEngine
                 uint32_t bottomLeft  = topLeft + vertsX;
                 uint32_t bottomRight = bottomLeft + 1;
 
-                data.indices.push_back(static_cast<int32_t>(topLeft));
-                data.indices.push_back(static_cast<int32_t>(bottomLeft));
-                data.indices.push_back(static_cast<int32_t>(topRight));
-
-                data.indices.push_back(static_cast<int32_t>(topRight));
-                data.indices.push_back(static_cast<int32_t>(bottomLeft));
-                data.indices.push_back(static_cast<int32_t>(bottomRight));
+                PrimitiveMeshUtil::PushTriangle(data, topLeft, bottomLeft, topRight);
+                PrimitiveMeshUtil::PushTriangle(data, topRight, bottomLeft, bottomRight);
             }
         }
 
-        // サブメッシュ
-        SubMeshData subMesh{};
-        subMesh.name = "Plane";
-        subMesh.startIndex = 0;
-        subMesh.indexCount = static_cast<uint32_t>(data.indices.size());
-        subMesh.materialIndex = 0;
-        data.subMeshes.push_back(subMesh);
-
-        // デフォルトマテリアル
-        MaterialAsset mat{};
-        mat.name = "Default";
-        data.materials.push_back(mat);
-
-        // ルートノード（単位行列）
-        data.rootNode.name = "root";
-        data.rootNode.localMatrix = MathCore::Matrix::Identity();
-        data.rootNode.transform = { {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f} };
-
+        PrimitiveMeshUtil::FinishSingleMesh(data, "Plane");
         return data;
     }
 

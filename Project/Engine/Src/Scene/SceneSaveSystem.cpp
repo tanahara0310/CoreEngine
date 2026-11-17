@@ -24,6 +24,7 @@
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
+#include "Utility/String/FailWith.h"
 
 #include <algorithm>
 #include <functional>
@@ -772,24 +773,17 @@ namespace CoreEngine
 
     bool SceneSaveSystem::IsValidSceneName(const std::string& name, std::string* error)
     {
-        const auto fail = [error](const char* reason) {
-            if (error) {
-                *error = reason;
-            }
-            return false;
-        };
-
         if (name.empty()) {
-            return fail("名前を入れてください");
+            return FailWith(error, "名前を入れてください");
         }
         if (name.front() == '_') {
-            return fail("`_` で始まる名前は使えません（保存データの予約）");
+            return FailWith(error, "`_` で始まる名前は使えません（保存データの予約）");
         }
         if (name.find_first_of("\\/:*?\"<>|") != std::string::npos) {
-            return fail("\\ / : * ? \" < > | は使えません");
+            return FailWith(error, "\\ / : * ? \" < > | は使えません");
         }
         if (JsonManager::GetInstance().FileExists(MakeManifestPath(name))) {
-            return fail("同じ名前のシーンが既にあります");
+            return FailWith(error, "同じ名前のシーンが既にあります");
         }
         if (error) {
             error->clear();

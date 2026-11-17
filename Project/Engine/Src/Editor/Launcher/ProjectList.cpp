@@ -3,6 +3,7 @@
 
 #ifdef CORE_EDITOR
 
+#include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Path/ProjectPaths.h"
 #include "externals/nlohmann/single_include/nlohmann/json.hpp"
 
@@ -87,11 +88,7 @@ namespace CoreEngine::Editor
         records_.clear();
         openLastOnStartup_ = false;
 
-        std::ifstream in(FilePath(), std::ios::binary);
-        if (!in) {
-            return;
-        }
-        const nlohmann::json root = nlohmann::json::parse(in, nullptr, /*allow_exceptions=*/false);
+        const nlohmann::json root = JsonManager::ParseTextFile(FilePath());
         if (root.is_discarded() || !root.is_object()) {
             return;
         }
@@ -222,14 +219,12 @@ namespace CoreEngine::Editor
         }
 
         const std::filesystem::path application = entry.folder / "Application";
-        if (std::ifstream in(application / "Config" / "EngineSettings" / "Project.json", std::ios::binary); in) {
-            const nlohmann::json root = nlohmann::json::parse(in, nullptr, /*allow_exceptions=*/false);
-            if (!root.is_discarded() && root.is_object()) {
-                if (std::string name = StringOf(root, "name"); !name.empty()) {
-                    entry.name = std::move(name);
-                }
-                entry.initialScene = StringOf(root, "initialScene");
+        const nlohmann::json root = JsonManager::ParseTextFile(application / "Config" / "EngineSettings" / "Project.json");
+        if (!root.is_discarded() && root.is_object()) {
+            if (std::string name = StringOf(root, "name"); !name.empty()) {
+                entry.name = std::move(name);
             }
+            entry.initialScene = StringOf(root, "initialScene");
         }
 
         std::error_code ec;

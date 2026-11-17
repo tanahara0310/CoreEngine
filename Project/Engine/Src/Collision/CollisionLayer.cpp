@@ -4,6 +4,7 @@
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
+#include "Utility/String/FailWith.h"
 #include "externals/nlohmann/single_include/nlohmann/json.hpp"
 
 #include <algorithm>
@@ -28,29 +29,24 @@ namespace CoreEngine
         /// @brief 名前の並びとして成り立っているか
         bool Validate(const std::vector<std::string>& names, std::string* outError)
         {
-            const auto fail = [outError](const char* reason) {
-                if (outError) { *outError = reason; }
-                return false;
-                };
-
             if (names.empty()) {
-                return fail("レイヤーが 1 つもありません");
+                return FailWith(outError, "レイヤーが 1 つもありません");
             }
             if (names.size() > kMaxCollisionLayers) {
-                return fail("レイヤーが多すぎます（32 まで）");
+                return FailWith(outError, "レイヤーが多すぎます（32 まで）");
             }
             if (names.front() != "Default") {
-                return fail("先頭は Default でなければなりません");
+                return FailWith(outError, "先頭は Default でなければなりません");
             }
             for (const std::string& name : names) {
                 if (name.empty()) {
-                    return fail("空の名前は使えません");
+                    return FailWith(outError, "空の名前は使えません");
                 }
             }
             std::vector<std::string> sorted = names;
             std::sort(sorted.begin(), sorted.end());
             if (std::adjacent_find(sorted.begin(), sorted.end()) != sorted.end()) {
-                return fail("同じ名前が 2 つあります");
+                return FailWith(outError, "同じ名前が 2 つあります");
             }
             if (outError) { outError->clear(); }
             return true;

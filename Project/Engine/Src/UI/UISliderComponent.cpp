@@ -15,12 +15,15 @@ COMPONENT_REGISTER(CoreEngine::UISliderComponent)
 
 namespace CoreEngine
 {
+    UISliderComponent::UISliderComponent()
+        : UISelectableComponent({ 1.0f, 1.0f, 1.0f, 1.0f }, { 0.85f, 0.9f, 1.0f, 1.0f },
+                                { 0.7f, 0.78f, 0.95f, 1.0f }, { 0.6f, 0.6f, 0.6f, 0.5f })
+    {
+    }
+
     void UISliderComponent::Awake()
     {
-        if (GameObject* const owner = GetOwner()) {
-            owner->GetOrAddComponent<RectTransformComponent>();
-        }
-        ApplyVisual();
+        UISelectableComponent::Awake();
         // 繋いだ相手がもう居れば、再生を始める前から値どおりの見た目にする
         ApplyLayout();
     }
@@ -32,19 +35,13 @@ namespace CoreEngine
 
     void UISliderComponent::OnPropertyChanged(const Reflection::PropertyDescriptor& property)
     {
-        (void)property;
-        ApplyVisual();
+        UISelectableComponent::OnPropertyChanged(property);
         ApplyLayout();
-    }
-
-    bool UISliderComponent::RequiresComponent(const IComponent& other) const
-    {
-        return IsAnyOf<RectTransformComponent>(other);
     }
 
     bool UISliderComponent::WasChanged() const
     {
-        return changedFrame_ != 0 && Time::FrameCount() == changedFrame_ + 1;
+        return IsFrameAfter(changedFrame_);
     }
 
     float UISliderComponent::Span() const
@@ -103,79 +100,16 @@ namespace CoreEngine
         laidOutNormalized_ = -1.0f;
     }
 
-    void UISliderComponent::SetInteractable(bool value)
-    {
-        if (interactable_ == value) {
-            return;
-        }
-        interactable_ = value;
-        if (!interactable_) {
-            // 動かせなくした瞬間は、乗っている・選んでいる・掴んでいる状態を持ち越さない
-            hovered_ = false;
-            focused_ = false;
-            pressed_ = false;
-        }
-        ApplyVisual();
-    }
-
-    RectTransformComponent* UISliderComponent::GetRectTransform() const
-    {
-        return Sibling<RectTransformComponent>();
-    }
-
-    int UISliderComponent::GetPointerSortOrder() const
-    {
-        const RectTransformComponent* const rect = GetRectTransform();
-        return rect ? rect->GetSortOrder() : 0;
-    }
-
-    void UISliderComponent::OnPointerEnter()
-    {
-        hovered_ = true;
-        ApplyVisual();
-    }
-
-    void UISliderComponent::OnPointerExit()
-    {
-        hovered_ = false;
-        ApplyVisual();
-    }
-
-    void UISliderComponent::OnFocusEnter()
-    {
-        focused_ = true;
-        ApplyVisual();
-    }
-
-    void UISliderComponent::OnFocusExit()
-    {
-        focused_ = false;
-        ApplyVisual();
-    }
-
-    void UISliderComponent::OnPressBegin()
-    {
-        pressed_ = true;
-        ApplyVisual();
-    }
-
-    void UISliderComponent::OnPressEnd(bool onSelf)
-    {
-        (void)onSelf;
-        pressed_ = false;
-        ApplyVisual();
-    }
-
     void UISliderComponent::OnDrag(const Vector2& pointerOnCanvas, const Vector2& canvasSize)
     {
-        if (interactable_) {
+        if (IsInteractable()) {
             ApplyPointer(pointerOnCanvas, canvasSize);
         }
     }
 
     bool UISliderComponent::OnNavigate(UINavigationDirection direction)
     {
-        if (!interactable_) {
+        if (!IsInteractable()) {
             return false;
         }
         // 自分と同じ軸の入力だけ使う。直交する向きはフォーカス送りへ渡す
@@ -220,14 +154,6 @@ namespace CoreEngine
             normalized = 1.0f - normalized;
         }
         SetNormalizedValue(normalized);
-    }
-
-    const Vector4& UISliderComponent::CurrentColor() const
-    {
-        if (!interactable_)       { return disabledColor_; }
-        if (pressed_)             { return pressedColor_; }
-        if (hovered_ || focused_) { return hoveredColor_; }
-        return normalColor_;
     }
 
     void UISliderComponent::ApplyVisual()

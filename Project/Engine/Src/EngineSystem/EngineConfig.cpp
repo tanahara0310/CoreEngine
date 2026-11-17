@@ -5,6 +5,7 @@
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
+#include "Utility/String/Utf8.h"
 
 #include <Windows.h>
 #include <iostream>
@@ -74,11 +75,8 @@ namespace CoreEngine
 
     std::wstring EngineConfig::GetWindowTitleWide() const
     {
-        if (windowTitle.empty()) return L"";
-        int size = MultiByteToWideChar(CP_UTF8, 0, windowTitle.c_str(), -1, nullptr, 0);
-        std::wstring result(size - 1, L'\0');
-        MultiByteToWideChar(CP_UTF8, 0, windowTitle.c_str(), -1, result.data(), size);
-        return result;
+        // 最初の NUL の手前までを変換する
+        return Utf8ToWide(std::string_view(windowTitle.c_str()));
     }
 
     void EngineConfig::SetPixRuntimeAndRestart(bool enable)

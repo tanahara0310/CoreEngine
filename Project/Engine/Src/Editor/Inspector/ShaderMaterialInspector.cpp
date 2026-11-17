@@ -23,9 +23,11 @@
 #include "Graphics/Render/Sprite/SpriteRenderer.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Utility/Algorithm/FindIfPtr.h"
+#include "Utility/File/ReadFileText.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
+#include "Utility/String/FailWith.h"
 
 #include <algorithm>
 #include <array>
@@ -347,18 +349,6 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
             return changed;
         }
 
-        /// @brief ファイルの中身を全部読む（読めなければ空）
-        std::string ReadText(const std::filesystem::path& path)
-        {
-            std::ifstream in(path, std::ios::binary);
-            if (!in) {
-                return {};
-            }
-            std::stringstream text;
-            text << in.rdbuf();
-            return text.str();
-        }
-
         /// @brief ファイルへ書く
         bool WriteText(const std::filesystem::path& path, const std::string& text)
         {
@@ -470,14 +460,8 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
     bool Create(const std::filesystem::path& folder, const std::string& name, MaterialTarget target, bool withShader,
         std::filesystem::path* created, std::string* error)
     {
-        const auto fail = [error](std::string message) {
-            if (error) {
-                *error = std::move(message);
-            }
-            return false;
-        };
         if (name.empty() || name.find_first_of("\\/:*?\"<>|.") != std::string::npos) {
-            return fail("名前に使えない文字があります（\\ / : * ? \" < > | . は使えません）。");
+            return FailWith(error, "名前に使えない文字があります（\\ / : * ? \" < > | . は使えません）。");
         }
         const std::filesystem::path base =
             folder.is_absolute() ? folder : ProjectPaths::Resolve(Logger::GetInstance().PathToUtf8(folder));
@@ -490,10 +474,10 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
             base / Logger::GetInstance().Utf8ToPath(name + (forModel ? ".Surface.hlsl" : ".PS.hlsl"));
         const char* const shaderTemplate = forModel ? kSurfaceShaderTemplate : kShaderTemplate;
         if (std::filesystem::exists(materialPath)) {
-            return fail("同じ名前のマテリアルがあります。");
+            return FailWith(error, "同じ名前のマテリアルがあります。");
         }
         if (withShader && std::filesystem::exists(shaderPath)) {
-            return fail("同じ名前のシェーダがあります。");
+            return FailWith(error, "同じ名前のシェーダがあります。");
         }
 
         json root = json::object();
@@ -501,19 +485,19 @@ namespace CoreEngine::Editor::ShaderMaterialInspector
         root["values"] = json::object();
         root["textures"] = json::object();
         if (withShader) {
-            const std::string shaderText = ReadText(ProjectPaths::Resolve(shaderTemplate));
+            const std::string shaderText = ReadFileText(ProjectPaths::Resolve(shaderTemplate));
             if (shaderText.empty()) {
-                return fail(std::string("シェーダの雛形が見つかりません（") + shaderTemplate + "）。");
+                return FailWith(error, std::string("シェーダの雛形が見つかりません（") + shaderTemplate + "）。");
             }
             if (!WriteText(shaderPath, shaderText)) {
-                return fail("シェーダを書けません。");
+                return FailWith(error, "シェーダを書けません。");
             }
             AssetDatabase::GetInstance().ImportAsset(shaderPath);
             root["shader"] = AssetPathToJson(Logger::GetInstance().PathToUtf8(ProjectPaths::MakeRelative(shaderPath)));
             root["values"] = json::parse(forModel ? kSurfaceTemplateValues : kTemplateValues);
         }
         if (!WriteText(materialPath, JsonManager::ToFileText(root))) {
-            return fail("マテリアルを書けません。");
+            return FailWith(error, "マテリアルを書けません。");
         }
         AssetDatabase::GetInstance().ImportAsset(materialPath);
 

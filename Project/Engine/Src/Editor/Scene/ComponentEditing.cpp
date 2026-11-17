@@ -14,6 +14,8 @@
 #include "GameObject/GameObject.h"
 #include "GameObject/GameObjectManager.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/String/ContainsIgnoreCase.h"
+#include "Utility/String/FailWith.h"
 
 #include <algorithm>
 #include <cctype>
@@ -140,19 +142,6 @@ namespace CoreEngine::ComponentEditing
             bool attachOnRedo_ = true;
         };
 
-        /// @brief 英字の大小を区別せずに部分一致を調べる
-        bool ContainsIgnoreCase(std::string_view text, std::string_view pattern)
-        {
-            if (pattern.empty()) {
-                return true;
-            }
-            const auto toLower = [](char c) {
-                return static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-            };
-            return std::search(text.begin(), text.end(), pattern.begin(), pattern.end(),
-                [&toLower](char a, char b) { return toLower(a) == toLower(b); }) != text.end();
-        }
-
         /// @brief 追加の一覧の分類 1 つ
         struct Category
         {
@@ -266,19 +255,12 @@ namespace CoreEngine::ComponentEditing
 
     bool CanAdd(const GameObject& object, const std::string& typeName, std::string* reason)
     {
-        const auto fail = [reason](const char* message) {
-            if (reason) {
-                *reason = message;
-            }
-            return false;
-        };
-
         if (!ComponentFactory::Get().IsRegistered(typeName)) {
-            return fail("型名から作れない型です");
+            return FailWith(reason, "型名から作れない型です");
         }
         for (const auto& slot : object.GetAllComponents()) {
             if (slot && typeName == slot->GetTypeName()) {
-                return fail("同じ型のコンポーネントがすでに付いています");
+                return FailWith(reason, "同じ型のコンポーネントがすでに付いています");
             }
         }
 
@@ -286,7 +268,7 @@ namespace CoreEngine::ComponentEditing
         if (ComponentFactory::Get().IsRenderableType(typeName)) {
             for (const auto& slot : object.GetAllComponents()) {
                 if (slot && ComponentFactory::IsRenderable(*slot)) {
-                    return fail("描画するコンポーネントは 1 つのオブジェクトに 1 つまでです");
+                    return FailWith(reason, "描画するコンポーネントは 1 つのオブジェクトに 1 つまでです");
                 }
             }
         }

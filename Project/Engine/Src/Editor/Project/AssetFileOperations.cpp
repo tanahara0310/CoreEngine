@@ -6,6 +6,7 @@
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
+#include "Utility/String/FailWith.h"
 
 #include <algorithm>
 #include <array>
@@ -74,26 +75,21 @@ namespace CoreEngine::Editor::AssetFileOperations
 
     bool IsValidName(const std::string& name, std::string* outError)
     {
-        const auto fail = [outError](const char* reason) {
-            if (outError) { *outError = reason; }
-            return false;
-            };
-
         if (name.empty()) {
-            return fail("名前を入れてください");
+            return FailWith(outError, "名前を入れてください");
         }
         if (name == "." || name == "..") {
-            return fail("その名前は使えません");
+            return FailWith(outError, "その名前は使えません");
         }
         if (name.find_first_of(kForbiddenChars) != std::string::npos) {
-            return fail("\\ / : * ? \" < > | は使えません");
+            return FailWith(outError, "\\ / : * ? \" < > | は使えません");
         }
         if (name.back() == ' ' || name.back() == '.') {
-            return fail("最後を空白や . にはできません");
+            return FailWith(outError, "最後を空白や . にはできません");
         }
         const std::string stem = ToUpper(name.substr(0, name.find('.')));
         if (std::find(kReservedNames.begin(), kReservedNames.end(), stem) != kReservedNames.end()) {
-            return fail("Windows が予約している名前です");
+            return FailWith(outError, "Windows が予約している名前です");
         }
         if (outError) { outError->clear(); }
         return true;
@@ -101,11 +97,6 @@ namespace CoreEngine::Editor::AssetFileOperations
 
     bool IsEditableLocation(const std::filesystem::path& target, std::string* outError)
     {
-        const auto fail = [outError](const char* reason) {
-            if (outError) { *outError = reason; }
-            return false;
-            };
-
         std::error_code ec;
         const std::filesystem::path absolute = std::filesystem::weakly_canonical(target, ec);
         const std::filesystem::path base = ec ? target.lexically_normal() : absolute;
@@ -120,7 +111,7 @@ namespace CoreEngine::Editor::AssetFileOperations
                 return true;
             }
         }
-        return fail("Assets の中のものだけ操作できます");
+        return FailWith(outError, "Assets の中のものだけ操作できます");
     }
 
     std::filesystem::path MakeUniquePath(const std::filesystem::path& desired)
@@ -151,28 +142,23 @@ namespace CoreEngine::Editor::AssetFileOperations
     bool CreateFolder(const std::filesystem::path& parentFolder, const std::string& name,
                       std::filesystem::path* outPath, std::string* outError)
     {
-        const auto fail = [outError](const std::string& reason) {
-            if (outError) { *outError = reason; }
-            return false;
-            };
-
         if (!IsValidName(name, outError) || !IsEditableLocation(parentFolder, outError)) {
             return false;
         }
 
         std::error_code ec;
         if (!std::filesystem::is_directory(parentFolder, ec)) {
-            return fail("作る場所がフォルダではありません");
+            return FailWith(outError, "作る場所がフォルダではありません");
         }
 
         const std::filesystem::path destination = parentFolder / name;
         if (std::filesystem::exists(destination, ec)) {
-            return fail("同じ名前のものがもうあります");
+            return FailWith(outError, "同じ名前のものがもうあります");
         }
 
         std::filesystem::create_directory(destination, ec);
         if (ec) {
-            return fail("フォルダを作れませんでした");
+            return FailWith(outError, "フォルダを作れませんでした");
         }
 
         RefreshDatabase();
@@ -187,18 +173,13 @@ namespace CoreEngine::Editor::AssetFileOperations
     bool Rename(const std::filesystem::path& target, const std::string& newName,
                 std::filesystem::path* outPath, std::string* outError)
     {
-        const auto fail = [outError](const std::string& reason) {
-            if (outError) { *outError = reason; }
-            return false;
-            };
-
         if (!IsValidName(newName, outError) || !IsEditableLocation(target, outError)) {
             return false;
         }
 
         std::error_code ec;
         if (!std::filesystem::exists(target, ec)) {
-            return fail("元のファイルが見つかりません");
+            return FailWith(outError, "元のファイルが見つかりません");
         }
 
         const std::filesystem::path destination = target.parent_path() / newName;
@@ -207,12 +188,12 @@ namespace CoreEngine::Editor::AssetFileOperations
             return true;
         }
         if (std::filesystem::exists(destination, ec)) {
-            return fail("同じ名前のものがもうあります");
+            return FailWith(outError, "同じ名前のものがもうあります");
         }
 
         std::filesystem::rename(target, destination, ec);
         if (ec) {
-            return fail("名前を変えられませんでした（開いているかもしれません）");
+            return FailWith(outError, "名前を変えられませんでした（開いているかもしれません）");
         }
 
         // GUID を持つ .meta も一緒に連れていく（置いていくと参照が切れる）
@@ -234,21 +215,16 @@ namespace CoreEngine::Editor::AssetFileOperations
     bool Copy(const std::filesystem::path& source, const std::filesystem::path& destinationFolder,
               std::filesystem::path* outPath, std::string* outError)
     {
-        const auto fail = [outError](const std::string& reason) {
-            if (outError) { *outError = reason; }
-            return false;
-            };
-
         if (!IsEditableLocation(source, outError) || !IsEditableLocation(destinationFolder, outError)) {
             return false;
         }
 
         std::error_code ec;
         if (!std::filesystem::exists(source, ec)) {
-            return fail("元のファイルが見つかりません");
+            return FailWith(outError, "元のファイルが見つかりません");
         }
         if (!std::filesystem::is_directory(destinationFolder, ec)) {
-            return fail("複製先がフォルダではありません");
+            return FailWith(outError, "複製先がフォルダではありません");
         }
 
         const bool isDirectory = std::filesystem::is_directory(source, ec);
@@ -257,7 +233,7 @@ namespace CoreEngine::Editor::AssetFileOperations
             const std::filesystem::path relative =
                 destinationFolder.lexically_normal().lexically_relative(normalizedSource);
             if (!relative.empty() && *relative.begin() != "..") {
-                return fail("自分の中へは複製できません");
+                return FailWith(outError, "自分の中へは複製できません");
             }
         }
 
@@ -271,7 +247,7 @@ namespace CoreEngine::Editor::AssetFileOperations
             std::filesystem::copy_file(source, destination, ec);
         }
         if (ec) {
-            return fail("複製できませんでした");
+            return FailWith(outError, "複製できませんでした");
         }
 
         // .meta は連れていかない。複製には新しい GUID を付けたいので、
@@ -301,21 +277,16 @@ namespace CoreEngine::Editor::AssetFileOperations
     bool Move(const std::filesystem::path& source, const std::filesystem::path& destinationFolder,
               std::filesystem::path* outPath, std::string* outError)
     {
-        const auto fail = [outError](const std::string& reason) {
-            if (outError) { *outError = reason; }
-            return false;
-            };
-
         if (!IsEditableLocation(source, outError) || !IsEditableLocation(destinationFolder, outError)) {
             return false;
         }
 
         std::error_code ec;
         if (!std::filesystem::exists(source, ec)) {
-            return fail("元のファイルが見つかりません");
+            return FailWith(outError, "元のファイルが見つかりません");
         }
         if (!std::filesystem::is_directory(destinationFolder, ec)) {
-            return fail("移す先がフォルダではありません");
+            return FailWith(outError, "移す先がフォルダではありません");
         }
         if (source.parent_path().lexically_normal() == destinationFolder.lexically_normal()) {
             if (outPath) { *outPath = source; }
@@ -325,18 +296,18 @@ namespace CoreEngine::Editor::AssetFileOperations
             const std::filesystem::path relative =
                 destinationFolder.lexically_normal().lexically_relative(source.lexically_normal());
             if (!relative.empty() && *relative.begin() != "..") {
-                return fail("自分の中へは移せません");
+                return FailWith(outError, "自分の中へは移せません");
             }
         }
 
         const std::filesystem::path destination = destinationFolder / source.filename();
         if (std::filesystem::exists(destination, ec)) {
-            return fail("移す先に同じ名前のものがあります");
+            return FailWith(outError, "移す先に同じ名前のものがあります");
         }
 
         std::filesystem::rename(source, destination, ec);
         if (ec) {
-            return fail("移せませんでした（開いているかもしれません）");
+            return FailWith(outError, "移せませんでした（開いているかもしれません）");
         }
 
         // GUID を保つため .meta も一緒に移す
@@ -357,18 +328,13 @@ namespace CoreEngine::Editor::AssetFileOperations
 
     bool MoveToRecycleBin(const std::filesystem::path& target, std::string* outError)
     {
-        const auto fail = [outError](const std::string& reason) {
-            if (outError) { *outError = reason; }
-            return false;
-            };
-
         if (!IsEditableLocation(target, outError)) {
             return false;
         }
 
         std::error_code ec;
         if (!std::filesystem::exists(target, ec)) {
-            return fail("消すものが見つかりません");
+            return FailWith(outError, "消すものが見つかりません");
         }
 
         // 本体の前に .meta を送る（本体だけ消えて .meta が残る状態を作らない）
@@ -377,7 +343,7 @@ namespace CoreEngine::Editor::AssetFileOperations
             ShellRecycle(meta);
         }
         if (!ShellRecycle(target)) {
-            return fail("ごみ箱へ送れませんでした（開いているかもしれません）");
+            return FailWith(outError, "ごみ箱へ送れませんでした（開いているかもしれません）");
         }
 
         RefreshDatabase();

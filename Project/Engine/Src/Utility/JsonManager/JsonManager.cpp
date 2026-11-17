@@ -98,6 +98,14 @@ namespace CoreEngine
         return Parse(bytes);
     }
 
+    json JsonManager::ParseTextFile(const std::filesystem::path& path) {
+        std::ifstream file(path, std::ios::binary);
+        if (!file) {
+            return json(json::value_t::discarded);
+        }
+        return json::parse(file, nullptr, /*allow_exceptions=*/false);
+    }
+
     std::vector<std::uint8_t> JsonManager::ToBinary(const json& jsonData) {
         return json::to_msgpack(jsonData);
     }
