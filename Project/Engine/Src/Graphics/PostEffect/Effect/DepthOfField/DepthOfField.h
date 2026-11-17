@@ -3,7 +3,6 @@
 #include "../PostEffectComputeBase.h"
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h" // PostEffectPassContext
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
-#include "Graphics/Shader/ICustomShaderProvider.h"
 #include <wrl.h>
 #include <d3d12.h>
 
@@ -101,8 +100,6 @@ protected:
     void OnCreateResources() override;
 
 private:
-    /// @brief Prefilter / Gather 用の追加パイプラインを構築する
-    bool CreateInternalPipelines();
 
     /// @brief 薄レンズ式の CoC 係数[フル解像度px]を CVar から計算する
     float ComputeCocScalePx() const;
@@ -111,17 +108,6 @@ private:
     void RecordGather(const PostEffectPassContext& context);
     void RecordComposite(const PostEffectPassContext& context);
 
-    /// @brief シェーダーパスだけを差し替える最小のプロバイダ
-    class ShaderProvider : public ICustomShaderProvider {
-    public:
-        explicit ShaderProvider(std::wstring path) : path_(std::move(path)) {}
-        std::wstring GetComputeShaderPath() const override { return path_; }
-    private:
-        std::wstring path_;
-    };
-
-    ShaderProvider prefilterProvider_{ L"DoFPrefilter.CS.hlsl" };
-    ShaderProvider gatherProvider_{ L"DoFGather.CS.hlsl" };
     CustomShaderPipeline prefilterPipeline_;
     CustomShaderPipeline gatherPipeline_;
     bool internalPipelinesReady_ = false;

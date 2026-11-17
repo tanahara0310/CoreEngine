@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.89.9">
+<meta name="engine-version" content="0.89.10">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11437,6 +11437,15 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-89-10">v0.89.10 <span class="dim">（2026-11-17）</span></h3>
+  <p>レンダラーとポストエフェクトで、同じ形で何か所にも書いていた所を普通の関数と基底クラスへまとめた版です。見た目・動き・シーンの書き方・CVar・スクリプトは変わりません。</p>
+  <ul>
+    <li><strong>レンダラー</strong>：シェーダのコンパイルとルートシグネチャの作成を <code>GraphicsPipelineUtil</code>（<span class="path">Graphics/Pipeline/GraphicsPipelineUtil.h</span>）に、ブレンドモードごとのパスの始め方とルートパラメータの番号の引き方を <code>BaseRenderer</code> と <code>IRenderer</code> に置きました。モデルとスキンモデルのレンダラーのパイプラインは、同じ <code>BuildPipelines</code> で作ります。</li>
+    <li><strong>文字</strong>：2D の文字と 3D の文字で別々に持っていた頂点と見た目の型、文字をまとめて描く処理を <code>MsdfTextBatch</code>（<span class="path">Text/MsdfTextBatch.h</span>）にまとめました。</li>
+    <li><strong>ポストエフェクトの設定画面</strong>：状態の表示・CVar の項目・「デフォルトに戻す」のボタン・無効のときの注意を並べる決まった形を <code>PostEffectBase</code> の補助にし、24 個のエフェクトがこれを使います。</li>
+    <li><strong>コンピュートシェーダのパイプライン</strong>：シェーダのパスを返すだけのクラス 34 個をやめ、<code>CustomShaderPipeline::BuildCompute</code> にパスを渡して作ります。ポストエフェクトの中で使うパイプラインは <code>PostEffectComputeBase::BuildInternalPipelines</code> に表で渡して作ります。</li>
+  </ul>
 
   <h3 id="changelog-v0-89-9">v0.89.9 <span class="dim">（2026-11-17）</span></h3>
   <p>GPU のリソースとルートシグネチャを作る処理で、同じ形で何か所にも書いていた所を普通の関数と表にまとめた版です。見た目・動き・シーンの書き方・CVar・スクリプトは変わりません。</p>

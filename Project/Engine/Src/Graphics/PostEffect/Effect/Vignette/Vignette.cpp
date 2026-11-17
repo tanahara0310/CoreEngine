@@ -3,9 +3,6 @@
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/CVar/CVar.h"
-#ifdef CORE_EDITOR
-#include "Editor/ImGui/CVarPanel.h"
-#endif
 
 
 namespace CoreEngine
@@ -65,19 +62,9 @@ namespace CoreEngine
     void Vignette::DrawImGui()
     {
 #ifdef CORE_EDITOR
-        ImGui::PushID("VignetteParams");
-        ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
-        UI::Separator();
-
         // パラメータ UI は CVar から自動生成される。
         // 項目を増やすときは Vignette.cpp 冒頭に CVar を 1 行足すだけでよい
-        CVarUI::DrawTree(kCVarPrefix);
-
-        UI::Separator();
-        if (ImGui::Button("デフォルトに戻す")) {
-            CVarUI::ResetTree(kCVarPrefix);
-        }
-        ImGui::PopID();
+        DrawCVarEffectImGui("VignetteParams", kCVarPrefix);
 #endif // CORE_EDITOR
     }
 

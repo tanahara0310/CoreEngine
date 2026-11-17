@@ -2,7 +2,6 @@
 #include "CloudPipelines.h"
 
 #include "Graphics/Cloud/Shader/CloudBindings.h"
-#include "Graphics/Shader/ICustomShaderProvider.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
@@ -16,16 +15,6 @@ namespace CoreEngine
 {
     namespace
     {
-        /// @brief パスを実行時に受け取る CS 専用のシェーダ供給
-        class ComputeShaderProvider final : public ICustomShaderProvider {
-        public:
-            explicit ComputeShaderProvider(const wchar_t* path) : path_(path) {}
-            std::wstring GetComputeShaderPath() const override { return path_; }
-
-        private:
-            std::wstring path_;
-        };
-
         /// @brief 1 パス分の定義（シェーダーのパスと宣言表の対応の単一情報源）
         struct CloudPassDesc {
             const wchar_t* shaderPath;
@@ -81,9 +70,7 @@ namespace CoreEngine
             const CloudPassDesc& desc = kPassTable[i];
             CloudComputePass& pass = passes_[i];
 
-            const ComputeShaderProvider provider(desc.shaderPath);
-            if (!pass.pipeline.Build(device, shaderCompiler, reflectionBuilder, provider)
-                || !pass.pipeline.HasComputePSO()) {
+            if (!pass.pipeline.BuildCompute(device, shaderCompiler, reflectionBuilder, desc.shaderPath)) {
                 Logger::GetInstance().Warnf(LogCategory::Graphics,
                     "CloudPipelines: {} コンピュートパイプラインの構築に失敗", desc.name);
                 return false;

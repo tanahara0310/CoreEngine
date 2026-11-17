@@ -13,29 +13,14 @@ namespace CoreEngine
     void UIRenderer::Initialize(ID3D12Device* device) {
         const std::string debugName = GetPipelineDebugName();
 
-        shaderCompiler_->Initialize();
-
-        auto vertexShaderBlob = shaderCompiler_->CompileShader(GetVertexShaderPath(), L"vs_6_0");
-        assert(vertexShaderBlob != nullptr);
-
-        auto pixelShaderBlob = shaderCompiler_->CompileShader(GetPixelShaderPath(), L"ps_6_0");
-        assert(pixelShaderBlob != nullptr);
-
-        reflectionBuilder_->Initialize(shaderCompiler_->GetDxcUtils());
-        reflectionData_ = reflectionBuilder_->BuildFromShaders(
-            vertexShaderBlob.Get(), pixelShaderBlob.Get(), debugName + "Renderer");
-
         // SpriteRenderer と同じシンプル構成
         RootSignatureConfig config;
 
         // UI はテキスト等で滑らかさが欲しいので Linear サンプラー
         config.ConfigureSampler("gSampler", GetSamplerConfig());
 
-        auto buildResult = rootSignatureMg_->Build(device, *reflectionData_, config);
-        if (!buildResult.success) {
-            throw std::runtime_error(
-                "Failed to create " + debugName + " Root Signature: " + buildResult.errorMessage);
-        }
+        const auto shaders = BuildShadersAndRootSignature(device,
+            GetVertexShaderPath(), GetPixelShaderPath(), debugName + "Renderer", config, debugName);
 
         bool result = psoMg_->CreateBuilder()
             .SetDebugName(debugName)
@@ -43,7 +28,7 @@ namespace CoreEngine
             .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(false, false)
             .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
-            .BuildAllBlendModes(device, vertexShaderBlob.Get(), pixelShaderBlob.Get(), rootSignatureMg_->GetRootSignature());
+            .BuildAllBlendModes(device, shaders.vs.Get(), shaders.ps.Get(), rootSignatureMg_->GetRootSignature());
 
         if (!result) {
             throw std::runtime_error("Failed to create " + debugName + " Pipeline State Object");
@@ -53,10 +38,7 @@ namespace CoreEngine
     }
 
     int UIRenderer::GetRootParamIndex(const std::string& resourceName) const {
-        if (!reflectionData_) {
-            return -1;
-        }
-        return reflectionData_->GetRootParameterIndexByName(resourceName);
+        return FindRootParamIndex(reflectionData_.get(), resourceName);
     }
 
     void UIRenderer::Initialize(GraphicsCore* dxCommon) {
@@ -89,14 +71,7 @@ namespace CoreEngine
             currentBufferIndex_ = 0;
         }
 
-        if (blendMode != currentBlendMode_) {
-            currentBlendMode_ = blendMode;
-            pipelineState_ = psoMg_->GetPipelineState(blendMode);
-        }
-
-        cmdList->SetGraphicsRootSignature(rootSignatureMg_->GetRootSignature());
-        cmdList->SetPipelineState(pipelineState_);
-        cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        BeginBlendModePass(cmdList, blendMode);
         boundPipeline_ = nullptr;
     }
 

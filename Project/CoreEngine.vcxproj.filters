@@ -1585,6 +1585,9 @@
     <ClCompile Include="Engine\Src\Graphics\Pipeline\ComputePipelineUtil.cpp">
       <Filter>Engine\Src\Graphics\Pipeline</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Pipeline\GraphicsPipelineUtil.cpp">
+      <Filter>Engine\Src\Graphics\Pipeline</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Shader\Cache\ShaderBlobCache.cpp">
       <Filter>Engine\Src\Graphics\Shader\Cache</Filter>
     </ClCompile>
@@ -1622,6 +1625,9 @@
       <Filter>Engine\Src\Graphics\RHI\Resource</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Render.cpp">
+      <Filter>Engine\Src\Graphics\Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\BaseRenderer.cpp">
       <Filter>Engine\Src\Graphics\Render</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\WorldTransform\WorldTransform.cpp">
@@ -2105,6 +2111,9 @@
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Text\TextGeometryBuilder.cpp">
+      <Filter>Engine\Src\Text</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Text\MsdfTextBatch.cpp">
       <Filter>Engine\Src\Text</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Event\EventBus.cpp">
@@ -4080,6 +4089,9 @@
     <ClInclude Include="Engine\Src\Graphics\Pipeline\ComputePipelineUtil.h">
       <Filter>Engine\Src\Graphics\Pipeline</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Pipeline\GraphicsPipelineUtil.h">
+      <Filter>Engine\Src\Graphics\Pipeline</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Render.h">
       <Filter>Engine\Src\Graphics\Render</Filter>
     </ClInclude>
@@ -4573,6 +4585,9 @@
       <Filter>Engine\Src\Scene\Feature</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Text\TextGeometryBuilder.h">
+      <Filter>Engine\Src\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Text\MsdfTextBatch.h">
       <Filter>Engine\Src\Text</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Event\EventBus.h">

@@ -3,15 +3,16 @@
 #include "Graphics/RHI/Resource/UploadRing.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h"
+#ifdef CORE_EDITOR
+#include "Editor/ImGui/ImGuiAll.h"
+#include "Editor/ImGui/CVarPanel.h"
+#endif
 
 
 namespace CoreEngine
 {
     int PostEffectBase::GetRootParamIndex(const std::string& resourceName) const {
-        if (!reflectionData_) {
-            return -1;
-        }
-        return reflectionData_->GetRootParameterIndexByName(resourceName);
+        return FindRootParamIndex(reflectionData_, resourceName);
     }
 
     void PostEffectBase::SetResolvedExtraInput(const char* slot, D3D12_GPU_DESCRIPTOR_HANDLE srvHandle)
@@ -89,4 +90,39 @@ namespace CoreEngine
         Cb::Upload(allocation.cpu, src, fields, count);
         return allocation.gpuAddress;
     }
+
+#ifdef CORE_EDITOR
+    void PostEffectBase::BeginEffectImGui(const char* id) const
+    {
+        ImGui::PushID(id);
+        ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
+    }
+
+    bool PostEffectBase::DrawResetDefaultsImGui(std::string_view cvarPrefix) const
+    {
+        UI::Separator();
+        if (!ImGui::Button("デフォルトに戻す")) {
+            return false;
+        }
+        CVarUI::ResetTree(cvarPrefix);
+        return true;
+    }
+
+    void PostEffectBase::EndEffectImGui(bool warnWhenDisabled) const
+    {
+        if (warnWhenDisabled && !IsEnabled()) {
+            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "注意: エフェクトは無効ですが、パラメータは調整可能です");
+        }
+        ImGui::PopID();
+    }
+
+    void PostEffectBase::DrawCVarEffectImGui(const char* id, std::string_view cvarPrefix, bool warnWhenDisabled) const
+    {
+        BeginEffectImGui(id);
+        UI::Separator();
+        CVarUI::DrawTree(cvarPrefix);
+        DrawResetDefaultsImGui(cvarPrefix);
+        EndEffectImGui(warnWhenDisabled);
+    }
+#endif // CORE_EDITOR
 }

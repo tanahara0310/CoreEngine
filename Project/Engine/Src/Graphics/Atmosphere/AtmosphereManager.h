@@ -9,7 +9,6 @@
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
-#include "Graphics/Shader/ICustomShaderProvider.h"
 
 namespace CoreEngine
 {
@@ -399,51 +398,6 @@ namespace CoreEngine
         /// @brief LUT 生成用コンピュートパイプラインを構築する
         bool CreateLUTPipelines(ID3D12Device* device);
 
-        /// @brief Transmittance LUT 用シェーダープロバイダ
-        struct TransmittanceLUTShaderProvider final : ICustomShaderProvider {
-            std::wstring GetComputeShaderPath() const override { return L"TransmittanceLUT.CS.hlsl"; }
-        };
-
-        /// @brief Multi-Scattering LUT 用シェーダープロバイダ
-        struct MultiScatteringLUTShaderProvider final : ICustomShaderProvider {
-            std::wstring GetComputeShaderPath() const override { return L"MultiScatteringLUT.CS.hlsl"; }
-        };
-
-        /// @brief Sky-View LUT 用シェーダープロバイダ
-        struct SkyViewLUTShaderProvider final : ICustomShaderProvider {
-            std::wstring GetComputeShaderPath() const override { return L"SkyViewLUT.CS.hlsl"; }
-        };
-
-        /// @brief Camera Volume LUT 用シェーダープロバイダ
-        struct CameraVolumeLUTShaderProvider final : ICustomShaderProvider {
-            std::wstring GetComputeShaderPath() const override { return L"CameraVolumeLUT.CS.hlsl"; }
-        };
-
-        /// @brief 空アンビエント SH 射影用シェーダープロバイダ
-        struct SkyIrradianceSHShaderProvider final : ICustomShaderProvider {
-            std::wstring GetComputeShaderPath() const override { return L"SkyIrradianceSH.CS.hlsl"; }
-        };
-
-        /// @brief 空キューブマップ焼き込み用シェーダープロバイダ
-        struct SkyEnvironmentCaptureShaderProvider final : ICustomShaderProvider {
-            std::wstring GetComputeShaderPath() const override { return L"SkyEnvironmentCapture.CS.hlsl"; }
-        };
-
-        /// @brief 空キューブマップのミップ生成用シェーダープロバイダ
-        struct SkyEnvironmentDownsampleShaderProvider final : ICustomShaderProvider {
-            std::wstring GetComputeShaderPath() const override { return L"SkyEnvironmentDownsample.CS.hlsl"; }
-        };
-
-        /// @brief 空キューブマップ GGX プリフィルタ用シェーダープロバイダ
-        struct SkyEnvironmentPrefilterShaderProvider final : ICustomShaderProvider {
-            std::wstring GetComputeShaderPath() const override { return L"SkyEnvironmentPrefilter.CS.hlsl"; }
-        };
-
-        /// @brief Aerial Perspective 合成用シェーダープロバイダ
-        struct AerialPerspectiveShaderProvider final : ICustomShaderProvider {
-            std::wstring GetComputeShaderPath() const override { return L"AerialPerspective.CS.hlsl"; }
-        };
-
         /// @brief 空キューブマップの mip1 以降を、1 段細かいミップの 2×2 平均で順に作る
         void GenerateSkyCubemapMips(ID3D12GraphicsCommandList* cmdList);
 
@@ -566,23 +520,14 @@ namespace CoreEngine
 
         // LUT 生成パイプライン
         CustomShaderPipeline transmittancePipeline_{};
-        TransmittanceLUTShaderProvider transmittanceShaderProvider_{};
         CustomShaderPipeline multiScatteringPipeline_{};
-        MultiScatteringLUTShaderProvider multiScatteringShaderProvider_{};
         CustomShaderPipeline skyViewPipeline_{};
-        SkyViewLUTShaderProvider skyViewShaderProvider_{};
         CustomShaderPipeline cameraVolumePipeline_{};
-        CameraVolumeLUTShaderProvider cameraVolumeShaderProvider_{};
         CustomShaderPipeline skyIrradiancePipeline_{};
-        SkyIrradianceSHShaderProvider skyIrradianceShaderProvider_{};
         CustomShaderPipeline skyEnvironmentCapturePipeline_{};
-        SkyEnvironmentCaptureShaderProvider skyEnvironmentCaptureShaderProvider_{};
         CustomShaderPipeline skyEnvironmentDownsamplePipeline_{};
-        SkyEnvironmentDownsampleShaderProvider skyEnvironmentDownsampleShaderProvider_{};
         CustomShaderPipeline skyEnvironmentPrefilterPipeline_{};
-        SkyEnvironmentPrefilterShaderProvider skyEnvironmentPrefilterShaderProvider_{};
         CustomShaderPipeline aerialPerspectivePipeline_{};
-        AerialPerspectiveShaderProvider aerialPerspectiveShaderProvider_{};
         bool pipelinesReady_ = false;
     };
 }

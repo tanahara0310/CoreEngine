@@ -1,37 +1,16 @@
 #include "pch.h"
 #include "Text3DRenderer.h"
 
-#include "Graphics/RHI/Resource/UploadRing.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
-#include "Math/MathCore.h"
-#include "Text/MsdfFont.h"
 
-#include <cassert>
-#include <cstdint>
 #include <cstring>
 #include <stdexcept>
 
 namespace CoreEngine
 {
-    using namespace CoreEngine::MathCore;
-
     void Text3DRenderer::Initialize(ID3D12Device* device)
     {
-        shaderCompiler_->Initialize();
-
-        auto vertexShaderBlob =
-            shaderCompiler_->CompileShader(L"Engine/Assets/Shaders/Text3D/Text3D.VS.hlsl", L"vs_6_0");
-        assert(vertexShaderBlob != nullptr);
-
-        auto pixelShaderBlob =
-            shaderCompiler_->CompileShader(L"Engine/Assets/Shaders/Text3D/Text3D.PS.hlsl", L"ps_6_0");
-        assert(pixelShaderBlob != nullptr);
-
-        reflectionBuilder_->Initialize(shaderCompiler_->GetDxcUtils());
-        reflectionData_ = reflectionBuilder_->BuildFromShaders(
-            vertexShaderBlob.Get(), pixelShaderBlob.Get(), "Text3DRenderer");
-
         RootSignatureConfig config;
 
         // Linear は必須。ポイントサンプリングにすると距離場の補間が効かず、
@@ -44,11 +23,9 @@ namespace CoreEngine
         sampler.addressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
         config.ConfigureSampler("gSampler", sampler);
 
-        auto buildResult = rootSignatureMg_->Build(device, *reflectionData_, config);
-        if (!buildResult.success) {
-            throw std::runtime_error(
-                "Failed to create Text3D Root Signature: " + buildResult.errorMessage);
-        }
+        const auto shaders = BuildShadersAndRootSignature(device,
+            L"Engine/Assets/Shaders/Text3D/Text3D.VS.hlsl", L"Engine/Assets/Shaders/Text3D/Text3D.PS.hlsl",
+            "Text3DRenderer", config, "Text3D");
 
         // ── 深度テスト版（既定）────────────────────────────────
         // 深度書き込みを切ってあるのは、MSDF のアンチエイリアス縁が
@@ -61,7 +38,7 @@ namespace CoreEngine
             .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(true, false)
             .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
-            .BuildAllBlendModes(device, vertexShaderBlob.Get(), pixelShaderBlob.Get(),
+            .BuildAllBlendModes(device, shaders.vs.Get(), shaders.ps.Get(),
                 rootSignatureMg_->GetRootSignature());
 
         if (!result) {
@@ -76,7 +53,7 @@ namespace CoreEngine
             .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(false, false)
             .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
-            .BuildAllBlendModes(device, vertexShaderBlob.Get(), pixelShaderBlob.Get(),
+            .BuildAllBlendModes(device, shaders.vs.Get(), shaders.ps.Get(),
                 rootSignatureMg_->GetRootSignature());
 
         if (!overlayResult) {
@@ -85,9 +62,7 @@ namespace CoreEngine
 
         pipelineState_ = psoMg_->GetPipelineState(BlendMode::kBlendModeNormal);
 
-        CreateSharedIndexBuffer(device);
-
-        batchVertices_.reserve(static_cast<size_t>(kMaxGlyphsPerBatch) * 4);
+        batch_.Initialize(device, "Failed to create Text3D shared index buffer");
     }
 
     void Text3DRenderer::Initialize(GraphicsCore* dxCommon)
@@ -97,21 +72,9 @@ namespace CoreEngine
         Initialize(dxCommon->GetDevice());
     }
 
-    void Text3DRenderer::CreateSharedIndexBuffer(ID3D12Device* device)
-    {
-        // グリフ 1 つ = 四角形 1 枚。1 バッチの最大グリフ数ぶんを並べる
-        indexResource_ = ResourceFactory::CreateQuadIndexBuffer(device, indexBufferView_, kMaxGlyphsPerBatch);
-        if (!indexResource_) {
-            throw std::runtime_error("Failed to create Text3D shared index buffer");
-        }
-    }
-
     int Text3DRenderer::GetRootParamIndex(const std::string& resourceName) const
     {
-        if (!reflectionData_) {
-            return -1;
-        }
-        return reflectionData_->GetRootParameterIndexByName(resourceName);
+        return FindRootParamIndex(reflectionData_.get(), resourceName);
     }
 
     ID3D12PipelineState* Text3DRenderer::ResolvePipelineState(
@@ -143,11 +106,7 @@ namespace CoreEngine
         Flush();
 
         // 1 フレーム（1 パス）の集計を確定させる
-        lastFrameDrawCalls_ = frameDrawCalls_;
-        lastFrameGlyphs_ = frameGlyphs_;
-
-        frameDrawCalls_ = 0;
-        frameGlyphs_ = 0;
+        batch_.EndFrame();
 
         cmdList_ = nullptr;
     }
@@ -156,7 +115,7 @@ namespace CoreEngine
         const TextGlyphVertex* glyphVertices, size_t vertexCount,
         const Matrix4x4& world,
         const Matrix4x4& viewProjection,
-        const Text3DDrawStyle& style,
+        const TextDrawStyle& style,
         Text3DDepthMode depthMode)
     {
         if (!font || !glyphVertices || vertexCount == 0) { return; }
@@ -165,120 +124,41 @@ namespace CoreEngine
         //  - フォント: アトラス（ディスクリプタ）と定数が変わる
         //  - 深度モード: PSO が変わる
         //  - ビュー射影: 定数が変わる（同一パス内では普通は変わらない）
-        const bool batchBroken = batchFont_ &&
-            (batchFont_ != font
+        const bool batchBroken = batch_.GetFont() &&
+            (batch_.GetFont() != font
                 || batchDepthMode_ != depthMode
                 || std::memcmp(&batchViewProjection_, &viewProjection, sizeof(Matrix4x4)) != 0);
         if (batchBroken) {
             Flush();
         }
 
-        batchFont_ = font;
         batchDepthMode_ = depthMode;
         batchViewProjection_ = viewProjection;
 
         // 共有インデックスバッファの長さを超えるなら、いったん描いてから続ける
-        const size_t maxVertices = static_cast<size_t>(kMaxGlyphsPerBatch) * 4;
-        if (batchVertices_.size() + vertexCount > maxVertices) {
+        if (batch_.WouldOverflow(vertexCount)) {
             Flush();
-            batchFont_ = font;
-            batchDepthMode_ = depthMode;
-            batchViewProjection_ = viewProjection;
         }
 
-        const Vector2 styleParams = { style.outlineWidthEm, style.weightEm };
-
-        batchVertices_.reserve(batchVertices_.size() + vertexCount);
-        for (size_t i = 0; i < vertexCount; ++i) {
-            const TextGlyphVertex& source = glyphVertices[i];
-
-            // em → ワールド。ここで潰しておくことで、テキストごとの
-            // 行列を定数バッファへ渡す必要が無くなり、1 本にまとめられる。
-            // ワールド行列はアフィンなので w 除算なしの変換でよい
-            const Vector4 local = { source.position.x, source.position.y, 0.0f, 1.0f };
-            const Vector4 transformed = CoordinateTransform::TransformCoord(local, world);
-
-            batchVertices_.push_back(Text3DVertex{
-                transformed,
-                source.texcoord,
-                style.color,
-                style.outlineColor,
-                styleParams,
-                });
-        }
+        // ワールド行列はアフィンなので w 除算なしの変換でよい
+        batch_.Append(font, glyphVertices, vertexCount, world, style);
     }
 
     void Text3DRenderer::Flush()
     {
-        if (batchVertices_.empty()) {
-            batchFont_ = nullptr;
-            return;
+        ID3D12PipelineState* pipelineState = nullptr;
+        if (!batch_.IsEmpty() && cmdList_ && batch_.GetFont() && dxCommon_) {
+            pipelineState = ResolvePipelineState(batchDepthMode_, currentBlendMode_);
         }
-        if (!cmdList_ || !batchFont_ || !dxCommon_) {
-            batchVertices_.clear();
-            batchFont_ = nullptr;
-            return;
-        }
-
-        ID3D12PipelineState* pipelineState = ResolvePipelineState(batchDepthMode_, currentBlendMode_);
         if (!pipelineState) {
-            batchVertices_.clear();
-            batchFont_ = nullptr;
+            batch_.Clear();
             return;
         }
-
-        // ── バッチ共通の定数（ビュー射影とアトラス情報）────────────
-        Text3DBatchConstants constants{};
-        constants.viewProjection = batchViewProjection_;
-        constants.pxRange = batchFont_->GetPxRange();
-        constants.atlasWidth = batchFont_->GetAtlasSize().x;
-        constants.atlasHeight = batchFont_->GetAtlasSize().y;
-        constants.sdUnitsPerEm = (constants.pxRange > 0.0f)
-            ? (static_cast<float>(batchFont_->GetGlyphPixelSize()) / constants.pxRange)
-            : 1.0f;
-
-        UploadRing& uploadRing = dxCommon_->GetUploadRing();
-
-        const D3D12_GPU_VIRTUAL_ADDRESS constantsAddress =
-            uploadRing.AllocateConstants(constants);
-        if (constantsAddress == 0) {
-            batchVertices_.clear();
-            batchFont_ = nullptr;
-            return;
-        }
-
-        // ── 頂点（フレーム単位で巻き戻る UPLOAD ヒープへ積む）──────
-        const UploadAllocation allocation = uploadRing.AllocateArray<Text3DVertex>(batchVertices_);
-        if (!allocation.IsValid()) {
-            batchVertices_.clear();
-            batchFont_ = nullptr;
-            return;
-        }
-
-        D3D12_VERTEX_BUFFER_VIEW vertexBufferView{};
-        vertexBufferView.BufferLocation = allocation.gpuAddress;
-        vertexBufferView.SizeInBytes = allocation.size;
-        vertexBufferView.StrideInBytes = sizeof(Text3DVertex);
 
         // 深度モードごとに PSO が違うので、バッチを描く直前に張る
-        cmdList_->SetPipelineState(pipelineState);
-        pipelineState_ = pipelineState;
-
-        cmdList_->SetGraphicsRootConstantBufferView(
-            GetRootParamIndex("gBatch"), constantsAddress);
-        cmdList_->SetGraphicsRootDescriptorTable(
-            GetRootParamIndex("gAtlas"), batchFont_->GetAtlasGpuHandle());
-
-        cmdList_->IASetVertexBuffers(0, 1, &vertexBufferView);
-        cmdList_->IASetIndexBuffer(&indexBufferView_);
-
-        const uint32_t glyphCount = static_cast<uint32_t>(batchVertices_.size() / 4);
-        cmdList_->DrawIndexedInstanced(glyphCount * 6, 1, 0, 0, 0);
-
-        ++frameDrawCalls_;
-        frameGlyphs_ += glyphCount;
-
-        batchVertices_.clear();
-        batchFont_ = nullptr;
+        if (batch_.Draw(cmdList_, dxCommon_->GetUploadRing(), batchViewProjection_,
+                GetRootParamIndex("gBatch"), GetRootParamIndex("gAtlas"), pipelineState)) {
+            pipelineState_ = pipelineState;
+        }
     }
 }

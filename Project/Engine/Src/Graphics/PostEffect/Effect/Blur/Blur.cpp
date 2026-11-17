@@ -3,9 +3,6 @@
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/CVar/CVar.h"
-#ifdef CORE_EDITOR
-#include "Editor/ImGui/CVarPanel.h"
-#endif
 
 
 namespace CoreEngine
@@ -50,24 +47,7 @@ namespace CoreEngine
     void Blur::DrawImGui()
     {
 #ifdef CORE_EDITOR
-        ImGui::PushID("BlurParams");
-
-        ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
-        UI::Separator();
-
-        CVarUI::DrawTree(kCVarPrefix);
-
-        UI::Separator();
-
-        if (ImGui::Button("デフォルトに戻す")) {
-            CVarUI::ResetTree(kCVarPrefix);
-        }
-
-        if (!IsEnabled()) {
-            ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "注意: エフェクトは無効ですが、パラメータは調整可能です");
-        }
-
-        ImGui::PopID();
+        DrawCVarEffectImGui("BlurParams", kCVarPrefix, true);
 #endif // CORE_EDITOR
     }
 

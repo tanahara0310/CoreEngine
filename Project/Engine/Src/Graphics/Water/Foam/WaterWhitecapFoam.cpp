@@ -131,17 +131,15 @@ namespace CoreEngine
         ShaderReflectionBuilder reflectionBuilder;
         reflectionBuilder.Initialize(shaderCompiler.GetDxcUtils());
 
-        const bool foamBuilt = foamPipeline_.Build(
-            dxCommon_->GetDevice(), shaderCompiler, reflectionBuilder, foamShaderProvider_);
-        if (!foamBuilt || !foamPipeline_.HasComputePSO()) {
+        if (!foamPipeline_.BuildCompute(
+                dxCommon_->GetDevice(), shaderCompiler, reflectionBuilder, L"FFTOceanFoamAccumulate.CS.hlsl")) {
             Logger::GetInstance().Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
                 "WaterWhitecapFoam: failed to build whitecap foam compute pipeline.");
             return false;
         }
 
-        const bool statisticsBuilt = statisticsPipeline_.Build(
-            dxCommon_->GetDevice(), shaderCompiler, reflectionBuilder, statisticsShaderProvider_);
-        if (!statisticsBuilt || !statisticsPipeline_.HasComputePSO()) {
+        if (!statisticsPipeline_.BuildCompute(
+                dxCommon_->GetDevice(), shaderCompiler, reflectionBuilder, L"WaterWhitecapStatistics.CS.hlsl")) {
             Logger::GetInstance().Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
                 "WaterWhitecapFoam: failed to build whitecap statistics compute pipeline.");
             return false;

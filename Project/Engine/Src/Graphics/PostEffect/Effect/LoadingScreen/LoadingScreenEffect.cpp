@@ -170,8 +170,7 @@ namespace CoreEngine
     void LoadingScreenEffect::DrawImGui()
     {
 #ifdef CORE_EDITOR
-        ImGui::PushID("LoadingScreenEffect");
-        ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
+        BeginEffectImGui("LoadingScreenEffect");
         UI::Separator();
 
         // 表示強度はシーン遷移が制御する実行時状態のため、CVar ではなくここで直接編集する
@@ -179,12 +178,10 @@ namespace CoreEngine
 
         CVarUI::DrawTree(kCVarPrefix);
 
-        UI::Separator();
-        if (ImGui::Button("デフォルトに戻す")) {
-            CVarUI::ResetTree(kCVarPrefix);
+        if (DrawResetDefaultsImGui(kCVarPrefix)) {
             timeAccumulator_ = 0.0f;
         }
-        ImGui::PopID();
+        EndEffectImGui();
 #endif // CORE_EDITOR
     }
 

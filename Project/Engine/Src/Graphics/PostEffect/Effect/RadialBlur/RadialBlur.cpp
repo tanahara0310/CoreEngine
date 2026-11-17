@@ -3,9 +3,6 @@
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/CVar/CVar.h"
-#ifdef CORE_EDITOR
-#include "Editor/ImGui/CVarPanel.h"
-#endif
 
 
 namespace CoreEngine
@@ -62,17 +59,7 @@ namespace CoreEngine
     void RadialBlur::DrawImGui()
     {
 #ifdef CORE_EDITOR
-        ImGui::PushID("RadialBlurParams");
-        ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
-        UI::Separator();
-
-        CVarUI::DrawTree(kCVarPrefix);
-
-        UI::Separator();
-        if (ImGui::Button("デフォルトに戻す")) {
-            CVarUI::ResetTree(kCVarPrefix);
-        }
-        ImGui::PopID();
+        DrawCVarEffectImGui("RadialBlurParams", kCVarPrefix);
 #endif // CORE_EDITOR
     }
 

@@ -731,6 +731,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Graphics\Pipeline\PipelineStateManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Pipeline\CustomShaderPipelineCache.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Pipeline\ComputePipelineUtil.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Pipeline\GraphicsPipelineUtil.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Shader\Cache\ShaderBlobCache.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Shader\Cache\ShaderManifest.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Shader\ShaderCompiler.cpp" />
@@ -744,6 +745,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Graphics\RHI\Resource\ConstantBufferPool.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\Resource\PerFrameStructuredBuffer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Render.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\BaseRenderer.cpp" />
     <ClCompile Include="Engine\Src\WorldTransform\WorldTransform.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneManager.cpp" />
     <ClCompile Include="Engine\Src\Input\MouseInput.cpp" />
@@ -1437,6 +1439,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Scene\Feature\UIInteractionFeature.cpp" />
     <ClCompile Include="Engine\Src\Scene\Feature\SceneFeatureRegistry.cpp" />
     <ClCompile Include="Engine\Src\Text\TextGeometryBuilder.cpp" />
+    <ClCompile Include="Engine\Src\Text\MsdfTextBatch.cpp" />
     <ClCompile Include="Engine\Src\Utility\Event\EventBus.cpp" />
     <ClCompile Include="Engine\Src\Utility\Tween\Tween.cpp" />
     <ClCompile Include="Engine\Src\Utility\Tween\TweenManager.cpp" />
@@ -2096,6 +2099,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\Pipeline\PipelineStateManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Pipeline\CustomShaderPipelineCache.h" />
     <ClInclude Include="Engine\Src\Graphics\Pipeline\ComputePipelineUtil.h" />
+    <ClInclude Include="Engine\Src\Graphics\Pipeline\GraphicsPipelineUtil.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Render.h" />
     <ClInclude Include="Engine\Src\Input\InputManager.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\ImGuiManager.h" />
@@ -2261,6 +2265,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Scene\Feature\UIInteractionFeature.h" />
     <ClInclude Include="Engine\Src\Scene\Feature\SceneFeatureRegistry.h" />
     <ClInclude Include="Engine\Src\Text\TextGeometryBuilder.h" />
+    <ClInclude Include="Engine\Src\Text\MsdfTextBatch.h" />
     <ClInclude Include="Engine\Src\Utility\Event\EventBus.h" />
     <ClInclude Include="Engine\Src\Utility\Tween\Tween.h" />
     <ClInclude Include="Engine\Src\Utility\Tween\TweenManager.h" />

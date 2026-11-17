@@ -124,8 +124,7 @@ namespace CoreEngine
     void ProjectLoadingScreen::DrawImGui()
     {
 #ifdef CORE_EDITOR
-        ImGui::PushID("ProjectLoadingScreen");
-        ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
+        BeginEffectImGui("ProjectLoadingScreen");
         ImGui::TextWrapped("シェーダ: %s", ProjectSettings::Get().GetLoadingScreenShader().c_str());
         UI::Separator();
         // シーン遷移が決める表示強度と進み具合を、ここで直接動かして見る
@@ -133,7 +132,7 @@ namespace CoreEngine
         if (UI::SliderFloat("進み具合（実行時）", progressTarget_, 0.0f, 1.0f)) {
             progress_ = progressTarget_;
         }
-        ImGui::PopID();
+        EndEffectImGui();
 #endif // CORE_EDITOR
     }
 

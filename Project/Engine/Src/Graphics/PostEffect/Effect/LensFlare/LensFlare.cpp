@@ -191,7 +191,12 @@ namespace CoreEngine
         blurDirHCB_ = ResourceFactory::CreateStaticBuffer<BlurDirection>(device, BlurDirection{ { 1.0f, 0.0f }, {} });
         blurDirVCB_ = ResourceFactory::CreateStaticBuffer<BlurDirection>(device, BlurDirection{ { 0.0f, 1.0f }, {} });
 
-        internalPipelinesReady_ = CreateInternalPipelines() && EnsureSourcePosTarget();
+        internalPipelinesReady_ = BuildInternalPipelines({
+            { downsamplePipeline_, L"LensFlareDownsample.CS.hlsl", "Downsample" },
+            { findSourcePipeline_, L"LensFlareFindSource.CS.hlsl", "FindSource" },
+            { ghostsPipeline_,     L"LensFlareGhosts.CS.hlsl",     "Ghosts" },
+            { blurPipeline_,       L"LensFlareBlur.CS.hlsl",       "Blur" },
+        }) && EnsureSourcePosTarget();
         if (!internalPipelinesReady_) {
             Logger::GetInstance().Warnf(LogCategory::Graphics,
                 "LensFlare: 内部パイプラインの構築に失敗（フレアは無効・入力をそのまま出力）");
@@ -212,38 +217,6 @@ namespace CoreEngine
             Logger::GetInstance().Warnf(LogCategory::Graphics,
                 "LensFlare: 光源位置テクスチャの生成に失敗");
             return false;
-        }
-        return true;
-    }
-
-    bool LensFlare::CreateInternalPipelines()
-    {
-        auto* device = graphicsCore_->GetDevice();
-
-        // DXC とリフレクションビルダーはエンジン共有のキャッシュのものを使う。
-        // ローカルに作ると DXC がエフェクトの数だけ生成される（Phase 3 で撤去）
-        ShaderCompiler& shaderCompiler = shaderProgramCache_->GetCompiler();
-        ShaderReflectionBuilder& reflectionBuilder = shaderProgramCache_->GetReflectionBuilder();
-
-        struct Entry {
-            CustomShaderPipeline& pipeline;
-            const ICustomShaderProvider& provider;
-            const char* name;
-        };
-        Entry entries[] = {
-            { downsamplePipeline_, downsampleShaderProvider_, "Downsample" },
-            { findSourcePipeline_, findSourceShaderProvider_, "FindSource" },
-            { ghostsPipeline_,     ghostsShaderProvider_,     "Ghosts" },
-            { blurPipeline_,       blurShaderProvider_,       "Blur" },
-        };
-
-        for (Entry& e : entries) {
-            const bool built = e.pipeline.Build(device, shaderCompiler, reflectionBuilder, e.provider);
-            if (!built || !e.pipeline.HasComputePSO()) {
-                Logger::GetInstance().Warnf(LogCategory::Graphics,
-                    "LensFlare: {} コンピュートパイプラインの構築に失敗", e.name);
-                return false;
-            }
         }
         return true;
     }
@@ -423,8 +396,7 @@ namespace CoreEngine
     void LensFlare::DrawImGui()
     {
 #ifdef CORE_EDITOR
-        ImGui::PushID("LensFlareParams");
-        ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
+        BeginEffectImGui("LensFlareParams");
         if (!internalPipelinesReady_) {
             ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.3f, 1.0f), "内部パイプライン構築失敗（無効）");
         }
@@ -439,11 +411,8 @@ namespace CoreEngine
 
         CVarUI::DrawTree(kCVarPrefix);
 
-        UI::Separator();
-        if (ImGui::Button("デフォルトに戻す")) {
-            CVarUI::ResetTree(kCVarPrefix);
-        }
-        ImGui::PopID();
+        DrawResetDefaultsImGui(kCVarPrefix);
+        EndEffectImGui();
 #endif // CORE_EDITOR
     }
 

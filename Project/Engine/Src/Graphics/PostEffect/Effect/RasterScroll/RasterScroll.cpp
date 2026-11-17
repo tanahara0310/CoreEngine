@@ -76,18 +76,15 @@ namespace CoreEngine
     void RasterScroll::DrawImGui()
     {
 #ifdef CORE_EDITOR
-        ImGui::PushID("RasterScrollParams");
-        ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
+        BeginEffectImGui("RasterScrollParams");
         UI::Separator();
 
         CVarUI::DrawTree(kCVarPrefix);
 
-        UI::Separator();
-        if (ImGui::Button("デフォルトに戻す")) {
-            CVarUI::ResetTree(kCVarPrefix);
+        if (DrawResetDefaultsImGui(kCVarPrefix)) {
             accumulatedTime_ = 0.0f;
         }
-        ImGui::PopID();
+        EndEffectImGui();
 #endif // CORE_EDITOR
     }
 

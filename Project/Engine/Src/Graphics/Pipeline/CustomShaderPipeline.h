@@ -27,6 +27,15 @@ namespace CoreEngine
             ShaderReflectionBuilder& reflectionBuilder,
             const ICustomShaderProvider& provider);
 
+        /// @brief コンピュートシェーダー 1 本だけでパイプラインを組む
+        /// @param computeShaderPath CS のファイル名（ディレクトリは AssetDatabase が解決する）
+        /// @return CS の PSO まで組めたら true
+        bool BuildCompute(
+            ID3D12Device* device,
+            ShaderCompiler& compiler,
+            ShaderReflectionBuilder& reflectionBuilder,
+            const std::wstring& computeShaderPath);
+
         /// @brief フォワードパス用のカスタム PSO を取得
         /// @param mode ブレンドモード
         /// @return 構築済みなら PSO ポインタ、未構築なら nullptr

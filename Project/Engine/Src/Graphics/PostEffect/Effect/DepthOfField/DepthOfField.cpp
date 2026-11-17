@@ -55,41 +55,14 @@ namespace CoreEngine
 
     void DepthOfField::OnCreateResources()
     {
-        internalPipelinesReady_ = CreateInternalPipelines();
+        internalPipelinesReady_ = BuildInternalPipelines({
+            { prefilterPipeline_, L"DoFPrefilter.CS.hlsl", "Prefilter" },
+            { gatherPipeline_,    L"DoFGather.CS.hlsl",    "Gather" },
+        });
         if (!internalPipelinesReady_) {
             Logger::GetInstance().Warnf(LogCategory::Graphics,
                 "DepthOfField: Prefilter/Gather パイプラインの構築に失敗（DoF は無効）");
         }
-    }
-
-    bool DepthOfField::CreateInternalPipelines()
-    {
-        auto* device = graphicsCore_->GetDevice();
-
-        // DXC とリフレクションビルダーはエンジン共有のキャッシュのものを使う。
-        // ローカルに作ると DXC がエフェクトの数だけ生成される（Phase 3 で撤去）
-        ShaderCompiler& shaderCompiler = shaderProgramCache_->GetCompiler();
-        ShaderReflectionBuilder& reflectionBuilder = shaderProgramCache_->GetReflectionBuilder();
-
-        struct Entry {
-            CustomShaderPipeline& pipeline;
-            const ICustomShaderProvider& provider;
-            const char* name;
-        };
-        Entry entries[] = {
-            { prefilterPipeline_, prefilterProvider_, "Prefilter" },
-            { gatherPipeline_,    gatherProvider_,    "Gather" },
-        };
-
-        for (Entry& entry : entries) {
-            const bool built = entry.pipeline.Build(device, shaderCompiler, reflectionBuilder, entry.provider);
-            if (!built || !entry.pipeline.HasComputePSO()) {
-                Logger::GetInstance().Warnf(LogCategory::Graphics,
-                    "DepthOfField: {} パイプラインの構築に失敗", entry.name);
-                return false;
-            }
-        }
-        return true;
     }
 
     void DepthOfField::PrepareFrame(const PostEffectFrameContext& ctx)
@@ -228,8 +201,7 @@ namespace CoreEngine
     void DepthOfField::DrawImGui()
     {
 #ifdef CORE_EDITOR
-        ImGui::PushID("DepthOfFieldParams");
-        ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
+        BeginEffectImGui("DepthOfFieldParams");
         UI::Separator();
 
         CVarUI::DrawTree(kCVarPrefix);
@@ -237,11 +209,8 @@ namespace CoreEngine
         ImGui::TextDisabled("クリップ距離（カメラから自動設定）: near %.2f / far %.1f",
                             nearPlane_, farPlane_);
 
-        UI::Separator();
-        if (ImGui::Button("デフォルトに戻す")) {
-            CVarUI::ResetTree(kCVarPrefix);
-        }
-        ImGui::PopID();
+        DrawResetDefaultsImGui(kCVarPrefix);
+        EndEffectImGui();
 #endif // CORE_EDITOR
     }
 

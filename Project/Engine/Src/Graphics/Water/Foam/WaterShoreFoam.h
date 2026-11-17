@@ -3,7 +3,6 @@
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
-#include "Graphics/Shader/ICustomShaderProvider.h"
 #include "Graphics/Water/FFT/FFTOceanGpuResources.h"
 #include "Graphics/Water/WaterFoamDefaults.h"
 
@@ -133,21 +132,6 @@ namespace CoreEngine
         CB_VERIFY_LAYOUT(SwashConstants, kSwashConstantsFields);
         CB_BIND_HLSL(SwashConstants, kSwashConstantsFields, "WaterShoreSwashConstants");
 
-        /// @brief 岸の泡のパスの計算シェーダー
-        struct FoamShaderProvider final : ICustomShaderProvider {
-            std::wstring GetComputeShaderPath() const override { return L"WaterShoreFoam.CS.hlsl"; }
-        };
-
-        /// @brief 海底の高さをならすパスの計算シェーダー
-        struct SmoothSeabedShaderProvider final : ICustomShaderProvider {
-            std::wstring GetComputeShaderPath() const override { return L"WaterShoreSeabedSmooth.CS.hlsl"; }
-        };
-
-        /// @brief 寄せ・引きのずれのパスの計算シェーダー
-        struct SwashShaderProvider final : ICustomShaderProvider {
-            std::wstring GetComputeShaderPath() const override { return L"WaterShoreSwash.CS.hlsl"; }
-        };
-
         bool CreatePipelines();
         bool CreateResources();
 
@@ -158,7 +142,6 @@ namespace CoreEngine
 
         // ---- 岸の泡（カメラの周りの範囲。水の粒の静止位置ごと）----
         CustomShaderPipeline foamPipeline_{};
-        FoamShaderProvider foamShaderProvider_{};
         /// @brief 書き込み先は Dispatch ごとに入れ替える
         FFTOceanPingPong foam_{};
         bool resetPending_ = true;
@@ -169,12 +152,10 @@ namespace CoreEngine
 
         // ---- ならした海底の高さ（寄せ・引きの勾配と水深を測る）----
         CustomShaderPipeline smoothSeabedPipeline_{};
-        SmoothSeabedShaderProvider smoothSeabedShaderProvider_{};
         FFTOceanGpuTexture smoothSeabed_{};
 
         // ---- 寄せ・引きのずれ（ならした海底と同じ粗い格子）----
         CustomShaderPipeline swashPipeline_{};
-        SwashShaderProvider swashShaderProvider_{};
         FFTOceanGpuTexture swash_{};
     };
 }

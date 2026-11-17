@@ -11,7 +11,6 @@
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
 #include "Graphics/RootSignature/ShaderBinder.h"
-#include "Graphics/Shader/ICustomShaderProvider.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
@@ -25,16 +24,6 @@ namespace CoreEngine
 {
     namespace
     {
-        /// @brief 合成 CS のシェーダー供給（パスはファイル名で AssetDatabase が解決する）
-        class HeightFogShaderProvider final : public ICustomShaderProvider {
-        public:
-            explicit HeightFogShaderProvider(const wchar_t* path) : path_(path) {}
-            std::wstring GetComputeShaderPath() const override { return path_; }
-
-        private:
-            const wchar_t* path_;
-        };
-
         /// @brief 合成 CS の 1 つの版のシェーダ
         struct CompositeShader {
             const wchar_t* path;  ///< シェーダのファイル名
@@ -54,9 +43,7 @@ namespace CoreEngine
             ID3D12Device* device, ShaderCompiler& shaderCompiler, ShaderReflectionBuilder& reflectionBuilder,
             const CompositeShader& shader, CustomShaderPipeline& pipeline, BindingTable& bindings)
         {
-            const HeightFogShaderProvider provider(shader.path);
-            if (!pipeline.Build(device, shaderCompiler, reflectionBuilder, provider)
-                || !pipeline.HasComputePSO()) {
+            if (!pipeline.BuildCompute(device, shaderCompiler, reflectionBuilder, shader.path)) {
                 Logger::GetInstance().Warnf(LogCategory::Graphics,
                     "FogManager: {} コンピュートパイプラインの構築に失敗", shader.name);
                 return false;

@@ -1,11 +1,13 @@
 #pragma once
 #include "IRenderer.h"
+#include "Graphics/Pipeline/GraphicsPipelineUtil.h"
 #include "Graphics/Pipeline/PipelineStateManager.h"
 #include "Graphics/RootSignature/RootSignatureManager.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
 #include <d3d12.h>
 #include <memory>
+#include <string>
 
 namespace CoreEngine
 {
@@ -18,6 +20,18 @@ namespace CoreEngine
         virtual ~BaseRenderer() = default;
 
     protected:
+        /// @brief シェーダーをコンパイルし、リフレクション（reflectionData_）とルートシグネチャ（rootSignatureMg_）を作る
+        /// @param reflectionName リフレクションに付ける名前
+        /// @param errorLabel     失敗したときの例外に入れる名前（"Failed to create <errorLabel> Root Signature: <理由>"）
+        /// @return コンパイル済みのシェーダー（PSO の構築に使う）
+        /// @throws std::runtime_error ルートシグネチャを作れなかったとき
+        GraphicsPipelineUtil::ShaderPair BuildShadersAndRootSignature(
+            ID3D12Device* device, const std::wstring& vsPath, const std::wstring& psPath,
+            const std::string& reflectionName, const RootSignatureConfig& config, const std::string& errorLabel);
+
+        /// @brief ブレンドモードが変わったときだけ psoMg_ から PSO を引き直し、ルートシグネチャ・PSO・三角形リストを差す
+        void BeginBlendModePass(ID3D12GraphicsCommandList* cmdList, BlendMode blendMode);
+
         // ──────────────────────────────────────────────────────────
         // 共通サブシステム（各レンダラーで重複していたもの）
         // ──────────────────────────────────────────────────────────

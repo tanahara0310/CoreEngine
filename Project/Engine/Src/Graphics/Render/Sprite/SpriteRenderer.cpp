@@ -12,28 +12,14 @@
 namespace CoreEngine
 {
     void SpriteRenderer::InitializePipeline(ID3D12Device* device) {
-        shaderCompiler_->Initialize();
-
-        auto vertexShaderBlob = shaderCompiler_->CompileShader(L"Engine/Assets/Shaders/Sprite/Sprite.VS.hlsl", L"vs_6_0");
-        assert(vertexShaderBlob != nullptr);
-
-        auto pixelShaderBlob = shaderCompiler_->CompileShader(L"Engine/Assets/Shaders/Sprite/Sprite.PS.hlsl", L"ps_6_0");
-        assert(pixelShaderBlob != nullptr);
-
-        reflectionBuilder_->Initialize(shaderCompiler_->GetDxcUtils());
-        reflectionData_ = reflectionBuilder_->BuildFromShaders(vertexShaderBlob.Get(), pixelShaderBlob.Get(), "SpriteRenderer");
-        
         // 線形補間とドット絵向けの 2 つを持ち、どちらで読むかはマテリアルが決める
         RootSignatureConfig config;
         config.ConfigureSampler("gSampler", SamplerConfig::Linear());
         config.ConfigureSampler("gPointSampler", SamplerConfig::Point());
 
-        // RootSignatureを構築
-        auto buildResult = rootSignatureMg_->Build(device, *reflectionData_, config);
-        
-        if (!buildResult.success) {
-            throw std::runtime_error("Failed to create Sprite Root Signature: " + buildResult.errorMessage);
-        }
+        const auto shaders = BuildShadersAndRootSignature(device,
+            L"Engine/Assets/Shaders/Sprite/Sprite.VS.hlsl", L"Engine/Assets/Shaders/Sprite/Sprite.PS.hlsl",
+            "SpriteRenderer", config, "Sprite");
 
         bool result = psoMg_->CreateBuilder()
             .SetDebugName("Sprite")
@@ -41,7 +27,7 @@ namespace CoreEngine
             .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(true, false)
             .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
-            .BuildAllBlendModes(device, vertexShaderBlob.Get(), pixelShaderBlob.Get(), rootSignatureMg_->GetRootSignature());
+            .BuildAllBlendModes(device, shaders.vs.Get(), shaders.ps.Get(), rootSignatureMg_->GetRootSignature());
 
         if (!result) {
             throw std::runtime_error("Failed to create Sprite Pipeline State Object");
@@ -56,10 +42,7 @@ namespace CoreEngine
     }
 
     int SpriteRenderer::GetRootParamIndex(const std::string& resourceName) const {
-        if (!reflectionData_) {
-            return -1;
-        }
-        return reflectionData_->GetRootParameterIndexByName(resourceName);
+        return FindRootParamIndex(reflectionData_.get(), resourceName);
     }
 
     void SpriteRenderer::Initialize(GraphicsCore* dxCommon) {
@@ -72,14 +55,7 @@ namespace CoreEngine
     }
 
     void SpriteRenderer::BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMode blendMode) {
-        if (blendMode != currentBlendMode_) {
-            currentBlendMode_ = blendMode;
-            pipelineState_ = psoMg_->GetPipelineState(blendMode);
-        }
-
-        cmdList->SetGraphicsRootSignature(rootSignatureMg_->GetRootSignature());
-        cmdList->SetPipelineState(pipelineState_);
-        cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        BeginBlendModePass(cmdList, blendMode);
         boundPipeline_ = nullptr;
     }
 

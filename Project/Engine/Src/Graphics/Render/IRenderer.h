@@ -38,5 +38,15 @@ public:
     /// @brief カメラを設定（View/Projection の参照元）
     /// @param camera カメラオブジェクト
     virtual void SetCamera(const CoreEngine::Camera* camera) = 0;
+
+protected:
+    /// @brief パスの開始時に、ルートシグネチャ・PSO・プリミティブトポロジーを差す
+    static void BindPassPipeline(ID3D12GraphicsCommandList* cmdList, ID3D12RootSignature* rootSignature,
+        ID3D12PipelineState* pipelineState, D3D_PRIMITIVE_TOPOLOGY topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST)
+    {
+        cmdList->SetGraphicsRootSignature(rootSignature);
+        cmdList->SetPipelineState(pipelineState);
+        cmdList->IASetPrimitiveTopology(topology);
+    }
 };
 }

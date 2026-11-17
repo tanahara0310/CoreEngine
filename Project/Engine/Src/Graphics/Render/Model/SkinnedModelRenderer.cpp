@@ -1,98 +1,22 @@
 #include "pch.h"
 #include "SkinnedModelRenderer.h"
-#include "Graphics/Shader/ShaderReflectionData.h"
-#include "Graphics/RootSignature/RootSignatureConfig.h"
-#include "Graphics/Model/TransformationMatrix.h"
-#include "Graphics/Material/MaterialConstants.h"
-#include "Graphics/Render/GBuffer/GBufferManager.h"
-#include <cassert>
 
 
 namespace CoreEngine
 {
     void SkinnedModelRenderer::Initialize(ID3D12Device* device) {
-        shaderCompiler_->Initialize();
-
-        // スキニング専用フォワードパス用シェーダーをコンパイル（ボーン影響 Slot1 に対応した VS）
-        auto skinningVertexShaderBlob = shaderCompiler_->CompileShader(L"Engine/Assets/Shaders/Skinning/SkinningObject3d.VS.hlsl", L"vs_6_0");
-        assert(skinningVertexShaderBlob != nullptr);
-
-        auto pixelShaderBlob = shaderCompiler_->CompileShader(L"Engine/Assets/Shaders/Object/Object3d.PS.hlsl", L"ps_6_0");
-        assert(pixelShaderBlob != nullptr);
-
-        // スキニング専用 GBuffer パス用シェーダーをコンパイル
-        auto gBufferVertexShaderBlob = shaderCompiler_->CompileShader(L"Engine/Assets/Shaders/Skinning/GBufferSkinning.VS.hlsl", L"vs_6_0");
-        assert(gBufferVertexShaderBlob != nullptr);
-
-        auto gBufferPixelShaderBlob = shaderCompiler_->CompileShader(L"Engine/Assets/Shaders/Skinning/GBufferSkinning.PS.hlsl", L"ps_6_0");
-        assert(gBufferPixelShaderBlob != nullptr);
-
-        // シェーダーリフレクションを構築（RootSignature 自動生成に使用）
-        reflectionBuilder_->Initialize(shaderCompiler_->GetDxcUtils());
-        forwardReflectionData_ = reflectionBuilder_->BuildFromShaders(skinningVertexShaderBlob.Get(), pixelShaderBlob.Get(), "SkinnedModelRenderer");
-        gBufferReflectionData_ = reflectionBuilder_->BuildFromShaders(gBufferVertexShaderBlob.Get(), gBufferPixelShaderBlob.Get(), "SkinnedModelRenderer_GBuffer");
-
-        // RootSignature 構成: CBV は高速な Root Descriptor、SRV は Descriptor Table
-        RootSignatureConfig config;
-        config.SetDefaultCBVStrategy(BindingStrategy::RootDescriptor);
-        config.SetDefaultSRVStrategy(BindingStrategy::DescriptorTable);
-        config.ConfigureSampler("gShadowSampler", SamplerConfig::Shadow());
-        config.ConfigureSampler("gSampler", SamplerConfig::Anisotropic());
-        config.ConfigureSampler("gClampSampler", SamplerConfig::LinearClamp());
-        // 頂点アニメーションの時間・風はパスごとに差す 8 個の 32bit 値なのでルート定数にする
-        config.ConfigureResource("gVertexAnim", BindingStrategy::RootConstants);
-
-        // フォワードパス用 RootSignature を構築
-        auto buildResult = forwardRootSignatureMg_->Build(device, *forwardReflectionData_, config);
-        if (!buildResult.success) {
-            throw std::runtime_error("Failed to create Skinned Root Signature: " + buildResult.errorMessage);
-        }
-
-        // GBuffer パス用 RootSignature を構築
-        auto gBufferBuildResult = gBufferRootSignatureMg_->Build(device, *gBufferReflectionData_, config);
-        if (!gBufferBuildResult.success) {
-            throw std::runtime_error("Failed to create Skinned GBuffer Root Signature: " + gBufferBuildResult.errorMessage);
-        }
-
-        // CBV サイズ検証: C++ 構造体と HLSL 構造体のレイアウトが一致しているか確認
-        forwardReflectionData_->ValidateAllCBVSizes({
-            {"gTransformationMatrix", sizeof(TransformationMatrix)},
-            {"gMaterial", sizeof(MaterialConstants)}
+        // 前方描画の VS はボーン影響（Slot1 の WEIGHT/INDEX）に対応したスキニング専用のもの
+        BuildPipelines(device, {
+            .forwardVS = L"Engine/Assets/Shaders/Skinning/SkinningObject3d.VS.hlsl",
+            .forwardPS = L"Engine/Assets/Shaders/Object/Object3d.PS.hlsl",
+            .gBufferVS = L"Engine/Assets/Shaders/Skinning/GBufferSkinning.VS.hlsl",
+            .gBufferPS = L"Engine/Assets/Shaders/Skinning/GBufferSkinning.PS.hlsl",
+            .name = "SkinnedModelRenderer",
+            .debugPrefix = "Skinned",
+            .errorLabel = "Skinned",
+            .skinned = true,
+            .forwardDecls = ModelBind::kSkinnedForward,
+            .gBufferDecls = ModelBind::kSkinnedGBuffer,
             });
-
-        gBufferReflectionData_->ValidateAllCBVSizes({
-            {"gTransformationMatrix", sizeof(TransformationMatrix)},
-            {"gMaterial", sizeof(MaterialConstants)}
-            });
-
-        // フォワードパス PSO: WEIGHT/INDEX は自動検出でスロット 1 に割り当て、全ブレンドモード分を生成
-        bool skinningResult = forwardPsoMg_->CreateBuilder()
-            .SetDebugName("SkinnedForward")
-            .SetInputLayoutFromReflection(*forwardReflectionData_)
-            .SetRasterizer(D3D12_CULL_MODE_BACK, D3D12_FILL_MODE_SOLID)
-            .SetDepthStencil(true, true)
-            .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
-            .BuildAllBlendModes(device, skinningVertexShaderBlob.Get(), pixelShaderBlob.Get(), forwardRootSignatureMg_->GetRootSignature());
-
-        // GBuffer パス PSO: マルチレンダーターゲットフォーマットを指定して生成
-        bool gBufferResult = gBufferPsoMg_->CreateBuilder()
-            .SetDebugName("SkinnedGBuffer")
-            .SetInputLayoutFromReflection(*gBufferReflectionData_)
-            .SetRasterizer(D3D12_CULL_MODE_BACK, D3D12_FILL_MODE_SOLID)
-            .SetDepthStencil(true, true)
-            .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
-            .SetRenderTargetFormats(GBufferManager::kRenderTargetFormats, static_cast<UINT>(std::size(GBufferManager::kRenderTargetFormats)))
-            .BuildGBuffer(device, gBufferVertexShaderBlob.Get(), gBufferPixelShaderBlob.Get(), gBufferRootSignatureMg_->GetRootSignature());
-
-        if (!skinningResult || !gBufferResult) {
-            throw std::runtime_error("Failed to create Skinning Pipeline State Object");
-        }
-
-        // 初期状態として BlendModeNone の PSO を保持
-        forwardPipelineState_ = forwardPsoMg_->GetPipelineState(BlendMode::kBlendModeNone);
-        gBufferPipelineState_ = gBufferPsoMg_->GetPipelineState(BlendMode::kBlendModeNone);
-
-        ResolveBindings(ModelBind::kSkinnedForward, ModelBind::kSkinnedGBuffer,
-            ModelBind::Slot::Count, "SkinnedModelRenderer");
     }
 }

@@ -4,7 +4,6 @@
 #include "Graphics/RHI/Resource/PerFrameConstants.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
-#include "Graphics/Shader/ICustomShaderProvider.h"
 #include "Graphics/Water/FFT/FFTOceanDebugProbe.h"
 #include "Graphics/Water/FFT/FFTOceanGpuResources.h"
 #include "Graphics/Water/FFT/FFTOceanSpectrum.h"
@@ -134,24 +133,6 @@ namespace CoreEngine
         CB_VERIFY_LAYOUT(IFFTConstants, kIFFTConstantsFields);
         CB_BIND_HLSL(IFFTConstants, kIFFTConstantsFields, "FFTOceanIFFTConstants");
 
-        /// @brief 時間発展パス用Compute Shaderのパスを提供する
-        struct TimeEvolutionShaderProvider final : ICustomShaderProvider {
-            /// @brief 時間発展CSのファイルパスを返す
-            std::wstring GetComputeShaderPath() const override { return L"FFTOceanTimeEvolution.CS.hlsl"; }
-        };
-
-        /// @brief IFFTパス用Compute Shaderのパスを提供する
-        struct IFFTShaderProvider final : ICustomShaderProvider {
-            /// @brief IFFT CSのファイルパスを返す
-            std::wstring GetComputeShaderPath() const override { return L"FFTOceanIFFT.CS.hlsl"; }
-        };
-
-        /// @brief 最終合成パス用Compute Shaderのパスを提供する
-        struct FinalizeShaderProvider final : ICustomShaderProvider {
-            /// @brief 最終合成CSのファイルパスを返す
-            std::wstring GetComputeShaderPath() const override { return L"FFTOceanFinalize.CS.hlsl"; }
-        };
-
         /// @brief Computeパイプライン群を作成する
         bool CreatePipelines();
 
@@ -205,9 +186,6 @@ namespace CoreEngine
         CustomShaderPipeline evolutionPipeline_{};
         CustomShaderPipeline ifftPipeline_{};
         CustomShaderPipeline finalizePipeline_{};
-        TimeEvolutionShaderProvider timeEvolutionShaderProvider_{};
-        IFFTShaderProvider ifftShaderProvider_{};
-        FinalizeShaderProvider finalizeShaderProvider_{};
         /// @brief スペクトルの設定・生成・統計
         FFTOceanSpectrum spectrum_{};
         /// @brief スペクトルの版（SetSettings で波面を作り直すたびに増やす）

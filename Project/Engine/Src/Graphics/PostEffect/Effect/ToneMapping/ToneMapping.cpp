@@ -370,8 +370,7 @@ namespace CoreEngine
     void ToneMapping::DrawImGui()
     {
 #ifdef CORE_EDITOR
-        ImGui::PushID("ToneMapping");
-        ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
+        BeginEffectImGui("ToneMapping");
         static const char* kOperatorNames[] = { "ACES", "GT", "AgX", "なし" };
         const int op = std::clamp(cvToneMapOperator.Get(), 0, 3);
         ImGui::Text("%s トーンマッピング（HDR→LDR変換）", kOperatorNames[op]);
@@ -413,7 +412,7 @@ namespace CoreEngine
             CVarUI::ResetTree(kCVarPrefix);
         }
         UI::Separator();
-        ImGui::PopID();
+        EndEffectImGui();
 #endif // CORE_EDITOR
     }
 }

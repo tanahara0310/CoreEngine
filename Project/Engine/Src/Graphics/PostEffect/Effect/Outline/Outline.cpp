@@ -94,8 +94,7 @@ namespace CoreEngine
     void Outline::DrawImGui()
     {
 #ifdef CORE_EDITOR
-        ImGui::PushID("OutlineParams");
-        ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
+        BeginEffectImGui("OutlineParams");
         UI::Separator();
 
         CVarUI::DrawTree(kCVarPrefix);
@@ -104,11 +103,8 @@ namespace CoreEngine
         ImGui::TextDisabled("クリップ距離（カメラから自動設定）: near %.2f / far %.1f",
                             nearPlane_, farPlane_);
 
-        UI::Separator();
-        if (ImGui::Button("デフォルトに戻す")) {
-            CVarUI::ResetTree(kCVarPrefix);
-        }
-        ImGui::PopID();
+        DrawResetDefaultsImGui(kCVarPrefix);
+        EndEffectImGui();
 #endif // CORE_EDITOR
     }
 

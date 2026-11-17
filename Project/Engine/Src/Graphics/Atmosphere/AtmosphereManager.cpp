@@ -399,87 +399,30 @@ namespace CoreEngine
         ShaderReflectionBuilder reflectionBuilder;
         reflectionBuilder.Initialize(shaderCompiler.GetDxcUtils());
 
-        const bool transmittanceBuilt = transmittancePipeline_.Build(
-            device, shaderCompiler, reflectionBuilder, transmittanceShaderProvider_);
+        struct Entry {
+            CustomShaderPipeline& pipeline;
+            const wchar_t* shaderPath;
+            const char* name;
+        };
+        const Entry entries[] = {
+            { transmittancePipeline_,            L"TransmittanceLUT.CS.hlsl",         "Transmittance LUT " },
+            { multiScatteringPipeline_,          L"MultiScatteringLUT.CS.hlsl",       "Multi-Scattering LUT " },
+            { skyViewPipeline_,                  L"SkyViewLUT.CS.hlsl",               "Sky-View LUT " },
+            { cameraVolumePipeline_,             L"CameraVolumeLUT.CS.hlsl",          "Camera Volume LUT " },
+            { aerialPerspectivePipeline_,        L"AerialPerspective.CS.hlsl",        "Aerial Perspective " },
+            { skyIrradiancePipeline_,            L"SkyIrradianceSH.CS.hlsl",          "空アンビエント SH " },
+            { skyEnvironmentCapturePipeline_,    L"SkyEnvironmentCapture.CS.hlsl",    "空キューブマップ焼き込み" },
+            { skyEnvironmentDownsamplePipeline_, L"SkyEnvironmentDownsample.CS.hlsl", "空キューブマップのミップ生成" },
+            { skyEnvironmentPrefilterPipeline_,  L"SkyEnvironmentPrefilter.CS.hlsl",  "空キューブマッププリフィルタ" },
+        };
 
-        if (!transmittanceBuilt || !transmittancePipeline_.HasComputePSO()) {
-            Logger::GetInstance().Warnf(LogCategory::Graphics,
-                "AtmosphereManager: Transmittance LUT コンピュートパイプラインの構築に失敗");
-            return false;
+        for (const Entry& entry : entries) {
+            if (!entry.pipeline.BuildCompute(device, shaderCompiler, reflectionBuilder, entry.shaderPath)) {
+                Logger::GetInstance().Warnf(LogCategory::Graphics,
+                    "AtmosphereManager: {}コンピュートパイプラインの構築に失敗", entry.name);
+                return false;
+            }
         }
-
-        const bool multiScatteringBuilt = multiScatteringPipeline_.Build(
-            device, shaderCompiler, reflectionBuilder, multiScatteringShaderProvider_);
-
-        if (!multiScatteringBuilt || !multiScatteringPipeline_.HasComputePSO()) {
-            Logger::GetInstance().Warnf(LogCategory::Graphics,
-                "AtmosphereManager: Multi-Scattering LUT コンピュートパイプラインの構築に失敗");
-            return false;
-        }
-
-        const bool skyViewBuilt = skyViewPipeline_.Build(
-            device, shaderCompiler, reflectionBuilder, skyViewShaderProvider_);
-
-        if (!skyViewBuilt || !skyViewPipeline_.HasComputePSO()) {
-            Logger::GetInstance().Warnf(LogCategory::Graphics,
-                "AtmosphereManager: Sky-View LUT コンピュートパイプラインの構築に失敗");
-            return false;
-        }
-
-        const bool cameraVolumeBuilt = cameraVolumePipeline_.Build(
-            device, shaderCompiler, reflectionBuilder, cameraVolumeShaderProvider_);
-
-        if (!cameraVolumeBuilt || !cameraVolumePipeline_.HasComputePSO()) {
-            Logger::GetInstance().Warnf(LogCategory::Graphics,
-                "AtmosphereManager: Camera Volume LUT コンピュートパイプラインの構築に失敗");
-            return false;
-        }
-
-        const bool aerialPerspectiveBuilt = aerialPerspectivePipeline_.Build(
-            device, shaderCompiler, reflectionBuilder, aerialPerspectiveShaderProvider_);
-
-        if (!aerialPerspectiveBuilt || !aerialPerspectivePipeline_.HasComputePSO()) {
-            Logger::GetInstance().Warnf(LogCategory::Graphics,
-                "AtmosphereManager: Aerial Perspective コンピュートパイプラインの構築に失敗");
-            return false;
-        }
-
-        const bool skyIrradianceBuilt = skyIrradiancePipeline_.Build(
-            device, shaderCompiler, reflectionBuilder, skyIrradianceShaderProvider_);
-
-        if (!skyIrradianceBuilt || !skyIrradiancePipeline_.HasComputePSO()) {
-            Logger::GetInstance().Warnf(LogCategory::Graphics,
-                "AtmosphereManager: 空アンビエント SH コンピュートパイプラインの構築に失敗");
-            return false;
-        }
-
-        const bool skyEnvCaptureBuilt = skyEnvironmentCapturePipeline_.Build(
-            device, shaderCompiler, reflectionBuilder, skyEnvironmentCaptureShaderProvider_);
-
-        if (!skyEnvCaptureBuilt || !skyEnvironmentCapturePipeline_.HasComputePSO()) {
-            Logger::GetInstance().Warnf(LogCategory::Graphics,
-                "AtmosphereManager: 空キューブマップ焼き込みコンピュートパイプラインの構築に失敗");
-            return false;
-        }
-
-        const bool skyEnvDownsampleBuilt = skyEnvironmentDownsamplePipeline_.Build(
-            device, shaderCompiler, reflectionBuilder, skyEnvironmentDownsampleShaderProvider_);
-
-        if (!skyEnvDownsampleBuilt || !skyEnvironmentDownsamplePipeline_.HasComputePSO()) {
-            Logger::GetInstance().Warnf(LogCategory::Graphics,
-                "AtmosphereManager: 空キューブマップのミップ生成コンピュートパイプラインの構築に失敗");
-            return false;
-        }
-
-        const bool skyEnvPrefilterBuilt = skyEnvironmentPrefilterPipeline_.Build(
-            device, shaderCompiler, reflectionBuilder, skyEnvironmentPrefilterShaderProvider_);
-
-        if (!skyEnvPrefilterBuilt || !skyEnvironmentPrefilterPipeline_.HasComputePSO()) {
-            Logger::GetInstance().Warnf(LogCategory::Graphics,
-                "AtmosphereManager: 空キューブマッププリフィルタコンピュートパイプラインの構築に失敗");
-            return false;
-        }
-
         return true;
     }
 

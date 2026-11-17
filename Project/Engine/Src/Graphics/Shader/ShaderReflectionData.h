@@ -139,4 +139,8 @@ namespace CoreEngine
         std::string GetShaderVisibilityString(D3D12_SHADER_VISIBILITY visibility) const;
         std::string GetFormatString(DXGI_FORMAT format) const;
     };
+
+    /// @brief リソース名からルートパラメータインデックスを取得
+    /// @return reflectionData が nullptr か、名前が無ければ -1
+    int FindRootParamIndex(const ShaderReflectionData* reflectionData, const std::string& resourceName);
 }

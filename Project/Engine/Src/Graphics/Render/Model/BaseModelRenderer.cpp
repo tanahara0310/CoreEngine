@@ -2,29 +2,107 @@
 #include "BaseModelRenderer.h"
 #include "Camera/Camera.h"
 #include "Graphics/Light/LightManager.h"
+#include "Graphics/Material/MaterialConstants.h"
+#include "Graphics/Model/TransformationMatrix.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
+#include "Graphics/Pipeline/GraphicsPipelineUtil.h"
+#include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Graphics/Render/GBuffer/GBufferManager.h"
 #include "Graphics/RootSignature/ShaderBinder.h"
 #include "Graphics/Render/Model/Instancing/InstanceBatchManager.h"
 #include "Graphics/Render/RenderTarget/SceneDepth.h"
 #include "Diagnostics/EngineStats.h"
 #include "Utility/Logger/Logger.h"
 
+#include <stdexcept>
+#include <utility>
+#include <vector>
+
 namespace CoreEngine
 {
     int BaseModelRenderer::GetRootParamIndex(const std::string& resourceName) const {
-        // リフレクションデータが未構築の場合は無効値を返す
-        if (!forwardReflectionData_) {
-            return -1;
-        }
-        return forwardReflectionData_->GetRootParameterIndexByName(resourceName);
+        return FindRootParamIndex(forwardReflectionData_.get(), resourceName);
     }
 
     int BaseModelRenderer::GetGBufferRootParamIndex(const std::string& resourceName) const {
-        if (!gBufferReflectionData_) {
-            return -1;
+        return FindRootParamIndex(gBufferReflectionData_.get(), resourceName);
+    }
+
+    void BaseModelRenderer::BuildPipelines(ID3D12Device* device, const PipelineDesc& desc)
+    {
+        shaderCompiler_->Initialize();
+        reflectionBuilder_->Initialize(shaderCompiler_->GetDxcUtils());
+
+        // シェーダーをコンパイルし、リフレクションを構築（RootSignature 自動生成に使用）
+        const std::string name = desc.name;
+        const auto forwardShaders = GraphicsPipelineUtil::CompileShaders(*shaderCompiler_, *reflectionBuilder_,
+            desc.forwardVS, desc.forwardPS, name, forwardReflectionData_);
+        const auto gBufferShaders = GraphicsPipelineUtil::CompileShaders(*shaderCompiler_, *reflectionBuilder_,
+            desc.gBufferVS, desc.gBufferPS, name + "_GBuffer", gBufferReflectionData_);
+
+        // RootSignature 構成: CBV は高速な Root Descriptor、SRV は Descriptor Table
+        // ただし通常モデルの gInstanceData は Root Descriptor（インスタンシング用バッファは頻繁に変わるため）
+        RootSignatureConfig config;
+        config.SetDefaultCBVStrategy(BindingStrategy::RootDescriptor);
+        config.SetDefaultSRVStrategy(BindingStrategy::DescriptorTable);
+        if (!desc.skinned) {
+            config.ConfigureResource("gInstanceData", BindingStrategy::RootDescriptor); // インスタンスデータは Root SRV
         }
-        return gBufferReflectionData_->GetRootParameterIndexByName(resourceName);
+        config.ConfigureSampler("gShadowSampler", SamplerConfig::Shadow());
+        config.ConfigureSampler("gSampler", SamplerConfig::Anisotropic());
+        config.ConfigureSampler("gClampSampler", SamplerConfig::LinearClamp());
+        // 頂点アニメーションの時間・風はパスごとに差す 8 個の 32bit 値なのでルート定数にする
+        config.ConfigureResource("gVertexAnim", BindingStrategy::RootConstants);
+
+        const std::string errorLabel = desc.errorLabel;
+        GraphicsPipelineUtil::BuildRootSignature(
+            *forwardRootSignatureMg_, device, *forwardReflectionData_, config, errorLabel);
+        GraphicsPipelineUtil::BuildRootSignature(*gBufferRootSignatureMg_, device, *gBufferReflectionData_, config,
+            errorLabel.empty() ? std::string("GBuffer") : errorLabel + " GBuffer");
+
+        // CBV サイズ検証: C++ 構造体と HLSL 構造体のレイアウトが一致しているか確認
+        std::vector<std::pair<std::string, size_t>> cbvSizes;
+        if (desc.skinned) {
+            cbvSizes.emplace_back("gTransformationMatrix", sizeof(TransformationMatrix));
+        }
+        cbvSizes.emplace_back("gMaterial", sizeof(MaterialConstants));
+        forwardReflectionData_->ValidateAllCBVSizes(cbvSizes);
+        gBufferReflectionData_->ValidateAllCBVSizes(cbvSizes);
+
+        // 必須リソースの存在確認は宣言表で行う。表のすべてが照合され、種別違いも検出される
+        ResolveBindings(desc.forwardDecls, desc.gBufferDecls, ModelBind::Slot::Count, name);
+
+        // フォワードパス PSO: 全ブレンドモード分を事前生成
+        const std::string debugPrefix = desc.debugPrefix;
+        bool result = forwardPsoMg_->CreateBuilder()
+            .SetDebugName(debugPrefix + "Forward")
+            .SetInputLayoutFromReflection(*forwardReflectionData_)
+            .SetRasterizer(D3D12_CULL_MODE_BACK, D3D12_FILL_MODE_SOLID)
+            .SetDepthStencil(true, true)
+            .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
+            .BuildAllBlendModes(device, forwardShaders.vs.Get(), forwardShaders.ps.Get(),
+                forwardRootSignatureMg_->GetRootSignature());
+
+        // GBuffer パス PSO: マルチレンダーターゲットフォーマットを指定して生成
+        bool gBufferResult = gBufferPsoMg_->CreateBuilder()
+            .SetDebugName(debugPrefix + "GBuffer")
+            .SetInputLayoutFromReflection(*gBufferReflectionData_)
+            .SetRasterizer(D3D12_CULL_MODE_BACK, D3D12_FILL_MODE_SOLID)
+            .SetDepthStencil(true, true)
+            .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
+            .SetRenderTargetFormats(GBufferManager::kRenderTargetFormats, static_cast<UINT>(std::size(GBufferManager::kRenderTargetFormats)))
+            .BuildGBuffer(device, gBufferShaders.vs.Get(), gBufferShaders.ps.Get(),
+                gBufferRootSignatureMg_->GetRootSignature());
+
+        if (!result || !gBufferResult) {
+            const std::string label = errorLabel.empty() ? std::string() : errorLabel + " ";
+            throw std::runtime_error("Failed to create " + label + "Pipeline State Object");
+        }
+
+        // 初期状態として BlendModeNone の PSO を保持
+        forwardPipelineState_ = forwardPsoMg_->GetPipelineState(BlendMode::kBlendModeNone);
+        gBufferPipelineState_ = gBufferPsoMg_->GetPipelineState(BlendMode::kBlendModeNone);
     }
 
     void BaseModelRenderer::ResolveBindings(
@@ -224,9 +302,7 @@ namespace CoreEngine
             forwardPipelineState_ = forwardPsoMg_->GetPipelineState(blendMode);
         }
 
-        cmdList->SetGraphicsRootSignature(forwardRootSignatureMg_->GetRootSignature());
-        cmdList->SetPipelineState(forwardPipelineState_);
-        cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        BindPassPipeline(cmdList, forwardRootSignatureMg_->GetRootSignature(), forwardPipelineState_);
 
         ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Graphics);
         BindForwardSceneResources(binder, forwardBindings_);
@@ -237,9 +313,7 @@ namespace CoreEngine
         isInGBufferPass_ = true;
 
         // GBuffer 用 RootSignature・PSO・プリミティブトポロジーを設定
-        cmdList->SetGraphicsRootSignature(gBufferRootSignatureMg_->GetRootSignature());
-        cmdList->SetPipelineState(gBufferPipelineState_);
-        cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        BindPassPipeline(cmdList, gBufferRootSignatureMg_->GetRootSignature(), gBufferPipelineState_);
 
         // 頂点アニメーション（植物の揺れ・魚の泳ぎ）の時間・風。GBuffer の VS も Object3dVertex.hlsli を使う
         vertexAnimParams_ = VertexAnimationParams::Build();

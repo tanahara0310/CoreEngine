@@ -95,18 +95,14 @@ namespace CoreEngine
     void FilmGrain::DrawImGui()
     {
 #ifdef CORE_EDITOR
-        ImGui::PushID("FilmGrainParams");
-        ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
+        BeginEffectImGui("FilmGrainParams");
         ImGui::TextDisabled("常時薄く乗せる想定。見えたら強すぎる");
         UI::Separator();
 
         CVarUI::DrawTree(kCVarPrefix);
 
-        UI::Separator();
-        if (ImGui::Button("デフォルトに戻す")) {
-            CVarUI::ResetTree(kCVarPrefix);
-        }
-        ImGui::PopID();
+        DrawResetDefaultsImGui(kCVarPrefix);
+        EndEffectImGui();
 #endif // CORE_EDITOR
     }
 

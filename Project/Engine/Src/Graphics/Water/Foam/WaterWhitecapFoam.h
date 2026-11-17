@@ -5,7 +5,6 @@
 #include "Graphics/RHI/Resource/ReadbackRing.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
-#include "Graphics/Shader/ICustomShaderProvider.h"
 #include "Graphics/Water/FFT/FFTOceanGpuResources.h"
 #include "Graphics/Water/WaterFoamDefaults.h"
 
@@ -255,16 +254,6 @@ namespace CoreEngine
         CB_VERIFY_LAYOUT(StatisticsConstants, kStatisticsConstantsFields);
         CB_BIND_HLSL(StatisticsConstants, kStatisticsConstantsFields, "WaterWhitecapStatisticsConstants");
 
-        /// @brief 白波の蓄積パスの計算シェーダー
-        struct FoamShaderProvider final : ICustomShaderProvider {
-            std::wstring GetComputeShaderPath() const override { return L"FFTOceanFoamAccumulate.CS.hlsl"; }
-        };
-
-        /// @brief 白波の統計のパスの計算シェーダー
-        struct StatisticsShaderProvider final : ICustomShaderProvider {
-            std::wstring GetComputeShaderPath() const override { return L"WaterWhitecapStatistics.CS.hlsl"; }
-        };
-
         bool CreatePipelines();
         bool CreateFoamResources();
         bool CreateStatisticsResources();
@@ -285,7 +274,6 @@ namespace CoreEngine
 
         // ---- 白波（カメラの周りの格子の上の残りの泡）----
         CustomShaderPipeline foamPipeline_{};
-        FoamShaderProvider foamShaderProvider_{};
         /// @brief 書き込み先は Dispatch ごとに入れ替える（frameIndex_ & 1 と同じ側）。SRV / UAV とも全段を 1 ビューで見せる（x = 被覆率・y = 砕けた直後の厚い泡の量）
         FFTOceanPingPong foam_{};
         uint32_t frameIndex_ = 0;
@@ -303,7 +291,6 @@ namespace CoreEngine
 
         // ---- 沖の白波の統計（フレームの枠ごとに読み戻す）----
         CustomShaderPipeline statisticsPipeline_{};
-        StatisticsShaderProvider statisticsShaderProvider_{};
         GpuResource statistics_{};
         DescriptorHandle statisticsUav_{};
         /// @brief 統計のバッファを 0 にするための写し元（作ったまま書かない）
