@@ -16,6 +16,7 @@
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
 #include "Particle/Core/ParticleResourceManager.h" // ParticleForGPU（インスタンスデータレイアウト共有）
+#include "Particle/ParticleBillboardNames.h"
 #include "Particle/ParticlePresetManager.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
@@ -24,12 +25,10 @@
 #include <cmath>
 #include <iterator>
 #include <utility>
+#include <vector>
 
 namespace
 {
-    /// @brief ビルボードの名前（`BillboardType` の並び）
-    constexpr const char* kBillboardNames[] = { "なし（粒の回転だけ）", "カメラの正面", "Y 軸だけ回す", "画面と平行" };
-
     /// @brief テクスチャを指していないときに貼るテクスチャ
     constexpr const char* kDefaultTexture = "circle.png";
 
@@ -49,7 +48,7 @@ REFLECT_DEFINE_BEGIN(CoreEngine::GpuParticleSystemComponent, "GPU パーティ�
         p.assetType = ::CoreEngine::AssetType::Texture, p.emptyText = &DescribeDefaultTexture)
     REFLECT_ENUM_ACCESSOR("blendMode", "ブレンド", GetBlendMode, SetBlendMode, ::CoreEngine::kBlendModeNames,
         p.tooltip = "背景との合成のしかた。炎や光は「加算」、煙は「アルファ」が向く")
-    REFLECT_ENUM_ACCESSOR("billboard", "ビルボード", GetBillboardType, SetBillboardType, kBillboardNames,
+    REFLECT_ENUM_ACCESSOR("billboard", "ビルボード", GetBillboardType, SetBillboardType, ::CoreEngine::kParticleBillboardNames,
         p.tooltip = "板ポリの向き。草や炎の柱のように立てたいものは「Y 軸だけ回す」")
     REFLECT_METHOD("Play", "再生", Play)
     REFLECT_METHOD("Stop", "停止", Stop)
@@ -188,23 +187,17 @@ namespace CoreEngine
         // 初期化用アップロードバッファ（CopyBufferRegion のコピー元。オフセット定数はヘッダ参照）
         //   [0..15] 間接引数 / [16..31] カウンタ初期値 / [32..] フリーリスト初期値
         // パーティクルバッファ自体はコミットリソースの OS ゼロ初期化（lifeTime=0=死亡）に依存する。
-        uploadInitResource_ = ResourceFactory::CreateBufferResource(
-            device, kInitFreeListOffset + sizeof(uint32_t) * kMaxParticles);
         {
-            uint32_t* mapped = nullptr;
-            uploadInitResource_->Map(0, nullptr, reinterpret_cast<void**>(&mapped));
-            mapped[0] = 6u; // ビルボード四角形の頂点数
-            mapped[1] = 0u;
-            mapped[2] = 0u;
-            mapped[3] = 0u;
-            mapped[4] = kMaxParticles; // freeTop
-            mapped[5] = 0u;            // alive
-            mapped[6] = 0u;            // draw
-            mapped[7] = 0u;
+            constexpr size_t kArgsIndex = kInitArgsOffset / sizeof(uint32_t);
+            constexpr size_t kCountersIndex = kInitCountersOffset / sizeof(uint32_t);
+            constexpr size_t kFreeListIndex = kInitFreeListOffset / sizeof(uint32_t);
+            std::vector<uint32_t> initData(kFreeListIndex + kMaxParticles, 0u);
+            initData[kArgsIndex] = 6u;                                        // ビルボード四角形の頂点数
+            initData[kCountersIndex + kCounterFreeTopIndex] = kMaxParticles; // freeTop（alive・draw は 0）
             for (uint32_t i = 0; i < kMaxParticles; ++i) {
-                mapped[8 + i] = i;
+                initData[kFreeListIndex + i] = i;
             }
-            uploadInitResource_->Unmap(0, nullptr);
+            uploadInitResource_ = ResourceFactory::CreateStaticBuffer<uint32_t>(device, initData);
         }
 
         // カウンタのリードバックバッファ（統計用・永続Map）

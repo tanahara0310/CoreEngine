@@ -7,8 +7,8 @@
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Camera/View/ViewInfo.h"
-#include "Math/IntegerMath.h"
 #include "Utility/CVar/CVar.h"
+#include "Utility/CVar/CVarMemberBinding.h"
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
 #endif
@@ -50,7 +50,6 @@ namespace CoreEngine
     namespace {
         // フレアバッファの解像度分割数（1/4 解像度。ゴーストはブラーで滲ませるため十分）
         constexpr uint32_t kFlareResolutionDivisor = 4;
-        constexpr uint32_t kGroupSize = 8;
 
         // 既定値の根拠は LensFlare.h の LensFlareConstants のコメントを参照
         CVar<float> cvIntensity{
@@ -148,6 +147,33 @@ namespace CoreEngine
             CVarRange{}, CVarFlags::NoUI };
 
         constexpr const char* kCVarPrefix = "r.LensFlare";
+
+        // CVar と LensFlareConstants の対応表（ghostCount と tint は含めない）
+        using FlareConstants = LensFlare::LensFlareConstants;
+        template <class Value, class Member = Value>
+        using Binding = CVarMemberBinding<FlareConstants, Value, Member>;
+
+        constexpr Binding<float> kFloatBindings[] = {
+            { &cvThreshold,           &FlareConstants::threshold },
+            { &cvSoftKnee,            &FlareConstants::softKnee },
+            { &cvGhostDispersal,      &FlareConstants::ghostDispersal },
+            { &cvGhostIntensity,      &FlareConstants::ghostIntensity },
+            { &cvHaloWidth,           &FlareConstants::haloWidth },
+            { &cvHaloIntensity,       &FlareConstants::haloIntensity },
+            { &cvChromaDistortion,    &FlareConstants::chromaDistortion },
+            { &cvStarburstIntensity,  &FlareConstants::starburstIntensity },
+            { &cvIntensity,           &FlareConstants::intensity },
+            { &cvMaxBrightness,       &FlareConstants::maxBrightness },
+            { &cvBlurSigma,           &FlareConstants::blurSigma },
+            { &cvApertureRotationRad, &FlareConstants::apertureRotationRad },
+            { &cvGhostRadius,         &FlareConstants::ghostRadius },
+            { &cvGhostPolygonMix,     &FlareConstants::ghostPolygonMix },
+            { &cvSunMaskRadius,       &FlareConstants::sunMaskRadius },
+        };
+
+        constexpr Binding<int, float> kIntToFloatBindings[] = {
+            { &cvApertureBladeCount, &FlareConstants::apertureBladeCount },
+        };
     }
 
     void LensFlare::OnConfigureRootSignature(RootSignatureConfig& config)
@@ -326,30 +352,14 @@ namespace CoreEngine
         uint32_t width, uint32_t height, uint32_t flareWidth, uint32_t flareHeight) const
     {
         LensFlareConstants c{};
-        c.threshold          = cvThreshold.Get();
-        c.softKnee           = cvSoftKnee.Get();
-        c.ghostDispersal     = cvGhostDispersal.Get();
-        c.ghostIntensity     = cvGhostIntensity.Get();
-        c.haloWidth          = cvHaloWidth.Get();
-        c.haloIntensity      = cvHaloIntensity.Get();
-        c.chromaDistortion   = cvChromaDistortion.Get();
-        c.starburstIntensity = cvStarburstIntensity.Get();
-        c.intensity          = cvIntensity.Get();
-        c.ghostCount         = static_cast<uint32_t>(cvGhostCount.Get());
-        c.maxBrightness      = cvMaxBrightness.Get();
-        c.blurSigma          = cvBlurSigma.Get();
+        LoadFromCVars(c, kFloatBindings, kIntToFloatBindings);
+        c.ghostCount = static_cast<uint32_t>(cvGhostCount.Get());
 
         const Vector4& tint = cvTint.Get();
         c.tint[0] = tint.x;
         c.tint[1] = tint.y;
         c.tint[2] = tint.z;
         c.tint[3] = tint.w;
-
-        c.apertureBladeCount  = static_cast<float>(cvApertureBladeCount.Get());
-        c.apertureRotationRad = cvApertureRotationRad.Get();
-        c.ghostRadius         = cvGhostRadius.Get();
-        c.ghostPolygonMix     = cvGhostPolygonMix.Get();
-        c.sunMaskRadius       = cvSunMaskRadius.Get();
 
         // ここから下は実行時値
         c.sunUv[0]     = sunUv_[0];
@@ -381,17 +391,10 @@ namespace CoreEngine
                 std::max(height / kFlareResolutionDivisor, 1u));
             c.intensity = 0.0f;
 
-            cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
-            cmdList->SetPipelineState(computePso_.Get());
-            const int texIdx = GetRootParamIndex("gTexture");
-            const int flareIdx = GetRootParamIndex("gFlare");
-            const int outIdx = GetRootParamIndex("gOutput");
-            const int cbIdx = GetRootParamIndex("LensFlareParams");
-            if (texIdx >= 0)   cmdList->SetComputeRootDescriptorTable(texIdx, inputSrvHandle);
-            if (flareIdx >= 0) cmdList->SetComputeRootDescriptorTable(flareIdx, inputSrvHandle);
-            if (outIdx >= 0)   cmdList->SetComputeRootDescriptorTable(outIdx, outputUavHandle);
-            if (cbIdx >= 0)    cmdList->SetComputeRootConstantBufferView(cbIdx, UploadConstants(c));
-            cmdList->Dispatch(DivRoundUp(width, kGroupSize), DivRoundUp(height, kGroupSize), 1);
+            DispatchPass(cmdList,
+                { { "gTexture", inputSrvHandle }, { "gFlare", inputSrvHandle }, { "gOutput", outputUavHandle } },
+                { { "LensFlareParams", UploadConstants(c) } },
+                width, height);
             return;
         }
 
@@ -399,23 +402,13 @@ namespace CoreEngine
         const D3D12_GPU_VIRTUAL_ADDRESS paramsAddress =
             UploadConstants(BuildConstants(width, height, targetsWidth_, targetsHeight_));
 
-        const uint32_t flareGroupsX = DivRoundUp(targetsWidth_, kGroupSize);
-        const uint32_t flareGroupsY = DivRoundUp(targetsHeight_, kGroupSize);
-
         // ===== Pass 1: 輝度抽出 + ダウンサンプル（入力 → brightBuffer_） =====
         Barrier::Transition(cmdList, brightBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-        cmdList->SetPipelineState(downsamplePipeline_.GetComputePSO());
-        cmdList->SetComputeRootSignature(downsamplePipeline_.GetComputeRootSignature());
-        {
-            const int cbSlot = downsamplePipeline_.GetComputeRootParamIndex("LensFlareParams");
-            if (cbSlot >= 0) cmdList->SetComputeRootConstantBufferView(cbSlot, paramsAddress);
-            const int inSlot = downsamplePipeline_.GetComputeRootParamIndex("gSceneColor");
-            if (inSlot >= 0) cmdList->SetComputeRootDescriptorTable(inSlot, inputSrvHandle);
-            const int outSlot = downsamplePipeline_.GetComputeRootParamIndex("gBright");
-            if (outSlot >= 0) cmdList->SetComputeRootDescriptorTable(outSlot, brightUavHandle_.gpuHandle);
-        }
-        cmdList->Dispatch(flareGroupsX, flareGroupsY, 1);
+        DispatchPass(cmdList, downsamplePipeline_,
+            { { "gSceneColor", inputSrvHandle }, { "gBright", brightUavHandle_.gpuHandle } },
+            { { "LensFlareParams", paramsAddress } },
+            targetsWidth_, targetsHeight_);
 
         Barrier::UAV(cmdList, brightBuffer_);
         Barrier::Transition(cmdList, brightBuffer_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -425,16 +418,9 @@ namespace CoreEngine
         // ゴースト／ハローの絞り羽根形状マスクは「このゴーストの中心がどこか」を必要とするため。
         Barrier::Transition(cmdList, sourcePosBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-        cmdList->SetPipelineState(findSourcePipeline_.GetComputePSO());
-        cmdList->SetComputeRootSignature(findSourcePipeline_.GetComputeRootSignature());
-        {
-            const int cbSlot = findSourcePipeline_.GetComputeRootParamIndex("LensFlareParams");
-            if (cbSlot >= 0) cmdList->SetComputeRootConstantBufferView(cbSlot, paramsAddress);
-            const int inSlot = findSourcePipeline_.GetComputeRootParamIndex("gBright");
-            if (inSlot >= 0) cmdList->SetComputeRootDescriptorTable(inSlot, brightSrvHandle_.gpuHandle);
-            const int outSlot = findSourcePipeline_.GetComputeRootParamIndex("gSourcePos");
-            if (outSlot >= 0) cmdList->SetComputeRootDescriptorTable(outSlot, sourcePosUavHandle_.gpuHandle);
-        }
+        BindPass(cmdList, findSourcePipeline_,
+            { { "gBright", brightSrvHandle_.gpuHandle }, { "gSourcePos", sourcePosUavHandle_.gpuHandle } },
+            { { "LensFlareParams", paramsAddress } });
         cmdList->Dispatch(1, 1, 1);
 
         Barrier::UAV(cmdList, sourcePosBuffer_);
@@ -443,67 +429,41 @@ namespace CoreEngine
         // ===== Pass 2: ゴースト + ハロー生成（brightBuffer_ → featureBuffer_） =====
         Barrier::Transition(cmdList, featureBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-        cmdList->SetPipelineState(ghostsPipeline_.GetComputePSO());
-        cmdList->SetComputeRootSignature(ghostsPipeline_.GetComputeRootSignature());
-        {
-            const int cbSlot = ghostsPipeline_.GetComputeRootParamIndex("LensFlareParams");
-            if (cbSlot >= 0) cmdList->SetComputeRootConstantBufferView(cbSlot, paramsAddress);
-            const int inSlot = ghostsPipeline_.GetComputeRootParamIndex("gBright");
-            if (inSlot >= 0) cmdList->SetComputeRootDescriptorTable(inSlot, brightSrvHandle_.gpuHandle);
-            const int srcPosSlot = ghostsPipeline_.GetComputeRootParamIndex("gSourcePos");
-            if (srcPosSlot >= 0) cmdList->SetComputeRootDescriptorTable(srcPosSlot, sourcePosSrvHandle_.gpuHandle);
-            const int outSlot = ghostsPipeline_.GetComputeRootParamIndex("gFeatures");
-            if (outSlot >= 0) cmdList->SetComputeRootDescriptorTable(outSlot, featureUavHandle_.gpuHandle);
-        }
-        cmdList->Dispatch(flareGroupsX, flareGroupsY, 1);
+        DispatchPass(cmdList, ghostsPipeline_,
+            { { "gBright", brightSrvHandle_.gpuHandle }, { "gSourcePos", sourcePosSrvHandle_.gpuHandle },
+              { "gFeatures", featureUavHandle_.gpuHandle } },
+            { { "LensFlareParams", paramsAddress } },
+            targetsWidth_, targetsHeight_);
 
         Barrier::UAV(cmdList, featureBuffer_);
 
         // ===== Pass 3: 分離ガウスブラー（水平: feature → blur、垂直: blur → feature） =====
-        cmdList->SetPipelineState(blurPipeline_.GetComputePSO());
-        cmdList->SetComputeRootSignature(blurPipeline_.GetComputeRootSignature());
-
-        const int blurCbSlot = blurPipeline_.GetComputeRootParamIndex("LensFlareParams");
-        const int blurDirSlot = blurPipeline_.GetComputeRootParamIndex("BlurDirection");
-        const int blurInSlot = blurPipeline_.GetComputeRootParamIndex("gFlareInput");
-        const int blurOutSlot = blurPipeline_.GetComputeRootParamIndex("gFlareOutput");
-
         // 水平
         Barrier::Transition(cmdList, featureBuffer_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         Barrier::Transition(cmdList, blurBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        if (blurCbSlot >= 0)  cmdList->SetComputeRootConstantBufferView(blurCbSlot, paramsAddress);
-        if (blurDirSlot >= 0) cmdList->SetComputeRootConstantBufferView(blurDirSlot, blurDirHCB_->GetGPUVirtualAddress());
-        if (blurInSlot >= 0)  cmdList->SetComputeRootDescriptorTable(blurInSlot, featureSrvHandle_.gpuHandle);
-        if (blurOutSlot >= 0) cmdList->SetComputeRootDescriptorTable(blurOutSlot, blurUavHandle_.gpuHandle);
-        cmdList->Dispatch(flareGroupsX, flareGroupsY, 1);
+        DispatchPass(cmdList, blurPipeline_,
+            { { "gFlareInput", featureSrvHandle_.gpuHandle }, { "gFlareOutput", blurUavHandle_.gpuHandle } },
+            { { "LensFlareParams", paramsAddress }, { "BlurDirection", blurDirHCB_->GetGPUVirtualAddress() } },
+            targetsWidth_, targetsHeight_);
 
         Barrier::UAV(cmdList, blurBuffer_);
 
         // 垂直
         Barrier::Transition(cmdList, blurBuffer_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         Barrier::Transition(cmdList, featureBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        if (blurDirSlot >= 0) cmdList->SetComputeRootConstantBufferView(blurDirSlot, blurDirVCB_->GetGPUVirtualAddress());
-        if (blurInSlot >= 0)  cmdList->SetComputeRootDescriptorTable(blurInSlot, blurSrvHandle_.gpuHandle);
-        if (blurOutSlot >= 0) cmdList->SetComputeRootDescriptorTable(blurOutSlot, featureUavHandle_.gpuHandle);
-        cmdList->Dispatch(flareGroupsX, flareGroupsY, 1);
+        DispatchPass(cmdList, blurPipeline_,
+            { { "gFlareInput", blurSrvHandle_.gpuHandle }, { "gFlareOutput", featureUavHandle_.gpuHandle } },
+            { { "LensFlareParams", paramsAddress }, { "BlurDirection", blurDirVCB_->GetGPUVirtualAddress() } },
+            targetsWidth_, targetsHeight_);
 
         Barrier::UAV(cmdList, featureBuffer_);
         Barrier::Transition(cmdList, featureBuffer_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
         // ===== Pass 4: 合成（入力 + featureBuffer_ → 出力） =====
-        cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
-        cmdList->SetPipelineState(computePso_.Get());
-        {
-            const int texIdx = GetRootParamIndex("gTexture");
-            const int flareIdx = GetRootParamIndex("gFlare");
-            const int outIdx = GetRootParamIndex("gOutput");
-            const int cbIdx = GetRootParamIndex("LensFlareParams");
-            if (texIdx >= 0)   cmdList->SetComputeRootDescriptorTable(texIdx, inputSrvHandle);
-            if (flareIdx >= 0) cmdList->SetComputeRootDescriptorTable(flareIdx, featureSrvHandle_.gpuHandle);
-            if (outIdx >= 0)   cmdList->SetComputeRootDescriptorTable(outIdx, outputUavHandle);
-            if (cbIdx >= 0)    cmdList->SetComputeRootConstantBufferView(cbIdx, paramsAddress);
-        }
-        cmdList->Dispatch(DivRoundUp(width, kGroupSize), DivRoundUp(height, kGroupSize), 1);
+        DispatchPass(cmdList,
+            { { "gTexture", inputSrvHandle }, { "gFlare", featureSrvHandle_.gpuHandle }, { "gOutput", outputUavHandle } },
+            { { "LensFlareParams", paramsAddress } },
+            width, height);
 
         // 次フレームの Pass 1〜3 に備えて内部バッファを UAV 状態へ戻す
         Barrier::Transition(cmdList, brightBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);

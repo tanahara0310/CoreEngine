@@ -5,7 +5,6 @@
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h"
 #include "Graphics/Render/FrameBlackboard.h"
 #include "Camera/View/ViewInfo.h"
-#include "Math/IntegerMath.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/Logger/Logger.h"
 #ifdef CORE_EDITOR
@@ -164,19 +163,10 @@ namespace CoreEngine
         params.maxBlurPixels   = cvMaxBlurPixels.Get();
         params.tileSize        = kTileSize;
 
-        auto* cmdList = context.cmdList;
-        cmdList->SetComputeRootSignature(tileMaxPipeline_.GetComputeRootSignature());
-        cmdList->SetPipelineState(tileMaxPipeline_.GetComputePSO());
-
-        const int velocityIdx = tileMaxPipeline_.GetComputeRootParamIndex("gVelocity");
-        const int outputIdx   = tileMaxPipeline_.GetComputeRootParamIndex("gOutput");
-        const int paramsIdx   = tileMaxPipeline_.GetComputeRootParamIndex("TileMaxParams");
-
-        if (velocityIdx >= 0) cmdList->SetComputeRootDescriptorTable(velocityIdx, context.reads[0]);
-        if (outputIdx >= 0)   cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
-        if (paramsIdx >= 0)   cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
-
-        cmdList->Dispatch(DivRoundUp(tileCountX_, 8), DivRoundUp(tileCountY_, 8), 1);
+        DispatchPass(context.cmdList, tileMaxPipeline_,
+            { { "gVelocity", context.reads[0] }, { "gOutput", context.output } },
+            { { "TileMaxParams", UploadConstants(params) } },
+            tileCountX_, tileCountY_);
     }
 
     void MotionBlur::RecordNeighborMax(const PostEffectPassContext& context)
@@ -189,19 +179,10 @@ namespace CoreEngine
         params.tileCount[0] = tileCountX_;
         params.tileCount[1] = tileCountY_;
 
-        auto* cmdList = context.cmdList;
-        cmdList->SetComputeRootSignature(neighborMaxPipeline_.GetComputeRootSignature());
-        cmdList->SetPipelineState(neighborMaxPipeline_.GetComputePSO());
-
-        const int tileMaxIdx = neighborMaxPipeline_.GetComputeRootParamIndex("gTileMax");
-        const int outputIdx  = neighborMaxPipeline_.GetComputeRootParamIndex("gOutput");
-        const int paramsIdx  = neighborMaxPipeline_.GetComputeRootParamIndex("NeighborMaxParams");
-
-        if (tileMaxIdx >= 0) cmdList->SetComputeRootDescriptorTable(tileMaxIdx, context.reads[0]);
-        if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
-        if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
-
-        cmdList->Dispatch(DivRoundUp(tileCountX_, 8), DivRoundUp(tileCountY_, 8), 1);
+        DispatchPass(context.cmdList, neighborMaxPipeline_,
+            { { "gTileMax", context.reads[0] }, { "gOutput", context.output } },
+            { { "NeighborMaxParams", UploadConstants(params) } },
+            tileCountX_, tileCountY_);
     }
 
     void MotionBlur::RecordGather(const PostEffectPassContext& context)
@@ -224,25 +205,12 @@ namespace CoreEngine
         params.depthExtent     = cvDepthExtent.Get();
 
         // ギャザーは基底が構築した PSO（GetComputeShaderPath が返す MotionBlur.CS.hlsl）を使う
-        auto* cmdList = context.cmdList;
-        cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
-        cmdList->SetPipelineState(computePso_.Get());
-
-        const int textureIdx     = GetRootParamIndex("gTexture");
-        const int velocityIdx    = GetRootParamIndex("gVelocity");
-        const int depthIdx       = GetRootParamIndex("gDepth");
-        const int neighborMaxIdx = GetRootParamIndex("gNeighborMax");
-        const int outputIdx      = GetRootParamIndex("gOutput");
-        const int paramsIdx      = GetRootParamIndex("MotionBlurParams");
-
-        if (textureIdx >= 0)     cmdList->SetComputeRootDescriptorTable(textureIdx, context.reads[0]);
-        if (velocityIdx >= 0)    cmdList->SetComputeRootDescriptorTable(velocityIdx, context.reads[1]);
-        if (depthIdx >= 0)       cmdList->SetComputeRootDescriptorTable(depthIdx, context.reads[2]);
-        if (neighborMaxIdx >= 0) cmdList->SetComputeRootDescriptorTable(neighborMaxIdx, context.reads[3]);
-        if (outputIdx >= 0)      cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
-        if (paramsIdx >= 0)      cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
-
-        cmdList->Dispatch(DivRoundUp(context.width, 8), DivRoundUp(context.height, 8), 1);
+        DispatchPass(context.cmdList,
+            { { "gTexture", context.reads[0] }, { "gVelocity", context.reads[1] },
+              { "gDepth", context.reads[2] }, { "gNeighborMax", context.reads[3] },
+              { "gOutput", context.output } },
+            { { "MotionBlurParams", UploadConstants(params) } },
+            context.width, context.height);
     }
 
     void MotionBlur::DrawImGui()

@@ -1933,6 +1933,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Particle\Modules\ShapeModule.h" />
     <ClInclude Include="Engine\Src\Particle\ParticlePresetManager.h" />
     <ClInclude Include="Engine\Src\Particle\ParticleSystemComponent.h" />
+    <ClInclude Include="Engine\Src\Particle\ParticleBillboardNames.h" />
     <ClInclude Include="Engine\Src\Particle\Gpu\GpuParticleSystemComponent.h" />
     <ClInclude Include="Engine\Src\Particle\Core\Particle.h" />
     <ClInclude Include="Engine\Src\Scene\Scene.h" />

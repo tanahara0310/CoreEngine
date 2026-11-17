@@ -7,6 +7,7 @@
 #include "GameObject/Component/Render/SpriteRendererComponent.h"
 #include "GameObject/GameObject.h"
 #include "Editor/ImGui/ImGuiAll.h"
+#include "Editor/Inspector/InspectorLayout.h"
 
 #include <string>
 
@@ -51,11 +52,8 @@ namespace ColliderInspector
             if (ImGui::TreeNodeEx(header.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
 
                 // ── 形状 ────────────────────────────────────────
-                int shapeIndex = static_cast<int>(shape.type);
-                if (ImGui::Combo("形状", &shapeIndex, kShapeNames,
-                        static_cast<int>(std::size(kShapeNames)))) {
-                    CollisionShape next = shape;
-                    next.type = static_cast<ColliderShapeType>(shapeIndex);
+                CollisionShape next = shape;
+                if (InspectorLayout::EnumCombo("形状", next.type, kShapeNames)) {
                     collider.SetShape(next);
                     changed = true;
                 }

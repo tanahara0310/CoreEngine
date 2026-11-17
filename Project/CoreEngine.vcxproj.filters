@@ -3591,6 +3591,9 @@
     <ClInclude Include="Engine\Src\Particle\ParticleSystemComponent.h">
       <Filter>Engine\Src\Particle</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Particle\ParticleBillboardNames.h">
+      <Filter>Engine\Src\Particle</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Particle\Gpu\GpuParticleSystemComponent.h">
       <Filter>Engine\Src\Particle\Gpu</Filter>
     </ClInclude>

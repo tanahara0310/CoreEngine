@@ -106,17 +106,9 @@ namespace CoreEngine
         params.gaugeAlpha = gaugeAlpha_;
 
         auto* cmdList = graphicsCore_->GetCommandList();
-        cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
-        cmdList->SetPipelineState(computePso_.Get());
-
-        const int textureIdx = GetRootParamIndex("gTexture");
-        const int outputIdx = GetRootParamIndex("gOutput");
-        const int paramsIdx = GetRootParamIndex("ProjectLoadingParams");
-        const int screenIdx = GetRootParamIndex("ScreenParams");
-        if (textureIdx >= 0) cmdList->SetComputeRootDescriptorTable(textureIdx, inputSrvHandle);
-        if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
-        if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
-        if (screenIdx >= 0)  cmdList->SetComputeRootConstantBufferView(screenIdx, GetScreenSizeCbAddress());
+        BindPass(cmdList,
+            { { "gTexture", inputSrvHandle }, { "gOutput", outputUavHandle } },
+            { { "ProjectLoadingParams", UploadConstants(params) }, { "ScreenParams", GetScreenSizeCbAddress() } });
         for (size_t i = 0; i < kMaxImages; ++i) {
             const int imageIdx = GetRootParamIndex("gImage" + std::to_string(i));
             if (imageIdx >= 0) {

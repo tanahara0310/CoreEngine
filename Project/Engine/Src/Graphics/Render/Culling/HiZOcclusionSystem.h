@@ -2,6 +2,7 @@
 
 #include "Graphics/RHI/Resource/GpuResource.h"
 #include "Graphics/RHI/Resource/PerFrameStructuredBuffer.h"
+#include "Graphics/RHI/Resource/ReadbackRing.h"
 #include <d3d12.h>
 #include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include <wrl.h>
@@ -93,8 +94,6 @@ namespace CoreEngine
         void Shutdown();
 
     private:
-        // フレームリング数（CommandManager の frameCount 最大値以上にする）
-        static constexpr uint32_t kFrameRing = 3;
         // Hi-Z ピラミッドの最大ミップ数（8K 解像度でも 13 段で足りる）
         static constexpr uint32_t kMaxHiZMips = 16;
         // この経過フレーム数を超えて結果が更新されないスロットは可視扱いに戻す
@@ -230,8 +229,7 @@ namespace CoreEngine
         GpuResource visibilityBuffer_;
         D3D12_CPU_DESCRIPTOR_HANDLE visibilityUavCpu_{};
         DescriptorHandle visibilityUavGpu_{};
-        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, kFrameRing> readback_;
-        std::array<std::vector<uint32_t>, kFrameRing> ringIds_; // その回で判定した ID 列（Readback の並び）
-        std::array<bool, kFrameRing> ringPending_{};
+        /// @brief フレームの枠ごとの可視フラグの読み戻し。記録は、その回で判定した ID 列（Readback の並び）
+        ReadbackRing<std::vector<uint32_t>> readback_{};
     };
 }
