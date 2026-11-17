@@ -18,7 +18,6 @@
 #include "Math/IntegerMath.h"
 #include "Utility/Logger/Logger.h"
 
-#include <cstring>
 #include <exception>
 #include <iterator>
 
@@ -119,21 +118,12 @@ namespace CoreEngine
             disabled.sunGain = 1.0f;
             disabled.sunExponent = 1.0f;
 
-            constexpr UINT size = (sizeof(FogConstants) + 255) & ~255u;
-            disabledConstantBuffer_ = ResourceFactory::CreateBufferResource(device, size);
+            disabledConstantBuffer_ = ResourceFactory::CreateStaticBuffer<FogConstants>(device, disabled);
             if (!disabledConstantBuffer_) {
                 Logger::GetInstance().Warnf(LogCategory::Graphics,
                     "FogManager: 恒等フォグ定数バッファの確保に失敗");
                 return false;
             }
-            void* mapped = nullptr;
-            if (FAILED(disabledConstantBuffer_->Map(0, nullptr, &mapped)) || !mapped) {
-                Logger::GetInstance().Warnf(LogCategory::Graphics,
-                    "FogManager: 恒等フォグ定数バッファの Map に失敗");
-                return false;
-            }
-            std::memcpy(mapped, &disabled, sizeof(disabled));
-            disabledConstantBuffer_->Unmap(0, nullptr);
             disabledConstantsAddress_ = disabledConstantBuffer_->GetGPUVirtualAddress();
         }
 

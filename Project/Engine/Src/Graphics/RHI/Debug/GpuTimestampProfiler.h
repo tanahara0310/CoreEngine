@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "Graphics/RHI/Command/FrameSync.h" // kMaxFramesInFlight
+#include "Graphics/RHI/Resource/ReadbackRing.h"
 
 namespace CoreEngine
 {
@@ -215,13 +216,14 @@ namespace CoreEngine
         };
 
     private:
+        /// @brief フレーム内で実際に BeginGpuTimestamp されたスロットを追跡するフラグ
+        using ActivatedSlots = std::array<bool, kSlotCount>;
+
         Microsoft::WRL::ComPtr<ID3D12QueryHeap> queryHeap_;
-        Microsoft::WRL::ComPtr<ID3D12Resource>  readbackBuffers_[kFrameCount];
+        /// @brief フレームごとの readback バッファ。記録は、そのフレームで計測を始めたスロット（解決して読むスロット）
+        ReadbackRing<ActivatedSlots> readback_{};
 
         uint32_t currentFrameIndex_ = 0;
-
-        // フレーム内で実際に BeginGpuTimestamp されたスロットを追跡するフラグ
-        std::array<std::array<bool, kSlotCount>, kFrameCount> activatedSlots_ = {};
 
         // CPU タイム (ダブルバッファ: [frameIndex][slotIndex])
         std::chrono::high_resolution_clock::time_point cpuBegin_[kFrameCount][kSlotCount] = {};

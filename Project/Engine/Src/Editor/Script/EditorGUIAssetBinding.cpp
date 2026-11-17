@@ -3,6 +3,7 @@
 
 #ifdef CORE_EDITOR
 
+#include "Editor/ImGui/Widgets/DragDropPayload.h"
 #include "Editor/Inspector/InspectorLayout.h"
 #include "Editor/Inspector/InspectorRenderer.h"
 #include "Editor/Scene/EditorSceneAccess.h"
@@ -25,7 +26,6 @@
 #include <algorithm>
 #include <cfloat>
 #include <cstdint>
-#include <cstring>
 #include <exception>
 #include <optional>
 #include <string>
@@ -210,13 +210,10 @@ namespace CoreEngine::Editor::ScriptBinding
                 }
                 ImGui::EndCombo();
             } else if (ImGui::BeginDragDropTarget()) {
-                if (const ImGuiPayload* const payload = ImGui::AcceptDragDropPayload(InspectorRenderer::kObjectDragPayload)) {
-                    std::uint64_t droppedId = 0;
-                    if (objects && payload->DataSize == sizeof(droppedId)) {
-                        std::memcpy(&droppedId, payload->Data, sizeof(droppedId));
-                        chosen = objects->FindObject(ObjectId{ droppedId });
-                        picked = chosen != nullptr;
-                    }
+                if (const auto droppedId = UI::AcceptPayload<std::uint64_t>(InspectorRenderer::kObjectDragPayload);
+                    droppedId && objects) {
+                    chosen = objects->FindObject(ObjectId{ *droppedId });
+                    picked = chosen != nullptr;
                 }
                 ImGui::EndDragDropTarget();
             }
@@ -286,10 +283,8 @@ namespace CoreEngine::Editor::ScriptBinding
                         if (*assetType != AssetType::Unknown && *assetType != payloadType) {
                             continue;
                         }
-                        if (const ImGuiPayload* const payload = ImGui::AcceptDragDropPayload(FileDragPayloadOf(payloadType))) {
-                            const auto* const data = static_cast<const char*>(payload->Data);
-                            const std::string fileName(data, strnlen(data, static_cast<std::size_t>(payload->DataSize)));
-                            if (const AssetInfo* const dropped = FindAssetInfo(fileName, payloadType)) {
+                        if (const auto fileName = UI::AcceptPayload<std::string>(FileDragPayloadOf(payloadType))) {
+                            if (const AssetInfo* const dropped = FindAssetInfo(*fileName, payloadType)) {
                                 chosen = ToAssetPath(*dropped);
                             }
                         }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Graphics/RHI/Resource/GpuResource.h"
+#include "Graphics/RHI/Resource/ReadbackRing.h"
 
 #include "../PostEffectComputeBase.h"
 #include <wrl.h>
@@ -143,9 +144,11 @@ namespace CoreEngine
 
         // ----- 自動露出: 計測バッファ -----
         GpuResource avgLogLumBuffer_; ///< 測光結果の輝度（DEFAULT/UAV・1要素。ステート追跡込み）
-        static constexpr uint32_t kReadbackCount = 3; ///< リードバックリング数（GPU遅延2フレームまで安全）
-        Microsoft::WRL::ComPtr<ID3D12Resource> readbackBuffers_[kReadbackCount];
-        const float* mappedReadback_[kReadbackCount] = {};
+        static constexpr uint32_t kReadbackCount = kMaxFramesInFlight; ///< リードバックリング数（GPU遅延2フレームまで安全）
+        /// @brief 測光結果の読み戻しの枠ごとの記録（持つものは無い）
+        struct LuminanceReadbackMeta {};
+        /// @brief 測光結果の読み戻し（枠は計測の回数で回す。写したら待ちにし、読んだら外す）
+        ReadbackRing<LuminanceReadbackMeta> luminanceReadback_{};
         uint64_t reductionFrameCounter_ = 0;
         bool autoExposureReady_ = false; ///< 計測リソースの構築に成功したか
 

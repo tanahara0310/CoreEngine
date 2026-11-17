@@ -3,7 +3,6 @@
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h"
-#include "Math/IntegerMath.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/Logger/Logger.h"
 #ifdef CORE_EDITOR
@@ -149,19 +148,10 @@ namespace CoreEngine
         params.sourceSize[0] = baseWidth_;
         params.sourceSize[1] = baseHeight_;
 
-        auto* cmdList = context.cmdList;
-        cmdList->SetComputeRootSignature(downsamplePipeline_.GetComputeRootSignature());
-        cmdList->SetPipelineState(downsamplePipeline_.GetComputePSO());
-
-        const int textureIdx = downsamplePipeline_.GetComputeRootParamIndex("gTexture");
-        const int outputIdx  = downsamplePipeline_.GetComputeRootParamIndex("gOutput");
-        const int paramsIdx  = downsamplePipeline_.GetComputeRootParamIndex("DownsampleParams");
-
-        if (textureIdx >= 0) cmdList->SetComputeRootDescriptorTable(textureIdx, context.reads[0]);
-        if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
-        if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
-
-        cmdList->Dispatch(DivRoundUp(lowResWidth_, 8), DivRoundUp(lowResHeight_, 8), 1);
+        DispatchPass(context.cmdList, downsamplePipeline_,
+            { { "gTexture", context.reads[0] }, { "gOutput", context.output } },
+            { { "DownsampleParams", UploadConstants(params) } },
+            lowResWidth_, lowResHeight_);
     }
 
     // 分離ガウス。横 → 縦の 2 回に分けることで、サンプル数が O(n^2) から O(n) になる
@@ -177,19 +167,10 @@ namespace CoreEngine
         params.direction[0]   = horizontal ? 1u : 0u;
         params.direction[1]   = horizontal ? 0u : 1u;
 
-        auto* cmdList = context.cmdList;
-        cmdList->SetComputeRootSignature(blurPipeline_.GetComputeRootSignature());
-        cmdList->SetPipelineState(blurPipeline_.GetComputePSO());
-
-        const int sourceIdx = blurPipeline_.GetComputeRootParamIndex("gSource");
-        const int outputIdx = blurPipeline_.GetComputeRootParamIndex("gOutput");
-        const int paramsIdx = blurPipeline_.GetComputeRootParamIndex("BlurParams");
-
-        if (sourceIdx >= 0) cmdList->SetComputeRootDescriptorTable(sourceIdx, context.reads[0]);
-        if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
-        if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
-
-        cmdList->Dispatch(DivRoundUp(lowResWidth_, 8), DivRoundUp(lowResHeight_, 8), 1);
+        DispatchPass(context.cmdList, blurPipeline_,
+            { { "gSource", context.reads[0] }, { "gOutput", context.output } },
+            { { "BlurParams", UploadConstants(params) } },
+            lowResWidth_, lowResHeight_);
     }
 
     // 適用パス。ぼかしたベース層をフル解像度輝度をガイドに再構成してからトーンを圧縮する
@@ -212,21 +193,10 @@ namespace CoreEngine
         params.rangeSigma        = cvRangeSigma.Get();
 
         // 適用は基底が構築した PSO（GetComputeShaderPath が返す LocalExposure.CS.hlsl）を使う
-        auto* cmdList = context.cmdList;
-        cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
-        cmdList->SetPipelineState(computePso_.Get());
-
-        const int textureIdx = GetRootParamIndex("gTexture");
-        const int baseIdx    = GetRootParamIndex("gBlurredLogLum");
-        const int outputIdx  = GetRootParamIndex("gOutput");
-        const int paramsIdx  = GetRootParamIndex("LocalExposureParams");
-
-        if (textureIdx >= 0) cmdList->SetComputeRootDescriptorTable(textureIdx, context.reads[0]);
-        if (baseIdx >= 0)    cmdList->SetComputeRootDescriptorTable(baseIdx, context.reads[1]);
-        if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
-        if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
-
-        cmdList->Dispatch(DivRoundUp(context.width, 8), DivRoundUp(context.height, 8), 1);
+        DispatchPass(context.cmdList,
+            { { "gTexture", context.reads[0] }, { "gBlurredLogLum", context.reads[1] }, { "gOutput", context.output } },
+            { { "LocalExposureParams", UploadConstants(params) } },
+            context.width, context.height);
     }
 
     void LocalExposure::DrawImGui()

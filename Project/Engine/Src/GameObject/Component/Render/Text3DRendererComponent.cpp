@@ -22,6 +22,7 @@
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/Wrappers/ImGuiInput.h"
 #include "Editor/ImGui/Wrappers/ImGuiLayout.h"
+#include "Editor/Inspector/InspectorLayout.h"
 #include <imgui.h>
 #endif
 
@@ -475,9 +476,7 @@ namespace CoreEngine
 
         UI::SectionHeader("ビルボード");
         {
-            int billboardIndex = static_cast<int>(billboard_);
-            if (ImGui::Combo("##billboard", &billboardIndex, kBillboardNames, 3)) {
-                billboard_ = static_cast<Text3DBillboard>(billboardIndex);
+            if (InspectorLayout::EnumCombo("##billboard", billboard_, kBillboardNames)) {
                 changed = true;
             }
             ImGui::TextDisabled("「なし」ならトランスフォームの回転がそのまま効きます");
@@ -486,9 +485,7 @@ namespace CoreEngine
         UI::SectionHeader("深度");
         {
             static const char* kDepthNames[] = { "遮蔽される", "常に手前（オーバーレイ）" };
-            int depthIndex = static_cast<int>(depthMode_);
-            if (ImGui::Combo("##depthMode", &depthIndex, kDepthNames, 2)) {
-                depthMode_ = static_cast<Text3DDepthMode>(depthIndex);
+            if (InspectorLayout::EnumCombo("##depthMode", depthMode_, kDepthNames)) {
                 changed = true;
             }
             ImGui::TextDisabled("ダメージ数値やネームプレートはオーバーレイ向き");
@@ -532,13 +529,12 @@ namespace CoreEngine
             }
             ImGui::TextDisabled("単位はワールド単位です");
 
-            int alignHIndex = static_cast<int>(alignH_);
-            int alignVIndex = static_cast<int>(alignV_);
-            bool alignChanged = ImGui::Combo("横揃え##alignH", &alignHIndex, kAlignHNames, 3);
-            alignChanged |= ImGui::Combo("縦揃え##alignV", &alignVIndex, kAlignVNames, 3);
+            TextAlignH alignH = alignH_;
+            TextAlignV alignV = alignV_;
+            bool alignChanged = InspectorLayout::EnumCombo("横揃え##alignH", alignH, kAlignHNames);
+            alignChanged |= InspectorLayout::EnumCombo("縦揃え##alignV", alignV, kAlignVNames);
             if (alignChanged) {
-                SetAlign(static_cast<TextAlignH>(alignHIndex),
-                    static_cast<TextAlignV>(alignVIndex));
+                SetAlign(alignH, alignV);
                 changed = true;
             }
         }

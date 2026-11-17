@@ -659,15 +659,16 @@ namespace CoreEngine
 
         std::string currentInput = sceneImageResourceName_;
         size_t effectIndex = 0;
+        size_t intermediateWriteCount = 0; ///< 中間へ書いたエフェクトの数（パスを積まなかったエフェクトは数えない）
 
         for (const ChainEntry& entry : chain) {
             const bool isLastEffect = (effectIndex + 1 >= chain.size());
-            // 中間は 2 枚を交互に使う。入力と出力が必ず別実体になるので、
-            // 同一リソースを読みながら書く事故が起きない
+            // 中間は 2 枚を交互に使い、番号は中間へ書いた回数で決める。
+            // 入力（直前に書いた中間かシーン画像）と出力が必ず別実体になる
             const std::string outputResource = isLastEffect
                 ? std::string(FrameBlackboard::PostEffectFinal)
                 : FrameBlackboard::MakePostEffectIntermediateName(
-                    effectIndex % RenderTargetManager::kPostEffectPingPongCount);
+                    intermediateWriteCount % RenderTargetManager::kPostEffectPingPongCount);
 
             // エフェクト自身にパス列を積ませる。単一パスのエフェクトは基底の既定実装が
             // 従来どおり 1 パスだけ積むので、ここでの扱いは多段エフェクトと同じで済む。
@@ -678,9 +679,12 @@ namespace CoreEngine
             const std::vector<PostEffectStep>& steps = builder.Steps();
             if (steps.empty()) {
                 // パスを 1 つも積まなかったエフェクトは出力を書かない。currentInput を進めないので
-                // 次段は前段の出力をそのまま読み、画像は途切れない
-                Logger::GetInstance().Errorf(LogCategory::Graphics,
-                    "[PostEffect] {} が 1 つもパスを積みませんでした。このエフェクトは無視されます", entry.name);
+                // 次段は前段の出力をそのまま読み、画像は途切れない。ログはエフェクトごとに 1 回だけ出す
+                static std::unordered_set<std::string> warnedEmptyEffects;
+                if (warnedEmptyEffects.insert(entry.name).second) {
+                    Logger::GetInstance().Errorf(LogCategory::Graphics,
+                        "[PostEffect] {} が 1 つもパスを積みませんでした。このエフェクトは無視されます", entry.name);
+                }
                 ++effectIndex;
                 continue;
             }
@@ -701,6 +705,9 @@ namespace CoreEngine
             }
 
             currentInput = outputResource;
+            if (!isLastEffect) {
+                ++intermediateWriteCount;
+            }
             ++effectIndex;
         }
 

@@ -3,7 +3,6 @@
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Math/IntegerMath.h"
 #include "Utility/CVar/CVar.h"
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
@@ -66,26 +65,12 @@ namespace CoreEngine
     {
         UpdateScreenSizeConstants(width, height);
 
-        auto* cmdList = graphicsCore_->GetCommandList();
-        cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
-        cmdList->SetPipelineState(computePso_.Get());
-
-        int inputTextureIdx  = GetRootParamIndex("inputTexture");
-        int noiseTextureIdx  = GetRootParamIndex("noiseTexture");
-        int outputIdx        = GetRootParamIndex("gOutput");
-        int dissolveParamsIdx= GetRootParamIndex("DissolveParams");
-        int screenParamsIdx  = GetRootParamIndex("ScreenParams");
-
-        if (inputTextureIdx >= 0)   cmdList->SetComputeRootDescriptorTable(inputTextureIdx, inputSrvHandle);
-        if (noiseTextureIdx >= 0)   cmdList->SetComputeRootDescriptorTable(noiseTextureIdx, noiseTextureHandle_);
-        if (outputIdx >= 0)         cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
-        // フィールド表を見て HLSL のオフセットへ配置する
-        if (dissolveParamsIdx >= 0) cmdList->SetComputeRootConstantBufferView(dissolveParamsIdx, UploadConstants(MakeParams(), kDissolveParamsFields));
-        if (screenParamsIdx >= 0)   cmdList->SetComputeRootConstantBufferView(screenParamsIdx, GetScreenSizeCbAddress());
-
-        uint32_t groupX = DivRoundUp(width, 8);
-        uint32_t groupY = DivRoundUp(height, 8);
-        cmdList->Dispatch(groupX, groupY, 1);
+        // DissolveParams はフィールド表を見て HLSL のオフセットへ配置する
+        DispatchPass(graphicsCore_->GetCommandList(),
+            { { "inputTexture", inputSrvHandle }, { "noiseTexture", noiseTextureHandle_ }, { "gOutput", outputUavHandle } },
+            { { "DissolveParams", UploadConstants(MakeParams(), kDissolveParamsFields) },
+              { "ScreenParams", GetScreenSizeCbAddress() } },
+            width, height);
     }
 
     void Dissolve::DrawImGui()

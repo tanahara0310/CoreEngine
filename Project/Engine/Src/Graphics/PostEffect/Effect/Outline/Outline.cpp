@@ -4,7 +4,6 @@
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Camera/View/ViewInfo.h"
 #include "Graphics/Render/FrameBlackboard.h"
-#include "Math/IntegerMath.h"
 #include "Utility/CVar/CVar.h"
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
@@ -84,42 +83,12 @@ namespace CoreEngine
     {
         UpdateScreenSizeConstants(width, height);
 
-        auto* cmdList = graphicsCore_->GetCommandList();
-        cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
-        cmdList->SetPipelineState(computePso_.Get());
-
-        // シェーダーリソース名からルートパラメータインデックスを取得
-        int textureIdx       = GetRootParamIndex("gTexture");
-        int depthIdx         = GetRootParamIndex("gDepth");
-        int outputIdx        = GetRootParamIndex("gOutput");
-        int outlineParamsIdx = GetRootParamIndex("OutlineParams");
-        int screenParamsIdx  = GetRootParamIndex("ScreenParams");
-
-        // カラーテクスチャ (t0)
-        if (textureIdx >= 0) {
-            cmdList->SetComputeRootDescriptorTable(textureIdx, inputSrvHandle);
-        }
-        // 深度テクスチャ (t1) - DeclareExtraInputs で申告し、パスが解決したもの
-        if (depthIdx >= 0) {
-            cmdList->SetComputeRootDescriptorTable(depthIdx, GetExtraInput("gDepth"));
-        }
-        // 出力テクスチャ (u0)
-        if (outputIdx >= 0) {
-            cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
-        }
-        // アウトラインパラメータ (b0)
-        if (outlineParamsIdx >= 0) {
-            cmdList->SetComputeRootConstantBufferView(outlineParamsIdx, UploadConstants(MakeParams()));
-        }
-        // 画面サイズパラメータ (b1)
-        if (screenParamsIdx >= 0) {
-            cmdList->SetComputeRootConstantBufferView(screenParamsIdx, GetScreenSizeCbAddress());
-        }
-
-        // ディスパッチ（8x8スレッドグループ）
-        uint32_t groupX = DivRoundUp(width, 8);
-        uint32_t groupY = DivRoundUp(height, 8);
-        cmdList->Dispatch(groupX, groupY, 1);
+        // カラー (t0)・深度 (t1。DeclareExtraInputs で申告し、パスが解決したもの)・出力 (u0)・
+        // アウトラインの定数 (b0)・画面サイズ (b1) を差し、8x8 のグループで Dispatch する
+        DispatchPass(graphicsCore_->GetCommandList(),
+            { { "gTexture", inputSrvHandle }, { "gDepth", GetExtraInput("gDepth") }, { "gOutput", outputUavHandle } },
+            { { "OutlineParams", UploadConstants(MakeParams()) }, { "ScreenParams", GetScreenSizeCbAddress() } },
+            width, height);
     }
 
     void Outline::DrawImGui()

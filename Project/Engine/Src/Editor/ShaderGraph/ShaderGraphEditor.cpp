@@ -7,6 +7,7 @@
 #include "Editor/Command/EditorCommandStack.h"
 #include "Editor/ImGui/EditorTheme.h"
 #include "Editor/ImGui/ImGuiAll.h"
+#include "Editor/ImGui/Widgets/DragDropPayload.h"
 #include "Editor/Panel/EditorMenuRegistry.h"
 #include "Editor/Panel/EditorPanelRegistry.h"
 #include "Editor/ShaderGraph/ShaderGraphAsset.h"
@@ -31,7 +32,6 @@
 #include <algorithm>
 #include <cfloat>
 #include <cmath>
-#include <cstring>
 #include <functional>
 #include <map>
 #include <set>
@@ -678,10 +678,8 @@ namespace CoreEngine::Editor::ShaderGraph
                 changed = true;
             }
             if (ImGui::BeginDragDropTarget()) {
-                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kTexturePayload)) {
-                    const auto* data = static_cast<const char*>(payload->Data);
-                    const std::string fileName(data, strnlen(data, static_cast<size_t>(payload->DataSize)));
-                    if (const AssetInfo* const dropped = FindAssetInfo(fileName, AssetType::Texture)) {
+                if (const auto fileName = UI::AcceptPayload<std::string>(kTexturePayload)) {
+                    if (const AssetInfo* const dropped = FindAssetInfo(*fileName, AssetType::Texture)) {
                         path = ToAssetPath(*dropped);
                         changed = true;
                     }
@@ -1396,14 +1394,12 @@ namespace CoreEngine::Editor::ShaderGraph
         // Blackboard のプロパティを落とすと Property ノードを置く
         const ImRect canvasRect(canvasMin, ImVec2(canvasMin.x + size.x, canvasMin.y + size.y));
         if (ImGui::BeginDragDropTargetCustom(canvasRect, ImGui::GetID("##ShaderGraphDrop"))) {
-            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kPropertyPayload)) {
-                const auto* data = static_cast<const char*>(payload->Data);
-                const std::string id(data, strnlen(data, static_cast<size_t>(payload->DataSize)));
-                if (document.graph.FindProperty(id)) {
+            if (const auto id = UI::AcceptPayload<std::string>(kPropertyPayload)) {
+                if (document.graph.FindProperty(*id)) {
                     Node node;
                     node.id = document.graph.NextNodeId();
                     node.type = "Property";
-                    node.property = id;
+                    node.property = *id;
                     node.x = document.mouseGridX;
                     node.y = document.mouseGridY;
                     document.graph.nodes.push_back(node);
@@ -1413,10 +1409,8 @@ namespace CoreEngine::Editor::ShaderGraph
                     document.pendingLabel = "プロパティを置く";
                 }
             }
-            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(kSubGraphPayload)) {
-                const auto* data = static_cast<const char*>(payload->Data);
-                const std::string path(data, strnlen(data, static_cast<size_t>(payload->DataSize)));
-                PlaceSubGraphFile(document, path, document.mouseGridX, document.mouseGridY);
+            if (const auto path = UI::AcceptPayload<std::string>(kSubGraphPayload)) {
+                PlaceSubGraphFile(document, *path, document.mouseGridX, document.mouseGridY);
             }
             ImGui::EndDragDropTarget();
         }

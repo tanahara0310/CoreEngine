@@ -19,6 +19,7 @@
 #include "Particle/Core/ParticleRenderDataBuilder.h"
 #include "Particle/Core/ParticleResourceManager.h"
 #include "Particle/Core/ParticleUpdater.h"
+#include "Particle/ParticleBillboardNames.h"
 #include "Particle/ParticlePresetManager.h"
 #include "Utility/FrameRate/Time.h"
 
@@ -31,9 +32,6 @@
 
 namespace
 {
-    /// @brief ビルボードの名前（`BillboardType` の並び）
-    constexpr const char* kBillboardNames[] = { "なし（粒の回転だけ）", "カメラの正面", "Y 軸だけ回す", "画面と平行" };
-
     /// @brief テクスチャを指していないときに貼るテクスチャ
     constexpr const char* kDefaultTexture = "circle.png";
 
@@ -54,7 +52,7 @@ REFLECT_DEFINE_BEGIN(CoreEngine::ParticleSystemComponent, "パーティクル")
         p.tooltip = "指すと、板ポリの代わりにこのモデルを粒として描く")
     REFLECT_ENUM_ACCESSOR("blendMode", "ブレンド", GetBlendMode, SetBlendMode, ::CoreEngine::kBlendModeNames,
         p.tooltip = "背景との合成のしかた。炎や光は「加算」、煙は「アルファ」が向く")
-    REFLECT_ENUM_ACCESSOR("billboard", "ビルボード", GetBillboardType, SetBillboardType, kBillboardNames,
+    REFLECT_ENUM_ACCESSOR("billboard", "ビルボード", GetBillboardType, SetBillboardType, ::CoreEngine::kParticleBillboardNames,
         p.tooltip = "板ポリの向き。草や炎の柱のように立てたいものは「Y 軸だけ回す」。モデルの粒では使わない")
     REFLECT_ACCESSOR("rayTracing", "レイトレーシング", IsRayTracingEnabled, SetRayTracingEnabled,
         p.tooltip = "モデルの粒だけ。オフにすると、影にも水面の反射と屈折にも出ない")

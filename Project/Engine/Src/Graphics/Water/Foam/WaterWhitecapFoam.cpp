@@ -239,13 +239,8 @@ namespace CoreEngine
         statisticsUav_ = descriptorAllocator_->CreateUAV(statistics_.Get(), uavDesc, "WaterWhitecapStatisticsUAV");
 
         try {
-            statisticsZero_ = ResourceFactory::CreateBufferResource(device, kBytes);
-            void* zeroMapped = nullptr;
-            if (FAILED(statisticsZero_->Map(0, nullptr, &zeroMapped))) {
-                return false;
-            }
-            std::memset(zeroMapped, 0, static_cast<size_t>(kBytes));
-            statisticsZero_->Unmap(0, nullptr);
+            static constexpr std::array<uint32_t, kStatisticsWords> kZeros{};
+            statisticsZero_ = ResourceFactory::CreateStaticBuffer<uint32_t>(device, kZeros);
 
             if (!statisticsReadback_.Create(device, static_cast<size_t>(kBytes))) {
                 return false;

@@ -266,15 +266,9 @@ namespace CoreEngine
         // SRV 状態のままなら UAV へ戻す（初回は生成時から UAV。冗長なら発行されない）
         Barrier::Transition(cmdList, lutTexture_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-        cmdList->SetComputeRootSignature(fillPipeline_.GetComputeRootSignature());
-        cmdList->SetPipelineState(fillPipeline_.GetComputePSO());
-
-        const int dataIdx   = fillPipeline_.GetComputeRootParamIndex("gLutData");
-        const int outputIdx = fillPipeline_.GetComputeRootParamIndex("gLutTexture");
-        const int paramsIdx = fillPipeline_.GetComputeRootParamIndex("FillParams");
-        if (dataIdx >= 0)   cmdList->SetComputeRootDescriptorTable(dataIdx, lutDataSrvHandle_.gpuHandle);
-        if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, lutUavHandle_.gpuHandle);
-        if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
+        BindPass(cmdList, fillPipeline_,
+            { { "gLutData", lutDataSrvHandle_.gpuHandle }, { "gLutTexture", lutUavHandle_.gpuHandle } },
+            { { "FillParams", UploadConstants(params) } });
 
         const uint32_t groups = DivRoundUp(lutSizeLoaded_, 4);
         cmdList->Dispatch(groups, groups, groups);
@@ -310,20 +304,10 @@ namespace CoreEngine
         // LUT の差し替え直後だけ Texture3D への書き込みが走る
         RecordFillIfDirty(cmdList);
 
-        cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
-        cmdList->SetPipelineState(computePso_.Get());
-
-        const int textureIdx = GetRootParamIndex("gTexture");
-        const int lutIdx     = GetRootParamIndex("gLut");
-        const int outputIdx  = GetRootParamIndex("gOutput");
-        const int paramsIdx  = GetRootParamIndex("ColorLUTParams");
-
-        if (textureIdx >= 0) cmdList->SetComputeRootDescriptorTable(textureIdx, inputSrvHandle);
-        if (lutIdx >= 0)     cmdList->SetComputeRootDescriptorTable(lutIdx, lutSrvHandle_.gpuHandle);
-        if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
-        if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
-
-        cmdList->Dispatch(DivRoundUp(width, 8), DivRoundUp(height, 8), 1);
+        DispatchPass(cmdList,
+            { { "gTexture", inputSrvHandle }, { "gLut", lutSrvHandle_.gpuHandle }, { "gOutput", outputUavHandle } },
+            { { "ColorLUTParams", UploadConstants(params) } },
+            width, height);
     }
 
     void ColorLUT::DrawImGui()

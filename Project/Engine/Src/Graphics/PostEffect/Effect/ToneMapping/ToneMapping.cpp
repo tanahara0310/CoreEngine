@@ -7,7 +7,6 @@
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
-#include "Math/IntegerMath.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/CVar/CVar.h"
 #ifdef CORE_EDITOR
@@ -15,6 +14,7 @@
 #endif
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 
 
 namespace CoreEngine
@@ -209,17 +209,8 @@ namespace CoreEngine
         }
 
         // ===== リードバックリング（GPU が最大2フレーム遅延しても読み書きが重ならない） =====
-        for (uint32_t i = 0; i < kReadbackCount; ++i) {
-            readbackBuffers_[i] = ResourceFactory::CreateBufferResource(
-                graphicsCore_->GetDevice(), 256, D3D12_HEAP_TYPE_READBACK);
-            if (!readbackBuffers_[i]) {
-                return;
-            }
-            void* mapped = nullptr;
-            if (FAILED(readbackBuffers_[i]->Map(0, nullptr, &mapped))) {
-                return;
-            }
-            mappedReadback_[i] = static_cast<const float*>(mapped);
+        if (!luminanceReadback_.Create(graphicsCore_->GetDevice(), 256)) {
+            return;
         }
 
         autoExposureReady_ = true;
@@ -234,15 +225,17 @@ namespace CoreEngine
             targetLuminance = illuminationLuminance_;
         } else {
             // 画面平均測光: 2フレーム前に計測を書き込んだスロット（GPU 完了済み）を読む
-            if (reductionFrameCounter_ < kReadbackCount - 1) {
+            const uint32_t slot = static_cast<uint32_t>((reductionFrameCounter_ + 1) % kReadbackCount);
+            if (!luminanceReadback_.TakePending(slot)) {
                 return; // まだ有効な計測値が無い
             }
-            const uint32_t slot = static_cast<uint32_t>((reductionFrameCounter_ + 1) % kReadbackCount);
-            if (!mappedReadback_[slot]) {
+            // 計測値は線形輝度の算術平均（カメラの平均測光相当）
+            const bool read = luminanceReadback_.Read(slot, sizeof(float), [&targetLuminance](const void* mapped) {
+                std::memcpy(&targetLuminance, mapped, sizeof(float));
+            });
+            if (!read) {
                 return;
             }
-            // 計測値は線形輝度の算術平均（カメラの平均測光相当）
-            targetLuminance = *mappedReadback_[slot];
         }
 
         if (!adaptationInitialized_) {
@@ -325,7 +318,8 @@ namespace CoreEngine
 
         const uint32_t writeSlot = static_cast<uint32_t>(reductionFrameCounter_ % kReadbackCount);
         cmdList->CopyBufferRegion(
-            readbackBuffers_[writeSlot].Get(), 0, avgLogLumBuffer_.Get(), 0, sizeof(float));
+            luminanceReadback_.Buffer(writeSlot), 0, avgLogLumBuffer_.Get(), 0, sizeof(float));
+        luminanceReadback_.MarkPending(writeSlot);
 
         Barrier::Transition(cmdList, avgLogLumBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
@@ -374,20 +368,10 @@ namespace CoreEngine
         illuminationActiveLastFrame_ = useIlluminationMetering;
         illuminationValid_ = false;
 
-        cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
-        cmdList->SetPipelineState(computePso_.Get());
-
-        int textureIdx = GetRootParamIndex("gTexture");
-        int outputIdx = GetRootParamIndex("gOutput");
-        int screenParamsIdx = GetRootParamIndex("ScreenParams");
-
-        if (textureIdx >= 0)      cmdList->SetComputeRootDescriptorTable(textureIdx, inputSrvHandle);
-        if (outputIdx >= 0)       cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
-        if (screenParamsIdx >= 0) cmdList->SetComputeRootConstantBufferView(screenParamsIdx, screenParams);
-
-        uint32_t groupX = DivRoundUp(width, 8);
-        uint32_t groupY = DivRoundUp(height, 8);
-        cmdList->Dispatch(groupX, groupY, 1);
+        DispatchPass(cmdList,
+            { { "gTexture", inputSrvHandle }, { "gOutput", outputUavHandle } },
+            { { "ScreenParams", screenParams } },
+            width, height);
     }
 
     void ToneMapping::DrawImGui()

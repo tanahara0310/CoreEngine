@@ -4,6 +4,7 @@
 #include <wrl.h>
 #include <dxcapi.h>
 #include <d3d12.h>
+#include <initializer_list>
 #include <string>
 
 #include "PostEffectBase.h"
@@ -12,6 +13,8 @@
 
 
 namespace CoreEngine {
+
+    class CustomShaderPipeline;
 
     /// @brief コンピュートパイプライン（CS）用ポストエフェクト基底クラス
     class PostEffectComputeBase : public PostEffectBase {
@@ -94,6 +97,61 @@ namespace CoreEngine {
             uint32_t height,
             const char* paramsName,
             D3D12_GPU_VIRTUAL_ADDRESS paramsAddress);
+
+        /// @brief 名前で差すデスクリプタテーブル 1 件（SRV か UAV）
+        struct PassTable {
+            const char* name = nullptr;          ///< シェーダー側の名前（nullptr なら差さない）
+            D3D12_GPU_DESCRIPTOR_HANDLE handle{}; ///< 差すテーブルの先頭
+        };
+
+        /// @brief 名前で差す定数バッファ 1 件
+        struct PassConstants {
+            const char* name = nullptr;          ///< シェーダー側の名前（nullptr なら差さない）
+            D3D12_GPU_VIRTUAL_ADDRESS address = 0; ///< 差す GPU アドレス
+        };
+
+        /// @brief 基底が組んだルートシグネチャとパイプラインを差し、テーブルと定数を名前で差す
+        /// @details 並びの順にテーブル、次に定数を差す。シェーダーに無い名前は差さない
+        /// @param cmdList   記録先
+        /// @param tables    差すテーブル
+        /// @param constants 差す定数バッファ
+        void BindPass(
+            ID3D12GraphicsCommandList* cmdList,
+            std::initializer_list<PassTable> tables,
+            std::initializer_list<PassConstants> constants);
+
+        /// @brief 追加のパイプラインのルートシグネチャとパイプラインを差し、テーブルと定数を名前で差す
+        /// @details 並びの順にテーブル、次に定数を差す。シェーダーに無い名前は差さない
+        /// @param cmdList   記録先
+        /// @param pipeline  差すパイプライン（番号は pipeline のルートシグネチャから引く）
+        /// @param tables    差すテーブル
+        /// @param constants 差す定数バッファ
+        void BindPass(
+            ID3D12GraphicsCommandList* cmdList,
+            const CustomShaderPipeline& pipeline,
+            std::initializer_list<PassTable> tables,
+            std::initializer_list<PassConstants> constants);
+
+        /// @brief BindPass で基底のパイプラインを差し、width×height を 8×8 のグループで Dispatch する
+        /// @param width  Dispatch する幅（画素）
+        /// @param height Dispatch する高さ（画素）
+        void DispatchPass(
+            ID3D12GraphicsCommandList* cmdList,
+            std::initializer_list<PassTable> tables,
+            std::initializer_list<PassConstants> constants,
+            uint32_t width,
+            uint32_t height);
+
+        /// @brief BindPass で追加のパイプラインを差し、width×height を 8×8 のグループで Dispatch する
+        /// @param width  Dispatch する幅（画素）
+        /// @param height Dispatch する高さ（画素）
+        void DispatchPass(
+            ID3D12GraphicsCommandList* cmdList,
+            const CustomShaderPipeline& pipeline,
+            std::initializer_list<PassTable> tables,
+            std::initializer_list<PassConstants> constants,
+            uint32_t width,
+            uint32_t height);
 
         Microsoft::WRL::ComPtr<ID3D12PipelineState> computePso_; ///< CS用PSO
 

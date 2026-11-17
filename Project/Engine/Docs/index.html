@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.89.7">
+<meta name="engine-version" content="0.89.8">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11437,6 +11437,16 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-89-8">v0.89.8 <span class="dim">（2026-11-17）</span></h3>
+  <p>v0.89.4〜v0.89.7 で見つけて残していた同じ形の手書きを、そのときに足した補助へ揃えた版です。あわせて、ポストエフェクトの途中のエフェクトが何も描かなかったときの不具合を直しました。ふだんの見た目・動き・シーンの書き方・CVar・スクリプトは変わりません。</p>
+  <ul>
+    <li><strong>不具合の修正（ポストエフェクトの中間ターゲット）</strong>：途中のエフェクトがパスを 1 つも積まなかったとき（ブルームのパイプラインが無い、カラー LUT のリソースが無いときなど）、次のエフェクトが同じ中間ターゲットを読みながら書いていました。中間の 2 枚を交互に使う番号を、中間へ書いた回数で数えるようにしました。「1 つもパスを積みませんでした」のエラーは、エフェクトごとに 1 回だけ出します。</li>
+    <li><strong>ポストエフェクトのパス</strong>：パイプラインを差し、テーブルと定数バッファを名前で差して Dispatch する手順を <code>PostEffectComputeBase::BindPass</code>・<code>DispatchPass</code> にまとめました。ブルーム・被写界深度・モーションブラー・ローカル露出・カラー LUT・レンズフレア・ディゾルブ・アウトライン・プロジェクトのローディング画面・トーンマップがこれを使います。レンズフレアの CVar から定数への写しは <code>CVarMemberBinding</code> の表にしました。</li>
+    <li><strong>読み戻し</strong>：Hi-Z の遮蔽判定・GPU の区間の計測・自動露出の測光の読み戻しを <code>ReadbackRing</code> にしました。</li>
+    <li><strong>一度だけ作るバッファ</strong>：霧を切ったときの定数・白波の泡の統計を 0 に戻す元・GPU パーティクルの初期値を <code>ResourceFactory::CreateStaticBuffer&lt;T&gt;</code> で作ります。</li>
+    <li><strong>エディタ</strong>：コライダーの形と、3D テキストのビルボード・深度・揃えのコンボを <code>InspectorLayout::EnumCombo</code> に、シェーダーグラフとスクリプトの GUI のドロップの受け取りを <code>UI::AcceptPayload&lt;T&gt;</code> にしました。CPU 版と GPU 版のパーティクルのビルボードの名前の表は 1 つ（<code>kParticleBillboardNames</code>）にしました。</li>
+  </ul>
 
   <h3 id="changelog-v0-89-7">v0.89.7 <span class="dim">（2026-11-17）</span></h3>
   <p>保存・CVar・エディタで、同じ形で何か所にも書いていた所をテンプレートの補助にまとめた版です。保存するファイルの中身、CVar の名前と値、スクリプトから使える型・関数・引数は変わりません。</p>

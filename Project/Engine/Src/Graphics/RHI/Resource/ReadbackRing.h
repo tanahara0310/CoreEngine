@@ -74,6 +74,15 @@ namespace CoreEngine
         /// @brief 枠の待ち・フェンス値・記録を初めの値に戻す
         void Reset(uint32_t slot) { slots_[slot] = Slot{}; }
 
+        /// @brief 全部の枠のバッファを手放し、待ち・フェンス値・記録を初めの値に戻す
+        void Release()
+        {
+            for (auto& buffer : buffers_) {
+                buffer.Reset();
+            }
+            slots_.fill(Slot{});
+        }
+
         /// @brief 待ちの枠を GPU が終えていれば待ちを外す
         /// @details 覚えたフェンス値のままの枠（まだ GPU へ投げていない）と、フェンスが届いていない枠は待ちのまま残す
         /// @return 読んでよければ true

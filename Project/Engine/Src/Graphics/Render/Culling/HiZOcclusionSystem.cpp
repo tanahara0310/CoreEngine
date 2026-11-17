@@ -38,24 +38,21 @@ namespace CoreEngine
         ++frameCounter_;
         pendingQueries_.clear();
 
-        if (recordingFrameIndex >= kFrameRing) {
+        if (recordingFrameIndex >= kMaxFramesInFlight) {
             return;
         }
 
         // このリングスロットへ書いた GPU フレームは、同じ recordingFrameIndex が
         // 回ってくる前に CommandManager::WaitForFrame で完了が保証されている
         // （InstanceBatchManager の frameResources_ と同じリング前提）。
-        if (!ringPending_[recordingFrameIndex] || !readback_[recordingFrameIndex]) {
+        if (!readback_.TakePending(recordingFrameIndex)) {
             return;
         }
 
-        const std::vector<uint32_t>& ids = ringIds_[recordingFrameIndex];
+        const std::vector<uint32_t>& ids = readback_.Meta(recordingFrameIndex);
         const size_t count = ids.size();
-
-        uint32_t* results = nullptr;
-        const D3D12_RANGE readRange{ 0, sizeof(uint32_t) * count };
-        if (SUCCEEDED(readback_[recordingFrameIndex]->Map(
-                0, &readRange, reinterpret_cast<void**>(&results)))) {
+        readback_.Read(recordingFrameIndex, sizeof(uint32_t) * count, [&](const void* mapped) {
+            const uint32_t* results = static_cast<const uint32_t*>(mapped);
             for (size_t i = 0; i < count; ++i) {
                 const uint32_t id = ids[i];
                 if (id < slots_.size() && slots_[id].allocated) {
@@ -63,10 +60,7 @@ namespace CoreEngine
                     slots_[id].lastResultFrame = frameCounter_;
                 }
             }
-            const D3D12_RANGE writtenRange{ 0, 0 };
-            readback_[recordingFrameIndex]->Unmap(0, &writtenRange);
-        }
-        ringPending_[recordingFrameIndex] = false;
+        });
     }
 
     uint32_t HiZOcclusionSystem::RegisterTarget()
@@ -138,11 +132,7 @@ namespace CoreEngine
         buildParamsMapped_ = nullptr;
 
         bounds_.Release();
-        for (uint32_t i = 0; i < kFrameRing; ++i) {
-            readback_[i].Reset();
-            ringIds_[i].clear();
-            ringPending_[i] = false;
-        }
+        readback_.Release();
 
         buildPso_.Reset();
         cullPso_.Reset();
@@ -314,10 +304,11 @@ namespace CoreEngine
         bounds_.Initialize(*dxCommon_, kMaxQueries, "HiZOcclusionBounds");
 
         // フレームリング: Readback
-        for (uint32_t i = 0; i < kFrameRing; ++i) {
-            readback_[i] = ResourceFactory::CreateBufferResource(
-                device, sizeof(uint32_t) * kMaxQueries, D3D12_HEAP_TYPE_READBACK);
-            ringIds_[i].reserve(256);
+        if (!readback_.Create(device, sizeof(uint32_t) * kMaxQueries)) {
+            return false;
+        }
+        for (uint32_t i = 0; i < kMaxFramesInFlight; ++i) {
+            readback_.Meta(i).reserve(256);
         }
         return true;
     }
@@ -428,7 +419,7 @@ namespace CoreEngine
         }
 
         const uint32_t frameIndex = dxCommon->Frame().FrameIndex();
-        if (frameIndex >= kFrameRing) {
+        if (frameIndex >= kMaxFramesInFlight) {
             return;
         }
 
@@ -443,12 +434,12 @@ namespace CoreEngine
                 static_cast<size_t>(kMaxQueries)));
         EngineStats::GetInstance().RecordOcclusionTested(queryCount);
         if (queryCount == 0) {
-            ringPending_[frameIndex] = false;
+            readback_.Discard(frameIndex);
             return;
         }
 
         // 1) AABB と定数のアップロード（AABB は判定 CS の SRV を引くときに今フレームのスロットへ写る）
-        std::vector<uint32_t>& ids = ringIds_[frameIndex];
+        std::vector<uint32_t>& ids = readback_.Meta(frameIndex);
         ids.clear();
         const std::span<BoundsGPU> bounds = bounds_.Write(queryCount);
         for (uint32_t i = 0; i < queryCount; ++i) {
@@ -466,7 +457,7 @@ namespace CoreEngine
         cullParams.minRectTexels = kMinRectTexels;
         const D3D12_GPU_VIRTUAL_ADDRESS cullParamsAddress = dxCommon->GetUploadRing().AllocateConstants(cullParams);
         if (cullParamsAddress == 0) {
-            ringPending_[frameIndex] = false;
+            readback_.Discard(frameIndex);
             return;
         }
 
@@ -478,7 +469,7 @@ namespace CoreEngine
         // 3) 遮蔽判定 + Readback コピー
         DispatchCull(cmdList, frameIndex, queryCount, cullParamsAddress);
 
-        ringPending_[frameIndex] = true;
+        readback_.MarkPending(frameIndex);
     }
 
     void HiZOcclusionSystem::BuildHiZPyramid(
@@ -543,7 +534,7 @@ namespace CoreEngine
         // 判定結果を Readback バッファへコピー（CPU は同リングインデックスの次回フレームで読む）
         Barrier::UAV(cmdList, visibilityBuffer_);
         Barrier::Transition(cmdList, visibilityBuffer_, D3D12_RESOURCE_STATE_COPY_SOURCE);
-        cmdList->CopyBufferRegion(readback_[frameIndex].Get(), 0,
+        cmdList->CopyBufferRegion(readback_.Buffer(frameIndex), 0,
             visibilityBuffer_.Get(), 0, sizeof(uint32_t) * queryCount);
         Barrier::Transition(cmdList, visibilityBuffer_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 

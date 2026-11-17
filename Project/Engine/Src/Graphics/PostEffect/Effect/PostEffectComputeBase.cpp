@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "PostEffectComputeBase.h"
 #include "Graphics/Pipeline/ComputePipelineUtil.h"
+#include "Graphics/Pipeline/CustomShaderPipeline.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
@@ -15,6 +16,23 @@ namespace CoreEngine
     {
         /// @brief DispatchScreenPass のスレッドグループの一辺（シェーダー側の kGroupSize と同じ値）
         constexpr uint32_t kScreenPassGroupSize = 8;
+
+        /// @brief テーブルと定数を、findIndex(name) で引いたルート番号へ差す
+        /// @details 名前が nullptr のものと、番号が引けない（-1）ものは差さない
+        template <class FindIndex, class TableList, class ConstantList>
+        void BindNamedArguments(
+            ID3D12GraphicsCommandList* cmdList, const FindIndex& findIndex,
+            const TableList& tables, const ConstantList& constants)
+        {
+            for (const auto& table : tables) {
+                const int index = table.name ? findIndex(table.name) : -1;
+                if (index >= 0) cmdList->SetComputeRootDescriptorTable(index, table.handle);
+            }
+            for (const auto& constant : constants) {
+                const int index = constant.name ? findIndex(constant.name) : -1;
+                if (index >= 0) cmdList->SetComputeRootConstantBufferView(index, constant.address);
+            }
+        }
     }
 
     void PostEffectComputeBase::Initialize(GraphicsCore* dxCommon)
@@ -83,23 +101,55 @@ namespace CoreEngine
         D3D12_GPU_VIRTUAL_ADDRESS paramsAddress)
     {
         UpdateScreenSizeConstants(width, height);
+        DispatchPass(graphicsCore_->GetCommandList(),
+            { { "gTexture", inputSrvHandle }, { "gOutput", outputUavHandle } },
+            { { paramsName, paramsAddress }, { "ScreenParams", GetScreenSizeCbAddress() } },
+            width, height);
+    }
 
-        auto* cmdList = graphicsCore_->GetCommandList();
+    void PostEffectComputeBase::BindPass(
+        ID3D12GraphicsCommandList* cmdList,
+        std::initializer_list<PassTable> tables,
+        std::initializer_list<PassConstants> constants)
+    {
         cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
         cmdList->SetPipelineState(computePso_.Get());
+        BindNamedArguments(cmdList,
+            [this](const char* name) { return GetRootParamIndex(name); }, tables, constants);
+    }
 
-        const int textureIdx = GetRootParamIndex("gTexture");
-        const int outputIdx  = GetRootParamIndex("gOutput");
-        const int paramsIdx  = paramsName ? GetRootParamIndex(paramsName) : -1;
-        const int screenIdx  = GetRootParamIndex("ScreenParams");
+    void PostEffectComputeBase::BindPass(
+        ID3D12GraphicsCommandList* cmdList,
+        const CustomShaderPipeline& pipeline,
+        std::initializer_list<PassTable> tables,
+        std::initializer_list<PassConstants> constants)
+    {
+        cmdList->SetComputeRootSignature(pipeline.GetComputeRootSignature());
+        cmdList->SetPipelineState(pipeline.GetComputePSO());
+        BindNamedArguments(cmdList,
+            [&pipeline](const char* name) { return pipeline.GetComputeRootParamIndex(name); }, tables, constants);
+    }
 
-        if (textureIdx >= 0) cmdList->SetComputeRootDescriptorTable(textureIdx, inputSrvHandle);
-        if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, outputUavHandle);
-        if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, paramsAddress);
-        if (screenIdx >= 0)  cmdList->SetComputeRootConstantBufferView(screenIdx, GetScreenSizeCbAddress());
+    void PostEffectComputeBase::DispatchPass(
+        ID3D12GraphicsCommandList* cmdList,
+        std::initializer_list<PassTable> tables,
+        std::initializer_list<PassConstants> constants,
+        uint32_t width,
+        uint32_t height)
+    {
+        BindPass(cmdList, tables, constants);
+        cmdList->Dispatch(DivRoundUp(width, kScreenPassGroupSize), DivRoundUp(height, kScreenPassGroupSize), 1);
+    }
 
-        const uint32_t groupX = DivRoundUp(width, kScreenPassGroupSize);
-        const uint32_t groupY = DivRoundUp(height, kScreenPassGroupSize);
-        cmdList->Dispatch(groupX, groupY, 1);
+    void PostEffectComputeBase::DispatchPass(
+        ID3D12GraphicsCommandList* cmdList,
+        const CustomShaderPipeline& pipeline,
+        std::initializer_list<PassTable> tables,
+        std::initializer_list<PassConstants> constants,
+        uint32_t width,
+        uint32_t height)
+    {
+        BindPass(cmdList, pipeline, tables, constants);
+        cmdList->Dispatch(DivRoundUp(width, kScreenPassGroupSize), DivRoundUp(height, kScreenPassGroupSize), 1);
     }
 }

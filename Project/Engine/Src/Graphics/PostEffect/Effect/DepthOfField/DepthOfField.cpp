@@ -5,7 +5,6 @@
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h"
 #include "Graphics/Render/FrameBlackboard.h"
 #include "Camera/View/ViewInfo.h"
-#include "Math/IntegerMath.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/Logger/Logger.h"
 #ifdef CORE_EDITOR
@@ -177,21 +176,10 @@ namespace CoreEngine
         params.nearPlane     = nearPlane_;
         params.farPlane      = farPlane_;
 
-        auto* cmdList = context.cmdList;
-        cmdList->SetComputeRootSignature(prefilterPipeline_.GetComputeRootSignature());
-        cmdList->SetPipelineState(prefilterPipeline_.GetComputePSO());
-
-        const int textureIdx = prefilterPipeline_.GetComputeRootParamIndex("gTexture");
-        const int depthIdx   = prefilterPipeline_.GetComputeRootParamIndex("gDepth");
-        const int outputIdx  = prefilterPipeline_.GetComputeRootParamIndex("gOutput");
-        const int paramsIdx  = prefilterPipeline_.GetComputeRootParamIndex("DoFPrefilterParams");
-
-        if (textureIdx >= 0) cmdList->SetComputeRootDescriptorTable(textureIdx, context.reads[0]);
-        if (depthIdx >= 0)   cmdList->SetComputeRootDescriptorTable(depthIdx, context.reads[1]);
-        if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
-        if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
-
-        cmdList->Dispatch(DivRoundUp(halfWidth_, 8), DivRoundUp(halfHeight_, 8), 1);
+        DispatchPass(context.cmdList, prefilterPipeline_,
+            { { "gTexture", context.reads[0] }, { "gDepth", context.reads[1] }, { "gOutput", context.output } },
+            { { "DoFPrefilterParams", UploadConstants(params) } },
+            halfWidth_, halfHeight_);
     }
 
     void DepthOfField::RecordGather(const PostEffectPassContext& context)
@@ -206,19 +194,10 @@ namespace CoreEngine
         params.maxCocHalfPx   = cvMaxCoc.Get() * 0.5f;
         params.sampleCount    = static_cast<uint32_t>(std::max(1, cvSampleCount.Get()));
 
-        auto* cmdList = context.cmdList;
-        cmdList->SetComputeRootSignature(gatherPipeline_.GetComputeRootSignature());
-        cmdList->SetPipelineState(gatherPipeline_.GetComputePSO());
-
-        const int sourceIdx = gatherPipeline_.GetComputeRootParamIndex("gPrefiltered");
-        const int outputIdx = gatherPipeline_.GetComputeRootParamIndex("gOutput");
-        const int paramsIdx = gatherPipeline_.GetComputeRootParamIndex("DoFGatherParams");
-
-        if (sourceIdx >= 0) cmdList->SetComputeRootDescriptorTable(sourceIdx, context.reads[0]);
-        if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
-        if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
-
-        cmdList->Dispatch(DivRoundUp(halfWidth_, 8), DivRoundUp(halfHeight_, 8), 1);
+        DispatchPass(context.cmdList, gatherPipeline_,
+            { { "gPrefiltered", context.reads[0] }, { "gOutput", context.output } },
+            { { "DoFGatherParams", UploadConstants(params) } },
+            halfWidth_, halfHeight_);
     }
 
     void DepthOfField::RecordComposite(const PostEffectPassContext& context)
@@ -239,23 +218,11 @@ namespace CoreEngine
         params.farPlane      = farPlane_;
 
         // 合成は基底が構築した PSO（GetComputeShaderPath が返す DoFComposite.CS.hlsl）を使う
-        auto* cmdList = context.cmdList;
-        cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
-        cmdList->SetPipelineState(computePso_.Get());
-
-        const int textureIdx = GetRootParamIndex("gTexture");
-        const int blurredIdx = GetRootParamIndex("gBlurred");
-        const int depthIdx   = GetRootParamIndex("gDepth");
-        const int outputIdx  = GetRootParamIndex("gOutput");
-        const int paramsIdx  = GetRootParamIndex("DoFCompositeParams");
-
-        if (textureIdx >= 0) cmdList->SetComputeRootDescriptorTable(textureIdx, context.reads[0]);
-        if (blurredIdx >= 0) cmdList->SetComputeRootDescriptorTable(blurredIdx, context.reads[1]);
-        if (depthIdx >= 0)   cmdList->SetComputeRootDescriptorTable(depthIdx, context.reads[2]);
-        if (outputIdx >= 0)  cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
-        if (paramsIdx >= 0)  cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
-
-        cmdList->Dispatch(DivRoundUp(context.width, 8), DivRoundUp(context.height, 8), 1);
+        DispatchPass(context.cmdList,
+            { { "gTexture", context.reads[0] }, { "gBlurred", context.reads[1] },
+              { "gDepth", context.reads[2] }, { "gOutput", context.output } },
+            { { "DoFCompositeParams", UploadConstants(params) } },
+            context.width, context.height);
     }
 
     void DepthOfField::DrawImGui()

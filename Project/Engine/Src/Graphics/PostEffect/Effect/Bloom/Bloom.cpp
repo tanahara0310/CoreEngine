@@ -6,7 +6,6 @@
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h"
-#include "Math/IntegerMath.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/Logger/Logger.h"
 #ifdef CORE_EDITOR
@@ -119,15 +118,10 @@ namespace CoreEngine
         DirtGenParams params{};
         params.textureSize = kDirtTextureSize;
 
-        cmdList->SetComputeRootSignature(dirtGenPipeline_.GetComputeRootSignature());
-        cmdList->SetPipelineState(dirtGenPipeline_.GetComputePSO());
-
-        const int outputIdx = dirtGenPipeline_.GetComputeRootParamIndex("gOutput");
-        const int paramsIdx = dirtGenPipeline_.GetComputeRootParamIndex("DirtGenParams");
-        if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, dirtUavHandle_.gpuHandle);
-        if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
-
-        cmdList->Dispatch(DivRoundUp(kDirtTextureSize, 8), DivRoundUp(kDirtTextureSize, 8), 1);
+        DispatchPass(cmdList, dirtGenPipeline_,
+            { { "gOutput", dirtUavHandle_.gpuHandle } },
+            { { "DirtGenParams", UploadConstants(params) } },
+            kDirtTextureSize, kDirtTextureSize);
 
         {
             BarrierBatch batch(cmdList);
@@ -246,19 +240,10 @@ namespace CoreEngine
         // 閾値は最初の 1 回だけ。各段で掛けるとぼかすほど二重に削られる
         params.applyPrefilter = (mipIndex == 0) ? 1u : 0u;
 
-        auto* cmdList = context.cmdList;
-        cmdList->SetComputeRootSignature(downsamplePipeline_.GetComputeRootSignature());
-        cmdList->SetPipelineState(downsamplePipeline_.GetComputePSO());
-
-        const int sourceIdx = downsamplePipeline_.GetComputeRootParamIndex("gSource");
-        const int outputIdx = downsamplePipeline_.GetComputeRootParamIndex("gOutput");
-        const int paramsIdx = downsamplePipeline_.GetComputeRootParamIndex("BloomDownsampleParams");
-
-        if (sourceIdx >= 0) cmdList->SetComputeRootDescriptorTable(sourceIdx, context.reads[0]);
-        if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
-        if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
-
-        cmdList->Dispatch(DivRoundUp(context.width, 8), DivRoundUp(context.height, 8), 1);
+        DispatchPass(context.cmdList, downsamplePipeline_,
+            { { "gSource", context.reads[0] }, { "gOutput", context.output } },
+            { { "BloomDownsampleParams", UploadConstants(params) } },
+            context.width, context.height);
     }
 
     void Bloom::RecordUpsample(const PostEffectPassContext& context, int upIndex)
@@ -272,21 +257,10 @@ namespace CoreEngine
         params.lowerSize[0]  = mipWidth_[upIndex + 1];
         params.lowerSize[1]  = mipHeight_[upIndex + 1];
 
-        auto* cmdList = context.cmdList;
-        cmdList->SetComputeRootSignature(upsamplePipeline_.GetComputeRootSignature());
-        cmdList->SetPipelineState(upsamplePipeline_.GetComputePSO());
-
-        const int lowerIdx  = upsamplePipeline_.GetComputeRootParamIndex("gLower");
-        const int sameIdx   = upsamplePipeline_.GetComputeRootParamIndex("gSame");
-        const int outputIdx = upsamplePipeline_.GetComputeRootParamIndex("gOutput");
-        const int paramsIdx = upsamplePipeline_.GetComputeRootParamIndex("BloomUpsampleParams");
-
-        if (lowerIdx >= 0)  cmdList->SetComputeRootDescriptorTable(lowerIdx, context.reads[0]);
-        if (sameIdx >= 0)   cmdList->SetComputeRootDescriptorTable(sameIdx, context.reads[1]);
-        if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
-        if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
-
-        cmdList->Dispatch(DivRoundUp(context.width, 8), DivRoundUp(context.height, 8), 1);
+        DispatchPass(context.cmdList, upsamplePipeline_,
+            { { "gLower", context.reads[0] }, { "gSame", context.reads[1] }, { "gOutput", context.output } },
+            { { "BloomUpsampleParams", UploadConstants(params) } },
+            context.width, context.height);
     }
 
     void Bloom::RecordComposite(const PostEffectPassContext& context)
@@ -308,23 +282,14 @@ namespace CoreEngine
         // ダートマスクは初回だけ手続き生成する（エフェクト私有リソースなのでグラフ外・手動バリア）
         RecordDirtGenerationIfNeeded(cmdList);
 
-        // 合成は基底が構築した PSO（GetComputeShaderPath が返す BloomComposite.CS.hlsl）を使う
-        cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
-        cmdList->SetPipelineState(computePso_.Get());
-
-        const int sceneIdx  = GetRootParamIndex("gScene");
-        const int bloomIdx  = GetRootParamIndex("gBloom");
-        const int dirtIdx   = GetRootParamIndex("gDirt");
-        const int outputIdx = GetRootParamIndex("gOutput");
-        const int paramsIdx = GetRootParamIndex("BloomCompositeParams");
-
-        if (sceneIdx >= 0)  cmdList->SetComputeRootDescriptorTable(sceneIdx, context.reads[0]);
-        if (bloomIdx >= 0)  cmdList->SetComputeRootDescriptorTable(bloomIdx, context.reads[1]);
-        if (dirtIdx >= 0 && dirtResourcesReady_) cmdList->SetComputeRootDescriptorTable(dirtIdx, dirtSrvHandle_.gpuHandle);
-        if (outputIdx >= 0) cmdList->SetComputeRootDescriptorTable(outputIdx, context.output);
-        if (paramsIdx >= 0) cmdList->SetComputeRootConstantBufferView(paramsIdx, UploadConstants(params));
-
-        cmdList->Dispatch(DivRoundUp(context.width, 8), DivRoundUp(context.height, 8), 1);
+        // 合成は基底が構築した PSO（GetComputeShaderPath が返す BloomComposite.CS.hlsl）を使う。
+        // ダートは作れたときだけ差す
+        DispatchPass(cmdList,
+            { { "gScene", context.reads[0] }, { "gBloom", context.reads[1] },
+              { dirtResourcesReady_ ? "gDirt" : nullptr, dirtSrvHandle_.gpuHandle },
+              { "gOutput", context.output } },
+            { { "BloomCompositeParams", UploadConstants(params) } },
+            context.width, context.height);
     }
 
     void Bloom::DrawImGui()
