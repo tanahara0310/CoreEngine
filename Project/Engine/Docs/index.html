@@ -2675,7 +2675,7 @@ kbd {
       <tr><td>プレハブ</td><td>オブジェクトの雛形（.prefab）。エディタで置いたり、スクリプトで生成したりする。<a href="#editor-prefab">詳しく</a></td></tr>
       <tr><td>アセット</td><td>プロジェクトのファイル（モデル・テクスチャ・音・プレハブなど）。<span class="path">.meta</span> の GUID で見分ける</td></tr>
       <tr><td>再生モード</td><td>エディタの中でゲームを動かす状態。停止するとシーンが再生前に戻る。<a href="#editor-playmode">詳しく</a></td></tr>
-      <tr><td>レイヤー</td><td>当たり判定のグループ。どのレイヤー同士が当たるかをシーンごとに決める</td></tr>
+      <tr><td>レイヤー</td><td>当たり判定のグループ。コライダーの形ごとに付け、どのレイヤー同士が当たるかをシーンごとに決める。<a href="#script-layers">詳しく</a></td></tr>
       <tr><td>入力アクション</td><td>「ジャンプ」のような操作の名前。キーやボタンの割り当ては設定で変えられる</td></tr>
       <tr><td>CVar</td><td>名前の付いたエンジンの設定値（<code>sys.Physics.Gravity</code> など）</td></tr>
     </tbody>
@@ -3520,6 +3520,7 @@ kbd {
     <li><strong>当たる組み合わせを決める</strong><span class="ui">Scene Settings</span> の <span class="ui">当たり判定のレイヤー</span> の表で、当たる組み合わせにチェックを入れます（チェックの無い組み合わせは判定しません）。この表はシーンごとなので、<kbd>Ctrl</kbd>+<kbd>S</kbd> で保存します。</li>
   </ol>
   <div class="callout tip"><p>シューティングなら「自機の弾 × 敵」「敵の弾 × 自機」「敵 × 自機」だけにチェックを入れると、弾どうしや敵どうしの無駄な判定がなくなり、スクリプトでの見分けも簡単になります。</p></div>
+  <p>レイヤーが何に効くか・組み方の例・名前を変えるときの注意は <a href="#script-layers">当たり判定のレイヤー</a> にまとめてあります。</p>
 
   <h2 id="settings-tags">タグの名前を決める</h2>
   <ol class="steps">
@@ -4394,7 +4395,7 @@ kbd {
     <li><strong>プレハブ</strong>もタグを持ちます。プレハブから出した物には、そのタグが付いています。置いた物だけタグを変えると、インスペクタの Tag の左に線が出ます。行の右の <strong>⋮</strong> から、プレハブの値に戻す・プレハブへ適用するを選べます。</li>
     <li>タグは名前で覚えています。Project Settings でタグの名前を変えたり消したりしても、付けてあるタグは変わりません（一覧に無いタグは、インスペクタに「一覧に無い」と出ます）。</li>
   </ul>
-  <div class="callout tip" data-title="タグとレイヤーの違い"><p>タグは「何者か」を表す名前で、スクリプトが読むだけです。当たり判定や描画には何も効きません。<a href="#physics-layers">コリジョンのレイヤー</a> はコライダーごとに付き、どのレイヤー同士がぶつかるか・レイキャストで何を拾うかを決めます。「敵の弾は敵に当たらない」はレイヤー、「当たった相手が敵か」はタグかレイヤーのどちらでも見分けられます。</p></div>
+  <div class="callout tip" data-title="タグとレイヤーの違い"><p>タグは「何者か」を表す名前で、スクリプトが読むだけです。当たり判定や描画には何も効きません。<a href="#script-layers">当たり判定のレイヤー</a> はコライダーの形ごとに付き、どのレイヤー同士がぶつかるか・レイキャストで何を拾うかを決めます。「敵の弾は敵に当たらない」はレイヤー、「当たった相手が敵か」はタグかレイヤーのどちらでも見分けられます（<a href="#layers-vs-tags">タグとの使い分け</a>）。</p></div>
 
   <h2 id="objects-getcomponent">スクリプトを取り出して呼ぶ</h2>
   <p>見つけたオブジェクトに付いているスクリプトは <code>GetComponent</code> で取り出します。受け取る変数を <code>@</code> を付けて渡すのがポイントです。取り出したら、そのクラスの公開メソッドや公開メンバ変数を直接使えます。</p>
@@ -5193,7 +5194,7 @@ kbd {
         }
     }
   </script>
-  <p>レイヤーで見分けるときは <code>if (other.layer == CollisionLayer::Enemy)</code> のように書きます。レイヤーの名前はプロジェクトごとに違います（次の節）。オブジェクトのタグで見分けるときは <code>if (other.gameObject.CompareTag("Enemy"))</code> です（<a href="#script-tags">タグで見分ける</a>）。</p>
+  <p>レイヤーで見分けるときは <code>if (other.layer == CollisionLayer::Enemy)</code> のように書きます。レイヤーの名前はプロジェクトごとに違います（<a href="#script-layers">当たり判定のレイヤー</a>）。オブジェクトのタグで見分けるときは <code>if (other.gameObject.CompareTag("Enemy"))</code> です（<a href="#script-tags">タグで見分ける</a>）。</p>
   <div class="table-wrap">
   <table>
     <thead><tr><th>Collision のプロパティ</th><th>中身</th></tr></thead>
@@ -5207,29 +5208,8 @@ kbd {
   </div>
 
   <h2 id="physics-layers">レイヤーで当たる相手を絞る</h2>
-  <p>レイヤーはコライダーのグループです。「自機の弾は敵にだけ当たる」のように、当たる組み合わせをシーンごとに決めます。</p>
-  <ol class="steps">
-    <li><strong>レイヤーを足す</strong><span class="ui">Edit<span class="arrow">▸</span>Project Settings…</span> の <span class="ui">Collision Layers</span> で名前を足して <span class="ui">適用</span> します。スクリプトの <code>CollisionLayer::名前</code> は、<strong>エディタを起動し直すと</strong>使えるようになります。</li>
-    <li><strong>コライダーのレイヤーを選ぶ</strong>各オブジェクトのコライダーの <span class="ui">レイヤー</span> を選びます。</li>
-    <li><strong>当たる組み合わせにチェックを入れる</strong><span class="ui">Scene Settings</span> の <span class="ui">当たり判定のレイヤー</span> の表でチェックを入れ、<kbd>Ctrl</kbd>+<kbd>S</kbd> でシーンを保存します。</li>
-  </ol>
-  <div class="callout warn" data-title="足したレイヤーは、チェックを入れるまでどれとも当たらない"><p>シーンに保存された組み合わせの表が、そのシーンの当たりのすべてを決めます。テンプレートのシーンに入っているのは <code>Default</code> × <code>Default</code> だけです。エンジンが置く床（DefaultGround）も <code>Default</code> なので、プレイヤーを <code>Player</code> レイヤーにしたら、<code>Player</code> × <code>Default</code> にもチェックを入れないと床をすり抜けます。</p></div>
-  <p>たとえばシューティングなら、次の 3 つだけを当てれば足ります。弾どうし・敵どうしは判定しないので、スクリプトで相手を見分ける手間も減ります。</p>
-  <script type="text/x-code" data-lang="json" data-file="_scene.json（シューティングの例）">
-    "collision": {
-        "pairs": [
-            [ "Enemy", "Player" ],
-            [ "PlayerBullet", "Enemy" ],
-            [ "EnemyBullet", "Player" ]
-        ]
-    }
-  </script>
-  <p>ゲームの途中で組み合わせを変えるときは <code>Physics::SetLayerCollision</code> を使います（シーンのファイルは書き換えません）。</p>
-  <script type="text/x-code" data-lang="as">
-    // 無敵の間だけ、敵と敵の弾に当たらなくする
-    Physics::SetLayerCollision(CollisionLayer::Player, CollisionLayer::Enemy, false);
-    Physics::SetLayerCollision(CollisionLayer::Player, CollisionLayer::EnemyBullet, false);
-  </script>
+  <p>レイヤーはコライダーの形のグループです。「自機の弾は敵にだけ当たる」のように、当たる組み合わせをシーンごとに決めます。足したレイヤーは、<span class="ui">Scene Settings</span> の <span class="ui">当たり判定のレイヤー</span> の表でチェックを入れるまでどれとも当たりません（床の <code>Default</code> とも当たらないので、すり抜けます）。</p>
+  <p>レイヤーが何に効くか・足し方・組み方の例・スクリプトからの使い方・タグとの使い分けは <a href="#script-layers">当たり判定のレイヤー</a> にまとめてあります。</p>
 
   <h2 id="physics-rigidbody">剛体で動かす</h2>
   <p>剛体（Rigidbody）を付けると、重力で落ち、ほかの物とぶつかって跳ね返ります。</p>
@@ -5409,7 +5389,7 @@ kbd {
     <tbody>
       <tr><td>両方にコライダーが付いていて、形が足してあり、有効になっているか</td><td>Inspector の <span class="ui">コライダー</span></td></tr>
       <tr><td>形の大きさと位置が見た目と合っているか</td><td>ツールバーの <span class="ui">◍ Collider</span> で線を表示（停止中も出ます）</td></tr>
-      <tr><td>2 つのレイヤーの組み合わせにチェックが入っているか</td><td><span class="ui">Scene Settings</span> の <span class="ui">当たり判定のレイヤー</span></td></tr>
+      <tr><td>2 つのレイヤーの組み合わせにチェックが入っているか（<a href="#script-layers">当たり判定のレイヤー</a>）</td><td><span class="ui">Scene Settings</span> の <span class="ui">当たり判定のレイヤー</span></td></tr>
       <tr><td>剛体・キャラクタコントローラのコライダーのトリガーが外れているか</td><td>Inspector の <span class="ui">トリガー</span></td></tr>
       <tr><td>両方とも <span class="ui">静止</span> になっていないか</td><td>Inspector の <span class="ui">静止</span></td></tr>
       <tr><td>メソッドの名前と引数が正しいか（<code>void OnTriggerEnter(Collision@ other)</code>）</td><td>スクリプト</td></tr>
@@ -5417,6 +5397,157 @@ kbd {
     </tbody>
   </table>
   </div>
+</article>
+
+<article class="page" id="script-layers" data-group="スクリプト" data-title="当たり判定のレイヤー" data-nav="レイヤー" data-keywords="レイヤー layer collisionlayer collision layers 当たり判定 グループ 組み合わせ 表 マトリクス matrix マスク layermask setlayercollision getlayercollision selflayer 当たらない すり抜ける タグ tag 違い 使い分け ソートレイヤー unity culling mask チャンネル channel">
+  <h1>当たり判定のレイヤー</h1>
+  <p class="lead">レイヤーは当たり判定のグループです。「自機の弾は敵にだけ当たる」「敵どうしは重なってもよい」のように、どのグループとどのグループがぶつかるかを決めます。このページでは、レイヤーが何に効くか、どこで決めるか、どう組むか、タグとどう使い分けるかをまとめます。</p>
+
+  <h2 id="layers-what">レイヤーで決まること</h2>
+  <p>レイヤーは<strong>コライダーの形 1 つずつ</strong>に付く名前です。2 つの形が重なると、エンジンはまず 2 つのレイヤーの組み合わせが「当たる」かを表で引きます。当たらない組み合わせなら、知らせも押し出しも何も起きません。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>働き</th><th>レイヤーの表が効くか</th></tr></thead>
+    <tbody>
+      <tr><td>重なったことの知らせ（<code>OnTriggerEnter</code> など）</td><td>効く</td></tr>
+      <tr><td>押し出しと <code>OnCollisionEnter</code> など</td><td>効く</td></tr>
+      <tr><td>剛体が床や壁・ほかの剛体にぶつかる</td><td>効く</td></tr>
+      <tr><td>キャラクタコントローラが床に立つ・壁に当たる</td><td>効く（コライダーの先頭の形のレイヤーで見る）</td></tr>
+      <tr><td>レイキャスト・<code>OverlapSphere</code>・<code>OverlapBox</code></td><td>表は使わない。引数の <code>layerMask</code> で対象のレイヤーを選ぶ</td></tr>
+      <tr><td>描画・ライト・カメラ</td><td>効かない（カメラごとに映す物を分ける仕組みはありません）</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>当たらない組み合わせは、判定そのものを飛ばします。弾どうし・敵どうしのように判定が要らない組み合わせを外すと、スクリプトで相手を見分ける手間が減り、判定の数も減ります。</p>
+
+  <h2 id="layers-setup">3 つの場所で決める</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>決めること</th><th>どこで</th><th>保存先</th></tr></thead>
+    <tbody>
+      <tr><td>レイヤーの名前の並び（最大 32 個。先頭は必ず <code>Default</code>）</td><td><span class="ui">Edit<span class="arrow">▸</span>Project Settings…<span class="arrow">▸</span>Collision Layers</span></td><td><span class="path">Application/Config/EngineSettings/Layers.json</span>（プロジェクトで共通）</td></tr>
+      <tr><td>形ごとのレイヤー</td><td>Inspector のコライダーの形の <span class="ui">レイヤー</span></td><td>シーンのオブジェクトの JSON（名前で書く）</td></tr>
+      <tr><td>当たる組み合わせ</td><td><span class="ui">Scene Settings</span> の <span class="ui">当たり判定のレイヤー</span> の表</td><td>シーンの <span class="path">_scene.json</span> の <code>collision.pairs</code>（シーンごと）</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ol class="steps">
+    <li><strong>レイヤーを足す</strong><span class="ui">Collision Layers</span> で <span class="ui">レイヤーを足す</span>、名前を入れて <span class="ui">適用</span>。スクリプトの <code>CollisionLayer::名前</code> は、<strong>エディタを起動し直すと</strong>使えるようになります（インスペクタの選択肢にはすぐ出ます）。</li>
+    <li><strong>形のレイヤーを選ぶ</strong>各オブジェクトのコライダーの形ごとに <span class="ui">レイヤー</span> を選びます。足したばかりの形は <code>Default</code> です。</li>
+    <li><strong>当たる組み合わせにチェックを入れる</strong><span class="ui">Scene Settings</span> の <span class="ui">当たり判定のレイヤー</span> の表で、当たる組み合わせにチェックを入れ、<kbd>Ctrl</kbd>+<kbd>S</kbd> でシーンを保存します。</li>
+  </ol>
+  <div class="callout warn" data-title="足したレイヤーは、チェックを入れるまでどれとも当たらない"><p>シーンに保存された組み合わせの表が、そのシーンの当たりのすべてを決めます。テンプレートのシーンに入っているのは <code>Default</code> × <code>Default</code> だけです。エンジンが置く床（DefaultGround）も <code>Default</code> なので、プレイヤーを <code>Player</code> レイヤーにしたら、<code>Player</code> × <code>Default</code> にもチェックを入れないと床をすり抜けます。</p></div>
+  <p><span class="path">_scene.json</span> に <code>collision</code> が無いシーンは、<code>Default</code> がすべてのレイヤーと当たり、ほかの組み合わせは当たらない既定の表になります。</p>
+
+  <h2 id="layers-examples">組み方の例</h2>
+
+  <h3 id="layers-example-shooter">シューティング：当てる組み合わせだけを選ぶ</h3>
+  <p>自機・敵・自機の弾・敵の弾の 4 つのレイヤーを作り、次の 3 つだけを当てます。弾どうし・敵どうし・自機と自機の弾は判定しないので、<code>OnTriggerEnter</code> に届く相手は必ず「当たってほしい相手」になります。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th></th><th>Player</th><th>Enemy</th><th>PlayerBullet</th><th>EnemyBullet</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Player</strong></td><td></td><td>当たる</td><td></td><td>当たる</td></tr>
+      <tr><td><strong>Enemy</strong></td><td>当たる</td><td></td><td>当たる</td><td></td></tr>
+      <tr><td><strong>PlayerBullet</strong></td><td></td><td>当たる</td><td></td><td></td></tr>
+      <tr><td><strong>EnemyBullet</strong></td><td>当たる</td><td></td><td></td><td></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <script type="text/x-code" data-lang="json" data-file="_scene.json（シューティングの例）">
+    "collision": {
+        "pairs": [
+            [ "Enemy", "Player" ],
+            [ "PlayerBullet", "Enemy" ],
+            [ "EnemyBullet", "Player" ]
+        ]
+    }
+  </script>
+
+  <h3 id="layers-example-hitbox">1 つのオブジェクトに 2 つのレイヤー：体と攻撃の当たり</h3>
+  <p>レイヤーは形ごとに付くので、1 つのコライダーに「体」と「攻撃の当たり」を別のレイヤーで持てます。たとえばプレイヤーの体の形は <code>Player</code>（トリガーを外して床に立つ）、体の前に置いた剣の箱は <code>PlayerAttack</code>（トリガー）にして、<code>PlayerAttack</code> は <code>Enemy</code> とだけ当てます。届いた知らせが自分のどちらの形かは <code>selfLayer</code> で分かります。</p>
+  <script type="text/x-code" data-lang="as" data-file="PlayerSword.as">
+    using namespace CoreEngine;
+
+    class PlayerSword : ScriptComponent
+    {
+        [Tooltip("与えるダメージ")]
+        int damage = 1;
+
+        void OnTriggerEnter(Collision@ other)
+        {
+            if (other.selfLayer != CollisionLayer::PlayerAttack) {
+                return;                                   // 体の形に触れた知らせは無視する
+            }
+            EnemyHealth@ health;
+            if (other.gameObject !is null && other.gameObject.GetComponent(@health)) {
+                health.TakeDamage(damage);
+            }
+        }
+    }
+  </script>
+
+  <h3 id="layers-example-ground">光線で床だけを調べる</h3>
+  <p>床や壁を <code>Environment</code> のようなレイヤーにしておくと、足元の光線が敵やアイテムに当たらず、床だけを拾えます。レイキャストは組み合わせの表を使わないので、対象のレイヤーをマスクで渡します。</p>
+  <script type="text/x-code" data-lang="as">
+    // 足元から下へ 1.2m の光線を飛ばし、Environment に当たれば地面の上にいる
+    int groundMask = Physics::LayerMask(CollisionLayer::Environment);
+    RaycastHit@ hit = Physics::Raycast(owner.transform.position, Vector3(0.0f, -1.0f, 0.0f), 1.2f, groundMask);
+    bool grounded = hit !is null;
+  </script>
+
+  <h2 id="layers-script">スクリプトから使う</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>書き方</th><th>中身</th></tr></thead>
+    <tbody>
+      <tr><td><code>CollisionLayer::Enemy</code></td><td>レイヤーの値。名前は起動したときの <span class="path">Layers.json</span> から作るので、足したり名前を変えたりしたら起動し直します（<a href="#api-CollisionLayer">CollisionLayer</a>）。</td></tr>
+      <tr><td><code>other.layer</code> ／ <code>other.selfLayer</code></td><td>当たり判定の知らせで、相手の形 ／ 自分の形のレイヤー（<a href="#api-Collision">Collision</a>）。</td></tr>
+      <tr><td><code>owner.collider.layer</code></td><td>読むと先頭の形のレイヤー、書くとすべての形のレイヤーが変わります（<a href="#api-Collider">Collider</a>）。</td></tr>
+      <tr><td><code>owner.collider.AddSphere(0.5f, CollisionLayer::Item)</code></td><td>レイヤーを決めて形を足します。</td></tr>
+      <tr><td><code>Physics::LayerMask(CollisionLayer::Enemy) | Physics::LayerMask(CollisionLayer::Boss)</code></td><td>レイキャストと重なりの検索で対象にするレイヤー。<code>-1</code>（省略）はすべて（<a href="#api-Physics">Physics</a>）。</td></tr>
+      <tr><td><code>Physics::SetLayerCollision(a, b, false)</code> ／ <code>Physics::GetLayerCollision(a, b)</code></td><td>今のシーンの組み合わせを切り替える ／ 調べる。シーンのファイルは書き換えないので、シーンを読み込むとファイルの表から始まります。</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <script type="text/x-code" data-lang="as">
+    // 無敵の間だけ、敵と敵の弾に当たらなくする
+    Physics::SetLayerCollision(CollisionLayer::Player, CollisionLayer::Enemy, false);
+    Physics::SetLayerCollision(CollisionLayer::Player, CollisionLayer::EnemyBullet, false);
+
+    // 無敵が終わったら戻す
+    Physics::SetLayerCollision(CollisionLayer::Player, CollisionLayer::Enemy, true);
+    Physics::SetLayerCollision(CollisionLayer::Player, CollisionLayer::EnemyBullet, true);
+  </script>
+
+  <h2 id="layers-rename">名前を変える・並べ替えるとき</h2>
+  <ul>
+    <li>シーンは形のレイヤーと組み合わせの表を<strong>名前で</strong>覚えています。並べ替えても、シーンの当たりは変わりません。</li>
+    <li><span class="ui">Collision Layers</span> で名前を変えたり消したりすると、前の名前を持つ形は <code>Default</code> として読まれ、Console に警告が出ます。組み合わせの表の前の名前も、警告を出して読み飛ばします。名前を変えたら、その名前を使っていた形と表を付け直してください。</li>
+    <li>スクリプトは <code>CollisionLayer::名前</code> で書いておけば、起動し直すだけで新しい並びに合います。</li>
+  </ul>
+
+  <h2 id="layers-vs-tags">タグとの使い分け</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th></th><th>タグ</th><th>レイヤー</th></tr></thead>
+    <tbody>
+      <tr><td>付く所</td><td>オブジェクトに 1 つ</td><td>コライダーの形ごと</td></tr>
+      <tr><td>表すこと</td><td>何者か（プレイヤー・敵・拾える物）</td><td>どれとどれがぶつかるか</td></tr>
+      <tr><td>エンジンが見るか</td><td>見ない（スクリプトが読むだけ）</td><td>当たり判定と物理が見る</td></tr>
+      <tr><td>数</td><td>いくつでも</td><td>32 個まで</td></tr>
+      <tr><td>おもな使い方</td><td><code>CompareTag</code>・<code>FindObjectsWithTag</code></td><td>当たる組み合わせ・レイキャストのマスク</td></tr>
+      <tr><td>名前の一覧</td><td><span class="ui">Project Settings ▸ Tags</span></td><td><span class="ui">Project Settings ▸ Collision Layers</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>ぶつかる・ぶつからないを変えたいときはレイヤー、当たった相手が何者かを知りたいだけならタグ（か <code>GetComponent</code>）を使います。「敵の弾は敵に当たらない」はレイヤーでしか決められません。「当たった相手が敵か」は、どちらでも見分けられます。タグの使い方は <a href="#script-tags">タグで見分ける</a> にあります。</p>
+
+  <h2 id="layers-other">ほかの「レイヤー」</h2>
+  <ul>
+    <li><strong>2D のソートレイヤー</strong>：スプライトの <span class="ui">ソートレイヤー</span>・<span class="ui">レイヤー内の順</span> は、描く順番を決める数です。当たり判定とは関係ありません（<a href="#g2d-order">重なりの順番</a>）。</li>
+    <li><strong>Unity から来た人へ</strong>：Unity の Layer はオブジェクトに 1 つ付き、物理の Layer Collision Matrix のほか、カメラの Culling Mask やライトにも効きます。CoreEngine のレイヤーは当たり判定と物理だけに効き、形ごとに付きます（Unreal Engine の Collision の Object Type とチャンネルに近い考え方です）。カメラやライトでオブジェクトを選んで外す仕組みは今はありません。</li>
+  </ul>
 </article>
 
 <article class="page" id="script-ui" data-group="スクリプト" data-title="UI を作る" data-nav="UI" data-keywords="ui hud 画面 文字 テキスト uitext 画像 uiimage ボタン uibutton スライダー uislider トグル uitoggle アンカー anchor ピボット pivot recttransform フォーカス focus clearfocus メニュー タイトル スコア フォント font">
@@ -9000,6 +9131,7 @@ kbd {
       <tr><td>名前で探す</td><td><code>GameObject.Find("A")</code></td><td><code>owner.FindObject("A")</code></td></tr>
       <tr><td>タグを比べる</td><td><code>other.CompareTag("Player")</code></td><td><code>other.gameObject.CompareTag("Player")</code></td></tr>
       <tr><td>タグで探す</td><td><code>GameObject.FindGameObjectsWithTag("Enemy")</code></td><td><code>owner.FindObjectsWithTag("Enemy")</code></td></tr>
+      <tr><td>当たるレイヤーの組み合わせ</td><td>オブジェクトの Layer ＋ Layer Collision Matrix</td><td>コライダーの形ごとのレイヤー ＋ シーンの <span class="ui">当たり判定のレイヤー</span>（<a href="#script-layers">詳しく</a>）</td></tr>
       <tr><td>経過時間</td><td><code>Time.deltaTime</code></td><td><code>Time::DeltaTime()</code></td></tr>
       <tr><td>入力</td><td><code>Input.GetButtonDown("Jump")</code></td><td><code>Input::IsActionTriggered(InputAction::Jump)</code></td></tr>
       <tr><td>ログ</td><td><code>Debug.Log(x)</code></td><td><code>Log("" + x)</code>（引数は文字列）</td></tr>
@@ -9396,7 +9528,7 @@ kbd {
         Log("攻撃が当たった: " + targets[i].name);
     }
   </script>
-  <p>当たる組み合わせはレイヤーで絞れます（<a href="#physics-layers">レイヤーで当たる相手を絞る</a>）。当たらないときの調べ方は <a href="#physics-debug">当たらないときの調べ方</a> にあります。</p>
+  <p>当たる組み合わせはレイヤーで絞れます（<a href="#script-layers">当たり判定のレイヤー</a>）。当たらないときの調べ方は <a href="#physics-debug">当たらないときの調べ方</a> にあります。</p>
 
   <h2 id="g2d-spawn">弾や敵を出す・消す</h2>
   <p>何度も出す物はプレハブにしておき、<code>InstantiatePrefab</code> で作ります。プレハブは、組んだオブジェクトを Hierarchy の右クリック <span class="ui">プレハブとして保存</span> で作ります（<a href="#editor-prefab">プレハブ</a>）。</p>
@@ -13492,7 +13624,7 @@ void OnTriggerEnter(Collision@ other)
       ["Item", 8, "（サンプルの例）アイテム"],
       ["Environment", 9, "（サンプルの例）壁・床"]
     ],
-    see: [["script-physics", "物理と当たり判定"], ["editor-settings", "レイヤーを増やす"]]
+    see: [["script-layers", "当たり判定のレイヤー"], ["script-physics", "物理と当たり判定"], ["editor-settings", "レイヤーを増やす"]]
   },
 
   // =================================================================== 時間・Tween
