@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
+#include "Graphics/Shader/ShaderBindingContract.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Graphics/Water/FFT/FFTOceanGpuResources.h"
@@ -142,6 +143,7 @@ namespace CoreEngine
 
         // ---- 岸の泡（カメラの周りの範囲。水の粒の静止位置ごと）----
         CustomShaderPipeline foamPipeline_{};
+        BindingTable foamBindings_{};
         /// @brief 書き込み先は Dispatch ごとに入れ替える
         FFTOceanPingPong foam_{};
         bool resetPending_ = true;
@@ -152,10 +154,12 @@ namespace CoreEngine
 
         // ---- ならした海底の高さ（寄せ・引きの勾配と水深を測る）----
         CustomShaderPipeline smoothSeabedPipeline_{};
+        BindingTable smoothSeabedBindings_{};
         FFTOceanGpuTexture smoothSeabed_{};
 
         // ---- 寄せ・引きのずれ（ならした海底と同じ粗い格子）----
         CustomShaderPipeline swashPipeline_{};
+        BindingTable swashBindings_{};
         FFTOceanGpuTexture swash_{};
     };
 }

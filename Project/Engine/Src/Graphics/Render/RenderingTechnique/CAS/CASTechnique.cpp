@@ -10,6 +10,7 @@
 #include "Graphics/Render/Pass/RenderPass.h"
 #include "Graphics/RootSignature/ShaderBinder.h"
 #include <cassert>
+#include <iterator>
 
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/ImguiManager.h"
@@ -30,11 +31,22 @@ namespace CoreEngine
             CVarRange{ 0.0f, 1.0f } };
 
         constexpr const char* kCVarPrefix = "r.CAS";
+
+        /// @brief CAS.PS.hlsl の契約
+        namespace CASBind {
+            enum Slot : size_t { gSceneColor, CASParams, Count };
+            inline constexpr ShaderBindingDecl kDecls[] = {
+                { "gSceneColor", ShaderBindingType::SRV, BindingUsage::Required }, // t0
+                { "CASParams",   ShaderBindingType::CBV, BindingUsage::Required }, // b0
+            };
+            static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
+        }
     }
 
     void CASTechnique::Initialize(GraphicsCore* dxCommon)
     {
         RenderingTechniqueBase::Initialize(dxCommon);
+        bindings_ = ResolveBindingTable(CASBind::kDecls);
     }
 
     void CASTechnique::Execute(const RenderContext& context, D3D12_GPU_DESCRIPTOR_HANDLE& outputSrvHandle)
@@ -77,11 +89,12 @@ namespace CoreEngine
         cmdList->SetPipelineState(pipelineStateManager_.GetPipelineState(BlendMode::kBlendModeNone));
 
         ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Graphics);
-        binder.Set(GetRootSlot("gSceneColor"), inputHandle);
+        binder.Set(bindings_[CASBind::gSceneColor], inputHandle);
         if (cbAddress != 0) {
-            binder.Set(GetRootSlot("CASParams"), cbAddress);
+            binder.Set(bindings_[CASBind::CASParams], cbAddress);
         }
 
+        binder.ValidateBeforeDraw(bindings_);
         DrawFullscreenQuad(cmdList);
 
         casTarget->End(cmdList);

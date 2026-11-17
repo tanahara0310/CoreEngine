@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.89.10">
+<meta name="engine-version" content="0.89.11">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11437,6 +11437,14 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-89-11">v0.89.11 <span class="dim">（2026-11-17）</span></h3>
+  <p>エンジンのシェーダへリソースを差す所で、ルートパラメータの番号を描くたびに名前で引いていた所を、パスごとの宣言の表へ移した版です。見た目・動き・シーンの書き方・CVar・スクリプトは変わりません。</p>
+  <ul>
+    <li><strong>宣言の表</strong>：大気（LUT・空の光・空のキューブマップの 9 本）、FFT の海（時間発展・IFFT・仕上げ）、岸と白波の泡、スキン、Hi-Z の遮蔽判定、TAA・SSAO（本体・ぼかし・時間方向）・水のコースティクス・CAS、トーンマップの測光、空・スプライト・UI の画像・2D と 3D の文字・パーティクル・線・グリッドは、シェーダが使うリソースを表（<code>ShaderBindingDecl</code> の並び）に書き、パイプラインを作った直後に <code>BindingTable::Resolve</code> で 1 回だけ引きます。描くときは <code>ShaderBinder</code> で表のルートパラメータへ差します。コンピュートのパイプラインの表は <code>CustomShaderPipeline::ResolveComputeBindings</code> で引きます。</li>
+    <li><strong>表とシェーダが合わないとき</strong>：シェーダに無いリソースを「要る」と書いた・種類が違うときは、起動の時点でエラーのログを出し、そのパスを使いません。今までは何も出さずに、差さないまま描いていました。Debug と Development では、要るリソースを差さずに描こうとしたときもエラーのログを出します。ボリュメトリックフォグのパイプラインを作れなかったときのログに、パスの名前が出ていなかったのを直しました。</li>
+    <li><strong>消した関数（エンジンの C++ だけ）</strong>：名前から番号（<code>int</code>）を返す <code>GetRootParamIndex</code>（レンダラー・<code>PostEffectBase</code>・<code>CustomShaderPipeline</code>）、<code>CustomShaderPipeline::GetComputeRootParamIndex</code>・<code>GetRootSlot</code>、<code>RootSignatureManager::GetRootParameterIndex</code>、<code>ShaderReflectionData::GetRootParameterIndexByName</code>、<code>FindRootParamIndex</code>、<code>ToRootParamIndex</code> を消しました。C++ で名前から引くときは <code>ShaderReflectionData::GetRootSlot</code> か <code>BindingTable::Resolve</code> を使い、<code>ShaderBinder::Set</code> で差してください。スクリプトには関係しません。</li>
+  </ul>
 
   <h3 id="changelog-v0-89-10">v0.89.10 <span class="dim">（2026-11-17）</span></h3>
   <p>レンダラーとポストエフェクトで、同じ形で何か所にも書いていた所を普通の関数と基底クラスへまとめた版です。見た目・動き・シーンの書き方・CVar・スクリプトは変わりません。</p>

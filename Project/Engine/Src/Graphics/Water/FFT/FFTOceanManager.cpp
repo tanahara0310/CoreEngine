@@ -13,6 +13,7 @@
 #include "Graphics/RHI/Resource/UavTexture.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
+#include "Graphics/Water/FFT/FFTOceanBindings.h"
 #include "Graphics/Water/FFT/FFTOceanDispatchHelper.h"
 #include "Graphics/Water/FFT/FFTOceanResourceFactory.h"
 #include "Utility/Logger/Logger.h"
@@ -258,7 +259,11 @@ namespace CoreEngine
             return false;
         }
 
-        return true;
+        return evolutionPipeline_.ResolveComputeBindings(
+                FFTOceanEvolutionBind::kDecls, "FFTOceanTimeEvolution", evolutionBindings_)
+            && ifftPipeline_.ResolveComputeBindings(FFTOceanIFFTBind::kDecls, "FFTOceanIFFT", ifftBindings_)
+            && finalizePipeline_.ResolveComputeBindings(
+                FFTOceanFinalizeBind::kDecls, "FFTOceanFinalize", finalizeBindings_);
     }
 
     bool FFTOceanManager::CreateOutputTextures()
@@ -429,6 +434,7 @@ namespace CoreEngine
             spectrumPingPongA_,
             spectrumPingPongB_,
             evolutionPipeline_,
+            evolutionBindings_,
             spectrumBuffers_[cascadeIndex].srv,
             GetSimulationConstantsAddress(cascadeIndex),
             GetSettings().resolution);
@@ -450,6 +456,7 @@ namespace CoreEngine
                 textures.Read(),
                 textures.Write(),
                 ifftPipeline_,
+                ifftBindings_,
                 constantsAddress,
                 GetSettings().resolution);
             textures.Swap();
@@ -486,6 +493,7 @@ namespace CoreEngine
             spectrumA,
             spectrumB,
             finalizePipeline_,
+            finalizeBindings_,
             displacementMap_.sliceUav[cascadeIndex].gpuHandle,
             normalMap_.sliceUav[cascadeIndex].gpuHandle,
             jacobianMap_.sliceUav[cascadeIndex].gpuHandle,

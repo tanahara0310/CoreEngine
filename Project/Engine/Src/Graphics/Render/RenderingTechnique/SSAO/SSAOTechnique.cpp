@@ -7,11 +7,13 @@
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 #include "Graphics/Render/Pass/RenderPass.h"
+#include "Graphics/RootSignature/ShaderBinder.h"
 #include "Camera/View/ViewInfo.h"
 #include "Scene/SceneManager.h"
 #include "Math/MathCore.h"
 #include <cstring>
 #include <cassert>
+#include <iterator>
 
 #include "Utility/CVar/CVar.h"
 #include "Editor/ImGui/CVarPanel.h"
@@ -54,11 +56,24 @@ namespace CoreEngine
             CVarRange{ 4.0f, 64.0f } };
 
         constexpr const char* kCVarPrefix = "r.SSAO";
+
+        /// @brief SSAO.PS.hlsl の契約
+        namespace SSAOBind {
+            enum Slot : size_t { gNormalRoughness, gSceneDepth, SSAOParams, Count };
+            inline constexpr ShaderBindingDecl kDecls[] = {
+                { "gNormalRoughness", ShaderBindingType::SRV, BindingUsage::Required },    // t0
+                // FrameBlackboard から取れたフレームだけ差す
+                { "gSceneDepth",      ShaderBindingType::SRV, BindingUsage::Conditional }, // t1
+                { "SSAOParams",       ShaderBindingType::CBV, BindingUsage::Required },    // b0
+            };
+            static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
+        }
     }
 
     void SSAOTechnique::Initialize(GraphicsCore* dxCommon)
     {
         RenderingTechniqueBase::Initialize(dxCommon);
+        bindings_ = ResolveBindingTable(SSAOBind::kDecls);
     }
 
     void SSAOTechnique::Execute(const RenderContext& context, D3D12_GPU_DESCRIPTOR_HANDLE& outputSrvHandle)
@@ -119,29 +134,26 @@ namespace CoreEngine
         cmdList->SetGraphicsRootSignature(rootSignatureManager_->GetRootSignature());
         cmdList->SetPipelineState(pipelineStateManager_.GetPipelineState(BlendMode::kBlendModeNone));
 
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Graphics);
+
         // t0: NormalRoughness
-        const int normalIdx = GetRootParamIndex("gNormalRoughness");
-        if (normalIdx >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(
-                normalIdx,
-                gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness));
-        }
+        binder.Set(bindings_[SSAOBind::gNormalRoughness],
+            gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness));
 
         // t1: SceneDepth（深度からワールド座標を復元する）。FrameBlackboard 経由で取得する
-        const int depthIdx = GetRootParamIndex("gSceneDepth");
-        if (depthIdx >= 0 && context.frameBlackboard) {
+        if (context.frameBlackboard) {
             D3D12_GPU_DESCRIPTOR_HANDLE depthHandle{};
             if (context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneDepth, depthHandle)) {
-                cmdList->SetGraphicsRootDescriptorTable(depthIdx, depthHandle);
+                binder.Set(bindings_[SSAOBind::gSceneDepth], depthHandle);
             }
         }
 
         // CBV: SSAOParams
-        const int paramsIdx = GetRootParamIndex("SSAOParams");
-        if (paramsIdx >= 0 && cbAddress != 0) {
-            cmdList->SetGraphicsRootConstantBufferView(paramsIdx, cbAddress);
+        if (cbAddress != 0) {
+            binder.Set(bindings_[SSAOBind::SSAOParams], cbAddress);
         }
 
+        binder.ValidateBeforeDraw(bindings_);
         DrawFullscreenQuad(cmdList);
 
         ssaoTarget->End(cmdList);

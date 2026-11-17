@@ -9,6 +9,7 @@
 #include "Utility/Logger/Logger.h"
 
 #include <cassert>
+#include <exception>
 #include <filesystem>
 
 namespace CoreEngine
@@ -266,22 +267,21 @@ namespace CoreEngine
         return const_cast<RootSignatureManager*>(computeRootSignatureMg_.get())->GetRootSignature();
     }
 
-    RootSlot CustomShaderPipeline::GetRootSlot(const std::string& resourceName) const
+    bool CustomShaderPipeline::ResolveComputeBindings(
+        std::span<const ShaderBindingDecl> decls, const std::string& label, BindingTable& bindings) const
     {
-        if (!forwardRootSignatureMg_) {
-            return RootSlot{};
+        if (!computeReflection_) {
+            Logger::GetInstance().Warnf(LogCategory::Graphics,
+                "CustomShaderPipeline: {} のリフレクションを取得できません", label);
+            return false;
         }
-        return forwardRootSignatureMg_->GetRootSlot(resourceName);
-    }
-
-    int CustomShaderPipeline::GetRootParamIndex(const std::string& resourceName) const
-    {
-        return ToRootParamIndex(GetRootSlot(resourceName));
-    }
-
-    int CustomShaderPipeline::GetComputeRootParamIndex(const std::string& resourceName) const
-    {
-        return ToRootParamIndex(computeRootSignatureMg_ ? computeRootSignatureMg_->GetRootSlot(resourceName) : RootSlot{});
+        try {
+            bindings = BindingTable::Resolve(*computeReflection_, decls.data(), decls.size(), label);
+        }
+        catch (const std::exception&) {
+            return false;
+        }
+        return true;
     }
 
     bool CustomShaderPipeline::HasForwardPSO() const

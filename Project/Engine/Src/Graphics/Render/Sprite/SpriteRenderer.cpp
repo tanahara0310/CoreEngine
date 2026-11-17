@@ -6,6 +6,7 @@
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Render/RenderTarget/SceneDepth.h"
+#include "Graphics/Render/Sprite/SpriteBindings.h"
 #include <cassert>
 
 
@@ -20,6 +21,7 @@ namespace CoreEngine
         const auto shaders = BuildShadersAndRootSignature(device,
             L"Engine/Assets/Shaders/Sprite/Sprite.VS.hlsl", L"Engine/Assets/Shaders/Sprite/Sprite.PS.hlsl",
             "SpriteRenderer", config, "Sprite");
+        bindings_ = BindingTable::Resolve(*reflectionData_, SpriteBind::kDecls, "SpriteRenderer");
 
         bool result = psoMg_->CreateBuilder()
             .SetDebugName("Sprite")
@@ -39,10 +41,6 @@ namespace CoreEngine
 
     void SpriteRenderer::Initialize(ID3D12Device* /*device*/) {
         assert(false && "SpriteRenderer: Use Initialize(GraphicsCore*) instead of Initialize(ID3D12Device*).");
-    }
-
-    int SpriteRenderer::GetRootParamIndex(const std::string& resourceName) const {
-        return FindRootParamIndex(reflectionData_.get(), resourceName);
     }
 
     void SpriteRenderer::Initialize(GraphicsCore* dxCommon) {

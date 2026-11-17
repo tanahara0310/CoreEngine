@@ -7,6 +7,7 @@
 #include <wrl.h>
 #include "Math/MathCore.h"
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
+#include "Graphics/Shader/ShaderBindingContract.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 
@@ -518,16 +519,25 @@ namespace CoreEngine
         uint32_t apResultHeight_ = 0;
         DescriptorAllocator* descriptorAllocator_ = nullptr;
 
-        // LUT 生成パイプライン
+        // LUT 生成パイプラインと、パイプラインを組んだときに引いた束ねの表
         CustomShaderPipeline transmittancePipeline_{};
+        BindingTable transmittanceBindings_{};
         CustomShaderPipeline multiScatteringPipeline_{};
+        BindingTable multiScatteringBindings_{};
         CustomShaderPipeline skyViewPipeline_{};
+        BindingTable skyViewBindings_{};
         CustomShaderPipeline cameraVolumePipeline_{};
+        BindingTable cameraVolumeBindings_{};
         CustomShaderPipeline skyIrradiancePipeline_{};
+        BindingTable skyIrradianceBindings_{};
         CustomShaderPipeline skyEnvironmentCapturePipeline_{};
+        BindingTable skyEnvironmentCaptureBindings_{};
         CustomShaderPipeline skyEnvironmentDownsamplePipeline_{};
+        BindingTable skyEnvironmentDownsampleBindings_{};
         CustomShaderPipeline skyEnvironmentPrefilterPipeline_{};
+        BindingTable skyEnvironmentPrefilterBindings_{};
         CustomShaderPipeline aerialPerspectivePipeline_{};
+        BindingTable aerialPerspectiveBindings_{};
         bool pipelinesReady_ = false;
     };
 }

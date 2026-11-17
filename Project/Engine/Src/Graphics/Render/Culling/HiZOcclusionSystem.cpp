@@ -6,6 +6,8 @@
 #include <cassert>
 #include <cmath>
 #include <cstring>
+#include <exception>
+#include <iterator>
 
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
@@ -16,6 +18,7 @@
 #include "Graphics/RHI/Resource/UploadRing.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/RootSignature/RootSignatureManager.h"
+#include "Graphics/RootSignature/ShaderBinder.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
@@ -28,6 +31,29 @@ namespace CoreEngine
     {
         // 構築 CS 定数の 256B アライメントスロットサイズ
         constexpr uint32_t kCbSlotSize = 256;
+
+        /// @brief HiZBuild.CS.hlsl の契約
+        namespace HiZBuildBind {
+            enum Slot : size_t { gSourceDepth, gDestHiZ, HiZBuildParams, Count };
+            inline constexpr ShaderBindingDecl kDecls[] = {
+                { "gSourceDepth",   ShaderBindingType::SRV, BindingUsage::Required }, // t0
+                { "gDestHiZ",       ShaderBindingType::UAV, BindingUsage::Required }, // u0
+                { "HiZBuildParams", ShaderBindingType::CBV, BindingUsage::Required }, // b0
+            };
+            static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
+        }
+
+        /// @brief HiZOcclusionCull.CS.hlsl の契約
+        namespace HiZCullBind {
+            enum Slot : size_t { gBounds, gHiZ, gVisibility, HiZCullParams, Count };
+            inline constexpr ShaderBindingDecl kDecls[] = {
+                { "gBounds",       ShaderBindingType::SRV, BindingUsage::Required }, // t0
+                { "gHiZ",          ShaderBindingType::SRV, BindingUsage::Required }, // t1
+                { "gVisibility",   ShaderBindingType::UAV, BindingUsage::Required }, // u0
+                { "HiZCullParams", ShaderBindingType::CBV, BindingUsage::Required }, // b0
+            };
+            static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
+        }
     }
 
     // ---------------------------------------------------------------
@@ -225,10 +251,11 @@ namespace CoreEngine
         if (!buildPso_) {
             return false;
         }
-        buildSourceIdx_ = buildReflectionData_->GetRootParameterIndexByName("gSourceDepth");
-        buildDestIdx_ = buildReflectionData_->GetRootParameterIndexByName("gDestHiZ");
-        buildParamsIdx_ = buildReflectionData_->GetRootParameterIndexByName("HiZBuildParams");
-        if (buildSourceIdx_ < 0 || buildDestIdx_ < 0 || buildParamsIdx_ < 0) {
+        try {
+            buildBindings_ = BindingTable::Resolve(*buildReflectionData_, HiZBuildBind::kDecls, "HiZBuild");
+        }
+        catch (const std::exception&) {
+            // 違反の内訳は BindingTable::Resolve が error ログへ出している
             return false;
         }
 
@@ -250,12 +277,14 @@ namespace CoreEngine
         if (!cullPso_) {
             return false;
         }
-        cullBoundsIdx_ = cullReflectionData_->GetRootParameterIndexByName("gBounds");
-        cullHiZIdx_ = cullReflectionData_->GetRootParameterIndexByName("gHiZ");
-        cullVisibilityIdx_ = cullReflectionData_->GetRootParameterIndexByName("gVisibility");
-        cullParamsIdx_ = cullReflectionData_->GetRootParameterIndexByName("HiZCullParams");
-        return cullBoundsIdx_ >= 0 && cullHiZIdx_ >= 0
-            && cullVisibilityIdx_ >= 0 && cullParamsIdx_ >= 0;
+        try {
+            cullBindings_ = BindingTable::Resolve(*cullReflectionData_, HiZCullBind::kDecls, "HiZOcclusionCull");
+        }
+        catch (const std::exception&) {
+            // 違反の内訳は BindingTable::Resolve が error ログへ出している
+            return false;
+        }
+        return true;
     }
 
     bool HiZOcclusionSystem::CreateBuffers(ID3D12Device* device)
@@ -452,23 +481,21 @@ namespace CoreEngine
         // 関数の入口で全ミップ UNORDERED_ACCESS、出口で全ミップ NON_PIXEL_SHADER_RESOURCE。
         // ミップ単位の遷移は GpuResource のサブリソース追跡がそのまま扱える
 
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
         for (uint32_t mip = 0; mip < hiZMipCount_; ++mip) {
             if (mip == 0) {
                 // 深度（NON_PIXEL_SHADER_RESOURCE 状態は RenderGraph の Read 宣言で保証済み）→ mip0
-                cmdList->SetComputeRootDescriptorTable(
-                    static_cast<UINT>(buildSourceIdx_), depthSRV);
+                binder.Set(buildBindings_[HiZBuildBind::gSourceDepth], depthSRV);
             } else {
                 // 読み側の 1 段上のミップだけ SRV 状態へ。書き込み先ミップは UAV のまま
                 Barrier::Transition(cmdList, hiZTexture_,
                     D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, mip - 1);
-                cmdList->SetComputeRootDescriptorTable(
-                    static_cast<UINT>(buildSourceIdx_), hiZMipSrvGpu_[mip - 1].gpuHandle);
+                binder.Set(buildBindings_[HiZBuildBind::gSourceDepth], hiZMipSrvGpu_[mip - 1].gpuHandle);
             }
-            cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(buildDestIdx_), hiZMipUavGpu_[mip].gpuHandle);
-            cmdList->SetComputeRootConstantBufferView(
-                static_cast<UINT>(buildParamsIdx_),
+            binder.Set(buildBindings_[HiZBuildBind::gDestHiZ], hiZMipUavGpu_[mip].gpuHandle);
+            binder.Set(buildBindings_[HiZBuildBind::HiZBuildParams],
                 buildParamsBuffer_->GetGPUVirtualAddress() + kCbSlotSize * mip);
+            binder.ValidateBeforeDraw(buildBindings_);
 
             const uint32_t mipW = (std::max)(hiZWidth_ >> mip, 1u);
             const uint32_t mipH = (std::max)(hiZHeight_ >> mip, 1u);
@@ -491,14 +518,12 @@ namespace CoreEngine
 
         cmdList->SetPipelineState(cullPso_.Get());
         cmdList->SetComputeRootSignature(cullRootSignatureMg_->GetRootSignature());
-        cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(cullBoundsIdx_), bounds_.Srv());
-        cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(cullHiZIdx_), hiZFullSrvGpu_.gpuHandle);
-        cmdList->SetComputeRootDescriptorTable(
-            static_cast<UINT>(cullVisibilityIdx_), visibilityUavGpu_.gpuHandle);
-        cmdList->SetComputeRootConstantBufferView(
-            static_cast<UINT>(cullParamsIdx_), cullParamsAddress);
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
+        binder.Set(cullBindings_[HiZCullBind::gBounds], bounds_.Srv());
+        binder.Set(cullBindings_[HiZCullBind::gHiZ], hiZFullSrvGpu_.gpuHandle);
+        binder.Set(cullBindings_[HiZCullBind::gVisibility], visibilityUavGpu_.gpuHandle);
+        binder.Set(cullBindings_[HiZCullBind::HiZCullParams], cullParamsAddress);
+        binder.ValidateBeforeDraw(cullBindings_);
 
         cmdList->Dispatch(DivRoundUp(queryCount, 64), 1, 1);
 

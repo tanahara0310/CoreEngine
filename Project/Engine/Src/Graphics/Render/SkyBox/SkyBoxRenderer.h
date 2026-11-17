@@ -1,6 +1,7 @@
 #pragma once
 #include "Graphics/Render/BaseRenderer.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Graphics/Shader/ShaderBindingContract.h"
 #include <d3d12.h>
 #include <wrl.h>
 #include <memory>
@@ -29,7 +30,10 @@ public:
     /// @brief パイプラインが利用可能か
     bool IsPipelineReady() const { return pipelineState_ != nullptr; }
 
-    /// @brief シェーダーリソース名からルートパラメータインデックスを取得
-    int GetRootParamIndex(const std::string& resourceName) const;
+    /// @brief ルートシグネチャから引いたシェーダーの結線（添字は SkyBoxBind::Slot）
+    const BindingTable& GetBindings() const { return bindings_; }
+
+private:
+    BindingTable bindings_;
 };
 }

@@ -6,13 +6,27 @@
 #include "Graphics/Pipeline/GraphicsPipelineUtil.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Graphics/RootSignature/ShaderBinder.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
 #include <cassert>
+#include <iterator>
 
 
 namespace CoreEngine
 {
+    namespace
+    {
+        namespace LineBind {
+            /// @brief Line.VS.hlsl / Line.PS.hlsl の契約
+            enum Slot : size_t { Camera, Count };
+            inline constexpr ShaderBindingDecl kDecls[] = {
+                { "Camera", ShaderBindingType::CBV, BindingUsage::Required },
+            };
+            static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
+        }
+    }
+
     void LineRendererPipeline::Initialize(ID3D12Device* device) {
         shaderCompiler_->Initialize();
         reflectionBuilder_->Initialize(shaderCompiler_->GetDxcUtils());
@@ -21,6 +35,7 @@ namespace CoreEngine
             L"Engine/Assets/Shaders/Line/Line.VS.hlsl", L"Engine/Assets/Shaders/Line/Line.PS.hlsl",
             "LineRenderer", reflectionData_);
         GraphicsPipelineUtil::BuildRootSignature(*rootSignatureMg_, device, *reflectionData_, RootSignatureConfig{}, "Line");
+        bindings_ = BindingTable::Resolve(*reflectionData_, LineBind::kDecls, "LineRenderer");
 
         bool result = psoMg_->CreateBuilder()
             .SetDebugName("Line")
@@ -119,10 +134,6 @@ namespace CoreEngine
         vbView_.SizeInBytes = allocation.size;
     }
 
-    int LineRendererPipeline::GetRootParamIndex(const std::string& resourceName) const {
-        return FindRootParamIndex(reflectionData_.get(), resourceName);
-    }
-
     void LineRendererPipeline::DrawLines(ID3D12GraphicsCommandList* cmdList, uint32_t vertexCount,
         uint32_t startVertexLocation) {
         // 頂点の確保に失敗したフレームは BufferLocation が 0 のままなので描かない
@@ -133,13 +144,12 @@ namespace CoreEngine
         // 頂点バッファを設定
         cmdList->IASetVertexBuffers(0, 1, &vbView_);
 
-        // WVP行列を設定（リフレクションから取得したインデックスを使用）
-        int cameraIdx = GetRootParamIndex("Camera");
-        if (cameraIdx >= 0 && wvpAddress_ != 0) {
-            cmdList->SetGraphicsRootConstantBufferView(
-                cameraIdx,  // シェーダーリフレクションから自動決定
-                wvpAddress_);
+        // WVP行列を設定
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Graphics);
+        if (wvpAddress_ != 0) {
+            binder.Set(bindings_[LineBind::Camera], wvpAddress_);
         }
+        binder.ValidateBeforeDraw(bindings_);
         cmdList->DrawInstanced(vertexCount, 1, startVertexLocation, 0);
     }
 

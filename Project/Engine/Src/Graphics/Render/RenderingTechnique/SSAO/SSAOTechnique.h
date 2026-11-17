@@ -57,6 +57,9 @@ namespace CoreEngine
         const std::wstring& GetPixelShaderPath() const override;
 
     private:
+        /// @brief 解決済みのルートパラメータ表（SSAOBind::kDecls の並び）
+        BindingTable bindings_;
+
         SSAOParams params_;
         // 定数は UploadRing（GraphicsCore::GetUploadRing）から毎フレーム確保する。
         // 単一バッファ上書きだと GPU 実行中フレームの行列を CPU が書き潰し、

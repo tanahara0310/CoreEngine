@@ -3,6 +3,7 @@
 
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
+#include "Graphics/RootSignature/ShaderBinder.h"
 #include "Math/MathCore.h"
 #include "Text/MsdfFont.h"
 
@@ -64,7 +65,7 @@ namespace CoreEngine
     }
 
     bool MsdfTextBatch::Draw(ID3D12GraphicsCommandList* cmdList, UploadRing& uploadRing,
-        const Matrix4x4& projection, int batchRootIndex, int atlasRootIndex,
+        const Matrix4x4& projection, RootSlot batchSlot, RootSlot atlasSlot,
         ID3D12PipelineState* pipelineState)
     {
         // ── バッチ共通の定数（射影とアトラス情報）────────────────
@@ -100,8 +101,9 @@ namespace CoreEngine
             cmdList->SetPipelineState(pipelineState);
         }
 
-        cmdList->SetGraphicsRootConstantBufferView(batchRootIndex, constantsAddress);
-        cmdList->SetGraphicsRootDescriptorTable(atlasRootIndex, font_->GetAtlasGpuHandle());
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Graphics);
+        binder.Set(batchSlot, constantsAddress);
+        binder.Set(atlasSlot, font_->GetAtlasGpuHandle());
 
         cmdList->IASetVertexBuffers(0, 1, &vertexBufferView);
         cmdList->IASetIndexBuffer(&indexBufferView_);

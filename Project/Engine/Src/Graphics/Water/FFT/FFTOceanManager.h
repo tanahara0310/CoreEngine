@@ -2,6 +2,7 @@
 
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
 #include "Graphics/RHI/Resource/PerFrameConstants.h"
+#include "Graphics/Shader/ShaderBindingContract.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
 #include "Graphics/Water/FFT/FFTOceanDebugProbe.h"
@@ -186,6 +187,10 @@ namespace CoreEngine
         CustomShaderPipeline evolutionPipeline_{};
         CustomShaderPipeline ifftPipeline_{};
         CustomShaderPipeline finalizePipeline_{};
+        /// @brief パイプラインを組んだときに FFTOceanBindings.h の宣言表で引いた束ねの表
+        BindingTable evolutionBindings_{};
+        BindingTable ifftBindings_{};
+        BindingTable finalizeBindings_{};
         /// @brief スペクトルの設定・生成・統計
         FFTOceanSpectrum spectrum_{};
         /// @brief スペクトルの版（SetSettings で波面を作り直すたびに増やす）

@@ -7,6 +7,7 @@
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Graphics/RootSignature/ShaderBinder.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/CVar/CVar.h"
 #ifdef CORE_EDITOR
@@ -15,6 +16,8 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <exception>
+#include <iterator>
 
 
 namespace CoreEngine
@@ -114,6 +117,18 @@ namespace CoreEngine
             const float softOver = 0.5f * (over + std::sqrt(over * over + kKneeWidth * kKneeWidth));
             return ev - (1.0f - slope) * softOver;
         }
+
+        /// @brief LuminanceReduction.CS.hlsl の契約
+        namespace LuminanceReductionBind {
+            enum Slot : size_t { gTexture, gAvgLuminance, ScreenParams, HistogramParams, Count };
+            inline constexpr ShaderBindingDecl kDecls[] = {
+                { "gTexture",        ShaderBindingType::SRV, BindingUsage::Required }, // t0
+                { "gAvgLuminance",   ShaderBindingType::UAV, BindingUsage::Required }, // u0（ルート UAV）
+                { "ScreenParams",    ShaderBindingType::CBV, BindingUsage::Required }, // b0
+                { "HistogramParams", ShaderBindingType::CBV, BindingUsage::Required }, // b1
+            };
+            static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
+        }
     }
 
     float ToneMapping::GetReferenceLuminance() const
@@ -174,6 +189,15 @@ namespace CoreEngine
         if (!buildResult.success) {
             Logger::GetInstance().Errorf(LogCategory::Shader,
                 "ToneMapping: 輝度計測 RootSignature の構築に失敗: {}", buildResult.errorMessage);
+            return;
+        }
+
+        try {
+            reductionBindings_ = BindingTable::Resolve(
+                *reductionReflection_, LuminanceReductionBind::kDecls, "ToneMappingLuminanceReduction");
+        }
+        catch (const std::exception&) {
+            // 違反の内訳は BindingTable::Resolve が error ログへ出している
             return;
         }
 
@@ -290,14 +314,12 @@ namespace CoreEngine
         cmdList->SetComputeRootSignature(reductionRootSignature_->GetRootSignature());
         cmdList->SetPipelineState(reductionPso_.Get());
 
-        const int texIdx = reductionReflection_->GetRootParameterIndexByName("gTexture");
-        const int cbIdx = reductionReflection_->GetRootParameterIndexByName("ScreenParams");
-        const int histIdx = reductionReflection_->GetRootParameterIndexByName("HistogramParams");
-        const int uavIdx = reductionReflection_->GetRootParameterIndexByName("gAvgLuminance");
-        if (texIdx >= 0) cmdList->SetComputeRootDescriptorTable(texIdx, inputSrvHandle);
-        if (cbIdx >= 0) cmdList->SetComputeRootConstantBufferView(cbIdx, screenParams);
-        if (histIdx >= 0) cmdList->SetComputeRootConstantBufferView(histIdx, UploadConstants(histogram));
-        if (uavIdx >= 0) cmdList->SetComputeRootUnorderedAccessView(uavIdx, avgLogLumBuffer_.GpuAddress());
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
+        binder.Set(reductionBindings_[LuminanceReductionBind::gTexture], inputSrvHandle);
+        binder.Set(reductionBindings_[LuminanceReductionBind::ScreenParams], screenParams);
+        binder.Set(reductionBindings_[LuminanceReductionBind::HistogramParams], UploadConstants(histogram));
+        binder.Set(reductionBindings_[LuminanceReductionBind::gAvgLuminance], avgLogLumBuffer_.GpuAddress());
+        binder.ValidateBeforeDraw(reductionBindings_);
 
         // 1グループのみ（シェーダー側が 64x64 グリッドを分担して groupshared で縮約する）
         cmdList->Dispatch(1, 1, 1);

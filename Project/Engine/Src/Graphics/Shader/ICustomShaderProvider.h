@@ -41,7 +41,7 @@ namespace CoreEngine
 
         /// @brief カスタムルートパラメータをバインドする（エンジン既定バインド完了後に呼ばれる）
         /// @param cmdList 現在のコマンドリスト
-        /// @param pipeline 構築済みカスタムパイプライン（GetRootParamIndex() でスロット番号を取得できる）
+        /// @param pipeline 構築済みカスタムパイプライン（GetForwardReflection() のリフレクションから BindingTable を引ける）
         /// @note 追加の CBV/SRV を独自 RootSignature のスロットへバインドしたい場合にオーバーライドする。
         virtual void BindCustomResources(
             [[maybe_unused]] ID3D12GraphicsCommandList* cmdList,

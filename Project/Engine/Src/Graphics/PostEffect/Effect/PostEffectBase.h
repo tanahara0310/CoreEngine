@@ -135,9 +135,6 @@ namespace CoreEngine {
         /// @note 常時有効なエフェクトは nullptr のままでよい
         virtual CVar<bool>* GetEnabledCVar() const { return nullptr; }
 
-        /// @brief シェーダーリソース名からルートパラメータインデックスを取得
-        int GetRootParamIndex(const std::string& resourceName) const;
-
     protected:
         virtual std::string GetEffectName() const { return "PostEffect"; }
 

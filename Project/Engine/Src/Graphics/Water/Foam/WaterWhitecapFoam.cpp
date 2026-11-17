@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <iterator>
 #include <string>
 
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
@@ -12,6 +13,7 @@
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/Resource/UavTexture.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
+#include "Graphics/RootSignature/ShaderBinder.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
 #include "Math/IntegerMath.h"
@@ -30,6 +32,30 @@ namespace CoreEngine
         float ComputeDeltaSeconds(float timeSeconds, float previousTimeSeconds)
         {
             return (std::clamp)(timeSeconds - previousTimeSeconds, 0.0f, kMaxDeltaSeconds);
+        }
+
+        /// @brief FFTOceanFoamAccumulate.CS.hlsl の契約
+        namespace WhitecapFoamBind {
+            enum Slot : size_t { gJacobian, gFoamPrev, gFoamOutput, FFTOceanFoamConstants, Count };
+            inline constexpr ShaderBindingDecl kDecls[] = {
+                { "gJacobian",             ShaderBindingType::SRV, BindingUsage::Required },
+                { "gFoamPrev",             ShaderBindingType::SRV, BindingUsage::Required },
+                { "gFoamOutput",           ShaderBindingType::UAV, BindingUsage::Required },
+                { "FFTOceanFoamConstants", ShaderBindingType::CBV, BindingUsage::Required },
+            };
+            static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
+        }
+
+        /// @brief WaterWhitecapStatistics.CS.hlsl の契約
+        namespace WhitecapStatisticsBind {
+            enum Slot : size_t { gJacobian, gWhitecapFoam, gStatistics, WaterWhitecapStatisticsConstants, Count };
+            inline constexpr ShaderBindingDecl kDecls[] = {
+                { "gJacobian",                        ShaderBindingType::SRV, BindingUsage::Required },
+                { "gWhitecapFoam",                    ShaderBindingType::SRV, BindingUsage::Required },
+                { "gStatistics",                      ShaderBindingType::UAV, BindingUsage::Required },
+                { "WaterWhitecapStatisticsConstants", ShaderBindingType::CBV, BindingUsage::Required },
+            };
+            static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
         }
     }
 
@@ -137,6 +163,9 @@ namespace CoreEngine
                 "WaterWhitecapFoam: failed to build whitecap foam compute pipeline.");
             return false;
         }
+        if (!foamPipeline_.ResolveComputeBindings(WhitecapFoamBind::kDecls, "FFTOceanFoamAccumulate", foamBindings_)) {
+            return false;
+        }
 
         if (!statisticsPipeline_.BuildCompute(
                 dxCommon_->GetDevice(), shaderCompiler, reflectionBuilder, L"WaterWhitecapStatistics.CS.hlsl")) {
@@ -144,7 +173,8 @@ namespace CoreEngine
                 "WaterWhitecapFoam: failed to build whitecap statistics compute pipeline.");
             return false;
         }
-        return true;
+        return statisticsPipeline_.ResolveComputeBindings(
+            WhitecapStatisticsBind::kDecls, "WaterWhitecapStatistics", statisticsBindings_);
     }
 
     bool WaterWhitecapFoam::CreateFoamResources()
@@ -301,19 +331,13 @@ namespace CoreEngine
         cmdList->SetPipelineState(foamPipeline_.GetComputePSO());
         cmdList->SetComputeRootSignature(foamPipeline_.GetComputeRootSignature());
 
-        if (const int slot = foamPipeline_.GetComputeRootParamIndex("gJacobian"); slot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), jacobianSRV);
-        }
-        if (const int slot = foamPipeline_.GetComputeRootParamIndex("gFoamPrev"); slot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), readFoam.srv.gpuHandle);
-        }
-        if (const int slot = foamPipeline_.GetComputeRootParamIndex("gFoamOutput"); slot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), writeFoam.uav.gpuHandle);
-        }
-        if (const int slot = foamPipeline_.GetComputeRootParamIndex("FFTOceanFoamConstants"); slot >= 0) {
-            cmdList->SetComputeRootConstantBufferView(
-                static_cast<UINT>(slot), dxCommon_->GetUploadRing().AllocateConstants(constants));
-        }
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
+        binder.Set(foamBindings_[WhitecapFoamBind::gJacobian], jacobianSRV);
+        binder.Set(foamBindings_[WhitecapFoamBind::gFoamPrev], readFoam.srv.gpuHandle);
+        binder.Set(foamBindings_[WhitecapFoamBind::gFoamOutput], writeFoam.uav.gpuHandle);
+        binder.Set(foamBindings_[WhitecapFoamBind::FFTOceanFoamConstants],
+            dxCommon_->GetUploadRing().AllocateConstants(constants));
+        binder.ValidateBeforeDraw(foamBindings_);
 
         const UINT groups = DivRoundUp(kResolution, 8);
         cmdList->Dispatch(groups, groups, kLevelCount);
@@ -483,19 +507,13 @@ namespace CoreEngine
 
         cmdList->SetPipelineState(statisticsPipeline_.GetComputePSO());
         cmdList->SetComputeRootSignature(statisticsPipeline_.GetComputeRootSignature());
-        if (const int slot = statisticsPipeline_.GetComputeRootParamIndex("gJacobian"); slot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), jacobianSRV);
-        }
-        if (const int slot = statisticsPipeline_.GetComputeRootParamIndex("gWhitecapFoam"); slot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), GetSRVHandle());
-        }
-        if (const int slot = statisticsPipeline_.GetComputeRootParamIndex("gStatistics"); slot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), statisticsUav_.gpuHandle);
-        }
-        if (const int slot = statisticsPipeline_.GetComputeRootParamIndex("WaterWhitecapStatisticsConstants"); slot >= 0) {
-            cmdList->SetComputeRootConstantBufferView(
-                static_cast<UINT>(slot), dxCommon_->GetUploadRing().AllocateConstants(constants));
-        }
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
+        binder.Set(statisticsBindings_[WhitecapStatisticsBind::gJacobian], jacobianSRV);
+        binder.Set(statisticsBindings_[WhitecapStatisticsBind::gWhitecapFoam], GetSRVHandle());
+        binder.Set(statisticsBindings_[WhitecapStatisticsBind::gStatistics], statisticsUav_.gpuHandle);
+        binder.Set(statisticsBindings_[WhitecapStatisticsBind::WaterWhitecapStatisticsConstants],
+            dxCommon_->GetUploadRing().AllocateConstants(constants));
+        binder.ValidateBeforeDraw(statisticsBindings_);
         const UINT groups = DivRoundUp(kStatisticsSampleResolution, 8);
         cmdList->Dispatch(groups, groups, 1);
 

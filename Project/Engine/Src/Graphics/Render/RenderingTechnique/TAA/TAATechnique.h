@@ -80,6 +80,9 @@ namespace CoreEngine
         const std::wstring& GetPixelShaderPath() const override;
 
     private:
+        /// @brief 解決済みのルートパラメータ表（TAABind::kDecls の並び）
+        BindingTable bindings_;
+
         TAAParams params_;
         // jitterDelta が毎フレーム変わるため、定数は UploadRing から毎フレーム確保する
 

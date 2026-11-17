@@ -1743,6 +1743,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\Render\Model\ModelRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Model\SkinnedModelRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Particle\BaseParticleRenderer.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Particle\ParticleBindings.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Particle\GpuParticleRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Particle\ModelParticleRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Particle\ParticleRenderer.h" />
@@ -1804,8 +1805,11 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\Render\RenderTarget\RenderTargetNames.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxComponent.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxRenderer.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxBindings.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Sprite\SpriteRenderer.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Sprite\SpriteBindings.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\UI\UIMaterial.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\UI\UIBindings.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\UI\UIRenderer.h" />
     <ClInclude Include="Engine\Src\Graphics\RootSignature\RootSignatureBuilder.h" />
     <ClInclude Include="Engine\Src\Graphics\RootSignature\RootSignatureConfig.h" />
@@ -1865,6 +1869,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\Water\Query\WaterProbeComponent.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Query\WaterQuery.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFT\FFTOceanDispatchHelper.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\FFT\FFTOceanBindings.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFT\FFTOceanGpuResources.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFT\FFTOceanManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Foam\WaterShoreFoam.h" />

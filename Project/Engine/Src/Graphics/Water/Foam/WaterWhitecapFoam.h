@@ -5,6 +5,7 @@
 #include "Graphics/RHI/Resource/ReadbackRing.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
+#include "Graphics/Shader/ShaderBindingContract.h"
 #include "Graphics/Water/FFT/FFTOceanGpuResources.h"
 #include "Graphics/Water/WaterFoamDefaults.h"
 
@@ -274,6 +275,7 @@ namespace CoreEngine
 
         // ---- 白波（カメラの周りの格子の上の残りの泡）----
         CustomShaderPipeline foamPipeline_{};
+        BindingTable foamBindings_{};
         /// @brief 書き込み先は Dispatch ごとに入れ替える（frameIndex_ & 1 と同じ側）。SRV / UAV とも全段を 1 ビューで見せる（x = 被覆率・y = 砕けた直後の厚い泡の量）
         FFTOceanPingPong foam_{};
         uint32_t frameIndex_ = 0;
@@ -291,6 +293,7 @@ namespace CoreEngine
 
         // ---- 沖の白波の統計（フレームの枠ごとに読み戻す）----
         CustomShaderPipeline statisticsPipeline_{};
+        BindingTable statisticsBindings_{};
         GpuResource statistics_{};
         DescriptorHandle statisticsUav_{};
         /// @brief 統計のバッファを 0 にするための写し元（作ったまま書かない）

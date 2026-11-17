@@ -4,6 +4,7 @@
 #include "Graphics/RHI/Resource/ReadbackRing.h"
 
 #include "../PostEffectComputeBase.h"
+#include "Graphics/Shader/ShaderBindingContract.h"
 #include <wrl.h>
 #include <d3d12.h>
 #include <cassert>
@@ -141,6 +142,8 @@ namespace CoreEngine
         std::unique_ptr<RootSignatureManager> reductionRootSignature_;
         const ShaderReflectionData* reductionReflection_ = nullptr;  ///< 所有者は ShaderProgramCache
         Microsoft::WRL::ComPtr<ID3D12PipelineState> reductionPso_;
+        /// @brief 輝度計測 CS の解決済みルートパラメータ表（LuminanceReductionBind::kDecls の並び）
+        BindingTable reductionBindings_;
 
         // ----- 自動露出: 計測バッファ -----
         GpuResource avgLogLumBuffer_; ///< 測光結果の輝度（DEFAULT/UAV・1要素。ステート追跡込み）

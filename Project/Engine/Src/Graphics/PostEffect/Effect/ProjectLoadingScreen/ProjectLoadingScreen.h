@@ -1,6 +1,7 @@
 #pragma once
 #include "../PostEffectComputeBase.h"
 #include "../ILoadingScreenEffect.h"
+#include "Graphics/RootSignature/RootSlot.h"
 
 #include <array>
 #include <d3d12.h>
@@ -74,6 +75,8 @@ namespace CoreEngine
 
     private:
         std::array<D3D12_GPU_DESCRIPTOR_HANDLE, kMaxImages> images_{};
+        /// gImage0〜 のルートパラメータ（初期化で引く。シェーダに無い枠は未解決）
+        std::array<RootSlot, kMaxImages> imageSlots_{};
 
         float screenAlpha_ = 0.0f;
         float time_ = 0.0f;

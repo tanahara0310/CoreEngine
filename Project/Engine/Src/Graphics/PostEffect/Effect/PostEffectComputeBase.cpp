@@ -4,6 +4,7 @@
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Graphics/RootSignature/ShaderBinder.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
 #include "Math/IntegerMath.h"
 #include "Utility/Logger/Logger.h"
@@ -18,20 +19,22 @@ namespace CoreEngine
         /// @brief DispatchScreenPass のスレッドグループの一辺（シェーダー側の kGroupSize と同じ値）
         constexpr uint32_t kScreenPassGroupSize = 8;
 
-        /// @brief テーブルと定数を、findIndex(name) で引いたルート番号へ差す
-        /// @details 名前が nullptr のものと、番号が引けない（-1）ものは差さない
-        template <class FindIndex, class TableList, class ConstantList>
+        /// @brief テーブルと定数を、reflection から名前で引いたルートパラメータへ差す
+        /// @details 名前が nullptr のものと、シェーダーに無い名前（RootSlot が未解決）は差さない
+        template <class TableList, class ConstantList>
         void BindNamedArguments(
-            ID3D12GraphicsCommandList* cmdList, const FindIndex& findIndex,
+            ID3D12GraphicsCommandList* cmdList, const ShaderReflectionData* reflection,
             const TableList& tables, const ConstantList& constants)
         {
+            if (!reflection) {
+                return;
+            }
+            ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
             for (const auto& table : tables) {
-                const int index = table.name ? findIndex(table.name) : -1;
-                if (index >= 0) cmdList->SetComputeRootDescriptorTable(index, table.handle);
+                if (table.name) binder.Set(reflection->GetRootSlot(table.name), table.handle);
             }
             for (const auto& constant : constants) {
-                const int index = constant.name ? findIndex(constant.name) : -1;
-                if (index >= 0) cmdList->SetComputeRootConstantBufferView(index, constant.address);
+                if (constant.name) binder.Set(reflection->GetRootSlot(constant.name), constant.address);
             }
         }
     }
@@ -130,8 +133,7 @@ namespace CoreEngine
     {
         cmdList->SetComputeRootSignature(rootSignatureManager_->GetRootSignature());
         cmdList->SetPipelineState(computePso_.Get());
-        BindNamedArguments(cmdList,
-            [this](const char* name) { return GetRootParamIndex(name); }, tables, constants);
+        BindNamedArguments(cmdList, reflectionData_, tables, constants);
     }
 
     void PostEffectComputeBase::BindPass(
@@ -142,8 +144,7 @@ namespace CoreEngine
     {
         cmdList->SetComputeRootSignature(pipeline.GetComputeRootSignature());
         cmdList->SetPipelineState(pipeline.GetComputePSO());
-        BindNamedArguments(cmdList,
-            [&pipeline](const char* name) { return pipeline.GetComputeRootParamIndex(name); }, tables, constants);
+        BindNamedArguments(cmdList, pipeline.GetComputeReflection(), tables, constants);
     }
 
     void PostEffectComputeBase::DispatchPass(

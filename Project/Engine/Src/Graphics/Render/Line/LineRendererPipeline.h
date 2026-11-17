@@ -5,6 +5,7 @@
 #include "Graphics/RootSignature/RootSignatureManager.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
+#include "Graphics/Shader/ShaderBindingContract.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Line/Line.h"
@@ -87,9 +88,6 @@ namespace CoreEngine
         /// @param proj プロジェクション行列
         void SetWVPMatrix(const Matrix4x4& view, const Matrix4x4& proj);
 
-        /// @brief シェーダーリソース名からルートパラメータインデックスを取得
-        int GetRootParamIndex(const std::string& resourceName) const;
-
         std::unique_ptr<RootSignatureManager> rootSignatureMg_ = std::make_unique<RootSignatureManager>();
         std::unique_ptr<PipelineStateManager> psoMg_ = std::make_unique<PipelineStateManager>();
 
@@ -126,5 +124,8 @@ namespace CoreEngine
 
         // シェーダーリフレクションデータ
         std::unique_ptr<ShaderReflectionData> reflectionData_;
+
+        /// @brief ルートシグネチャから引いたシェーダーの結線
+        BindingTable bindings_;
     };
 }

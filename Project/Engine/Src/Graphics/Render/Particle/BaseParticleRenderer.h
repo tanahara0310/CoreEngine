@@ -3,6 +3,7 @@
 #include "../BaseRenderer.h"
 #include "Graphics/Fog/FogVolumetricResources.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Graphics/Shader/ShaderBindingContract.h"
 #include <d3d12.h>
 #include <wrl.h>
 #include <memory>
@@ -12,6 +13,7 @@ namespace CoreEngine {
     class ParticleSystemComponent;
     class Camera;
     class ShaderReflectionData;
+    class ShaderBinder;
 }
 
 namespace CoreEngine
@@ -57,9 +59,6 @@ public:
     /// @note コンポーネントの Render から呼ぶ。パスの開始はキューを流す側が済ませている
     virtual void Draw(CoreEngine::ParticleSystemComponent* particle) = 0;
 
-    /// @brief シェーダーリソース名からルートパラメータインデックスを取得
-    int GetRootParamIndex(const std::string& resourceName) const;
-
 protected:
     /// @brief 今フレームのフォグ定数（0 = 未供給で差さない）
     D3D12_GPU_VIRTUAL_ADDRESS fogCBV_ = 0;
@@ -70,7 +69,10 @@ protected:
     BlendMode currentBlendMode_ = BlendMode::kBlendModeNone;
 
     /// @brief フォグ定数とボリュメトリックの格子を差す（BeginPass の後に呼ぶ）
-    void BindFogResources();
+    void BindFogResources(ShaderBinder& binder);
+
+    /// @brief ルートシグネチャから引いたシェーダーの結線（添字は ParticleBind::Slot）
+    BindingTable bindings_;
 
     // ──────────────────────────────────────────────────────────
     // 共通リソース
@@ -98,6 +100,11 @@ protected:
     /// @param particle パーティクルのコンポーネント
     /// @param textureHandle テクスチャハンドル
     void SetupCommonResources(CoreEngine::ParticleSystemComponent* particle, D3D12_GPU_DESCRIPTOR_HANDLE textureHandle);
+
+    /// @brief インスタンシングとテクスチャとフォグを差す（描画の直前に呼ぶ）
+    /// @param instancingSrv インスタンシングバッファの SRV
+    /// @param textureHandle テクスチャハンドル
+    void BindDrawResources(D3D12_GPU_DESCRIPTOR_HANDLE instancingSrv, D3D12_GPU_DESCRIPTOR_HANDLE textureHandle);
 
     // ──────────────────────────────────────────────────────────
     // 派生クラスで実装すべき純粋仮想関数

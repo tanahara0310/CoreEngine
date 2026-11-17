@@ -5,6 +5,7 @@
 
 #include "PostEffectBase.h"
 #include "Graphics/Pipeline/PipelineStateManager.h"
+#include "Graphics/RootSignature/RootSlot.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
 
@@ -40,6 +41,9 @@ namespace CoreEngine {
 
         PipelineStateManager pipelineStateManager_;
         PipelineStateManager backBufferPipelineStateManager_; ///< バックバッファ(_SRGB)用PSO
+
+        /// @brief 入力テクスチャ（gTexture）のルートパラメータ（シェーダーに無ければ未解決のまま差さない）
+        RootSlot textureSlot_;
     };
 
 } // namespace CoreEngine

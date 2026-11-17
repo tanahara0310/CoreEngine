@@ -8,9 +8,11 @@
 #include "Graphics/Render/RenderTarget/RenderTarget.h"
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 #include "Graphics/Render/Pass/RenderPass.h"
+#include "Graphics/RootSignature/ShaderBinder.h"
 #include "Camera/View/ViewInfo.h"
 #include <cassert>
 #include <cstring>
+#include <iterator>
 
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/ImguiManager.h"
@@ -42,11 +44,29 @@ namespace CoreEngine
             CVarRange{ 0.1f, 4.0f } };
 
         constexpr const char* kCVarPrefix = "r.TAA";
+
+        /// @brief TAA.PS.hlsl の契約
+        namespace TAABind {
+            enum Slot : size_t {
+                gSceneColor, gHistoryColor, gMotionVector, gSceneDepth, TAAParams, Count };
+            inline constexpr ShaderBindingDecl kDecls[] = {
+                // FrameBlackboard から取れたフレームだけ差す
+                { "gSceneColor",   ShaderBindingType::SRV, BindingUsage::Conditional }, // t0
+                { "gHistoryColor", ShaderBindingType::SRV, BindingUsage::Required },    // t1
+                // FrameBlackboard から取れたフレームだけ差す
+                { "gMotionVector", ShaderBindingType::SRV, BindingUsage::Conditional }, // t2
+                // FrameBlackboard から取れたフレームだけ差す
+                { "gSceneDepth",   ShaderBindingType::SRV, BindingUsage::Conditional }, // t3
+                { "TAAParams",     ShaderBindingType::CBV, BindingUsage::Required },    // b0
+            };
+            static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
+        }
     }
 
     void TAATechnique::Initialize(GraphicsCore* dxCommon)
     {
         RenderingTechniqueBase::Initialize(dxCommon);
+        bindings_ = ResolveBindingTable(TAABind::kDecls);
     }
 
     const char* TAATechnique::GetHistoryTargetName(uint32_t index)
@@ -111,44 +131,34 @@ namespace CoreEngine
         cmdList->SetGraphicsRootSignature(rootSignatureManager_->GetRootSignature());
         cmdList->SetPipelineState(pipelineStateManager_.GetPipelineState(BlendMode::kBlendModeNone));
 
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Graphics);
+
         // t0: 現フレームの SceneColor（ビュー依存のため Blackboard 経由で取る）
-        const int sceneColorIdx = GetRootParamIndex("gSceneColor");
-        if (sceneColorIdx >= 0) {
-            D3D12_GPU_DESCRIPTOR_HANDLE sceneColorHandle{};
-            if (context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneColor, sceneColorHandle)) {
-                cmdList->SetGraphicsRootDescriptorTable(sceneColorIdx, sceneColorHandle);
-            }
+        D3D12_GPU_DESCRIPTOR_HANDLE sceneColorHandle{};
+        if (context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneColor, sceneColorHandle)) {
+            binder.Set(bindings_[TAABind::gSceneColor], sceneColorHandle);
         }
 
         // t1: 前フレームの TAA 出力
-        const int historyIdx = GetRootParamIndex("gHistoryColor");
-        if (historyIdx >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(historyIdx, readTarget->GetSRVHandle());
-        }
+        binder.Set(bindings_[TAABind::gHistoryColor], readTarget->GetSRVHandle());
 
         // t2: モーションベクター（GBuffer 産の NDC 差分）
-        const int motionIdx = GetRootParamIndex("gMotionVector");
-        if (motionIdx >= 0) {
-            D3D12_GPU_DESCRIPTOR_HANDLE motionHandle{};
-            if (context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::GBufferMotionVector, motionHandle)) {
-                cmdList->SetGraphicsRootDescriptorTable(motionIdx, motionHandle);
-            }
+        D3D12_GPU_DESCRIPTOR_HANDLE motionHandle{};
+        if (context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::GBufferMotionVector, motionHandle)) {
+            binder.Set(bindings_[TAABind::gMotionVector], motionHandle);
         }
 
         // t3: SceneDepth（背景画素の判定と再投影）
-        const int depthIdx = GetRootParamIndex("gSceneDepth");
-        if (depthIdx >= 0) {
-            D3D12_GPU_DESCRIPTOR_HANDLE depthHandle{};
-            if (context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneDepth, depthHandle)) {
-                cmdList->SetGraphicsRootDescriptorTable(depthIdx, depthHandle);
-            }
+        D3D12_GPU_DESCRIPTOR_HANDLE depthHandle{};
+        if (context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneDepth, depthHandle)) {
+            binder.Set(bindings_[TAABind::gSceneDepth], depthHandle);
         }
 
-        const int paramsIdx = GetRootParamIndex("TAAParams");
-        if (paramsIdx >= 0 && cbAddress != 0) {
-            cmdList->SetGraphicsRootConstantBufferView(paramsIdx, cbAddress);
+        if (cbAddress != 0) {
+            binder.Set(bindings_[TAABind::TAAParams], cbAddress);
         }
 
+        binder.ValidateBeforeDraw(bindings_);
         DrawFullscreenQuad(cmdList);
 
         writeTarget->End(cmdList);

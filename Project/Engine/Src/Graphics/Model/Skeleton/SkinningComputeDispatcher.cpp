@@ -5,12 +5,34 @@
 #include "SkinCluster.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Graphics/RootSignature/ShaderBinder.h"
 #include "Math/IntegerMath.h"
 #include <cassert>
+#include <iterator>
 #include <stdexcept>
 
 namespace CoreEngine
 {
+    namespace
+    {
+        /// @brief Skinning.CS.hlsl の契約
+        namespace SkinningBind {
+            enum Slot : size_t {
+                gSourceVertices, gInfluences, gMatrixPalette, gPrevMatrixPalette,
+                gOutputVertices, gPrevPositions, SkinningParams, Count };
+            inline constexpr ShaderBindingDecl kDecls[] = {
+                { "gSourceVertices",    ShaderBindingType::SRV, BindingUsage::Required }, // t0
+                { "gInfluences",        ShaderBindingType::SRV, BindingUsage::Required }, // t1
+                { "gMatrixPalette",     ShaderBindingType::SRV, BindingUsage::Required }, // t2
+                { "gPrevMatrixPalette", ShaderBindingType::SRV, BindingUsage::Required }, // t3
+                { "gOutputVertices",    ShaderBindingType::UAV, BindingUsage::Required }, // u0
+                { "gPrevPositions",     ShaderBindingType::UAV, BindingUsage::Required }, // u1
+                { "SkinningParams",     ShaderBindingType::CBV, BindingUsage::Required }, // b0
+            };
+            static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
+        }
+    }
+
     void SkinningComputeDispatcher::Initialize(ID3D12Device* device)
     {
         assert(device);
@@ -39,13 +61,7 @@ namespace CoreEngine
             throw std::runtime_error("Failed to create Skinning Compute PSO");
         }
 
-        sourceVerticesIdx_ = reflectionData_->GetRootParameterIndexByName("gSourceVertices");
-        influencesIdx_ = reflectionData_->GetRootParameterIndexByName("gInfluences");
-        matrixPaletteIdx_ = reflectionData_->GetRootParameterIndexByName("gMatrixPalette");
-        prevMatrixPaletteIdx_ = reflectionData_->GetRootParameterIndexByName("gPrevMatrixPalette");
-        outputVerticesIdx_ = reflectionData_->GetRootParameterIndexByName("gOutputVertices");
-        prevPositionsIdx_ = reflectionData_->GetRootParameterIndexByName("gPrevPositions");
-        skinningParamsIdx_ = reflectionData_->GetRootParameterIndexByName("SkinningParams");
+        bindings_ = BindingTable::Resolve(*reflectionData_, SkinningBind::kDecls, "SkinningComputeDispatcher");
     }
 
     void SkinningComputeDispatcher::Dispatch(
@@ -72,27 +88,15 @@ namespace CoreEngine
         cmdList->SetComputeRootSignature(rootSignatureMg_->GetRootSignature());
         cmdList->SetPipelineState(computePso_.Get());
 
-        if (sourceVerticesIdx_ >= 0) {
-            cmdList->SetComputeRootDescriptorTable(sourceVerticesIdx_, skinCluster.sourceVertexSrvHandle.Gpu());
-        }
-        if (influencesIdx_ >= 0) {
-            cmdList->SetComputeRootDescriptorTable(influencesIdx_, skinCluster.influenceSrvHandle.Gpu());
-        }
-        if (matrixPaletteIdx_ >= 0) {
-            cmdList->SetComputeRootDescriptorTable(matrixPaletteIdx_, skinCluster.palette.Srv());
-        }
-        if (prevMatrixPaletteIdx_ >= 0) {
-            cmdList->SetComputeRootDescriptorTable(prevMatrixPaletteIdx_, skinCluster.prevPalette.Srv());
-        }
-        if (outputVerticesIdx_ >= 0) {
-            cmdList->SetComputeRootDescriptorTable(outputVerticesIdx_, skinCluster.outputUavHandle.Gpu());
-        }
-        if (prevPositionsIdx_ >= 0) {
-            cmdList->SetComputeRootDescriptorTable(prevPositionsIdx_, skinCluster.prevPositionUavHandle.Gpu());
-        }
-        if (skinningParamsIdx_ >= 0) {
-            cmdList->SetComputeRootConstantBufferView(skinningParamsIdx_, skinCluster.skinningParamsCB->GetGPUVirtualAddress());
-        }
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
+        binder.Set(bindings_[SkinningBind::gSourceVertices], skinCluster.sourceVertexSrvHandle.Gpu());
+        binder.Set(bindings_[SkinningBind::gInfluences], skinCluster.influenceSrvHandle.Gpu());
+        binder.Set(bindings_[SkinningBind::gMatrixPalette], skinCluster.palette.Srv());
+        binder.Set(bindings_[SkinningBind::gPrevMatrixPalette], skinCluster.prevPalette.Srv());
+        binder.Set(bindings_[SkinningBind::gOutputVertices], skinCluster.outputUavHandle.Gpu());
+        binder.Set(bindings_[SkinningBind::gPrevPositions], skinCluster.prevPositionUavHandle.Gpu());
+        binder.Set(bindings_[SkinningBind::SkinningParams], skinCluster.skinningParamsCB->GetGPUVirtualAddress());
+        binder.ValidateBeforeDraw(bindings_);
 
         const UINT groupCount = DivRoundUp(vertexCount, 64);
         cmdList->Dispatch(groupCount, 1, 1);

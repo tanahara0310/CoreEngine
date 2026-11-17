@@ -5,10 +5,24 @@
 #include "Graphics/Shader/ShaderReflectionData.h"
 
 #include <cstring>
+#include <iterator>
 #include <stdexcept>
 
 namespace CoreEngine
 {
+    namespace
+    {
+        namespace Text3DBind {
+            /// @brief Text3D.VS.hlsl / Text3D.PS.hlsl の契約
+            enum Slot : size_t { gBatch, gAtlas, Count };
+            inline constexpr ShaderBindingDecl kDecls[] = {
+                { "gBatch", ShaderBindingType::CBV, BindingUsage::Required },
+                { "gAtlas", ShaderBindingType::SRV, BindingUsage::Required },
+            };
+            static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
+        }
+    }
+
     void Text3DRenderer::Initialize(ID3D12Device* device)
     {
         RootSignatureConfig config;
@@ -26,6 +40,7 @@ namespace CoreEngine
         const auto shaders = BuildShadersAndRootSignature(device,
             L"Engine/Assets/Shaders/Text3D/Text3D.VS.hlsl", L"Engine/Assets/Shaders/Text3D/Text3D.PS.hlsl",
             "Text3DRenderer", config, "Text3D");
+        bindings_ = BindingTable::Resolve(*reflectionData_, Text3DBind::kDecls, "Text3DRenderer");
 
         // ── 深度テスト版（既定）────────────────────────────────
         // 深度書き込みを切ってあるのは、MSDF のアンチエイリアス縁が
@@ -70,11 +85,6 @@ namespace CoreEngine
         dxCommon_ = dxCommon;
 
         Initialize(dxCommon->GetDevice());
-    }
-
-    int Text3DRenderer::GetRootParamIndex(const std::string& resourceName) const
-    {
-        return FindRootParamIndex(reflectionData_.get(), resourceName);
     }
 
     ID3D12PipelineState* Text3DRenderer::ResolvePipelineState(
@@ -157,7 +167,7 @@ namespace CoreEngine
 
         // 深度モードごとに PSO が違うので、バッチを描く直前に張る
         if (batch_.Draw(cmdList_, dxCommon_->GetUploadRing(), batchViewProjection_,
-                GetRootParamIndex("gBatch"), GetRootParamIndex("gAtlas"), pipelineState)) {
+                bindings_[Text3DBind::gBatch], bindings_[Text3DBind::gAtlas], pipelineState)) {
             pipelineState_ = pipelineState;
         }
     }

@@ -10,10 +10,12 @@
 #include "Graphics/Render/DrawViewInfo.h"
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Render/RenderManager.h"
+#include "Graphics/Render/SkyBox/SkyBoxBindings.h"
 #include "Graphics/Render/SkyBox/SkyBoxRenderer.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
+#include "Graphics/RootSignature/ShaderBinder.h"
 
 #include <span>
 
@@ -152,25 +154,16 @@ void SkyBoxComponent::Render(const DrawViewInfo& view)
         return;
     }
 
-    commandList->SetGraphicsRootConstantBufferView(
-        renderer_->GetRootParamIndex("gTransformationMatrix"),
-        transformAddress);
-    commandList->SetGraphicsRootConstantBufferView(
-        renderer_->GetRootParamIndex("gAtmosphere"),
-        atmosphereManager->GetConstantBufferGPUAddress());
+    const BindingTable& bindings = renderer_->GetBindings();
+    ShaderBinder binder(commandList, ShaderBinder::Pipeline::Graphics);
+    binder.Set(bindings[SkyBoxBind::gTransformationMatrix], transformAddress);
+    binder.Set(bindings[SkyBoxBind::gAtmosphere], atmosphereManager->GetConstantBufferGPUAddress());
 
     // LUT 群（未生成の初回フレームは黒がサンプルされるだけなので許容）
     // 描画は Sky-View LUT の1サンプルで完結する。Transmittance は太陽ディスク描画で使用。
-    const int skyViewParamIndex = renderer_->GetRootParamIndex("gSkyViewLUT");
-    if (skyViewParamIndex >= 0) {
-        commandList->SetGraphicsRootDescriptorTable(
-            static_cast<UINT>(skyViewParamIndex), atmosphereManager->GetSkyViewLUTSRVHandle());
-    }
-    const int transmittanceParamIndex = renderer_->GetRootParamIndex("gTransmittanceLUT");
-    if (transmittanceParamIndex >= 0) {
-        commandList->SetGraphicsRootDescriptorTable(
-            static_cast<UINT>(transmittanceParamIndex), atmosphereManager->GetTransmittanceLUTSRVHandle());
-    }
+    binder.Set(bindings[SkyBoxBind::gSkyViewLUT], atmosphereManager->GetSkyViewLUTSRVHandle());
+    binder.Set(bindings[SkyBoxBind::gTransmittanceLUT], atmosphereManager->GetTransmittanceLUTSRVHandle());
+    binder.ValidateBeforeDraw(bindings);
 
     commandList->DrawIndexedInstanced(kIndexCount, 1, 0, 0, 0);
 }

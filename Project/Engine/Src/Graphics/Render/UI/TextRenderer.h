@@ -103,6 +103,9 @@ namespace CoreEngine
             return config;
         }
 
+        /// @brief MSDF テキストのシェーダーの結線の宣言（gBatch・gAtlas）
+        std::span<const ShaderBindingDecl> GetBindingDecls() const override;
+
     private:
         /// @brief 溜まっている頂点を 1 ドローコールで描く
         void Flush();

@@ -3,6 +3,7 @@
 #include "Graphics/Render/Line/LineRendererPipeline.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Graphics/RootSignature/ShaderBinder.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
 #include "Camera/Camera.h"
@@ -10,6 +11,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <iterator>
 #include <stdexcept>
 
 #ifdef CORE_EDITOR
@@ -19,11 +21,24 @@
 
 namespace CoreEngine
 {
+namespace
+{
+    namespace GridBind {
+        /// @brief Grid.VS.hlsl / Grid.PS.hlsl の契約
+        enum Slot : size_t { GridParams, Count };
+        inline constexpr ShaderBindingDecl kDecls[] = {
+            { "GridParams", ShaderBindingType::CBV, BindingUsage::Required },
+        };
+        static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
+    }
+}
+
 void GridRenderer::Initialize(ID3D12Device* device)
 {
     const auto shaders = BuildShadersAndRootSignature(device,
         L"Engine/Assets/Shaders/Grid/Grid.VS.hlsl", L"Engine/Assets/Shaders/Grid/Grid.PS.hlsl",
         "GridRenderer", RootSignatureConfig{}, "Grid");
+    bindings_ = BindingTable::Resolve(*reflectionData_, GridBind::kDecls, "GridRenderer");
 
     // 頂点バッファは使わない（VS が SV_VertexID から三角形を組み立てる）ので入力レイアウトは空になる。
     // 深度は PS が SV_Depth で床平面の値を出すためテストは行うが、書き込みはしない
@@ -86,19 +101,9 @@ void GridRenderer::SetMinPixelsPerCell(float pixels)
     minPixelsPerCell_ = std::max(pixels, 4.0f);
 }
 
-int GridRenderer::GetRootParamIndex(const std::string& resourceName) const
-{
-    return FindRootParamIndex(reflectionData_.get(), resourceName);
-}
-
 void GridRenderer::DrawGrid()
 {
     if (!visible_ || !currentCmdList_ || !camera_ || !dxCommon_ || !pipelineState_) {
-        return;
-    }
-
-    const int paramIndex = GetRootParamIndex("GridParams");
-    if (paramIndex < 0) {
         return;
     }
 
@@ -137,7 +142,9 @@ void GridRenderer::DrawGrid()
         return;
     }
 
-    currentCmdList_->SetGraphicsRootConstantBufferView(static_cast<UINT>(paramIndex), address);
+    ShaderBinder binder(currentCmdList_, ShaderBinder::Pipeline::Graphics);
+    binder.Set(bindings_[GridBind::GridParams], address);
+    binder.ValidateBeforeDraw(bindings_);
     // VS が SV_VertexID から画面全体を覆う三角形を作るので、頂点バッファの設定は要らない
     currentCmdList_->DrawInstanced(3, 1, 0, 0);
 }

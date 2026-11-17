@@ -4,10 +4,12 @@
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/Shader/ShaderBindingContract.h"
 #include "Math/MathCore.h"
 #include <d3d12.h>
 #include <wrl.h>
 #include <memory>
+#include <span>
 #include <vector>
 
 namespace CoreEngine
@@ -91,8 +93,9 @@ namespace CoreEngine
             return transformBuffers_[currentFrameIndex_]->GetGPUVirtualAddress() + index * kTransformStride;
         }
 
-        /// @brief シェーダーリソース名からルートパラメータインデックスを取得
-        int GetRootParamIndex(const std::string& resourceName) const;
+        /// @brief 標準のパイプラインのルートシグネチャから引いたシェーダーの結線
+        /// @note 添字は UIBind::Slot（派生レンダラーでは GetBindingDecls が返す宣言の並び）
+        const BindingTable& GetBindings() const { return bindings_; }
 
         /// @brief マテリアルのシェーダのパイプラインを引く（無ければ組む）
         /// @return 組めなければ nullptr
@@ -129,11 +132,17 @@ namespace CoreEngine
         ///          0 を返して確保させない
         virtual size_t GetConstantBufferPoolCount() const { return kMaxUICount; }
 
+        /// @brief シェーダーの結線の宣言（Initialize がルートシグネチャを作った直後に引く）
+        /// @note 静的寿命の配列を返すこと
+        virtual std::span<const ShaderBindingDecl> GetBindingDecls() const;
+
     private:
         // BaseRenderer から継承したサブシステムを使用（rootSignatureMg_, psoMg_, shaderCompiler_, reflectionBuilder_ は削除）
 
         GraphicsCore* dxCommon_ = nullptr;
         SceneDepth* sceneDepth_ = nullptr;
+
+        BindingTable bindings_;
 
         ShaderMaterialPipelineCache materialPipelines_{ ShaderMaterialPipeline::Target{ "UIMaterial", false } };
         /// 差してあるマテリアルのパイプライン（標準なら nullptr）

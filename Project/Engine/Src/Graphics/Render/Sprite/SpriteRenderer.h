@@ -5,6 +5,7 @@
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Shader/CBufferLayout.h"
+#include "Graphics/Shader/ShaderBindingContract.h"
 #include "Math/MathCore.h"
 #include <d3d12.h>
 #include <wrl.h>
@@ -49,8 +50,8 @@ namespace CoreEngine
         /// @brief スプライト 1 枚（四角形）のインデックスバッファ（全スプライトで共有する）
         const D3D12_INDEX_BUFFER_VIEW& GetQuadIndexBufferView() const { return quadIndexBufferView_; }
 
-        /// @brief シェーダーリソース名からルートパラメータインデックスを取得
-        int GetRootParamIndex(const std::string& resourceName) const;
+        /// @brief 標準のパイプラインのルートシグネチャから引いたシェーダーの結線（添字は SpriteBind::Slot）
+        const BindingTable& GetBindings() const { return bindings_; }
 
         /// @brief マテリアルのシェーダのパイプラインを引く（無ければ組む）
         /// @return 組めなければ nullptr
@@ -67,6 +68,8 @@ namespace CoreEngine
 
         GraphicsCore* dxCommon_ = nullptr;
         SceneDepth* sceneDepth_ = nullptr;
+
+        BindingTable bindings_;
 
         // 四角形 1 枚のインデックスバッファ（全スプライトで共有）
         Microsoft::WRL::ComPtr<ID3D12Resource> quadIndexResource_;

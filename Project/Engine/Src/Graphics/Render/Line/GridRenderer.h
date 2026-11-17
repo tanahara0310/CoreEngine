@@ -2,6 +2,7 @@
 
 #include "Graphics/Render/BaseRenderer.h"
 #include "Graphics/Render/Line/ILineSource.h"
+#include "Graphics/Shader/ShaderBindingContract.h"
 #include "Math/Matrix/Matrix4x4.h"
 #include "Math/Vector/Vector3.h"
 #include <d3d12.h>
@@ -87,9 +88,6 @@ public:
     ///          詰まりすぎるとモアレの手前で薄くなっていく。
     void SetMinPixelsPerCell(float pixels);
 
-    /// @brief シェーダーリソース名からルートパラメータインデックスを取得
-    int GetRootParamIndex(const std::string& resourceName) const;
-
 #ifdef CORE_EDITOR
     /// @brief 設定パネルの中身を描画する
     bool DrawSettingsImGui();
@@ -102,6 +100,9 @@ private:
     GraphicsCore* dxCommon_ = nullptr;
     const Camera* camera_ = nullptr;
     ID3D12GraphicsCommandList* currentCmdList_ = nullptr;
+
+    /// @brief ルートシグネチャから引いたシェーダーの結線
+    BindingTable bindings_;
 
     bool visible_ = false;              // 表示フラグ（GridFeature が立てる）
     GridPlane plane_ = GridPlane::XZ;           // 格子を広げる面（GridFeature が決める）

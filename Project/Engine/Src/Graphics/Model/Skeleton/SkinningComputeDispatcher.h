@@ -8,6 +8,7 @@
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
 #include "Graphics/RootSignature/RootSignatureManager.h"
+#include "Graphics/Shader/ShaderBindingContract.h"
 
 namespace CoreEngine {
     class ShaderReflectionData;
@@ -45,13 +46,7 @@ namespace CoreEngine
 
         Microsoft::WRL::ComPtr<ID3D12PipelineState> computePso_;
 
-        // キャッシュ済みルートパラメータインデックス
-        int sourceVerticesIdx_ = -1;
-        int influencesIdx_ = -1;
-        int matrixPaletteIdx_ = -1;
-        int prevMatrixPaletteIdx_ = -1;
-        int outputVerticesIdx_ = -1;
-        int prevPositionsIdx_ = -1;
-        int skinningParamsIdx_ = -1;
+        /// @brief 解決済みのルートパラメータ表（SkinningBind::kDecls の並び）
+        BindingTable bindings_;
     };
 }
