@@ -401,8 +401,8 @@ namespace CoreEngine
 
             if (object.IsPrefabInstance()) {
                 const Reflection::AssetRefValue prefab = object.GetPrefab().GetValue();
-                if (const json* components = PrefabSystem::LoadComponents(prefab)) {
-                    data = PrefabSystem::MakeInstanceJson(data, *components);
+                if (const PrefabSystem::PrefabContents* contents = PrefabSystem::Load(prefab)) {
+                    data = PrefabSystem::MakeInstanceJson(data, *contents);
                 } else {
                     Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource,
                         "SceneSaveSystem: \"{}\" のプレハブ（GUID \"{}\" / パス \"{}\"）を読めないので、構成をそのまま保存します",
@@ -417,8 +417,8 @@ namespace CoreEngine
         void RestorePrefabInstance(const std::string& sceneName, GameObject& object, const json& data)
         {
             const Reflection::AssetRefValue prefab = PrefabSystem::ReadPrefabRef(data);
-            const json* components = PrefabSystem::LoadComponents(prefab);
-            if (!components && !data.contains("components")) {
+            const PrefabSystem::PrefabContents* contents = PrefabSystem::Load(prefab);
+            if (!contents && !data.contains("components")) {
                 Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource,
                     "SceneSaveSystem: \"{}\" の {} のプレハブ（GUID \"{}\" / パス \"{}\"）が見つからないので、足したコンポーネントだけで組みます",
                     sceneName, object.GetSerializeKey(), prefab.guid, prefab.path);
@@ -426,7 +426,7 @@ namespace CoreEngine
 
             std::vector<std::string> problems;
             object.SetPrefab(prefab);
-            object.Deserialize(PrefabSystem::ExpandInstanceJson(data, components, &problems));
+            object.Deserialize(PrefabSystem::ExpandInstanceJson(data, contents, &problems));
             for (const std::string& problem : problems) {
                 Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource,
                     "SceneSaveSystem: \"{}\" の {}: {}", sceneName, object.GetSerializeKey(), problem);
@@ -475,7 +475,7 @@ namespace CoreEngine
             // プレハブから作るものはプレハブの値を重ねてから探す
             if (data.contains("prefab")) {
                 const json expanded = PrefabSystem::ExpandInstanceJson(
-                    data, PrefabSystem::LoadComponents(PrefabSystem::ReadPrefabRef(data)));
+                    data, PrefabSystem::Load(PrefabSystem::ReadPrefabRef(data)));
                 if (expanded.contains("components")) {
                     CollectModelRefs(expanded.at("components"), modelPaths);
                 }

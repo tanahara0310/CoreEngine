@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GameObject/Component/Core/ComponentHost.h"
+#include "GameObject/GameObjectTags.h"
 #include "GameObject/IObjectSpawner.h"
 #include "GameObject/ObjectId.h"
 #include "Graphics/Asset/AssetRef.h"
@@ -13,6 +14,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 
 namespace CoreEngine {
     class EngineSystem;
@@ -161,6 +163,18 @@ namespace CoreEngine
         ///       消したオブジェクトを作り直すときは、元のキーへ戻すために呼ぶ。
         void SetSerializeKey(const std::string& key) { serializeKey_ = key; }
 
+        // ===== タグ =====
+
+        /// @brief タグを設定する（空なら Untagged）
+        /// @note 一覧（`GameObjectTags`）に無い名前もそのまま持つ。一覧と見比べるのは呼ぶ側。
+        void SetTag(const std::string& tag);
+
+        /// @brief タグ（付けていなければ Untagged）
+        const std::string& GetTag() const { return tag_; }
+
+        /// @brief タグが一致するか
+        bool CompareTag(std::string_view tag) const { return tag_ == tag; }
+
         // ===== シリアライズ =====
 
         /// @brief シーン保存の対象か
@@ -170,10 +184,11 @@ namespace CoreEngine
         void SetSerializeEnabled(bool enable);
 
         /// @brief オブジェクトを JSON へ書き出す（SceneSaveSystem が呼ぶ唯一の入口）
-        /// @return 有効・名前・コンポーネント一覧
+        /// @return 有効・名前・タグ（Untagged のときは書かない）・コンポーネント一覧
         json Serialize() const;
 
         /// @brief JSON からオブジェクトを復元する（SceneSaveSystem が呼ぶ唯一の入口）
+        /// @note `tag` が無ければ Untagged に戻す。`active`・`name` は無ければ今の値のまま。
         void Deserialize(const json& j);
 
         // ===== スポーン =====
@@ -188,6 +203,7 @@ namespace CoreEngine
     private:
         std::string               name_;          ///< オブジェクト表示名（ユーザー編集可能）
         std::string               serializeKey_;  ///< 保存用の安定キー（初回 SetName で固定）
+        std::string               tag_ = GameObjectTags::kUntagged;  ///< タグ
 
         bool isActive_ = true;           ///< アクティブ状態（false: 更新・描画ともにスキップ）
         bool markedForDestroy_ = false;  ///< 削除マーク（true: フレーム末に破棄）

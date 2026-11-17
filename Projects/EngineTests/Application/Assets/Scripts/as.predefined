@@ -401,11 +401,16 @@ class GameObject {
 	void set_name(const string&in) property;
 	bool get_active() const property;
 	void set_active(bool) property;
+	string get_tag() const property;
+	void set_tag(const string&in) property;
+	bool CompareTag(const string&in tag) const;
 	bool get_isAlive() const property;
 	void Destroy();
 	bool opEquals(const CoreEngine::GameObject&in) const;
 	CoreEngine::Transform@ get_transform() property;
 	CoreEngine::GameObject@ FindObject(const string&in name) const;
+	CoreEngine::GameObject@ FindObjectWithTag(const string&in tag) const;
+	CoreEngine::GameObject@[]@ FindObjectsWithTag(const string&in tag) const;
 	bool GetComponent(?&out component) const;
 	bool AddComponent(const string&in typeName);
 	bool RemoveComponent(const string&in typeName);

@@ -10,6 +10,7 @@
 #include "Editor/Inspector/ComponentInspectors.h"
 #include "Editor/Inspector/InspectorLayout.h"
 #include "Editor/Inspector/InspectorRenderer.h"
+#include "Editor/Inspector/TagField.h"
 #include "Editor/ImGui/Widgets/EditorBars.h"
 #include "Editor/Scene/EditorSceneAccess.h"
 #include "Editor/Scene/SceneDebugEditor.h"
@@ -41,10 +42,11 @@ namespace CoreEngine::Editor::PrefabAssetInspector
         struct State
         {
             std::string guid;                                    ///< どのプレハブか
-            json source;                                         ///< コンポーネントを作った元の components 配列
+            PrefabSystem::PrefabContents source;                 ///< コンポーネントを作った元の中身
+            std::string tag;                                     ///< 今のタグ
             std::vector<std::unique_ptr<IComponent>> components; ///< オブジェクトに付けずに作ったコンポーネント
             bool editing = false;                                ///< 編集の途中か
-            json beforeEdit;                                     ///< 編集を始める前の components 配列
+            PrefabSystem::PrefabContents beforeEdit;             ///< 編集を始める前の中身
         };
 
         State& GetState()
@@ -53,13 +55,14 @@ namespace CoreEngine::Editor::PrefabAssetInspector
             return state;
         }
 
-        /// @brief components 配列からコンポーネントを作り直す（オブジェクトには付けない）
-        void Rebuild(State& state, const json& components)
+        /// @brief 中身からタグとコンポーネントを作り直す（オブジェクトには付けない）
+        void Rebuild(State& state, const PrefabSystem::PrefabContents& contents)
         {
             state.components.clear();
-            state.source = components;
+            state.source = contents;
+            state.tag = contents.tag;
             state.editing = false;
-            for (const auto& entry : components) {
+            for (const auto& entry : contents.components) {
                 if (!entry.is_object() || !entry.contains("type") || !entry["type"].is_string()) {
                     continue;
                 }
@@ -73,10 +76,11 @@ namespace CoreEngine::Editor::PrefabAssetInspector
             }
         }
 
-        /// @brief 今のコンポーネントを components 配列の形にする（シーン内の別オブジェクトへの参照は null にする）
-        json MakeComponentsJson(const State& state)
+        /// @brief 今のタグとコンポーネントを中身の形にする（シーン内の別オブジェクトへの参照は null にする）
+        PrefabSystem::PrefabContents MakeContents(const State& state)
         {
-            json components = json::array();
+            PrefabSystem::PrefabContents contents;
+            contents.tag = state.tag;
             for (const auto& component : state.components) {
                 json entry = ComponentHost::SerializeComponent(*component);
                 if (entry.contains("parameters") && entry["parameters"].is_object()) {
@@ -86,13 +90,13 @@ namespace CoreEngine::Editor::PrefabAssetInspector
                         }
                     }
                 }
-                components.push_back(std::move(entry));
+                contents.components.push_back(std::move(entry));
             }
-            return components;
+            return contents;
         }
 
         /// @brief プレハブのファイルを書き換え、シーンでそのプレハブから作ったオブジェクトへ反映する
-        bool WritePrefab(const Reflection::AssetRefValue& prefab, const json& components)
+        bool WritePrefab(const Reflection::AssetRefValue& prefab, const PrefabSystem::PrefabContents& contents)
         {
             GameObjectManager* const manager = SceneAccess::Objects();
             if (!manager) {
@@ -100,7 +104,7 @@ namespace CoreEngine::Editor::PrefabAssetInspector
                     "PrefabAssetInspector: シーンが無いのでプレハブ \"{}\" へ書き込めません", prefab.path);
                 return false;
             }
-            if (!PrefabSystem::UpdatePrefab(*manager, prefab, components)) {
+            if (!PrefabSystem::UpdatePrefab(*manager, prefab, contents)) {
                 Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System,
                     "PrefabAssetInspector: プレハブ \"{}\" へ書き込めませんでした", prefab.path);
                 return false;
@@ -230,8 +234,8 @@ namespace CoreEngine::Editor::PrefabAssetInspector
             editor->OpenPrefabMode(*info);
         }
         UI::SectionHeader("プレハブの中身");
-        const json* const components = PrefabSystem::LoadComponents(prefab);
-        if (!components) {
+        const PrefabSystem::PrefabContents* const contents = PrefabSystem::Load(prefab);
+        if (!contents) {
             Release();
             UI::Hint("プレハブを読めません");
             return true;
@@ -239,14 +243,21 @@ namespace CoreEngine::Editor::PrefabAssetInspector
 
         // 別のプレハブを選んだ・外で書き換わったときは作り直す（編集の途中は作り直さない）
         State& state = GetState();
-        if (state.guid != guid || (!state.editing && *components != state.source)) {
-            Rebuild(state, *components);
+        const bool changedOutside = contents->tag != state.source.tag || contents->components != state.source.components;
+        if (state.guid != guid || (!state.editing && changedOutside)) {
+            Rebuild(state, *contents);
             state.guid = guid;
         }
         UI::Hint("変えた値はすぐプレハブに保存し、置いた物にも反映します");
 
         // 欄が積む Undo（シーンからコンポーネントを探すもの）は捨て、プレハブ全体の書き換えを 1 件として積む
         bool changed = false;
+        if (InspectorLayout::BeginRow("Tag", Theme::kTextDim)) {
+            ImGui::SetTooltip("このプレハブから作ったオブジェクトに付くタグ");
+        }
+        changed |= TagField::Draw(state.tag);
+        ImGui::Spacing();
+
         std::optional<std::size_t> removeRequest;
         {
             DiscardScope discard;
@@ -274,13 +285,13 @@ namespace CoreEngine::Editor::PrefabAssetInspector
         // 編集を終えたら（ドラッグを離した・入力欄を離れた）書き戻す
         if (state.editing && !ImGui::IsAnyItemActive()) {
             state.editing = false;
-            json before = std::move(state.beforeEdit);
-            json after = MakeComponentsJson(state);
+            PrefabSystem::PrefabContents before = std::move(state.beforeEdit);
+            PrefabSystem::PrefabContents after = MakeContents(state);
             if (!PrefabSystem::SameValue(before, after) && WritePrefab(prefab, after)) {
                 state.source = after;
                 EditorCommandStack::Get().Push(MakeValueCommand(prefabName + ".prefab を編集",
                     std::move(before), std::move(after),
-                    [prefab](const json& value) { WritePrefab(prefab, value); },
+                    [prefab](const PrefabSystem::PrefabContents& value) { WritePrefab(prefab, value); },
                     false, true));
             } else {
                 Rebuild(state, state.source);
@@ -293,10 +304,11 @@ namespace CoreEngine::Editor::PrefabAssetInspector
     {
         State& state = GetState();
         state.components.clear();
-        state.source = json{};
+        state.source = {};
+        state.tag.clear();
         state.guid.clear();
         state.editing = false;
-        state.beforeEdit = json{};
+        state.beforeEdit = {};
     }
 }
 

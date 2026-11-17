@@ -70,7 +70,8 @@ namespace CoreEngine::PrefabEditing
         /// @brief プレハブの書き換えを履歴へ積む
         /// @param sourceState 書き戻したオブジェクトの、書き戻す前の状態（戻すときに一緒に戻す）
         void PushUpdateCommand(const GameObject& source, const Reflection::AssetRefValue& prefab,
-                               std::string label, json before, json after, json sourceState)
+                               std::string label, PrefabSystem::PrefabContents before,
+                               PrefabSystem::PrefabContents after, json sourceState)
         {
             const ObjectId id = source.GetObjectId();
             Editor::EditorCommandStack::Get().Push(std::make_unique<Editor::FunctionCommand>(
@@ -105,12 +106,27 @@ namespace CoreEngine::PrefabEditing
             }
             return nullptr;
         }
+
+        /// @brief プレハブを書き換えて Undo に積む（書き戻したオブジェクトの書き戻す前の状態も一緒に控える）
+        bool UpdateAndPush(GameObjectManager& manager, GameObject& object, const Reflection::AssetRefValue& prefab,
+                           std::string label, PrefabSystem::PrefabContents before, PrefabSystem::PrefabContents after)
+        {
+            json sourceState = object.Serialize();
+            if (!PrefabSystem::UpdatePrefab(manager, prefab, after)) {
+                Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System,
+                    "PrefabEditing: プレハブ \"{}\" へ書き戻せませんでした", prefab.path);
+                return false;
+            }
+            PushUpdateCommand(object, prefab, std::move(label), std::move(before), std::move(after),
+                std::move(sourceState));
+            return true;
+        }
     }
 
     const AssetInfo* CreateFromObject(GameObject& object, const std::string& directory)
     {
         const std::string path = MakeUniquePrefabPath(directory, object.GetName());
-        const AssetInfo* info = PrefabSystem::CreatePrefab(path, PrefabSystem::MakePrefabComponents(object));
+        const AssetInfo* info = PrefabSystem::CreatePrefab(path, PrefabSystem::MakePrefabContents(object));
         if (!info) {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System,
                 "PrefabEditing: \"{}\" からプレハブ \"{}\" を作れませんでした", object.GetName(), path);
@@ -130,7 +146,7 @@ namespace CoreEngine::PrefabEditing
     bool ApplyObject(GameObjectManager& manager, GameObject& object)
     {
         const Reflection::AssetRefValue prefab = object.GetPrefab().GetValue();
-        const json* current = PrefabSystem::LoadComponents(prefab);
+        const PrefabSystem::PrefabContents* current = PrefabSystem::Load(prefab);
         if (!current) {
             Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
                 "PrefabEditing: \"{}\" のプレハブ（パス \"{}\"）を読めないので適用できません",
@@ -138,12 +154,12 @@ namespace CoreEngine::PrefabEditing
             return false;
         }
 
-        json before = *current;
-        json after = PrefabSystem::MakePrefabComponents(object);
+        PrefabSystem::PrefabContents before = *current;
+        PrefabSystem::PrefabContents after = PrefabSystem::MakePrefabContents(object);
 
         // 最初の Transform の位置と回転は、プレハブの値を残す
-        json* baseTransform = FindFirstTransformParameters(before);
-        json* newTransform = FindFirstTransformParameters(after);
+        json* baseTransform = FindFirstTransformParameters(before.components);
+        json* newTransform = FindFirstTransformParameters(after.components);
         if (baseTransform && newTransform) {
             for (const char* key : { "translate", "rotate" }) {
                 if (baseTransform->contains(key)) {
@@ -152,24 +168,17 @@ namespace CoreEngine::PrefabEditing
             }
         }
 
-        json sourceState = object.Serialize();
-        if (!PrefabSystem::UpdatePrefab(manager, prefab, after)) {
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System,
-                "PrefabEditing: プレハブ \"{}\" へ書き戻せませんでした", prefab.path);
-            return false;
-        }
-        PushUpdateCommand(object, prefab, object.GetName() + " をプレハブへ適用",
-            std::move(before), std::move(after), std::move(sourceState));
-        return true;
+        return UpdateAndPush(manager, object, prefab, object.GetName() + " をプレハブへ適用",
+            std::move(before), std::move(after));
     }
 
     bool ApplyProperty(GameObjectManager& manager, GameObject& object, IComponent& component,
                        const Reflection::PropertyDescriptor& property)
     {
         const Reflection::AssetRefValue prefab = object.GetPrefab().GetValue();
-        const json* current = PrefabSystem::LoadComponents(prefab);
+        const PrefabSystem::PrefabContents* current = PrefabSystem::Load(prefab);
         const std::optional<std::size_t> index = current
-            ? PrefabSystem::FindComponentIndex(*current, object, component) : std::nullopt;
+            ? PrefabSystem::FindComponentIndex(current->components, object, component) : std::nullopt;
         void* instance = component.GetReflectionInstance();
         if (!index || !instance) {
             Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
@@ -178,24 +187,35 @@ namespace CoreEngine::PrefabEditing
             return false;
         }
 
-        json before = *current;
-        json after = before;
-        json& parameters = after[*index]["parameters"];
+        PrefabSystem::PrefabContents before = *current;
+        PrefabSystem::PrefabContents after = before;
+        json& parameters = after.components[*index]["parameters"];
         if (!parameters.is_object()) {
             parameters = json::object();
         }
         parameters[property.name] = Reflection::PropertySerializer::PropertyToJson(property, instance);
 
-        json sourceState = object.Serialize();
-        if (!PrefabSystem::UpdatePrefab(manager, prefab, after)) {
-            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System,
-                "PrefabEditing: プレハブ \"{}\" へ書き戻せませんでした", prefab.path);
+        return UpdateAndPush(manager, object, prefab,
+            object.GetName() + " の " + property.displayName + " をプレハブへ適用",
+            std::move(before), std::move(after));
+    }
+
+    bool ApplyTag(GameObjectManager& manager, GameObject& object)
+    {
+        const Reflection::AssetRefValue prefab = object.GetPrefab().GetValue();
+        const PrefabSystem::PrefabContents* current = PrefabSystem::Load(prefab);
+        if (!current) {
+            Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
+                "PrefabEditing: \"{}\" のプレハブ（パス \"{}\"）を読めないので適用できません",
+                object.GetName(), prefab.path);
             return false;
         }
-        PushUpdateCommand(object, prefab,
-            object.GetName() + " の " + property.displayName + " をプレハブへ適用",
-            std::move(before), std::move(after), std::move(sourceState));
-        return true;
+
+        PrefabSystem::PrefabContents before = *current;
+        PrefabSystem::PrefabContents after = before;
+        after.tag = object.GetTag();
+        return UpdateAndPush(manager, object, prefab, object.GetName() + " のタグをプレハブへ適用",
+            std::move(before), std::move(after));
     }
 
     void Unlink(GameObject& object)

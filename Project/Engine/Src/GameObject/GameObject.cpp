@@ -205,6 +205,10 @@ namespace CoreEngine
         return "GameObject";
     }
 
+    void GameObject::SetTag(const std::string& tag) {
+        tag_ = tag.empty() ? std::string(GameObjectTags::kUntagged) : tag;
+    }
+
     bool GameObject::IsSerializeEnabled() const { return shouldSerialize_; }
     void GameObject::SetSerializeEnabled(bool enable) { shouldSerialize_ = enable; }
 
@@ -214,6 +218,9 @@ namespace CoreEngine
         j["active"] = IsActive();
         if (!name_.empty()) {
             j["name"] = name_;
+        }
+        if (tag_ != GameObjectTags::kUntagged) {
+            j["tag"] = tag_;
         }
 
         json components = SerializeComponents();
@@ -235,6 +242,8 @@ namespace CoreEngine
         if (j.contains("name") && j["name"].is_string()) {
             name_ = j["name"].get<std::string>();
         }
+        const auto tag = j.find("tag");
+        SetTag(tag != j.end() && tag->is_string() ? tag->get<std::string>() : std::string());
         if (j.contains("components")) {
             DeserializeComponents(j["components"]);
         }

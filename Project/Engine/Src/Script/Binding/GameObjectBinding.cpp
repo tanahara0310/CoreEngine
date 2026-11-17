@@ -20,6 +20,8 @@
 #include <angelscript.h>
 #include <scriptarray/scriptarray.h>
 
+#include <unordered_set>
+
 namespace CoreEngine::Script
 {
     namespace
@@ -49,6 +51,17 @@ namespace CoreEngine::Script
                 }
             }
             return nullptr;
+        }
+
+        /// @brief 一覧に無いタグなら、タグごとに一度だけ警告する
+        void WarnIfUndefinedTag(const std::string& tag, const char* action)
+        {
+            static std::unordered_set<std::string> warned;
+            if (GameObjectTags::IsDefined(tag) || !warned.insert(tag).second) {
+                return;
+            }
+            Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Script,
+                "{}に渡したタグ \"{}\" は、プロジェクト設定の Tags にありません", action, tag);
         }
     }
 
@@ -242,6 +255,30 @@ namespace CoreEngine::Script
         }
     }
 
+    std::string ScriptGameObject::GetTag() const
+    {
+        const GameObject* const object = ResolveOrWarn("タグの読み取り");
+        return object ? object->GetTag() : std::string(GameObjectTags::kUntagged);
+    }
+
+    void ScriptGameObject::SetTag(const std::string& tag)
+    {
+        if (!GameObjectTags::IsDefined(tag)) {
+            ThrowScriptException("タグ \"" + tag + "\" はプロジェクト設定の Tags にありません");
+            return;
+        }
+        if (GameObject* const object = ResolveOrWarn("タグの変更")) {
+            object->SetTag(tag);
+        }
+    }
+
+    bool ScriptGameObject::CompareTag(const std::string& tag) const
+    {
+        WarnIfUndefinedTag(tag, "CompareTag");
+        const GameObject* const object = ResolveOrWarn("タグの比較");
+        return object && object->CompareTag(tag);
+    }
+
     bool ScriptGameObject::IsAlive() const
     {
         const GameObject* const object = Resolve();
@@ -276,6 +313,32 @@ namespace CoreEngine::Script
         }
         const GameObject* const found = manager->FindObjectByName(name);
         return found ? CreateForObject(found) : nullptr;
+    }
+
+    ScriptGameObject* ScriptGameObject::FindObjectWithTag(const std::string& tag) const
+    {
+        WarnIfUndefinedTag(tag, "FindObjectWithTag");
+        const GameObject* const self = ResolveOrWarn("タグでの検索");
+        const GameObjectManager* const manager = self ? self->GetObjectManager() : nullptr;
+        const GameObject* const found = manager ? manager->FindObjectWithTag(tag) : nullptr;
+        return found ? CreateForObject(found) : nullptr;
+    }
+
+    CScriptArray* ScriptGameObject::FindObjectsWithTag(const std::string& tag) const
+    {
+        WarnIfUndefinedTag(tag, "FindObjectsWithTag");
+        CScriptArray* const result = CreateArray("array<GameObject@>");
+        const GameObject* const self = ResolveOrWarn("タグでの検索");
+        const GameObjectManager* const manager = self ? self->GetObjectManager() : nullptr;
+        if (!result || !manager) {
+            return result;
+        }
+        for (const GameObject* const found : manager->FindObjectsWithTag(tag)) {
+            ScriptGameObject* handle = CreateForObject(found);
+            result->InsertLast(&handle);
+            handle->Release();
+        }
+        return result;
     }
 
     ScriptGameObject* ScriptGameObject::InstantiatePrefab(const std::string& prefabPath, const std::string& name) const
@@ -422,11 +485,16 @@ namespace CoreEngine::Script
         r.Method("GameObject", "void set_name(const string &in) property", asMETHOD(ScriptGameObject, SetName), asCALL_THISCALL);
         r.Method("GameObject", "bool get_active() const property", asMETHOD(ScriptGameObject, IsActive), asCALL_THISCALL);
         r.Method("GameObject", "void set_active(bool) property", asMETHOD(ScriptGameObject, SetActive), asCALL_THISCALL);
+        r.Method("GameObject", "string get_tag() const property", asMETHOD(ScriptGameObject, GetTag), asCALL_THISCALL);
+        r.Method("GameObject", "void set_tag(const string &in) property", asMETHOD(ScriptGameObject, SetTag), asCALL_THISCALL);
+        r.Method("GameObject", "bool CompareTag(const string &in tag) const", asMETHOD(ScriptGameObject, CompareTag), asCALL_THISCALL);
         r.Method("GameObject", "bool get_isAlive() const property", asMETHOD(ScriptGameObject, IsAlive), asCALL_THISCALL);
         r.Method("GameObject", "void Destroy()", asMETHOD(ScriptGameObject, Destroy), asCALL_THISCALL);
         r.Method("GameObject", "bool opEquals(const GameObject &in) const", asMETHOD(ScriptGameObject, Equals), asCALL_THISCALL);
         r.Method("GameObject", "Transform@ get_transform() property", asMETHOD(ScriptGameObject, GetTransform), asCALL_THISCALL);
         r.Method("GameObject", "GameObject@ FindObject(const string &in name) const", asMETHOD(ScriptGameObject, FindObject), asCALL_THISCALL);
+        r.Method("GameObject", "GameObject@ FindObjectWithTag(const string &in tag) const", asMETHOD(ScriptGameObject, FindObjectWithTag), asCALL_THISCALL);
+        r.Method("GameObject", "array<GameObject@>@ FindObjectsWithTag(const string &in tag) const", asMETHOD(ScriptGameObject, FindObjectsWithTag), asCALL_THISCALL);
         r.Method("GameObject", "bool GetComponent(?&out component) const", asMETHOD(ScriptGameObject, GetComponent), asCALL_THISCALL);
         r.Method("GameObject", "bool AddComponent(const string &in typeName)", asMETHOD(ScriptGameObject, AddComponentByName), asCALL_THISCALL);
         r.Method("GameObject", "bool RemoveComponent(const string &in typeName)", asMETHOD(ScriptGameObject, RemoveComponentByName), asCALL_THISCALL);

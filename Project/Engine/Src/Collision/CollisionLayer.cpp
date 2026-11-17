@@ -1,144 +1,58 @@
 #include "pch.h"
 #include "Collision/CollisionLayer.h"
 
-#include "Utility/JsonManager/JsonManager.h"
-#include "Utility/Logger/Logger.h"
-#include "Utility/Path/ProjectPaths.h"
-#include "Utility/String/FailWith.h"
-#include "externals/nlohmann/single_include/nlohmann/json.hpp"
+#include "EngineSystem/Settings/ProjectNameList.h"
 
-#include <algorithm>
-#include <filesystem>
-#include <fstream>
+#include <utility>
 
 namespace CoreEngine
 {
     namespace
     {
-        constexpr const char* kSettingsPath = "Application/Config/EngineSettings/Layers.json";
-        constexpr const char* kLayersKey = "layers";
-        constexpr const char* kVersionKey = "version";
-        constexpr const char* kVersion = "1.0";
-
-        /// @brief ファイルが無いときの並び
-        std::vector<std::string> DefaultNames()
+        ProjectNameList& Table()
         {
-            return { "Default" };
-        }
-
-        /// @brief 名前の並びとして成り立っているか
-        bool Validate(const std::vector<std::string>& names, std::string* outError)
-        {
-            if (names.empty()) {
-                return FailWith(outError, "レイヤーが 1 つもありません");
-            }
-            if (names.size() > kMaxCollisionLayers) {
-                return FailWith(outError, "レイヤーが多すぎます（32 まで）");
-            }
-            if (names.front() != "Default") {
-                return FailWith(outError, "先頭は Default でなければなりません");
-            }
-            for (const std::string& name : names) {
-                if (name.empty()) {
-                    return FailWith(outError, "空の名前は使えません");
-                }
-            }
-            std::vector<std::string> sorted = names;
-            std::sort(sorted.begin(), sorted.end());
-            if (std::adjacent_find(sorted.begin(), sorted.end()) != sorted.end()) {
-                return FailWith(outError, "同じ名前が 2 つあります");
-            }
-            if (outError) { outError->clear(); }
-            return true;
-        }
-
-        /// @brief ファイルのレイヤー名を読む（無い・壊れていれば既定の名前）
-        /// @note ログの初期化より前に走りうるので、ログは出さない
-        std::vector<std::string> ReadNames()
-        {
-            std::vector<std::string> loaded;
-            const nlohmann::json root = JsonManager::ParseFile(ProjectPaths::Resolve(kSettingsPath));
-            if (!root.is_discarded() && root.is_object()) {
-                if (const auto found = root.find(kLayersKey);
-                    found != root.end() && found->is_array()) {
-                    for (const auto& entry : *found) {
-                        if (entry.is_string()) {
-                            loaded.push_back(entry.get<std::string>());
-                        }
-                    }
-                }
-            }
-            return Validate(loaded, nullptr) ? loaded : DefaultNames();
-        }
-
-        std::vector<std::string>& Table()
-        {
-            static std::vector<std::string> names = ReadNames();
+            static ProjectNameList names({
+                .settingsPath = "Application/Config/EngineSettings/Layers.json",
+                .key = "layers",
+                .noun = "レイヤー",
+                .first = "Default",
+                .maxCount = kMaxCollisionLayers,
+                .defaults = { "Default" },
+            });
             return names;
-        }
-
-        bool Write(const std::vector<std::string>& names)
-        {
-            const std::filesystem::path path = ProjectPaths::Resolve(kSettingsPath);
-            std::error_code ec;
-            std::filesystem::create_directories(path.parent_path(), ec);
-            if (ec) {
-                return false;
-            }
-
-            nlohmann::json root;
-            root[kVersionKey] = kVersion;
-            root[kLayersKey] = names;
-
-            std::ofstream out(path, std::ios::binary);
-            if (!out) {
-                return false;
-            }
-            out << root.dump(4) << '\n';
-            return static_cast<bool>(out);
         }
     }
 
     std::size_t CollisionLayers::Count()
     {
-        return Table().size();
+        return Table().Names().size();
     }
 
     const std::vector<std::string>& CollisionLayers::Names()
     {
-        return Table();
+        return Table().Names();
     }
 
     bool CollisionLayers::SetNames(std::vector<std::string> names, std::string* outError)
     {
-        if (!Validate(names, outError)) {
-            return false;
-        }
-        if (!Write(names)) {
-            if (outError) { *outError = "保存できませんでした"; }
-            return false;
-        }
-        Table() = std::move(names);
-        Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
-            "当たり判定のレイヤーを {} 個にしました", Table().size());
-        return true;
+        return Table().SetNames(std::move(names), outError);
     }
 
     void CollisionLayers::Reload()
     {
-        Table() = ReadNames();
+        Table().Reload();
     }
 
     const std::string& ToString(CollisionLayer layer)
     {
-        const std::vector<std::string>& names = Table();
+        const std::vector<std::string>& names = Table().Names();
         const auto index = static_cast<std::size_t>(layer);
         return index < names.size() ? names[index] : names.front();
     }
 
     bool TryParseCollisionLayer(std::string_view name, CollisionLayer& out)
     {
-        const std::vector<std::string>& names = Table();
+        const std::vector<std::string>& names = Table().Names();
         for (std::size_t i = 0; i < names.size(); ++i) {
             if (names[i] == name) {
                 out = static_cast<CollisionLayer>(i);

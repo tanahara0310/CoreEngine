@@ -99,6 +99,15 @@ namespace CoreEngine::Script
         bool IsActive() const;
         void SetActive(bool active);
 
+        /// @brief タグ（付けていなければ "Untagged"）
+        std::string GetTag() const;
+
+        /// @brief タグを付け替える（一覧に無いタグならスクリプトの例外にして変えない）
+        void SetTag(const std::string& tag);
+
+        /// @brief タグが一致するか（一覧に無いタグを渡したら一度だけ警告する）
+        bool CompareTag(const std::string& tag) const;
+
         /// @brief 実体があり、破棄の予約もされていないか
         bool IsAlive() const;
 
@@ -114,6 +123,13 @@ namespace CoreEngine::Script
         /// @brief 同じ管理者（同じシーン）から表示名でオブジェクトを探す（破棄を予約されたものは飛ばす）
         /// @return 参照を 1 つ持ったハンドル。見つからなければ nullptr
         ScriptGameObject* FindObject(const std::string& name) const;
+
+        /// @brief 同じ管理者（同じシーン）からタグでオブジェクトを探す（破棄を予約されたものは飛ばす・無効のものも返す）
+        /// @return 参照を 1 つ持ったハンドル。見つからなければ nullptr
+        ScriptGameObject* FindObjectWithTag(const std::string& tag) const;
+
+        /// @brief 同じ管理者（同じシーン）からタグが一致するオブジェクトを全部集める（並びは登録順）
+        CScriptArray* FindObjectsWithTag(const std::string& tag) const;
 
         /// @brief プレハブからオブジェクトを 1 体作り、同じ管理者（同じシーン）へ登録する
         /// @param prefabPath プロジェクトの根からの相対パス（`Application/Assets/Prefabs/Rock.prefab` など）

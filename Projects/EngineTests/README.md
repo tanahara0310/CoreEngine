@@ -367,3 +367,23 @@ DXR 1.1 に対応していない GPU では、物の影は霧に落ちません�
 1. 壁と手前の柱に、地平線の高さで横に走る境目が無い。境目があり、その上だけが白っぽく霞んでいたら、近くの物に 2km 分の霞がかかっている。
 2. Environment ▸ Sky Atmosphere の「大気パラメータ」で `r.Atmosphere.AerialPerspectiveKmPerSlice` を 20 にしても、壁と手前の柱は霞まない。確かめたら 4 に戻す（値はシーンに保存される）。
 3. MainCamera の回転 X を 0（水平）や -0.1（上向き）にしても、境目は出ない。
+
+## GameObject_Tags
+
+オブジェクトのタグ（`Tags.json` の名前・インスペクタの Tag・スクリプトの `CompareTag`・`FindObjectsWithTag`・プレハブのタグ）を確かめます。
+
+このプロジェクトのタグは `Application/Config/EngineSettings/Tags.json` の Untagged・Player・Enemy の 3 つです。
+
+| 物 | 見るところ |
+|---|---|
+| Enemy_A・Enemy_B | 赤い立方体。インスペクタの Tag が Enemy |
+| Plain | 灰色の立方体。Tag が Untagged |
+| Probe | 試験のスクリプト（TagProbe）。再生すると、プレハブ TaggedEnemy（タグ Enemy）から右端に 1 体出し、Enemy のタグを持つ物を集めて 1.5m 持ち上げる |
+
+確かめ方:
+
+1. 停止中に Enemy_A を選ぶと、インスペクタの名前の下に Tag の欄があり Enemy になっている。欄を開くと Untagged・Player・Enemy が並ぶ。
+2. 再生すると赤い立方体 3 つ（Enemy_A・Enemy_B・右端に出た Enemy_FromPrefab）だけが浮き上がり、Plain は床に残る。コンソールに「Enemy のタグを持つ物 3 個（期待 3）」など、TagProbe の行が 4 つ出て、どれも期待どおり。
+3. 再生中に Enemy_FromPrefab を選ぶと Tag が Enemy。Plain の Tag を Enemy に変えて止め、もう一度再生すると 4 つ浮く（確かめたら Untagged に戻して保存する）。
+4. Project の Prefabs/TaggedEnemy を選ぶと、インスペクタの「プレハブの中身」に Tag が出る。TaggedEnemy をシーンへ置いて Tag を Player に変えると、Tag の行の左端に青い線が出る。Tag のラベルを右クリックして「プレハブの値に戻す」で Enemy に戻る（置いた物は消してから保存する）。
+5. Edit ▸ Project Settings… の Tags でタグを足して「適用」すると、Tags.json に書かれ、インスペクタの Tag の欄にすぐ出る（確かめたら外して適用する）。

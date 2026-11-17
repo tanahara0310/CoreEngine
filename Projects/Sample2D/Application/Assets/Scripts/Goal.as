@@ -9,7 +9,7 @@ class Goal : ScriptComponent
 
     void OnTriggerEnter(Collision@ other)
     {
-        if (other.gameObject.name == "Player" && director !is null) {
+        if (other.gameObject.CompareTag("Player") && director !is null) {
             director.Clear();
         }
     }

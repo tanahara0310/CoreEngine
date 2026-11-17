@@ -25,13 +25,16 @@ namespace CoreEngine
         const AssetInfo* CreateFromObject(GameObject& object,
                                           const std::string& directory = "Application/Assets/Prefabs");
 
-        /// @brief オブジェクトの今の構成と値をプレハブへ書き戻す
+        /// @brief オブジェクトの今のタグと構成と値をプレハブへ書き戻す
         /// @note 最初の Transform の位置と回転は、プレハブの値のまま残す。
         bool ApplyObject(GameObjectManager& manager, GameObject& object);
 
         /// @brief 1 つのプロパティの今の値をプレハブへ書き戻す
         bool ApplyProperty(GameObjectManager& manager, GameObject& object, IComponent& component,
                            const Reflection::PropertyDescriptor& property);
+
+        /// @brief オブジェクトの今のタグをプレハブへ書き戻す
+        bool ApplyTag(GameObjectManager& manager, GameObject& object);
 
         /// @brief プレハブとのつながりを外す（以後はシーンへ構成ごと保存される）
         void Unlink(GameObject& object);

@@ -89,20 +89,61 @@ namespace CoreEngine
         return it != objectsById_.end() ? it->second : nullptr;
     }
 
+    namespace
+    {
+        /// @brief 削除マークの付いていないオブジェクトを、一覧・追加待ちの順に visit へ渡す
+        /// @param visit true を返したらそこで打ち切る
+        template <class Objects, class Pending, class Visit>
+        void VisitLiveObjects(const Objects& objects, const Pending& pending, Visit&& visit)
+        {
+            for (const auto& obj : objects) {
+                if (obj && !obj->IsMarkedForDestroy() && visit(*obj)) {
+                    return;
+                }
+            }
+            // UpdateAll() の途中で作られ、まだ objects_ へ移していないもの
+            for (const auto& obj : pending) {
+                if (obj && !obj->IsMarkedForDestroy() && visit(*obj)) {
+                    return;
+                }
+            }
+        }
+    }
+
     GameObject* GameObjectManager::FindObjectByName(const std::string& name) const
     {
-        for (const auto& obj : objects_) {
-            if (obj && !obj->IsMarkedForDestroy() && obj->GetName() == name) {
-                return obj.get();
+        GameObject* found = nullptr;
+        VisitLiveObjects(objects_, pendingAdd_, [&](GameObject& obj) {
+            if (obj.GetName() == name) {
+                found = &obj;
             }
-        }
-        // UpdateAll() の途中で作られ、まだ objects_ へ移していないもの
-        for (const auto& obj : pendingAdd_) {
-            if (obj && !obj->IsMarkedForDestroy() && obj->GetName() == name) {
-                return obj.get();
+            return found != nullptr;
+        });
+        return found;
+    }
+
+    GameObject* GameObjectManager::FindObjectWithTag(std::string_view tag) const
+    {
+        GameObject* found = nullptr;
+        VisitLiveObjects(objects_, pendingAdd_, [&](GameObject& obj) {
+            if (obj.CompareTag(tag)) {
+                found = &obj;
             }
-        }
-        return nullptr;
+            return found != nullptr;
+        });
+        return found;
+    }
+
+    std::vector<GameObject*> GameObjectManager::FindObjectsWithTag(std::string_view tag) const
+    {
+        std::vector<GameObject*> found;
+        VisitLiveObjects(objects_, pendingAdd_, [&](GameObject& obj) {
+            if (obj.CompareTag(tag)) {
+                found.push_back(&obj);
+            }
+            return false;
+        });
+        return found;
     }
 
     bool GameObjectManager::AssignObjectId(GameObject& object, ObjectId id)
