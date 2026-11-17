@@ -10,6 +10,7 @@
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/UavTexture.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
@@ -154,26 +155,12 @@ namespace CoreEngine
         // 被覆率と砕けた直後の厚い泡の量の 2 チャンネル
         const DXGI_FORMAT format = DXGI_FORMAT_R16G16_FLOAT;
 
-        D3D12_RESOURCE_DESC desc{};
-        desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-        desc.Width = kResolution;
-        desc.Height = kResolution;
+        D3D12_RESOURCE_DESC desc = UavTexture::MakeDesc(kResolution, kResolution, 1, format);
         desc.DepthOrArraySize = static_cast<UINT16>(kLevelCount);
-        desc.MipLevels = 1;
-        desc.Format = format;
-        desc.SampleDesc.Count = 1;
-        desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-        desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-
-        try {
-            for (FFTOceanGpuTexture& texture : foam_) {
-                texture.Reset(
-                    ResourceFactory::CreateTextureResource(device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS),
-                    D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        for (FFTOceanGpuTexture& texture : foam_) {
+            if (!UavTexture::CreateResource(device, texture, desc)) {
+                return false;
             }
-        }
-        catch (const std::exception&) {
-            return false;
         }
 
         for (size_t i = 0; i < foam_.size(); ++i) {
@@ -210,16 +197,8 @@ namespace CoreEngine
         D3D12_HEAP_PROPERTIES heapProps{};
         heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
 
-        D3D12_RESOURCE_DESC desc{};
-        desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-        desc.Width = kBytes;
-        desc.Height = 1;
-        desc.DepthOrArraySize = 1;
-        desc.MipLevels = 1;
-        desc.Format = DXGI_FORMAT_UNKNOWN;
-        desc.SampleDesc.Count = 1;
-        desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-        desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+        const D3D12_RESOURCE_DESC desc =
+            ResourceFactory::MakeBufferDesc(kBytes, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 
         // 毎フレームの最初は 0 を写し込むので、写し先の状態で作る
         Microsoft::WRL::ComPtr<ID3D12Resource> buffer;

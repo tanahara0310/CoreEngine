@@ -6,6 +6,7 @@
 #include "Graphics/RHI/Command/DeferredReleaseQueue.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Resource/UavTexture.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
@@ -36,18 +37,10 @@ namespace CoreEngine
         D3D12_HEAP_PROPERTIES heapProps{};
         heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
 
-        D3D12_RESOURCE_DESC texDesc{};
-        texDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-        texDesc.Width = width;
-        texDesc.Height = height;
-        texDesc.DepthOrArraySize = 1;
-        texDesc.MipLevels = 1;
-        texDesc.Format = options.format;
-        texDesc.SampleDesc.Count = 1;
-        texDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-        texDesc.Flags = options.allowUAV
-            ? D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
-            : D3D12_RESOURCE_FLAG_NONE;
+        D3D12_RESOURCE_DESC texDesc = UavTexture::MakeDesc(width, height, 1, options.format);
+        if (!options.allowUAV) {
+            texDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+        }
 
         Microsoft::WRL::ComPtr<ID3D12Resource> texture;
         HRESULT hr = dxCommon->GetDevice()->CreateCommittedResource(
@@ -72,18 +65,12 @@ namespace CoreEngine
 
         slot.texture.Reset(std::move(texture), options.initialState);
 
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+        D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
+        UavTexture::MakeViewDescs(texDesc, srvDesc, uavDesc);
         if (options.allowUAV) {
-            D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
-            uavDesc.Format = options.format;
-            uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
             descriptorAllocator->EnsureUAV(slot.uavHandle, slot.texture.Get(), uavDesc, debugName + "_UAV");
         }
-
-        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-        srvDesc.Format = options.format;
-        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        srvDesc.Texture2D.MipLevels = 1;
         descriptorAllocator->EnsureSRV(slot.srvHandle, slot.texture.Get(), srvDesc, debugName + "_SRV");
 
         Logger::GetInstance().Infof(

@@ -10,7 +10,7 @@
 #include "Graphics/RHI/Debug/GpuStageScope.h"
 #include "Graphics/RHI/Debug/GpuTimestampProfiler.h"
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/UavTexture.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
 #include "Graphics/Water/FFT/FFTOceanDispatchHelper.h"
@@ -280,27 +280,15 @@ namespace CoreEngine
         Microsoft::WRL::ComPtr<ID3D12Device> device = dxCommon_->GetDevice();
         const DXGI_FORMAT format = DXGI_FORMAT_R16G16B16A16_FLOAT;
 
-        D3D12_RESOURCE_DESC desc{};
-        desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-        desc.Width = GetSettings().resolution;
-        desc.Height = GetSettings().resolution;
+        D3D12_RESOURCE_DESC desc =
+            UavTexture::MakeDesc(GetSettings().resolution, GetSettings().resolution, 1, format);
         desc.DepthOrArraySize = static_cast<UINT16>(kCascadeCount);
-        desc.MipLevels = 1;
-        desc.Format = format;
-        desc.SampleDesc.Count = 1;
-        desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-        desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
         // 出力 1 本分の生成（リソース＋配列SRV＋スライスUAV）。
         // 配列SRVは全スライスを1ビューで見せる（名前ベースのバインドで水面/RTが参照）。
         // スライスUAVは Finalize が各カスケードのスライスへ書き込むために使う。
         auto createOutput = [&](CascadeOutputTexture& out, const std::string& name) -> bool {
-            try {
-                out.Reset(
-                    ResourceFactory::CreateTextureResource(device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS),
-                    D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-            }
-            catch (const std::exception&) {
+            if (!UavTexture::CreateResource(device, out, desc)) {
                 return false;
             }
 

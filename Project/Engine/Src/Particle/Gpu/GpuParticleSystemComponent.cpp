@@ -166,15 +166,7 @@ namespace CoreEngine
         {
             D3D12_HEAP_PROPERTIES heapProps{};
             heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
-            D3D12_RESOURCE_DESC desc{};
-            desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-            desc.Width = 256; // D3D12_DRAW_ARGUMENTS(16B) を256バイトアライン
-            desc.Height = 1;
-            desc.DepthOrArraySize = 1;
-            desc.MipLevels = 1;
-            desc.Format = DXGI_FORMAT_UNKNOWN;
-            desc.SampleDesc.Count = 1;
-            desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+            const D3D12_RESOURCE_DESC desc = ResourceFactory::MakeBufferDesc(256); // D3D12_DRAW_ARGUMENTS(16B) を256バイトアライン
             Microsoft::WRL::ComPtr<ID3D12Resource> args;
             if (FAILED(device->CreateCommittedResource(
                     &heapProps, D3D12_HEAP_FLAG_NONE, &desc,
@@ -244,16 +236,8 @@ namespace CoreEngine
 
         const size_t alignedSize = (sizeInBytes + 255) & ~static_cast<size_t>(0xFF);
 
-        D3D12_RESOURCE_DESC resourceDesc{};
-        resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-        resourceDesc.Width = alignedSize;
-        resourceDesc.Height = 1;
-        resourceDesc.DepthOrArraySize = 1;
-        resourceDesc.MipLevels = 1;
-        resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
-        resourceDesc.SampleDesc.Count = 1;
-        resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-        resourceDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+        const D3D12_RESOURCE_DESC resourceDesc =
+            ResourceFactory::MakeBufferDesc(alignedSize, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 
         Microsoft::WRL::ComPtr<ID3D12Resource> buffer;
         if (FAILED(device->CreateCommittedResource(

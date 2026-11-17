@@ -407,15 +407,9 @@ namespace CoreEngine
         bool AllocateMedia(Constants& constants, const Vector3& cameraPos, D3D12_GPU_DESCRIPTOR_HANDLE noiseSrv,
             bool heightFogInGrid);
 
-        /// @brief 3D の画像 1 枚を作る
+        /// @brief 画像 1 枚と SRV・UAV を作る（sizeZ が 1 なら 2D、2 以上なら 3D）
         bool CreateVolume(Volume& volume, uint32_t sizeX, uint32_t sizeY, uint32_t sizeZ, const char* name,
             DXGI_FORMAT format = DXGI_FORMAT_R16G16B16A16_FLOAT);
-
-        /// @brief 2D の画像 1 枚を作る
-        bool CreateImage(Volume& image, uint32_t sizeX, uint32_t sizeY, const char* name);
-
-        /// @brief 画像 1 枚と SRV・UAV を作る（3D と 2D）
-        bool CreateTexture(Volume& volume, const D3D12_RESOURCE_DESC& desc, const char* name);
 
         /// @brief 3D の画像 1 枚を GPU が使い終わってから手放す
         void RetireVolume(Volume& volume);

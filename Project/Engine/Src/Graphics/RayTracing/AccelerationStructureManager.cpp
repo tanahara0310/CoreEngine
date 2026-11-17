@@ -3,6 +3,7 @@
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/Command/DeferredReleaseQueue.h"
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Model/ModelResource.h"
 #include "Graphics/Model/VertexData.h"
 #include "Math/IntegerMath.h"
@@ -312,14 +313,7 @@ namespace CoreEngine
             D3D12_HEAP_PROPERTIES heapProps{};
             heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
 
-            D3D12_RESOURCE_DESC resDesc{};
-            resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-            resDesc.Width = instanceBufferSize;
-            resDesc.Height = 1;
-            resDesc.DepthOrArraySize = 1;
-            resDesc.MipLevels = 1;
-            resDesc.SampleDesc.Count = 1;
-            resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+            const D3D12_RESOURCE_DESC resDesc = ResourceFactory::MakeBufferDesc(instanceBufferSize);
 
             HRESULT hr = device5_->CreateCommittedResource(
                 &heapProps, D3D12_HEAP_FLAG_NONE, &resDesc,
@@ -365,53 +359,13 @@ namespace CoreEngine
         D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO prebuild{};
         device5_->GetRaytracingAccelerationStructurePrebuildInfo(&inputs, &prebuild);
 
-        // TLAS 結果バッファ（AS ステートで作成）
-        auto ensureASBuffer = [&](Microsoft::WRL::ComPtr<ID3D12Resource>& buf, UINT64 size) {
-                if (!buf || buf->GetDesc().Width < size) {
-                    if (buf) { retiredResources_.push_back(std::move(buf)); }
-
-                    D3D12_HEAP_PROPERTIES hp{};
-                    hp.Type = D3D12_HEAP_TYPE_DEFAULT;
-                    D3D12_RESOURCE_DESC rd{};
-                    rd.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-                    rd.Width = size;
-                    rd.Height = 1;
-                    rd.DepthOrArraySize = 1;
-                    rd.MipLevels = 1;
-                    rd.SampleDesc.Count = 1;
-                    rd.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-                    rd.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-
-                    device5_->CreateCommittedResource(
-                        &hp, D3D12_HEAP_FLAG_NONE, &rd,
-                        D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE,
-                        nullptr, IID_PPV_ARGS(&buf));
-                }
-            };
-
-        // スクラッチバッファ（UAV、COMMON で作成→暗黙昇格）
-        auto ensureScratchBuffer = [&](Microsoft::WRL::ComPtr<ID3D12Resource>& buf, UINT64 size) {
-                if (!buf || buf->GetDesc().Width < size) {
-                    if (buf) { retiredResources_.push_back(std::move(buf)); }
-
-                    D3D12_HEAP_PROPERTIES hp{};
-                    hp.Type = D3D12_HEAP_TYPE_DEFAULT;
-                    D3D12_RESOURCE_DESC rd{};
-                    rd.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-                    rd.Width = size;
-                    rd.Height = 1;
-                    rd.DepthOrArraySize = 1;
-                    rd.MipLevels = 1;
-                    rd.SampleDesc.Count = 1;
-                    rd.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-                    rd.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-
-                    device5_->CreateCommittedResource(
-                        &hp, D3D12_HEAP_FLAG_NONE, &rd,
-                        D3D12_RESOURCE_STATE_COMMON,
-                        nullptr, IID_PPV_ARGS(&buf));
-                }
-            };
+        // 足りなければ前のバッファを手放して作り直す（結果は AS ステート、スクラッチは COMMON で作成→暗黙昇格）
+        const auto ensureBuffer = [this](Microsoft::WRL::ComPtr<ID3D12Resource>& buf, UINT64 size, bool isScratch) {
+            if (!buf || buf->GetDesc().Width < size) {
+                if (buf) { retiredResources_.push_back(std::move(buf)); }
+                buf = isScratch ? CreateScratch(size) : CreateASBuffer(size);
+            }
+        };
 
         // 結果バッファは今フレームのリングスロットのものを使う。
         // 張り直しても、実行待ちの前フレームが参照しているのは別スロットなので影響しない。
@@ -420,8 +374,8 @@ namespace CoreEngine
             tlasResult ? tlasResult->GetGPUVirtualAddress() : 0;
 
         constexpr UINT64 kMinASBufferBytes = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BYTE_ALIGNMENT;
-        ensureASBuffer(tlasResult, (std::max)(prebuild.ResultDataMaxSizeInBytes, kMinASBufferBytes));
-        ensureScratchBuffer(tlasScratch_, (std::max)(prebuild.ScratchDataSizeInBytes, kMinASBufferBytes));
+        ensureBuffer(tlasResult, (std::max)(prebuild.ResultDataMaxSizeInBytes, kMinASBufferBytes), false);
+        ensureBuffer(tlasScratch_, (std::max)(prebuild.ScratchDataSizeInBytes, kMinASBufferBytes), true);
         if (!tlasResult || !tlasScratch_) {
             Logger::GetInstance().Logf(
                 LogLevel::Error, LogCategory::Graphics, "BuildTLAS: Failed to create TLAS result or scratch buffer.");
@@ -495,15 +449,8 @@ namespace CoreEngine
         D3D12_HEAP_PROPERTIES heapProps{};
         heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
 
-        D3D12_RESOURCE_DESC resDesc{};
-        resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-        resDesc.Width = size;
-        resDesc.Height = 1;
-        resDesc.DepthOrArraySize = 1;
-        resDesc.MipLevels = 1;
-        resDesc.SampleDesc.Count = 1;
-        resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-        resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+        const D3D12_RESOURCE_DESC resDesc =
+            ResourceFactory::MakeBufferDesc(size, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 
         Microsoft::WRL::ComPtr<ID3D12Resource> buffer;
         const HRESULT hr = device5_->CreateCommittedResource(
@@ -708,15 +655,8 @@ namespace CoreEngine
         D3D12_HEAP_PROPERTIES heapProps{};
         heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
 
-        D3D12_RESOURCE_DESC resDesc{};
-        resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-        resDesc.Width = size;
-        resDesc.Height = 1;
-        resDesc.DepthOrArraySize = 1;
-        resDesc.MipLevels = 1;
-        resDesc.SampleDesc.Count = 1;
-        resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-        resDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+        const D3D12_RESOURCE_DESC resDesc =
+            ResourceFactory::MakeBufferDesc(size, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 
         Microsoft::WRL::ComPtr<ID3D12Resource> buffer;
         device5_->CreateCommittedResource(

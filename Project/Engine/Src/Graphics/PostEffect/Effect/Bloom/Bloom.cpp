@@ -2,7 +2,7 @@
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Bloom.h"
 #include "Editor/ImGui/ImguiManager.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/UavTexture.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h"
@@ -76,37 +76,9 @@ namespace CoreEngine
             return false;
         }
 
-        D3D12_RESOURCE_DESC desc{};
-        desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-        desc.Width = kDirtTextureSize;
-        desc.Height = kDirtTextureSize;
-        desc.DepthOrArraySize = 1;
-        desc.MipLevels = 1;
-        desc.Format = DXGI_FORMAT_R16_FLOAT;
-        desc.SampleDesc.Count = 1;
-        desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-        desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-
-        dirtTexture_.Reset(ResourceFactory::CreateTextureResource(
-            device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        if (!dirtTexture_) {
-            return false;
-        }
-
-        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-        srvDesc.Format = desc.Format;
-        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-        srvDesc.Texture2D.MipLevels = 1;
-
-        D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
-        uavDesc.Format = desc.Format;
-        uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-
-        D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle{};
-        dirtSrvHandle_ = descriptorAllocator->CreateSRV(dirtTexture_.Get(), srvDesc, "BloomDirt_SRV");
-        dirtUavHandle_ = descriptorAllocator->CreateUAV(dirtTexture_.Get(), uavDesc, "BloomDirt_UAV");
-        return true;
+        return UavTexture::Create(device, *descriptorAllocator, dirtTexture_,
+            UavTexture::MakeDesc(kDirtTextureSize, kDirtTextureSize, 1, DXGI_FORMAT_R16_FLOAT),
+            dirtSrvHandle_, "BloomDirt_SRV", dirtUavHandle_, "BloomDirt_UAV");
     }
 
     void Bloom::RecordDirtGenerationIfNeeded(ID3D12GraphicsCommandList* cmdList)

@@ -4,12 +4,12 @@
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/UavTexture.h"
 #include "Math/IntegerMath.h"
 #include "Utility/Logger/Logger.h"
 
 #include <algorithm>
 #include <cstring>
-#include <exception>
 #include <string>
 #include <wrl.h>
 
@@ -17,104 +17,28 @@ namespace CoreEngine
 {
     namespace
     {
-        /// @brief 一辺のサイズから作れるミップ段数を求め、上限で切る
-        uint32_t ClampMipLevels(uint32_t smallestExtent, uint32_t desired)
-        {
-            uint32_t available = 1;
-            while ((smallestExtent >> available) >= 1u && available < 16u) {
-                ++available;
-            }
-            return std::max(1u, std::min(desired, available));
-        }
-
-        /// @brief UAV 対応テクスチャ（2D/3D）の Desc を作る
-        D3D12_RESOURCE_DESC MakeTextureDesc(uint32_t width, uint32_t height, uint32_t depth,
-                                            DXGI_FORMAT format, uint32_t mipLevels = 1)
-        {
-            D3D12_RESOURCE_DESC desc{};
-            desc.Dimension = (depth > 1) ? D3D12_RESOURCE_DIMENSION_TEXTURE3D
-                                         : D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-            desc.Width = width;
-            desc.Height = height;
-            desc.DepthOrArraySize = static_cast<UINT16>(std::max(depth, 1u));
-            desc.MipLevels = static_cast<UINT16>(std::max(mipLevels, 1u));
-            desc.Format = format;
-            desc.SampleDesc.Count = 1;
-            desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-            desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-            return desc;
-        }
-
-        /// @brief 指定ミップ段を指す SRV/UAV の Desc を Desc の次元から組み立てる
-        /// @param mip 対象のミップ段
-        /// @param srvMipCount SRV が見る段数（サンプル用の全段ビューは全体を渡す）
-        void MakeViewDescs(const D3D12_RESOURCE_DESC& desc,
-                           D3D12_SHADER_RESOURCE_VIEW_DESC& outSrv,
-                           D3D12_UNORDERED_ACCESS_VIEW_DESC& outUav,
-                           uint32_t mip = 0, uint32_t srvMipCount = 1)
-        {
-            outSrv = {};
-            outSrv.Format = desc.Format;
-            outSrv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-            outUav = {};
-            outUav.Format = desc.Format;
-
-            if (desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D) {
-                outSrv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
-                outSrv.Texture3D.MostDetailedMip = mip;
-                outSrv.Texture3D.MipLevels = srvMipCount;
-                outUav.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
-                outUav.Texture3D.MipSlice = mip;
-                outUav.Texture3D.WSize = std::max<UINT>(desc.DepthOrArraySize >> mip, 1u);
-            } else {
-                outSrv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-                outSrv.Texture2D.MostDetailedMip = mip;
-                outSrv.Texture2D.MipLevels = srvMipCount;
-                outUav.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-                outUav.Texture2D.MipSlice = mip;
-            }
-        }
-
         /// @brief テクスチャを確保し、SRV/UAV を（既存スロットがあればそこへ）書く
-        /// @param needsSrv false なら UAV だけ作る（合成中間のように読まれないもの）
         /// @details 再生成のたびに新規スロットを取るとディスクリプタスロットが漏れるため、
         ///          Ensure 系で既存スロットへ書き直す
         bool CreateTexture(ID3D12Device* device, DescriptorAllocator* allocator,
-                           CloudGpuTexture& tex, const D3D12_RESOURCE_DESC& desc,
-                           const char* name, bool needsSrv = true)
+                           CloudGpuTexture& tex, const D3D12_RESOURCE_DESC& desc, const char* name)
         {
-            const uint32_t mipLevels = desc.MipLevels;
-            Microsoft::WRL::ComPtr<ID3D12Device> deviceRef = device;
-            try {
-                tex.Reset(
-                    ResourceFactory::CreateTextureResource(
-                        deviceRef, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS),
-                    D3D12_RESOURCE_STATE_UNORDERED_ACCESS, mipLevels);
-            }
-            catch (const std::exception&) {
+            const std::string label = name;
+            if (!UavTexture::Create(device, *allocator, tex, desc, tex.srv, label + "SRV", tex.uav, label + "UAV")) {
                 Logger::GetInstance().Warnf(LogCategory::Graphics,
                     "CloudResources: テクスチャ({})の生成に失敗", name);
                 return false;
             }
 
-            D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-            D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
-            MakeViewDescs(desc, srvDesc, uavDesc, 0, mipLevels);
-
-            const std::string label = name;
-            if (needsSrv) {
-                allocator->EnsureSRV(tex.srv, tex.Get(), srvDesc, (label + "SRV").c_str());
-            }
-            allocator->EnsureUAV(tex.uav, tex.Get(), uavDesc, (label + "UAV").c_str());
-
             // ミップ生成 CS は「1 段だけを見る SRV」と「1 段だけへ書く UAV」を対で使う
+            const uint32_t mipLevels = desc.MipLevels;
             if (mipLevels > 1) {
                 tex.mipSrvs.resize(mipLevels);
                 tex.mipUavs.resize(mipLevels);
                 for (uint32_t mip = 0; mip < mipLevels; ++mip) {
                     D3D12_SHADER_RESOURCE_VIEW_DESC mipSrv{};
                     D3D12_UNORDERED_ACCESS_VIEW_DESC mipUav{};
-                    MakeViewDescs(desc, mipSrv, mipUav, mip, 1);
+                    UavTexture::MakeViewDescs(desc, mipSrv, mipUav, mip, 1);
                     const std::string suffix = "Mip" + std::to_string(mip);
                     allocator->EnsureSRV(tex.mipSrvs[mip], tex.Get(), mipSrv,
                         (label + suffix + "SRV").c_str());
@@ -134,15 +58,15 @@ namespace CoreEngine
 
         constexpr DXGI_FORMAT kNoiseFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
         const bool ok = CreateTexture(device, descriptorAllocator, baseShapeNoise,
-                   MakeTextureDesc(kBaseShapeNoiseSize, kBaseShapeNoiseSize, kBaseShapeNoiseSize, kNoiseFormat,
-                       ClampMipLevels(kBaseShapeNoiseSize, kNoiseMipLevels)),
+                   UavTexture::MakeDesc(kBaseShapeNoiseSize, kBaseShapeNoiseSize, kBaseShapeNoiseSize, kNoiseFormat,
+                       UavTexture::ClampMipLevels(kBaseShapeNoiseSize, kNoiseMipLevels)),
                    "CloudBaseShape")
             && CreateTexture(device, descriptorAllocator, detailNoise,
-                   MakeTextureDesc(kDetailNoiseSize, kDetailNoiseSize, kDetailNoiseSize, kNoiseFormat,
-                       ClampMipLevels(kDetailNoiseSize, kNoiseMipLevels)),
+                   UavTexture::MakeDesc(kDetailNoiseSize, kDetailNoiseSize, kDetailNoiseSize, kNoiseFormat,
+                       UavTexture::ClampMipLevels(kDetailNoiseSize, kNoiseMipLevels)),
                    "CloudDetail")
             && CreateTexture(device, descriptorAllocator, weatherMap,
-                   MakeTextureDesc(kWeatherMapSize, kWeatherMapSize, 1, kNoiseFormat),
+                   UavTexture::MakeDesc(kWeatherMapSize, kWeatherMapSize, 1, kNoiseFormat),
                    "CloudWeather");
         if (!ok) {
             return false;
@@ -171,7 +95,7 @@ namespace CoreEngine
 
         constexpr DXGI_FORMAT kPaintFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
         if (!CreateTexture(device, descriptorAllocator, weatherPaint,
-                MakeTextureDesc(kPaintSize, kPaintSize, 1, kPaintFormat), "CloudWeatherPaint")) {
+                UavTexture::MakeDesc(kPaintSize, kPaintSize, 1, kPaintFormat), "CloudWeatherPaint")) {
             return false;
         }
 
@@ -215,7 +139,7 @@ namespace CoreEngine
 
         // 太陽方向の雲透過率の上面図
         return CreateTexture(device, descriptorAllocator, cloudShadowMap,
-            MakeTextureDesc(kCloudShadowMapSize, kCloudShadowMapSize, 1, DXGI_FORMAT_R16_FLOAT),
+            UavTexture::MakeDesc(kCloudShadowMapSize, kCloudShadowMapSize, 1, DXGI_FORMAT_R16_FLOAT),
             "CloudShadowMap");
     }
 
@@ -227,17 +151,10 @@ namespace CoreEngine
         }
 
         // 6 面の配列。読み書きとも CloudCubemapCapture.CS だけなので UAV しか作らない
-        D3D12_RESOURCE_DESC desc = MakeTextureDesc(faceSize, faceSize, 1, DXGI_FORMAT_R16G16B16A16_FLOAT);
+        D3D12_RESOURCE_DESC desc = UavTexture::MakeDesc(faceSize, faceSize, 1, DXGI_FORMAT_R16G16B16A16_FLOAT);
         desc.DepthOrArraySize = 6;
 
-        Microsoft::WRL::ComPtr<ID3D12Device> deviceRef = device;
-        try {
-            cloudCube.Reset(
-                ResourceFactory::CreateTextureResource(
-                    deviceRef, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS),
-                D3D12_RESOURCE_STATE_UNORDERED_ACCESS, 1);
-        }
-        catch (const std::exception&) {
+        if (!UavTexture::CreateResource(device, cloudCube, desc)) {
             Logger::GetInstance().Warnf(LogCategory::Graphics,
                 "CloudResources: テクスチャ(CloudCube)の生成に失敗");
             return false;
@@ -294,7 +211,7 @@ namespace CoreEngine
 
         // 半解像度のレイマーチ結果とゴッドレイ結果（同サイズ・同フォーマット）
         const D3D12_RESOURCE_DESC halfDesc =
-            MakeTextureDesc(halfW, halfH, 1, DXGI_FORMAT_R16G16B16A16_FLOAT);
+            UavTexture::MakeDesc(halfW, halfH, 1, DXGI_FORMAT_R16G16B16A16_FLOAT);
         if (!CreateTexture(device, descriptorAllocator, cloudBuffers[0], halfDesc, "CloudBuffer0")
             || !CreateTexture(device, descriptorAllocator, cloudBuffers[1], halfDesc, "CloudBuffer1")) {
             return false;
@@ -306,7 +223,7 @@ namespace CoreEngine
         // 雲の距離と、間引きレイマーチのセルごとの結果。
         // セルの数は間引き方で変わるので、間引かないときの半解像度で確保しておく
         const D3D12_RESOURCE_DESC depthDesc =
-            MakeTextureDesc(halfW, halfH, 1, DXGI_FORMAT_R32G32_FLOAT);
+            UavTexture::MakeDesc(halfW, halfH, 1, DXGI_FORMAT_R32G32_FLOAT);
         if (!CreateTexture(device, descriptorAllocator, cloudDepthBuffers[0], depthDesc, "CloudDepthBuffer0")
             || !CreateTexture(device, descriptorAllocator, cloudDepthBuffers[1], depthDesc, "CloudDepthBuffer1")
             || !CreateTexture(device, descriptorAllocator, traceColor, halfDesc, "CloudTraceColor")

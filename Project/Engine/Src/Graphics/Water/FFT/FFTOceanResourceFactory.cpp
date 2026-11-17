@@ -6,29 +6,11 @@
 
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/UavTexture.h"
 #include "Utility/Logger/Logger.h"
 
 namespace CoreEngine
 {
-    namespace
-    {
-        /// @brief FFT 中間テクスチャ用の 2D リソース記述を作る（UAV 兼 SRV）
-        D3D12_RESOURCE_DESC MakeTexture2DDesc(uint32_t resolution, DXGI_FORMAT format, uint32_t mipLevels = 1)
-        {
-            D3D12_RESOURCE_DESC desc{};
-            desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-            desc.Width = resolution;
-            desc.Height = resolution;
-            desc.DepthOrArraySize = 1;
-            desc.MipLevels = static_cast<UINT16>(mipLevels);
-            desc.Format = format;
-            desc.SampleDesc.Count = 1;
-            desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-            desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-            return desc;
-        }
-    }
-
     bool FFTOceanResourceFactory::CreateIntermediateTextures(
         ID3D12Device* device,
         DescriptorAllocator* descriptorAllocator,
@@ -42,38 +24,14 @@ namespace CoreEngine
             return false;
         }
 
-        Microsoft::WRL::ComPtr<ID3D12Device> deviceRef = device;
-
-        const D3D12_RESOURCE_DESC textureDesc = MakeTexture2DDesc(resolution, DXGI_FORMAT_R32G32B32A32_FLOAT);
-
-        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-        srvDesc.Format = textureDesc.Format;
-        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        srvDesc.Texture2D.MipLevels = 1;
-
-        D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
-        uavDesc.Format = textureDesc.Format;
-        uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+        const D3D12_RESOURCE_DESC textureDesc =
+            UavTexture::MakeDesc(resolution, resolution, 1, DXGI_FORMAT_R32G32B32A32_FLOAT);
 
         auto createOne = [&](FFTOceanGpuTexture& tex, const char* label, uint32_t index) -> bool {
-            try {
-                tex.Reset(
-                    ResourceFactory::CreateTextureResource(
-                        deviceRef,
-                        textureDesc,
-                        D3D12_RESOURCE_STATE_UNORDERED_ACCESS),
-                    D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-            }
-            catch (const std::exception&) {
-                return false;
-            }
+            const std::string name = std::string("FFTOceanSpectrum") + label;
             const std::string idx = std::to_string(index);
-            tex.srv = descriptorAllocator->CreateSRV(
-                tex.Get(), srvDesc, std::string("FFTOceanSpectrum") + label + "_SRV_" + idx);
-            tex.uav = descriptorAllocator->CreateUAV(
-                tex.Get(), uavDesc, std::string("FFTOceanSpectrum") + label + "_UAV_" + idx);
-            return true;
+            return UavTexture::Create(device, *descriptorAllocator, tex, textureDesc,
+                tex.srv, name + "_SRV_" + idx, tex.uav, name + "_UAV_" + idx);
         };
 
         for (uint32_t i = 0; i < 2; ++i) {
@@ -108,14 +66,7 @@ namespace CoreEngine
         const uint64_t sampleCount = static_cast<uint64_t>(resolution) * static_cast<uint64_t>(resolution);
         const uint64_t bufferSize = sampleStride * sampleCount;
 
-        D3D12_RESOURCE_DESC desc{};
-        desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-        desc.Width = bufferSize;
-        desc.Height = 1;
-        desc.DepthOrArraySize = 1;
-        desc.MipLevels = 1;
-        desc.SampleDesc.Count = 1;
-        desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        const D3D12_RESOURCE_DESC desc = ResourceFactory::MakeBufferDesc(bufferSize);
 
         try {
             spectrumBuffer.Reset(

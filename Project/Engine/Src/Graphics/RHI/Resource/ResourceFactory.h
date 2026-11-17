@@ -12,6 +12,9 @@ namespace CoreEngine
 {
 /// @brief D3D12 のバッファ・テクスチャリソースを作る
 namespace ResourceFactory {
+    /// @brief バッファの Desc を作る（大きさは sizeInBytes のまま）
+    D3D12_RESOURCE_DESC MakeBufferDesc(UINT64 sizeInBytes, D3D12_RESOURCE_FLAGS flags = D3D12_RESOURCE_FLAG_NONE);
+
     // バッファリソースを生成する（定数バッファ・頂点バッファ等はUPLOAD、リードバックはREADBACK）
     Microsoft::WRL::ComPtr<ID3D12Resource> CreateBufferResource(
         const Microsoft::WRL::ComPtr<ID3D12Device>& device,
