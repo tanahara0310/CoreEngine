@@ -30,6 +30,16 @@ namespace CoreEngine
             return resolved.wstring();
         }
 
+        /// @brief コンピュートシェーダー 1 本のファイル名だけを返すプロバイダ
+        class ComputeShaderProvider final : public ICustomShaderProvider {
+        public:
+            explicit ComputeShaderProvider(const std::wstring& path) : path_(path) {}
+            std::wstring GetComputeShaderPath() const override { return path_; }
+
+        private:
+            const std::wstring& path_;
+        };
+
         /// @brief カスタムシェーダー向けの RootSignatureConfig を生成する
         /// CBV は RootDescriptor、テクスチャ SRV / サンプラーは DescriptorTable とする。
         RootSignatureConfig MakeForwardConfig()
@@ -80,6 +90,16 @@ namespace CoreEngine
         }
 
         return hasForwardPSO_ || hasComputePSO_;
+    }
+
+    bool CustomShaderPipeline::BuildCompute(
+        ID3D12Device* device,
+        ShaderCompiler& compiler,
+        ShaderReflectionBuilder& reflectionBuilder,
+        const std::wstring& computeShaderPath)
+    {
+        const ComputeShaderProvider provider(computeShaderPath);
+        return Build(device, compiler, reflectionBuilder, provider) && hasComputePSO_;
     }
 
     bool CustomShaderPipeline::BuildForwardPipeline(
@@ -256,16 +276,12 @@ namespace CoreEngine
 
     int CustomShaderPipeline::GetRootParamIndex(const std::string& resourceName) const
     {
-        const RootSlot slot = GetRootSlot(resourceName);
-        return slot.IsValid() ? static_cast<int>(slot.index) : -1;
+        return ToRootParamIndex(GetRootSlot(resourceName));
     }
 
     int CustomShaderPipeline::GetComputeRootParamIndex(const std::string& resourceName) const
     {
-        if (!computeRootSignatureMg_) {
-            return -1;
-        }
-        return computeRootSignatureMg_->GetRootParameterIndex(resourceName);
+        return ToRootParamIndex(computeRootSignatureMg_ ? computeRootSignatureMg_->GetRootSlot(resourceName) : RootSlot{});
     }
 
     bool CustomShaderPipeline::HasForwardPSO() const

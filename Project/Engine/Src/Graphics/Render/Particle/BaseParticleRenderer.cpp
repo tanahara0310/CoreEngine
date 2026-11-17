@@ -16,10 +16,7 @@ namespace CoreEngine
 
         // BaseRenderer から継承したサブシステムはすでに初期化済み
 
-        // シェーダーコンパイラの初期化
-        shaderCompiler_->Initialize();
-
-        // ルートシグネチャの作成（共通処理）
+        // ルートシグネチャの作成（共通処理。シェーダーコンパイラもここで初期化される）
         CreateRootSignature();
 
         // パイプラインステートオブジェクトの作成（派生クラスで実装）
@@ -30,12 +27,7 @@ namespace CoreEngine
         cmdList_ = cmdList;
         currentBlendMode_ = blendMode;
 
-        // ルートシグネチャとパイプラインステートを設定
-        cmdList_->SetGraphicsRootSignature(rootSignatureMg_->GetRootSignature());
-        cmdList_->SetPipelineState(psoMg_->GetPipelineState(blendMode));
-
-        // プリミティブトポロジを設定
-        cmdList_->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        BindPassPipeline(cmdList_, rootSignatureMg_->GetRootSignature(), psoMg_->GetPipelineState(blendMode));
 
         // 派生クラスでの追加処理
         OnBeginPass();
@@ -52,32 +44,15 @@ namespace CoreEngine
     void BaseParticleRenderer::CreateRootSignature() {
         // パーティクル用シェーダーをコンパイルしてリフレクション
         // （自前のシェーダーを持つ派生クラスではそちらが使われる）
-        auto vertexShaderBlob = shaderCompiler_->CompileShader(GetVertexShaderPath(), L"vs_6_0");
-        assert(vertexShaderBlob != nullptr);
-
-        auto pixelShaderBlob = shaderCompiler_->CompileShader(GetPixelShaderPath(), L"ps_6_0");
-        assert(pixelShaderBlob != nullptr);
-
-        reflectionBuilder_->Initialize(shaderCompiler_->GetDxcUtils());
-        reflectionData_ = reflectionBuilder_->BuildFromShaders(
-            vertexShaderBlob.Get(), pixelShaderBlob.Get(), RenderPassTypeToString(GetRenderPassType()));
-
-        // シンプルな設定でRootSignatureを構築
         RootSignatureConfig config;
         config.ConfigureSampler("gSampler", SamplerConfig::Linear());
 
-        auto buildResult = rootSignatureMg_->Build(device_, *reflectionData_, config);
-
-        if (!buildResult.success) {
-            throw std::runtime_error("Failed to create Particle Root Signature: " + buildResult.errorMessage);
-        }
+        BuildShadersAndRootSignature(device_, GetVertexShaderPath(), GetPixelShaderPath(),
+            RenderPassTypeToString(GetRenderPassType()), config, "Particle");
     }
 
     int BaseParticleRenderer::GetRootParamIndex(const std::string& resourceName) const {
-        if (!reflectionData_) {
-            return -1;
-        }
-        return reflectionData_->GetRootParameterIndexByName(resourceName);
+        return FindRootParamIndex(reflectionData_.get(), resourceName);
     }
 
     bool BaseParticleRenderer::ValidateDrawCall(ParticleSystemComponent* particle) const {

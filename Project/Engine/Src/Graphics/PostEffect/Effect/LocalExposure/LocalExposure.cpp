@@ -5,9 +5,6 @@
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/Logger/Logger.h"
-#ifdef CORE_EDITOR
-#include "Editor/ImGui/CVarPanel.h"
-#endif
 #include <algorithm>
 
 
@@ -53,42 +50,14 @@ namespace CoreEngine
 
     void LocalExposure::OnCreateResources()
     {
-        internalPipelinesReady_ = CreateInternalPipelines();
+        internalPipelinesReady_ = BuildInternalPipelines({
+            { downsamplePipeline_, L"LocalExposureDownsample.CS.hlsl", "Downsample" },
+            { blurPipeline_,       L"LocalExposureBlur.CS.hlsl",       "Blur" },
+        });
         if (!internalPipelinesReady_) {
             Logger::GetInstance().Warnf(LogCategory::Graphics,
                 "LocalExposure: Downsample/Blur パイプラインの構築に失敗（ローカル露出は無効）");
         }
-    }
-
-    // 4 パスぶんの Compute PSO をまとめて作る。1 本でも欠けたら無効化して素通しにする
-    bool LocalExposure::CreateInternalPipelines()
-    {
-        auto* device = graphicsCore_->GetDevice();
-
-        // DXC とリフレクションビルダーはエンジン共有のキャッシュのものを使う。
-        // ローカルに作ると DXC がエフェクトの数だけ生成される（Phase 3 で撤去）
-        ShaderCompiler& shaderCompiler = shaderProgramCache_->GetCompiler();
-        ShaderReflectionBuilder& reflectionBuilder = shaderProgramCache_->GetReflectionBuilder();
-
-        struct Entry {
-            CustomShaderPipeline& pipeline;
-            const ICustomShaderProvider& provider;
-            const char* name;
-        };
-        Entry entries[] = {
-            { downsamplePipeline_, downsampleProvider_, "Downsample" },
-            { blurPipeline_,       blurProvider_,       "Blur" },
-        };
-
-        for (Entry& entry : entries) {
-            const bool built = entry.pipeline.Build(device, shaderCompiler, reflectionBuilder, entry.provider);
-            if (!built || !entry.pipeline.HasComputePSO()) {
-                Logger::GetInstance().Warnf(LogCategory::Graphics,
-                    "LocalExposure: {} パイプラインの構築に失敗", entry.name);
-                return false;
-            }
-        }
-        return true;
     }
 
     // Downsample → BlurH → BlurV → Apply の 4 パスを宣言する。
@@ -202,17 +171,7 @@ namespace CoreEngine
     void LocalExposure::DrawImGui()
     {
 #ifdef CORE_EDITOR
-        ImGui::PushID("LocalExposureParams");
-        ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
-        UI::Separator();
-
-        CVarUI::DrawTree(kCVarPrefix);
-
-        UI::Separator();
-        if (ImGui::Button("デフォルトに戻す")) {
-            CVarUI::ResetTree(kCVarPrefix);
-        }
-        ImGui::PopID();
+        DrawCVarEffectImGui("LocalExposureParams", kCVarPrefix);
 #endif // CORE_EDITOR
     }
 

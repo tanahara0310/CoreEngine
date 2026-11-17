@@ -247,7 +247,7 @@ namespace CoreEngine
         std::vector<TextGlyphVertex> glyphVertices_;
 
         /// 色・縁取り・太さ。頂点へ焼き込まれる
-        Text3DDrawStyle style_;
+        TextDrawStyle style_;
 
         bool geometryDirty_ = true;
         /// グリフ数上限の警告を 1 回だけ出すためのフラグ

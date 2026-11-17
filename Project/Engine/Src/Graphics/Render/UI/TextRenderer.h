@@ -1,76 +1,13 @@
 #pragma once
 
 #include "Graphics/Render/UI/UIRenderer.h"
-#include "Graphics/Shader/CBufferLayout.h"
-#include "Math/Matrix/Matrix4x4.h"
-#include "Math/Vector/Vector2.h"
-#include "Math/Vector/Vector3.h"
-#include "Math/Vector/Vector4.h"
-// TextGlyphVertex（em 単位の変換前グリフ頂点）はワールド空間の
-// テキストとも共通なので、組版側に置いてある
-#include "Text/TextGeometryBuilder.h"
+#include "Text/MsdfTextBatch.h"
 
 #include <cstdint>
-#include <vector>
 
 namespace CoreEngine
 {
     class MsdfFont;
-
-    /// @brief 1 つの UI テキストの見た目（頂点へ焼き込んでバッチにまとめる）
-    /// @details
-    ///  以前はテキストごとの定数バッファに入れていたが、それだと
-    ///  テキストの数だけドローコールが要る。頂点へ載せると 1 本にまとめられる。
-    struct TextDrawStyle
-    {
-        Vector4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
-        Vector4 outlineColor = { 0.0f, 0.0f, 0.0f, 0.0f };
-        float outlineWidthEm = 0.0f;
-        float weightEm = 0.0f;
-    };
-
-    /// @brief GPU へ送るテキスト頂点（MsdfText.VS.hlsl の入力と一致させること）
-    /// @note 位置は **スクリーン px**。em → px の変換は CPU 側で済ませてある
-    ///       （テキストごとの行列を無くさないとバッチにまとめられないため）。
-    struct TextVertex
-    {
-        Vector4 position;     ///< POSITION0
-        Vector3 texcoord;     ///< TEXCOORD0（xy = UV / z = 枚番号）
-        Vector4 color;        ///< COLOR0
-        Vector4 outlineColor; ///< COLOR1
-        Vector2 style;        ///< TEXCOORD1（x = 縁取り幅 em / y = 太さ em）
-    };
-
-    static constexpr Cb::Field kTextVertexFields[] = {
-        CB_FIELD(TextVertex, position), CB_FIELD(TextVertex, texcoord),
-        CB_FIELD(TextVertex, color), CB_FIELD(TextVertex, outlineColor),
-        CB_FIELD(TextVertex, style),
-    };
-    CB_VERIFY_STRIDE(TextVertex, kTextVertexFields);
-
-    /// @brief バッチ共通の定数（HLSL 側 `ConstantBuffer<TextBatch> gBatch` と一致させること）
-    /// @details
-    ///  ここに入るのは「1 バッチのあいだ変わらないもの」だけ。
-    ///  射影はパス全体で共通、アトラス情報はフォント単位なので、
-    ///  フォントが変わるところでバッチを切れば定数はこれで足りる。
-    struct TextBatchConstants
-    {
-        Matrix4x4 projection; ///< スクリーン px → クリップ空間
-
-        float pxRange;      ///< 距離場の有効範囲（px）
-        float atlasWidth;   ///< アトラス 1 枚あたりの画素サイズ
-        float atlasHeight;
-        float sdUnitsPerEm; ///< em → 距離場の値（= glyphPixelSize / pxRange）
-    };
-
-    static constexpr Cb::Field kTextBatchConstantsFields[] = {
-        CB_FIELD(TextBatchConstants, projection),
-        CB_FIELD(TextBatchConstants, pxRange),
-        CB_FIELD(TextBatchConstants, atlasWidth),
-        CB_FIELD(TextBatchConstants, atlasHeight),
-        CB_FIELD(TextBatchConstants, sdUnitsPerEm),
-    };
-    CB_VERIFY_LAYOUT(TextBatchConstants, kTextBatchConstantsFields);
 
     /// @brief MSDF テキスト描画専用レンダラー
     /// @details
@@ -93,7 +30,7 @@ namespace CoreEngine
         /// @brief 1 バッチに積めるグリフ数の上限
         /// @note 共有インデックスバッファの長さがそのまま上限になる。
         ///       超えたらその場でフラッシュして次のバッチへ続ける（描画は欠けない）
-        static constexpr uint32_t kMaxGlyphsPerBatch = 8192;
+        static constexpr uint32_t kMaxGlyphsPerBatch = MsdfTextBatch::kMaxGlyphsPerBatch;
 
         /// @brief 1 つの UI テキストが描けるグリフ数の上限
         static constexpr uint32_t kMaxGlyphsPerText = kMaxGlyphsPerBatch;
@@ -129,9 +66,9 @@ namespace CoreEngine
 
         // ===== デバッグ表示用 =====
         /// @brief 直近フレームのドローコール数（バッチングの効きを見る）
-        uint32_t GetLastFrameDrawCallCount() const { return lastFrameDrawCalls_; }
+        uint32_t GetLastFrameDrawCallCount() const { return batch_.GetLastFrameDrawCallCount(); }
         /// @brief 直近フレームに描いたグリフ数
-        uint32_t GetLastFrameGlyphCount() const { return lastFrameGlyphs_; }
+        uint32_t GetLastFrameGlyphCount() const { return batch_.GetLastFrameGlyphCount(); }
 
     protected:
         const wchar_t* GetVertexShaderPath() const override
@@ -167,26 +104,14 @@ namespace CoreEngine
         }
 
     private:
-        /// @brief 共有インデックスバッファを生成して内容を書き込む
-        void CreateSharedIndexBuffer(ID3D12Device* device);
-
         /// @brief 溜まっている頂点を 1 ドローコールで描く
         void Flush();
-
-        Microsoft::WRL::ComPtr<ID3D12Resource> indexResource_;
-        D3D12_INDEX_BUFFER_VIEW indexBufferView_{};
 
         // ── バッチ状態 ────────────────────────────────────────────
         /// 記録先。BeginPass で受け取り、EndPass のフラッシュでも使う
         ID3D12GraphicsCommandList* cmdList_ = nullptr;
-        /// いま積んでいるバッチのフォント（変わったらフラッシュ）
-        const MsdfFont* batchFont_ = nullptr;
-        std::vector<TextVertex> batchVertices_;
-
-        uint32_t frameDrawCalls_ = 0;
-        uint32_t frameGlyphs_ = 0;
-        uint32_t lastFrameDrawCalls_ = 0;
-        uint32_t lastFrameGlyphs_ = 0;
+        /// 積んでいる頂点（フォントが変わったらフラッシュ）
+        MsdfTextBatch batch_;
         /// 直近にログへ出したドローコール数（変化したときだけ出す）
         uint32_t loggedDrawCalls_ = 0;
     };

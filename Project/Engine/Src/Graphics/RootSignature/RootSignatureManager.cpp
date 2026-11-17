@@ -35,8 +35,7 @@ namespace CoreEngine
     }
 
     int RootSignatureManager::GetRootParameterIndex(const std::string& resourceName) const {
-        const RootSlot slot = GetRootSlot(resourceName);
-        return slot.IsValid() ? static_cast<int>(slot.index) : -1;
+        return ToRootParamIndex(GetRootSlot(resourceName));
     }
 
     void RootSignatureManager::Clear() {

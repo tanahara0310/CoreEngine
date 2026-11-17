@@ -3,7 +3,6 @@
 #include "../PostEffectComputeBase.h"
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h" // PostEffectPassContext
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
-#include "Graphics/Shader/ICustomShaderProvider.h"
 #include <wrl.h>
 #include <d3d12.h>
 
@@ -107,24 +106,11 @@ protected:
     void OnCreateResources() override;
 
 private:
-    /// @brief TileMax / NeighborMax 用の追加パイプラインを構築する
-    bool CreateInternalPipelines();
 
     void RecordTileMax(const PostEffectPassContext& context);
     void RecordNeighborMax(const PostEffectPassContext& context);
     void RecordGather(const PostEffectPassContext& context);
 
-    /// @brief シェーダーパスだけを差し替える最小のプロバイダ
-    class ShaderProvider : public ICustomShaderProvider {
-    public:
-        explicit ShaderProvider(std::wstring path) : path_(std::move(path)) {}
-        std::wstring GetComputeShaderPath() const override { return path_; }
-    private:
-        std::wstring path_;
-    };
-
-    ShaderProvider tileMaxProvider_{ L"MotionBlurTileMax.CS.hlsl" };
-    ShaderProvider neighborMaxProvider_{ L"MotionBlurNeighborMax.CS.hlsl" };
     CustomShaderPipeline tileMaxPipeline_;
     CustomShaderPipeline neighborMaxPipeline_;
     bool internalPipelinesReady_ = false;

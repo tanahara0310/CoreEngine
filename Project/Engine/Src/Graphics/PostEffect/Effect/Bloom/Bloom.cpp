@@ -8,9 +8,6 @@
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/Logger/Logger.h"
-#ifdef CORE_EDITOR
-#include "Editor/ImGui/CVarPanel.h"
-#endif
 #include <algorithm>
 #include <string>
 
@@ -53,7 +50,11 @@ namespace CoreEngine
 
     void Bloom::OnCreateResources()
     {
-        internalPipelinesReady_ = CreateInternalPipelines();
+        internalPipelinesReady_ = BuildInternalPipelines({
+            { downsamplePipeline_, L"BloomDownsample.CS.hlsl", "Downsample" },
+            { upsamplePipeline_,   L"BloomUpsample.CS.hlsl",   "Upsample" },
+            { dirtGenPipeline_,    L"BloomDirtGen.CS.hlsl",    "DirtGen" },
+        });
         if (!internalPipelinesReady_) {
             Logger::GetInstance().Warnf(LogCategory::Graphics,
                 "Bloom: ダウン/アップサンプルのパイプライン構築に失敗（ブルームは無効）");
@@ -102,37 +103,6 @@ namespace CoreEngine
         }
 
         dirtGenerated_ = true;
-    }
-
-    bool Bloom::CreateInternalPipelines()
-    {
-        auto* device = graphicsCore_->GetDevice();
-
-        // DXC とリフレクションビルダーはエンジン共有のキャッシュのものを使う。
-        // ローカルに作ると DXC がエフェクトの数だけ生成される（Phase 3 で撤去）
-        ShaderCompiler& shaderCompiler = shaderProgramCache_->GetCompiler();
-        ShaderReflectionBuilder& reflectionBuilder = shaderProgramCache_->GetReflectionBuilder();
-
-        struct Entry {
-            CustomShaderPipeline& pipeline;
-            const ICustomShaderProvider& provider;
-            const char* name;
-        };
-        Entry entries[] = {
-            { downsamplePipeline_, downsampleProvider_, "Downsample" },
-            { upsamplePipeline_,   upsampleProvider_,   "Upsample" },
-            { dirtGenPipeline_,    dirtGenProvider_,    "DirtGen" },
-        };
-
-        for (Entry& entry : entries) {
-            const bool built = entry.pipeline.Build(device, shaderCompiler, reflectionBuilder, entry.provider);
-            if (!built || !entry.pipeline.HasComputePSO()) {
-                Logger::GetInstance().Warnf(LogCategory::Graphics,
-                    "Bloom: {} パイプラインの構築に失敗", entry.name);
-                return false;
-            }
-        }
-        return true;
     }
 
     void Bloom::BuildPasses(PostEffectGraphBuilder& builder)
@@ -267,17 +237,7 @@ namespace CoreEngine
     void Bloom::DrawImGui()
     {
 #ifdef CORE_EDITOR
-        ImGui::PushID("BloomParams");
-        ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
-        UI::Separator();
-
-        CVarUI::DrawTree(kCVarPrefix);
-
-        UI::Separator();
-        if (ImGui::Button("デフォルトに戻す")) {
-            CVarUI::ResetTree(kCVarPrefix);
-        }
-        ImGui::PopID();
+        DrawCVarEffectImGui("BloomParams", kCVarPrefix);
 #endif // CORE_EDITOR
     }
 

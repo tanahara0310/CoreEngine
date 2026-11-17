@@ -3,6 +3,7 @@
 #include "ILineSource.h"
 #include "Camera/Camera.h"
 #include <algorithm>
+#include "Graphics/Pipeline/GraphicsPipelineUtil.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
@@ -14,23 +15,12 @@ namespace CoreEngine
 {
     void LineRendererPipeline::Initialize(ID3D12Device* device) {
         shaderCompiler_->Initialize();
-
-        auto vertexShaderBlob = shaderCompiler_->CompileShader(L"Engine/Assets/Shaders/Line/Line.VS.hlsl", L"vs_6_0");
-        assert(vertexShaderBlob != nullptr);
-
-        auto pixelShaderBlob = shaderCompiler_->CompileShader(L"Engine/Assets/Shaders/Line/Line.PS.hlsl", L"ps_6_0");
-        assert(pixelShaderBlob != nullptr);
-
         reflectionBuilder_->Initialize(shaderCompiler_->GetDxcUtils());
-        reflectionData_ = reflectionBuilder_->BuildFromShaders(vertexShaderBlob.Get(), pixelShaderBlob.Get(), "LineRenderer");
 
-        // 新しいAPIでRootSignatureを構築
-        RootSignatureConfig config;
-        auto buildResult = rootSignatureMg_->Build(device, *reflectionData_, config);
-
-        if (!buildResult.success) {
-            throw std::runtime_error("Failed to create Line Root Signature: " + buildResult.errorMessage);
-        }
+        const auto shaders = GraphicsPipelineUtil::CompileShaders(*shaderCompiler_, *reflectionBuilder_,
+            L"Engine/Assets/Shaders/Line/Line.VS.hlsl", L"Engine/Assets/Shaders/Line/Line.PS.hlsl",
+            "LineRenderer", reflectionData_);
+        GraphicsPipelineUtil::BuildRootSignature(*rootSignatureMg_, device, *reflectionData_, RootSignatureConfig{}, "Line");
 
         bool result = psoMg_->CreateBuilder()
             .SetDebugName("Line")
@@ -41,7 +31,7 @@ namespace CoreEngine
             // ここで SetDepthBias を足しても意味がない
             .SetDepthStencil(true, true)
             .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE)
-            .BuildAllBlendModes(device, vertexShaderBlob.Get(), pixelShaderBlob.Get(), rootSignatureMg_->GetRootSignature());
+            .BuildAllBlendModes(device, shaders.vs.Get(), shaders.ps.Get(), rootSignatureMg_->GetRootSignature());
 
         if (!result) {
             throw std::runtime_error("Failed to create pipeline state for LineRendererPipeline.");
@@ -54,7 +44,7 @@ namespace CoreEngine
             .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
             .SetDepthStencil(false, false)
             .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE)
-            .BuildAllBlendModes(device, vertexShaderBlob.Get(), pixelShaderBlob.Get(), rootSignatureMg_->GetRootSignature());
+            .BuildAllBlendModes(device, shaders.vs.Get(), shaders.ps.Get(), rootSignatureMg_->GetRootSignature());
 
         if (!overlayResult) {
             throw std::runtime_error("Failed to create overlay pipeline state for LineRendererPipeline.");
@@ -80,12 +70,8 @@ namespace CoreEngine
             throw std::runtime_error("Pipeline state not found for specified blend mode.");
         }
 
-        // パイプラインステートとルートシグネチャを設定
-        cmdList->SetPipelineState(pipelineState_);
-        cmdList->SetGraphicsRootSignature(rootSignatureMg_->GetRootSignature());
-
-        // プリミティブトポロジーを設定
-        cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
+        BindPassPipeline(cmdList, rootSignatureMg_->GetRootSignature(), pipelineState_,
+            D3D_PRIMITIVE_TOPOLOGY_LINELIST);
 
         // バッチはクリアしない（他のパスで追加されたラインを保持）
         // ClearBatch();
@@ -134,10 +120,7 @@ namespace CoreEngine
     }
 
     int LineRendererPipeline::GetRootParamIndex(const std::string& resourceName) const {
-        if (!reflectionData_) {
-            return -1;
-        }
-        return reflectionData_->GetRootParameterIndexByName(resourceName);
+        return FindRootParamIndex(reflectionData_.get(), resourceName);
     }
 
     void LineRendererPipeline::DrawLines(ID3D12GraphicsCommandList* cmdList, uint32_t vertexCount,

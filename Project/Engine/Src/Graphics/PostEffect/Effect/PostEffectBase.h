@@ -173,6 +173,22 @@ namespace CoreEngine {
         D3D12_GPU_VIRTUAL_ADDRESS UploadConstantFields(
             const void* src, const Cb::Field* fields, size_t count, uint32_t hlslSize) const;
 
+#ifdef CORE_EDITOR
+        /// @brief 調整 UI の始まり（ID を積み、有効か無効かを出す）
+        void BeginEffectImGui(const char* id) const;
+
+        /// @brief 区切り線と「デフォルトに戻す」ボタンを出し、押されたら接頭辞の CVar を既定値へ戻す
+        /// @return 押されたら true
+        bool DrawResetDefaultsImGui(std::string_view cvarPrefix) const;
+
+        /// @brief 調整 UI の終わり（ID を外す）
+        /// @param warnWhenDisabled 無効のときに、パラメータは調整できる旨の注意を出すか
+        void EndEffectImGui(bool warnWhenDisabled = false) const;
+
+        /// @brief 状態・CVar の木・「デフォルトに戻す」だけの調整 UI を出す
+        void DrawCVarEffectImGui(const char* id, std::string_view cvarPrefix, bool warnWhenDisabled = false) const;
+#endif // CORE_EDITOR
+
         GraphicsCore* graphicsCore_ = nullptr;
         std::unique_ptr<RootSignatureManager> rootSignatureManager_;
 

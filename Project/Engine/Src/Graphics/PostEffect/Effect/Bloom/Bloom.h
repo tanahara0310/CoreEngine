@@ -5,7 +5,6 @@
 #include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h" // PostEffectPassContext
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
-#include "Graphics/Shader/ICustomShaderProvider.h"
 #include <wrl.h>
 #include <d3d12.h>
 #include <array>
@@ -107,9 +106,6 @@ protected:
     void OnCreateResources() override;
 
 private:
-    /// @brief ダウンサンプル／アップサンプル用の追加パイプラインを構築する
-    bool CreateInternalPipelines();
-
     /// @brief 1 パス分の記録処理（ダウンサンプル）
     void RecordDownsample(const PostEffectPassContext& context, int mipIndex);
     /// @brief 1 パス分の記録処理（アップサンプル）
@@ -117,18 +113,6 @@ private:
     /// @brief 1 パス分の記録処理（合成）
     void RecordComposite(const PostEffectPassContext& context);
 
-    /// @brief シェーダーパスだけを差し替える最小のプロバイダ
-    class ShaderProvider : public ICustomShaderProvider {
-    public:
-        explicit ShaderProvider(std::wstring path) : path_(std::move(path)) {}
-        std::wstring GetComputeShaderPath() const override { return path_; }
-    private:
-        std::wstring path_;
-    };
-
-    ShaderProvider downsampleProvider_{ L"BloomDownsample.CS.hlsl" };
-    ShaderProvider upsampleProvider_{ L"BloomUpsample.CS.hlsl" };
-    ShaderProvider dirtGenProvider_{ L"BloomDirtGen.CS.hlsl" };
     CustomShaderPipeline downsamplePipeline_;
     CustomShaderPipeline upsamplePipeline_;
     CustomShaderPipeline dirtGenPipeline_;

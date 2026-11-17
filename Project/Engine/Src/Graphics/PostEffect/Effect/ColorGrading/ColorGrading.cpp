@@ -3,9 +3,6 @@
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/CVar/CVar.h"
-#ifdef CORE_EDITOR
-#include "Editor/ImGui/CVarPanel.h"
-#endif
 #include <algorithm>
 #include <cmath>
 
@@ -213,17 +210,7 @@ namespace CoreEngine
     void ColorGrading::DrawImGui()
     {
 #ifdef CORE_EDITOR
-        ImGui::PushID("ColorGrading");
-        ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
-        UI::Separator();
-
-        CVarUI::DrawTree(kCVarPrefix);
-
-        UI::Separator();
-        if (ImGui::Button("デフォルトに戻す")) {
-            CVarUI::ResetTree(kCVarPrefix);
-        }
-        ImGui::PopID();
+        DrawCVarEffectImGui("ColorGrading", kCVarPrefix);
 #endif // CORE_EDITOR
     }
 

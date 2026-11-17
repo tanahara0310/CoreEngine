@@ -4,7 +4,6 @@
 #include "../PostEffectComputeBase.h"
 #include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
-#include "Graphics/Shader/ICustomShaderProvider.h"
 #include <wrl.h>
 #include <d3d12.h>
 
@@ -135,9 +134,6 @@ private:
         sunValid_ = valid ? 1.0f : 0.0f;
     }
 
-    /// @brief 輝度抽出・ゴースト・ブラー用の内部パイプラインを構築する
-    bool CreateInternalPipelines();
-
     /// @brief 1/4 解像度の中間テクスチャ群を画面サイズ追従で確保する
     bool EnsureTargets(uint32_t width, uint32_t height);
 
@@ -151,23 +147,6 @@ private:
 
     /// @brief 支配的な光源位置（1x1テクスチャ）を確保する
     bool EnsureSourcePosTarget();
-
-    // ===== 内部パスのシェーダープロバイダ =====
-    struct DownsampleShaderProvider final : ICustomShaderProvider {
-        std::wstring GetComputeShaderPath() const override { return L"LensFlareDownsample.CS.hlsl"; }
-    };
-    /// @brief 支配的な光源位置の検出 CS のシェーダ供給
-    struct FindSourceShaderProvider final : ICustomShaderProvider {
-        std::wstring GetComputeShaderPath() const override { return L"LensFlareFindSource.CS.hlsl"; }
-    };
-    /// @brief ゴースト／ハロー生成 CS のシェーダ供給
-    struct GhostsShaderProvider final : ICustomShaderProvider {
-        std::wstring GetComputeShaderPath() const override { return L"LensFlareGhosts.CS.hlsl"; }
-    };
-    /// @brief 分離ガウスブラー CS のシェーダ供給
-    struct BlurShaderProvider final : ICustomShaderProvider {
-        std::wstring GetComputeShaderPath() const override { return L"LensFlareBlur.CS.hlsl"; }
-    };
 
 private:
     // 太陽のスクリーン位置（毎フレーム描画パイプラインが設定する実行時値。保存対象ではない）
@@ -204,13 +183,9 @@ private:
 
     // ===== 内部パイプライン =====
     CustomShaderPipeline downsamplePipeline_{};
-    DownsampleShaderProvider downsampleShaderProvider_{};
     CustomShaderPipeline findSourcePipeline_{};
-    FindSourceShaderProvider findSourceShaderProvider_{};
     CustomShaderPipeline ghostsPipeline_{};
-    GhostsShaderProvider ghostsShaderProvider_{};
     CustomShaderPipeline blurPipeline_{};
-    BlurShaderProvider blurShaderProvider_{};
     bool internalPipelinesReady_ = false;
 };
 }

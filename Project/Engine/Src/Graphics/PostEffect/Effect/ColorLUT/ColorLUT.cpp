@@ -39,7 +39,8 @@ namespace CoreEngine
 
     void ColorLUT::OnCreateResources()
     {
-        lutResourcesReady_ = CreateLutResources() && CreateFillPipeline();
+        lutResourcesReady_ = CreateLutResources()
+            && BuildInternalPipelines({ { fillPipeline_, L"ColorLUTFill.CS.hlsl", "Fill" } });
         if (!lutResourcesReady_) {
             Logger::GetInstance().Warnf(LogCategory::Graphics,
                 "ColorLUT: LUT リソースの構築に失敗（LUT グレーディングは無効）");
@@ -81,23 +82,6 @@ namespace CoreEngine
         bufferSrvDesc.Buffer.StructureByteStride = sizeof(LutTexel);
         lutDataSrvHandle_ = descriptorAllocator->CreateSRV(lutDataBuffer_.Get(), bufferSrvDesc, "ColorLUT_DataSRV");
 
-        return true;
-    }
-
-    bool ColorLUT::CreateFillPipeline()
-    {
-        auto* device = graphicsCore_->GetDevice();
-
-        // DXC とリフレクションビルダーはエンジン共有のキャッシュのものを使う。
-        // ローカルに作ると DXC がエフェクトの数だけ生成される（Phase 3 で撤去）
-        ShaderCompiler& shaderCompiler = shaderProgramCache_->GetCompiler();
-        ShaderReflectionBuilder& reflectionBuilder = shaderProgramCache_->GetReflectionBuilder();
-
-        const bool built = fillPipeline_.Build(device, shaderCompiler, reflectionBuilder, fillProvider_);
-        if (!built || !fillPipeline_.HasComputePSO()) {
-            Logger::GetInstance().Warnf(LogCategory::Graphics, "ColorLUT: Fill パイプラインの構築に失敗");
-            return false;
-        }
         return true;
     }
 
@@ -288,8 +272,7 @@ namespace CoreEngine
     void ColorLUT::DrawImGui()
     {
 #ifdef CORE_EDITOR
-        ImGui::PushID("ColorLUTParams");
-        ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
+        BeginEffectImGui("ColorLUTParams");
         ImGui::Text("LUT: %s（%u^3）", loadedLutName_.c_str(), lutSizeLoaded_);
         UI::Separator();
 
@@ -308,11 +291,8 @@ namespace CoreEngine
         UI::Separator();
         CVarUI::DrawTree(kCVarPrefix);
 
-        UI::Separator();
-        if (ImGui::Button("デフォルトに戻す")) {
-            CVarUI::ResetTree(kCVarPrefix);
-        }
-        ImGui::PopID();
+        DrawResetDefaultsImGui(kCVarPrefix);
+        EndEffectImGui();
 #endif // CORE_EDITOR
     }
 

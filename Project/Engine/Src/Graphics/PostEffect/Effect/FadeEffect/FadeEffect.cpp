@@ -92,8 +92,7 @@ namespace CoreEngine
     void FadeEffect::DrawImGui()
     {
 #ifdef CORE_EDITOR
-        ImGui::PushID("FadeEffect");
-        ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
+        BeginEffectImGui("FadeEffect");
         UI::Separator();
 
         // フェードタイプと進行度はシーン遷移が制御する実行時状態のため、
@@ -107,12 +106,10 @@ namespace CoreEngine
 
         CVarUI::DrawTree(kCVarPrefix);
 
-        UI::Separator();
-        if (ImGui::Button("デフォルトに戻す")) {
-            CVarUI::ResetTree(kCVarPrefix);
+        if (DrawResetDefaultsImGui(kCVarPrefix)) {
             timeAccumulator_ = 0.0f;
         }
-        ImGui::PopID();
+        EndEffectImGui();
 #endif // CORE_EDITOR
     }
 

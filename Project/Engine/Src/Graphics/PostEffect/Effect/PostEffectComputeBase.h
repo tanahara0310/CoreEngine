@@ -49,6 +49,18 @@ namespace CoreEngine {
         /// @note 毎フレーム変わる定数はここで作らず、記録時に UploadConstants で置く
         virtual void OnCreateResources() {}
 
+        /// @brief 追加のパイプライン 1 本の組み先・シェーダー・ログに出す名前
+        struct InternalPipelineDesc {
+            CustomShaderPipeline& pipeline; ///< 組み先
+            const wchar_t* shaderPath;      ///< CS のファイル名
+            const char* name;               ///< 組めなかったときのログに出す名前
+        };
+
+        /// @brief 追加の CS パイプラインを並びの順に組む（DXC とリフレクションビルダーはキャッシュのものを使う）
+        /// @return すべて組めたら true。組めないものがあれば "<エフェクト名>: <name> パイプラインの構築に失敗" を
+        ///         警告に出し、残りは組まずに false
+        bool BuildInternalPipelines(std::initializer_list<InternalPipelineDesc> pipelines);
+
         /// @brief 画面サイズ定数を今フレームの UploadRing へ確保する
         /// @param width  出力幅
         /// @param height 出力高さ

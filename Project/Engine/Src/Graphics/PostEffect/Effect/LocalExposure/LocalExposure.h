@@ -3,7 +3,6 @@
 #include "../PostEffectComputeBase.h"
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h" // PostEffectPassContext
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
-#include "Graphics/Shader/ICustomShaderProvider.h"
 #include <wrl.h>
 #include <d3d12.h>
 
@@ -84,24 +83,11 @@ protected:
     void OnCreateResources() override;
 
 private:
-    /// @brief Downsample / Blur 用の追加パイプラインを構築する
-    bool CreateInternalPipelines();
 
     void RecordDownsample(const PostEffectPassContext& context);
     void RecordBlur(const PostEffectPassContext& context, bool horizontal);
     void RecordApply(const PostEffectPassContext& context);
 
-    /// @brief シェーダーパスだけを差し替える最小のプロバイダ
-    class ShaderProvider : public ICustomShaderProvider {
-    public:
-        explicit ShaderProvider(std::wstring path) : path_(std::move(path)) {}
-        std::wstring GetComputeShaderPath() const override { return path_; }
-    private:
-        std::wstring path_;
-    };
-
-    ShaderProvider downsampleProvider_{ L"LocalExposureDownsample.CS.hlsl" };
-    ShaderProvider blurProvider_{ L"LocalExposureBlur.CS.hlsl" };
     CustomShaderPipeline downsamplePipeline_;
     CustomShaderPipeline blurPipeline_;
     bool internalPipelinesReady_ = false;

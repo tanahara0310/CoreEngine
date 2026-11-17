@@ -232,35 +232,27 @@ namespace CoreEngine
         ShaderReflectionBuilder reflectionBuilder;
         reflectionBuilder.Initialize(shaderCompiler.GetDxcUtils());
 
-        const bool evolutionBuilt = evolutionPipeline_.Build(
-            dxCommon_->GetDevice(),
-            shaderCompiler,
-            reflectionBuilder,
-            timeEvolutionShaderProvider_);
-        const bool ifftBuilt = ifftPipeline_.Build(
-            dxCommon_->GetDevice(),
-            shaderCompiler,
-            reflectionBuilder,
-            ifftShaderProvider_);
-        const bool finalizeBuilt = finalizePipeline_.Build(
-            dxCommon_->GetDevice(),
-            shaderCompiler,
-            reflectionBuilder,
-            finalizeShaderProvider_);
+        ID3D12Device* device = dxCommon_->GetDevice();
+        const bool evolutionBuilt = evolutionPipeline_.BuildCompute(
+            device, shaderCompiler, reflectionBuilder, L"FFTOceanTimeEvolution.CS.hlsl");
+        const bool ifftBuilt = ifftPipeline_.BuildCompute(
+            device, shaderCompiler, reflectionBuilder, L"FFTOceanIFFT.CS.hlsl");
+        const bool finalizeBuilt = finalizePipeline_.BuildCompute(
+            device, shaderCompiler, reflectionBuilder, L"FFTOceanFinalize.CS.hlsl");
 
-        if (!evolutionBuilt || !evolutionPipeline_.HasComputePSO()) {
+        if (!evolutionBuilt) {
             Logger::GetInstance().Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
                 "FFTOceanManager: failed to build time evolution compute pipeline.");
             return false;
         }
 
-        if (!ifftBuilt || !ifftPipeline_.HasComputePSO()) {
+        if (!ifftBuilt) {
             Logger::GetInstance().Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
                 "FFTOceanManager: failed to build IFFT compute pipeline.");
             return false;
         }
 
-        if (!finalizeBuilt || !finalizePipeline_.HasComputePSO()) {
+        if (!finalizeBuilt) {
             Logger::GetInstance().Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
                 "FFTOceanManager: failed to build finalize compute pipeline.");
             return false;

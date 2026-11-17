@@ -213,8 +213,11 @@ namespace CoreEngine
     }
 
     int ShaderReflectionData::GetRootParameterIndexByName(const std::string& resourceName) const {
-        const RootSlot slot = GetRootSlot(resourceName);
-        return slot.IsValid() ? static_cast<int>(slot.index) : -1;
+        return ToRootParamIndex(GetRootSlot(resourceName));
+    }
+
+    int FindRootParamIndex(const ShaderReflectionData* reflectionData, const std::string& resourceName) {
+        return reflectionData ? reflectionData->GetRootParameterIndexByName(resourceName) : -1;
     }
 
     void ShaderReflectionData::SetRootParameterMapping(const std::map<std::string, RootSlot>& mapping) {

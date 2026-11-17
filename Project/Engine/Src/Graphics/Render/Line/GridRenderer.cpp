@@ -21,22 +21,9 @@ namespace CoreEngine
 {
 void GridRenderer::Initialize(ID3D12Device* device)
 {
-    shaderCompiler_->Initialize();
-    reflectionBuilder_->Initialize(shaderCompiler_->GetDxcUtils());
-
-    auto vertexShaderBlob = shaderCompiler_->CompileShader(L"Engine/Assets/Shaders/Grid/Grid.VS.hlsl", L"vs_6_0");
-    assert(vertexShaderBlob != nullptr);
-
-    auto pixelShaderBlob = shaderCompiler_->CompileShader(L"Engine/Assets/Shaders/Grid/Grid.PS.hlsl", L"ps_6_0");
-    assert(pixelShaderBlob != nullptr);
-
-    reflectionData_ = reflectionBuilder_->BuildFromShaders(vertexShaderBlob.Get(), pixelShaderBlob.Get(), "GridRenderer");
-
-    RootSignatureConfig config;
-    const auto buildResult = rootSignatureMg_->Build(device, *reflectionData_, config);
-    if (!buildResult.success) {
-        throw std::runtime_error("Failed to create Grid Root Signature: " + buildResult.errorMessage);
-    }
+    const auto shaders = BuildShadersAndRootSignature(device,
+        L"Engine/Assets/Shaders/Grid/Grid.VS.hlsl", L"Engine/Assets/Shaders/Grid/Grid.PS.hlsl",
+        "GridRenderer", RootSignatureConfig{}, "Grid");
 
     // 頂点バッファは使わない（VS が SV_VertexID から三角形を組み立てる）ので入力レイアウトは空になる。
     // 深度は PS が SV_Depth で床平面の値を出すためテストは行うが、書き込みはしない
@@ -47,7 +34,7 @@ void GridRenderer::Initialize(ID3D12Device* device)
         .SetRasterizer(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID)
         .SetDepthStencil(true, false, D3D12_COMPARISON_FUNC_LESS_EQUAL)
         .SetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE)
-        .Build(device, vertexShaderBlob.Get(), pixelShaderBlob.Get(), rootSignatureMg_->GetRootSignature(),
+        .Build(device, shaders.vs.Get(), shaders.ps.Get(), rootSignatureMg_->GetRootSignature(),
                { BlendMode::kBlendModeNormal });
 
     if (!result) {
@@ -73,9 +60,7 @@ void GridRenderer::BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMode blend
         return;
     }
 
-    cmdList->SetGraphicsRootSignature(rootSignatureMg_->GetRootSignature());
-    cmdList->SetPipelineState(pipelineState_);
-    cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    BindPassPipeline(cmdList, rootSignatureMg_->GetRootSignature(), pipelineState_);
 }
 
 void GridRenderer::EndPass()
@@ -103,10 +88,7 @@ void GridRenderer::SetMinPixelsPerCell(float pixels)
 
 int GridRenderer::GetRootParamIndex(const std::string& resourceName) const
 {
-    if (!reflectionData_) {
-        return -1;
-    }
-    return reflectionData_->GetRootParameterIndexByName(resourceName);
+    return FindRootParamIndex(reflectionData_.get(), resourceName);
 }
 
 void GridRenderer::DrawGrid()

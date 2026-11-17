@@ -79,8 +79,7 @@ namespace CoreEngine
     void Shockwave::DrawImGui()
     {
 #ifdef CORE_EDITOR
-        ImGui::PushID("ShockwaveParams");
-        ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
+        BeginEffectImGui("ShockwaveParams");
         ImGui::Text("アクティブ: %s", isActive_ ? "true" : "false");
         UI::Separator();
 
@@ -94,7 +93,7 @@ namespace CoreEngine
         if (ImGui::Button("デフォルトに戻す")) {
             CVarUI::ResetTree(kCVarPrefix);
         }
-        ImGui::PopID();
+        EndEffectImGui();
 #endif // CORE_EDITOR
     }
 

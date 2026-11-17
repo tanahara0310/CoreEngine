@@ -30,14 +30,13 @@ namespace CoreEngine
     void GrayScale::DrawImGui()
     {
 #ifdef CORE_EDITOR
-        ImGui::PushID("GrayScale");
-        ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
+        BeginEffectImGui("GrayScale");
         ImGui::Text("画像をグレースケールに変換します");
         UI::Separator();
         if (!IsEnabled()) {
             ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "注意: エフェクトは無効です");
         }
-        ImGui::PopID();
+        EndEffectImGui();
 #endif // CORE_EDITOR
     }
 

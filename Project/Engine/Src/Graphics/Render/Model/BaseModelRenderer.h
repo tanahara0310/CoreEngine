@@ -185,6 +185,26 @@ namespace CoreEngine
         InstanceBatchManager* instanceBatchManager_ = nullptr;
         ID3D12GraphicsCommandList* currentCommandList_ = nullptr;
 
+        /// @brief 前方描画と G-Buffer の 2 組のパイプラインの作り方（派生ごとに違う所）
+        struct PipelineDesc {
+            const wchar_t* forwardVS = nullptr;   ///< 前方描画の頂点シェーダー
+            const wchar_t* forwardPS = nullptr;   ///< 前方描画のピクセルシェーダー
+            const wchar_t* gBufferVS = nullptr;   ///< G-Buffer の頂点シェーダー
+            const wchar_t* gBufferPS = nullptr;   ///< G-Buffer のピクセルシェーダー
+            const char* name = "";                ///< リフレクションと宣言表の照合の名前（G-Buffer は末尾に "_GBuffer" が付く）
+            const char* debugPrefix = "";         ///< PSO のデバッグ名の頭（"<頭>Forward" と "<頭>GBuffer"）
+            const char* errorLabel = "";          ///< 失敗したときの例外に入れる名前（空なら入れない）
+            /// true: 変換行列を定数バッファ（gTransformationMatrix）で受け、大きさも確かめる
+            /// false: インスタンスデータ（gInstanceData）をルートの SRV で受ける
+            bool skinned = false;
+            const ShaderBindingDecl* forwardDecls = nullptr; ///< 前方描画の宣言表
+            const ShaderBindingDecl* gBufferDecls = nullptr; ///< G-Buffer の宣言表
+        };
+
+        /// @brief シェーダーのコンパイルから 2 組の RootSignature・PSO までを作り、宣言表を照合する
+        /// @throws std::runtime_error RootSignature か PSO を作れなかったとき、または契約違反
+        void BuildPipelines(ID3D12Device* device, const PipelineDesc& desc);
+
         /// @brief Initialize 完了後に一度だけ呼び、宣言表をシェーダー実体と突き合わせる
         /// @param forwardDecls  フォワードパス用の宣言表（ModelBind::kForward 等）
         /// @param gBufferDecls  G-Buffer パス用の宣言表

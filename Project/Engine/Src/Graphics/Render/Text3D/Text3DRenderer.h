@@ -4,18 +4,12 @@
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
-#include "Graphics/Shader/CBufferLayout.h"
 #include "Math/Matrix/Matrix4x4.h"
-#include "Math/Vector/Vector2.h"
-#include "Math/Vector/Vector3.h"
-#include "Math/Vector/Vector4.h"
-#include "Text/TextGeometryBuilder.h"
+#include "Text/MsdfTextBatch.h"
 
 #include <cstdint>
 #include <d3d12.h>
-#include <wrl.h>
 #include <string>
-#include <vector>
 
 namespace CoreEngine
 {
@@ -44,54 +38,6 @@ namespace CoreEngine
         Overlay,
     };
 
-    /// @brief 1 つの 3D テキストの見た目（頂点へ焼き込んでバッチにまとめる）
-    struct Text3DDrawStyle
-    {
-        Vector4 color = { 1.0f, 1.0f, 1.0f, 1.0f };
-        Vector4 outlineColor = { 0.0f, 0.0f, 0.0f, 0.0f };
-        float outlineWidthEm = 0.0f;
-        float weightEm = 0.0f;
-    };
-
-    /// @brief GPU へ送るテキスト頂点（Text3D.VS.hlsl の入力と一致させること）
-    /// @note 位置は **ワールド座標**。em → ワールドの変換は CPU 側で済ませてある
-    ///       （テキストごとの行列を無くさないとバッチにまとめられないため）。
-    struct Text3DVertex
-    {
-        Vector4 position;     ///< POSITION0
-        Vector3 texcoord;     ///< TEXCOORD0（xy = UV / z = 枚番号）
-        Vector4 color;        ///< COLOR0
-        Vector4 outlineColor; ///< COLOR1
-        Vector2 style;        ///< TEXCOORD1（x = 縁取り幅 em / y = 太さ em）
-    };
-
-    static constexpr Cb::Field kText3DVertexFields[] = {
-        CB_FIELD(Text3DVertex, position), CB_FIELD(Text3DVertex, texcoord),
-        CB_FIELD(Text3DVertex, color), CB_FIELD(Text3DVertex, outlineColor),
-        CB_FIELD(Text3DVertex, style),
-    };
-    CB_VERIFY_STRIDE(Text3DVertex, kText3DVertexFields);
-
-    /// @brief バッチ共通の定数（HLSL 側 `ConstantBuffer<Text3DBatch> gBatch` と一致させること）
-    struct Text3DBatchConstants
-    {
-        Matrix4x4 viewProjection; ///< ワールド → クリップ空間
-
-        float pxRange;      ///< 距離場の有効範囲（px）
-        float atlasWidth;   ///< アトラス 1 枚あたりの画素サイズ
-        float atlasHeight;
-        float sdUnitsPerEm; ///< em → 距離場の値（= glyphPixelSize / pxRange）
-    };
-
-    static constexpr Cb::Field kText3DBatchConstantsFields[] = {
-        CB_FIELD(Text3DBatchConstants, viewProjection),
-        CB_FIELD(Text3DBatchConstants, pxRange),
-        CB_FIELD(Text3DBatchConstants, atlasWidth),
-        CB_FIELD(Text3DBatchConstants, atlasHeight),
-        CB_FIELD(Text3DBatchConstants, sdUnitsPerEm),
-    };
-    CB_VERIFY_LAYOUT(Text3DBatchConstants, kText3DBatchConstantsFields);
-
     /// @brief MSDF テキストをワールド空間へ描くレンダラー
     /// @details
     ///  UI 版（TextRenderer）との違いは、頂点へ焼き込む行列がスクリーン px ではなく
@@ -111,7 +57,7 @@ namespace CoreEngine
         /// @brief 1 バッチに積めるグリフ数の上限
         /// @note 共有インデックスバッファの長さがそのまま上限になる。
         ///       超えたらその場でフラッシュして次のバッチへ続ける（描画は欠けない）
-        static constexpr uint32_t kMaxGlyphsPerBatch = 8192;
+        static constexpr uint32_t kMaxGlyphsPerBatch = MsdfTextBatch::kMaxGlyphsPerBatch;
 
         /// @brief 1 つのテキストが描けるグリフ数の上限
         static constexpr uint32_t kMaxGlyphsPerText = kMaxGlyphsPerBatch;
@@ -151,7 +97,7 @@ namespace CoreEngine
             const TextGlyphVertex* glyphVertices, size_t vertexCount,
             const Matrix4x4& world,
             const Matrix4x4& viewProjection,
-            const Text3DDrawStyle& style,
+            const TextDrawStyle& style,
             Text3DDepthMode depthMode);
 
         /// @brief ルートシグネチャを取得
@@ -165,14 +111,11 @@ namespace CoreEngine
 
         // ===== デバッグ表示用 =====
         /// @brief 直近フレームのドローコール数（バッチングの効きを見る）
-        uint32_t GetLastFrameDrawCallCount() const { return lastFrameDrawCalls_; }
+        uint32_t GetLastFrameDrawCallCount() const { return batch_.GetLastFrameDrawCallCount(); }
         /// @brief 直近フレームに描いたグリフ数
-        uint32_t GetLastFrameGlyphCount() const { return lastFrameGlyphs_; }
+        uint32_t GetLastFrameGlyphCount() const { return batch_.GetLastFrameGlyphCount(); }
 
     private:
-        /// @brief 共有インデックスバッファを生成して内容を書き込む
-        void CreateSharedIndexBuffer(ID3D12Device* device);
-
         /// @brief 溜まっている頂点を 1 ドローコールで描く
         void Flush();
 
@@ -184,22 +127,14 @@ namespace CoreEngine
         /// 深度テストを切った PSO（オーバーレイ描画用）。psoMg_ が深度テスト版
         std::unique_ptr<PipelineStateManager> overlayPsoMg_ = std::make_unique<PipelineStateManager>();
 
-        Microsoft::WRL::ComPtr<ID3D12Resource> indexResource_;
-        D3D12_INDEX_BUFFER_VIEW indexBufferView_{};
-
         // ── バッチ状態 ────────────────────────────────────────────
         // フォント（アトラスと定数）・深度モード（PSO）・ビュー射影（定数）の
         // どれかが変わるとバッチを切る
         /// 記録先。BeginPass で受け取り、EndPass のフラッシュでも使う
         ID3D12GraphicsCommandList* cmdList_ = nullptr;
-        const MsdfFont* batchFont_ = nullptr;
         Text3DDepthMode batchDepthMode_ = Text3DDepthMode::Test;
         Matrix4x4 batchViewProjection_{};
-        std::vector<Text3DVertex> batchVertices_;
-
-        uint32_t frameDrawCalls_ = 0;
-        uint32_t frameGlyphs_ = 0;
-        uint32_t lastFrameDrawCalls_ = 0;
-        uint32_t lastFrameGlyphs_ = 0;
+        /// 積んでいる頂点とバッチのフォント
+        MsdfTextBatch batch_;
     };
 }

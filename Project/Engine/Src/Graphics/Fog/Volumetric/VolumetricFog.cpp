@@ -15,7 +15,6 @@
 #include "Graphics/RHI/Resource/UavTexture.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
 #include "Graphics/RootSignature/ShaderBinder.h"
-#include "Graphics/Shader/ICustomShaderProvider.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
@@ -33,16 +32,6 @@ namespace CoreEngine
 {
     namespace
     {
-        /// @brief ファイル名で CS を 1 本指すシェーダー供給
-        class ComputeShaderProvider final : public ICustomShaderProvider {
-        public:
-            explicit ComputeShaderProvider(const wchar_t* path) : path_(path) {}
-            std::wstring GetComputeShaderPath() const override { return path_; }
-
-        private:
-            const wchar_t* path_;
-        };
-
         constexpr uint32_t kCellGroupSize = 4;
         constexpr uint32_t kColumnGroupSize = 8;
 
@@ -56,8 +45,7 @@ namespace CoreEngine
             const wchar_t* path, const char* label, std::span<const ShaderBindingDecl> decls,
             CustomShaderPipeline& pipeline, BindingTable& bindings)
         {
-            const ComputeShaderProvider provider(path);
-            if (!pipeline.Build(device, compiler, reflectionBuilder, provider) || !pipeline.HasComputePSO()) {
+            if (!pipeline.BuildCompute(device, compiler, reflectionBuilder, path)) {
                 Logger::GetInstance().Warnf(LogCategory::Graphics,
                     "VolumetricFog: %s のコンピュートパイプラインの構築に失敗", label);
                 return false;

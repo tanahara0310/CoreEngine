@@ -6,6 +6,7 @@
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
 #include "Math/IntegerMath.h"
+#include "Utility/Logger/Logger.h"
 #include <cassert>
 #include <stdexcept>
 
@@ -73,6 +74,21 @@ namespace CoreEngine
 
         // 派生クラス固有のリソース生成
         OnCreateResources();
+    }
+
+    bool PostEffectComputeBase::BuildInternalPipelines(std::initializer_list<InternalPipelineDesc> pipelines)
+    {
+        ShaderCompiler& shaderCompiler = shaderProgramCache_->GetCompiler();
+        ShaderReflectionBuilder& reflectionBuilder = shaderProgramCache_->GetReflectionBuilder();
+
+        for (const InternalPipelineDesc& desc : pipelines) {
+            if (!desc.pipeline.BuildCompute(graphicsCore_->GetDevice(), shaderCompiler, reflectionBuilder, desc.shaderPath)) {
+                Logger::GetInstance().Warnf(LogCategory::Graphics,
+                    "{}: {} パイプラインの構築に失敗", GetEffectName(), desc.name);
+                return false;
+            }
+        }
+        return true;
     }
 
     void PostEffectComputeBase::UpdateScreenSizeConstants(uint32_t width, uint32_t height)

@@ -3,9 +3,6 @@
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Utility/CVar/CVar.h"
-#ifdef CORE_EDITOR
-#include "Editor/ImGui/CVarPanel.h"
-#endif
 
 
 namespace CoreEngine
@@ -76,17 +73,7 @@ namespace CoreEngine
     void ChromaticAberration::DrawImGui()
     {
 #ifdef CORE_EDITOR
-        ImGui::PushID("ChromaticAberration");
-        ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
-        UI::Separator();
-
-        CVarUI::DrawTree(kCVarPrefix);
-
-        UI::Separator();
-        if (ImGui::Button("デフォルトに戻す")) {
-            CVarUI::ResetTree(kCVarPrefix);
-        }
-        ImGui::PopID();
+        DrawCVarEffectImGui("ChromaticAberration", kCVarPrefix);
 #endif // CORE_EDITOR
     }
 

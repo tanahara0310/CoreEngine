@@ -4,7 +4,6 @@
 #include "../PostEffectComputeBase.h"
 #include "Graphics/RHI/Descriptor/DescriptorHandle.h"
 #include "Graphics/Pipeline/CustomShaderPipeline.h"
-#include "Graphics/Shader/ICustomShaderProvider.h"
 #include <wrl.h>
 #include <d3d12.h>
 #include <string>
@@ -91,20 +90,8 @@ private:
     /// @brief Texture3D・アップロードバッファ・ビューを構築する
     bool CreateLutResources();
 
-    /// @brief LUT 書き込みパイプライン（ColorLUTFill.CS）を構築する
-    bool CreateFillPipeline();
-
     /// @brief アップロードバッファの内容を Texture3D へ写す（差し替え後の初回のみ）
     void RecordFillIfDirty(ID3D12GraphicsCommandList* cmdList);
-
-    /// @brief シェーダーパスだけを差し替える最小のプロバイダ
-    class ShaderProvider : public ICustomShaderProvider {
-    public:
-        explicit ShaderProvider(std::wstring path) : path_(std::move(path)) {}
-        std::wstring GetComputeShaderPath() const override { return path_; }
-    private:
-        std::wstring path_;
-    };
 
     /// @brief LUT 1 テクセル分（gLutData の要素レイアウト）
     struct LutTexel {
@@ -116,7 +103,6 @@ private:
     };
     CB_VERIFY_STRIDE(LutTexel, kLutTexelFields);
 
-    ShaderProvider fillProvider_{ L"ColorLUTFill.CS.hlsl" };
     CustomShaderPipeline fillPipeline_;
 
     GpuResource lutTexture_;

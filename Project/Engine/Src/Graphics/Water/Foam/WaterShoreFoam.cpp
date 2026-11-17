@@ -62,25 +62,22 @@ namespace CoreEngine
         ShaderReflectionBuilder reflectionBuilder;
         reflectionBuilder.Initialize(shaderCompiler.GetDxcUtils());
 
-        const bool foamBuilt = foamPipeline_.Build(
-            dxCommon_->GetDevice(), shaderCompiler, reflectionBuilder, foamShaderProvider_);
-        if (!foamBuilt || !foamPipeline_.HasComputePSO()) {
+        if (!foamPipeline_.BuildCompute(
+                dxCommon_->GetDevice(), shaderCompiler, reflectionBuilder, L"WaterShoreFoam.CS.hlsl")) {
             Logger::GetInstance().Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
                 "WaterShoreFoam: failed to build shore foam compute pipeline.");
             return false;
         }
 
-        const bool smoothBuilt = smoothSeabedPipeline_.Build(
-            dxCommon_->GetDevice(), shaderCompiler, reflectionBuilder, smoothSeabedShaderProvider_);
-        if (!smoothBuilt || !smoothSeabedPipeline_.HasComputePSO()) {
+        if (!smoothSeabedPipeline_.BuildCompute(
+                dxCommon_->GetDevice(), shaderCompiler, reflectionBuilder, L"WaterShoreSeabedSmooth.CS.hlsl")) {
             Logger::GetInstance().Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
                 "WaterShoreFoam: failed to build seabed smoothing compute pipeline.");
             return false;
         }
 
-        const bool swashBuilt = swashPipeline_.Build(
-            dxCommon_->GetDevice(), shaderCompiler, reflectionBuilder, swashShaderProvider_);
-        if (!swashBuilt || !swashPipeline_.HasComputePSO()) {
+        if (!swashPipeline_.BuildCompute(
+                dxCommon_->GetDevice(), shaderCompiler, reflectionBuilder, L"WaterShoreSwash.CS.hlsl")) {
             Logger::GetInstance().Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
                 "WaterShoreFoam: failed to build swash compute pipeline.");
             return false;

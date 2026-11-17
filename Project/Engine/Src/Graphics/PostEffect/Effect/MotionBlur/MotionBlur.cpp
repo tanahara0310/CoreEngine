@@ -47,41 +47,14 @@ namespace CoreEngine
 
     void MotionBlur::OnCreateResources()
     {
-        internalPipelinesReady_ = CreateInternalPipelines();
+        internalPipelinesReady_ = BuildInternalPipelines({
+            { tileMaxPipeline_,     L"MotionBlurTileMax.CS.hlsl",     "TileMax" },
+            { neighborMaxPipeline_, L"MotionBlurNeighborMax.CS.hlsl", "NeighborMax" },
+        });
         if (!internalPipelinesReady_) {
             Logger::GetInstance().Warnf(LogCategory::Graphics,
                 "MotionBlur: TileMax/NeighborMax パイプラインの構築に失敗（モーションブラーは無効）");
         }
-    }
-
-    bool MotionBlur::CreateInternalPipelines()
-    {
-        auto* device = graphicsCore_->GetDevice();
-
-        // DXC とリフレクションビルダーはエンジン共有のキャッシュのものを使う。
-        // ローカルに作ると DXC がエフェクトの数だけ生成される（Phase 3 で撤去）
-        ShaderCompiler& shaderCompiler = shaderProgramCache_->GetCompiler();
-        ShaderReflectionBuilder& reflectionBuilder = shaderProgramCache_->GetReflectionBuilder();
-
-        struct Entry {
-            CustomShaderPipeline& pipeline;
-            const ICustomShaderProvider& provider;
-            const char* name;
-        };
-        Entry entries[] = {
-            { tileMaxPipeline_,     tileMaxProvider_,     "TileMax" },
-            { neighborMaxPipeline_, neighborMaxProvider_, "NeighborMax" },
-        };
-
-        for (Entry& entry : entries) {
-            const bool built = entry.pipeline.Build(device, shaderCompiler, reflectionBuilder, entry.provider);
-            if (!built || !entry.pipeline.HasComputePSO()) {
-                Logger::GetInstance().Warnf(LogCategory::Graphics,
-                    "MotionBlur: {} パイプラインの構築に失敗", entry.name);
-                return false;
-            }
-        }
-        return true;
     }
 
     void MotionBlur::PrepareFrame(const PostEffectFrameContext& ctx)
@@ -216,8 +189,7 @@ namespace CoreEngine
     void MotionBlur::DrawImGui()
     {
 #ifdef CORE_EDITOR
-        ImGui::PushID("MotionBlurParams");
-        ImGui::Text("状態: %s", IsEnabled() ? "有効" : "無効");
+        BeginEffectImGui("MotionBlurParams");
         UI::Separator();
 
         CVarUI::DrawTree(kCVarPrefix);
@@ -225,11 +197,8 @@ namespace CoreEngine
         ImGui::TextDisabled("クリップ距離（カメラから自動設定）: near %.2f / far %.1f",
                             nearPlane_, farPlane_);
 
-        UI::Separator();
-        if (ImGui::Button("デフォルトに戻す")) {
-            CVarUI::ResetTree(kCVarPrefix);
-        }
-        ImGui::PopID();
+        DrawResetDefaultsImGui(kCVarPrefix);
+        EndEffectImGui();
 #endif // CORE_EDITOR
     }
 
