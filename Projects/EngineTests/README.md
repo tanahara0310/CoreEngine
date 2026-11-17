@@ -384,6 +384,6 @@ DXR 1.1 に対応していない GPU では、物の影は霧に落ちません�
 
 1. 停止中に Enemy_A を選ぶと、インスペクタの名前の下に Tag の欄があり Enemy になっている。欄を開くと Untagged・Player・Enemy が並ぶ。
 2. 再生すると赤い立方体 3 つ（Enemy_A・Enemy_B・右端に出た Enemy_FromPrefab）だけが浮き上がり、Plain は床に残る。コンソールに「Enemy のタグを持つ物 3 個（期待 3）」など、TagProbe の行が 4 つ出て、どれも期待どおり。
-3. 再生中に Enemy_FromPrefab を選ぶと Tag が Enemy。Plain の Tag を Enemy に変えて止め、もう一度再生すると 4 つ浮く（確かめたら Untagged に戻して保存する）。
+3. 再生中に Enemy_FromPrefab を選ぶと Tag が Enemy。止めてから Plain の Tag を Enemy に変えて再生すると 4 つ浮く（再生中に変えたタグは止めると戻る。確かめたら Plain を Untagged に戻す）。
 4. Project の Prefabs/TaggedEnemy を選ぶと、インスペクタの「プレハブの中身」に Tag が出る。TaggedEnemy をシーンへ置いて Tag を Player に変えると、Tag の行の左端に青い線が出る。Tag のラベルを右クリックして「プレハブの値に戻す」で Enemy に戻る（置いた物は消してから保存する）。
 5. Edit ▸ Project Settings… の Tags でタグを足して「適用」すると、Tags.json に書かれ、インスペクタの Tag の欄にすぐ出る（確かめたら外して適用する）。
