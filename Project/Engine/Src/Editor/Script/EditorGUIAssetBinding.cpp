@@ -19,6 +19,7 @@
 #include "Script/Binding/BindingRegistrar.h"
 #include "Script/Binding/GameObjectBinding.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/String/ContainsIgnoreCase.h"
 
 #include <angelscript.h>
 #include <imgui.h>
@@ -96,20 +97,6 @@ namespace CoreEngine::Editor::ScriptBinding
                 return ImVec2(width, aspect > 0.0f ? width / aspect : width);
             }
             return ImVec2(width, height);
-        }
-
-        /// @brief ASCII の大文字と小文字を区別せずに部分一致するか
-        bool ContainsIgnoreCase(std::string_view text, std::string_view pattern)
-        {
-            if (pattern.empty()) {
-                return true;
-            }
-            const auto lower = [](char c) {
-                return (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c;
-                };
-            const auto found = std::search(text.begin(), text.end(), pattern.begin(), pattern.end(),
-                [&lower](char a, char b) { return lower(a) == lower(b); });
-            return found != text.end();
         }
 
         /// @brief 参照の欄の枠を開き、中身（記号・名前）を枠に重ねて描く

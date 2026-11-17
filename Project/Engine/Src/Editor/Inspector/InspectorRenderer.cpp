@@ -18,6 +18,7 @@
 #include "Reflection/PropertyValue.h"
 #include "Reflection/TypeDescriptor.h"
 #include "Scene/PrefabSystem.h"
+#include "Utility/String/ContainsIgnoreCase.h"
 
 #include <algorithm>
 #include <cmath>
@@ -559,20 +560,6 @@ namespace CoreEngine
             case AssetType::Material: return "MATERIAL_FILE";
             default:                 return nullptr;
             }
-        }
-
-        /// @brief ASCII の大文字と小文字を区別せずに部分一致するか
-        bool ContainsIgnoreCase(std::string_view text, std::string_view pattern)
-        {
-            if (pattern.empty()) {
-                return true;
-            }
-            const auto lower = [](char c) {
-                return (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c;
-            };
-            const auto found = std::search(text.begin(), text.end(), pattern.begin(), pattern.end(),
-                [&](char a, char b) { return lower(a) == lower(b); });
-            return found != text.end();
         }
 
         /// @brief AssetRef の値を、指定したアセットへ向け直す

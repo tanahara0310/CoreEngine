@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Utility/Path/ProjectPaths.h"
+#include "Utility/String/Utf8.h"
 
 #include <algorithm>
 #include <array>
@@ -34,36 +35,13 @@ namespace CoreEngine
         ///       日本語を含むパスで例外になる。
         std::filesystem::path FromUtf8(std::string_view utf8)
         {
-            if (utf8.empty()) {
-                return {};
-            }
-            const int length = MultiByteToWideChar(
-                CP_UTF8, 0, utf8.data(), static_cast<int>(utf8.size()), nullptr, 0);
-            if (length <= 0) {
-                return {};
-            }
-            std::wstring wide(static_cast<size_t>(length), L'\0');
-            MultiByteToWideChar(CP_UTF8, 0, utf8.data(), static_cast<int>(utf8.size()),
-                wide.data(), length);
-            return std::filesystem::path(wide);
+            return std::filesystem::path(Utf8ToWide(utf8));
         }
 
         /// @brief path を UTF-8 の文字列にする
         std::string ToUtf8(const std::filesystem::path& path)
         {
-            const std::wstring& wide = path.native();
-            if (wide.empty()) {
-                return {};
-            }
-            const int length = WideCharToMultiByte(
-                CP_UTF8, 0, wide.data(), static_cast<int>(wide.size()), nullptr, 0, nullptr, nullptr);
-            if (length <= 0) {
-                return {};
-            }
-            std::string utf8(static_cast<size_t>(length), '\0');
-            WideCharToMultiByte(CP_UTF8, 0, wide.data(), static_cast<int>(wide.size()),
-                utf8.data(), length, nullptr, nullptr);
-            return utf8;
+            return WideToUtf8(path.native());
         }
 
         /// @brief パスの 1 要素が指定の名前か（大文字小文字は区別しない）

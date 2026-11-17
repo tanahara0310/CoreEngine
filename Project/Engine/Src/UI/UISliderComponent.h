@@ -1,18 +1,16 @@
 #pragma once
 
-#include "GameObject/Component/Core/IComponent.h"
 #include "GameObject/Component/Core/ObjectRef.h"
 #include "Math/Vector/Vector2.h"
 #include "Math/Vector/Vector4.h"
 #include "Reflection/Reflect.h"
-#include "UI/IUIInteractable.h"
+#include "UI/UISelectableComponent.h"
 
 #include <cstdint>
 
 namespace CoreEngine
 {
     class RectTransformComponent;
-    class UIImageComponent;
 
     /// @brief つまみを動かして値を決める帯
     /// @details 当たりは同じオブジェクトの `RectTransform` で取る。
@@ -21,7 +19,7 @@ namespace CoreEngine
     /// @note ポインタは帯のどこを押しても、その位置の値になる。
     ///       フォーカス中は向きの入力で動き、その向きのフォーカス送りは起きない。
     /// @warning 繋いだ相手のアンカーは帯と同じものに揃える（同じ座標系で置くため）。
-    class UISliderComponent final : public IComponent, public IUIInteractable
+    class UISliderComponent final : public UISelectableComponent
     {
     public:
         /// @brief 値が増える向き
@@ -37,6 +35,8 @@ namespace CoreEngine
         static constexpr const char* kDirectionNames[] = {
             "左から右", "右から左", "上から下", "下から上",
         };
+
+        UISliderComponent();
 
         const char* GetTypeName() const override { return "UISlider"; }
 
@@ -64,17 +64,14 @@ namespace CoreEngine
                 p.type = ::CoreEngine::Reflection::PropertyType::Color)
         REFLECT_END()
 
-        /// @brief 同じオブジェクトに `RectTransform` が無ければ足す
+        /// @brief 同じオブジェクトに `RectTransform` が無ければ足し、見た目と伸びる帯・つまみを合わせる
         void Awake() override;
 
         /// @brief 値に合わせて伸びる帯とつまみを置く
         void LateUpdate() override;
 
-        /// @brief 値や色が変わったら見た目を作り直す
+        /// @brief 値や色が変わったら見た目を作り直し、伸びる帯とつまみを置き直す
         void OnPropertyChanged(const Reflection::PropertyDescriptor& property) override;
-
-        /// @brief `RectTransform` を控えるので、外せないようにする
-        bool RequiresComponent(const IComponent& other) const override;
 
         // ===== 問い合わせ =====
 
@@ -103,21 +100,9 @@ namespace CoreEngine
         Direction GetDirection() const { return direction_; }
         void SetDirection(Direction direction);
 
-        bool IsInteractable() const { return interactable_; }
-        void SetInteractable(bool value);
-
         // ===== IUIInteractable =====
 
-        RectTransformComponent* GetRectTransform() const override;
-        bool AcceptsInput() const override { return interactable_ && IsEnabled(); }
-        int GetPointerSortOrder() const override;
-
-        void OnPointerEnter() override;
-        void OnPointerExit() override;
-        void OnFocusEnter() override;
-        void OnFocusExit() override;
-        void OnPressBegin() override;
-        void OnPressEnd(bool onSelf) override;
+        bool AcceptsInput() const override { return IsInteractable() && IsEnabled(); }
         void OnDrag(const Vector2& pointerOnCanvas, const Vector2& canvasSize) override;
         bool OnNavigate(UINavigationDirection direction) override;
 
@@ -128,11 +113,8 @@ namespace CoreEngine
         /// @brief 帯の中のポインタの位置から値を決める
         void ApplyPointer(const Vector2& pointerOnCanvas, const Vector2& canvasSize);
 
-        /// @brief 今の状態で使う色
-        const Vector4& CurrentColor() const;
-
         /// @brief つまみ（繋いでいなければ帯そのもの）の画像へ色を写す
-        void ApplyVisual();
+        void ApplyVisual() override;
 
         /// @brief 値に合わせて伸びる帯とつまみを置く
         void ApplyLayout();
@@ -159,19 +141,9 @@ namespace CoreEngine
         bool wholeNumbers_ = false;
         float navigationStep_ = 0.0f;
         Direction direction_ = Direction::LeftToRight;
-        bool interactable_ = true;
 
         ObjectRef<RectTransformComponent> fill_;
         ObjectRef<RectTransformComponent> handle_;
-
-        Vector4 normalColor_   = { 1.0f, 1.0f, 1.0f, 1.0f };
-        Vector4 hoveredColor_  = { 0.85f, 0.9f, 1.0f, 1.0f };
-        Vector4 pressedColor_  = { 0.7f, 0.78f, 0.95f, 1.0f };
-        Vector4 disabledColor_ = { 0.6f, 0.6f, 0.6f, 0.5f };
-
-        bool hovered_ = false;
-        bool focused_ = false;
-        bool pressed_ = false;
 
         /// 値が変わったフレーム（0 は一度も変わっていない）
         uint64_t changedFrame_ = 0;

@@ -16,6 +16,7 @@
 #include "Graphics/Render/Pass/RenderPipeline.h"
 #include "Graphics/Render/RenderGraphSnapshot.h"
 #include "Utility/Random/Hash.h"
+#include "Utility/String/ContainsIgnoreCase.h"
 
 namespace CoreEngine
 {
@@ -121,24 +122,6 @@ namespace CoreEngine
                 return text;
             }
             return text.substr(0, maxLength - 1) + "…";
-        }
-
-        /// @brief 大文字小文字を無視した部分一致
-        bool ContainsIgnoreCase(const std::string& haystack, const char* needle)
-        {
-            if (!needle || needle[0] == '\0') {
-                return true;
-            }
-            const std::string lowerHaystack = [&haystack] {
-                std::string result = haystack;
-                std::transform(result.begin(), result.end(), result.begin(),
-                    [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-                return result;
-            }();
-            std::string lowerNeedle = needle;
-            std::transform(lowerNeedle.begin(), lowerNeedle.end(), lowerNeedle.begin(),
-                [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-            return lowerHaystack.find(lowerNeedle) != std::string::npos;
         }
 
     /// @brief パス番号から imnodes のノード ID を作る

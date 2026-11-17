@@ -4,6 +4,7 @@
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
+#include "Utility/String/FailWith.h"
 #include "externals/nlohmann/single_include/nlohmann/json.hpp"
 
 #include <algorithm>
@@ -90,20 +91,15 @@ namespace CoreEngine
 
         bool Validate(const std::vector<InputActionDef>& defs, std::string* outError)
         {
-            const auto fail = [outError](const char* reason) {
-                if (outError) { *outError = reason; }
-                return false;
-                };
-
             if (defs.empty()) {
-                return fail("アクションが 1 つもありません");
+                return FailWith(outError, "アクションが 1 つもありません");
             }
             if (defs.size() > kMaxInputActions) {
-                return fail("アクションが多すぎます（64 まで）");
+                return FailWith(outError, "アクションが多すぎます（64 まで）");
             }
             for (const InputActionDef& def : defs) {
                 if (def.id.empty()) {
-                    return fail("空の識別名は使えません");
+                    return FailWith(outError, "空の識別名は使えません");
                 }
             }
             std::vector<std::string> ids;
@@ -113,7 +109,7 @@ namespace CoreEngine
             }
             std::sort(ids.begin(), ids.end());
             if (std::adjacent_find(ids.begin(), ids.end()) != ids.end()) {
-                return fail("同じ識別名が 2 つあります");
+                return FailWith(outError, "同じ識別名が 2 つあります");
             }
             if (outError) { outError->clear(); }
             return true;

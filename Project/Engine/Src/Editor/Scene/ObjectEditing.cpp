@@ -19,6 +19,7 @@
 #include "UI/UIImageComponent.h"
 #include "UI/UITextComponent.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/String/FailWith.h"
 
 #include <cctype>
 #include <cstdint>
@@ -314,22 +315,15 @@ namespace CoreEngine::ObjectEditing
 
     bool CanDuplicateOrDelete(const GameObject& object, std::string* reason)
     {
-        const auto fail = [reason](const char* message) {
-            if (reason) {
-                *reason = message;
-            }
-            return false;
-        };
-
         if (object.IsMarkedForDestroy()) {
-            return fail("削除の途中のオブジェクトです");
+            return FailWith(reason, "削除の途中のオブジェクトです");
         }
         if (!object.IsSerializeEnabled()) {
-            return fail("シーンに保存しないオブジェクトは扱えません");
+            return FailWith(reason, "シーンに保存しないオブジェクトは扱えません");
         }
         for (const auto& component : object.GetAllComponents()) {
             if (component && component->IsAttachedByCode()) {
-                return fail("コードが作ったオブジェクトは、エディタから複製・削除できません");
+                return FailWith(reason, "コードが作ったオブジェクトは、エディタから複製・削除できません");
             }
         }
         return true;

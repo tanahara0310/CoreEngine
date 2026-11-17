@@ -43,6 +43,12 @@ namespace CoreEngine
         /// @note ログは出さない（ログの初期化より前に呼ぶ所がある）
         static json ParseFile(const std::filesystem::path& path);
 
+        /// @brief ファイルをテキストの JSON として読む（MessagePack としては読まない）
+        /// @param path 読むファイル（ProjectPaths では解かない）
+        /// @return 開けない・解析できなければ discarded の値
+        /// @note ログは出さない
+        static json ParseTextFile(const std::filesystem::path& path);
+
         /// @brief MessagePack のバイト列にする（書き出したゲームが読む形）
         static std::vector<std::uint8_t> ToBinary(const json& jsonData);
 

@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "SphereMeshGenerator.h"
+#include "Graphics/Primitive/PrimitiveMeshUtil.h"
 #include "Math/MathCore.h"
 #include <cmath>
 #include <cstdio>
@@ -31,15 +32,12 @@ namespace CoreEngine
 
                 Vector3 normal = { sinPhi * cosTheta, cosPhi, sinPhi * sinTheta };
 
-                VertexData vertex{};
-                vertex.position = { normal.x * radius_, normal.y * radius_, normal.z * radius_, 1.0f };
-                vertex.texcoord = { static_cast<float>(slice) / slices_, static_cast<float>(stack) / stacks_ };
-                vertex.normal   = normal;
-
-                // タンジェント（経度方向の接線）
-                vertex.tangent = { -sinTheta, 0.0f, cosTheta };
-
-                data.vertices.push_back(vertex);
+                // タンジェントは経度方向の接線
+                data.vertices.push_back(PrimitiveMeshUtil::MakeVertex(
+                    { normal.x * radius_, normal.y * radius_, normal.z * radius_, 1.0f },
+                    { static_cast<float>(slice) / slices_, static_cast<float>(stack) / stacks_ },
+                    normal,
+                    { -sinTheta, 0.0f, cosTheta }));
             }
         }
 
@@ -50,34 +48,12 @@ namespace CoreEngine
                 uint32_t current = stack * (slices_ + 1) + slice;
                 uint32_t next    = current + slices_ + 1;
 
-                data.indices.push_back(static_cast<int32_t>(current));
-                data.indices.push_back(static_cast<int32_t>(current + 1));
-                data.indices.push_back(static_cast<int32_t>(next));
-
-                data.indices.push_back(static_cast<int32_t>(current + 1));
-                data.indices.push_back(static_cast<int32_t>(next + 1));
-                data.indices.push_back(static_cast<int32_t>(next));
+                PrimitiveMeshUtil::PushTriangle(data, current, current + 1, next);
+                PrimitiveMeshUtil::PushTriangle(data, current + 1, next + 1, next);
             }
         }
 
-        // サブメッシュ
-        SubMeshData subMesh{};
-        subMesh.name = "Sphere";
-        subMesh.startIndex = 0;
-        subMesh.indexCount = static_cast<uint32_t>(data.indices.size());
-        subMesh.materialIndex = 0;
-        data.subMeshes.push_back(subMesh);
-
-        // デフォルトマテリアル
-        MaterialAsset mat{};
-        mat.name = "Default";
-        data.materials.push_back(mat);
-
-        // ルートノード（単位行列）
-        data.rootNode.name = "root";
-        data.rootNode.localMatrix = MathCore::Matrix::Identity();
-        data.rootNode.transform = { {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f} };
-
+        PrimitiveMeshUtil::FinishSingleMesh(data, "Sphere");
         return data;
     }
 

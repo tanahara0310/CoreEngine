@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "CameraRigEvaluator.h"
 
+#include "Camera/CameraLookRotation.h"
 #include "Math/Easing/EasingUtil.h"
 #include "Math/MathCore.h"
 #include "Math/Spline/CatmullRom.h"
@@ -186,26 +187,6 @@ namespace CoreEngine
         SpringDamp(current.x, velocity.x, target.x, speed, deltaTime);
         SpringDamp(current.y, velocity.y, target.y, speed, deltaTime);
         SpringDamp(current.z, velocity.z, target.z, speed, deltaTime);
-    }
-
-    Vector3 CameraRigEvaluator::LookRotation(const Vector3& eye, const Vector3& target, float roll)
-    {
-        const Vector3 delta = target - eye;
-        if (LengthSquared(delta) <= 1.0e-12f) {
-            // 視点と注視先が重なると向きが決まらない。真正面を向かせて発散を防ぐ。
-            return { 0.0f, 0.0f, roll };
-        }
-
-        const Vector3 forward = Normalize(delta);
-
-        // MakeAffine の回転は Rx * Ry * Rz（行ベクトル規約）。roll = 0 のとき
-        // 第 3 行（前方軸）は (cosX sinY, -sinX, cosX cosY) になるので、
-        // yaw = atan2(f.x, f.z) / pitch = asin(-f.y) が Camera::LookAt と厳密に一致する。
-        return {
-            std::asin(std::clamp(-forward.y, -1.0f, 1.0f)),
-            std::atan2(forward.x, forward.z),
-            roll
-        };
     }
 
     Vector3 CameraRigEvaluator::ApplyScreenComposition(const Vector3& rotation,
@@ -480,7 +461,7 @@ namespace CoreEngine
 
         // ===== 4. 注視先から回転を作り、画面内の位置を合わせる =====
         if (pose.hasAimPoint) {
-            pose.rotation = LookRotation(pose.position, pose.aimPoint, asset.aim.roll);
+            pose.rotation = CameraLookRotation(pose.position, pose.aimPoint, asset.aim.roll);
             pose.rotation = ApplyScreenComposition(pose.rotation,
                 asset.aim.screenX, asset.aim.screenY, pose.fov,
                 (context != nullptr) ? context->aspectRatio : 0.0f);
@@ -533,7 +514,7 @@ namespace CoreEngine
                 state.aimPoint += (desired.aimPoint - state.aimPoint)
                     * DampingFactor(asset.damping.aim, deltaTime);
             }
-            targetRotation = LookRotation(state.position, state.aimPoint, asset.aim.roll);
+            targetRotation = CameraLookRotation(state.position, state.aimPoint, asset.aim.roll);
             targetRotation = ApplyScreenComposition(targetRotation,
                 asset.aim.screenX, asset.aim.screenY, state.fov, 0.0f);
         }

@@ -136,9 +136,6 @@ namespace CoreEngine
         ///          追従速度が変わらない形。
         static float DampingFactor(float speed, float deltaTime);
 
-        /// @brief 視点から注視先を向くオイラー角を求める（Camera::LookAt と同じ変換）
-        static Vector3 LookRotation(const Vector3& eye, const Vector3& target, float roll);
-
         /// @brief 注視先が画面の指定位置に来るよう回転をずらす
         /// @param rotation 注視先を画面中央に置く回転 [ラジアン]
         /// @param screenX 画面内の横位置（0 = 左端 / 0.5 = 中央 / 1 = 右端）

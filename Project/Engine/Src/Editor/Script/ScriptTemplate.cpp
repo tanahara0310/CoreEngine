@@ -6,6 +6,7 @@
 #include "GameObject/Component/Core/ComponentFactory.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
+#include "Utility/String/FailWith.h"
 
 #include <algorithm>
 #include <cctype>
@@ -150,25 +151,20 @@ namespace CoreEngine::Editor::ScriptTemplate
 
     bool IsValidClassName(const std::string& name, std::string* outError)
     {
-        const auto fail = [outError](const char* reason) {
-            if (outError) { *outError = reason; }
-            return false;
-            };
-
         if (name.empty()) {
-            return fail("名前を入れてください");
+            return FailWith(outError, "名前を入れてください");
         }
         if (name.size() > 64) {
-            return fail("名前が長すぎます（64 文字まで）");
+            return FailWith(outError, "名前が長すぎます（64 文字まで）");
         }
         const unsigned char first = static_cast<unsigned char>(name.front());
         if (!std::isalpha(first) && name.front() != '_') {
-            return fail("英字か _ で始めてください");
+            return FailWith(outError, "英字か _ で始めてください");
         }
         for (const char c : name) {
             const unsigned char u = static_cast<unsigned char>(c);
             if (!std::isalnum(u) && c != '_') {
-                return fail("使えるのは英数字と _ だけです");
+                return FailWith(outError, "使えるのは英数字と _ だけです");
             }
         }
         if (outError) { outError->clear(); }
@@ -179,39 +175,34 @@ namespace CoreEngine::Editor::ScriptTemplate
                 const std::string& templateId, std::filesystem::path* outPath,
                 std::string* outError)
     {
-        const auto fail = [outError](const std::string& reason) {
-            if (outError) { *outError = reason; }
-            return false;
-            };
-
         if (!IsValidClassName(className, outError)) {
             return false;
         }
         if (!IsInsideScriptRoot(folder)) {
-            return fail("置き先は " + GetScriptRoot().generic_string() + " の中にしてください");
+            return FailWith(outError, "置き先は " + GetScriptRoot().generic_string() + " の中にしてください");
         }
 
         const std::filesystem::path directory = ProjectPaths::Resolve(folder.generic_string());
         std::error_code ec;
         std::filesystem::create_directories(directory, ec);
         if (ec) {
-            return fail("フォルダを作れませんでした");
+            return FailWith(outError, "フォルダを作れませんでした");
         }
 
         // ファイル名はクラス名と同じにする（外れているとコンパイルのときに警告が出る）
         const std::filesystem::path path = directory / (className + ".as");
         if (std::filesystem::exists(path, ec)) {
-            return fail("同じ名前のスクリプトがもうあります");
+            return FailWith(outError, "同じ名前のスクリプトがもうあります");
         }
 
         // クラス名はフォルダが違ってもスクリプト全体で 1 つにする
         const std::filesystem::path scriptRoot = ProjectPaths::Resolve(GetScriptRoot().generic_string());
         if (const std::filesystem::path existing = FindScriptByClassName(scriptRoot, className); !existing.empty()) {
-            return fail("同じ名前のスクリプトが " +
-                        Logger::GetInstance().PathToUtf8(existing.lexically_relative(scriptRoot)) + " にあります");
+            return FailWith(outError, "同じ名前のスクリプトが " +
+                                      Logger::GetInstance().PathToUtf8(existing.lexically_relative(scriptRoot)) + " にあります");
         }
         if (ComponentFactory::Get().IsRegistered(className)) {
-            return fail("同じ名前のコンポーネント " + className + " がもうあります");
+            return FailWith(outError, "同じ名前のコンポーネント " + className + " がもうあります");
         }
 
         std::string text = FallbackText();
@@ -230,7 +221,7 @@ namespace CoreEngine::Editor::ScriptTemplate
 
         std::ofstream out(path, std::ios::binary);
         if (!out) {
-            return fail("ファイルを作れませんでした");
+            return FailWith(outError, "ファイルを作れませんでした");
         }
         const std::string filled = Fill(std::move(text), className);
         out.write(filled.data(), static_cast<std::streamsize>(filled.size()));

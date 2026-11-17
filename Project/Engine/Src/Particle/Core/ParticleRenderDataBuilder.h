@@ -52,13 +52,13 @@ public:
     ///       影と見た目がずれないよう、行列の式はここ 1 箇所に保つこと。
     static Matrix4x4 MakeModelParticleWorldMatrix(const Particle& particle);
 
-private:
     /// @brief ビルボード行列を作成
     /// @param viewMatrix ビュー行列
     /// @param type ビルボードタイプ
-    /// @return ビルボード行列
-    Matrix4x4 CreateBillboardMatrix(const Matrix4x4& viewMatrix, BillboardType type);
+    /// @return ビルボード行列（平行移動なし）
+    static Matrix4x4 CreateBillboardMatrix(const Matrix4x4& viewMatrix, BillboardType type);
 
+private:
     /// @brief ワールド行列を計算
     /// @param particle パーティクル
     /// @param billboardType ビルボードタイプ

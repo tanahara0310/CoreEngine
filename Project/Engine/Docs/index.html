@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.89.11">
+<meta name="engine-version" content="0.89.12">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -11437,6 +11437,15 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-89-12">v0.89.12 <span class="dim">（2026-11-17）</span></h3>
+  <p>UI・パーティクル・形のメッシュ・文字列とファイルの小さな処理で、同じ形で何か所にも書いていた所を基底クラスと普通の関数へまとめた版です。見た目・動き・シーンの書き方・CVar・スクリプトは変わりません。</p>
+  <ul>
+    <li><strong>UI</strong>：ボタン・トグル・スライダーがそれぞれ持っていた、押せるか・ポインタが乗っているか・押しているか・フォーカスの状態と、状態に合わせた色の切り替えを <code>UISelectableComponent</code>（<span class="path">UI/UISelectableComponent.h</span>）にまとめました。3 つはこれを継いで、クリックしたときの処理と見た目だけを自分で持ちます。</li>
+    <li><strong>パーティクル</strong>：CPU 版と GPU 版のパーティクルのコンポーネントがそれぞれ持っていた 9 つのモジュール・再生・プリセット・テクスチャ・ビルボードとブレンド・モジュールの値の保存と読み込みを <code>ParticleSystemComponentBase</code>（<span class="path">Particle/ParticleSystemComponentBase.h</span>）にまとめました。GPU 版のビルボードの行列は、CPU 版と同じ <code>ParticleRenderDataBuilder::CreateBillboardMatrix</code> で作ります。</li>
+    <li><strong>形のメッシュとカメラ</strong>：立方体・円柱・板・輪・球のメッシュを作る処理の、頂点を作る・三角形を足す・1 つのサブメッシュにまとめる所を <code>PrimitiveMeshUtil</code>（<span class="path">Graphics/Primitive/PrimitiveMeshUtil.h</span>）に置きました。カメラのリグとシーケンスで別々に持っていた、注視点へ向ける回転は <code>CameraLookRotation</code>（<span class="path">Camera/CameraLookRotation.h</span>）にまとめました。</li>
+    <li><strong>文字列とファイル</strong>：大文字と小文字を区別しない検索（<code>ContainsIgnoreCase</code>）、UTF-8 とワイド文字の変換（<code>Utf8ToWide</code>・<code>WideToUtf8</code>）、エラーの文を書いて false を返す処理（<code>FailWith</code>）を <span class="path">Utility/String</span> に、ファイルを丸ごと文字列で読む <code>ReadFileText</code> を <span class="path">Utility/File</span> に置きました。JSON のファイルを開いて解析する処理は <code>JsonManager::ParseTextFile</code> です。</li>
+  </ul>
 
   <h3 id="changelog-v0-89-11">v0.89.11 <span class="dim">（2026-11-17）</span></h3>
   <p>エンジンのシェーダへリソースを差す所で、ルートパラメータの番号を描くたびに名前で引いていた所を、パスごとの宣言の表へ移した版です。見た目・動き・シーンの書き方・CVar・スクリプトは変わりません。</p>

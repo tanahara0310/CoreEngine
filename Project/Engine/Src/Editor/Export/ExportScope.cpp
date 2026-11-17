@@ -8,6 +8,7 @@
 #include "Graphics/Model/Derived/ModelDerivedData.h"
 #include "Graphics/Texture/Path/TexturePathResolver.h"
 #include "Threading/ThreadPool.h"
+#include "Utility/File/ReadFileText.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
@@ -126,15 +127,6 @@ namespace CoreEngine::Editor
             }
         }
 
-        /// @brief ファイルを丸ごと読む（読めなければ空）
-        std::string ReadText(const std::filesystem::path& path)
-        {
-            std::ifstream file(path, std::ios::binary);
-            std::ostringstream text;
-            text << file.rdbuf();
-            return text.str();
-        }
-
         /// @brief ファイルから、そのファイルが指すアセットをたどる
         class ReferenceWalker
         {
@@ -155,9 +147,9 @@ namespace CoreEngine::Editor
                 }
                 std::set<std::string> strings;
                 if (extension == L".as") {
-                    CollectLiterals(ReadText(file), strings);
+                    CollectLiterals(ReadFileText(file), strings);
                 } else if (extension == L".csv") {
-                    CollectCsvCells(ReadText(file), strings);
+                    CollectCsvCells(ReadFileText(file), strings);
                 }
                 for (const std::string& text : strings) {
                     AddString(text);
@@ -395,7 +387,7 @@ namespace CoreEngine::Editor
         const std::set<std::wstring> skip{ MakeFileKey(EditorScriptsFolder()) };
         for (const std::filesystem::path& file : ListFiles(ProjectPaths::ProjectRoot() / "Application" / "Assets", skip)) {
             if (LowerExtension(file) == L".as") {
-                CollectLiterals(ReadText(file), strings);
+                CollectLiterals(ReadFileText(file), strings);
             }
         }
         return strings;

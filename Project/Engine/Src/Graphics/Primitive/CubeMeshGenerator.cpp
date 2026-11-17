@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "CubeMeshGenerator.h"
-#include "Math/MathCore.h"
+#include "Graphics/Primitive/PrimitiveMeshUtil.h"
 #include <cstdio>
 
 namespace CoreEngine
@@ -65,42 +65,16 @@ namespace CoreEngine
             uint32_t baseIndex = static_cast<uint32_t>(data.vertices.size());
 
             for (int v = 0; v < 4; ++v) {
-                VertexData vertex{};
-                vertex.position = faces[f].positions[v];
-                vertex.texcoord = faces[f].texcoords[v];
-                vertex.normal   = faces[f].normal;
-                vertex.tangent  = faces[f].tangent;
-                data.vertices.push_back(vertex);
+                data.vertices.push_back(PrimitiveMeshUtil::MakeVertex(
+                    faces[f].positions[v], faces[f].texcoords[v], faces[f].normal, faces[f].tangent));
             }
 
             // 2三角形（反時計回り＝外向き法線）
-            data.indices.push_back(static_cast<int32_t>(baseIndex));
-            data.indices.push_back(static_cast<int32_t>(baseIndex + 2));
-            data.indices.push_back(static_cast<int32_t>(baseIndex + 1));
-
-            data.indices.push_back(static_cast<int32_t>(baseIndex));
-            data.indices.push_back(static_cast<int32_t>(baseIndex + 3));
-            data.indices.push_back(static_cast<int32_t>(baseIndex + 2));
+            PrimitiveMeshUtil::PushTriangle(data, baseIndex, baseIndex + 2, baseIndex + 1);
+            PrimitiveMeshUtil::PushTriangle(data, baseIndex, baseIndex + 3, baseIndex + 2);
         }
 
-        // サブメッシュ
-        SubMeshData subMesh{};
-        subMesh.name = "Cube";
-        subMesh.startIndex = 0;
-        subMesh.indexCount = static_cast<uint32_t>(data.indices.size());
-        subMesh.materialIndex = 0;
-        data.subMeshes.push_back(subMesh);
-
-        // デフォルトマテリアル
-        MaterialAsset mat{};
-        mat.name = "Default";
-        data.materials.push_back(mat);
-
-        // ルートノード（単位行列）
-        data.rootNode.name = "root";
-        data.rootNode.localMatrix = MathCore::Matrix::Identity();
-        data.rootNode.transform = { {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f} };
-
+        PrimitiveMeshUtil::FinishSingleMesh(data, "Cube");
         return data;
     }
 

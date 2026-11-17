@@ -5,6 +5,7 @@
 
 #include "Utility/Algorithm/FindIfPtr.h"
 #include "Utility/Enum/EnumNames.h"
+#include "Utility/String/FailWith.h"
 
 #include <algorithm>
 #include <cctype>
@@ -582,31 +583,25 @@ namespace CoreEngine::Editor::ShaderGraph
 
     bool IsValidIdentifier(std::string_view name, std::string* error)
     {
-        const auto fail = [error](std::string message) {
-            if (error) {
-                *error = std::move(message);
-            }
-            return false;
-        };
         if (name.empty()) {
-            return fail("名前が空です");
+            return FailWith(error, "名前が空です");
         }
         if (!std::isalpha(static_cast<unsigned char>(name[0]))) {
-            return fail("名前は英字で始めてください");
+            return FailWith(error, "名前は英字で始めてください");
         }
         for (const char c : name) {
             if (!std::isalnum(static_cast<unsigned char>(c)) && c != '_') {
-                return fail("名前には英数字と _ だけを使えます");
+                return FailWith(error, "名前には英数字と _ だけを使えます");
             }
         }
         if (std::find(std::begin(kReservedNames), std::end(kReservedNames), name) != std::end(kReservedNames)) {
-            return fail(std::string(name) + " はシェーダが使う名前なので使えません");
+            return FailWith(error, std::string(name) + " はシェーダが使う名前なので使えません");
         }
         if (name.starts_with("SG_")) {
-            return fail("SG_ で始まる名前はグラフの関数が使うので使えません");
+            return FailWith(error, "SG_ で始まる名前はグラフの関数が使うので使えません");
         }
         if (name.size() >= 2 && name[0] == 'n' && std::isdigit(static_cast<unsigned char>(name[1]))) {
-            return fail("n と数字で始まる名前はノードの値が使うので使えません");
+            return FailWith(error, "n と数字で始まる名前はノードの値が使うので使えません");
         }
         return true;
     }

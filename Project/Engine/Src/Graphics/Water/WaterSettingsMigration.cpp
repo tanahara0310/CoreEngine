@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "WaterSettingsMigration.h"
 
+#include "Utility/File/ReadFileText.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
@@ -123,18 +124,6 @@ namespace CoreEngine::WaterSettingsMigration
             return count;
         }
 
-        /// @brief ファイルを丸ごと文字列で読む（読めなければ空）
-        std::string ReadText(const fs::path& path)
-        {
-            std::ifstream file(path, std::ios::binary);
-            if (!file) {
-                return {};
-            }
-            std::ostringstream text;
-            text << file.rdbuf();
-            return text.str();
-        }
-
         /// @brief JSON をエンジンのほかの保存と同じ書き方で書く
         bool WriteJson(const fs::path& path, const json& data)
         {
@@ -152,7 +141,7 @@ namespace CoreEngine::WaterSettingsMigration
         /// @return 足した水面の数（書けなければ 0）
         int MigrateWaterFile(const fs::path& path, const json& profileValues)
         {
-            const std::string text = ReadText(path);
+            const std::string text = ReadFileText(path);
             if (text.find(kWaterSurfaceType) == std::string::npos) {
                 return 0;
             }
@@ -179,7 +168,7 @@ namespace CoreEngine::WaterSettingsMigration
             const fs::path path = sceneDir / kEnvironmentName;
             json data = json::object();
             if (fs::exists(path)) {
-                data = json::parse(ReadText(path), nullptr, false);
+                data = JsonManager::ParseTextFile(path);
                 if (data.is_discarded() || !data.is_object()) {
                     return false;
                 }
@@ -213,7 +202,7 @@ namespace CoreEngine::WaterSettingsMigration
                 return;
             }
 
-            const std::string configText = ReadText(configPath);
+            const std::string configText = ReadFileText(configPath);
             json config = json::parse(configText, nullptr, false);
             if (config.is_discarded() || !config.is_object()) {
                 return;
