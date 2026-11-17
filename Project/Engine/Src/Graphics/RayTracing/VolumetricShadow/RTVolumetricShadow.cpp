@@ -14,7 +14,7 @@
 #include "Graphics/RHI/Command/DeferredReleaseQueue.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/UavTexture.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
 #include "Graphics/RayTracing/AccelerationStructureManager.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
@@ -212,43 +212,11 @@ namespace CoreEngine
         }
         RetireTexture();
 
-        D3D12_RESOURCE_DESC desc{};
-        desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-        desc.Width = resolution;
-        desc.Height = resolution;
-        desc.DepthOrArraySize = 1;
-        desc.MipLevels = 1;
-        desc.Format = DXGI_FORMAT_R32_FLOAT;
-        desc.SampleDesc.Count = 1;
-        desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-        desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-
-        try {
-            const Microsoft::WRL::ComPtr<ID3D12Device> device = dxCommon_->GetDevice();
-            texture_.Reset(ResourceFactory::CreateTextureResource(
-                device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        }
-        catch (const std::exception&) {
+        if (!UavTexture::Create(dxCommon_->GetDevice(), *dxCommon_->GetDescriptorAllocator(), texture_,
+                UavTexture::MakeDesc(resolution, resolution, 1, DXGI_FORMAT_R32_FLOAT),
+                srv_, "RTVolumetricShadowDepth", uav_, "RTVolumetricShadowDepth")) {
             Logger::GetInstance().Warnf(LogCategory::Graphics,
                 "RTVolumetricShadow: 太陽から見た深さの画像を作れませんでした");
-            return false;
-        }
-
-        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-        srvDesc.Format = desc.Format;
-        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        srvDesc.Texture2D.MipLevels = 1;
-
-        D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
-        uavDesc.Format = desc.Format;
-        uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-
-        DescriptorAllocator* allocator = dxCommon_->GetDescriptorAllocator();
-        srv_ = allocator->CreateSRV(texture_.Get(), srvDesc, "RTVolumetricShadowDepth");
-        uav_ = allocator->CreateUAV(texture_.Get(), uavDesc, "RTVolumetricShadowDepth");
-        if (!srv_.IsValid() || !uav_.IsValid()) {
-            RetireTexture();
             return false;
         }
         resolution_ = resolution;

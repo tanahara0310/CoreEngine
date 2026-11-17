@@ -10,6 +10,7 @@
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/RootSignature/ShaderBinder.h"
@@ -104,16 +105,8 @@ namespace CoreEngine
         D3D12_HEAP_PROPERTIES heapProps{};
         heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
 
-        D3D12_RESOURCE_DESC desc{};
-        desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-        desc.Width = kResultBytes;
-        desc.Height = 1;
-        desc.DepthOrArraySize = 1;
-        desc.MipLevels = 1;
-        desc.Format = DXGI_FORMAT_UNKNOWN;
-        desc.SampleDesc.Count = 1;
-        desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-        desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+        const D3D12_RESOURCE_DESC desc =
+            ResourceFactory::MakeBufferDesc(kResultBytes, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 
         Microsoft::WRL::ComPtr<ID3D12Resource> buffer;
         if (FAILED(device->CreateCommittedResource(

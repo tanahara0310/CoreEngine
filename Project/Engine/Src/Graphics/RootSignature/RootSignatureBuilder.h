@@ -77,6 +77,17 @@ namespace CoreEngine
             std::map<UINT, std::vector<std::string>>& tableGroups,
             UINT& currentIndex);
 
+        /// @brief SRV か UAV を処理（rangeType で種類を選ぶ）
+        void ProcessViews(
+            D3D12_DESCRIPTOR_RANGE_TYPE rangeType,
+            const ShaderReflectionData& reflectionData,
+            const RootSignatureConfig& config,
+            std::vector<D3D12_ROOT_PARAMETER>& rootParams,
+            std::vector<std::vector<D3D12_DESCRIPTOR_RANGE>>& rangeStorage,
+            std::map<std::string, RootSlot>& mapping,
+            std::map<UINT, std::vector<std::string>>& tableGroups,
+            UINT& currentIndex);
+
         /// @brief サンプラーを処理
         void ProcessSamplers(
             const ShaderReflectionData& reflectionData,

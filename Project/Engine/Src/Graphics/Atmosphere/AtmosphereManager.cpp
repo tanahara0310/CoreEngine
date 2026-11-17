@@ -5,6 +5,7 @@
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/UavTexture.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
 #include "Utility/Logger/Logger.h"
@@ -176,22 +177,6 @@ namespace CoreEngine
         constexpr float kMetersToKm = 1.0f / 1000.0f;
         constexpr float kPerMeterToPerKm = 1000.0f;
 
-    /// @brief 大気 LUT 用の 2D リソース記述を作る（UAV 兼 SRV）
-        D3D12_RESOURCE_DESC MakeLUTTexture2DDesc(uint32_t width, uint32_t height, DXGI_FORMAT format)
-        {
-            D3D12_RESOURCE_DESC desc{};
-            desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-            desc.Width = width;
-            desc.Height = height;
-            desc.DepthOrArraySize = 1;
-            desc.MipLevels = 1;
-            desc.Format = format;
-            desc.SampleDesc.Count = 1;
-            desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-            desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-            return desc;
-        }
-
         /// @brief 太陽と月の光の向きから月全体の明るさを求める（満月 = 1・新月 = 0）
         /// @details 月面の各点を Lommel–Seeliger の法則（SkyAtmosphere.PS の月面と同じ式）で
         ///          照らしたときの、見えている面全体の明るさ。
@@ -240,108 +225,36 @@ namespace CoreEngine
             return false;
         }
 
-        Microsoft::WRL::ComPtr<ID3D12Device> deviceRef = device;
+        // LUT 1 枚と SRV・UAV を作る（作れなければログを残して false を返す）
+        const auto createLut = [device, descriptorAllocator](GpuResource& texture, const D3D12_RESOURCE_DESC& desc,
+            DescriptorHandle& srv, const char* srvName, DescriptorHandle& uav, const char* uavName, const char* label) {
+            if (UavTexture::Create(device, *descriptorAllocator, texture, desc, srv, srvName, uav, uavName)) {
+                return true;
+            }
+            Logger::GetInstance().Warnf(LogCategory::Graphics, "AtmosphereManager: {} テクスチャの生成に失敗", label);
+            return false;
+        };
 
-        const D3D12_RESOURCE_DESC transmittanceDesc = MakeLUTTexture2DDesc(
-            kTransmittanceLUTWidth, kTransmittanceLUTHeight, DXGI_FORMAT_R16G16B16A16_FLOAT);
-
-        try {
-            transmittanceLUT_.Reset(ResourceFactory::CreateTextureResource(
-                deviceRef, transmittanceDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        }
-        catch (const std::exception&) {
-            Logger::GetInstance().Warnf(LogCategory::Graphics,
-                "AtmosphereManager: Transmittance LUT テクスチャの生成に失敗");
+        // ===== Transmittance / Multi-Scattering / Sky-View LUT と Camera Volume LUT（froxel 3D テクスチャ） =====
+        constexpr DXGI_FORMAT kLUTFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
+        if (!createLut(transmittanceLUT_,
+                UavTexture::MakeDesc(kTransmittanceLUTWidth, kTransmittanceLUTHeight, 1, kLUTFormat),
+                transmittanceSrvHandle_, "AtmosphereTransmittanceSRV",
+                transmittanceUavHandle_, "AtmosphereTransmittanceUAV", "Transmittance LUT")
+            || !createLut(multiScatteringLUT_,
+                UavTexture::MakeDesc(kMultiScatteringLUTSize, kMultiScatteringLUTSize, 1, kLUTFormat),
+                multiScatteringSrvHandle_, "AtmosphereMultiScatteringSRV",
+                multiScatteringUavHandle_, "AtmosphereMultiScatteringUAV", "Multi-Scattering LUT")
+            || !createLut(skyViewLUT_,
+                UavTexture::MakeDesc(kSkyViewLUTWidth, kSkyViewLUTHeight, 1, kLUTFormat),
+                skyViewSrvHandle_, "AtmosphereSkyViewSRV",
+                skyViewUavHandle_, "AtmosphereSkyViewUAV", "Sky-View LUT")
+            || !createLut(cameraVolumeLUT_,
+                UavTexture::MakeDesc(kCameraVolumeSize, kCameraVolumeSize, kCameraVolumeSize, kLUTFormat),
+                cameraVolumeSrvHandle_, "AtmosphereCameraVolumeSRV",
+                cameraVolumeUavHandle_, "AtmosphereCameraVolumeUAV", "Camera Volume LUT")) {
             return false;
         }
-
-        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-        srvDesc.Format = transmittanceDesc.Format;
-        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        srvDesc.Texture2D.MipLevels = 1;
-
-        D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
-        uavDesc.Format = transmittanceDesc.Format;
-        uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-
-        D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle{};
-        transmittanceSrvHandle_ = descriptorAllocator->CreateSRV(transmittanceLUT_.Get(), srvDesc, "AtmosphereTransmittanceSRV");
-        transmittanceUavHandle_ = descriptorAllocator->CreateUAV(transmittanceLUT_.Get(), uavDesc, "AtmosphereTransmittanceUAV");
-
-        // ===== Multi-Scattering LUT =====
-        const D3D12_RESOURCE_DESC multiScatteringDesc = MakeLUTTexture2DDesc(
-            kMultiScatteringLUTSize, kMultiScatteringLUTSize, DXGI_FORMAT_R16G16B16A16_FLOAT);
-
-        try {
-            multiScatteringLUT_.Reset(ResourceFactory::CreateTextureResource(
-                deviceRef, multiScatteringDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        }
-        catch (const std::exception&) {
-            Logger::GetInstance().Warnf(LogCategory::Graphics,
-                "AtmosphereManager: Multi-Scattering LUT テクスチャの生成に失敗");
-            return false;
-        }
-
-        srvDesc.Format = multiScatteringDesc.Format;
-        uavDesc.Format = multiScatteringDesc.Format;
-        multiScatteringSrvHandle_ = descriptorAllocator->CreateSRV(multiScatteringLUT_.Get(), srvDesc, "AtmosphereMultiScatteringSRV");
-        multiScatteringUavHandle_ = descriptorAllocator->CreateUAV(multiScatteringLUT_.Get(), uavDesc, "AtmosphereMultiScatteringUAV");
-
-        // ===== Sky-View LUT =====
-        const D3D12_RESOURCE_DESC skyViewDesc = MakeLUTTexture2DDesc(
-            kSkyViewLUTWidth, kSkyViewLUTHeight, DXGI_FORMAT_R16G16B16A16_FLOAT);
-
-        try {
-            skyViewLUT_.Reset(ResourceFactory::CreateTextureResource(
-                deviceRef, skyViewDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        }
-        catch (const std::exception&) {
-            Logger::GetInstance().Warnf(LogCategory::Graphics,
-                "AtmosphereManager: Sky-View LUT テクスチャの生成に失敗");
-            return false;
-        }
-
-        srvDesc.Format = skyViewDesc.Format;
-        uavDesc.Format = skyViewDesc.Format;
-        skyViewSrvHandle_ = descriptorAllocator->CreateSRV(skyViewLUT_.Get(), srvDesc, "AtmosphereSkyViewSRV");
-        skyViewUavHandle_ = descriptorAllocator->CreateUAV(skyViewLUT_.Get(), uavDesc, "AtmosphereSkyViewUAV");
-
-        // ===== Camera Volume LUT（froxel 3D テクスチャ） =====
-        D3D12_RESOURCE_DESC volumeDesc{};
-        volumeDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE3D;
-        volumeDesc.Width = kCameraVolumeSize;
-        volumeDesc.Height = kCameraVolumeSize;
-        volumeDesc.DepthOrArraySize = kCameraVolumeSize;
-        volumeDesc.MipLevels = 1;
-        volumeDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
-        volumeDesc.SampleDesc.Count = 1;
-        volumeDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-        volumeDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-
-        try {
-            cameraVolumeLUT_.Reset(ResourceFactory::CreateTextureResource(
-                deviceRef, volumeDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        }
-        catch (const std::exception&) {
-            Logger::GetInstance().Warnf(LogCategory::Graphics,
-                "AtmosphereManager: Camera Volume LUT テクスチャの生成に失敗");
-            return false;
-        }
-
-        D3D12_SHADER_RESOURCE_VIEW_DESC volumeSrvDesc{};
-        volumeSrvDesc.Format = volumeDesc.Format;
-        volumeSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
-        volumeSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        volumeSrvDesc.Texture3D.MipLevels = 1;
-
-        D3D12_UNORDERED_ACCESS_VIEW_DESC volumeUavDesc{};
-        volumeUavDesc.Format = volumeDesc.Format;
-        volumeUavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
-        volumeUavDesc.Texture3D.WSize = kCameraVolumeSize;
-
-        cameraVolumeSrvHandle_ = descriptorAllocator->CreateSRV(cameraVolumeLUT_.Get(), volumeSrvDesc, "AtmosphereCameraVolumeSRV");
-        cameraVolumeUavHandle_ = descriptorAllocator->CreateUAV(cameraVolumeLUT_.Get(), volumeUavDesc, "AtmosphereCameraVolumeUAV");
 
         // ===== 空アンビエント SH9 係数バッファ（StructuredBuffer<float4> × 9） =====
         {
@@ -349,16 +262,8 @@ namespace CoreEngine
 
             D3D12_HEAP_PROPERTIES heapProps{};
             heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
-            D3D12_RESOURCE_DESC bufferDesc{};
-            bufferDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-            bufferDesc.Width = kCoeffStride * kSkyIrradianceSHCoeffCount;
-            bufferDesc.Height = 1;
-            bufferDesc.DepthOrArraySize = 1;
-            bufferDesc.MipLevels = 1;
-            bufferDesc.Format = DXGI_FORMAT_UNKNOWN;
-            bufferDesc.SampleDesc.Count = 1;
-            bufferDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-            bufferDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+            const D3D12_RESOURCE_DESC bufferDesc = ResourceFactory::MakeBufferDesc(
+                kCoeffStride * kSkyIrradianceSHCoeffCount, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 
             Microsoft::WRL::ComPtr<ID3D12Resource> shBuffer;
             if (FAILED(device->CreateCommittedResource(
@@ -392,22 +297,11 @@ namespace CoreEngine
 
         // ===== 空キューブマップ（空＋雲の作業面。Phase 3b スペキュラIBL） =====
         {
-            D3D12_RESOURCE_DESC cubeDesc{};
-            cubeDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-            cubeDesc.Width = kSkyCubemapSize;
-            cubeDesc.Height = kSkyCubemapSize;
+            D3D12_RESOURCE_DESC cubeDesc = UavTexture::MakeDesc(
+                kSkyCubemapSize, kSkyCubemapSize, 1, DXGI_FORMAT_R16G16B16A16_FLOAT, kSkyCubemapMipCount);
             cubeDesc.DepthOrArraySize = 6;
-            cubeDesc.MipLevels = static_cast<UINT16>(kSkyCubemapMipCount);
-            cubeDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
-            cubeDesc.SampleDesc.Count = 1;
-            cubeDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-            cubeDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
-            try {
-                skyCubemap_.Reset(ResourceFactory::CreateTextureResource(
-                    deviceRef, cubeDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-            }
-            catch (const std::exception&) {
+            if (!UavTexture::CreateResource(device, skyCubemap_, cubeDesc)) {
                 Logger::GetInstance().Warnf(LogCategory::Graphics,
                     "AtmosphereManager: 空キューブマップの生成に失敗");
                 return false;
@@ -434,22 +328,11 @@ namespace CoreEngine
 
         // ===== プリフィルタ済み空スペキュラキューブマップ =====
         {
-            D3D12_RESOURCE_DESC specDesc{};
-            specDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-            specDesc.Width = kSkyCubemapSize;
-            specDesc.Height = kSkyCubemapSize;
+            D3D12_RESOURCE_DESC specDesc = UavTexture::MakeDesc(
+                kSkyCubemapSize, kSkyCubemapSize, 1, DXGI_FORMAT_R16G16B16A16_FLOAT, kSkySpecularMipCount);
             specDesc.DepthOrArraySize = 6;
-            specDesc.MipLevels = static_cast<UINT16>(kSkySpecularMipCount);
-            specDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
-            specDesc.SampleDesc.Count = 1;
-            specDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-            specDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
-            try {
-                skySpecularMap_.Reset(ResourceFactory::CreateTextureResource(
-                    deviceRef, specDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-            }
-            catch (const std::exception&) {
+            if (!UavTexture::CreateResource(device, skySpecularMap_, specDesc)) {
                 Logger::GetInstance().Warnf(LogCategory::Graphics,
                     "AtmosphereManager: 空スペキュラキューブマップの生成に失敗");
                 return false;
@@ -945,12 +828,7 @@ namespace CoreEngine
         D3D12_RESOURCE_DESC desc = sceneDesc;
         desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
-        Microsoft::WRL::ComPtr<ID3D12Device> deviceRef = device_;
-        try {
-            apResult_.Reset(ResourceFactory::CreateTextureResource(
-                deviceRef, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        }
-        catch (const std::exception&) {
+        if (!UavTexture::CreateResource(device_, apResult_, desc)) {
             Logger::GetInstance().Warnf(LogCategory::Graphics,
                 "AtmosphereManager: Aerial Perspective 中間テクスチャの生成に失敗");
             return false;

@@ -12,6 +12,7 @@
 #include "Diagnostics/EngineStats.h"
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/UavTexture.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/RootSignature/RootSignatureManager.h"
@@ -272,16 +273,8 @@ namespace CoreEngine
             D3D12_HEAP_PROPERTIES heapProps{};
             heapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
 
-            D3D12_RESOURCE_DESC desc{};
-            desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-            desc.Width = sizeof(uint32_t) * kMaxQueries;
-            desc.Height = 1;
-            desc.DepthOrArraySize = 1;
-            desc.MipLevels = 1;
-            desc.Format = DXGI_FORMAT_UNKNOWN;
-            desc.SampleDesc.Count = 1;
-            desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-            desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+            const D3D12_RESOURCE_DESC desc =
+                ResourceFactory::MakeBufferDesc(sizeof(uint32_t) * kMaxQueries, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 
             Microsoft::WRL::ComPtr<ID3D12Resource> buffer;
             if (FAILED(device->CreateCommittedResource(
@@ -335,15 +328,8 @@ namespace CoreEngine
         }
         hiZMipCount_ = (std::min)(mipCount, kMaxHiZMips);
 
-        D3D12_RESOURCE_DESC desc{};
-        desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-        desc.Width = hiZWidth_;
-        desc.Height = hiZHeight_;
-        desc.DepthOrArraySize = 1;
-        desc.MipLevels = static_cast<UINT16>(hiZMipCount_);
-        desc.Format = DXGI_FORMAT_R32_FLOAT;
-        desc.SampleDesc.Count = 1;
-        desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+        const D3D12_RESOURCE_DESC desc =
+            UavTexture::MakeDesc(hiZWidth_, hiZHeight_, 1, DXGI_FORMAT_R32_FLOAT, hiZMipCount_);
 
         // フレーム間は全ミップ UNORDERED_ACCESS で均一化する運用。
         // ミップごとに状態が変わるので subresourceCount にミップ数を渡して個別追跡させる
@@ -357,32 +343,17 @@ namespace CoreEngine
         }
 
         // ミップ単位 SRV / UAV（リサイズ時は既存スロットへ書き直す）
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+        D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
         for (uint32_t mip = 0; mip < hiZMipCount_; ++mip) {
-            D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-            srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
-            srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-            srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-            srvDesc.Texture2D.MostDetailedMip = mip;
-            srvDesc.Texture2D.MipLevels = 1;
+            UavTexture::MakeViewDescs(desc, srvDesc, uavDesc, mip, 1);
             descriptorAllocator_->EnsureSRV(hiZMipSrvGpu_[mip], hiZTexture_.Get(), srvDesc, "HiZPyramidMipSRV");
-
-            D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
-            uavDesc.Format = DXGI_FORMAT_R32_FLOAT;
-            uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-            uavDesc.Texture2D.MipSlice = mip;
             descriptorAllocator_->EnsureUAV(hiZMipUavGpu_[mip], hiZTexture_.Get(), uavDesc, "HiZPyramidMipUAV");
         }
 
         // 判定 CS 用フルチェーン SRV
-        {
-            D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-            srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
-            srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-            srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-            srvDesc.Texture2D.MostDetailedMip = 0;
-            srvDesc.Texture2D.MipLevels = hiZMipCount_;
-            descriptorAllocator_->EnsureSRV(hiZFullSrvGpu_, hiZTexture_.Get(), srvDesc, "HiZPyramidFullSRV");
-        }
+        UavTexture::MakeViewDescs(desc, srvDesc, uavDesc, 0, hiZMipCount_);
+        descriptorAllocator_->EnsureSRV(hiZFullSrvGpu_, hiZTexture_.Get(), srvDesc, "HiZPyramidFullSRV");
 
         // 構築 CS 定数を再充填（dispatch d: mip(d) を書く。d=0 のソースはフル解像度深度）
         for (uint32_t mip = 0; mip < hiZMipCount_; ++mip) {

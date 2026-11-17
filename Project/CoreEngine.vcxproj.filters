@@ -1609,6 +1609,9 @@
     <ClCompile Include="Engine\Src\Graphics\RHI\Resource\ResourceFactory.cpp">
       <Filter>Engine\Src\Graphics\RHI\Resource</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RHI\Resource\UavTexture.cpp">
+      <Filter>Engine\Src\Graphics\RHI\Resource</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RHI\Resource\UploadRing.cpp">
       <Filter>Engine\Src\Graphics\RHI\Resource</Filter>
     </ClCompile>
@@ -4156,6 +4159,9 @@
       <Filter>Engine\Src\Graphics\Shader</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RHI\Resource\ResourceFactory.h">
+      <Filter>Engine\Src\Graphics\RHI\Resource</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RHI\Resource\UavTexture.h">
       <Filter>Engine\Src\Graphics\RHI\Resource</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RHI\Resource\UploadRing.h">

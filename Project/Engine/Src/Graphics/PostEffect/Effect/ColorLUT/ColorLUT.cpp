@@ -3,6 +3,7 @@
 #include "ColorLUT.h"
 #include "Editor/ImGui/ImguiManager.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/UavTexture.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h"
@@ -58,37 +59,11 @@ namespace CoreEngine
         }
 
         // ---- LUT 本体（Texture3D・UAV 書き込み対応） ----
-        D3D12_RESOURCE_DESC desc{};
-        desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE3D;
-        desc.Width = kMaxLutSize;
-        desc.Height = kMaxLutSize;
-        desc.DepthOrArraySize = static_cast<UINT16>(kMaxLutSize);
-        desc.MipLevels = 1;
-        desc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
-        desc.SampleDesc.Count = 1;
-        desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-        desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-
-        lutTexture_.Reset(ResourceFactory::CreateTextureResource(
-            device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        if (!lutTexture_) {
+        if (!UavTexture::Create(device, *descriptorAllocator, lutTexture_,
+                UavTexture::MakeDesc(kMaxLutSize, kMaxLutSize, kMaxLutSize, DXGI_FORMAT_R16G16B16A16_FLOAT),
+                lutSrvHandle_, "ColorLUT_SRV", lutUavHandle_, "ColorLUT_UAV")) {
             return false;
         }
-
-        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-        srvDesc.Format = desc.Format;
-        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
-        srvDesc.Texture3D.MipLevels = 1;
-
-        D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
-        uavDesc.Format = desc.Format;
-        uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
-        uavDesc.Texture3D.WSize = kMaxLutSize;
-
-        D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle{};
-        lutSrvHandle_ = descriptorAllocator->CreateSRV(lutTexture_.Get(), srvDesc, "ColorLUT_SRV");
-        lutUavHandle_ = descriptorAllocator->CreateUAV(lutTexture_.Get(), uavDesc, "ColorLUT_UAV");
 
         // ---- LUT データのアップロードバッファ（StructuredBuffer として CS から読む） ----
         const size_t maxTexels = static_cast<size_t>(kMaxLutSize) * kMaxLutSize * kMaxLutSize;

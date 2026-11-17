@@ -138,16 +138,8 @@ namespace CoreEngine
             return &entry;
         }
         ReleaseEntry(entry);
-        D3D12_RESOURCE_DESC desc{};
-        desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-        desc.Width = static_cast<UINT64>(vertexCount) * sizeof(VertexData);
-        desc.Height = 1;
-        desc.DepthOrArraySize = 1;
-        desc.MipLevels = 1;
-        desc.Format = DXGI_FORMAT_UNKNOWN;
-        desc.SampleDesc.Count = 1;
-        desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-        desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+        const D3D12_RESOURCE_DESC desc = ResourceFactory::MakeBufferDesc(
+            static_cast<UINT64>(vertexCount) * sizeof(VertexData), D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
         Microsoft::WRL::ComPtr<ID3D12Resource> buffer = ResourceFactory::CreateTextureResource(
             graphicsCore_->GetDevice(), desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         if (!buffer) {

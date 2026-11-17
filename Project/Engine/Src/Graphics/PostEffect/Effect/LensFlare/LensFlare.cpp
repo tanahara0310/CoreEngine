@@ -3,6 +3,7 @@
 #include "Editor/ImGui/ImguiManager.h"
 #include "Utility/Logger/Logger.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/UavTexture.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
@@ -205,40 +206,13 @@ namespace CoreEngine
         if (!descriptorAllocator) {
             return false;
         }
-        Microsoft::WRL::ComPtr<ID3D12Device> deviceRef = graphicsCore_->GetDevice();
-
-        D3D12_RESOURCE_DESC desc{};
-        desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-        desc.Width = 1;
-        desc.Height = 1;
-        desc.DepthOrArraySize = 1;
-        desc.MipLevels = 1;
-        desc.Format = DXGI_FORMAT_R32G32_FLOAT;
-        desc.SampleDesc.Count = 1;
-        desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-        desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-
-        try {
-            sourcePosBuffer_.Reset(ResourceFactory::CreateTextureResource(
-                deviceRef, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        }
-        catch (const std::exception&) {
+        if (!UavTexture::Create(graphicsCore_->GetDevice(), *descriptorAllocator, sourcePosBuffer_,
+                UavTexture::MakeDesc(1, 1, 1, DXGI_FORMAT_R32G32_FLOAT),
+                sourcePosSrvHandle_, "LensFlareSourcePosSRV", sourcePosUavHandle_, "LensFlareSourcePosUAV")) {
             Logger::GetInstance().Warnf(LogCategory::Graphics,
                 "LensFlare: 光源位置テクスチャの生成に失敗");
             return false;
         }
-
-        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-        srvDesc.Format = desc.Format;
-        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-        srvDesc.Texture2D.MipLevels = 1;
-        D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
-        uavDesc.Format = desc.Format;
-        uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-        D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle{};
-        sourcePosSrvHandle_ = descriptorAllocator->CreateSRV(sourcePosBuffer_.Get(), srvDesc, "LensFlareSourcePosSRV");
-        sourcePosUavHandle_ = descriptorAllocator->CreateUAV(sourcePosBuffer_.Get(), uavDesc, "LensFlareSourcePosUAV");
         return true;
     }
 
@@ -287,22 +261,12 @@ namespace CoreEngine
             return true;
         }
 
-        Microsoft::WRL::ComPtr<ID3D12Device> deviceRef = graphicsCore_->GetDevice();
         DescriptorAllocator* descriptorAllocator = graphicsCore_->GetDescriptorAllocator();
         if (!descriptorAllocator) {
             return false;
         }
 
-        D3D12_RESOURCE_DESC desc{};
-        desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-        desc.Width = flareW;
-        desc.Height = flareH;
-        desc.DepthOrArraySize = 1;
-        desc.MipLevels = 1;
-        desc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
-        desc.SampleDesc.Count = 1;
-        desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-        desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+        const D3D12_RESOURCE_DESC desc = UavTexture::MakeDesc(flareW, flareH, 1, DXGI_FORMAT_R16G16B16A16_FLOAT);
 
         // DescriptorHandle が CPU/GPU ハンドルとスロット番号をまとめて持つ
         struct Target {
@@ -317,30 +281,14 @@ namespace CoreEngine
             { blurBuffer_,    blurSrvHandle_,    blurUavHandle_,    "LensFlareBlur" },
         };
 
+        // リサイズによる再生成時は既存スロットへ書き直す（毎回確保するとスロットリーク）
         for (Target& t : targets) {
-            try {
-                t.tex.Reset(
-                    ResourceFactory::CreateTextureResource(
-                        deviceRef, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS),
-                    D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-            }
-            catch (const std::exception&) {
+            if (!UavTexture::Create(graphicsCore_->GetDevice(), *descriptorAllocator, t.tex, desc,
+                    t.srv, std::string(t.name) + "SRV", t.uav, std::string(t.name) + "UAV")) {
                 Logger::GetInstance().Warnf(LogCategory::Graphics,
                     "LensFlare: 中間テクスチャ {} の生成に失敗", t.name);
                 return false;
             }
-
-            D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-            srvDesc.Format = desc.Format;
-            srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-            srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-            srvDesc.Texture2D.MipLevels = 1;
-            D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
-            uavDesc.Format = desc.Format;
-            uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-            // リサイズによる再生成時は既存スロットへ書き直す（毎回確保するとスロットリーク）
-            descriptorAllocator->EnsureSRV(t.srv, t.tex.Get(), srvDesc, std::string(t.name) + "SRV");
-            descriptorAllocator->EnsureUAV(t.uav, t.tex.Get(), uavDesc, std::string(t.name) + "UAV");
         }
 
         targetsWidth_ = flareW;

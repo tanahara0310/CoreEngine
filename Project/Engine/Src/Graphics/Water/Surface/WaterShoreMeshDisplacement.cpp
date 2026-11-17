@@ -8,7 +8,7 @@
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/UavTexture.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/RootSignature/ShaderBinder.h"
@@ -91,39 +91,14 @@ namespace CoreEngine
 
     bool WaterShoreMeshDisplacement::CreateTexture()
     {
-        D3D12_RESOURCE_DESC desc{};
-        desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-        desc.Width = kVertexCount;
-        desc.Height = kVertexCount;
-        desc.DepthOrArraySize = 1;
-        desc.MipLevels = 1;
-        desc.Format = kFormat;
-        desc.SampleDesc.Count = 1;
-        desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-        desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-
-        try {
-            texture_.Reset(
-                ResourceFactory::CreateTextureResource(
-                    dxCommon_->GetDevice(), desc, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE),
-                D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        }
-        catch (const std::exception&) {
+        const D3D12_RESOURCE_DESC desc = UavTexture::MakeDesc(kVertexCount, kVertexCount, 1, kFormat);
+        if (!UavTexture::CreateResource(
+                dxCommon_->GetDevice(), texture_, desc, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE)) {
             return false;
         }
-
-        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-        srvDesc.Format = kFormat;
-        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        srvDesc.Texture2D.MipLevels = 1;
-        srv_ = descriptorAllocator_->CreateSRV(texture_.Get(), srvDesc, "WaterShoreMeshDisplacementSRV");
-
-        D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
-        uavDesc.Format = kFormat;
-        uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-        uav_ = descriptorAllocator_->CreateUAV(texture_.Get(), uavDesc, "WaterShoreMeshDisplacementUAV");
-        return srv_.IsValid() && uav_.IsValid();
+        UavTexture::EnsureViews(*descriptorAllocator_, texture_.Get(), desc,
+            srv_, "WaterShoreMeshDisplacementSRV", uav_, "WaterShoreMeshDisplacementUAV");
+        return true;
     }
 
     void WaterShoreMeshDisplacement::Dispatch(

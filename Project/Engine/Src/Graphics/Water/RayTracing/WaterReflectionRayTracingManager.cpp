@@ -11,7 +11,7 @@
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/UavTexture.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/RootSignature/ShaderBinder.h"
 #include "Graphics/Shader/CBufferLayout.h"
@@ -218,49 +218,24 @@ namespace CoreEngine
         uint32_t mipCount,
         const char* debugName)
     {
-        D3D12_RESOURCE_DESC desc{};
-        desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-        desc.Width = width;
-        desc.Height = height;
-        desc.DepthOrArraySize = 1;
-        desc.MipLevels = static_cast<UINT16>(mipCount);
-        desc.Format = format;
-        desc.SampleDesc.Count = 1;
-        desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+        const D3D12_RESOURCE_DESC desc = UavTexture::MakeDesc(width, height, 1, format, mipCount);
 
         // 段数ぶんのサブリソースを個別に追跡させる
-        texture.Reset(
-            ResourceFactory::CreateTextureResource(
-                dxCommon_->GetDevice(), desc, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE),
-            D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
-            mipCount);
-        if (!texture) {
+        if (!UavTexture::CreateResource(dxCommon_->GetDevice(), texture, desc,
+                D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, mipCount)) {
             return false;
         }
 
         const std::string name(debugName);
+        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+        D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
         for (uint32_t mip = 0; mip < mipCount; ++mip) {
-            D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-            srvDesc.Format = format;
-            srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-            srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-            srvDesc.Texture2D.MostDetailedMip = mip;
-            srvDesc.Texture2D.MipLevels = 1;
+            UavTexture::MakeViewDescs(desc, srvDesc, uavDesc, mip, 1);
             descriptorAllocator_->EnsureSRV(mipSrv[mip], texture.Get(), srvDesc, name + "MipSRV");
-
-            D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
-            uavDesc.Format = format;
-            uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-            uavDesc.Texture2D.MipSlice = mip;
             descriptorAllocator_->EnsureUAV(mipUav[mip], texture.Get(), uavDesc, name + "MipUAV");
         }
 
-        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-        srvDesc.Format = format;
-        srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        srvDesc.Texture2D.MostDetailedMip = 0;
-        srvDesc.Texture2D.MipLevels = mipCount;
+        UavTexture::MakeViewDescs(desc, srvDesc, uavDesc, 0, mipCount);
         descriptorAllocator_->EnsureSRV(fullSrv, texture.Get(), srvDesc, name + "SRV");
         return true;
     }

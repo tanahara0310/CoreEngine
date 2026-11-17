@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "ShaderTableBuilder.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Math/IntegerMath.h"
 #include "Utility/Logger/Logger.h"
 
@@ -68,14 +69,7 @@ namespace CoreEngine
         D3D12_HEAP_PROPERTIES heapProps{};
         heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
 
-        D3D12_RESOURCE_DESC bufDesc{};
-        bufDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-        bufDesc.Width = totalSize;
-        bufDesc.Height = 1;
-        bufDesc.DepthOrArraySize = 1;
-        bufDesc.MipLevels = 1;
-        bufDesc.SampleDesc.Count = 1;
-        bufDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        const D3D12_RESOURCE_DESC bufDesc = ResourceFactory::MakeBufferDesc(totalSize);
 
         HRESULT hr = device->CreateCommittedResource(
             &heapProps, D3D12_HEAP_FLAG_NONE, &bufDesc,

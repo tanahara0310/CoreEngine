@@ -200,94 +200,8 @@ namespace CoreEngine
         std::map<UINT, std::vector<std::string>>& tableGroups,
         UINT& currentIndex) {
 
-        // グループ化されたリソースを追跡
-        std::set<std::string> processedResources;
-
-        // まずテーブルグループを処理
-        for (const auto& [groupId, groupConfig] : config.GetTableGroups()) {
-            std::vector<D3D12_DESCRIPTOR_RANGE> ranges;
-            D3D12_SHADER_VISIBILITY visibility = groupConfig.visibility;
-            bool hasAnyResource = false;
-
-            for (const auto& resourceName : groupConfig.resourceNames) {
-                // SRVから該当リソースを検索
-                const auto* srv = reflectionData.FindSRV(resourceName);
-                if (srv) {
-                    D3D12_DESCRIPTOR_RANGE range{};
-                    range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-                    range.NumDescriptors = srv->bindCount;
-                    range.BaseShaderRegister = srv->bindPoint;
-                    range.RegisterSpace = srv->space;
-                    range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-                    ranges.push_back(range);
-
-                    // 同一グループ内のリソースは同じルートパラメータを共有
-                    AssignMapping(mapping, resourceName, currentIndex, RootSlotKind::DescriptorTable, reflectionData.GetShaderName());
-                    tableGroups[groupId].push_back(resourceName);
-                    processedResources.insert(resourceName);
-                    hasAnyResource = true;
-
-                    // visibilityを最初のリソースから取得
-                    if (ranges.size() == 1) {
-                        visibility = srv->visibility;
-                    }
-                }
-            }
-
-            if (hasAnyResource && !ranges.empty()) {
-                rangeStorage.push_back(ranges);
-                D3D12_ROOT_PARAMETER param{};
-                param.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-                param.ShaderVisibility = visibility;
-                param.DescriptorTable.NumDescriptorRanges = static_cast<UINT>(rangeStorage.back().size());
-                param.DescriptorTable.pDescriptorRanges = rangeStorage.back().data();
-                rootParams.push_back(param);
-                currentIndex++;
-            }
-        }
-
-        // 残りのSRVを個別に処理
-        for (const auto& srv : reflectionData.GetSRVBindings()) {
-            if (processedResources.count(srv.name) > 0) {
-                continue; // 既に処理済み
-            }
-
-            BindingStrategy strategy = DetermineStrategy(srv.name, D3D_SIT_TEXTURE, config);
-
-            switch (strategy) {
-            case BindingStrategy::RootDescriptor: {
-                D3D12_ROOT_PARAMETER param = CreateRootDescriptorParam(
-                    D3D12_ROOT_PARAMETER_TYPE_SRV,
-                    srv.bindPoint, srv.space, srv.visibility);
-                rootParams.push_back(param);
-                AssignMapping(mapping, srv.name, currentIndex++, RootSlotKind::RootSRV, reflectionData.GetShaderName());
-                break;
-            }
-            case BindingStrategy::DescriptorTable:
-            case BindingStrategy::GroupedTable:
-            default: {
-                // 個別のDescriptor Tableとして追加
-                std::vector<D3D12_DESCRIPTOR_RANGE> ranges;
-                D3D12_DESCRIPTOR_RANGE range{};
-                range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-                range.NumDescriptors = srv.bindCount;
-                range.BaseShaderRegister = srv.bindPoint;
-                range.RegisterSpace = srv.space;
-                range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-                ranges.push_back(range);
-
-                rangeStorage.push_back(ranges);
-                D3D12_ROOT_PARAMETER param{};
-                param.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-                param.ShaderVisibility = srv.visibility;
-                param.DescriptorTable.NumDescriptorRanges = static_cast<UINT>(rangeStorage.back().size());
-                param.DescriptorTable.pDescriptorRanges = rangeStorage.back().data();
-                rootParams.push_back(param);
-                AssignMapping(mapping, srv.name, currentIndex++, RootSlotKind::DescriptorTable, reflectionData.GetShaderName());
-                break;
-            }
-            }
-        }
+        ProcessViews(D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
+            reflectionData, config, rootParams, rangeStorage, mapping, tableGroups, currentIndex);
     }
 
     void RootSignatureBuilder::ProcessUAVs(
@@ -299,85 +213,104 @@ namespace CoreEngine
         std::map<UINT, std::vector<std::string>>& tableGroups,
         UINT& currentIndex) {
 
+        ProcessViews(D3D12_DESCRIPTOR_RANGE_TYPE_UAV,
+            reflectionData, config, rootParams, rangeStorage, mapping, tableGroups, currentIndex);
+    }
+
+    void RootSignatureBuilder::ProcessViews(
+        D3D12_DESCRIPTOR_RANGE_TYPE rangeType,
+        const ShaderReflectionData& reflectionData,
+        const RootSignatureConfig& config,
+        std::vector<D3D12_ROOT_PARAMETER>& rootParams,
+        std::vector<std::vector<D3D12_DESCRIPTOR_RANGE>>& rangeStorage,
+        std::map<std::string, RootSlot>& mapping,
+        std::map<UINT, std::vector<std::string>>& tableGroups,
+        UINT& currentIndex) {
+
+        const bool isUav = (rangeType == D3D12_DESCRIPTOR_RANGE_TYPE_UAV);
+
+        // 1 本分のディスクリプタ範囲
+        const auto makeRange = [rangeType](const ShaderResourceBinding& binding) {
+            D3D12_DESCRIPTOR_RANGE range{};
+            range.RangeType = rangeType;
+            range.NumDescriptors = binding.bindCount;
+            range.BaseShaderRegister = binding.bindPoint;
+            range.RegisterSpace = binding.space;
+            range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+            return range;
+        };
+
+        // 範囲の並びを保存し、それを指す Descriptor Table のルートパラメータを足す
+        const auto pushTable = [&rangeStorage, &rootParams](
+            const std::vector<D3D12_DESCRIPTOR_RANGE>& ranges, D3D12_SHADER_VISIBILITY visibility) {
+            rangeStorage.push_back(ranges);
+            D3D12_ROOT_PARAMETER param{};
+            param.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+            param.ShaderVisibility = visibility;
+            param.DescriptorTable.NumDescriptorRanges = static_cast<UINT>(rangeStorage.back().size());
+            param.DescriptorTable.pDescriptorRanges = rangeStorage.back().data();
+            rootParams.push_back(param);
+        };
+
+        // グループ化されたリソースを追跡
         std::set<std::string> processedResources;
 
-        // テーブルグループを処理（UAV用）
+        // まずテーブルグループを処理
         for (const auto& [groupId, groupConfig] : config.GetTableGroups()) {
             std::vector<D3D12_DESCRIPTOR_RANGE> ranges;
             D3D12_SHADER_VISIBILITY visibility = groupConfig.visibility;
             bool hasAnyResource = false;
 
             for (const auto& resourceName : groupConfig.resourceNames) {
-                const auto* uav = reflectionData.FindUAV(resourceName);
-                if (uav) {
-                    D3D12_DESCRIPTOR_RANGE range{};
-                    range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-                    range.NumDescriptors = uav->bindCount;
-                    range.BaseShaderRegister = uav->bindPoint;
-                    range.RegisterSpace = uav->space;
-                    range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-                    ranges.push_back(range);
+                // 同じ種類（SRV か UAV）から該当リソースを検索
+                const auto* binding = isUav ? reflectionData.FindUAV(resourceName) : reflectionData.FindSRV(resourceName);
+                if (binding) {
+                    ranges.push_back(makeRange(*binding));
 
+                    // 同一グループ内のリソースは同じルートパラメータを共有
                     AssignMapping(mapping, resourceName, currentIndex, RootSlotKind::DescriptorTable, reflectionData.GetShaderName());
                     tableGroups[groupId].push_back(resourceName);
                     processedResources.insert(resourceName);
                     hasAnyResource = true;
 
+                    // visibilityを最初のリソースから取得
                     if (ranges.size() == 1) {
-                        visibility = uav->visibility;
+                        visibility = binding->visibility;
                     }
                 }
             }
 
             if (hasAnyResource && !ranges.empty()) {
-                rangeStorage.push_back(ranges);
-                D3D12_ROOT_PARAMETER param{};
-                param.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-                param.ShaderVisibility = visibility;
-                param.DescriptorTable.NumDescriptorRanges = static_cast<UINT>(rangeStorage.back().size());
-                param.DescriptorTable.pDescriptorRanges = rangeStorage.back().data();
-                rootParams.push_back(param);
+                pushTable(ranges, visibility);
                 currentIndex++;
             }
         }
 
-        // 残りのUAVを個別に処理
-        for (const auto& uav : reflectionData.GetUAVBindings()) {
-            if (processedResources.count(uav.name) > 0) {
-                continue;
+        // 残りを個別に処理
+        const auto& bindings = isUav ? reflectionData.GetUAVBindings() : reflectionData.GetSRVBindings();
+        for (const auto& binding : bindings) {
+            if (processedResources.count(binding.name) > 0) {
+                continue; // 既に処理済み
             }
 
-            BindingStrategy strategy = DetermineStrategy(uav.name, D3D_SIT_UAV_RWTYPED, config);
+            BindingStrategy strategy = DetermineStrategy(binding.name, isUav ? D3D_SIT_UAV_RWTYPED : D3D_SIT_TEXTURE, config);
 
             switch (strategy) {
             case BindingStrategy::RootDescriptor: {
                 D3D12_ROOT_PARAMETER param = CreateRootDescriptorParam(
-                    D3D12_ROOT_PARAMETER_TYPE_UAV,
-                    uav.bindPoint, uav.space, uav.visibility);
+                    isUav ? D3D12_ROOT_PARAMETER_TYPE_UAV : D3D12_ROOT_PARAMETER_TYPE_SRV,
+                    binding.bindPoint, binding.space, binding.visibility);
                 rootParams.push_back(param);
-                AssignMapping(mapping, uav.name, currentIndex++, RootSlotKind::RootUAV, reflectionData.GetShaderName());
+                AssignMapping(mapping, binding.name, currentIndex++,
+                    isUav ? RootSlotKind::RootUAV : RootSlotKind::RootSRV, reflectionData.GetShaderName());
                 break;
             }
             case BindingStrategy::DescriptorTable:
             case BindingStrategy::GroupedTable:
             default: {
-                std::vector<D3D12_DESCRIPTOR_RANGE> ranges;
-                D3D12_DESCRIPTOR_RANGE range{};
-                range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
-                range.NumDescriptors = uav.bindCount;
-                range.BaseShaderRegister = uav.bindPoint;
-                range.RegisterSpace = uav.space;
-                range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-                ranges.push_back(range);
-
-                rangeStorage.push_back(ranges);
-                D3D12_ROOT_PARAMETER param{};
-                param.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-                param.ShaderVisibility = uav.visibility;
-                param.DescriptorTable.NumDescriptorRanges = static_cast<UINT>(rangeStorage.back().size());
-                param.DescriptorTable.pDescriptorRanges = rangeStorage.back().data();
-                rootParams.push_back(param);
-                AssignMapping(mapping, uav.name, currentIndex++, RootSlotKind::DescriptorTable, reflectionData.GetShaderName());
+                // 個別のDescriptor Tableとして追加
+                pushTable({ makeRange(binding) }, binding.visibility);
+                AssignMapping(mapping, binding.name, currentIndex++, RootSlotKind::DescriptorTable, reflectionData.GetShaderName());
                 break;
             }
             }

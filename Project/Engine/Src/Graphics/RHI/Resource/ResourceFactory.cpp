@@ -12,6 +12,21 @@
 
 namespace CoreEngine
 {
+D3D12_RESOURCE_DESC ResourceFactory::MakeBufferDesc(UINT64 sizeInBytes, D3D12_RESOURCE_FLAGS flags)
+{
+    D3D12_RESOURCE_DESC desc {};
+    desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+    desc.Width = sizeInBytes;
+    desc.Height = 1;
+    desc.DepthOrArraySize = 1;
+    desc.MipLevels = 1;
+    desc.Format = DXGI_FORMAT_UNKNOWN;
+    desc.SampleDesc.Count = 1;
+    desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+    desc.Flags = flags;
+    return desc;
+}
+
 Microsoft::WRL::ComPtr<ID3D12Resource> ResourceFactory::CreateBufferResource(
     const Microsoft::WRL::ComPtr<ID3D12Device>& device,
     size_t sizeInBytes,
@@ -24,17 +39,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> ResourceFactory::CreateBufferResource(
 
     // 256バイトアライメント（D3D12の要件）
     const size_t alignedSize = (sizeInBytes + 255) & ~static_cast<size_t>(0xFF);
-
-    D3D12_RESOURCE_DESC resourceDesc {};
-    resourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-    resourceDesc.Width = alignedSize;
-    resourceDesc.Height = 1;
-    resourceDesc.DepthOrArraySize = 1;
-    resourceDesc.MipLevels = 1;
-    resourceDesc.Format = DXGI_FORMAT_UNKNOWN;
-    resourceDesc.SampleDesc.Count = 1;
-    resourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-    resourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+    const D3D12_RESOURCE_DESC resourceDesc = MakeBufferDesc(alignedSize);
 
     // READBACKヒープはCOPY_DEST、それ以外はGENERIC_READ
     const D3D12_RESOURCE_STATES initialState = (heapType == D3D12_HEAP_TYPE_READBACK)

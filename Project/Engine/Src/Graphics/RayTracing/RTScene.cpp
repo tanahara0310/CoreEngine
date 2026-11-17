@@ -13,6 +13,7 @@
 #include "Graphics/RHI/Command/DeferredReleaseQueue.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/Hash/Fnv1a.h"
 #include "Utility/Logger/Logger.h"
@@ -430,14 +431,8 @@ namespace CoreEngine
             D3D12_HEAP_PROPERTIES heapProps{};
             heapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
 
-            D3D12_RESOURCE_DESC resDesc{};
-            resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-            resDesc.Width = static_cast<UINT64>(capacity) * elementStride;
-            resDesc.Height = 1;
-            resDesc.DepthOrArraySize = 1;
-            resDesc.MipLevels = 1;
-            resDesc.SampleDesc.Count = 1;
-            resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+            const D3D12_RESOURCE_DESC resDesc =
+                ResourceFactory::MakeBufferDesc(static_cast<UINT64>(capacity) * elementStride);
 
             HRESULT hr = device_->CreateCommittedResource(
                 &heapProps, D3D12_HEAP_FLAG_NONE, &resDesc,

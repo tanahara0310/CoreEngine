@@ -47,6 +47,25 @@ namespace
             default:                             return "UNKNOWN";
         }
     }
+
+    // RT[0] のブレンドの係数（BlendMode の並び。enable が false ならブレンドしない）
+    // SrcBlendAlpha は常に ONE、BlendOpAlpha は常に ADD
+    struct BlendFactors {
+        bool enable;
+        D3D12_BLEND src;
+        D3D12_BLEND dest;
+        D3D12_BLEND_OP op;
+        D3D12_BLEND destAlpha;
+    };
+    constexpr BlendFactors kBlendFactors[] = {
+        { false, D3D12_BLEND_ONE,            D3D12_BLEND_ZERO,          D3D12_BLEND_OP_ADD,          D3D12_BLEND_ZERO },          // None
+        { true,  D3D12_BLEND_SRC_ALPHA,      D3D12_BLEND_INV_SRC_ALPHA, D3D12_BLEND_OP_ADD,          D3D12_BLEND_INV_SRC_ALPHA }, // Normal
+        { true,  D3D12_BLEND_SRC_ALPHA,      D3D12_BLEND_ONE,           D3D12_BLEND_OP_ADD,          D3D12_BLEND_ZERO },          // Add
+        { true,  D3D12_BLEND_SRC_ALPHA,      D3D12_BLEND_ONE,           D3D12_BLEND_OP_REV_SUBTRACT, D3D12_BLEND_ZERO },          // Subtract
+        { true,  D3D12_BLEND_ZERO,           D3D12_BLEND_SRC_COLOR,     D3D12_BLEND_OP_ADD,          D3D12_BLEND_ZERO },          // Multiply
+        { true,  D3D12_BLEND_INV_DEST_COLOR, D3D12_BLEND_ONE,           D3D12_BLEND_OP_ADD,          D3D12_BLEND_ZERO },          // Screen
+    };
+    static_assert(std::size(kBlendFactors) == CoreEngine::kBlendModeCount, "kBlendFactors と BlendMode の並びがずれている");
 }
 
 // ================================================================================
@@ -406,60 +425,17 @@ D3D12_BLEND_DESC PipelineStateBuilder::CreateBlendDesc(BlendMode mode) const
     }
 
     // ブレンドは RT[0] にのみ設定する（RT[1]以降は常に不透明書き込みのまま）
-    switch (mode) {
-    case BlendMode::kBlendModeNone:
-        desc.RenderTarget[0].BlendEnable = FALSE;
-        break;
-
-    case BlendMode::kBlendModeNormal:
-        desc.RenderTarget[0].BlendEnable = TRUE;
-        desc.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
-        desc.RenderTarget[0].DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
-        desc.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
-        desc.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
-        desc.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_INV_SRC_ALPHA;
-        desc.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
-        break;
-
-    case BlendMode::kBlendModeAdd:
-        desc.RenderTarget[0].BlendEnable = TRUE;
-        desc.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
-        desc.RenderTarget[0].DestBlend = D3D12_BLEND_ONE;
-        desc.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
-        desc.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
-        desc.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
-        desc.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
-        break;
-
-    case BlendMode::kBlendModeSubtract:
-        desc.RenderTarget[0].BlendEnable = TRUE;
-        desc.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
-        desc.RenderTarget[0].DestBlend = D3D12_BLEND_ONE;
-        desc.RenderTarget[0].BlendOp = D3D12_BLEND_OP_REV_SUBTRACT;
-        desc.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
-        desc.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
-        desc.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
-        break;
-
-    case BlendMode::kBlendModeMultiply:
-        desc.RenderTarget[0].BlendEnable = TRUE;
-        desc.RenderTarget[0].SrcBlend = D3D12_BLEND_ZERO;
-        desc.RenderTarget[0].DestBlend = D3D12_BLEND_SRC_COLOR;
-        desc.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
-        desc.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
-        desc.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
-        desc.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
-        break;
-
-    case BlendMode::kBlendModeScreen:
-        desc.RenderTarget[0].BlendEnable = TRUE;
-        desc.RenderTarget[0].SrcBlend = D3D12_BLEND_INV_DEST_COLOR;
-        desc.RenderTarget[0].DestBlend = D3D12_BLEND_ONE;
-        desc.RenderTarget[0].BlendOp = D3D12_BLEND_OP_ADD;
-        desc.RenderTarget[0].SrcBlendAlpha = D3D12_BLEND_ONE;
-        desc.RenderTarget[0].DestBlendAlpha = D3D12_BLEND_ZERO;
-        desc.RenderTarget[0].BlendOpAlpha = D3D12_BLEND_OP_ADD;
-        break;
+    const size_t index = static_cast<size_t>(mode);
+    if (index < kBlendModeCount && kBlendFactors[index].enable) {
+        const BlendFactors& factors = kBlendFactors[index];
+        auto& rt = desc.RenderTarget[0];
+        rt.BlendEnable = TRUE;
+        rt.SrcBlend = factors.src;
+        rt.DestBlend = factors.dest;
+        rt.BlendOp = factors.op;
+        rt.SrcBlendAlpha = D3D12_BLEND_ONE;
+        rt.DestBlendAlpha = factors.destAlpha;
+        rt.BlendOpAlpha = D3D12_BLEND_OP_ADD;
     }
 
     return desc;

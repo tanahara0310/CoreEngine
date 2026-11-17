@@ -7,7 +7,7 @@
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/UavTexture.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
@@ -92,93 +92,27 @@ namespace CoreEngine
     {
         Microsoft::WRL::ComPtr<ID3D12Device> device = dxCommon_->GetDevice();
         // (被覆率, 寄せ・引きのずれ x, z, 0)
-        const DXGI_FORMAT format = DXGI_FORMAT_R16G16B16A16_FLOAT;
-
-        D3D12_RESOURCE_DESC desc{};
-        desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-        desc.Width = kResolution;
-        desc.Height = kResolution;
-        desc.DepthOrArraySize = 1;
-        desc.MipLevels = 1;
-        desc.Format = format;
-        desc.SampleDesc.Count = 1;
-        desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-        desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-
-        try {
-            for (FFTOceanGpuTexture& texture : foam_) {
-                texture.Reset(
-                    ResourceFactory::CreateTextureResource(device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS),
-                    D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        const D3D12_RESOURCE_DESC desc = UavTexture::MakeDesc(kResolution, kResolution, 1, DXGI_FORMAT_R16G16B16A16_FLOAT);
+        for (FFTOceanGpuTexture& texture : foam_) {
+            if (!UavTexture::CreateResource(device, texture, desc)) {
+                return false;
             }
         }
-        catch (const std::exception&) {
-            return false;
-        }
-
         for (size_t i = 0; i < foam_.size(); ++i) {
             const std::string idx = std::to_string(i);
-
-            D3D12_SHADER_RESOURCE_VIEW_DESC s{};
-            s.Format = format;
-            s.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-            s.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-            s.Texture2D.MipLevels = 1;
-            foam_[i].srv = descriptorAllocator_->CreateSRV(foam_[i].Get(), s, "WaterShoreFoamSRV_" + idx);
-
-            D3D12_UNORDERED_ACCESS_VIEW_DESC u{};
-            u.Format = format;
-            u.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-            foam_[i].uav = descriptorAllocator_->CreateUAV(foam_[i].Get(), u, "WaterShoreFoamUAV_" + idx);
+            UavTexture::EnsureViews(*descriptorAllocator_, foam_[i].Get(), desc,
+                foam_[i].srv, "WaterShoreFoamSRV_" + idx, foam_[i].uav, "WaterShoreFoamUAV_" + idx);
         }
 
-        // ならした海底の高さ
-        const DXGI_FORMAT smoothFormat = DXGI_FORMAT_R32_FLOAT;
-        D3D12_RESOURCE_DESC smoothDesc = desc;
-        smoothDesc.Width = kSmoothSeabedResolution;
-        smoothDesc.Height = kSmoothSeabedResolution;
-        smoothDesc.Format = smoothFormat;
-        try {
-            smoothSeabed_.Reset(
-                ResourceFactory::CreateTextureResource(device, smoothDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS),
-                D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        }
-        catch (const std::exception&) {
+        // ならした海底の高さと、寄せ・引きのずれ（x, z）
+        if (!UavTexture::Create(device, *descriptorAllocator_, smoothSeabed_,
+                UavTexture::MakeDesc(kSmoothSeabedResolution, kSmoothSeabedResolution, 1, DXGI_FORMAT_R32_FLOAT),
+                smoothSeabed_.srv, "WaterShoreSmoothSeabedSRV", smoothSeabed_.uav, "WaterShoreSmoothSeabedUAV")
+            || !UavTexture::Create(device, *descriptorAllocator_, swash_,
+                UavTexture::MakeDesc(kSmoothSeabedResolution, kSmoothSeabedResolution, 1, DXGI_FORMAT_R32G32_FLOAT),
+                swash_.srv, "WaterShoreSwashSRV", swash_.uav, "WaterShoreSwashUAV")) {
             return false;
         }
-        D3D12_SHADER_RESOURCE_VIEW_DESC smoothSrv{};
-        smoothSrv.Format = smoothFormat;
-        smoothSrv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-        smoothSrv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        smoothSrv.Texture2D.MipLevels = 1;
-        smoothSeabed_.srv = descriptorAllocator_->CreateSRV(smoothSeabed_.Get(), smoothSrv, "WaterShoreSmoothSeabedSRV");
-        D3D12_UNORDERED_ACCESS_VIEW_DESC smoothUav{};
-        smoothUav.Format = smoothFormat;
-        smoothUav.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-        smoothSeabed_.uav = descriptorAllocator_->CreateUAV(smoothSeabed_.Get(), smoothUav, "WaterShoreSmoothSeabedUAV");
-
-        // 寄せ・引きのずれ（x, z）
-        const DXGI_FORMAT swashFormat = DXGI_FORMAT_R32G32_FLOAT;
-        D3D12_RESOURCE_DESC swashDesc = smoothDesc;
-        swashDesc.Format = swashFormat;
-        try {
-            swash_.Reset(
-                ResourceFactory::CreateTextureResource(device, swashDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS),
-                D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        }
-        catch (const std::exception&) {
-            return false;
-        }
-        D3D12_SHADER_RESOURCE_VIEW_DESC swashSrv{};
-        swashSrv.Format = swashFormat;
-        swashSrv.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-        swashSrv.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        swashSrv.Texture2D.MipLevels = 1;
-        swash_.srv = descriptorAllocator_->CreateSRV(swash_.Get(), swashSrv, "WaterShoreSwashSRV");
-        D3D12_UNORDERED_ACCESS_VIEW_DESC swashUav{};
-        swashUav.Format = swashFormat;
-        swashUav.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-        swash_.uav = descriptorAllocator_->CreateUAV(swash_.Get(), swashUav, "WaterShoreSwashUAV");
 
         resetPending_ = true;
         return true;

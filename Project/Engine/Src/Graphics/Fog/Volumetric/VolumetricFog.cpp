@@ -12,7 +12,7 @@
 #include "Graphics/RHI/Command/DeferredReleaseQueue.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "Graphics/RHI/GraphicsCore.h"
-#include "Graphics/RHI/Resource/ResourceFactory.h"
+#include "Graphics/RHI/Resource/UavTexture.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
 #include "Graphics/RootSignature/ShaderBinder.h"
 #include "Graphics/Shader/ICustomShaderProvider.h"
@@ -180,70 +180,13 @@ namespace CoreEngine
     bool VolumetricFog::CreateVolume(
         Volume& volume, uint32_t sizeX, uint32_t sizeY, uint32_t sizeZ, const char* name, DXGI_FORMAT format)
     {
-        D3D12_RESOURCE_DESC desc{};
-        desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE3D;
-        desc.Width = sizeX;
-        desc.Height = sizeY;
-        desc.DepthOrArraySize = static_cast<UINT16>(sizeZ);
-        desc.MipLevels = 1;
-        desc.Format = format;
-        desc.SampleDesc.Count = 1;
-        desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-        desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-
-        return CreateTexture(volume, desc, name);
-    }
-
-    bool VolumetricFog::CreateImage(Volume& image, uint32_t sizeX, uint32_t sizeY, const char* name)
-    {
-        D3D12_RESOURCE_DESC desc{};
-        desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-        desc.Width = sizeX;
-        desc.Height = sizeY;
-        desc.DepthOrArraySize = 1;
-        desc.MipLevels = 1;
-        desc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
-        desc.SampleDesc.Count = 1;
-        desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-        desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
-        return CreateTexture(image, desc, name);
-    }
-
-    bool VolumetricFog::CreateTexture(Volume& volume, const D3D12_RESOURCE_DESC& desc, const char* name)
-    {
-        try {
-            const Microsoft::WRL::ComPtr<ID3D12Device> device = graphicsCore_->GetDevice();
-            volume.texture.Reset(ResourceFactory::CreateTextureResource(
-                device, desc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS), D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-        }
-        catch (const std::exception&) {
+        if (!UavTexture::Create(graphicsCore_->GetDevice(), *graphicsCore_->GetDescriptorAllocator(), volume.texture,
+                UavTexture::MakeDesc(sizeX, sizeY, sizeZ, format), volume.srv, name, volume.uav, name)) {
             Logger::GetInstance().Warnf(LogCategory::Graphics,
                 "VolumetricFog: %s のテクスチャの生成に失敗", name);
             return false;
         }
-
-        const bool isVolume = desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D;
-        D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-        srvDesc.Format = desc.Format;
-        srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
-        uavDesc.Format = desc.Format;
-        if (isVolume) {
-            srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
-            srvDesc.Texture3D.MipLevels = 1;
-            uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE3D;
-            uavDesc.Texture3D.WSize = desc.DepthOrArraySize;
-        }
-        else {
-            srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-            srvDesc.Texture2D.MipLevels = 1;
-            uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-        }
-
-        DescriptorAllocator* allocator = graphicsCore_->GetDescriptorAllocator();
-        volume.srv = allocator->CreateSRV(volume.texture.Get(), srvDesc, name);
-        volume.uav = allocator->CreateUAV(volume.texture.Get(), uavDesc, name);
-        return volume.srv.IsValid() && volume.uav.IsValid();
+        return true;
     }
 
     void VolumetricFog::RetireVolume(Volume& volume)
@@ -281,7 +224,7 @@ namespace CoreEngine
             || !CreateVolume(lightScattering_[0], sizeX, sizeY, sizeZ, "VolumetricFogLightScattering0")
             || !CreateVolume(lightScattering_[1], sizeX, sizeY, sizeZ, "VolumetricFogLightScattering1")
             || !CreateVolume(integrated_, sizeX, sizeY, sizeZ, "VolumetricFogIntegrated")
-            || !CreateImage(farLight_, sizeX, sizeY, "VolumetricFogFarLight")) {
+            || !CreateVolume(farLight_, sizeX, sizeY, 1, "VolumetricFogFarLight")) {
             retireAll();
             return false;
         }

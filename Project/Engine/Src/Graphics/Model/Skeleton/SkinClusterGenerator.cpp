@@ -107,16 +107,8 @@ CoreEngine::SkinCluster SkinClusterGenerator::CreateSkinCluster(
     {
         const size_t outputSizeInBytes = kSkinnedVertexStride * vertexCount;
 
-        D3D12_RESOURCE_DESC outputDesc{};
-        outputDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-        outputDesc.Width = outputSizeInBytes;
-        outputDesc.Height = 1;
-        outputDesc.DepthOrArraySize = 1;
-        outputDesc.MipLevels = 1;
-        outputDesc.Format = DXGI_FORMAT_UNKNOWN;
-        outputDesc.SampleDesc.Count = 1;
-        outputDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-        outputDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+        const D3D12_RESOURCE_DESC outputDesc =
+            ResourceFactory::MakeBufferDesc(outputSizeInBytes, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 
         skinCluster.outputVertexResource.Reset(
             ResourceFactory::CreateTextureResource(
@@ -151,16 +143,8 @@ CoreEngine::SkinCluster SkinClusterGenerator::CreateSkinCluster(
 
     // 前のフレームの姿勢の位置（CS が UAV で書き、頂点シェーダが StructuredBuffer<float4> で読む）
     {
-        D3D12_RESOURCE_DESC prevDesc{};
-        prevDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-        prevDesc.Width = kPrevPositionStride * vertexCount;
-        prevDesc.Height = 1;
-        prevDesc.DepthOrArraySize = 1;
-        prevDesc.MipLevels = 1;
-        prevDesc.Format = DXGI_FORMAT_UNKNOWN;
-        prevDesc.SampleDesc.Count = 1;
-        prevDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-        prevDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+        const D3D12_RESOURCE_DESC prevDesc = ResourceFactory::MakeBufferDesc(
+            kPrevPositionStride * vertexCount, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 
         skinCluster.prevPositionResource.Reset(
             ResourceFactory::CreateTextureResource(device, prevDesc, D3D12_RESOURCE_STATE_UNORDERED_ACCESS),
