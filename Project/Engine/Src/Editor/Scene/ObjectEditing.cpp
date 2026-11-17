@@ -543,6 +543,21 @@ namespace CoreEngine::ObjectEditing
             [](GameObject& target, bool value) { target.SetActive(value); }));
         return true;
     }
+
+    bool SetTag(GameObject& object, const std::string& tag)
+    {
+        const std::string before = object.GetTag();
+        object.SetTag(tag);
+        const std::string after = object.GetTag();
+        if (before == after) {
+            return false;
+        }
+
+        Editor::EditorCommandStack::Get().Push(Editor::MakeObjectValueCommand(
+            object.GetName() + " のタグを " + after + " にする", object.GetObjectId(), before, after,
+            [](GameObject& target, const std::string& value) { target.SetTag(value); }));
+        return true;
+    }
 }
 
 #endif // CORE_EDITOR

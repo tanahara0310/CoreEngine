@@ -6,7 +6,7 @@
 #include "Editor/Command/EditorCommandStack.h"
 #include "GameObject/ObjectId.h"
 #include "Reflection/PropertyDescriptor.h"
-#include "Utility/JsonManager/JsonManager.h"
+#include "Scene/PrefabSystem.h"
 
 #include <string>
 
@@ -59,8 +59,8 @@ namespace CoreEngine::Editor
         std::string fileName_;
 
         /// 開いたときのプレハブの中身と、最後に書き戻した中身
-        json opened_;
-        json written_;
+        PrefabSystem::PrefabContents opened_;
+        PrefabSystem::PrefabContents written_;
 
         /// 開いてから 1 回でも書き戻したか
         bool edited_ = false;

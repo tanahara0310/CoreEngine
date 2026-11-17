@@ -18,7 +18,7 @@ class Coin : ScriptComponent
 
     void OnTriggerEnter(Collision@ other)
     {
-        if (other.gameObject.name != "Player") {
+        if (!other.gameObject.CompareTag("Player")) {
             return;
         }
         if (director !is null) {

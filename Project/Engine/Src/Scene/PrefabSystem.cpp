@@ -30,6 +30,7 @@ namespace CoreEngine::PrefabSystem
     namespace
     {
         constexpr const char* kComponentsKey = "components";
+        constexpr const char* kTagKey = "tag";
         constexpr const char* kPrefabKey = "prefab";
         constexpr const char* kOverridesKey = "overrides";
         constexpr const char* kAddedKey = "addedComponents";
@@ -39,9 +40,9 @@ namespace CoreEngine::PrefabSystem
         /// @brief 読み込んだプレハブ 1 件分
         struct CachedPrefab
         {
-            json components;
+            PrefabContents contents;
             std::filesystem::file_time_type writeTime{};
-            bool upgraded = false;  ///< components を型の今の版の形へ書き換え済みか
+            bool upgraded = false;  ///< contents.components を型の今の版の形へ書き換え済みか
         };
 
         /// @brief GUID → 読み込んだプレハブ
@@ -52,22 +53,33 @@ namespace CoreEngine::PrefabSystem
         }
 
         /// @brief 書き出したプレハブの内容を控えに入れる
-        void StoreInCache(const AssetInfo& info, const json& components)
+        void StoreInCache(const AssetInfo& info, const PrefabContents& contents)
         {
             std::error_code ec;
             const auto writeTime = std::filesystem::last_write_time(info.fullPath, ec);
             CachedPrefab& entry = PrefabCache()[info.guid];
-            entry.components = components;
+            entry.contents = contents;
             entry.writeTime = ec ? std::filesystem::file_time_type{} : writeTime;
             entry.upgraded = true;
         }
 
-        /// @brief `components` 配列を `{"components": …}` の形でファイルへ書く
-        bool WritePrefabFile(const std::string& path, const json& components)
+        /// @brief 中身を `{"tag": …, "components": …}` の形でファイルへ書く（Untagged のとき tag は書かない）
+        bool WritePrefabFile(const std::string& path, const PrefabContents& contents)
         {
             json root = json::object();
-            root[kComponentsKey] = components;
+            if (contents.tag != GameObjectTags::kUntagged) {
+                root[kTagKey] = contents.tag;
+            }
+            root[kComponentsKey] = contents.components;
             return JsonManager::GetInstance().SaveJson(path, root);
+        }
+
+        /// @brief オブジェクトの JSON のタグ（書いていなければ Untagged）
+        std::string TagOf(const json& object)
+        {
+            const auto found = object.find(kTagKey);
+            return (found != object.end() && found->is_string() && !found->get_ref<const std::string&>().empty())
+                ? found->get<std::string>() : std::string(GameObjectTags::kUntagged);
         }
 
         /// @brief components 配列の 1 要素と、同じ型の中での順番
@@ -189,7 +201,7 @@ namespace CoreEngine::PrefabSystem
             if (prefab.upgraded || !ComponentFactory::Get().IsPrimed()) {
                 return;
             }
-            UpgradeComponents(prefab.components, ToAssetPath(info));
+            UpgradeComponents(prefab.contents.components, ToAssetPath(info));
             prefab.upgraded = true;
         }
 
@@ -238,7 +250,7 @@ namespace CoreEngine::PrefabSystem
         }
     }
 
-    const json* LoadComponents(const Reflection::AssetRefValue& prefab)
+    const PrefabContents* Load(const Reflection::AssetRefValue& prefab)
     {
         const AssetInfo* info = ResolveAssetRef(prefab);
         if (!info || info->type != AssetType::Prefab) {
@@ -252,7 +264,7 @@ namespace CoreEngine::PrefabSystem
         if (const auto it = cache.find(info->guid);
             it != cache.end() && !ec && it->second.writeTime == writeTime) {
             EnsureUpgraded(it->second, *info);
-            return &it->second.components;
+            return &it->second.contents;
         }
 
         const std::string path = ToAssetPath(*info);
@@ -267,11 +279,18 @@ namespace CoreEngine::PrefabSystem
         }
 
         CachedPrefab& entry = cache[info->guid];
-        entry.components = root.at(kComponentsKey);
+        entry.contents.tag = TagOf(root);
+        entry.contents.components = root.at(kComponentsKey);
         entry.upgraded = false;
         EnsureUpgraded(entry, *info);
         entry.writeTime = ec ? std::filesystem::file_time_type{} : writeTime;
-        return &entry.components;
+        return &entry.contents;
+    }
+
+    const json* LoadComponents(const Reflection::AssetRefValue& prefab)
+    {
+        const PrefabContents* contents = Load(prefab);
+        return contents ? &contents->components : nullptr;
     }
 
     Reflection::AssetRefValue ReadPrefabRef(const json& instance)
@@ -317,9 +336,24 @@ namespace CoreEngine::PrefabSystem
         return a == b;
     }
 
-    json MakeInstanceJson(const json& full, const json& prefabComponents)
+    bool SameValue(const PrefabContents& a, const PrefabContents& b)
     {
+        return a.tag == b.tag && SameValue(a.components, b.components);
+    }
+
+    json MakeInstanceJson(const json& full, const PrefabContents& prefab)
+    {
+        const json& prefabComponents = prefab.components;
         json instance = full.is_object() ? full : json::object();
+
+        // タグはプレハブと違うときだけ書く（Untagged に変えたときも書く）
+        const std::string tag = TagOf(instance);
+        if (tag == prefab.tag) {
+            instance.erase(kTagKey);
+        } else {
+            instance[kTagKey] = tag;
+        }
+
         json components = json::array();
         if (const auto it = instance.find(kComponentsKey); it != instance.end()) {
             if (it->is_array()) {
@@ -391,7 +425,7 @@ namespace CoreEngine::PrefabSystem
         return instance;
     }
 
-    json ExpandInstanceJson(const json& instance, const json* prefabComponents,
+    json ExpandInstanceJson(const json& instance, const PrefabContents* prefab,
                             std::vector<std::string>* problems)
     {
         json full = instance.is_object() ? instance : json::object();
@@ -403,6 +437,12 @@ namespace CoreEngine::PrefabSystem
         if (full.contains(kComponentsKey) || !instance.is_object()) {
             return full;
         }
+
+        // タグを書いていなければプレハブのタグ
+        if (!full.contains(kTagKey) && prefab) {
+            full[kTagKey] = prefab->tag;
+        }
+        const json* prefabComponents = prefab ? &prefab->components : nullptr;
 
         const auto report = [problems](std::string message) {
             if (problems) {
@@ -535,11 +575,19 @@ namespace CoreEngine::PrefabSystem
         return components;
     }
 
+    PrefabContents MakePrefabContents(const GameObject& object)
+    {
+        PrefabContents contents;
+        contents.tag = object.GetTag();
+        contents.components = MakePrefabComponents(object);
+        return contents;
+    }
+
     GameObject* Instantiate(GameObjectManager& manager, const Reflection::AssetRefValue& prefab,
                             const std::string& name, const std::string& serializeKey)
     {
-        const json* components = LoadComponents(prefab);
-        const AssetInfo* info = components ? ResolveAssetRef(prefab) : nullptr;
+        const PrefabContents* contents = Load(prefab);
+        const AssetInfo* info = contents ? ResolveAssetRef(prefab) : nullptr;
         if (!info) {
             return nullptr;
         }
@@ -550,20 +598,21 @@ namespace CoreEngine::PrefabSystem
         GameObject* object = manager.AddObject(std::move(owned));
 
         json state = json::object();
-        state[kComponentsKey] = *components;
+        state[kTagKey] = contents->tag;
+        state[kComponentsKey] = contents->components;
         object->Deserialize(state);
         object->SetPrefab(Reflection::AssetRefValue{ info->guid, ToAssetPath(*info) });
         return object;
     }
 
-    const AssetInfo* CreatePrefab(const std::string& path, const json& components)
+    const AssetInfo* CreatePrefab(const std::string& path, const PrefabContents& contents)
     {
         Logger& log = Logger::GetInstance();
         const std::filesystem::path parent = log.Utf8ToPath(path).parent_path();
         if (!parent.empty()) {
             JsonManager::GetInstance().CreateJsonDirectory(log.PathToUtf8(parent));
         }
-        if (!WritePrefabFile(path, components)) {
+        if (!WritePrefabFile(path, contents)) {
             return nullptr;
         }
 
@@ -571,16 +620,16 @@ namespace CoreEngine::PrefabSystem
         if (!info || info->type != AssetType::Prefab) {
             return nullptr;
         }
-        StoreInCache(*info, components);
+        StoreInCache(*info, contents);
         return info;
     }
 
     bool UpdatePrefab(GameObjectManager& manager, const Reflection::AssetRefValue& prefab,
-                      const json& components)
+                      const PrefabContents& contents)
     {
-        const json* current = LoadComponents(prefab);
+        const PrefabContents* current = Load(prefab);
         const AssetInfo* info = current ? ResolveAssetRef(prefab) : nullptr;
-        if (!info || !components.is_array()) {
+        if (!info || !contents.components.is_array()) {
             return false;
         }
 
@@ -594,7 +643,7 @@ namespace CoreEngine::PrefabSystem
             instances.emplace_back(object.get(), MakeInstanceJson(object->Serialize(), *current));
         }
 
-        const json written = components;
+        const PrefabContents written = contents;
         if (!WritePrefabFile(ToAssetPath(*info), written)) {
             return false;
         }

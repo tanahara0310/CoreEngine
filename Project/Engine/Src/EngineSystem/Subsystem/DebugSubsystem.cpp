@@ -40,6 +40,7 @@
 #include "Scene/SceneManager.h"
 #include "Scene/SceneSaveSystem.h"
 #include "Collision/CollisionLayer.h"
+#include "GameObject/GameObjectTags.h"
 #include "EngineSystem/Settings/ProjectSettings.h"
 #include "Editor/ImGui/EditorTheme.h"
 #include "Editor/Launcher/ProjectThumbnails.h"
@@ -78,36 +79,46 @@ namespace CoreEngine
             }
         }
 
-        /// @brief 当たり判定のレイヤーの名前を編集する欄
-        /// @details 実体は `Application/Config/EngineSettings/Layers.json`。
-        ///          添字 0 は `Default` 固定で、エンジンが名指しするのはこれだけ。
-        void DrawCollisionLayerSettings()
+        /// @brief 名前の並びを編集する欄の決まり
+        struct NameListEditorRules
         {
-            // 編集中の控え。確定するまで実体へは流さない（途中の空名で弾かれ続けないように）
-            static std::vector<std::string> editing;
-            static std::string error;
-            static bool loaded = false;
-            if (!loaded) {
-                editing = CollisionLayers::Names();
-                loaded = true;
-            }
+            const std::vector<std::string>& (*names)() = nullptr;                      ///< 今の並び
+            bool (*setNames)(std::vector<std::string>, std::string*) = nullptr;       ///< 並びを決めて保存する
+            std::size_t maxCount = 0;                                                  ///< 持てる数の上限（0 なら上限なし）
+            const char* addLabel = "";                                                 ///< 足すボタンの文字
+            const char* newNamePrefix = "";                                            ///< 足した名前の頭（後ろに番号）
+        };
 
-            UI::Hint("スクリプトの CollisionLayer と、シーンの当たり判定の表に出る名前です。");
-            UI::Hint("名前を変えても、保存済みのシーンは添字で覚えているので組み合わせは崩れません。");
+        /// @brief 名前の並びの編集中の控え（確定するまで実体へは流さない。途中の空名で弾かれ続けないように）
+        struct NameListEditorState
+        {
+            std::vector<std::string> editing;
+            std::string error;
+            bool loaded = false;
+        };
+
+        /// @brief 名前の並び（先頭は変えられない）を編集し、「適用」で保存する欄
+        void DrawNameListEditor(NameListEditorState& state, const NameListEditorRules& rules)
+        {
+            if (!state.loaded) {
+                state.editing = rules.names();
+                state.loaded = true;
+            }
+            std::vector<std::string>& editing = state.editing;
 
             for (std::size_t i = 0; i < editing.size(); ++i) {
                 ImGui::PushID(static_cast<int>(i));
                 char buffer[64] = {};
                 CopyToBuffer(buffer, editing[i]);
 
-                const bool isDefault = (i == 0);
-                ImGui::BeginDisabled(isDefault);
+                const bool isFirst = (i == 0);
+                ImGui::BeginDisabled(isFirst);
                 if (UI::InputText(("#" + std::to_string(i)).c_str(), buffer, sizeof(buffer))) {
                     editing[i] = buffer;
                 }
                 ImGui::EndDisabled();
 
-                if (!isDefault) {
+                if (!isFirst) {
                     UI::SameLine();
                     if (ImGui::SmallButton("外す")) {
                         editing.erase(editing.begin() + static_cast<std::ptrdiff_t>(i));
@@ -118,26 +129,60 @@ namespace CoreEngine
                 ImGui::PopID();
             }
 
-            if (editing.size() < kMaxCollisionLayers && ImGui::Button("レイヤーを足す")) {
-                editing.push_back("Layer" + std::to_string(editing.size()));
+            if ((rules.maxCount == 0 || editing.size() < rules.maxCount) && ImGui::Button(rules.addLabel)) {
+                editing.push_back(rules.newNamePrefix + std::to_string(editing.size()));
             }
 
             UI::Separator();
             if (ImGui::Button("適用")) {
-                if (CollisionLayers::SetNames(editing, &error)) {
-                    editing = CollisionLayers::Names();
+                if (rules.setNames(editing, &state.error)) {
+                    editing = rules.names();
                 }
             }
             UI::SameLine();
             if (ImGui::Button("戻す")) {
-                editing = CollisionLayers::Names();
-                error.clear();
+                editing = rules.names();
+                state.error.clear();
             }
 
-            if (!error.empty()) {
-                ImGui::TextColored(Editor::Theme::kError, "%s", error.c_str());
+            if (!state.error.empty()) {
+                ImGui::TextColored(Editor::Theme::kError, "%s", state.error.c_str());
             }
+        }
+
+        /// @brief 当たり判定のレイヤーの名前を編集する欄
+        /// @details 実体は `Application/Config/EngineSettings/Layers.json`。
+        ///          添字 0 は `Default` 固定で、エンジンが名指しするのはこれだけ。
+        void DrawCollisionLayerSettings()
+        {
+            static NameListEditorState state;
+            UI::Hint("スクリプトの CollisionLayer と、シーンの当たり判定の表に出る名前です。");
+            UI::Hint("名前を変えても、保存済みのシーンは添字で覚えているので組み合わせは崩れません。");
+            DrawNameListEditor(state, {
+                .names = &CollisionLayers::Names,
+                .setNames = &CollisionLayers::SetNames,
+                .maxCount = kMaxCollisionLayers,
+                .addLabel = "レイヤーを足す",
+                .newNamePrefix = "Layer",
+            });
             UI::Hint("適用してもスクリプトの CollisionLayer は次の起動から変わります。");
+        }
+
+        /// @brief オブジェクトに付けるタグの名前を編集する欄
+        /// @details 実体は `Application/Config/EngineSettings/Tags.json`。
+        ///          添字 0 は `Untagged` 固定で、エンジンが名指しするのはこれだけ。
+        void DrawTagSettings()
+        {
+            static NameListEditorState state;
+            UI::Hint("インスペクタの Tag で選べる名前です。スクリプトの CompareTag・FindObjectsWithTag で使います。");
+            UI::Hint("オブジェクトは名前で覚えているので、ここで名前を変えても付けたタグは変わりません。");
+            DrawNameListEditor(state, {
+                .names = &GameObjectTags::Names,
+                .setNames = &GameObjectTags::SetNames,
+                .maxCount = 0,
+                .addLabel = "タグを足す",
+                .newNamePrefix = "Tag",
+            });
         }
 
         /// @brief 起動時に開くシーンを選ぶ欄
@@ -611,6 +656,14 @@ namespace CoreEngine
             .placement = Editor::PanelPlacement::SettingsSection,
             .group = Editor::PanelGroup::General,
             .draw = [] { DrawCollisionLayerSettings(); },
+            });
+
+        // オブジェクトに付けるタグの名前
+        AddPanel({
+            .id = "Tags",
+            .placement = Editor::PanelPlacement::SettingsSection,
+            .group = Editor::PanelGroup::General,
+            .draw = [] { DrawTagSettings(); },
             });
 
         // ポストエフェクトはシーンが持つ見た目なので、シーンに置いた

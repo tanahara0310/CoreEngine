@@ -10,6 +10,7 @@
 #include "Editor/Inspector/ComponentInspectors.h"
 #include "Editor/Inspector/InspectorLayout.h"
 #include "Editor/Inspector/InspectorRenderer.h"
+#include "Editor/Inspector/TagField.h"
 #include "Editor/Scene/ComponentEditing.h"
 #include "Editor/Scene/EditorSceneAccess.h"
 #include "Editor/Scene/ObjectEditing.h"
@@ -39,6 +40,9 @@ namespace CoreEngine::Editor::ObjectInspector
         /// プレハブの行の右クリックのメニュー
         constexpr const char* kPrefabMenuId = "##prefabMenu";
 
+        /// タグの行の右クリックのメニュー（プレハブから作ったものだけ）
+        constexpr const char* kTagMenuId = "##tagMenu";
+
         /// コンポーネントの ⋮ のメニュー
         constexpr const char* kComponentMenuId = "##componentMenu";
 
@@ -60,7 +64,45 @@ namespace CoreEngine::Editor::ObjectInspector
             return name;
         }
 
-        /// @brief 先頭の行（種類の記号・有効・名前・⋮）と、プレハブの行を描く
+        /// @brief タグの行を描く（プレハブから作ったもので、プレハブと違えば左端に線を引く）
+        /// @return 値が変更されたら true
+        bool DrawTagRow(GameObject& object)
+        {
+            const PrefabSystem::PrefabContents* const prefab = object.IsPrefabInstance()
+                ? PrefabSystem::Load(object.GetPrefab().GetValue()) : nullptr;
+            const bool overridden = prefab && prefab->tag != object.GetTag();
+
+            const ImVec2 rowStart = ImGui::GetCursorScreenPos();
+            const bool labelHovered = InspectorLayout::BeginRow("Tag", Theme::kTextDim, prefab ? kTagMenuId : nullptr);
+            std::string tag = object.GetTag();
+            const bool changed = TagField::Draw(tag) && ObjectEditing::SetTag(object, tag);
+            if (overridden) {
+                ImGui::GetWindowDrawList()->AddRectFilled(
+                    ImVec2(rowStart.x - 4.0f, rowStart.y), ImVec2(rowStart.x - 1.0f, ImGui::GetItemRectMax().y),
+                    ImGui::GetColorU32(Theme::kAccent));
+            }
+            if (labelHovered) {
+                ImGui::SetTooltip(prefab ? "スクリプトの CompareTag・FindObjectsWithTag で見分ける名札\n右クリックでプレハブの操作"
+                                         : "スクリプトの CompareTag・FindObjectsWithTag で見分ける名札");
+            }
+
+            if (prefab && ImGui::BeginPopup(kTagMenuId)) {
+                ImGui::TextDisabled("タグ（プレハブでは %s）", prefab->tag.c_str());
+                ImGui::Separator();
+                const std::string prefabTag = prefab->tag;
+                if (ImGui::MenuItem("プレハブの値に戻す", nullptr, false, overridden)) {
+                    ObjectEditing::SetTag(object, prefabTag);
+                }
+                GameObjectManager* const manager = object.GetObjectManager();
+                if (ImGui::MenuItem("このタグをプレハブへ適用", nullptr, false, overridden && manager != nullptr)) {
+                    PrefabEditing::ApplyTag(*manager, object);
+                }
+                ImGui::EndPopup();
+            }
+            return changed;
+        }
+
+        /// @brief 先頭の行（種類の記号・有効・名前・⋮）と、タグとプレハブの行を描く
         /// @return 値が変更されたら true
         bool DrawHeader(GameObject& object, const Callbacks& callbacks)
         {
@@ -120,6 +162,8 @@ namespace CoreEngine::Editor::ObjectInspector
                 }
                 ImGui::EndPopup();
             }
+
+            changed |= DrawTagRow(object);
 
             // プレハブから作ったものは、元のプレハブを参照の欄で出す
             if (object.IsPrefabInstance()) {

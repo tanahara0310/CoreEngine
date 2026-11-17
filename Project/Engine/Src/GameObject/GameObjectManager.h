@@ -9,6 +9,7 @@
 #include <functional>
 #include <map>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <unordered_map>
 
@@ -142,6 +143,15 @@ namespace CoreEngine
         /// @return 見つからなければ nullptr（削除マーク済みは返さない）
         /// @note `UpdateAll()` の途中で作られ、まだ一覧に加わっていないオブジェクトも探す。
         GameObject* FindObjectByName(const std::string& name) const;
+
+        /// @brief タグが一致する最初のオブジェクトを引く
+        /// @return 見つからなければ nullptr（削除マーク済みは返さない・無効のものは返す）
+        /// @note `UpdateAll()` の途中で作られ、まだ一覧に加わっていないオブジェクトも探す。
+        GameObject* FindObjectWithTag(std::string_view tag) const;
+
+        /// @brief タグが一致するオブジェクトを全部引く（並びは登録順）
+        /// @note 削除マーク済みは含めない・無効のものは含める。
+        std::vector<GameObject*> FindObjectsWithTag(std::string_view tag) const;
 
         /// @brief オブジェクトの ID を差し替える
         /// @return 他のオブジェクトが使っている ID なら差し替えずに false

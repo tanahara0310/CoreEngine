@@ -127,5 +127,6 @@
     ],
     "id": "5a2d000000000002",
     "name": "Player",
-    "order": 18
+    "order": 18,
+    "tag": "Player"
 }

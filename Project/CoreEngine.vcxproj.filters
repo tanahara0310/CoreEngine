@@ -79,6 +79,9 @@
     <ClCompile Include="Engine\Src\Editor\Inspector\PrefabAssetInspector.cpp">
       <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Inspector\TagField.cpp">
+      <Filter>Engine\Src\Editor\Inspector</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Command\EditorCommandStack.cpp">
       <Filter>Engine\Src\Editor\Command</Filter>
     </ClCompile>
@@ -613,6 +616,9 @@
     <ClCompile Include="Engine\Src\EngineSystem\Settings\CVarSettingsSection.cpp">
       <Filter>Engine\Src\EngineSystem\Settings</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\EngineSystem\Settings\ProjectNameList.cpp">
+      <Filter>Engine\Src\EngineSystem\Settings</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\EngineSystem\Settings\ProjectSettings.cpp">
       <Filter>Engine\Src\EngineSystem\Settings</Filter>
     </ClCompile>
@@ -1139,6 +1145,9 @@
       <Filter>Engine\Src\GameObject</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\GameObjectManager.cpp">
+      <Filter>Engine\Src\GameObject</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\GameObjectTags.cpp">
       <Filter>Engine\Src\GameObject</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\ObjectId.cpp">
@@ -2196,6 +2205,9 @@
     <ClInclude Include="Engine\Src\Editor\Inspector\PrefabAssetInspector.h">
       <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Inspector\TagField.h">
+      <Filter>Engine\Src\Editor\Inspector</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Command\EditorCommand.h">
       <Filter>Engine\Src\Editor\Command</Filter>
     </ClInclude>
@@ -2596,6 +2608,9 @@
       <Filter>Engine\Src\EngineSystem\Settings</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\EngineSystem\Settings\CVarSettingsSection.h">
+      <Filter>Engine\Src\EngineSystem\Settings</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\EngineSystem\Settings\ProjectNameList.h">
       <Filter>Engine\Src\EngineSystem\Settings</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\EngineSystem\Settings\ProjectSettings.h">
@@ -3586,6 +3601,9 @@
       <Filter>Engine\Src\GameObject</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\GameObjectManager.h">
+      <Filter>Engine\Src\GameObject</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\GameObject\GameObjectTags.h">
       <Filter>Engine\Src\GameObject</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\GameObject\IObjectSpawner.h">

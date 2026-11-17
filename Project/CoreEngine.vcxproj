@@ -226,6 +226,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Editor\Inspector\InspectorRenderer.cpp" />
     <ClCompile Include="Engine\Src\Editor\Inspector\ObjectInspector.cpp" />
     <ClCompile Include="Engine\Src\Editor\Inspector\PrefabAssetInspector.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Inspector\TagField.cpp" />
     <ClCompile Include="Engine\Src\Editor\Command\EditorCommandStack.cpp" />
     <ClCompile Include="Engine\Src\Editor\Panel\EditorPanelRegistry.cpp" />
     <ClCompile Include="Engine\Src\Editor\Panel\EditorMenuRegistry.cpp" />
@@ -407,6 +408,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\EngineSystem\Factory\GraphicsComponentFactory.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Settings\EditorSettingsSubsystem.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Settings\CVarSettingsSection.cpp" />
+    <ClCompile Include="Engine\Src\EngineSystem\Settings\ProjectNameList.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Settings\ProjectSettings.cpp" />
     <ClCompile Include="Engine\Src\Utility\CVar\CVar.cpp" />
     <ClCompile Include="Engine\Src\Utility\CVar\CVarConsole.cpp" />
@@ -583,6 +585,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\GameObject\Component\Transform\TransformComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\GameObject.cpp" />
     <ClCompile Include="Engine\Src\GameObject\GameObjectManager.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\GameObjectTags.cpp" />
     <ClCompile Include="Engine\Src\GameObject\ObjectId.cpp" />
     <ClCompile Include="Engine\Src\Particle\Core\EmitterPlayback.cpp" />
     <ClCompile Include="Engine\Src\Particle\Core\ParticleEmitter.cpp" />
@@ -1468,6 +1471,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Editor\Inspector\InspectorRenderer.h" />
     <ClInclude Include="Engine\Src\Editor\Inspector\ObjectInspector.h" />
     <ClInclude Include="Engine\Src\Editor\Inspector\PrefabAssetInspector.h" />
+    <ClInclude Include="Engine\Src\Editor\Inspector\TagField.h" />
     <ClInclude Include="Engine\Src\Editor\Command\EditorCommand.h" />
     <ClInclude Include="Engine\Src\Editor\Command\EditorCommandStack.h" />
     <ClInclude Include="Engine\Src\Editor\Panel\EditorPanelRegistry.h" />
@@ -1602,6 +1606,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\EngineSystem\Settings\EditorSettingsSubsystem.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Settings\IEditorSettingsSection.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Settings\CVarSettingsSection.h" />
+    <ClInclude Include="Engine\Src\EngineSystem\Settings\ProjectNameList.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Settings\ProjectSettings.h" />
     <ClInclude Include="Engine\Src\Utility\Asset\NamedAssetLibrary.h" />
     <ClInclude Include="Engine\Src\Utility\CVar\CVar.h" />
@@ -1932,6 +1937,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\GameObject\Component\Transform\TransformComponent.h" />
     <ClInclude Include="Engine\Src\GameObject\GameObject.h" />
     <ClInclude Include="Engine\Src\GameObject\GameObjectManager.h" />
+    <ClInclude Include="Engine\Src\GameObject\GameObjectTags.h" />
     <ClInclude Include="Engine\Src\GameObject\IObjectSpawner.h" />
     <ClInclude Include="Engine\Src\GameObject\ObjectId.h" />
     <ClInclude Include="Engine\Src\Particle\IParticleSystem.h" />

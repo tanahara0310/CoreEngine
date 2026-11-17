@@ -22,9 +22,10 @@ namespace CoreEngine::Editor
     namespace
     {
         /// @brief プレハブを書き換え、シーンでそのプレハブから置いたオブジェクトにも反映する
-        bool WritePrefab(GameObjectManager& manager, const Reflection::AssetRefValue& prefab, const json& components)
+        bool WritePrefab(GameObjectManager& manager, const Reflection::AssetRefValue& prefab,
+                         const PrefabSystem::PrefabContents& contents)
         {
-            if (PrefabSystem::UpdatePrefab(manager, prefab, components)) {
+            if (PrefabSystem::UpdatePrefab(manager, prefab, contents)) {
                 return true;
             }
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System,
@@ -39,8 +40,8 @@ namespace CoreEngine::Editor
             return nullptr;
         }
         const Reflection::AssetRefValue prefab{ info.guid, ToAssetPath(info) };
-        const json* const components = PrefabSystem::LoadComponents(prefab);
-        if (!components) {
+        const PrefabSystem::PrefabContents* const contents = PrefabSystem::Load(prefab);
+        if (!contents) {
             Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
                 "PrefabMode: プレハブ \"{}\" を読めないので開けません", prefab.path);
             return nullptr;
@@ -62,7 +63,8 @@ namespace CoreEngine::Editor
         owned->SetName(info.name);
         GameObject* const object = manager.AddObject(std::move(owned));
         json state = json::object();
-        state["components"] = *components;
+        state["tag"] = contents->tag;
+        state["components"] = contents->components;
         object->Deserialize(state);
         object->SetSerializeEnabled(false);
 
@@ -70,8 +72,8 @@ namespace CoreEngine::Editor
         prefab_ = prefab;
         const std::size_t slash = prefab.path.find_last_of("/\\");
         fileName_ = slash == std::string::npos ? prefab.path : prefab.path.substr(slash + 1);
-        opened_ = *components;
-        written_ = PrefabSystem::MakePrefabComponents(*object);
+        opened_ = *contents;
+        written_ = PrefabSystem::MakePrefabContents(*object);
         edited_ = false;
         manager.SetIsolatedObject(objectId_);
 
@@ -106,7 +108,7 @@ namespace CoreEngine::Editor
         // 開いてから閉じるまでの書き換えを、シーンの履歴の 1 件にする
         if (edited_) {
             stack.Push(MakeValueCommand(fileName_ + " を編集", opened_, written_,
-                [prefab = prefab_](const json& value) {
+                [prefab = prefab_](const PrefabSystem::PrefabContents& value) {
                     if (GameObjectManager* const objects = SceneAccess::Objects()) {
                         WritePrefab(*objects, prefab, value);
                     }
@@ -124,8 +126,8 @@ namespace CoreEngine::Editor
         objectId_ = {};
         prefab_ = {};
         fileName_.clear();
-        opened_ = json{};
-        written_ = json{};
+        opened_ = {};
+        written_ = {};
         hasCameraState_ = false;
     }
 
@@ -153,7 +155,7 @@ namespace CoreEngine::Editor
 
     void PrefabMode::Flush(GameObjectManager& manager, const GameObject& object)
     {
-        json current = PrefabSystem::MakePrefabComponents(object);
+        PrefabSystem::PrefabContents current = PrefabSystem::MakePrefabContents(object);
         if (PrefabSystem::SameValue(current, written_)) {
             return;
         }

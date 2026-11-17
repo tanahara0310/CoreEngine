@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.89.13">
+<meta name="engine-version" content="0.90.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2611,7 +2611,7 @@ kbd {
     │  │  ├─ Models/  Textures/     モデル・テクスチャ（名前は自由）
     │  │  └─ Sounds/ など           音（名前は自由）
     │  ├─ Config/
-    │  │  ├─ EngineSettings/        ★ Project.json・Layers.json・InputActions.json・CVars.json
+    │  │  ├─ EngineSettings/        ★ Project.json・Layers.json・Tags.json・InputActions.json・CVars.json
     │  │  └─ ScriptTemplates/       スクリプトの雛形（*.as.txt・任意）
     │  └─ Saved/                    自分だけの状態とセーブデータ（git の対象外）
     ├─ Intermediate/                作り直せるもの：ログ・テクスチャのキャッシュ（git の対象外）
@@ -2626,6 +2626,7 @@ kbd {
     <tbody>
       <tr><td><span class="path">Project.json</span></td><td>プロジェクト名・起動シーン（<code>initialScene</code>）・ローディング画面（<code>splashImage</code> など）・シーンを切り替えるときのロード画面（<code>loadingScreenShader</code> など）。<strong>このファイルがあるフォルダがプロジェクト</strong></td><td>Project Settings ▸ Startup</td></tr>
       <tr><td><span class="path">Layers.json</span></td><td>当たり判定のレイヤーの名前</td><td>Project Settings ▸ Collision Layers</td></tr>
+      <tr><td><span class="path">Tags.json</span></td><td>オブジェクトに付けるタグの名前（無ければ Untagged・Player の 2 つ）</td><td>Project Settings ▸ Tags</td></tr>
       <tr><td><span class="path">InputActions.json</span></td><td>入力アクションと既定のキー</td><td>テキストエディタ</td></tr>
       <tr><td><span class="path">CVars.json</span></td><td>既定から変えたエンジンの設定（描画・物理など）</td><td>Project Settings（自動保存）</td></tr>
     </tbody>
@@ -3053,6 +3054,7 @@ kbd {
     <li><strong>有効のチェック</strong>：外すとそのオブジェクトの更新も描画も止まります。</li>
     <li><strong>名前の欄</strong>：オブジェクトの名前をここで変えます。スクリプトの <code>FindObject</code> はこの名前で探します。</li>
     <li><strong>⋮ メニュー</strong>：<span class="ui">このオブジェクトだけ保存</span>。</li>
+    <li><strong>Tag の行</strong>：オブジェクトの種類を表すタグを一覧から選びます（<a href="#script-tags">タグで見分ける</a>）。一覧は <span class="ui">Project Settings ▸ Tags</span> で足します。プレハブから作ったオブジェクトでプレハブと違うタグにすると、行の左端に青い線が出ます（ラベルを右クリックで <span class="ui">プレハブの値に戻す</span>・<span class="ui">このタグをプレハブへ適用</span>）。</li>
     <li>プレハブから作ったオブジェクトは <span class="ui">Prefab</span> の行が出ます（右クリックで <span class="ui">プレハブへ適用</span>・<span class="ui">プレハブとのつながりを外す</span>）。</li>
   </ul>
   <div class="callout warn"><p>名前の変更と有効のチェックの切り替えは Undo に積まれず、「未保存の変更」の印も付かないことがあります。変えたら <kbd>Ctrl</kbd>+<kbd>S</kbd> で保存してください。</p></div>
@@ -3420,6 +3422,7 @@ kbd {
       <tr><td><span class="ui">個人の作業状態</span></td><td>エディタ（<code>d.</code>）の CVar</td><td><span class="path">Saved/EditorSettings/EditorState.json</span>（自分だけ）</td></tr>
       <tr><td><span class="ui">Startup</span></td><td>ゲームの起動シーン・起動中のローディング画面（写真・題名・ヒント）・シーンを切り替えるときのロード画面（シェーダ・画像）</td><td><span class="path">Project.json</span></td></tr>
       <tr><td><span class="ui">Collision Layers</span></td><td>当たり判定のレイヤーの名前</td><td><span class="path">Layers.json</span></td></tr>
+      <tr><td><span class="ui">Tags</span></td><td>オブジェクトに付けるタグの名前</td><td><span class="path">Tags.json</span></td></tr>
       <tr><td><span class="ui">Scene Settings</span></td><td>このシーンの機能・床・<strong>レイヤーの当たりの組み合わせ</strong></td><td><span class="path">_scene.json</span>（<kbd>Ctrl</kbd>+<kbd>S</kbd> で保存）</td></tr>
       <tr><td><span class="ui">Physics</span>・<span class="ui">Shading</span>・<span class="ui">Rendering Techniques</span> など</td><td>物理・描画の機能ごとの設定</td><td>CVar</td></tr>
       <tr><td><span class="ui">Editor Settings</span></td><td>エディタの設定ファイルの状態・リセット・バックアップ復元</td><td><span class="path">Saved/EditorSettings/</span></td></tr>
@@ -3517,6 +3520,13 @@ kbd {
     <li><strong>当たる組み合わせを決める</strong><span class="ui">Scene Settings</span> の <span class="ui">当たり判定のレイヤー</span> の表で、当たる組み合わせにチェックを入れます（チェックの無い組み合わせは判定しません）。この表はシーンごとなので、<kbd>Ctrl</kbd>+<kbd>S</kbd> で保存します。</li>
   </ol>
   <div class="callout tip"><p>シューティングなら「自機の弾 × 敵」「敵の弾 × 自機」「敵 × 自機」だけにチェックを入れると、弾どうしや敵どうしの無駄な判定がなくなり、スクリプトでの見分けも簡単になります。</p></div>
+
+  <h2 id="settings-tags">タグの名前を決める</h2>
+  <ol class="steps">
+    <li><strong>名前を並べる</strong><span class="ui">Tags</span> で <span class="ui">タグを足す</span>、名前を入れて <span class="ui">適用</span>。先頭の <code>Untagged</code> は必ず残ります。</li>
+    <li><strong>オブジェクトに付ける</strong>インスペクタの <span class="ui">Tag</span> の行に、足した名前がすぐ出ます（起動し直す必要はありません）。</li>
+  </ol>
+  <p>一覧は <span class="path">Application/Config/EngineSettings/Tags.json</span> に保存されます。オブジェクトはタグを名前で覚えているので、ここで名前を変えても付けてあるタグは変わりません。スクリプトでの使い方は <a href="#script-tags">タグで見分ける</a> にあります。</p>
 
   <h2 id="settings-cvar">CVar パネル</h2>
   <p>CVar は名前付きのエンジンの設定値です（例：<code>sys.Physics.Gravity</code>）。ドラッグで変え、<kbd>Alt</kbd>+ドラッグで細かく、<kbd>Ctrl</kbd>+クリックで直接入力します。既定値から変えた項目は黄色で表示され、右クリックで <span class="ui">デフォルトに戻す</span>。Console の <code>cvar</code> コマンドや、スクリプトの <a href="#api-CVar">CVar</a> でも読み書きできます。</p>
@@ -4325,11 +4335,66 @@ kbd {
     <tbody>
       <tr><td><code>[ObjectRef] GameObject@ target;</code></td><td>シーンに置いてある決まった相手。インスペクタで繋ぐので、名前を変えても切れません。<strong>いちばんおすすめ</strong>。</td></tr>
       <tr><td><code>owner.FindObject("Player")</code></td><td>名前で探す。プレハブから出したオブジェクトがシーンの相手を探すときなど。毎フレームではなく Start で探して控えます。</td></tr>
+      <tr><td><code>owner.FindObjectsWithTag("Enemy")</code></td><td>同じタグを付けた物を全部集める。敵を全部止める・残りの数を数えるときなど（<a href="#script-tags">次の節</a>）。</td></tr>
       <tr><td>当たり判定の <code>other.gameObject</code></td><td>ぶつかった相手</td></tr>
       <tr><td><code>Physics::OverlapSphere</code>・<code>Physics::Raycast</code></td><td>範囲の中や、視線の先にいる相手</td></tr>
     </tbody>
   </table>
   </div>
+
+  <h2 id="script-tags">タグで見分ける</h2>
+  <p>タグはオブジェクトに付ける 1 つの名前です。「プレイヤー」「敵」「拾える物」のような種類を表し、当たり判定の相手を見分けたり、同じ種類の物をまとめて探したりするのに使います。オブジェクトには 1 つだけ付き、何も付けていないときは <code>Untagged</code> です。</p>
+  <ol class="steps">
+    <li><strong>タグの名前を足す</strong><span class="ui">Edit<span class="arrow">▸</span>Project Settings…<span class="arrow">▸</span>Tags</span>。先頭の <code>Untagged</code> は消せません。新しいプロジェクトには <code>Untagged</code> と <code>Player</code> があります。</li>
+    <li><strong>オブジェクトに付ける</strong>：インスペクタの上の <strong>Tag</strong> の行から選びます。Undo で戻せて、シーンと一緒に保存されます。</li>
+    <li><strong>スクリプトで見る</strong>：下の例のように <code>CompareTag</code> で比べます。</li>
+  </ol>
+  <script type="text/x-code" data-lang="as" data-file="Coin.as">
+    using namespace CoreEngine;
+
+    class Coin : ScriptComponent
+    {
+        void OnTriggerEnter(Collision@ other)
+        {
+            if (!other.gameObject.CompareTag("Player")) {
+                return;                          // プレイヤー以外が触れても何もしない
+            }
+            owner.Destroy();
+        }
+    }
+  </script>
+  <script type="text/x-code" data-lang="as">
+    // Enemy のタグを持つ物を全部止める
+    array<GameObject@>@ enemies = owner.FindObjectsWithTag("Enemy");
+    for (uint i = 0; i < enemies.length(); ++i) {
+        enemies[i].active = false;
+    }
+
+    // 1 つだけでよいとき（無ければ null）
+    GameObject@ player = owner.FindObjectWithTag("Player");
+
+    // タグを読む・付け替える
+    Log("タグ: " + owner.tag);
+    owner.tag = "Enemy";
+  </script>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>書き方</th><th>中身</th></tr></thead>
+    <tbody>
+      <tr><td><code>obj.tag</code></td><td>付いているタグ。書き込むと付け替わります。一覧に無い名前を書くとスクリプトのエラーになります。</td></tr>
+      <tr><td><code>obj.CompareTag("Player")</code></td><td>そのタグか。一覧に無い名前で比べると、Console に 1 回だけ警告が出ます（綴りの間違いに気付けます）。</td></tr>
+      <tr><td><code>owner.FindObjectWithTag("Player")</code></td><td>そのタグを持つ物を 1 つ。無ければ <code>null</code>。いくつもあるときにどれが返るかは決まっていません。</td></tr>
+      <tr><td><code>owner.FindObjectsWithTag("Enemy")</code></td><td>そのタグを持つ物を全部、配列で。無ければ空の配列。</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li>探すのは同じシーンの中です。止めている（<code>active</code> が false の）物も含み、破棄を予約した物は含みません。</li>
+    <li>シーンの全部を調べるので、毎フレームではなく Start や、必要になったときに呼びます。</li>
+    <li><strong>プレハブ</strong>もタグを持ちます。プレハブから出した物には、そのタグが付いています。置いた物だけタグを変えると、インスペクタの Tag の左に線が出ます。行の右の <strong>⋮</strong> から、プレハブの値に戻す・プレハブへ適用するを選べます。</li>
+    <li>タグは名前で覚えています。Project Settings でタグの名前を変えたり消したりしても、付けてあるタグは変わりません（一覧に無いタグは、インスペクタに「一覧に無い」と出ます）。</li>
+  </ul>
+  <div class="callout tip" data-title="タグとレイヤーの違い"><p>タグは「何者か」を表す名前で、スクリプトが読むだけです。当たり判定や描画には何も効きません。<a href="#physics-layers">コリジョンのレイヤー</a> はコライダーごとに付き、どのレイヤー同士がぶつかるか・レイキャストで何を拾うかを決めます。「敵の弾は敵に当たらない」はレイヤー、「当たった相手が敵か」はタグかレイヤーのどちらでも見分けられます。</p></div>
 
   <h2 id="objects-getcomponent">スクリプトを取り出して呼ぶ</h2>
   <p>見つけたオブジェクトに付いているスクリプトは <code>GetComponent</code> で取り出します。受け取る変数を <code>@</code> を付けて渡すのがポイントです。取り出したら、そのクラスの公開メソッドや公開メンバ変数を直接使えます。</p>
@@ -5128,7 +5193,7 @@ kbd {
         }
     }
   </script>
-  <p>レイヤーで見分けるときは <code>if (other.layer == CollisionLayer::Enemy)</code> のように書きます。レイヤーの名前はプロジェクトごとに違います（次の節）。</p>
+  <p>レイヤーで見分けるときは <code>if (other.layer == CollisionLayer::Enemy)</code> のように書きます。レイヤーの名前はプロジェクトごとに違います（次の節）。オブジェクトのタグで見分けるときは <code>if (other.gameObject.CompareTag("Enemy"))</code> です（<a href="#script-tags">タグで見分ける</a>）。</p>
   <div class="table-wrap">
   <table>
     <thead><tr><th>Collision のプロパティ</th><th>中身</th></tr></thead>
@@ -8933,6 +8998,8 @@ kbd {
       <tr><td>生成</td><td><code>Instantiate(prefab)</code></td><td><code>owner.InstantiatePrefab(path, "名前")</code></td></tr>
       <tr><td>破棄</td><td><code>Destroy(gameObject)</code></td><td><code>owner.Destroy()</code></td></tr>
       <tr><td>名前で探す</td><td><code>GameObject.Find("A")</code></td><td><code>owner.FindObject("A")</code></td></tr>
+      <tr><td>タグを比べる</td><td><code>other.CompareTag("Player")</code></td><td><code>other.gameObject.CompareTag("Player")</code></td></tr>
+      <tr><td>タグで探す</td><td><code>GameObject.FindGameObjectsWithTag("Enemy")</code></td><td><code>owner.FindObjectsWithTag("Enemy")</code></td></tr>
       <tr><td>経過時間</td><td><code>Time.deltaTime</code></td><td><code>Time::DeltaTime()</code></td></tr>
       <tr><td>入力</td><td><code>Input.GetButtonDown("Jump")</code></td><td><code>Input::IsActionTriggered(InputAction::Jump)</code></td></tr>
       <tr><td>ログ</td><td><code>Debug.Log(x)</code></td><td><code>Log("" + x)</code>（引数は文字列）</td></tr>
@@ -11264,7 +11331,8 @@ python Tools/OkinawaBeach/bake_araha_walk.py
         ],
         "id": "333dc56ddffd8ea0",
         "name": "Player",
-        "order": 2
+        "order": 2,
+        "tag": "Player"
     }
   </script>
   <div class="table-wrap">
@@ -11274,6 +11342,7 @@ python Tools/OkinawaBeach/bake_araha_walk.py
       <tr><td><code>id</code></td><td>オブジェクトの ID。<code>[ObjectRef]</code> や親子の参照はこれで繋がる</td></tr>
       <tr><td><code>name</code> ／ <code>active</code></td><td>名前 ／ 有効か</td></tr>
       <tr><td><code>order</code></td><td>Hierarchy に並ぶ順</td></tr>
+      <tr><td><code>tag</code></td><td>タグ（<a href="#script-tags">タグで見分ける</a>）。<code>Untagged</code> のときは書かない</td></tr>
       <tr><td><code>components[].type</code></td><td>コンポーネントの型名。スクリプトはクラス名</td></tr>
       <tr><td><code>components[].parameters</code></td><td>インスペクタの値。回転（<code>rotate</code>）はラジアン</td></tr>
     </tbody>
@@ -11281,7 +11350,7 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   </div>
 
   <h2 id="format-prefab">プレハブと .meta</h2>
-  <p><span class="path">.prefab</span> は、オブジェクトの JSON と同じ形の <code>components</code> を持つファイルです。Project に入れたファイルには、同じ名前の <span class="path">.meta</span> ができ、<strong>GUID</strong> を持ちます。参照は GUID で繋がっているので、Project で名前を変えたり移したりしても切れません（<span class="path">.meta</span> も一緒に動かします。エクスプローラーで動かすときは <span class="path">.meta</span> を忘れずに）。</p>
+  <p><span class="path">.prefab</span> は、オブジェクトの JSON と同じ形の <code>components</code> と、タグ（<code>tag</code>。<code>Untagged</code> のときは書かない）を持つファイルです。Project に入れたファイルには、同じ名前の <span class="path">.meta</span> ができ、<strong>GUID</strong> を持ちます。参照は GUID で繋がっているので、Project で名前を変えたり移したりしても切れません（<span class="path">.meta</span> も一緒に動かします。エクスプローラーで動かすときは <span class="path">.meta</span> を忘れずに）。</p>
   <script type="text/x-code" data-lang="json" data-file="PlayerBullet.prefab.meta">
     {
         "guid": "62235146-8ad7-431b-96a1-be2c6b47f5f9",
@@ -11307,12 +11376,19 @@ python Tools/OkinawaBeach/bake_araha_walk.py
         "version": "1.0"
     }
   </script>
+  <script type="text/x-code" data-lang="json" data-file="Tags.json">
+    {
+        "tags": [ "Untagged", "Player", "Enemy", "Pickup" ],
+        "version": "1.0"
+    }
+  </script>
   <div class="table-wrap">
   <table>
     <thead><tr><th>ファイル</th><th>中身</th></tr></thead>
     <tbody>
       <tr><td><span class="path">Project.json</span></td><td>プロジェクト名（<code>name</code>）・起動シーン（<code>initialScene</code>）・ローディング画面の写真（<code>splashImage</code>。省くとエンジンの既定）・ゲームの画面の題名（<code>splashTitle</code>。省くとプロジェクト名）・小見出し（<code>splashSubtitle</code>）・ヒント（<code>splashTips</code>）。<a href="#settings-splash">起動中のローディング画面</a>。シーンを切り替えるときのロード画面のシェーダ（<code>loadingScreenShader</code>。省くとエンジンの既定）と画像（<code>loadingScreenImages</code>）。<a href="#settings-loading-screen">シーンを切り替えるときのロード画面</a>。自分のポストエフェクトの並び（<code>postEffects</code>）。<a href="#pe-project">プロジェクトのポストエフェクト</a>。引数なしの <code>Scene::ChangeScene</code> の遷移（<code>defaultTransition</code>）。<a href="#scenes-transition">遷移を指定する</a>。ゲームの書き出しに入れないシーン（<code>exportExcludedScenes</code>）。<a href="#export-scenes">書き出すシーンを選ぶ</a></td></tr>
       <tr><td><span class="path">Layers.json</span></td><td>レイヤーの名前の並び。先頭は必ず <code>Default</code>、最大 32 個。並びの番号がスクリプトの <code>CollisionLayer</code> の値になる</td></tr>
+      <tr><td><span class="path">Tags.json</span></td><td>タグの名前の並び。先頭は必ず <code>Untagged</code>。無ければ <code>Untagged</code>・<code>Player</code> の 2 つ。<a href="#script-tags">タグで見分ける</a></td></tr>
       <tr><td><span class="path">InputActions.json</span></td><td>入力アクション（<code>id</code>・<code>display</code>・<code>context</code>・<code>defaults</code>）。<a href="#editor-settings-keyconfig">書き方</a></td></tr>
       <tr><td><span class="path">CVars.json</span></td><td>既定から変えたプロジェクト全体の CVar（<code>"r.TAA.Enabled": false</code> のような名前と値）</td></tr>
     </tbody>
@@ -11437,6 +11513,18 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-90-0">v0.90.0 <span class="dim">（2026-11-17）</span></h3>
+  <p>オブジェクトにタグを付けられるようにした版です（<a href="#script-tags">タグで見分ける</a>）。タグを使わないシーン・プレハブ・スクリプトは、これまでと同じに動きます。</p>
+  <ul>
+    <li><strong>タグの一覧</strong>：<span class="ui">Edit<span class="arrow">▸</span>Project Settings…<span class="arrow">▸</span>Tags</span> でタグの名前を並べます。一覧は <span class="path">Application/Config/EngineSettings/Tags.json</span> に保存され、先頭は必ず <code>Untagged</code> です。ファイルが無いプロジェクトは <code>Untagged</code>・<code>Player</code> の 2 つで始まります（<a href="#settings-tags">タグの名前を決める</a>）。</li>
+    <li><strong>インスペクタの Tag の行</strong>：オブジェクトの名前の下の <span class="ui">Tag</span> から選びます。Undo で戻せて、シーンの JSON に <code>"tag"</code> として保存されます（<code>Untagged</code> のときは書きません）。一覧から消したタグは「一覧に無い」と出ます。</li>
+    <li><strong>プレハブのタグ</strong>：<span class="path">.prefab</span> もタグを持ち、プレハブから出した物にそのタグが付きます。Project でプレハブを選んだインスペクタと、プレハブの編集の画面でも変えられます。置いた物だけタグを変えたときは上書きとして残り、Tag の行の <strong>⋮</strong> からプレハブの値に戻す・プレハブへ適用するを選べます。</li>
+    <li><strong>スクリプト</strong>：<a href="#api-GameObject">GameObject</a> に <code>tag</code>・<code>CompareTag</code>・<code>FindObjectWithTag</code>・<code>FindObjectsWithTag</code> を足しました。一覧に無いタグを <code>tag</code> へ書くと例外、<code>CompareTag</code> で比べると 1 回だけ警告が出ます。<span class="path">as.predefined</span> も作り直しました。</li>
+    <li><strong>設定の画面</strong>：Collision Layers と Tags の名前の一覧の編集を、同じ部品（<span class="path">ProjectNameList</span>）で読み書きするようにしました。Collision Layers の動きは変わりません。</li>
+    <li><strong>サンプル</strong>：<span class="path">Projects/Sample2D</span> のコインとゴールは、プレイヤーを名前ではなく <code>Player</code> のタグで見分けます。</li>
+    <li><strong>試験のシーン</strong>：<span class="path">Projects/EngineTests</span> に <code>GameObject_Tags</code>（Enemy のタグを持つ箱 2 つとプレハブから出す 1 つを集めて持ち上げる）を足しました。</li>
+  </ul>
 
   <h3 id="changelog-v0-89-13">v0.89.13 <span class="dim">（2026-11-17）</span></h3>
   <p>FFT の水面の小さな池で、水面の範囲の外まで水が描かれていたのを直した版です（<a href="#api-WaterSurface">水面</a>）。範囲がカメラの周り 256m 四方より大きい海の見た目は変わりません。</p>
@@ -12760,7 +12848,7 @@ class Rotator : ScriptComponent
 
   {
     id: "GameObject", kind: "class", cat: "基本", brief: "シーンに置かれたオブジェクト",
-    keywords: "オブジェクト 名前 探す 破棄 削除 有効 無効 プレハブ 生成 コンポーネント 取得 getcomponent",
+    keywords: "オブジェクト 名前 探す 破棄 削除 有効 無効 プレハブ 生成 コンポーネント 取得 getcomponent タグ tag comparetag",
     summary: "シーンに置かれた 1 つのオブジェクトを指すハンドルです。スクリプトからは <code>owner</code>・<code>FindObject</code>・<code>InstantiatePrefab</code> などで受け取り、自分で <code>new</code> することはできません。",
     decl: "class GameObject",
     intro: "<p>ハンドルは実体のポインタを持たず、使うたびに実体を引き直します。指す先が破棄された後にメソッドを呼んでもクラッシュはせず、コンソールに 1 回だけ警告を出して何もしません。続けて使うかどうかは <code>isAlive</code> で確かめます。</p>" +
@@ -12770,6 +12858,7 @@ class Rotator : ScriptComponent
         title: "プロパティ", members: [
           { n: "name", s: "string name", t: "rw", d: "オブジェクトの名前（ヒエラルキーに出る名前）。<code>FindObject</code> はこの名前で探します。" },
           { n: "active", s: "bool active", t: "rw", d: "有効か。<code>false</code> にすると Update・描画・物理の対象から外れます。" },
+          { n: "tag", s: "string tag", t: "rw", d: "タグ。何も付けていなければ <code>\"Untagged\"</code>。書き込むと付け替わります。プロジェクト設定の Tags に無い名前を書くと例外です（<a href=\"#script-tags\">タグで見分ける</a>）。" },
           { n: "isAlive", s: "bool isAlive", t: "ro", d: "実体があり、破棄の予約もされていなければ <code>true</code>。" },
           { n: "transform", s: "Transform@ transform", t: "ro", d: "位置・回転・拡大の <a href=\"#api-Transform\">Transform</a>。" },
           { n: "collider", s: "Collider@ collider", t: "ro", d: "当たり判定の <a href=\"#api-Collider\">Collider</a>。" }
@@ -12779,6 +12868,9 @@ class Rotator : ScriptComponent
         title: "メソッド", members: [
           { n: "Destroy", s: "void Destroy()", t: "m", d: "破棄を予約します。付いているコンポーネントの OnDestroy が呼ばれ、実体はフレームの終わりに取り除かれます。同じフレームのうちは <code>isAlive</code> が <code>false</code> を返します。" },
           { n: "FindObject", s: "GameObject@ FindObject(const string&in name) const", t: "m", d: "同じシーンから名前でオブジェクトを探します（破棄を予約したものは除く）。見つからなければ <code>null</code>。同じ名前が複数あるときは最初に見つかったもの。毎フレーム呼ぶより、Start で探して控えるほうが軽くなります。" },
+          { n: "CompareTag", s: "bool CompareTag(const string&in tag) const", t: "m", d: "このタグが付いているか。プロジェクト設定の Tags に無い名前で比べると、その名前ごとに 1 回だけ警告を出します（結果は <code>false</code>）。" },
+          { n: "FindObjectWithTag", s: "GameObject@ FindObjectWithTag(const string&in tag) const", t: "m", d: "同じシーンからこのタグを持つオブジェクトを 1 つ探します。止めている物も含み、破棄を予約したものは除きます。見つからなければ <code>null</code>。いくつもあるときにどれが返るかは決まっていません。" },
+          { n: "FindObjectsWithTag", s: "GameObject@[]@ FindObjectsWithTag(const string&in tag) const", t: "m", d: "同じシーンからこのタグを持つオブジェクトを全部集めます（止めている物を含み、破棄を予約したものは除く）。無ければ空の配列。シーンのオブジェクトを順に調べるので、毎フレームより必要なときに呼びます。" },
           { n: "GetComponent", s: "bool GetComponent(?&out component) const", t: "m", d: "付いているコンポーネントを型で探します。受け取る変数を <code>@</code> を付けて渡します（例：<code>owner.GetComponent(@player)</code>）。スクリプトのクラスでも、エンジンのコンポーネント型（<code>Rigidbody</code> など）でも使えます。見つかれば <code>true</code>。スクリプトのクラスは継いだクラスも一致します。" },
           { n: "InstantiatePrefab", s: "GameObject@ InstantiatePrefab(const string&in prefabPath, const string&in name) const", t: "m", d: "プレハブから 1 体作り、同じシーンに置きます。パスはプロジェクトの根からの相対（例：<code>\"Application/Assets/Prefabs/Rock.prefab\"</code>）。読めなければ <code>null</code>。作ったオブジェクトの Start は次のフレームの更新で呼ばれます。" },
           { n: "AddComponent", s: "bool AddComponent(const string&in typeName)", t: "m", d: "型名（<code>\"Rigidbody\"</code> やスクリプトのクラス名）のコンポーネントを足します。足せたら <code>true</code>。同じ型が付いていれば <code>false</code>、知らない型名は例外。エディタの道具（EditorWindow とメニューの関数）から呼ぶと <kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せます。" },

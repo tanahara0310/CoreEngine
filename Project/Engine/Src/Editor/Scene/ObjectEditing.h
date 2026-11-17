@@ -107,6 +107,10 @@ namespace CoreEngine
         /// @brief 有効・無効を切り替えて Undo に積む
         /// @return 積んだら true（今と同じなら何もしない）
         bool SetActive(GameObject& object, bool active);
+
+        /// @brief タグを変えて Undo に積む
+        /// @return 積んだら true（今と同じなら何もしない）
+        bool SetTag(GameObject& object, const std::string& tag);
     }
 }
 
