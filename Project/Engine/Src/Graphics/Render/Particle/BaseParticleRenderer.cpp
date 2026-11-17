@@ -4,6 +4,8 @@
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Graphics/RootSignature/ShaderBinder.h"
+#include "Graphics/Render/Particle/ParticleBindings.h"
 #include "Camera/Camera.h"
 #include <cassert>
 
@@ -47,12 +49,9 @@ namespace CoreEngine
         RootSignatureConfig config;
         config.ConfigureSampler("gSampler", SamplerConfig::Linear());
 
-        BuildShadersAndRootSignature(device_, GetVertexShaderPath(), GetPixelShaderPath(),
-            RenderPassTypeToString(GetRenderPassType()), config, "Particle");
-    }
-
-    int BaseParticleRenderer::GetRootParamIndex(const std::string& resourceName) const {
-        return FindRootParamIndex(reflectionData_.get(), resourceName);
+        const std::string name = RenderPassTypeToString(GetRenderPassType());
+        BuildShadersAndRootSignature(device_, GetVertexShaderPath(), GetPixelShaderPath(), name, config, "Particle");
+        bindings_ = BindingTable::Resolve(*reflectionData_, ParticleBind::kDecls, name);
     }
 
     bool BaseParticleRenderer::ValidateDrawCall(ParticleSystemComponent* particle) const {
@@ -69,43 +68,35 @@ namespace CoreEngine
     }
 
     void BaseParticleRenderer::SetupCommonResources(ParticleSystemComponent* particle, D3D12_GPU_DESCRIPTOR_HANDLE textureHandle) {
-        // インスタンシングリソースを設定
-        int instanceIdx = GetRootParamIndex("gParticle");
-        if (instanceIdx >= 0) {
-            cmdList_->SetGraphicsRootDescriptorTable(instanceIdx, particle->GetInstancingSrvHandleGPU());
-        }
-
-        // テクスチャを設定
-        int texIdx = GetRootParamIndex("gTexture");
-        if (texIdx >= 0) {
-            cmdList_->SetGraphicsRootDescriptorTable(texIdx, textureHandle);
-        }
-
-        BindFogResources();
+        BindDrawResources(particle->GetInstancingSrvHandleGPU(), textureHandle);
     }
 
-    void BaseParticleRenderer::BindFogResources() {
+    void BaseParticleRenderer::BindDrawResources(
+        D3D12_GPU_DESCRIPTOR_HANDLE instancingSrv, D3D12_GPU_DESCRIPTOR_HANDLE textureHandle) {
+        ShaderBinder binder(cmdList_, ShaderBinder::Pipeline::Graphics);
+
+        // インスタンシングリソースを設定
+        binder.Set(bindings_[ParticleBind::gParticle], instancingSrv);
+
+        // テクスチャを設定
+        binder.Set(bindings_[ParticleBind::gTexture], textureHandle);
+
+        BindFogResources(binder);
+        binder.ValidateBeforeDraw(bindings_);
+    }
+
+    void BaseParticleRenderer::BindFogResources(ShaderBinder& binder) {
         // 合成なしは全画面の合成が深度から掛けるので恒等、それ以外は減衰のみ（FogPass が毎フレーム供給する）
         const D3D12_GPU_VIRTUAL_ADDRESS fogCBV =
             (currentBlendMode_ == BlendMode::kBlendModeNone) ? fogDisabledCBV_ : fogCBV_;
         if (fogCBV != 0) {
-            const int fogIdx = GetRootParamIndex("gFog");
-            if (fogIdx >= 0) {
-                cmdList_->SetGraphicsRootConstantBufferView(fogIdx, fogCBV);
-            }
+            binder.Set(bindings_[ParticleBind::gFog], fogCBV);
         }
         // ボリュメトリックの格子（定数が格子を使うビューだけ）
         if (fogVolumetric_.IsValid()) {
-            const int integratedIdx = GetRootParamIndex("gVolumetricFogIntegrated");
-            const int farLightIdx = GetRootParamIndex("gVolumetricFogFarLight");
-            const int farMediaIdx = GetRootParamIndex("gVolumetricFogFarMedia");
-            if (integratedIdx >= 0 && farLightIdx >= 0) {
-                cmdList_->SetGraphicsRootDescriptorTable(integratedIdx, fogVolumetric_.integratedSrv);
-                cmdList_->SetGraphicsRootDescriptorTable(farLightIdx, fogVolumetric_.farLightSrv);
-            }
-            if (farMediaIdx >= 0) {
-                cmdList_->SetGraphicsRootConstantBufferView(farMediaIdx, fogVolumetric_.farMediaCbv);
-            }
+            binder.Set(bindings_[ParticleBind::gVolumetricFogIntegrated], fogVolumetric_.integratedSrv);
+            binder.Set(bindings_[ParticleBind::gVolumetricFogFarLight], fogVolumetric_.farLightSrv);
+            binder.Set(bindings_[ParticleBind::gVolumetricFogFarMedia], fogVolumetric_.farMediaCbv);
         }
     }
 }

@@ -4,6 +4,7 @@
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Graphics/Shader/ShaderBindingContract.h"
 #include "Math/Matrix/Matrix4x4.h"
 #include "Text/MsdfTextBatch.h"
 
@@ -106,9 +107,6 @@ namespace CoreEngine
         /// @brief GraphicsCore を取得
         GraphicsCore* GetGraphicsCore() { return dxCommon_; }
 
-        /// @brief シェーダーリソース名からルートパラメータインデックスを取得
-        int GetRootParamIndex(const std::string& resourceName) const;
-
         // ===== デバッグ表示用 =====
         /// @brief 直近フレームのドローコール数（バッチングの効きを見る）
         uint32_t GetLastFrameDrawCallCount() const { return batch_.GetLastFrameDrawCallCount(); }
@@ -123,6 +121,9 @@ namespace CoreEngine
         ID3D12PipelineState* ResolvePipelineState(Text3DDepthMode depthMode, BlendMode blendMode) const;
 
         GraphicsCore* dxCommon_ = nullptr;
+
+        /// ルートシグネチャから引いたシェーダーの結線
+        BindingTable bindings_;
 
         /// 深度テストを切った PSO（オーバーレイ描画用）。psoMg_ が深度テスト版
         std::unique_ptr<PipelineStateManager> overlayPsoMg_ = std::make_unique<PipelineStateManager>();

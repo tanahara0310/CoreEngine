@@ -2,6 +2,8 @@
 #include "FFTOceanDispatchHelper.h"
 
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
+#include "Graphics/RootSignature/ShaderBinder.h"
+#include "Graphics/Water/FFT/FFTOceanBindings.h"
 #include "Math/IntegerMath.h"
 
 namespace CoreEngine
@@ -11,6 +13,7 @@ namespace CoreEngine
         FFTOceanPingPong& spectrumA,
         FFTOceanPingPong& spectrumB,
         CustomShaderPipeline& evolutionPipeline,
+        const BindingTable& evolutionBindings,
         const DescriptorHandle& spectrumSrvHandle,
         D3D12_GPU_VIRTUAL_ADDRESS simulationConstantsAddress,
         uint32_t resolution)
@@ -27,27 +30,15 @@ namespace CoreEngine
         cmdList->SetPipelineState(evolutionPipeline.GetComputePSO());
         cmdList->SetComputeRootSignature(evolutionPipeline.GetComputeRootSignature());
 
-        const int spectrumSlot = evolutionPipeline.GetComputeRootParamIndex("gSpectrumSamples");
-        if (spectrumSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(spectrumSlot), spectrumSrvHandle.gpuHandle);
+        namespace B = FFTOceanEvolutionBind;
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
+        binder.Set(evolutionBindings[B::gSpectrumSamples], spectrumSrvHandle.gpuHandle);
+        binder.Set(evolutionBindings[B::gHeightDisplacementXOutput], spectrumA[0].uav.gpuHandle);
+        binder.Set(evolutionBindings[B::gDisplacementZOutput], spectrumB[0].uav.gpuHandle);
+        if (simulationConstantsAddress != 0) {
+            binder.Set(evolutionBindings[B::FFTOceanSimulationConstants], simulationConstantsAddress);
         }
-
-        const int spectrumAOutputSlot = evolutionPipeline.GetComputeRootParamIndex("gHeightDisplacementXOutput");
-        if (spectrumAOutputSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(spectrumAOutputSlot), spectrumA[0].uav.gpuHandle);
-        }
-
-        const int spectrumBOutputSlot = evolutionPipeline.GetComputeRootParamIndex("gDisplacementZOutput");
-        if (spectrumBOutputSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(spectrumBOutputSlot), spectrumB[0].uav.gpuHandle);
-        }
-
-        const int constantsSlot = evolutionPipeline.GetComputeRootParamIndex("FFTOceanSimulationConstants");
-        if (constantsSlot >= 0 && simulationConstantsAddress != 0) {
-            cmdList->SetComputeRootConstantBufferView(
-                static_cast<UINT>(constantsSlot),
-                simulationConstantsAddress);
-        }
+        binder.ValidateBeforeDraw(evolutionBindings);
 
         const UINT dispatchX = DivRoundUp(resolution, 8);
         const UINT dispatchY = DivRoundUp(resolution, 8);
@@ -62,6 +53,7 @@ namespace CoreEngine
         FFTOceanGpuTexture& input,
         FFTOceanGpuTexture& output,
         CustomShaderPipeline& pipeline,
+        const BindingTable& bindings,
         D3D12_GPU_VIRTUAL_ADDRESS ifftConstantsGpuAddress,
         uint32_t resolution)
     {
@@ -71,22 +63,14 @@ namespace CoreEngine
         cmdList->SetPipelineState(pipeline.GetComputePSO());
         cmdList->SetComputeRootSignature(pipeline.GetComputeRootSignature());
 
-        const int inputSlot = pipeline.GetComputeRootParamIndex("gInputSpectrum");
-        if (inputSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(inputSlot), input.srv.gpuHandle);
+        namespace B = FFTOceanIFFTBind;
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
+        binder.Set(bindings[B::gInputSpectrum], input.srv.gpuHandle);
+        binder.Set(bindings[B::gOutputSpectrum], output.uav.gpuHandle);
+        if (ifftConstantsGpuAddress != 0) {
+            binder.Set(bindings[B::FFTOceanIFFTConstants], ifftConstantsGpuAddress);
         }
-
-        const int outputSlot = pipeline.GetComputeRootParamIndex("gOutputSpectrum");
-        if (outputSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(outputSlot), output.uav.gpuHandle);
-        }
-
-        const int constantsSlot = pipeline.GetComputeRootParamIndex("FFTOceanIFFTConstants");
-        if (constantsSlot >= 0 && ifftConstantsGpuAddress != 0) {
-            cmdList->SetComputeRootConstantBufferView(
-                static_cast<UINT>(constantsSlot),
-                ifftConstantsGpuAddress);
-        }
+        binder.ValidateBeforeDraw(bindings);
 
         const UINT dispatchX = DivRoundUp(resolution, 8);
         const UINT dispatchY = DivRoundUp(resolution, 8);
@@ -99,6 +83,7 @@ namespace CoreEngine
         FFTOceanGpuTexture& spectrumA,
         FFTOceanGpuTexture& spectrumB,
         CustomShaderPipeline& finalizePipeline,
+        const BindingTable& finalizeBindings,
         D3D12_GPU_DESCRIPTOR_HANDLE displacementUavHandle,
         D3D12_GPU_DESCRIPTOR_HANDLE normalUavHandle,
         D3D12_GPU_DESCRIPTOR_HANDLE jacobianUavHandle,
@@ -111,37 +96,17 @@ namespace CoreEngine
         cmdList->SetPipelineState(finalizePipeline.GetComputePSO());
         cmdList->SetComputeRootSignature(finalizePipeline.GetComputeRootSignature());
 
-        const int spectrumASlot = finalizePipeline.GetComputeRootParamIndex("gHeightDisplacementXSpectrum");
-        if (spectrumASlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(spectrumASlot), spectrumA.srv.gpuHandle);
+        namespace B = FFTOceanFinalizeBind;
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
+        binder.Set(finalizeBindings[B::gHeightDisplacementXSpectrum], spectrumA.srv.gpuHandle);
+        binder.Set(finalizeBindings[B::gDisplacementZSpectrum], spectrumB.srv.gpuHandle);
+        binder.Set(finalizeBindings[B::gDisplacementOutput], displacementUavHandle);
+        binder.Set(finalizeBindings[B::gNormalOutput], normalUavHandle);
+        binder.Set(finalizeBindings[B::gJacobianOutput], jacobianUavHandle);
+        if (simulationConstantsAddress != 0) {
+            binder.Set(finalizeBindings[B::FFTOceanSimulationConstants], simulationConstantsAddress);
         }
-
-        const int spectrumBSlot = finalizePipeline.GetComputeRootParamIndex("gDisplacementZSpectrum");
-        if (spectrumBSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(spectrumBSlot), spectrumB.srv.gpuHandle);
-        }
-
-        const int displacementOutputSlot = finalizePipeline.GetComputeRootParamIndex("gDisplacementOutput");
-        if (displacementOutputSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(displacementOutputSlot), displacementUavHandle);
-        }
-
-        const int normalOutputSlot = finalizePipeline.GetComputeRootParamIndex("gNormalOutput");
-        if (normalOutputSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(normalOutputSlot), normalUavHandle);
-        }
-
-        const int jacobianOutputSlot = finalizePipeline.GetComputeRootParamIndex("gJacobianOutput");
-        if (jacobianOutputSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(jacobianOutputSlot), jacobianUavHandle);
-        }
-
-        const int constantsSlot = finalizePipeline.GetComputeRootParamIndex("FFTOceanSimulationConstants");
-        if (constantsSlot >= 0 && simulationConstantsAddress != 0) {
-            cmdList->SetComputeRootConstantBufferView(
-                static_cast<UINT>(constantsSlot),
-                simulationConstantsAddress);
-        }
+        binder.ValidateBeforeDraw(finalizeBindings);
 
         const UINT dispatchX = DivRoundUp(resolution, 8);
         const UINT dispatchY = DivRoundUp(resolution, 8);

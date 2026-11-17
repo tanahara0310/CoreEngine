@@ -62,6 +62,7 @@ namespace CoreEngine
 		WaterCausticsTechnique() = default;
 		~WaterCausticsTechnique() override = default;
 
+		void Initialize(GraphicsCore* dxCommon) override;
 		void Execute(const RenderContext& context, D3D12_GPU_DESCRIPTOR_HANDLE& outputSrvHandle) override;
 		void DrawImGui() override;
 
@@ -124,6 +125,9 @@ namespace CoreEngine
 
 		/// @brief 水面の波と範囲の定数を組む
 		WaterSurfaceConstants BuildWaterSurfaceConstants(const WaterSurfaceData* surfaceData);
+
+		/// @brief 解決済みのルートパラメータ表（WaterCausticsBind::kDecls の並び）
+		BindingTable bindings_;
 
 		std::string targetName_ = RenderTargetNames::WaterCausticsBuffer;
 		Backend backend_ = Backend::RayTracing;

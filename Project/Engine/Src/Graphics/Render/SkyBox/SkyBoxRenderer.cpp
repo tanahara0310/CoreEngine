@@ -3,6 +3,7 @@
 #include "Camera/Camera.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Graphics/Render/SkyBox/SkyBoxBindings.h"
 #include "Utility/Logger/Logger.h"
 #include <cassert>
 
@@ -18,6 +19,7 @@ namespace CoreEngine
 
         const auto shaders = BuildShadersAndRootSignature(device,
             L"Skybox.VS.hlsl", L"SkyAtmosphere.PS.hlsl", "SkyBoxRenderer", config, "SkyBox");
+        bindings_ = BindingTable::Resolve(*reflectionData_, SkyBoxBind::kDecls, "SkyBoxRenderer");
 
         // SkyBox は背景として最初に描画し、共有 DSV の内容に依存させない。
         // ブレンドは kBlendModeNone しか使わないので None のみ生成する。
@@ -37,10 +39,6 @@ namespace CoreEngine
 
         Logger::GetInstance().Infof(LogCategory::Graphics,
             "SkyBoxRenderer: 大気散乱パイプライン初期化完了");
-    }
-
-    int SkyBoxRenderer::GetRootParamIndex(const std::string& resourceName) const {
-        return FindRootParamIndex(reflectionData_.get(), resourceName);
     }
 
     void SkyBoxRenderer::BeginPass(ID3D12GraphicsCommandList* cmdList, BlendMode blendMode) {

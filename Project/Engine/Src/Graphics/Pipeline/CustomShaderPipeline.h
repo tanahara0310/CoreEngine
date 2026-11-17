@@ -11,6 +11,7 @@
 #include <dxcapi.h>
 #include <wrl.h>
 #include <memory>
+#include <span>
 #include <string>
 
 namespace CoreEngine
@@ -53,12 +54,6 @@ namespace CoreEngine
         /// @return 構築済みなら RootSignature ポインタ、未構築なら nullptr
         ID3D12RootSignature* GetComputeRootSignature() const;
 
-        /// @brief リソース名からフォワードパス用ルートパラメータ（番号＋差し方）を取得
-        /// @param resourceName シェーダー内のリソース名（例: "gWave", "gFoamTexture"）
-        /// @return 見つからない場合は kind == None
-        /// @note 描画中に呼ぶと map 検索になる。モデル描画共通リソースは GetModelBindings() を使う
-        RootSlot GetRootSlot(const std::string& resourceName) const;
-
         /// @brief モデル描画共通リソース（ModelBind::kCustom）の解決済み表
         /// @details 構築時に 1 回解決済みなので、描画中の名前引きが不要になる
         const BindingTable& GetModelBindings() const { return modelBindings_; }
@@ -71,16 +66,13 @@ namespace CoreEngine
         /// @return 未構築なら nullptr
         const ShaderReflectionData* GetComputeReflection() const { return computeReflection_.get(); }
 
-        /// @brief リソース名からフォワードパス用ルートパラメータインデックスを取得
-        /// @param resourceName シェーダー内のリソース名（例: "gWave", "gFoamTexture"）
-        /// @return インデックス（未登録の場合は -1）
-        /// @deprecated GetRootSlot() へ移行すること
-        int GetRootParamIndex(const std::string& resourceName) const;
-
-        /// @brief リソース名からコンピュートパス用ルートパラメータインデックスを取得
-        /// @param resourceName シェーダー内のリソース名
-        /// @return インデックス（未登録の場合は -1）
-        int GetComputeRootParamIndex(const std::string& resourceName) const;
+        /// @brief コンピュートパスのリフレクションと宣言表を突き合わせて解決する
+        /// @param decls    宣言表（静的寿命であること）
+        /// @param label    ログと表に出す名前
+        /// @param bindings 解決した表の書き込み先
+        /// @return 解決できたら true。リフレクションが無いとき・契約違反のときは false（契約違反の内訳は Resolve がエラーのログに出す）
+        bool ResolveComputeBindings(
+            std::span<const ShaderBindingDecl> decls, const std::string& label, BindingTable& bindings) const;
 
         /// @brief フォワードパス PSO が有効かどうか
         bool HasForwardPSO() const;

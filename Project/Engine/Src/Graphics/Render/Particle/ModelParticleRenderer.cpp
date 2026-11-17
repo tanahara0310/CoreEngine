@@ -7,20 +7,13 @@
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/RootSignature/ShaderBinder.h"
+#include "Graphics/Render/Particle/ParticleBindings.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include <cassert>
 
 
 namespace CoreEngine
 {
-    void ModelParticleRenderer::Initialize(ID3D12Device* device) {
-        BaseParticleRenderer::Initialize(device);
-
-        // ルートパラメータは描画のたびに名前で引かず、ここで一度だけ解決する
-        lightCountsSlot_ = reflectionData_->GetRootSlot("gLightCounts");
-        directionalLightsSlot_ = reflectionData_->GetRootSlot("gDirectionalLights");
-    }
-
     void ModelParticleRenderer::OnBeginPass() {
         if (!lightManager_) {
             return;
@@ -30,7 +23,7 @@ namespace CoreEngine
         // 未解決スロット（＝ShaderBinder 側で no-op）を渡す。
         ShaderBinder binder(cmdList_, ShaderBinder::Pipeline::Graphics);
         lightManager_->SetLightsToCommandList(
-            binder, lightCountsSlot_, directionalLightsSlot_,
+            binder, bindings_[ParticleBind::gLightCounts], bindings_[ParticleBind::gDirectionalLights],
             RootSlot{}, RootSlot{}, RootSlot{});
     }
 

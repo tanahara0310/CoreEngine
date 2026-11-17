@@ -7,6 +7,9 @@
 #include "Graphics/Render/RenderTarget/RenderTargetNames.h"
 #include "Graphics/Render/RenderTarget/RenderTargetDescriptor.h"
 #include "Graphics/Render/Pass/RenderPass.h"
+#include "Graphics/RootSignature/ShaderBinder.h"
+
+#include <iterator>
 
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/ImguiManager.h"
@@ -20,11 +23,25 @@ namespace CoreEngine
             "r.SSAOTemporal.Enabled", true,
             "SSAO のテンポラル蓄積を有効にする",
             CVarRange{}, CVarFlags::NoUI };
+
+        /// @brief SSAOTemporal.PS.hlsl の契約
+        namespace SSAOTemporalBind {
+            enum Slot : size_t { gCurrentAO, gHistoryAO, gMotionVector, SSAOTemporalParams, Count };
+            inline constexpr ShaderBindingDecl kDecls[] = {
+                { "gCurrentAO",         ShaderBindingType::SRV, BindingUsage::Required },    // t0
+                { "gHistoryAO",         ShaderBindingType::SRV, BindingUsage::Required },    // t1
+                // FrameBlackboard から取れたフレームだけ差す
+                { "gMotionVector",      ShaderBindingType::SRV, BindingUsage::Conditional }, // t2
+                { "SSAOTemporalParams", ShaderBindingType::CBV, BindingUsage::Required },    // b0
+            };
+            static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
+        }
     }
 
     void SSAOTemporalTechnique::Initialize(GraphicsCore* dxCommon)
     {
         RenderingTechniqueBase::Initialize(dxCommon);
+        bindings_ = ResolveBindingTable(SSAOTemporalBind::kDecls);
     }
 
     const char* SSAOTemporalTechnique::GetHistoryTargetName(uint32_t index)
@@ -91,32 +108,25 @@ namespace CoreEngine
         cmdList->SetGraphicsRootSignature(rootSignatureManager_->GetRootSignature());
         cmdList->SetPipelineState(pipelineStateManager_.GetPipelineState(BlendMode::kBlendModeNone));
 
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Graphics);
+
         // t0: 今フレームの生 SSAO
-        const int currentIdx = GetRootParamIndex("gCurrentAO");
-        if (currentIdx >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(currentIdx, currentAO->GetSRVHandle());
-        }
+        binder.Set(bindings_[SSAOTemporalBind::gCurrentAO], currentAO->GetSRVHandle());
 
         // t1: 前フレームの蓄積結果
-        const int historyIdx = GetRootParamIndex("gHistoryAO");
-        if (historyIdx >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(historyIdx, readTarget->GetSRVHandle());
-        }
+        binder.Set(bindings_[SSAOTemporalBind::gHistoryAO], readTarget->GetSRVHandle());
 
         // t2: モーションベクター
-        const int motionIdx = GetRootParamIndex("gMotionVector");
-        if (motionIdx >= 0) {
-            D3D12_GPU_DESCRIPTOR_HANDLE motionHandle{};
-            if (context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::GBufferMotionVector, motionHandle)) {
-                cmdList->SetGraphicsRootDescriptorTable(motionIdx, motionHandle);
-            }
+        D3D12_GPU_DESCRIPTOR_HANDLE motionHandle{};
+        if (context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::GBufferMotionVector, motionHandle)) {
+            binder.Set(bindings_[SSAOTemporalBind::gMotionVector], motionHandle);
         }
 
-        const int paramsIdx = GetRootParamIndex("SSAOTemporalParams");
-        if (paramsIdx >= 0 && cbAddress != 0) {
-            cmdList->SetGraphicsRootConstantBufferView(paramsIdx, cbAddress);
+        if (cbAddress != 0) {
+            binder.Set(bindings_[SSAOTemporalBind::SSAOTemporalParams], cbAddress);
         }
 
+        binder.ValidateBeforeDraw(bindings_);
         DrawFullscreenQuad(cmdList);
 
         writeTarget->End(cmdList);

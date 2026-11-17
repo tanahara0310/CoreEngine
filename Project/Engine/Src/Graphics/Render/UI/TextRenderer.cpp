@@ -5,9 +5,28 @@
 #include "Utility/Logger/Logger.h"
 
 #include <cstdint>
+#include <iterator>
 
 namespace CoreEngine
 {
+    namespace
+    {
+        namespace TextBind {
+            /// @brief MsdfText.VS.hlsl / MsdfText.PS.hlsl の契約
+            enum Slot : size_t { gBatch, gAtlas, Count };
+            inline constexpr ShaderBindingDecl kDecls[] = {
+                { "gBatch", ShaderBindingType::CBV, BindingUsage::Required },
+                { "gAtlas", ShaderBindingType::SRV, BindingUsage::Required },
+            };
+            static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
+        }
+    }
+
+    std::span<const ShaderBindingDecl> TextRenderer::GetBindingDecls() const
+    {
+        return TextBind::kDecls;
+    }
+
     void TextRenderer::Initialize(ID3D12Device* device)
     {
         // PSO / ルートシグネチャは UIRenderer の実装をそのまま使う
@@ -77,7 +96,8 @@ namespace CoreEngine
             return;
         }
 
+        const BindingTable& bindings = GetBindings();
         batch_.Draw(cmdList_, graphicsCore->GetUploadRing(), CalculateProjectionMatrix(),
-            GetRootParamIndex("gBatch"), GetRootParamIndex("gAtlas"));
+            bindings[TextBind::gBatch], bindings[TextBind::gAtlas]);
     }
 }

@@ -31,12 +31,6 @@ namespace CoreEngine
         friend bool operator!=(const RootSlot& a, const RootSlot& b) { return !(a == b); }
     };
 
-    /// @brief ルートパラメータ番号を返す（未解決なら -1）
-    inline int ToRootParamIndex(const RootSlot& slot)
-    {
-        return slot.IsValid() ? static_cast<int>(slot.index) : -1;
-    }
-
     /// @brief ログ用の種別名
     inline const char* ToString(RootSlotKind kind)
     {

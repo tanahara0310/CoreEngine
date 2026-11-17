@@ -4,10 +4,8 @@
 #include "Graphics/Cloud/Shader/CloudBindings.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
-#include "Graphics/Shader/ShaderReflectionData.h"
 #include "Utility/Logger/Logger.h"
 
-#include <exception>
 #include <string>
 #include <utility>
 
@@ -76,19 +74,7 @@ namespace CoreEngine
                 return false;
             }
 
-            const ShaderReflectionData* reflection = pass.pipeline.GetComputeReflection();
-            if (!reflection) {
-                Logger::GetInstance().Warnf(LogCategory::Graphics,
-                    "CloudPipelines: {} のリフレクションを取得できません", desc.name);
-                return false;
-            }
-
-            try {
-                pass.bindings = BindingTable::Resolve(
-                    *reflection, desc.decls, desc.declCount, desc.name);
-            }
-            catch (const std::exception&) {
-                // 違反の内訳は BindingTable::Resolve が error ログへ出している
+            if (!pass.pipeline.ResolveComputeBindings({ desc.decls, desc.declCount }, desc.name, pass.bindings)) {
                 return false;
             }
         }

@@ -3,6 +3,8 @@
 #include "Editor/ImGui/ImguiManager.h"
 #include "EngineSystem/Settings/ProjectSettings.h"
 #include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RootSignature/ShaderBinder.h"
+#include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Math/IntegerMath.h"
 #include "Utility/CVar/CVar.h"
@@ -44,6 +46,11 @@ namespace CoreEngine
 
     void ProjectLoadingScreen::OnCreateResources()
     {
+        // 画像のルートパラメータ（シェーダが使っていない枠は未解決のまま差さない）
+        for (size_t i = 0; i < kMaxImages; ++i) {
+            imageSlots_[i] = reflectionData_->GetRootSlot("gImage" + std::to_string(i));
+        }
+
         auto& textureManager = TextureManager::GetInstance();
         const std::vector<std::string>& paths = ProjectSettings::Get().GetLoadingScreenImages();
         const D3D12_GPU_DESCRIPTOR_HANDLE fallback = textureManager.Load(kFallbackImage).gpuHandle;
@@ -109,11 +116,9 @@ namespace CoreEngine
         BindPass(cmdList,
             { { "gTexture", inputSrvHandle }, { "gOutput", outputUavHandle } },
             { { "ProjectLoadingParams", UploadConstants(params) }, { "ScreenParams", GetScreenSizeCbAddress() } });
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
         for (size_t i = 0; i < kMaxImages; ++i) {
-            const int imageIdx = GetRootParamIndex("gImage" + std::to_string(i));
-            if (imageIdx >= 0) {
-                cmdList->SetComputeRootDescriptorTable(imageIdx, images_[i]);
-            }
+            binder.Set(imageSlots_[i], images_[i]);
         }
 
         const uint32_t groupX = DivRoundUp(width, 8);

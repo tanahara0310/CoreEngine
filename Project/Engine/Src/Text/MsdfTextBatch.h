@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Graphics/RootSignature/RootSlot.h"
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Math/Matrix/Matrix4x4.h"
 #include "Math/Vector/Vector2.h"
@@ -101,13 +102,13 @@ namespace CoreEngine
 
         /// @brief 積んだ頂点を 1 ドローコールで描き、バッチを空にする
         /// @param projection 定数へ入れる射影
-        /// @param batchRootIndex gBatch のルートパラメータ番号
-        /// @param atlasRootIndex gAtlas のルートパラメータ番号
+        /// @param batchSlot gBatch のルートパラメータ
+        /// @param atlasSlot gAtlas のルートパラメータ
         /// @param pipelineState 描く前に張る PSO（nullptr なら張らない）
         /// @return 描いたら true。UploadRing から確保できなければ描かずに false
         /// @note 頂点があり、フォントが決まっているときに呼ぶ
         bool Draw(ID3D12GraphicsCommandList* cmdList, UploadRing& uploadRing,
-            const Matrix4x4& projection, int batchRootIndex, int atlasRootIndex,
+            const Matrix4x4& projection, RootSlot batchSlot, RootSlot atlasSlot,
             ID3D12PipelineState* pipelineState = nullptr);
 
         /// @brief 1 フレーム（1 パス）の集計を確定させ、次のフレームへ向けて 0 に戻す

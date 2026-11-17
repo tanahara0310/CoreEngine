@@ -2,6 +2,7 @@
 #include "PostEffectGraphicsBase.h"
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Graphics/RootSignature/ShaderBinder.h"
 #include "Graphics/Pipeline/PipelineStateManager.h"
 #include <cassert>
 #include <stdexcept>
@@ -36,6 +37,7 @@ namespace CoreEngine
             throw std::runtime_error(
                 GetEffectName() + ": Failed to create PostEffect Root Signature: " + buildResult.errorMessage);
         }
+        textureSlot_ = reflectionData_->GetRootSlot("gTexture");
 
         // オフスクリーン RT 用 PSO (R16G16B16A16_FLOAT)
         bool result = pipelineStateManager_.CreateBuilder()
@@ -74,10 +76,8 @@ namespace CoreEngine
         commandList->SetPipelineState(psm.GetPipelineState(BlendMode::kBlendModeNone));
         commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-        int textureIdx = GetRootParamIndex("gTexture");
-        if (textureIdx >= 0) {
-            commandList->SetGraphicsRootDescriptorTable(textureIdx, inputSrvHandle);
-        }
+        ShaderBinder binder(commandList, ShaderBinder::Pipeline::Graphics);
+        binder.Set(textureSlot_, inputSrvHandle);
 
         BindOptionalCBVs(commandList);
 

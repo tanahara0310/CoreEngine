@@ -9,10 +9,12 @@
 #include "Graphics/Render/RenderTarget/RenderTargetDescriptor.h"
 #include "Graphics/Render/RenderTarget/RenderTargetManager.h"
 #include "Graphics/Render/RenderManager.h"
+#include "Graphics/RootSignature/ShaderBinder.h"
 #include "Camera/View/ViewInfo.h"
 #include "Math/MathCore.h"
 #include "Utility/Logger/Logger.h"
 #include <cstring>
+#include <iterator>
 
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/ImguiManager.h"
@@ -26,6 +28,27 @@ namespace CoreEngine
             "r.WaterCaustics.Enabled", true,
             "水面コースティクスの適用を有効にする",
             CVarRange{}, CVarFlags::NoUI };
+
+        /// @brief WaterCaustics.PS.hlsl の契約
+        namespace WaterCausticsBind {
+            enum Slot : size_t {
+                gSceneDepth, gNormalRoughness, gMainLight, gWaterSurfaceData, WaterCausticsParams, Count };
+            inline constexpr ShaderBindingDecl kDecls[] = {
+                // FrameBlackboard から取れたフレームだけ差す
+                { "gSceneDepth",         ShaderBindingType::SRV, BindingUsage::Conditional }, // t0
+                { "gNormalRoughness",    ShaderBindingType::SRV, BindingUsage::Required },    // t1
+                { "gMainLight",          ShaderBindingType::CBV, BindingUsage::Required },    // b1
+                { "gWaterSurfaceData",   ShaderBindingType::CBV, BindingUsage::Required },    // b2
+                { "WaterCausticsParams", ShaderBindingType::CBV, BindingUsage::Required },    // b3
+            };
+            static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
+        }
+    }
+
+    void WaterCausticsTechnique::Initialize(GraphicsCore* dxCommon)
+    {
+        RenderingTechniqueBase::Initialize(dxCommon);
+        bindings_ = ResolveBindingTable(WaterCausticsBind::kDecls);
     }
 
     // 水面の法線から屈折方向を求め、集光の度合いをスクリーンスペースで求める。
@@ -80,36 +103,23 @@ namespace CoreEngine
         cmdList->SetGraphicsRootSignature(rootSignatureManager_->GetRootSignature());
         cmdList->SetPipelineState(pipelineStateManager_.GetPipelineState(BlendMode::kBlendModeNone));
 
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Graphics);
+
         // WorldPosition ターゲット廃止に伴い、深度から復元する
-        const int sceneDepthIdx = GetRootParamIndex("gSceneDepth");
-        if (sceneDepthIdx >= 0 && context.frameBlackboard) {
+        if (context.frameBlackboard) {
             D3D12_GPU_DESCRIPTOR_HANDLE depthHandle{};
             if (context.frameBlackboard->TryGetSrvHandle(FrameBlackboard::SceneDepth, depthHandle)) {
-                cmdList->SetGraphicsRootDescriptorTable(sceneDepthIdx, depthHandle);
+                binder.Set(bindings_[WaterCausticsBind::gSceneDepth], depthHandle);
             }
         }
 
-        const int normalIdx = GetRootParamIndex("gNormalRoughness");
-        if (normalIdx >= 0) {
-            cmdList->SetGraphicsRootDescriptorTable(normalIdx,
-                gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness));
-        }
+        binder.Set(bindings_[WaterCausticsBind::gNormalRoughness],
+            gBufferManager->GetSRVHandle(GBufferManager::Target::NormalRoughness));
+        binder.Set(bindings_[WaterCausticsBind::gMainLight], mainLightAddress);
+        binder.Set(bindings_[WaterCausticsBind::gWaterSurfaceData], waterSurfaceAddress);
+        binder.Set(bindings_[WaterCausticsBind::WaterCausticsParams], paramsAddress);
 
-        const int mainLightIdx = GetRootParamIndex("gMainLight");
-        if (mainLightIdx >= 0) {
-            cmdList->SetGraphicsRootConstantBufferView(mainLightIdx, mainLightAddress);
-        }
-
-        const int waterSurfaceIdx = GetRootParamIndex("gWaterSurfaceData");
-        if (waterSurfaceIdx >= 0) {
-            cmdList->SetGraphicsRootConstantBufferView(waterSurfaceIdx, waterSurfaceAddress);
-        }
-
-        const int paramsIdx = GetRootParamIndex("WaterCausticsParams");
-        if (paramsIdx >= 0) {
-            cmdList->SetGraphicsRootConstantBufferView(paramsIdx, paramsAddress);
-        }
-
+        binder.ValidateBeforeDraw(bindings_);
         DrawFullscreenQuad(cmdList);
 
         target->End(cmdList);

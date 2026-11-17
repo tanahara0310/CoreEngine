@@ -11,9 +11,11 @@
 #include "Graphics/Model/VertexData.h"
 #include "Graphics/Render/DrawViewInfo.h"
 #include "Graphics/Render/RenderManager.h"
+#include "Graphics/Render/Sprite/SpriteBindings.h"
 #include "Graphics/Render/Sprite/SpriteRenderer.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
+#include "Graphics/RootSignature/ShaderBinder.h"
 #include "Utility/Algorithm/AssignIfChanged.h"
 #include "Utility/FrameRate/Time.h"
 
@@ -341,15 +343,12 @@ namespace CoreEngine
             if (materialAddress == 0) { return; }
         }
 
-        commandList->SetGraphicsRootConstantBufferView(
-            spriteRenderer_->GetRootParamIndex("gMaterial"),
-            materialAddress);
-        commandList->SetGraphicsRootConstantBufferView(
-            spriteRenderer_->GetRootParamIndex("TransformationMatrix"),
-            transformAddress);
-        commandList->SetGraphicsRootDescriptorTable(
-            spriteRenderer_->GetRootParamIndex("gTexture"),
-            textureHandle_.gpuHandle);
+        const BindingTable& bindings = spriteRenderer_->GetBindings();
+        ShaderBinder binder(commandList, ShaderBinder::Pipeline::Graphics);
+        binder.Set(bindings[SpriteBind::gMaterial], materialAddress);
+        binder.Set(bindings[SpriteBind::TransformationMatrix], transformAddress);
+        binder.Set(bindings[SpriteBind::gTexture], textureHandle_.gpuHandle);
+        binder.ValidateBeforeDraw(bindings);
 
         commandList->DrawIndexedInstanced(6, 1, 0, 0, 0);
     }

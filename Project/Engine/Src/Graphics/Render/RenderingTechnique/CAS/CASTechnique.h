@@ -53,6 +53,9 @@ namespace CoreEngine
         const std::wstring& GetPixelShaderPath() const override;
 
     private:
+        /// @brief 解決済みのルートパラメータ表（CASBind::kDecls の並び）
+        BindingTable bindings_;
+
         /// 定数は Execute のたびに UploadRing から確保する（専用バッファは持たない）
         CASParams params_;
 

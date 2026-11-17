@@ -4,6 +4,7 @@
 #include "Graphics/Shader/ShaderReflectionData.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/Render/RenderTarget/SceneDepth.h"
+#include "Graphics/Render/UI/UIBindings.h"
 #include "Utility/Logger/Logger.h"
 #include "WinApp/WinApp.h"
 #include <cassert>
@@ -19,8 +20,11 @@ namespace CoreEngine
         // UI はテキスト等で滑らかさが欲しいので Linear サンプラー
         config.ConfigureSampler("gSampler", GetSamplerConfig());
 
+        const std::string reflectionName = debugName + "Renderer";
         const auto shaders = BuildShadersAndRootSignature(device,
-            GetVertexShaderPath(), GetPixelShaderPath(), debugName + "Renderer", config, debugName);
+            GetVertexShaderPath(), GetPixelShaderPath(), reflectionName, config, debugName);
+        const std::span<const ShaderBindingDecl> decls = GetBindingDecls();
+        bindings_ = BindingTable::Resolve(*reflectionData_, decls.data(), decls.size(), reflectionName);
 
         bool result = psoMg_->CreateBuilder()
             .SetDebugName(debugName)
@@ -37,8 +41,8 @@ namespace CoreEngine
         pipelineState_ = psoMg_->GetPipelineState(BlendMode::kBlendModeNormal);
     }
 
-    int UIRenderer::GetRootParamIndex(const std::string& resourceName) const {
-        return FindRootParamIndex(reflectionData_.get(), resourceName);
+    std::span<const ShaderBindingDecl> UIRenderer::GetBindingDecls() const {
+        return UIBind::kDecls;
     }
 
     void UIRenderer::Initialize(GraphicsCore* dxCommon) {

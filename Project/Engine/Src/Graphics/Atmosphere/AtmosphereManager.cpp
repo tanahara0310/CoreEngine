@@ -6,6 +6,7 @@
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/RHI/Resource/ResourceFactory.h"
 #include "Graphics/RHI/Resource/UavTexture.h"
+#include "Graphics/RootSignature/ShaderBinder.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
 #include "Utility/Logger/Logger.h"
@@ -17,6 +18,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iterator>
+#include <span>
 
 namespace CoreEngine
 {
@@ -197,6 +200,110 @@ namespace CoreEngine
             const float brightness =
                 1.0f - std::sin(half) * std::tan(half) * std::log(1.0f / std::tan(0.5f * half));
             return std::clamp(brightness, 0.0f, 1.0f);
+        }
+    }
+
+    namespace
+    {
+        /// @brief TransmittanceLUT.CS.hlsl の契約
+        namespace TransmittanceBind {
+            enum Slot : size_t { gAtmosphere, gTransmittanceLUT, Count };
+            inline constexpr ShaderBindingDecl kDecls[] = {
+                { "gAtmosphere",       ShaderBindingType::CBV, BindingUsage::Required },
+                { "gTransmittanceLUT", ShaderBindingType::UAV, BindingUsage::Required },
+            };
+            static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
+        }
+
+        /// @brief MultiScatteringLUT.CS.hlsl の契約
+        namespace MultiScatteringBind {
+            enum Slot : size_t { gAtmosphere, gTransmittanceLUT, gMultiScatteringLUT, Count };
+            inline constexpr ShaderBindingDecl kDecls[] = {
+                { "gAtmosphere",         ShaderBindingType::CBV, BindingUsage::Required },
+                { "gTransmittanceLUT",   ShaderBindingType::SRV, BindingUsage::Required },
+                { "gMultiScatteringLUT", ShaderBindingType::UAV, BindingUsage::Required },
+            };
+            static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
+        }
+
+        /// @brief SkyViewLUT.CS.hlsl の契約
+        namespace SkyViewBind {
+            enum Slot : size_t { gAtmosphere, gTransmittanceLUT, gMultiScatteringLUT, gSkyViewLUT, Count };
+            inline constexpr ShaderBindingDecl kDecls[] = {
+                { "gAtmosphere",         ShaderBindingType::CBV, BindingUsage::Required },
+                { "gTransmittanceLUT",   ShaderBindingType::SRV, BindingUsage::Required },
+                { "gMultiScatteringLUT", ShaderBindingType::SRV, BindingUsage::Required },
+                { "gSkyViewLUT",         ShaderBindingType::UAV, BindingUsage::Required },
+            };
+            static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
+        }
+
+        /// @brief CameraVolumeLUT.CS.hlsl の契約
+        namespace CameraVolumeBind {
+            enum Slot : size_t { gAtmosphere, gTransmittanceLUT, gMultiScatteringLUT, gCameraVolumeLUT, Count };
+            inline constexpr ShaderBindingDecl kDecls[] = {
+                { "gAtmosphere",         ShaderBindingType::CBV, BindingUsage::Required },
+                { "gTransmittanceLUT",   ShaderBindingType::SRV, BindingUsage::Required },
+                { "gMultiScatteringLUT", ShaderBindingType::SRV, BindingUsage::Required },
+                { "gCameraVolumeLUT",    ShaderBindingType::UAV, BindingUsage::Required },
+            };
+            static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
+        }
+
+        /// @brief AerialPerspective.CS.hlsl の契約
+        namespace AerialPerspectiveBind {
+            enum Slot : size_t { gAtmosphere, gSceneColor, gSceneDepth, gCameraVolumeLUT, gOutput, Count };
+            inline constexpr ShaderBindingDecl kDecls[] = {
+                { "gAtmosphere",      ShaderBindingType::CBV, BindingUsage::Required },
+                { "gSceneColor",      ShaderBindingType::SRV, BindingUsage::Required },
+                { "gSceneDepth",      ShaderBindingType::SRV, BindingUsage::Required },
+                { "gCameraVolumeLUT", ShaderBindingType::SRV, BindingUsage::Required },
+                { "gOutput",          ShaderBindingType::UAV, BindingUsage::Required },
+            };
+            static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
+        }
+
+        /// @brief SkyIrradianceSH.CS.hlsl の契約
+        namespace SkyIrradianceBind {
+            enum Slot : size_t { gAtmosphere, gSkyViewLUT, gSkyIrradianceSH, Count };
+            inline constexpr ShaderBindingDecl kDecls[] = {
+                { "gAtmosphere",      ShaderBindingType::CBV, BindingUsage::Required },
+                { "gSkyViewLUT",      ShaderBindingType::SRV, BindingUsage::Required },
+                { "gSkyIrradianceSH", ShaderBindingType::UAV, BindingUsage::Required },
+            };
+            static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
+        }
+
+        /// @brief SkyEnvironmentCapture.CS.hlsl の契約
+        namespace SkyCaptureBind {
+            enum Slot : size_t { gAtmosphere, gSkyViewLUT, gSkyCubemap, Count };
+            inline constexpr ShaderBindingDecl kDecls[] = {
+                { "gAtmosphere", ShaderBindingType::CBV, BindingUsage::Required },
+                { "gSkyViewLUT", ShaderBindingType::SRV, BindingUsage::Required },
+                { "gSkyCubemap", ShaderBindingType::UAV, BindingUsage::Required },
+            };
+            static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
+        }
+
+        /// @brief SkyEnvironmentDownsample.CS.hlsl の契約
+        namespace SkyDownsampleBind {
+            enum Slot : size_t { gSourceMip, gDestMip, Count };
+            inline constexpr ShaderBindingDecl kDecls[] = {
+                { "gSourceMip", ShaderBindingType::UAV, BindingUsage::Required },
+                { "gDestMip",   ShaderBindingType::UAV, BindingUsage::Required },
+            };
+            static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
+        }
+
+        /// @brief SkyEnvironmentPrefilter.CS.hlsl の契約
+        namespace SkyPrefilterBind {
+            enum Slot : size_t { SkyPrefilterParams, gSkyCubemap, gSkySpecularMap, Count };
+            inline constexpr ShaderBindingDecl kDecls[] = {
+                { "SkyPrefilterParams", ShaderBindingType::CBV, BindingUsage::Required },
+                { "gSkyCubemap",        ShaderBindingType::SRV, BindingUsage::Required },
+                { "gSkySpecularMap",    ShaderBindingType::UAV, BindingUsage::Required },
+            };
+            static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
         }
     }
 
@@ -401,25 +508,41 @@ namespace CoreEngine
 
         struct Entry {
             CustomShaderPipeline& pipeline;
+            BindingTable& bindings;
             const wchar_t* shaderPath;
+            std::span<const ShaderBindingDecl> decls;
+            const char* bindingName; ///< 束ねの表のログに出す名前
             const char* name;
         };
         const Entry entries[] = {
-            { transmittancePipeline_,            L"TransmittanceLUT.CS.hlsl",         "Transmittance LUT " },
-            { multiScatteringPipeline_,          L"MultiScatteringLUT.CS.hlsl",       "Multi-Scattering LUT " },
-            { skyViewPipeline_,                  L"SkyViewLUT.CS.hlsl",               "Sky-View LUT " },
-            { cameraVolumePipeline_,             L"CameraVolumeLUT.CS.hlsl",          "Camera Volume LUT " },
-            { aerialPerspectivePipeline_,        L"AerialPerspective.CS.hlsl",        "Aerial Perspective " },
-            { skyIrradiancePipeline_,            L"SkyIrradianceSH.CS.hlsl",          "空アンビエント SH " },
-            { skyEnvironmentCapturePipeline_,    L"SkyEnvironmentCapture.CS.hlsl",    "空キューブマップ焼き込み" },
-            { skyEnvironmentDownsamplePipeline_, L"SkyEnvironmentDownsample.CS.hlsl", "空キューブマップのミップ生成" },
-            { skyEnvironmentPrefilterPipeline_,  L"SkyEnvironmentPrefilter.CS.hlsl",  "空キューブマッププリフィルタ" },
+            { transmittancePipeline_, transmittanceBindings_,
+                L"TransmittanceLUT.CS.hlsl", TransmittanceBind::kDecls, "TransmittanceLUT", "Transmittance LUT " },
+            { multiScatteringPipeline_, multiScatteringBindings_,
+                L"MultiScatteringLUT.CS.hlsl", MultiScatteringBind::kDecls, "MultiScatteringLUT", "Multi-Scattering LUT " },
+            { skyViewPipeline_, skyViewBindings_,
+                L"SkyViewLUT.CS.hlsl", SkyViewBind::kDecls, "SkyViewLUT", "Sky-View LUT " },
+            { cameraVolumePipeline_, cameraVolumeBindings_,
+                L"CameraVolumeLUT.CS.hlsl", CameraVolumeBind::kDecls, "CameraVolumeLUT", "Camera Volume LUT " },
+            { aerialPerspectivePipeline_, aerialPerspectiveBindings_,
+                L"AerialPerspective.CS.hlsl", AerialPerspectiveBind::kDecls, "AerialPerspective", "Aerial Perspective " },
+            { skyIrradiancePipeline_, skyIrradianceBindings_,
+                L"SkyIrradianceSH.CS.hlsl", SkyIrradianceBind::kDecls, "SkyIrradianceSH", "空アンビエント SH " },
+            { skyEnvironmentCapturePipeline_, skyEnvironmentCaptureBindings_,
+                L"SkyEnvironmentCapture.CS.hlsl", SkyCaptureBind::kDecls, "SkyEnvironmentCapture", "空キューブマップ焼き込み" },
+            { skyEnvironmentDownsamplePipeline_, skyEnvironmentDownsampleBindings_,
+                L"SkyEnvironmentDownsample.CS.hlsl", SkyDownsampleBind::kDecls, "SkyEnvironmentDownsample", "空キューブマップのミップ生成" },
+            { skyEnvironmentPrefilterPipeline_, skyEnvironmentPrefilterBindings_,
+                L"SkyEnvironmentPrefilter.CS.hlsl", SkyPrefilterBind::kDecls, "SkyEnvironmentPrefilter", "空キューブマッププリフィルタ" },
         };
 
         for (const Entry& entry : entries) {
             if (!entry.pipeline.BuildCompute(device, shaderCompiler, reflectionBuilder, entry.shaderPath)) {
                 Logger::GetInstance().Warnf(LogCategory::Graphics,
                     "AtmosphereManager: {}コンピュートパイプラインの構築に失敗", entry.name);
+                return false;
+            }
+
+            if (!entry.pipeline.ResolveComputeBindings(entry.decls, entry.bindingName, entry.bindings)) {
                 return false;
             }
         }
@@ -464,16 +587,10 @@ namespace CoreEngine
         cmdList->SetPipelineState(transmittancePipeline_.GetComputePSO());
         cmdList->SetComputeRootSignature(transmittancePipeline_.GetComputeRootSignature());
 
-        const int cbSlot = transmittancePipeline_.GetComputeRootParamIndex("gAtmosphere");
-        if (cbSlot >= 0) {
-            cmdList->SetComputeRootConstantBufferView(
-                static_cast<UINT>(cbSlot), constants_.Address());
-        }
-        const int uavSlot = transmittancePipeline_.GetComputeRootParamIndex("gTransmittanceLUT");
-        if (uavSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(uavSlot), transmittanceUavHandle_.gpuHandle);
-        }
+        ShaderBinder transmittanceBinder(cmdList, ShaderBinder::Pipeline::Compute);
+        transmittanceBinder.Set(transmittanceBindings_[TransmittanceBind::gAtmosphere], constants_.Address());
+        transmittanceBinder.Set(transmittanceBindings_[TransmittanceBind::gTransmittanceLUT], transmittanceUavHandle_.gpuHandle);
+        transmittanceBinder.ValidateBeforeDraw(transmittanceBindings_);
 
         cmdList->Dispatch(
             DivRoundUp(kTransmittanceLUTWidth, 8),
@@ -490,21 +607,11 @@ namespace CoreEngine
         cmdList->SetPipelineState(multiScatteringPipeline_.GetComputePSO());
         cmdList->SetComputeRootSignature(multiScatteringPipeline_.GetComputeRootSignature());
 
-        const int msCbSlot = multiScatteringPipeline_.GetComputeRootParamIndex("gAtmosphere");
-        if (msCbSlot >= 0) {
-            cmdList->SetComputeRootConstantBufferView(
-                static_cast<UINT>(msCbSlot), constants_.Address());
-        }
-        const int msSrvSlot = multiScatteringPipeline_.GetComputeRootParamIndex("gTransmittanceLUT");
-        if (msSrvSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(msSrvSlot), transmittanceSrvHandle_.gpuHandle);
-        }
-        const int msUavSlot = multiScatteringPipeline_.GetComputeRootParamIndex("gMultiScatteringLUT");
-        if (msUavSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(msUavSlot), multiScatteringUavHandle_.gpuHandle);
-        }
+        ShaderBinder multiScatteringBinder(cmdList, ShaderBinder::Pipeline::Compute);
+        multiScatteringBinder.Set(multiScatteringBindings_[MultiScatteringBind::gAtmosphere], constants_.Address());
+        multiScatteringBinder.Set(multiScatteringBindings_[MultiScatteringBind::gTransmittanceLUT], transmittanceSrvHandle_.gpuHandle);
+        multiScatteringBinder.Set(multiScatteringBindings_[MultiScatteringBind::gMultiScatteringLUT], multiScatteringUavHandle_.gpuHandle);
+        multiScatteringBinder.ValidateBeforeDraw(multiScatteringBindings_);
 
         cmdList->Dispatch(
             DivRoundUp(kMultiScatteringLUTSize, 8),
@@ -523,26 +630,12 @@ namespace CoreEngine
         cmdList->SetPipelineState(skyViewPipeline_.GetComputePSO());
         cmdList->SetComputeRootSignature(skyViewPipeline_.GetComputeRootSignature());
 
-        const int cbSlot = skyViewPipeline_.GetComputeRootParamIndex("gAtmosphere");
-        if (cbSlot >= 0) {
-            cmdList->SetComputeRootConstantBufferView(
-                static_cast<UINT>(cbSlot), constants_.Address());
-        }
-        const int transmittanceSlot = skyViewPipeline_.GetComputeRootParamIndex("gTransmittanceLUT");
-        if (transmittanceSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(transmittanceSlot), transmittanceSrvHandle_.gpuHandle);
-        }
-        const int multiScatteringSlot = skyViewPipeline_.GetComputeRootParamIndex("gMultiScatteringLUT");
-        if (multiScatteringSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(multiScatteringSlot), multiScatteringSrvHandle_.gpuHandle);
-        }
-        const int uavSlot = skyViewPipeline_.GetComputeRootParamIndex("gSkyViewLUT");
-        if (uavSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(uavSlot), skyViewUavHandle_.gpuHandle);
-        }
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
+        binder.Set(skyViewBindings_[SkyViewBind::gAtmosphere], constants_.Address());
+        binder.Set(skyViewBindings_[SkyViewBind::gTransmittanceLUT], transmittanceSrvHandle_.gpuHandle);
+        binder.Set(skyViewBindings_[SkyViewBind::gMultiScatteringLUT], multiScatteringSrvHandle_.gpuHandle);
+        binder.Set(skyViewBindings_[SkyViewBind::gSkyViewLUT], skyViewUavHandle_.gpuHandle);
+        binder.ValidateBeforeDraw(skyViewBindings_);
 
         cmdList->Dispatch(
             DivRoundUp(kSkyViewLUTWidth, 8),
@@ -565,21 +658,11 @@ namespace CoreEngine
         cmdList->SetPipelineState(skyIrradiancePipeline_.GetComputePSO());
         cmdList->SetComputeRootSignature(skyIrradiancePipeline_.GetComputeRootSignature());
 
-        const int cbSlot = skyIrradiancePipeline_.GetComputeRootParamIndex("gAtmosphere");
-        if (cbSlot >= 0) {
-            cmdList->SetComputeRootConstantBufferView(
-                static_cast<UINT>(cbSlot), constants_.Address());
-        }
-        const int skyViewSlot = skyIrradiancePipeline_.GetComputeRootParamIndex("gSkyViewLUT");
-        if (skyViewSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(skyViewSlot), skyViewSrvHandle_.gpuHandle);
-        }
-        const int uavSlot = skyIrradiancePipeline_.GetComputeRootParamIndex("gSkyIrradianceSH");
-        if (uavSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(uavSlot), skyIrradianceUavHandle_.gpuHandle);
-        }
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
+        binder.Set(skyIrradianceBindings_[SkyIrradianceBind::gAtmosphere], constants_.Address());
+        binder.Set(skyIrradianceBindings_[SkyIrradianceBind::gSkyViewLUT], skyViewSrvHandle_.gpuHandle);
+        binder.Set(skyIrradianceBindings_[SkyIrradianceBind::gSkyIrradianceSH], skyIrradianceUavHandle_.gpuHandle);
+        binder.ValidateBeforeDraw(skyIrradianceBindings_);
 
         // シェーダー側が 1 グループで全方向を分担する
         cmdList->Dispatch(1, 1, 1);
@@ -620,21 +703,11 @@ namespace CoreEngine
         cmdList->SetPipelineState(skyEnvironmentCapturePipeline_.GetComputePSO());
         cmdList->SetComputeRootSignature(skyEnvironmentCapturePipeline_.GetComputeRootSignature());
 
-        const int cbSlot = skyEnvironmentCapturePipeline_.GetComputeRootParamIndex("gAtmosphere");
-        if (cbSlot >= 0) {
-            cmdList->SetComputeRootConstantBufferView(
-                static_cast<UINT>(cbSlot), constants_.Address());
-        }
-        const int skyViewSlot = skyEnvironmentCapturePipeline_.GetComputeRootParamIndex("gSkyViewLUT");
-        if (skyViewSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(skyViewSlot), skyViewSrvHandle_.gpuHandle);
-        }
-        const int uavSlot = skyEnvironmentCapturePipeline_.GetComputeRootParamIndex("gSkyCubemap");
-        if (uavSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(uavSlot), skyCubemapUavHandles_[0].gpuHandle);
-        }
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
+        binder.Set(skyEnvironmentCaptureBindings_[SkyCaptureBind::gAtmosphere], constants_.Address());
+        binder.Set(skyEnvironmentCaptureBindings_[SkyCaptureBind::gSkyViewLUT], skyViewSrvHandle_.gpuHandle);
+        binder.Set(skyEnvironmentCaptureBindings_[SkyCaptureBind::gSkyCubemap], skyCubemapUavHandles_[0].gpuHandle);
+        binder.ValidateBeforeDraw(skyEnvironmentCaptureBindings_);
 
         cmdList->Dispatch(
             DivRoundUp(kSkyCubemapSize, 8),
@@ -660,26 +733,16 @@ namespace CoreEngine
         cmdList->SetPipelineState(skyEnvironmentPrefilterPipeline_.GetComputePSO());
         cmdList->SetComputeRootSignature(skyEnvironmentPrefilterPipeline_.GetComputeRootSignature());
 
-        const int cbSlot = skyEnvironmentPrefilterPipeline_.GetComputeRootParamIndex("SkyPrefilterParams");
-        const int srvSlot = skyEnvironmentPrefilterPipeline_.GetComputeRootParamIndex("gSkyCubemap");
-        const int uavSlot = skyEnvironmentPrefilterPipeline_.GetComputeRootParamIndex("gSkySpecularMap");
-
-        if (srvSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(srvSlot), skyCubemapSrvHandle_.gpuHandle);
-        }
+        const BindingTable& bindings = skyEnvironmentPrefilterBindings_;
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
+        binder.Set(bindings[SkyPrefilterBind::gSkyCubemap], skyCubemapSrvHandle_.gpuHandle);
 
         constexpr uint32_t kSlotSize = 256;
         const D3D12_GPU_VIRTUAL_ADDRESS paramsBase = skyPrefilterParamsCB_->GetGPUVirtualAddress();
         for (uint32_t mip = 0; mip < kSkySpecularMipCount; ++mip) {
-            if (cbSlot >= 0) {
-                cmdList->SetComputeRootConstantBufferView(
-                    static_cast<UINT>(cbSlot), paramsBase + kSlotSize * mip);
-            }
-            if (uavSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(
-                    static_cast<UINT>(uavSlot), skySpecularUavHandles_[mip].gpuHandle);
-            }
+            binder.Set(bindings[SkyPrefilterBind::SkyPrefilterParams], paramsBase + kSlotSize * mip);
+            binder.Set(bindings[SkyPrefilterBind::gSkySpecularMap], skySpecularUavHandles_[mip].gpuHandle);
+            binder.ValidateBeforeDraw(bindings);
             const uint32_t mipSize = kSkyCubemapSize >> mip;
             cmdList->Dispatch(DivRoundUp(mipSize, 8), DivRoundUp(mipSize, 8), 6);
         }
@@ -700,17 +763,12 @@ namespace CoreEngine
         cmdList->SetPipelineState(skyEnvironmentDownsamplePipeline_.GetComputePSO());
         cmdList->SetComputeRootSignature(skyEnvironmentDownsamplePipeline_.GetComputeRootSignature());
 
-        const int sourceSlot = skyEnvironmentDownsamplePipeline_.GetComputeRootParamIndex("gSourceMip");
-        const int destSlot = skyEnvironmentDownsamplePipeline_.GetComputeRootParamIndex("gDestMip");
+        const BindingTable& bindings = skyEnvironmentDownsampleBindings_;
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
         for (uint32_t mip = 1; mip < kSkyCubemapMipCount; ++mip) {
-            if (sourceSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(
-                    static_cast<UINT>(sourceSlot), skyCubemapUavHandles_[mip - 1].gpuHandle);
-            }
-            if (destSlot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(
-                    static_cast<UINT>(destSlot), skyCubemapUavHandles_[mip].gpuHandle);
-            }
+            binder.Set(bindings[SkyDownsampleBind::gSourceMip], skyCubemapUavHandles_[mip - 1].gpuHandle);
+            binder.Set(bindings[SkyDownsampleBind::gDestMip], skyCubemapUavHandles_[mip].gpuHandle);
+            binder.ValidateBeforeDraw(bindings);
             const uint32_t mipSize = kSkyCubemapSize >> mip;
             cmdList->Dispatch(DivRoundUp(mipSize, 8), DivRoundUp(mipSize, 8), 6);
 
@@ -726,26 +784,12 @@ namespace CoreEngine
         cmdList->SetPipelineState(cameraVolumePipeline_.GetComputePSO());
         cmdList->SetComputeRootSignature(cameraVolumePipeline_.GetComputeRootSignature());
 
-        const int cbSlot = cameraVolumePipeline_.GetComputeRootParamIndex("gAtmosphere");
-        if (cbSlot >= 0) {
-            cmdList->SetComputeRootConstantBufferView(
-                static_cast<UINT>(cbSlot), constants_.Address());
-        }
-        const int transmittanceSlot = cameraVolumePipeline_.GetComputeRootParamIndex("gTransmittanceLUT");
-        if (transmittanceSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(transmittanceSlot), transmittanceSrvHandle_.gpuHandle);
-        }
-        const int multiScatteringSlot = cameraVolumePipeline_.GetComputeRootParamIndex("gMultiScatteringLUT");
-        if (multiScatteringSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(multiScatteringSlot), multiScatteringSrvHandle_.gpuHandle);
-        }
-        const int uavSlot = cameraVolumePipeline_.GetComputeRootParamIndex("gCameraVolumeLUT");
-        if (uavSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(uavSlot), cameraVolumeUavHandle_.gpuHandle);
-        }
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
+        binder.Set(cameraVolumeBindings_[CameraVolumeBind::gAtmosphere], constants_.Address());
+        binder.Set(cameraVolumeBindings_[CameraVolumeBind::gTransmittanceLUT], transmittanceSrvHandle_.gpuHandle);
+        binder.Set(cameraVolumeBindings_[CameraVolumeBind::gMultiScatteringLUT], multiScatteringSrvHandle_.gpuHandle);
+        binder.Set(cameraVolumeBindings_[CameraVolumeBind::gCameraVolumeLUT], cameraVolumeUavHandle_.gpuHandle);
+        binder.ValidateBeforeDraw(cameraVolumeBindings_);
 
         cmdList->Dispatch(
             DivRoundUp(kCameraVolumeSize, 4),
@@ -809,31 +853,13 @@ namespace CoreEngine
         cmdList->SetPipelineState(aerialPerspectivePipeline_.GetComputePSO());
         cmdList->SetComputeRootSignature(aerialPerspectivePipeline_.GetComputeRootSignature());
 
-        const int cbSlot = aerialPerspectivePipeline_.GetComputeRootParamIndex("gAtmosphere");
-        if (cbSlot >= 0) {
-            cmdList->SetComputeRootConstantBufferView(
-                static_cast<UINT>(cbSlot), constants_.Address());
-        }
-        const int sceneColorSlot = aerialPerspectivePipeline_.GetComputeRootParamIndex("gSceneColor");
-        if (sceneColorSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(sceneColorSlot), sceneColorSrvHandle);
-        }
-        const int depthSlot = aerialPerspectivePipeline_.GetComputeRootParamIndex("gSceneDepth");
-        if (depthSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(depthSlot), depthSrvHandle);
-        }
-        const int volumeSlot = aerialPerspectivePipeline_.GetComputeRootParamIndex("gCameraVolumeLUT");
-        if (volumeSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(volumeSlot), cameraVolumeSrvHandle_.gpuHandle);
-        }
-        const int outputSlot = aerialPerspectivePipeline_.GetComputeRootParamIndex("gOutput");
-        if (outputSlot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(
-                static_cast<UINT>(outputSlot), apResultUavHandle_.gpuHandle);
-        }
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
+        binder.Set(aerialPerspectiveBindings_[AerialPerspectiveBind::gAtmosphere], constants_.Address());
+        binder.Set(aerialPerspectiveBindings_[AerialPerspectiveBind::gSceneColor], sceneColorSrvHandle);
+        binder.Set(aerialPerspectiveBindings_[AerialPerspectiveBind::gSceneDepth], depthSrvHandle);
+        binder.Set(aerialPerspectiveBindings_[AerialPerspectiveBind::gCameraVolumeLUT], cameraVolumeSrvHandle_.gpuHandle);
+        binder.Set(aerialPerspectiveBindings_[AerialPerspectiveBind::gOutput], apResultUavHandle_.gpuHandle);
+        binder.ValidateBeforeDraw(aerialPerspectiveBindings_);
 
         cmdList->Dispatch(
             DivRoundUp(static_cast<UINT>(apResultWidth_), 8),

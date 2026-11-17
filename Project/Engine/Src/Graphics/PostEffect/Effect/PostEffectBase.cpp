@@ -11,10 +11,6 @@
 
 namespace CoreEngine
 {
-    int PostEffectBase::GetRootParamIndex(const std::string& resourceName) const {
-        return FindRootParamIndex(reflectionData_, resourceName);
-    }
-
     void PostEffectBase::SetResolvedExtraInput(const char* slot, D3D12_GPU_DESCRIPTOR_HANDLE srvHandle)
     {
         if (!slot) {

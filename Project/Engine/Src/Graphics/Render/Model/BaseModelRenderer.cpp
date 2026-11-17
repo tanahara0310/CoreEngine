@@ -21,14 +21,6 @@
 
 namespace CoreEngine
 {
-    int BaseModelRenderer::GetRootParamIndex(const std::string& resourceName) const {
-        return FindRootParamIndex(forwardReflectionData_.get(), resourceName);
-    }
-
-    int BaseModelRenderer::GetGBufferRootParamIndex(const std::string& resourceName) const {
-        return FindRootParamIndex(gBufferReflectionData_.get(), resourceName);
-    }
-
     void BaseModelRenderer::BuildPipelines(ID3D12Device* device, const PipelineDesc& desc)
     {
         shaderCompiler_->Initialize();

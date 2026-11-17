@@ -93,11 +93,6 @@ namespace CoreEngine
             fogVolumetric_ = volumetric;
         }
 
-        /// @brief フォワードパスのリソース名からルートパラメータインデックスを取得（-1: 未登録）
-        int GetRootParamIndex(const std::string& resourceName) const;
-        /// @brief GBuffer パスのリソース名からルートパラメータインデックスを取得（-1: 未登録）
-        int GetGBufferRootParamIndex(const std::string& resourceName) const;
-
         /// @brief モデル描画パケットをバインドして描画コマンドを発行する
         /// Model が組み立てた ModelDrawPacket を受け取り、現在のパス（Forward/GBuffer）に
         /// 応じたルートパラメータへのバインドと DrawIndexedInstanced の呼び出しを行う。

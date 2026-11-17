@@ -2,6 +2,7 @@
 #include "WaterShoreFoam.h"
 
 #include <algorithm>
+#include <iterator>
 #include <string>
 
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
@@ -9,6 +10,7 @@
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Resource/UavTexture.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
+#include "Graphics/RootSignature/ShaderBinder.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
 #include "Math/IntegerMath.h"
@@ -25,6 +27,45 @@ namespace CoreEngine
         float ComputeDeltaSeconds(float timeSeconds, float previousTimeSeconds)
         {
             return (std::clamp)(timeSeconds - previousTimeSeconds, 0.0f, kMaxDeltaSeconds);
+        }
+
+        /// @brief WaterShoreSeabedSmooth.CS.hlsl の契約
+        namespace SeabedSmoothBind {
+            enum Slot : size_t { gSeabedHeight, gSmoothSeabedOutput, WaterShoreSeabedSmoothConstants, Count };
+            inline constexpr ShaderBindingDecl kDecls[] = {
+                { "gSeabedHeight",                   ShaderBindingType::SRV, BindingUsage::Required },
+                { "gSmoothSeabedOutput",             ShaderBindingType::UAV, BindingUsage::Required },
+                { "WaterShoreSeabedSmoothConstants", ShaderBindingType::CBV, BindingUsage::Required },
+            };
+            static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
+        }
+
+        /// @brief WaterShoreSwash.CS.hlsl の契約
+        namespace SwashBind {
+            enum Slot : size_t { gSmoothSeabedHeight, gFFTOceanDisplacement, gSwashOutput, WaterShoreSwashConstants, Count };
+            inline constexpr ShaderBindingDecl kDecls[] = {
+                { "gSmoothSeabedHeight",      ShaderBindingType::SRV, BindingUsage::Required },
+                { "gFFTOceanDisplacement",    ShaderBindingType::SRV, BindingUsage::Required },
+                { "gSwashOutput",             ShaderBindingType::UAV, BindingUsage::Required },
+                { "WaterShoreSwashConstants", ShaderBindingType::CBV, BindingUsage::Required },
+            };
+            static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
+        }
+
+        /// @brief WaterShoreFoam.CS.hlsl の契約
+        namespace ShoreFoamBind {
+            enum Slot : size_t {
+                gSeabedHeight, gFFTOceanDisplacement, gShoreFoamPrev, gSwashDisplacement, gShoreFoamOutput,
+                WaterShoreFoamConstants, Count };
+            inline constexpr ShaderBindingDecl kDecls[] = {
+                { "gSeabedHeight",           ShaderBindingType::SRV, BindingUsage::Required },
+                { "gFFTOceanDisplacement",   ShaderBindingType::SRV, BindingUsage::Required },
+                { "gShoreFoamPrev",          ShaderBindingType::SRV, BindingUsage::Required },
+                { "gSwashDisplacement",      ShaderBindingType::SRV, BindingUsage::Required },
+                { "gShoreFoamOutput",        ShaderBindingType::UAV, BindingUsage::Required },
+                { "WaterShoreFoamConstants", ShaderBindingType::CBV, BindingUsage::Required },
+            };
+            static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
         }
     }
 
@@ -68,11 +109,18 @@ namespace CoreEngine
                 "WaterShoreFoam: failed to build shore foam compute pipeline.");
             return false;
         }
+        if (!foamPipeline_.ResolveComputeBindings(ShoreFoamBind::kDecls, "WaterShoreFoam", foamBindings_)) {
+            return false;
+        }
 
         if (!smoothSeabedPipeline_.BuildCompute(
                 dxCommon_->GetDevice(), shaderCompiler, reflectionBuilder, L"WaterShoreSeabedSmooth.CS.hlsl")) {
             Logger::GetInstance().Errorf(LogCategory::Graphics, LogSubCategory::Pipeline,
                 "WaterShoreFoam: failed to build seabed smoothing compute pipeline.");
+            return false;
+        }
+        if (!smoothSeabedPipeline_.ResolveComputeBindings(
+                SeabedSmoothBind::kDecls, "WaterShoreSeabedSmooth", smoothSeabedBindings_)) {
             return false;
         }
 
@@ -82,7 +130,7 @@ namespace CoreEngine
                 "WaterShoreFoam: failed to build swash compute pipeline.");
             return false;
         }
-        return true;
+        return swashPipeline_.ResolveComputeBindings(SwashBind::kDecls, "WaterShoreSwash", swashBindings_);
     }
 
     bool WaterShoreFoam::CreateResources()
@@ -170,16 +218,12 @@ namespace CoreEngine
             Barrier::Transition(cmdList, smoothSeabed_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             cmdList->SetPipelineState(smoothSeabedPipeline_.GetComputePSO());
             cmdList->SetComputeRootSignature(smoothSeabedPipeline_.GetComputeRootSignature());
-            if (const int slot = smoothSeabedPipeline_.GetComputeRootParamIndex("gSeabedHeight"); slot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), input.seabedHeightSRV);
-            }
-            if (const int slot = smoothSeabedPipeline_.GetComputeRootParamIndex("gSmoothSeabedOutput"); slot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), smoothSeabed_.uav.gpuHandle);
-            }
-            if (const int slot = smoothSeabedPipeline_.GetComputeRootParamIndex("WaterShoreSeabedSmoothConstants"); slot >= 0) {
-                cmdList->SetComputeRootConstantBufferView(
-                    static_cast<UINT>(slot), dxCommon_->GetUploadRing().AllocateConstants(smoothConstants));
-            }
+            ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
+            binder.Set(smoothSeabedBindings_[SeabedSmoothBind::gSeabedHeight], input.seabedHeightSRV);
+            binder.Set(smoothSeabedBindings_[SeabedSmoothBind::gSmoothSeabedOutput], smoothSeabed_.uav.gpuHandle);
+            binder.Set(smoothSeabedBindings_[SeabedSmoothBind::WaterShoreSeabedSmoothConstants],
+                dxCommon_->GetUploadRing().AllocateConstants(smoothConstants));
+            binder.ValidateBeforeDraw(smoothSeabedBindings_);
             const UINT smoothGroups = DivRoundUp(kSmoothSeabedResolution, 8);
             cmdList->Dispatch(smoothGroups, smoothGroups, 1);
             Barrier::Transition(cmdList, smoothSeabed_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -200,19 +244,13 @@ namespace CoreEngine
             Barrier::Transition(cmdList, swash_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             cmdList->SetPipelineState(swashPipeline_.GetComputePSO());
             cmdList->SetComputeRootSignature(swashPipeline_.GetComputeRootSignature());
-            if (const int slot = swashPipeline_.GetComputeRootParamIndex("gSmoothSeabedHeight"); slot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), smoothSeabed_.srv.gpuHandle);
-            }
-            if (const int slot = swashPipeline_.GetComputeRootParamIndex("gFFTOceanDisplacement"); slot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), input.fftDisplacementSRV);
-            }
-            if (const int slot = swashPipeline_.GetComputeRootParamIndex("gSwashOutput"); slot >= 0) {
-                cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), swash_.uav.gpuHandle);
-            }
-            if (const int slot = swashPipeline_.GetComputeRootParamIndex("WaterShoreSwashConstants"); slot >= 0) {
-                cmdList->SetComputeRootConstantBufferView(
-                    static_cast<UINT>(slot), dxCommon_->GetUploadRing().AllocateConstants(swashConstants));
-            }
+            ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
+            binder.Set(swashBindings_[SwashBind::gSmoothSeabedHeight], smoothSeabed_.srv.gpuHandle);
+            binder.Set(swashBindings_[SwashBind::gFFTOceanDisplacement], input.fftDisplacementSRV);
+            binder.Set(swashBindings_[SwashBind::gSwashOutput], swash_.uav.gpuHandle);
+            binder.Set(swashBindings_[SwashBind::WaterShoreSwashConstants],
+                dxCommon_->GetUploadRing().AllocateConstants(swashConstants));
+            binder.ValidateBeforeDraw(swashBindings_);
             const UINT swashGroups = DivRoundUp(kSmoothSeabedResolution, 8);
             cmdList->Dispatch(swashGroups, swashGroups, 1);
             Barrier::Transition(cmdList, swash_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -226,25 +264,15 @@ namespace CoreEngine
         cmdList->SetPipelineState(foamPipeline_.GetComputePSO());
         cmdList->SetComputeRootSignature(foamPipeline_.GetComputeRootSignature());
 
-        if (const int slot = foamPipeline_.GetComputeRootParamIndex("gSeabedHeight"); slot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), input.seabedHeightSRV);
-        }
-        if (const int slot = foamPipeline_.GetComputeRootParamIndex("gFFTOceanDisplacement"); slot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), input.fftDisplacementSRV);
-        }
-        if (const int slot = foamPipeline_.GetComputeRootParamIndex("gShoreFoamPrev"); slot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), readFoam.srv.gpuHandle);
-        }
-        if (const int slot = foamPipeline_.GetComputeRootParamIndex("gSwashDisplacement"); slot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), swash_.srv.gpuHandle);
-        }
-        if (const int slot = foamPipeline_.GetComputeRootParamIndex("gShoreFoamOutput"); slot >= 0) {
-            cmdList->SetComputeRootDescriptorTable(static_cast<UINT>(slot), writeFoam.uav.gpuHandle);
-        }
-        if (const int slot = foamPipeline_.GetComputeRootParamIndex("WaterShoreFoamConstants"); slot >= 0) {
-            cmdList->SetComputeRootConstantBufferView(
-                static_cast<UINT>(slot), dxCommon_->GetUploadRing().AllocateConstants(constants));
-        }
+        ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
+        binder.Set(foamBindings_[ShoreFoamBind::gSeabedHeight], input.seabedHeightSRV);
+        binder.Set(foamBindings_[ShoreFoamBind::gFFTOceanDisplacement], input.fftDisplacementSRV);
+        binder.Set(foamBindings_[ShoreFoamBind::gShoreFoamPrev], readFoam.srv.gpuHandle);
+        binder.Set(foamBindings_[ShoreFoamBind::gSwashDisplacement], swash_.srv.gpuHandle);
+        binder.Set(foamBindings_[ShoreFoamBind::gShoreFoamOutput], writeFoam.uav.gpuHandle);
+        binder.Set(foamBindings_[ShoreFoamBind::WaterShoreFoamConstants],
+            dxCommon_->GetUploadRing().AllocateConstants(constants));
+        binder.ValidateBeforeDraw(foamBindings_);
 
         const UINT groups = DivRoundUp(kResolution, 8);
         cmdList->Dispatch(groups, groups, 1);

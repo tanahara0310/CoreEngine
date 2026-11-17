@@ -12,6 +12,7 @@
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
 #include "Graphics/Shader/ShaderProgram.h"
 #include "Graphics/RootSignature/RootSignatureConfig.h"
+#include "Graphics/Shader/ShaderBindingContract.h"
 #include "Utility/CVar/CVar.h"
 
 namespace CoreEngine
@@ -87,15 +88,20 @@ public:
     ///          自動的に CVars.json へ保存される。常時有効な技術は nullptr のままでよい。
     virtual CVar<bool>* GetEnabledCVar() const { return nullptr; }
 
-    /// @brief シェーダーリソース名からルートパラメータ（番号＋差し方）を取得
-    /// @note 初期化時に解決してメンバへ持ち、描画中は名前で引かないこと
-    RootSlot GetRootSlot(const std::string& resourceName) const;
-
-    /// @brief シェーダーリソース名からルートパラメータインデックスを取得
-    /// @deprecated GetRootSlot() + ShaderBinder へ移行すること
-    int GetRootParamIndex(const std::string& resourceName) const;
-
 protected:
+    /// @brief 宣言表をこの技術のシェーダーのリフレクションと突き合わせて解決する
+    /// @note RenderingTechniqueBase::Initialize() でルートシグネチャを作った後に呼ぶ
+    /// @throws std::runtime_error 契約違反（Required/Conditional が不在、種別違い）、またはリフレクションが無い
+    template <size_t N>
+    BindingTable ResolveBindingTable(const ShaderBindingDecl (&decls)[N]) const
+    {
+        static_assert(N <= BindingTable::kMaxBindings, "宣言数がルートパラメータ上限を超えています");
+        return ResolveBindingTable(decls, N);
+    }
+
+    /// @brief 宣言表を解決する（宣言数を渡す版）
+    BindingTable ResolveBindingTable(const ShaderBindingDecl* decls, size_t count) const;
+
     /// @brief 技術名を取得（デバッグ用）
     virtual std::string GetTechniqueName() const = 0;
 

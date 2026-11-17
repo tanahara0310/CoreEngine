@@ -18,10 +18,6 @@ public:
     ModelParticleRenderer() = default;
     ~ModelParticleRenderer() override = default;
 
-    /// @brief 初期化（共通処理 + ライト用ルートスロットの解決）
-    /// @param device D3D12デバイス
-    void Initialize(ID3D12Device* device) override;
-
     /// @brief このレンダラーがサポートする描画タイプを取得
     /// @return 描画パスタイプ
     RenderPassType GetRenderPassType() const override { return RenderPassType::ModelParticle; }
@@ -52,9 +48,5 @@ protected:
 
 private:
     LightManager* lightManager_ = nullptr;
-
-    // 初期化時に解決するルートパラメータ（描画中に名前で引かない）
-    RootSlot lightCountsSlot_;
-    RootSlot directionalLightsSlot_;
 };
 }

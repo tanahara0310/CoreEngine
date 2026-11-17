@@ -13,6 +13,7 @@
 
 #include "Graphics/Shader/CBufferLayout.h"
 #include "Graphics/Shader/CBufferReflectionCheck.h"
+#include "Graphics/Shader/ShaderBindingContract.h"
 #include "Math/Geometry/Shapes.h"
 #include "Math/Matrix/Matrix4x4.h"
 
@@ -191,13 +192,10 @@ namespace CoreEngine
         std::unique_ptr<ShaderReflectionData> cullReflectionData_;
         Microsoft::WRL::ComPtr<ID3D12PipelineState> buildPso_;
         Microsoft::WRL::ComPtr<ID3D12PipelineState> cullPso_;
-        int buildSourceIdx_ = -1;
-        int buildDestIdx_ = -1;
-        int buildParamsIdx_ = -1;
-        int cullBoundsIdx_ = -1;
-        int cullHiZIdx_ = -1;
-        int cullVisibilityIdx_ = -1;
-        int cullParamsIdx_ = -1;
+        /// @brief 構築 CS の解決済みルートパラメータ表（HiZBuildBind::kDecls の並び）
+        BindingTable buildBindings_;
+        /// @brief 判定 CS の解決済みルートパラメータ表（HiZCullBind::kDecls の並び）
+        BindingTable cullBindings_;
 
         // ---- GPU リソース ----
         GraphicsCore* dxCommon_ = nullptr;

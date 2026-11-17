@@ -3021,6 +3021,9 @@
     <ClInclude Include="Engine\Src\Graphics\Render\Particle\BaseParticleRenderer.h">
       <Filter>Engine\Src\Graphics\Render\Particle</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Particle\ParticleBindings.h">
+      <Filter>Engine\Src\Graphics\Render\Particle</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Particle\GpuParticleRenderer.h">
       <Filter>Engine\Src\Graphics\Render\Particle</Filter>
     </ClInclude>
@@ -3204,10 +3207,19 @@
     <ClInclude Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxRenderer.h">
       <Filter>Engine\Src\Graphics\Render\SkyBox</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\SkyBox\SkyBoxBindings.h">
+      <Filter>Engine\Src\Graphics\Render\SkyBox</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Sprite\SpriteRenderer.h">
       <Filter>Engine\Src\Graphics\Render\Sprite</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Sprite\SpriteBindings.h">
+      <Filter>Engine\Src\Graphics\Render\Sprite</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\UI\UIMaterial.h">
+      <Filter>Engine\Src\Graphics\Render\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\UI\UIBindings.h">
       <Filter>Engine\Src\Graphics\Render\UI</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\UI\UIRenderer.h">
@@ -3385,6 +3397,9 @@
       <Filter>Engine\Src\Graphics\Water\Query</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\FFT\FFTOceanDispatchHelper.h">
+      <Filter>Engine\Src\Graphics\Water\FFT</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\FFT\FFTOceanBindings.h">
       <Filter>Engine\Src\Graphics\Water\FFT</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\FFT\FFTOceanGpuResources.h">

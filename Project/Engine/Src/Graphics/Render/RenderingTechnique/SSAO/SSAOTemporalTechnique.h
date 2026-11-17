@@ -60,6 +60,9 @@ namespace CoreEngine
         /// @brief 履歴 ping-pong ターゲットを必要に応じて生成する
         void EnsureHistoryTargets(const RenderContext& context);
 
+        /// @brief 解決済みのルートパラメータ表（SSAOTemporalBind::kDecls の並び）
+        BindingTable bindings_;
+
         SSAOTemporalParams params_;
 
         bool historyValid_ = false;

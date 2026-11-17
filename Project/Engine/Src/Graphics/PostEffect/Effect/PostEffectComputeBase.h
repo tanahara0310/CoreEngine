@@ -135,7 +135,7 @@ namespace CoreEngine {
         /// @brief 追加のパイプラインのルートシグネチャとパイプラインを差し、テーブルと定数を名前で差す
         /// @details 並びの順にテーブル、次に定数を差す。シェーダーに無い名前は差さない
         /// @param cmdList   記録先
-        /// @param pipeline  差すパイプライン（番号は pipeline のルートシグネチャから引く）
+        /// @param pipeline  差すパイプライン（ルートパラメータは pipeline のリフレクションから引く）
         /// @param tables    差すテーブル
         /// @param constants 差す定数バッファ
         void BindPass(

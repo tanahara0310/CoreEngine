@@ -17,7 +17,6 @@
 #include "Graphics/RootSignature/ShaderBinder.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
-#include "Graphics/Shader/ShaderReflectionData.h"
 #include "Math/IntegerMath.h"
 #include "Scene/Environment/WindCVars.h"
 #include "Utility/FrameRate/Time.h"
@@ -25,7 +24,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <exception>
 #include <span>
 
 namespace CoreEngine
@@ -47,22 +45,10 @@ namespace CoreEngine
         {
             if (!pipeline.BuildCompute(device, compiler, reflectionBuilder, path)) {
                 Logger::GetInstance().Warnf(LogCategory::Graphics,
-                    "VolumetricFog: %s のコンピュートパイプラインの構築に失敗", label);
+                    "VolumetricFog: {} のコンピュートパイプラインの構築に失敗", label);
                 return false;
             }
-            const ShaderReflectionData* reflection = pipeline.GetComputeReflection();
-            if (!reflection) {
-                Logger::GetInstance().Warnf(LogCategory::Graphics,
-                    "VolumetricFog: %s のリフレクションを取得できません", label);
-                return false;
-            }
-            try {
-                bindings = BindingTable::Resolve(*reflection, decls.data(), decls.size(), label);
-            }
-            catch (const std::exception&) {
-                return false;
-            }
-            return true;
+            return pipeline.ResolveComputeBindings(decls, label, bindings);
         }
 
         static_assert(VolumetricFog::kMaxLocalLights

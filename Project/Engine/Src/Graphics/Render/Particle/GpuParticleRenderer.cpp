@@ -96,16 +96,7 @@ namespace CoreEngine
         BeginPass(cmdList_, system->GetBlendMode());
 
         // 3. 描画リソースをバインドし、GPUが書き込んだ生存数で間接描画
-        int instanceIdx = GetRootParamIndex("gParticle");
-        if (instanceIdx >= 0) {
-            cmdList_->SetGraphicsRootDescriptorTable(instanceIdx, system->GetInstancingSrvHandleGPU());
-        }
-        int texIdx = GetRootParamIndex("gTexture");
-        if (texIdx >= 0) {
-            cmdList_->SetGraphicsRootDescriptorTable(texIdx, system->GetTextureHandle());
-        }
-
-        BindFogResources();
+        BindDrawResources(system->GetInstancingSrvHandleGPU(), system->GetTextureHandle());
 
         cmdList_->ExecuteIndirect(commandSignature_.Get(), 1, system->GetArgsResource(), 0, nullptr, 0);
     }

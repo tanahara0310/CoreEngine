@@ -52,6 +52,9 @@ protected:
     const std::wstring& GetPixelShaderPath() const override;
 
 private:
+    /// @brief 解決済みのルートパラメータ表（SSAOBlurBind::kDecls の並び）
+    BindingTable bindings_;
+
     SSAOBlurParams params_;
     // invViewProj がジッタで毎フレーム変わるため、定数は UploadRing から毎フレーム確保する
     std::string inputTargetName_; ///< 空ならデフォルト（RenderTargetNames::SSAOBuffer）

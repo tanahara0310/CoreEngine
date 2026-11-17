@@ -34,10 +34,6 @@ namespace CoreEngine
         return RootSlot{};  // kind == None
     }
 
-    int RootSignatureManager::GetRootParameterIndex(const std::string& resourceName) const {
-        return ToRootParamIndex(GetRootSlot(resourceName));
-    }
-
     void RootSignatureManager::Clear() {
         rootSignature_.Reset();
         lastBuildResult_ = RootSignatureBuildResult{};

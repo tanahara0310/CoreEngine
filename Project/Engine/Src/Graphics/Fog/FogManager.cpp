@@ -13,11 +13,9 @@
 #include "Graphics/RootSignature/ShaderBinder.h"
 #include "Graphics/Shader/ShaderCompiler.h"
 #include "Graphics/Shader/ShaderReflectionBuilder.h"
-#include "Graphics/Shader/ShaderReflectionData.h"
 #include "Math/IntegerMath.h"
 #include "Utility/Logger/Logger.h"
 
-#include <exception>
 #include <iterator>
 
 namespace CoreEngine
@@ -48,22 +46,7 @@ namespace CoreEngine
                     "FogManager: {} コンピュートパイプラインの構築に失敗", shader.name);
                 return false;
             }
-
-            const ShaderReflectionData* reflection = pipeline.GetComputeReflection();
-            if (!reflection) {
-                Logger::GetInstance().Warnf(LogCategory::Graphics,
-                    "FogManager: {} のリフレクションを取得できません", shader.name);
-                return false;
-            }
-
-            try {
-                bindings = BindingTable::Resolve(*reflection, FogApplyBind::kDecls, shader.name);
-            }
-            catch (const std::exception&) {
-                // 違反の内訳は BindingTable::Resolve が error ログへ出している
-                return false;
-            }
-            return true;
+            return pipeline.ResolveComputeBindings(FogApplyBind::kDecls, shader.name, bindings);
         }
     }
 

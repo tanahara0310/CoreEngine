@@ -100,12 +100,6 @@ namespace CoreEngine
         /// @note RootSignature 構築後に使用可能。新規コードはこちらを使い ShaderBinder へ渡すこと。
         RootSlot GetRootSlot(const std::string& resourceName) const;
 
-        // リソース名からルートパラメータインデックスを取得
-        // BuildFromReflection後に使用可能
-        /// @deprecated 番号だけでは Set* を選べない。GetRootSlot() + ShaderBinder へ移行すること。
-        ///             Phase 2 で呼び出し側を置き換え終えたら削除する。
-        int GetRootParameterIndexByName(const std::string& resourceName) const;
-
         // ルートパラメータマッピングを設定（RootSignatureManagerから呼ばれる）
         void SetRootParameterMapping(const std::map<std::string, RootSlot>& mapping);
 
@@ -139,8 +133,4 @@ namespace CoreEngine
         std::string GetShaderVisibilityString(D3D12_SHADER_VISIBILITY visibility) const;
         std::string GetFormatString(DXGI_FORMAT format) const;
     };
-
-    /// @brief リソース名からルートパラメータインデックスを取得
-    /// @return reflectionData が nullptr か、名前が無ければ -1
-    int FindRootParamIndex(const ShaderReflectionData* reflectionData, const std::string& resourceName);
 }

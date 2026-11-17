@@ -94,15 +94,13 @@ namespace CoreEngine
         }
     }
 
-    RootSlot RenderingTechniqueBase::GetRootSlot(const std::string& resourceName) const {
+    BindingTable RenderingTechniqueBase::ResolveBindingTable(const ShaderBindingDecl* decls, size_t count) const
+    {
         if (!reflectionData_) {
-            return RootSlot{};
+            throw std::runtime_error(
+                "RenderingTechnique: リフレクションが無いのでバインドの表を引けません: " + GetTechniqueName());
         }
-        return reflectionData_->GetRootSlot(resourceName);
-    }
-
-    int RenderingTechniqueBase::GetRootParamIndex(const std::string& resourceName) const {
-        return ToRootParamIndex(GetRootSlot(resourceName));
+        return BindingTable::Resolve(*reflectionData_, decls, count, GetTechniqueName());
     }
 
     const std::wstring& RenderingTechniqueBase::GetVertexShaderPath() const
