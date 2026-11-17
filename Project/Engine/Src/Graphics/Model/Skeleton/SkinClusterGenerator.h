@@ -7,6 +7,8 @@
 #include "Graphics/Model/ModelData.h"
 #include "Skeleton.h"
 
+#include <span>
+
 // 前方宣言
 namespace CoreEngine {
     class GraphicsCore;
@@ -29,9 +31,9 @@ public:
     
     /// @brief スキンクラスターを更新
     /// @param skinCluster 更新するスキンクラスター
-    /// @param skeleton スケルトン
+    /// @param skeletonSpaceMatrices 骨ごとのスケルトン空間の行列（骨の並びと同じ数）
     /// @details そのフレームで最初の更新なら、最後に更新した姿勢を前のフレームの姿勢にする
-    static void Update(SkinCluster& skinCluster, const Skeleton& skeleton);
+    static void Update(SkinCluster& skinCluster, std::span<const Matrix4x4> skeletonSpaceMatrices);
 
     /// @brief このフレームに更新が無く、前のフレームの姿勢が今の姿勢と違えば、前の姿勢を今の姿勢に揃える
     /// @return 揃えた（GPU スキニングを実行し直す）

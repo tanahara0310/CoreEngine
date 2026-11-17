@@ -132,6 +132,7 @@ namespace CoreEngine::Editor::ScriptBinding
             case AssetType::Model:   return "MODEL_FILE";
             case AssetType::Audio:   return "AUDIO_FILE";
             case AssetType::Prefab:  return "PREFAB_FILE";
+            case AssetType::AnimatorController: return "ANIMATOR_FILE";
             default:                 return nullptr;
             }
         }
@@ -240,7 +241,7 @@ namespace CoreEngine::Editor::ScriptBinding
                 }
                 std::vector<AssetType> types;
                 if (*assetType == AssetType::Unknown) {
-                    for (int value = static_cast<int>(AssetType::Texture); value <= static_cast<int>(AssetType::ShaderGraph); ++value) {
+                    for (int value = static_cast<int>(AssetType::Texture); value <= static_cast<int>(AssetType::AnimatorController); ++value) {
                         types.push_back(static_cast<AssetType>(value));
                     }
                 } else {

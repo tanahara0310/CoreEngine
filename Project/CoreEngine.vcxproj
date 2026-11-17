@@ -200,6 +200,16 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Engine\Src\Editor\Animation\AnimatorLiveView.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Animation\AnimatorWidgets.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Animation\AnimatorInspectorPanel.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Animation\AnimatorParameterPanel.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Animation\AnimatorCanvas.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Animation\AnimatorDocument.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Animation\AnimatorEditor.cpp" />
+    <ClCompile Include="Engine\Src\Animation\AnimatorRuntime.cpp" />
+    <ClCompile Include="Engine\Src\Animation\AnimatorController.cpp" />
+    <ClCompile Include="Engine\Src\Animation\PoseEvaluator.cpp" />
     <ClCompile Include="Engine\Src\Editor\Inspector\ComponentInspectors.cpp" />
     <ClCompile Include="Engine\Src\Editor\Script\ScriptTemplate.cpp" />
     <ClCompile Include="Engine\Src\Editor\Script\EditorGUIBinding.cpp" />
@@ -444,7 +454,6 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Graphics\Material\ShaderMaterialPipeline.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\ShaderMaterialSlot.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Material\SurfaceMaterialPipeline.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Model\Animation\SkeletonAnimatorFactory.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Pipeline\CustomShaderPipeline.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\Bloom\Bloom.cpp" />
     <ClCompile Include="Engine\Src\Graphics\PostEffect\Effect\LensFlare\LensFlare.cpp" />
@@ -492,9 +501,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Graphics\Light\LightManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Line\LineManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\AnimationLoader.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Model\Animation\AnimationPlayer.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\AnimationUtils.cpp" />
-    <ClCompile Include="Engine\Src\Graphics\Model\Skeleton\SkeletonAnimator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Skeleton\SkeletonLoader.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Skeleton\SkinClusterGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Skeleton\SkinningComputeDispatcher.cpp" />
@@ -1451,6 +1458,17 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Utility\Tween\TweenManager.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Engine\Src\Editor\Animation\AnimatorLiveView.h" />
+    <ClInclude Include="Engine\Src\Editor\Animation\AnimatorWidgets.h" />
+    <ClInclude Include="Engine\Src\Editor\Animation\AnimatorInspectorPanel.h" />
+    <ClInclude Include="Engine\Src\Editor\Animation\AnimatorParameterPanel.h" />
+    <ClInclude Include="Engine\Src\Editor\Animation\AnimatorCanvas.h" />
+    <ClInclude Include="Engine\Src\Editor\Animation\AnimatorDocument.h" />
+    <ClInclude Include="Engine\Src\Editor\Animation\AnimatorEditor.h" />
+    <ClInclude Include="Engine\Src\Animation\AnimatorRuntime.h" />
+    <ClInclude Include="Engine\Src\Animation\AnimatorController.h" />
+    <ClInclude Include="Engine\Src\Animation\PoseEvaluator.h" />
+    <ClInclude Include="Engine\Src\Animation\Pose.h" />
     <ClInclude Include="Engine\Src\Editor\Inspector\ComponentInspectors.h" />
     <ClInclude Include="Engine\Src\Editor\Script\ScriptTemplate.h" />
     <ClInclude Include="Engine\Src\Editor\Script\EditorScriptBinding.h" />
@@ -1647,8 +1665,6 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\Material\SurfaceMaterialPipeline.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\RevisionedPipelineCache.h" />
     <ClInclude Include="Engine\Src\Graphics\Material\UIMaterialInstance.h" />
-    <ClInclude Include="Engine\Src\Graphics\Model\Animation\IAnimationControllerFactory.h" />
-    <ClInclude Include="Engine\Src\Graphics\Model\Animation\SkeletonAnimatorFactory.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\MaterialAsset.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\ModelData.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\ModelRenderContext.h" />
@@ -1730,14 +1746,11 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\Line\LineManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Animation\Animation.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Animation\AnimationLoader.h" />
-    <ClInclude Include="Engine\Src\Graphics\Model\Animation\AnimationPlayer.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Animation\AnimationUtils.h" />
-    <ClInclude Include="Engine\Src\Graphics\Model\Animation\IAnimationController.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Animation\Keyframe.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Animation\NodeAnimation.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Skeleton\Joint.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Skeleton\Skeleton.h" />
-    <ClInclude Include="Engine\Src\Graphics\Model\Skeleton\SkeletonAnimator.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Skeleton\SkeletonLoader.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Skeleton\SkinClusterGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\PostEffect\Effect\PostEffectNames.h" />

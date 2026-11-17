@@ -233,6 +233,7 @@ namespace CoreEngine::InspectorLayout
         case AssetType::Material: return "◍";
         case AssetType::Shader:   return "▧";
         case AssetType::ShaderGraph: return "◆";
+        case AssetType::AnimatorController: return "◎";
         case AssetType::Json:
         case AssetType::Csv:      return "▤";
         default:                  return "▫";

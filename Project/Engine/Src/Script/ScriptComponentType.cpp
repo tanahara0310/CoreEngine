@@ -109,7 +109,8 @@ namespace CoreEngine
         {
             for (const AssetType type : { AssetType::Texture, AssetType::Model, AssetType::Shader, AssetType::Audio,
                                           AssetType::Material, AssetType::Scene, AssetType::Prefab, AssetType::Animation,
-                                          AssetType::MaterialLibrary, AssetType::Json, AssetType::Csv }) {
+                                          AssetType::MaterialLibrary, AssetType::Json, AssetType::Csv,
+                                          AssetType::AnimatorController }) {
                 if (AssetTypeToString(type) == name) {
                     return type;
                 }

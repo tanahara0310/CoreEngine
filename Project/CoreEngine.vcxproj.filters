@@ -1,6 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <ClCompile Include="Engine\Src\Editor\Animation\AnimatorLiveView.cpp">
+      <Filter>Engine\Src\Editor\Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Animation\AnimatorWidgets.cpp">
+      <Filter>Engine\Src\Editor\Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Animation\AnimatorInspectorPanel.cpp">
+      <Filter>Engine\Src\Editor\Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Animation\AnimatorParameterPanel.cpp">
+      <Filter>Engine\Src\Editor\Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Animation\AnimatorCanvas.cpp">
+      <Filter>Engine\Src\Editor\Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Animation\AnimatorDocument.cpp">
+      <Filter>Engine\Src\Editor\Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Animation\AnimatorEditor.cpp">
+      <Filter>Engine\Src\Editor\Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Animation\AnimatorRuntime.cpp">
+      <Filter>Engine\Src\Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Animation\AnimatorController.cpp">
+      <Filter>Engine\Src\Animation</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Animation\PoseEvaluator.cpp">
+      <Filter>Engine\Src\Animation</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Inspector\ComponentInspectors.cpp">
       <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClCompile>
@@ -724,9 +754,6 @@
     <ClCompile Include="Engine\Src\Graphics\Material\SurfaceMaterialPipeline.cpp">
       <Filter>Engine\Src\Graphics\Material</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Model\Animation\SkeletonAnimatorFactory.cpp">
-      <Filter>Engine\Src\Graphics\Model\Animation</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Pipeline\CustomShaderPipeline.cpp">
       <Filter>Engine\Src\Graphics\Pipeline</Filter>
     </ClCompile>
@@ -868,14 +895,8 @@
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\AnimationLoader.cpp">
       <Filter>Engine\Src\Graphics\Model\Animation</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Model\Animation\AnimationPlayer.cpp">
-      <Filter>Engine\Src\Graphics\Model\Animation</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Model\Animation\AnimationUtils.cpp">
       <Filter>Engine\Src\Graphics\Model\Animation</Filter>
-    </ClCompile>
-    <ClCompile Include="Engine\Src\Graphics\Model\Skeleton\SkeletonAnimator.cpp">
-      <Filter>Engine\Src\Graphics\Model\Skeleton</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Model\Skeleton\SkeletonLoader.cpp">
       <Filter>Engine\Src\Graphics\Model\Skeleton</Filter>
@@ -2145,6 +2166,39 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Engine\Src\Editor\Animation\AnimatorLiveView.h">
+      <Filter>Engine\Src\Editor\Animation</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Animation\AnimatorWidgets.h">
+      <Filter>Engine\Src\Editor\Animation</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Animation\AnimatorInspectorPanel.h">
+      <Filter>Engine\Src\Editor\Animation</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Animation\AnimatorParameterPanel.h">
+      <Filter>Engine\Src\Editor\Animation</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Animation\AnimatorCanvas.h">
+      <Filter>Engine\Src\Editor\Animation</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Animation\AnimatorDocument.h">
+      <Filter>Engine\Src\Editor\Animation</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Animation\AnimatorEditor.h">
+      <Filter>Engine\Src\Editor\Animation</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Animation\AnimatorRuntime.h">
+      <Filter>Engine\Src\Animation</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Animation\AnimatorController.h">
+      <Filter>Engine\Src\Animation</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Animation\PoseEvaluator.h">
+      <Filter>Engine\Src\Animation</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Animation\Pose.h">
+      <Filter>Engine\Src\Animation</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Inspector\ComponentInspectors.h">
       <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClInclude>
@@ -2733,12 +2787,6 @@
     <ClInclude Include="Engine\Src\Graphics\Material\UIMaterialInstance.h">
       <Filter>Engine\Src\Graphics\Material</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Model\Animation\IAnimationControllerFactory.h">
-      <Filter>Engine\Src\Graphics\Model\Animation</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Model\Animation\SkeletonAnimatorFactory.h">
-      <Filter>Engine\Src\Graphics\Model\Animation</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Model\MaterialAsset.h">
       <Filter>Engine\Src\Graphics\Model</Filter>
     </ClInclude>
@@ -2982,13 +3030,7 @@
     <ClInclude Include="Engine\Src\Graphics\Model\Animation\AnimationLoader.h">
       <Filter>Engine\Src\Graphics\Model\Animation</Filter>
     </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Model\Animation\AnimationPlayer.h">
-      <Filter>Engine\Src\Graphics\Model\Animation</Filter>
-    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Model\Animation\AnimationUtils.h">
-      <Filter>Engine\Src\Graphics\Model\Animation</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Model\Animation\IAnimationController.h">
       <Filter>Engine\Src\Graphics\Model\Animation</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Model\Animation\Keyframe.h">
@@ -3001,9 +3043,6 @@
       <Filter>Engine\Src\Graphics\Model\Skeleton</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Model\Skeleton\Skeleton.h">
-      <Filter>Engine\Src\Graphics\Model\Skeleton</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Graphics\Model\Skeleton\SkeletonAnimator.h">
       <Filter>Engine\Src\Graphics\Model\Skeleton</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Model\Skeleton\SkeletonLoader.h">
@@ -4706,6 +4745,9 @@
     <Filter Include="Engine\Src">
       <UniqueIdentifier>{3FE649B1-465E-485F-A9B2-66CE26308A0E}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Engine\Src\Animation">
+      <UniqueIdentifier>{AD24B833-B14C-4A36-971E-707336EE4D40}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Engine\Src\Audio">
       <UniqueIdentifier>{1CE42F25-26FD-4B2F-A5A0-6CE7BFE7DFF8}</UniqueIdentifier>
     </Filter>
@@ -4753,6 +4795,9 @@
     </Filter>
     <Filter Include="Engine\Src\Editor">
       <UniqueIdentifier>{4F213A62-6BC7-417B-B623-E04C7DF0A552}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Editor\Animation">
+      <UniqueIdentifier>{445D9BB6-B1A7-4A61-97FA-222E300347B5}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Editor\Camera">
       <UniqueIdentifier>{7948DDA0-E342-42C7-A7E4-7C26135423C2}</UniqueIdentifier>

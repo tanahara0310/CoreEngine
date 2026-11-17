@@ -1,0 +1,57 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "type": "Transform",
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    -1.0,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "enabled": true,
+            "type": "MeshRenderer",
+            "parameters": {
+                "model": {
+                    "guid": "fd0ce2a1-f28b-49fa-b282-353f5ecccb96",
+                    "path": "Application/Assets/Models/AnimRobot/AnimRobot.gltf"
+                }
+            }
+        },
+        {
+            "enabled": true,
+            "type": "Animator",
+            "parameters": {
+                "model": "",
+                "controller": {
+                    "guid": "7aef64fc-de66-4976-bc46-de338f3d2122",
+                    "path": "Application/Assets/Animators/Robot.animator"
+                },
+                "speed": 1.0
+            }
+        },
+        {
+            "enabled": true,
+            "type": "AnimatorStateMachineProbe",
+            "parameters": {}
+        }
+    ],
+    "id": "f1bf34d5a31dfcc0",
+    "name": "Robot",
+    "order": 3
+}

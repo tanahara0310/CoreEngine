@@ -35,6 +35,8 @@ namespace CoreEngine
     struct WaterProfileAsset { static constexpr AssetType kType = AssetType::WaterProfile; };
     /// @brief スプライトと UI 画像のマテリアル（.mat）を指す参照の種類
     struct ShaderMaterialAsset { static constexpr AssetType kType = AssetType::Material; };
+    /// @brief アニメーター設定（.animator）を指す参照の種類
+    struct AnimatorControllerAsset { static constexpr AssetType kType = AssetType::AnimatorController; };
 
     /// @brief アセットの、プロジェクトの根からの相対パス（区切りは `/`）
     std::string ToAssetPath(const AssetInfo& info);

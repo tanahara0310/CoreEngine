@@ -22,7 +22,8 @@ namespace CoreEngine
         Csv,
         PhysicsMaterial,
         WaterProfile,
-        ShaderGraph
+        ShaderGraph,
+        AnimatorController
     };
 
     // AssetType と保存に使う名前の表（Unknown は載せない）
@@ -43,6 +44,7 @@ namespace CoreEngine
             { AssetType::PhysicsMaterial, "PhysicsMaterial" },
             { AssetType::WaterProfile,    "WaterProfile" },
             { AssetType::ShaderGraph,     "ShaderGraph" },
+            { AssetType::AnimatorController, "AnimatorController" },
         };
         return kNames;
     }

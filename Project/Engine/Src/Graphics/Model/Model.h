@@ -20,7 +20,8 @@
 #include "Graphics/Render/DrawViewInfo.h"
 #include "Graphics/Render/Model/ModelDrawPacket.h"
 #include "Graphics/Render/Culling/ModelVisibility.h"
-#include "Animation/AnimationPlayer.h"
+
+#include <span>
 
 // 前方宣言
 namespace CoreEngine {
@@ -125,16 +126,9 @@ namespace CoreEngine
         /// @note 水面の映り込みのヒットシェーディングが、BLAS と同じ変形後の頂点を読むのに使う
         uint32_t GetSkinnedVertexBufferHeapIndex() const;
 
-        /// @brief アニメーションプレイヤーを設定する（ModelManager::CreateSkeletonModel が注入する）
-        void SetAnimationPlayer(std::unique_ptr<AnimationPlayer> player);
-
-        /// @brief アニメーションプレイヤーを取得（切り替え・ブレンド等の操作用）
-        /// @return AnimationPlayer へのポインタ（アニメーションを持たない場合は nullptr）
-        AnimationPlayer* GetAnimationPlayer() const { return animationPlayer_.get(); }
-
-        /// @brief アニメーションを更新し、スケルトンの姿勢を SkinCluster に反映する
-        /// @param deltaTime デルタタイム（秒）
-        void UpdateAnimation(float deltaTime);
+        /// @brief 骨ごとのスケルトン空間の行列で SkinCluster のマトリックスパレットを更新する
+        /// @param skeletonSpaceMatrices 骨の並びと同じ数の行列（SkinCluster が無ければ何もしない）
+        void UpdateSkinCluster(std::span<const Matrix4x4> skeletonSpaceMatrices);
 
         /// @brief ModelResourceを取得
         /// @return ModelResourceへのポインタ（nullptrの場合は未初期化）
@@ -208,10 +202,6 @@ namespace CoreEngine
         // SkinCluster（存在する場合）
         std::optional<SkinCluster> skinCluster_;
 
-        // アニメーションプレイヤー（スケルトンアニメーションを持つモデルのみ設定される）
-        // スケルトンの実体はプレイヤー内のコントローラーが所有し、Model はコピーを持たない
-        std::unique_ptr<AnimationPlayer> animationPlayer_;
-
         // カスタムシェーダー用フォワード PSO（nullptr = 既定 ModelRenderer の PSO を使用）
         ID3D12PipelineState* customForwardPSO_ = nullptr;
 
@@ -242,9 +232,6 @@ namespace CoreEngine
 
         /// @brief 即時描画（スキニングモデル）用の WVP 行列データを、このフレームの UploadRing に書く
         void UpdateTransformationMatrix(const WorldTransform& transform, const DrawViewInfo& view);
-
-        /// @brief SkinCluster のマトリックスパレットを指定スケルトンの姿勢で更新する
-        void UpdateSkinCluster(const Skeleton& skeleton);
 
         /// @brief GPUスキニング(CS)がまだ実行されていなければ実行する
         /// @details 同一フレーム内でForward/GBuffer/Shadowが同じモデルを描画する際、

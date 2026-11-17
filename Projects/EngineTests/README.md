@@ -2,7 +2,7 @@
 
 エンジンの機能を 1 つずつ確かめるためのプロジェクトです。1 つの機能に 1 つのシーンを作ります。
 
-- 形はエンジン組み込みの立方体・球・板だけを使います。モデルは入れません。テクスチャは確かめる機能に要るときだけ、小さいものを `Application/Assets/Textures` に置きます（VolumetricFog_Shafts の穴の開いた板・VolumetricFog_Transparent の粒）。
+- 形はエンジン組み込みの立方体・球・板だけを使います。モデルは、骨のアニメーションを確かめる箱の人形（`Application/Assets/Models/AnimRobot`。台本で作った物）だけを入れています。テクスチャは確かめる機能に要るときだけ、小さいものを `Application/Assets/Textures` に置きます（VolumetricFog_Shafts の穴の開いた板・VolumetricFog_Transparent の粒）。
 - 既定で入るもの（既定の床・空の環境光・雲・霧・自動露出・ローカル露出・ブルーム・レンズフレア）は、シーンの `_scene.json` と `_environment.json` で切ります。TAA・CAS は `Application/Config/EngineSettings/CVars.json` で切っています。AO（`r.SSAO.Enabled`）は既定のまま入れています（RTAO を確かめるため）。AO は空の環境光だけを暗くするので、空の環境光を切ったシーンには効きません。
 - カメラは固定です。
 - このプロジェクトでは組み合わせの不具合は見つかりません。確かめ終わったら、いつものシーン（アラハなど）も 1 回開いてください。
@@ -387,3 +387,39 @@ DXR 1.1 に対応していない GPU では、物の影は霧に落ちません�
 3. 再生中に Enemy_FromPrefab を選ぶと Tag が Enemy。止めてから Plain の Tag を Enemy に変えて再生すると 4 つ浮く（再生中に変えたタグは止めると戻る。確かめたら Plain を Untagged に戻す）。
 4. Project の Prefabs/TaggedEnemy を選ぶと、インスペクタの「プレハブの中身」に Tag が出る。TaggedEnemy をシーンへ置いて Tag を Player に変えると、Tag の行の左端に青い線が出る。Tag のラベルを右クリックして「プレハブの値に戻す」で Enemy に戻る（置いた物は消してから保存する）。
 5. Edit ▸ Project Settings… の Tags でタグを足して「適用」すると、Tags.json に書かれ、インスペクタの Tag の欄にすぐ出る（確かめたら外して適用する）。
+
+## Animator_StateMachine
+
+アニメーター設定（`.animator` の状態・遷移・パラメータ）と、設定を指さない Animator を確かめます。空の環境光は入れています。
+
+人形は `Models/AnimRobot/AnimRobot.gltf`（箱をつないだ骨 11 本の人形。クリップは Idle・Walk・Run・Jump・Attack・Fall）です。設定は `Animators/Robot.animator` です。
+
+| 物 | 見るところ |
+|---|---|
+| Robot | 左の人形。Animator の「設定」が Robot.animator。試験のスクリプト（AnimatorStateMachineProbe）が 15 秒ごとに同じ表でパラメータを書き、状態が移るたびにコンソールへ出す |
+| Robot_NoController | 右の人形。Animator の「設定」が空で、clips の Idle・Walk・Attack を試験のスクリプト（AnimatorClipProbe）が 6 秒ごとに `SwitchWithBlend`・`Switch` で切り替える |
+
+Robot.animator の中身:
+
+| 遷移 | 条件 |
+|---|---|
+| どこからでも → Fall | Grounded が false |
+| Idle → Walk・Walk → Idle | Speed > 0.1・Speed < 0.1 |
+| Walk → Run・Run → Walk | Speed > 3・Speed < 3 |
+| Idle → Attack・Walk → Attack | トリガー Attack |
+| Attack → Idle | 終わりの時刻 0.9（条件なし） |
+| Idle → Jump | トリガー Jump |
+| Jump → Idle | 終わりの時刻 0.95（条件なし） |
+| Fall → Idle | Grounded が true |
+
+確かめ方:
+
+1. 停止中、2 体とも Idle の最初のコマの姿勢で立っている（点に潰れていない）。
+2. 再生すると、Robot のコンソールの行が次の順に出る（時刻は表の秒数。混ぜている間は移る先の名前になる）。15 秒ごとに同じ順でくり返す。
+   - 2 秒 Idle → Walk・5 秒 Walk → Run・7 秒 Run → Walk、すぐ Walk → Idle
+   - 8 秒 Idle → Attack、約 8.6 秒 Attack → Idle（終わりの時刻）
+   - 10.5 秒 Idle → Fall（どこからでも）・12 秒 Fall → Idle
+   - 13 秒 Idle → Jump、約 13.9 秒 Jump → Idle（終わりの時刻）
+3. Robot_NoController のコンソールの行が「切り替え Walk」「切り替え Attack」「切り替え Idle」の順に出て、Attack の腕の振りは 1 回で止まる。
+4. Project の Animators/Robot.animator をダブルクリックしてアニメーターの窓を開き、再生中に Hierarchy で Robot を選ぶ。今の状態の箱が光り、下に進み具合の帯が出て、遷移の途中は矢印が緑になる。
+5. Robot の AnimatorStateMachineProbe の「autoDrive」を外すと、パラメータを書かなくなる。窓の左の Speed を 1 にすると Walk へ、Attack の「立てる」を押すと攻撃する（止めると戻る）。
