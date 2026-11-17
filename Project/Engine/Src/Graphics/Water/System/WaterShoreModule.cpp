@@ -42,9 +42,18 @@ namespace CoreEngine
         window_.originXZ[1] = window.originZ;
         window_.size = window.size;
         window_.seabedSRV = seabed->GetSeabedSRVHandle(WaterSeabedRayTracingManager::ViewID::GameView);
+
+        // 岸の格子は水面メッシュと重なる所だけを描く（頂点は水面メッシュの範囲へ寄せる）
+        const Vector2 surfaceOrigin = frame.waterPlane.GetMeshOriginXZ();
+        const Vector2 surfaceSize = frame.waterPlane.GetMeshSizeXZ();
+        const bool overlapsSurface =
+            window.originX < surfaceOrigin.x + surfaceSize.x && surfaceOrigin.x < window.originX + window.size
+            && window.originZ < surfaceOrigin.y + surfaceSize.y && surfaceOrigin.y < window.originZ + window.size;
+
         window_.shoreMeshEnabled = window_.seabedSRV.ptr != 0
             && waves.shoreMesh
-            && frame.settings.shoreFineMeshEnabled;
+            && frame.settings.shoreFineMeshEnabled
+            && overlapsSurface;
 
         // 岸の泡。同じフレームの WaterShoreFoamPass が同じ範囲で書く
         if (const WaterShoreFoam* foam = frame.domain.GetWaterShoreFoam(); foam && foam->IsActive()) {

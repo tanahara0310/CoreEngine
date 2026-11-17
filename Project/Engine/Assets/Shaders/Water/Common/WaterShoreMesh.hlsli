@@ -3,6 +3,7 @@
 // ------------------------------------------------------------
 // 水面のメッシュは、遠くまで覆う粗い格子と、海底の高さを測る範囲に置く岸の細かい格子の 2 枚。
 // 範囲の中は岸の格子が描き、粗い格子は範囲の中を描かない。
+// 岸の格子の頂点は水面メッシュの範囲の中へ寄せるので、水面メッシュの外の三角形は面積を持たない。
 // 岸の格子は範囲の端ほど粗い格子の三角形で補間した形へ寄せ、2 枚の境目で形をつなぐ。
 // 利用側: FFTWater.VS / Water.VS / Water.PS / RTWaterSurfaceCommon
 // ============================================================
@@ -22,6 +23,15 @@ bool IsInsideShoreMesh(float2 baseXZ, float2 originXZ, float size)
 {
     const float2 local = baseXZ - originXZ;
     return all(local >= 0.0f) && all(local <= size);
+}
+
+/// @brief 岸の格子の頂点の変位前の位置を、水面メッシュの範囲の中へ寄せる
+/// @details 範囲の外の頂点は範囲の端に重なり、その頂点だけでできた三角形は面積を持たない
+/// @param surfaceMinXZ 水面メッシュの XZ の最小の角 [m]
+/// @param surfaceMaxXZ 水面メッシュの XZ の最大の角 [m]
+float2 ClampShoreMeshVertexToSurface(float2 baseXZ, float2 surfaceMinXZ, float2 surfaceMaxXZ)
+{
+    return clamp(baseXZ, surfaceMinXZ, surfaceMaxXZ);
 }
 
 /// @brief 岸の格子の形を、粗い格子の形から岸の格子の形へ移す重み（範囲の端で 0、端から blendWidth より内側で 1）

@@ -254,14 +254,15 @@ namespace CoreEngine
         frameCB_.shoreFoamEnabled = (frameCB_.seabedEnabled != 0 && renderResources_.HasShoreFoam()) ? 1 : 0;
 
         // 粗い格子のワールドの範囲（回転は扱わない）と、岸の細かい格子
-        const WorldTransform& transform = GetTransform();
-        const Vector3 translate = transform.GetTranslate();
-        const Vector3 scale = transform.GetScale();
         const Vector2 cellSize = GetMeshCellSizeXZ();
+        const Vector2 meshOrigin = GetMeshOriginXZ();
+        const Vector2 meshSize = GetMeshSizeXZ();
         frameCB_.meshCellSizeXZ[0] = cellSize.x;
         frameCB_.meshCellSizeXZ[1] = cellSize.y;
-        frameCB_.meshGridOriginXZ[0] = translate.x - 0.5f * size_ * scale.x;
-        frameCB_.meshGridOriginXZ[1] = translate.z - 0.5f * size_ * scale.z;
+        frameCB_.meshGridOriginXZ[0] = meshOrigin.x;
+        frameCB_.meshGridOriginXZ[1] = meshOrigin.y;
+        frameCB_.meshGridSizeXZ[0] = meshSize.x;
+        frameCB_.meshGridSizeXZ[1] = meshSize.y;
         frameCB_.shoreMeshEnabled = (binding.shoreMeshEnabled && frameCB_.seabedEnabled != 0) ? 1 : 0;
         frameCB_.shoreMeshBlendWidth = (std::max)(frameCB_.meshCellSizeXZ[0], frameCB_.meshCellSizeXZ[1]);
         frameCB_.shoreMeshCellSize = binding.seabedSize / static_cast<float>(WaterSurfaceMeshGenerator::kShoreSubdivisions);
@@ -338,6 +339,24 @@ namespace CoreEngine
         const Vector3 scale = GetTransform().GetScale();
         const float cells = static_cast<float>((std::max)(resolution_, 1u));
         return { size_ * scale.x / cells, size_ * scale.z / cells };
+    }
+
+    Vector2 WaterSurfaceComponent::GetMeshOriginXZ() const {
+        if (!transformComponent_) {
+            return { 0.0f, 0.0f };
+        }
+        const WorldTransform& transform = GetTransform();
+        const Vector3 translate = transform.GetTranslate();
+        const Vector3 scale = transform.GetScale();
+        return { translate.x - 0.5f * size_ * scale.x, translate.z - 0.5f * size_ * scale.z };
+    }
+
+    Vector2 WaterSurfaceComponent::GetMeshSizeXZ() const {
+        if (!transformComponent_) {
+            return { 0.0f, 0.0f };
+        }
+        const Vector3 scale = GetTransform().GetScale();
+        return { size_ * scale.x, size_ * scale.z };
     }
 
     void WaterSurfaceComponent::SetTideHeight(float height) {

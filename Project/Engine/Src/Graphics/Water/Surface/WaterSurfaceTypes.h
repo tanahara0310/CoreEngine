@@ -165,6 +165,9 @@ struct WaterFrameConstants {
 	float foamResidueInvSizes[2] = { 0.0f, 0.0f };               // 段ごとの一辺の長さの逆数 [1/m]
 	float foamResidueMeanCoverage = 0.0f;                        // 遠くの段より外で使う、残りの泡の被覆率の平均
 	float foamPatternTime = 0.0f;                                // 泡の模様を動かす時刻 [s]（WaterWhitecapFoam::ComputePatternTime）
+	// ---- 水面メッシュの範囲（岸の細かい格子の頂点をこの範囲へ寄せる）----
+	float meshGridSizeXZ[2] = { 0.0f, 0.0f }; // 粗い格子の XZ の一辺の長さ [m]（最小の角は meshGridOriginXZ）
+	float meshGridPad[2] = { 0.0f, 0.0f };
 };
 
 // 全フィールドのオフセットを HLSL packing 規則から機械的に導出して検証する。
@@ -172,7 +175,7 @@ struct WaterFrameConstants {
 // （RTシャドウの cbuffer 配列ずれ事故と同型）。
 // 以前はここに「absorptionCoeff は 16B 境界」「cameraNearZ は 80」といった個別 assert を
 // 人手で並べていたが、下の表が全フィールドを検査するので不要になった。
-static_assert(sizeof(WaterFrameConstants) == 288, "WaterFrameConstants size mismatch with HLSL cbuffer");
+static_assert(sizeof(WaterFrameConstants) == 304, "WaterFrameConstants size mismatch with HLSL cbuffer");
 static constexpr Cb::Field kWaterFrameConstantsFields[] = {
     CB_FIELD(WaterFrameConstants, reflectionEnabled), CB_FIELD(WaterFrameConstants, fresnelReflectanceScale),
     CB_FIELD(WaterFrameConstants, fresnelBaseReflectance), CB_FIELD(WaterFrameConstants, depthFadeEnabled),
@@ -202,6 +205,7 @@ static constexpr Cb::Field kWaterFrameConstantsFields[] = {
     CB_FIELD(WaterFrameConstants, seaMapDepthOffset), CB_FIELD(WaterFrameConstants, seaMapInvWaveHeight),
     CB_FIELD(WaterFrameConstants, foamResidueOriginsXZ), CB_FIELD(WaterFrameConstants, foamResidueInvSizes),
     CB_FIELD(WaterFrameConstants, foamResidueMeanCoverage), CB_FIELD(WaterFrameConstants, foamPatternTime),
+    CB_FIELD(WaterFrameConstants, meshGridSizeXZ), CB_FIELD(WaterFrameConstants, meshGridPad),
 };
 CB_VERIFY_LAYOUT(WaterFrameConstants, kWaterFrameConstantsFields);
 CB_BIND_HLSL(WaterFrameConstants, kWaterFrameConstantsFields, "WaterFrameConstants");
