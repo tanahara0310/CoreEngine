@@ -40,16 +40,20 @@ namespace CoreEngine::Editor
         live.animator = animator;
         live.runtime = &runtime;
         live.objectName = object->GetName();
-        live.currentState = runtime.GetCurrentStateName();
-        live.normalizedTime = runtime.GetNormalizedTime();
-        live.inTransition = runtime.IsInTransition();
-        live.transitionProgress = runtime.GetTransitionProgress();
-        const AnimatorLayer& layer = controller->layers.front();
-        const int source = runtime.GetTransitionSourceIndex();
+        live.layer = runtime.FindLayer(document.Layer().name);
+        if (live.layer < 0) {
+            return live;
+        }
+        live.currentState = runtime.GetLayerStateName(live.layer);
+        live.normalizedTime = runtime.GetLayerNormalizedTime(live.layer);
+        live.inTransition = runtime.IsLayerInTransition(live.layer);
+        live.transitionProgress = runtime.GetLayerTransitionProgress(live.layer);
+        const AnimatorLayer& layer = controller->layers[static_cast<size_t>(live.layer)];
+        const int source = runtime.GetLayerTransitionSourceIndex(live.layer);
         if (source >= 0 && source < static_cast<int>(layer.states.size())) {
             live.sourceState = layer.states[static_cast<size_t>(source)].name;
         }
-        const int table = runtime.GetActiveTransitionIndex();
+        const int table = runtime.GetLayerActiveTransitionIndex(live.layer);
         if (table >= 0 && table < static_cast<int>(layer.transitions.size())) {
             live.transitionFrom = layer.transitions[static_cast<size_t>(table)].from;
             live.transitionTo = layer.transitions[static_cast<size_t>(table)].to;

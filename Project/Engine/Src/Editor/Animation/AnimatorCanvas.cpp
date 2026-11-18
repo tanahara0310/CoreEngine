@@ -79,7 +79,7 @@ namespace CoreEngine::Editor
 
     Vector2 AnimatorCanvas::NodePosition(const AnimatorDocument& document, AnimatorSelection kind, int index) const
     {
-        const AnimatorLayer& layer = document.data.layers.front();
+        const AnimatorLayer& layer = document.Layer();
         if (kind == AnimatorSelection::AnyState) {
             return layer.anyStatePosition;
         }
@@ -92,7 +92,7 @@ namespace CoreEngine::Editor
     bool AnimatorCanvas::TransitionSegment(const AnimatorDocument& document, const ImVec2& canvasMin, int transitionIndex,
         ImVec2& start, ImVec2& end) const
     {
-        const AnimatorLayer& layer = document.data.layers.front();
+        const AnimatorLayer& layer = document.Layer();
         const AnimatorTransition& transition = layer.transitions[static_cast<size_t>(transitionIndex)];
         const bool fromAny = transition.from == AnimatorControllerFormat::kAnyState;
         const int fromIndex = fromAny ? -1 : AnimatorStateIndexOf(layer, transition.from);
@@ -126,7 +126,7 @@ namespace CoreEngine::Editor
 
     AnimatorHit AnimatorCanvas::HitTest(const AnimatorDocument& document, const ImVec2& canvasMin, const ImVec2& mouse) const
     {
-        const AnimatorLayer& layer = document.data.layers.front();
+        const AnimatorLayer& layer = document.Layer();
         const float zoom = document.zoom;
         const auto inside = [&](const Vector2& world, float halfWidth, float halfHeight) {
             const ImVec2 center = ToScreen(document, canvasMin, world);
@@ -151,7 +151,7 @@ namespace CoreEngine::Editor
 
     void AnimatorCanvas::FrameAll(AnimatorDocument& document, const ImVec2& canvasSize) const
     {
-        const AnimatorLayer& layer = document.data.layers.front();
+        const AnimatorLayer& layer = document.Layer();
         float minX = layer.anyStatePosition.x - kAnyHalfWidth;
         float maxX = layer.anyStatePosition.x + kAnyHalfWidth;
         float minY = layer.anyStatePosition.y - kAnyHalfHeight;
@@ -172,7 +172,7 @@ namespace CoreEngine::Editor
 
     void AnimatorCanvas::Draw(AnimatorDocument& document, const AnimatorLiveView& live)
     {
-        AnimatorLayer& layer = document.data.layers.front();
+        AnimatorLayer& layer = document.Layer();
         ImDrawList* const drawList = ImGui::GetWindowDrawList();
         const ImVec2 canvasMin = ImGui::GetCursorScreenPos();
         const ImVec2 canvasSize = ImGui::GetContentRegionAvail();
@@ -461,6 +461,11 @@ namespace CoreEngine::Editor
             drawList->AddText(hintPosition, ToU32(Theme::kTextMute),
                 "右クリック > 状態を作る。Project のモデルをここへ落とすと、中のアニメーションごとに状態を作ります。");
         }
+        if (document.data.layers.size() > 1) {
+            const std::string label = "レイヤー: " + layer.name;
+            const ImVec2 labelPosition(canvasMin.x + 8.0f, canvasMax.y - ImGui::GetTextLineHeight() - 6.0f);
+            drawList->AddText(labelPosition, ToU32(Theme::kTextDim), label.c_str());
+        }
         drawList->PopClipRect();
 
         DrawMenu(document);
@@ -471,7 +476,7 @@ namespace CoreEngine::Editor
         if (!ImGui::BeginPopup(kCanvasMenu)) {
             return;
         }
-        AnimatorLayer& layer = document.data.layers.front();
+        AnimatorLayer& layer = document.Layer();
         const AnimatorHit hit = document.contextHit;
         const Vector2 world{ document.contextWorld.x, document.contextWorld.y };
         if (hit.kind == AnimatorSelection::State && hit.index >= 0 && hit.index < static_cast<int>(layer.states.size())) {

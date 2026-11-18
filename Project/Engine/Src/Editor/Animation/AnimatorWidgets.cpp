@@ -4,11 +4,19 @@
 #ifdef CORE_EDITOR
 
 #include "AnimatorDocument.h"
+#include "AnimatorPreview.h"
 
 #include "Editor/ImGui/EditorTheme.h"
 #include "Editor/ImGui/ImGuiAll.h"
 #include "Editor/ImGui/Widgets/DragDropPayload.h"
+#include "Editor/Scene/EditorSceneAccess.h"
+#include "Editor/Scene/SceneDebugEditor.h"
+#include "GameObject/Component/Animation/AnimatorComponent.h"
+#include "GameObject/GameObject.h"
 #include "Graphics/Asset/AssetDatabase.h"
+#include "Graphics/Model/ModelManager.h"
+#include "Graphics/Model/ModelResource.h"
+#include "Graphics/Model/Skeleton/Skeleton.h"
 
 #include <algorithm>
 #include <cmath>
@@ -402,6 +410,26 @@ namespace CoreEngine::Editor::AnimatorWidgets
             ImGui::TextColored(Theme::kWarn, "「%s」は数（float）ではありません", parameter.c_str());
         }
         return changed;
+    }
+
+    const Skeleton* BoneTreeOf(AnimatorDocument& document)
+    {
+        const std::string& model = document.data.previewModel;
+        if (document.models && !model.empty()) {
+            ModelResource* resource = document.models->GetModelResource(model);
+            if (!resource && document.skeletonTried != model) {
+                document.skeletonTried = model;
+                document.models->PreloadModels({ model });
+                resource = document.models->GetModelResource(model);
+            }
+            if (resource && resource->GetSkeleton()) {
+                return &*resource->GetSkeleton();
+            }
+        }
+        SceneDebugEditor* const sceneEditor = SceneAccess::SceneEditor();
+        GameObject* const object = sceneEditor ? sceneEditor->GetSelectedObject() : nullptr;
+        AnimatorComponent* const animator = object ? object->GetComponent<AnimatorComponent>() : nullptr;
+        return animator && AnimatorPreview::UsesDocument(*animator, document) ? animator->GetSkeleton() : nullptr;
     }
 }
 

@@ -306,6 +306,7 @@ namespace CoreEngine::Editor
         const float canvasWidth = std::max(160.0f, available.x - kLeftWidth - kRightWidth - style.ItemSpacing.x * 2.0f);
 
         ImGui::BeginChild("##AnimatorLeft", ImVec2(kLeftWidth, height), ImGuiChildFlags_Borders);
+        layerPanel_.DrawList(document, live);
         parameterPanel_.Draw(document, live);
         ImGui::EndChild();
 
@@ -317,7 +318,11 @@ namespace CoreEngine::Editor
 
         ImGui::SameLine();
         ImGui::BeginChild("##AnimatorInspector", ImVec2(0.0f, height), ImGuiChildFlags_Borders);
-        inspectorPanel_.Draw(document, live);
+        if (document.selection == AnimatorSelection::Layer) {
+            layerPanel_.DrawInspector(document, live);
+        } else {
+            inspectorPanel_.Draw(document, live);
+        }
         ImGui::EndChild();
 
         if (!document.notice.empty()) {

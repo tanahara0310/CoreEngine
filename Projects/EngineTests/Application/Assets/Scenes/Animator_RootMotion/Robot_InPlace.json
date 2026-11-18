@@ -1,0 +1,61 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "type": "Transform",
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    -1.5707963,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    -4.0,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "enabled": true,
+            "type": "MeshRenderer",
+            "parameters": {
+                "model": {
+                    "guid": "fd0ce2a1-f28b-49fa-b282-353f5ecccb96",
+                    "path": "Application/Assets/Models/AnimRobot/AnimRobot.gltf"
+                }
+            }
+        },
+        {
+            "enabled": true,
+            "type": "Animator",
+            "parameters": {
+                "model": "",
+                "controller": {
+                    "guid": "e45a0c97-81d3-4b6f-9c2e-0f7a3d18b6e2",
+                    "path": "Application/Assets/Animators/RobotRootMotion.animator"
+                },
+                "speed": 1.0,
+                "applyRootMotion": false
+            }
+        },
+        {
+            "enabled": true,
+            "type": "AnimatorRootMotionProbe",
+            "parameters": {
+                "state": "Forward",
+                "resetDistance": 0.0
+            }
+        }
+    ],
+    "id": "9d4f1a6c2e83b075",
+    "name": "Robot_InPlace",
+    "order": 4
+}

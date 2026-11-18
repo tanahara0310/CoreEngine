@@ -56,16 +56,20 @@ namespace CoreEngine::PoseEvaluator
         const size_t count = (std::min)(from.size(), to.size());
         out.resize(from.size());
         for (size_t i = 0; i < count; ++i) {
-            const JointPose& a = from[i];
-            const JointPose& b = to[i];
-            JointPose& result = out[i];
-            result.translate = MathCore::Lerp(a.translate, b.translate, weight);
-            result.rotate = MathCore::QuaternionMath::Slerp(a.rotate, b.rotate, weight);
-            result.scale = MathCore::Lerp(a.scale, b.scale, weight);
+            out[i] = BlendJoint(from[i], to[i], weight);
         }
         for (size_t i = count; i < from.size(); ++i) {
             out[i] = from[i];
         }
+    }
+
+    JointPose BlendJoint(const JointPose& from, const JointPose& to, float weight)
+    {
+        JointPose result;
+        result.translate = MathCore::Lerp(from.translate, to.translate, weight);
+        result.rotate = MathCore::QuaternionMath::Slerp(from.rotate, to.rotate, weight);
+        result.scale = MathCore::Lerp(from.scale, to.scale, weight);
+        return result;
     }
 
     void ComputeSkeletonSpace(const Skeleton& skeleton, std::span<const JointPose> pose, std::vector<Matrix4x4>& out)

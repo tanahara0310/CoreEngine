@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.92.0">
+<meta name="engine-version" content="0.93.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -6030,7 +6030,7 @@ kbd {
   <p><code>Scene::ChangeScene</code> 自体にも、短い読み込みの暗転が入ります（<a href="#script-scenes">シーンの切り替え</a>）。</p>
 </article>
 
-<article class="page" id="script-animator" data-group="スクリプト" data-title="アニメーター（状態でアニメーションを切り替える）" data-nav="アニメーター" data-keywords="アニメーター animator animator controller アニメーター設定 .animator 状態 ステートマシン state machine 遷移 transition 矢印 条件 パラメータ parameter float int bool trigger トリガー setfloat setint setbool settrigger resettrigger play crossfade isinstate currentstate normalizedtime isintransition 終わりの時刻 exit time どこからでも any state 混ぜる ブレンド 待機 歩き 走り 攻撃 ジャンプ 落下 クリップ clip 骨 スケルトン 再生中 光る ブレンドツリー blend tree 1d 2d 横歩き 後ろ歩き 混ぜ方 アニメーションのイベント animation event onanimationevent animationevent 足音 効果音 シーンで見る プレビュー preview 停止中">
+<article class="page" id="script-animator" data-group="スクリプト" data-title="アニメーター（状態でアニメーションを切り替える）" data-nav="アニメーター" data-keywords="アニメーター animator animator controller アニメーター設定 .animator 状態 ステートマシン state machine 遷移 transition 矢印 条件 パラメータ parameter float int bool trigger トリガー setfloat setint setbool settrigger resettrigger play crossfade isinstate currentstate normalizedtime isintransition 終わりの時刻 exit time どこからでも any state 混ぜる ブレンド 待機 歩き 走り 攻撃 ジャンプ 落下 クリップ clip 骨 スケルトン 再生中 光る ブレンドツリー blend tree 1d 2d 横歩き 後ろ歩き 混ぜ方 アニメーションのイベント animation event onanimationevent animationevent 足音 効果音 シーンで見る プレビュー preview 停止中 レイヤー layer 重み weight マスク mask 上半身 体の一部 setlayerweight getlayerweight getlayerstate isinlayerstate playinlayer crossfadeinlayer getlayernormalizedtime ルートモーション root motion クリップの移動 applyrootmotion 移動を取る骨 足が滑る">
   <h1>アニメーター</h1>
   <p class="lead">骨の入ったモデルのアニメーションを、「状態」と「遷移」の表で切り替えます。スクリプトは速さやボタンの値（パラメータ）を書くだけで、どのアニメーションへいつ移るかはアニメーターの窓で組みます。</p>
 
@@ -6088,7 +6088,7 @@ kbd {
   <p>今の状態は <code>owner.animator.currentState</code>（名前）か <code>IsInState("Attack")</code> で分かります。攻撃中は動けないようにする、といった分け方に使います。</p>
 
   <h2 id="anim-window">窓の操作</h2>
-  <p>窓は、左がパラメータとクリップの表、真ん中がキャンバス、右が選んだもの（状態・遷移・何も選んでいなければ設定全体）の設定です。窓は <span class="ui">Window<span class="arrow">▸</span>General<span class="arrow">▸</span>Animator</span> でも出せます（開いていた設定のタブが並びます）。</p>
+  <p>窓は、左がレイヤー・パラメータ・クリップの表、真ん中がキャンバス（選んでいるレイヤーの状態と遷移）、右が選んだもの（状態・遷移・レイヤー・何も選んでいなければ設定全体）の設定です。窓は <span class="ui">Window<span class="arrow">▸</span>General<span class="arrow">▸</span>Animator</span> でも出せます（開いていた設定のタブが並びます）。</p>
   <div class="table-wrap">
   <table>
     <thead><tr><th>やりたいこと</th><th>操作</th></tr></thead>
@@ -6100,6 +6100,7 @@ kbd {
       <tr><td>見る場所を動かす</td><td>箱はドラッグで動かします。キャンバスは中ボタンか空いた所の左ドラッグで動かし、ホイールで拡大縮小します。<span class="ui">全体を見る</span> で全部が入る大きさに戻ります</td></tr>
       <tr><td>名前を変える</td><td>状態・パラメータ・クリップの名前の欄で書き換えます。遷移・条件・最初の状態の指す名前も一緒に変わります</td></tr>
       <tr><td>クリップを足す</td><td>モデルを左の <span class="ui">モデルをここへドラッグ</span> へ落とす（中のアニメーションを全部足す）。<span class="ui">空のクリップを足す</span> のあと、ファイルと <span class="ui">中の名前</span> を選んでも足せます</td></tr>
+      <tr><td>レイヤーを足す・選ぶ</td><td>左の <span class="ui">レイヤーを足す</span>。名前をクリックすると、キャンバスがそのレイヤーの状態と遷移に替わります。右クリック ▸ <span class="ui">上へ</span>・<span class="ui">下へ</span>・<span class="ui">消す</span>（最初のレイヤーは動かせず、消せません）。くわしくは <a href="#anim-layers">レイヤー</a></td></tr>
       <tr><td>戻す・やり直す</td><td><kbd>Ctrl</kbd>+<kbd>Z</kbd>・<kbd>Ctrl</kbd>+<kbd>Y</kbd>（エディタの Undo と同じ）</td></tr>
       <tr><td>保存する</td><td><kbd>Ctrl</kbd>+<kbd>S</kbd> か <span class="ui">保存</span>。保存していない変更があると、タブに印が付き、閉じるときに聞かれます</td></tr>
     </tbody>
@@ -6194,6 +6195,7 @@ kbd {
     <li><strong>いつ届くか</strong>：Animator が時刻を進めたフレームで、Animator の更新の中から呼ばれます。同じクリップのイベントが 1 フレームにいくつも過ぎたときは、時刻の順に届きます。ループする状態では周回ごとに 1 回ずつ届き、ループの終わりをまたいだフレームでは、終わりの前と始めの後の両方を届けます。</li>
     <li><strong>ブレンドツリー</strong>：いちばん重い子のクリップのイベントだけが届きます（歩きと走りを混ぜていても、足音は 1 回分）。</li>
     <li><strong>遷移の途中</strong>：混ぜている間は、元の状態と移る先の状態の両方のイベントが届きます。どちらのものかは <code>event.state</code> で分かります。</li>
+    <li><strong>レイヤー</strong>：2 枚目からの <a href="#anim-layers">レイヤー</a> のクリップのイベントも届きます。重みが 0 のレイヤーからは届きません。どのレイヤーからかは <code>event.layer</code> で分かります。</li>
     <li><strong>届かないとき</strong>：状態の速さが負のとき（逆向きの再生）は届きません。停止中の <a href="#anim-preview">シーンで見る</a> でも届きません。</li>
   </ul>
 
@@ -6207,6 +6209,65 @@ kbd {
     <li>ブレンドツリーの状態では、図の値をドラッグすると混ざり方が変わります。この値は見るためだけのもので、設定には保存されません。</li>
   </ol>
   <p><span class="ui">シーンで見る</span> を外すか、窓を閉じるか、再生を始めると、キャラは元の姿勢へ戻ります。再生中は使えません（再生中は <a href="#anim-play">今の状態</a> が映ります）。</p>
+
+  <h2 id="anim-layers">レイヤー：体の一部だけ別の動き</h2>
+  <p>レイヤーは、状態と遷移の表をもう 1 枚上に重ねるものです。歩きながら上半身だけで攻撃する、走りながら手を振る、といった動きに使います。最初のレイヤー（土台）が体全体の姿勢を作り、2 枚目からは、その上へ <strong>重み</strong> と <strong>マスク</strong>（動かす骨の一覧）の分だけ上書きします。</p>
+  <ol class="steps">
+    <li><strong>レイヤーを足す</strong>窓の左の <span class="ui">レイヤーを足す</span> を押し、右の <span class="ui">名前</span> を決めます（例：<code>UpperBody</code>）。キャンバスが新しいレイヤーの表に替わります。</li>
+    <li><strong>マスクを決める</strong>右の <span class="ui">体の一部だけ動かす（マスク）</span> を入れ、骨の木で動かす骨にチェックを入れます。親の骨を入れ外しすると、その下の骨もまとめて変わります。骨の木を出すには、設定全体の <span class="ui">見本のモデル</span> に骨入りのモデルを入れておきます。</li>
+    <li><strong>状態を作る</strong>流すものの無い（クリップが空の）状態 <code>None</code> を最初の状態にし、攻撃のクリップの状態 <code>Attack</code>（<span class="ui">ループ</span> を外す）を作ります。</li>
+    <li><strong>遷移を引く</strong><code>None</code> → <code>Attack</code> にトリガーの条件、<code>Attack</code> → <code>None</code> に <span class="ui">終わりの時刻で移る</span> の遷移を引きます。</li>
+    <li><strong>スクリプトから動かす</strong>トリガーを立てると、脚は最初のレイヤーの歩きのまま、マスクの骨だけが攻撃します。</li>
+  </ol>
+  <script type="text/x-code" data-lang="as" data-file="UpperBodyAttack.as">
+    using namespace CoreEngine;
+
+    // 歩きながら上半身のレイヤーで攻撃する。走っている間は上半身を重ねない
+    class UpperBodyAttack : ScriptComponent
+    {
+        void Update()
+        {
+            const bool sprint = Input::IsActionPressed(InputAction::Sprint);
+            owner.animator.SetLayerWeight("UpperBody", sprint ? 0.0f : 1.0f);
+            if (!sprint && Input::IsActionTriggered(InputAction::Attack)) {
+                owner.animator.SetTrigger("Attack");
+            }
+        }
+
+        void OnAnimationEvent(AnimationEvent@ event)
+        {
+            if (event.layer == "UpperBody" && event.name == "Swing") {
+                Log("振り下ろした（" + event.state + "）");
+            }
+        }
+    }
+  </script>
+  <ul>
+    <li><strong>重み</strong>：0〜1 です。1 ならマスクの骨をこのレイヤーの姿勢で置き換え、間の値ではその割合で混ぜます。0 なら重ねません（状態と遷移は進みますが、姿勢もイベントも出ません）。最初のレイヤーの重みはいつも 1 です。スクリプトからは <code>SetLayerWeight</code> で変えます。</li>
+    <li><strong>マスク</strong>：入れていないと全部の骨を動かします。外した骨は、それより前のレイヤーまでの姿勢のままです。</li>
+    <li><strong>重ねる順</strong>：表の上から順に重ねます。同じ骨を動かすレイヤーが 2 枚あると、表で後ろ（下）にあるほうが上書きします。</li>
+    <li><strong>流すものの無い状態</strong>：前のレイヤーまでの姿勢のままです。そこへ移る遷移・そこから出る遷移では、混ぜる秒数をかけて重なり始め、重なり終わります。</li>
+    <li><strong>パラメータ</strong>：全部のレイヤーで同じものを使います。トリガーは、どれかのレイヤーの遷移で移ると下りるので、2 枚のレイヤーを同じフレームに動かしたいときはトリガーを 2 つ作ります。</li>
+    <li><strong>スクリプトの状態の操作</strong>：<code>Play</code>・<code>CrossFade</code>・<code>IsInState</code>・<code>currentState</code> は最初のレイヤーの状態です。ほかのレイヤーは <code>PlayInLayer</code>・<code>CrossFadeInLayer</code>・<code>IsInLayerState</code>・<code>GetLayerState</code> にレイヤーの名前を渡します（<a href="#api-Animator">Animator</a>）。</li>
+  </ul>
+  <p>再生中に Hierarchy でオブジェクトを選び、窓でレイヤーを選ぶと、右に <span class="ui">再生中の重み</span> が出て、動いているオブジェクトの重みをつまみで変えられます（止めると設定の値に戻ります）。左のレイヤーの表には、それぞれの今の重みが出ます。</p>
+
+  <h2 id="anim-rootmotion">クリップの移動（ルートモーション）</h2>
+  <p>歩きや走りのクリップの中で腰が前へ進む分で、オブジェクトそのものを動かします。スクリプトで進む速さを合わせなくても、脚の運びと進む距離がそろうので足が滑りません。曲がりながら歩くクリップでは、オブジェクトの向きも回ります。</p>
+  <ol class="steps">
+    <li><strong>入れる</strong>Animator の <span class="ui">クリップの移動で動かす</span> を入れます。</li>
+    <li><strong>クリップを選ぶ</strong>腰がその場で足踏みせず、前へ進むように作ったクリップを流します（その場で歩くクリップでは動きません）。</li>
+    <li><strong>骨を選ぶ（なくてもよい）</strong>アニメーターの窓で何も選んでいないときの右の <span class="ui">移動を取る骨</span> で骨を選びます。<span class="ui">（自動）</span> は、骨の木のいちばん上でクリップの動きを持つ骨（ふつうは腰）です。</li>
+  </ol>
+  <ul>
+    <li><strong>取るもの</strong>：その骨の水平（前後・左右）の移動と、上を軸にした向きの回転だけです。上下の動き（歩きの揺れやジャンプ）は姿勢に残ります。取った分は姿勢から抜くので、キャラはオブジェクトの場所で動きます。</li>
+    <li><strong>ループ</strong>：クリップが頭へ戻っても、移動は途切れずに続きます。</li>
+    <li><strong>遷移とブレンドツリー</strong>：元と先・子の移動を、混ぜる割合で混ぜます。最初のレイヤーの移動だけを使い、2 枚目からのレイヤーはオブジェクトを動かしません。</li>
+    <li><strong>キャラクタコントローラ</strong>：同じオブジェクトにあれば、その <code>SimpleMove</code> で動かします（壁で止まり、重力で落ちます）。このときスクリプトから <code>SimpleMove</code> を呼ばないでください。無ければ Transform をそのまま動かします（ほかの物との当たりは見ません）。</li>
+    <li><strong>向きと大きさ</strong>：オブジェクトの回転と大きさに合わせて動きます。</li>
+    <li><strong>動かないとき</strong>：停止中と、停止中の <a href="#anim-preview">シーンで見る</a> では、オブジェクトは動きません。</li>
+  </ul>
+  <p>スクリプトからは <code>owner.animator.applyRootMotion</code> で入れ外しできます。外すと、取っていた分は姿勢へ戻り、姿勢だけが進んでクリップの頭で元の場所へ戻ります。</p>
 
   <h2 id="anim-clips">設定を使わないとき</h2>
   <p>Animator の <span class="ui">設定</span> を空にしておくと、シーンやプレハブの JSON の <code>clips</code> に書いたクリップを、スクリプトの <code>Switch</code>・<code>SwitchWithBlend</code> で名前を指して切り替えます（<a href="#g3d-anim">アニメーション</a> の見本）。クリップ 1 本ずつが状態になり、最初のクリップから流れます。設定を入れたときは、<code>Switch</code>・<code>SwitchWithBlend</code> に渡した名前を状態の名前として扱います（<code>Play</code>・<code>CrossFade</code> と同じ）。</p>
@@ -6223,6 +6284,10 @@ kbd {
       <tr><td>再生中に窓が今の状態を映さない</td><td>Hierarchy でそのオブジェクトを選んでいるか。窓で開いている設定と、Animator の <span class="ui">設定</span> が同じファイルか</td></tr>
       <tr><td>ブレンドツリーが 1 本しか流れない</td><td>パラメータに数（Float）のパラメータを選んだか。スクリプトで書いている名前と同じか。1D は値が子の境の値の間に来ているか</td></tr>
       <tr><td><code>OnAnimationEvent</code> が呼ばれない</td><td>スクリプトが Animator と同じオブジェクトに付いているか。引数が <code>AnimationEvent@</code> 1 つか。ブレンドツリーでは、イベントを置いたクリップがいちばん重い子か。状態の速さが負になっていないか</td></tr>
+      <tr><td>上半身だけのつもりが全身が動く</td><td>レイヤーの <span class="ui">体の一部だけ動かす（マスク）</span> を入れたか。骨の木で脚の骨が外れているか</td></tr>
+      <tr><td>2 枚目のレイヤーが効かない</td><td>重みが 0 になっていないか（スクリプトの <code>SetLayerWeight</code>）。今の状態が流すものの無い状態のままではないか。スクリプトで書いているレイヤーの名前が同じか（違うと Console に「レイヤー「…」がありません」が 1 回出ます）。同じトリガーをほかのレイヤーの遷移が先に使っていないか</td></tr>
+      <tr><td>クリップの移動で動かない</td><td>Animator の <span class="ui">クリップの移動で動かす</span> が入っているか。再生中か。クリップの腰が前へ進んでいるか（その場で歩くクリップでは動きません）。<span class="ui">移動を取る骨</span> がモデルにある骨か（無い名前だと Console に警告が出て、（自動）の骨を使います）</td></tr>
+      <tr><td>クリップの移動で速く動きすぎる・ずれる</td><td>スクリプトでも同じオブジェクトを動かしていないか（<code>SimpleMove</code> や位置を書いていないか）</td></tr>
       <tr><td>「シーンで見る」で動かない</td><td>停止中か。Hierarchy で選んだオブジェクトの Animator の <span class="ui">設定</span> が、窓で開いている設定と同じファイルか。キャンバスで状態を選んだか</td></tr>
     </tbody>
   </table>
@@ -11869,6 +11934,15 @@ python Tools/OkinawaBeach/bake_araha_walk.py
 
   <h2 id="changelog-history">更新履歴</h2>
 
+  <h3 id="changelog-v0-93-0">v0.93.0 <span class="dim">（2026-11-18）</span></h3>
+  <p>アニメーターに、状態の表を重ねるレイヤー（重みと骨のマスク）と、クリップの中の移動でオブジェクトを動かすクリップの移動（ルートモーション）を足した版です（<a href="#script-animator">アニメーター</a>）。レイヤーが 1 枚の設定・設定を使わない Animator は、前の版と毎フレーム同じ骨の行列になるのを確かめました。</p>
+  <ul>
+    <li><strong>レイヤー</strong>：窓の左の <span class="ui">レイヤーを足す</span> で、状態と遷移の表を上に重ねます。重み（0〜1）と、骨の木で選ぶマスクの分だけ、前のレイヤーの姿勢を上書きします。流すものの無い状態では前のレイヤーの姿勢のままです。再生中は、選んだオブジェクトの重みをつまみで変えられます（<a href="#anim-layers">レイヤー</a>）。</li>
+    <li><strong>クリップの移動</strong>：Animator の <span class="ui">クリップの移動で動かす</span> を入れると、最初のレイヤーのクリップの腰の水平の移動と向きの回転でオブジェクトを動かします。キャラクタコントローラがあればその <code>SimpleMove</code> で動かします。取る骨はアニメーター設定の <span class="ui">移動を取る骨</span> で選べます（<a href="#anim-rootmotion">クリップの移動</a>）。</li>
+    <li><strong>スクリプト</strong>：<a href="#api-Animator">Animator</a> に <code>applyRootMotion</code>・<code>SetLayerWeight</code>・<code>GetLayerWeight</code>・<code>GetLayerState</code>・<code>IsInLayerState</code>・<code>PlayInLayer</code>・<code>CrossFadeInLayer</code>・<code>GetLayerNormalizedTime</code> を、<a href="#api-AnimationEvent">AnimationEvent</a> に <code>layer</code> を足しました。<span class="path">as.predefined</span> も作り直しました。</li>
+    <li><strong>試験のシーン</strong>：<span class="path">Projects/EngineTests</span> に <code>Animator_Layers</code>（歩きながら上半身だけで攻撃する人形と、比べる見本）と <code>Animator_RootMotion</code>（前へ進むクリップで歩く人形・その場で歩く人形・キャラクタコントローラ付きで円を歩く人形）を足しました。人形 AnimRobot に、前へ進む歩き WalkForward と曲がりながら歩く WalkTurn のクリップを足しました。</li>
+  </ul>
+
   <h3 id="changelog-v0-92-0">v0.92.0 <span class="dim">（2026-11-18）</span></h3>
   <p>アニメーターに、値で何本かを混ぜるブレンドツリーと、決まったコマでスクリプトを呼ぶイベントを足した版です（<a href="#script-animator">アニメーター</a>）。クリップ 1 本の状態と設定を使わない Animator は、前の版と毎フレーム同じ骨の行列になるのを確かめました。</p>
   <ul>
@@ -14107,6 +14181,7 @@ void Vanish()
           { n: "name", s: "string name", t: "ro", d: "イベントの名前。" },
           { n: "clip", s: "string clip", t: "ro", d: "イベントを置いたクリップの名前（アニメーター設定のクリップの表の名前）。" },
           { n: "state", s: "string state", t: "ro", d: "そのクリップを流していた状態の名前。遷移の途中は、元と先のどちらから来たかの見分けに使います。" },
+          { n: "layer", s: "string layer", t: "ro", d: "そのクリップを流していたレイヤーの名前（<a href=\"#anim-layers\">レイヤー</a>）。" },
           { n: "floatValue", s: "float floatValue", t: "ro", d: "イベントに決めた数。" },
           { n: "intValue", s: "int intValue", t: "ro", d: "イベントに決めた整数。" },
           { n: "stringValue", s: "string stringValue", t: "ro", d: "イベントに決めた文字。" }
@@ -18434,14 +18509,15 @@ class PlayerWalker : ScriptComponent
   {
     id: "Animator", kind: "component", cat: "アニメーション", display: "アニメーション", type: "Animator",
     accessor: "owner.animator", title: "アニメーション（Animator）", brief: "モデルのアニメーション",
-    keywords: "アニメーション スケルトン ボーン モーション 歩く 走る gltf クリップ 切り替え アニメーター 状態 遷移 パラメータ トリガー animator",
+    keywords: "アニメーション スケルトン ボーン モーション 歩く 走る gltf クリップ 切り替え アニメーター 状態 遷移 パラメータ トリガー animator レイヤー マスク 重み 上半身 ルートモーション クリップの移動 applyrootmotion",
     summary: "glTF モデルに入っている骨のアニメーションを再生します。アニメーター設定の状態と遷移で切り替え、同じオブジェクトのメッシュ描画を動かします。",
     props: [
       ["設定", "controller", "string", "", "アニメーター設定（<span class=\"path\">.animator</span>）のパス。Project からドラッグします。入れ替えると最初の状態から作り直します。空なら <code>clips</code> のクリップを名前で切り替えます。"],
       ["モデル", "model", "string", "", "アニメーションの入ったモデルのパス（例：<code>Application/Assets/Models/human/walk.gltf</code>）。空なら、同じオブジェクトのメッシュ描画のモデルを使います。"],
       ["速さ", "speed", "float", "1", "全部の状態に掛かる速さの倍率。"],
-      ["今の状態", "currentState", "string", "", "読み取り専用。今の状態の名前（遷移の途中なら移る先）。"],
-      ["進み", "normalizedTime", "float", "", "読み取り専用。今の状態の進みの割合（ループの中の 0〜1）。"],
+      ["クリップの移動で動かす", "applyRootMotion", "bool", "false", "true にすると、最初のレイヤーのクリップの腰の水平の移動と向きの回転でオブジェクトを動かします。同じオブジェクトにキャラクタコントローラがあれば、その <code>SimpleMove</code> で動かします（<a href=\"#anim-rootmotion\">クリップの移動</a>）。"],
+      ["今の状態", "currentState", "string", "", "読み取り専用。最初のレイヤーの今の状態の名前（遷移の途中なら移る先）。"],
+      ["進み", "normalizedTime", "float", "", "読み取り専用。最初のレイヤーの今の状態の進みの割合（ループの中の 0〜1）。"],
       ["遷移の途中", "isInTransition", "bool", "", "読み取り専用。混ぜながら移っている途中か。"]
     ],
     sections: [
@@ -18461,10 +18537,24 @@ class PlayerWalker : ScriptComponent
       },
       {
         title: "状態",
+        text: "<p>最初のレイヤーの状態です。2 枚目からのレイヤーは、下の「レイヤー」の操作でレイヤーの名前を渡します。</p>",
         members: [
           { n: "Play", s: "void Play(const string&in state)", t: "m", d: "状態をすぐ切り替えます（遷移の条件は見ません）。" },
           { n: "CrossFade", s: "void CrossFade(const string&in state, float seconds)", t: "m", d: "seconds 秒かけて混ぜながら状態を切り替えます。遷移の途中でも、その時の姿勢から混ぜ直します。" },
           { n: "IsInState", s: "bool IsInState(const string&in state)", t: "m", d: "今の状態がその名前か（遷移の途中なら移る先で比べます）。" }
+        ]
+      },
+      {
+        title: "レイヤー",
+        text: "<p>レイヤーは、アニメーターの窓の左の表の名前で指します（<a href=\"#anim-layers\">レイヤー</a>）。無い名前を書くと、Console に 1 回だけ警告が出ます。最初のレイヤーの重みはいつも 1 で、変えられません。</p>",
+        members: [
+          { n: "SetLayerWeight", s: "void SetLayerWeight(const string&in layer, float weight)", t: "m", d: "レイヤーの重み（0〜1）を変えます。0 なら重ねず、1 ならマスクの骨をそのレイヤーの姿勢で置き換えます。" },
+          { n: "GetLayerWeight", s: "float GetLayerWeight(const string&in layer)", t: "m", d: "レイヤーの今の重み。" },
+          { n: "GetLayerState", s: "string GetLayerState(const string&in layer)", t: "m", d: "レイヤーの今の状態の名前（遷移の途中なら移る先）。" },
+          { n: "IsInLayerState", s: "bool IsInLayerState(const string&in layer, const string&in state)", t: "m", d: "レイヤーの今の状態がその名前か（遷移の途中なら移る先で比べます）。" },
+          { n: "PlayInLayer", s: "void PlayInLayer(const string&in layer, const string&in state)", t: "m", d: "レイヤーの状態をすぐ切り替えます（遷移の条件は見ません）。" },
+          { n: "CrossFadeInLayer", s: "void CrossFadeInLayer(const string&in layer, const string&in state, float seconds)", t: "m", d: "seconds 秒かけて混ぜながら、レイヤーの状態を切り替えます。" },
+          { n: "GetLayerNormalizedTime", s: "float GetLayerNormalizedTime(const string&in layer)", t: "m", d: "レイヤーの今の状態の進みの割合（ループの中の 0〜1）。" }
         ]
       },
       {
@@ -18477,7 +18567,7 @@ class PlayerWalker : ScriptComponent
         ]
       }
     ],
-    notes: "<ul><li>状態と遷移の作り方は <a href=\"#script-animator\">アニメーター</a> にあります。値で何本かを混ぜる状態は <a href=\"#anim-blend\">ブレンドツリー</a>、決まったコマでスクリプトを呼ぶのは <a href=\"#anim-events\">アニメーションのイベント</a>（<code>OnAnimationEvent</code>・<a href=\"#api-AnimationEvent\">AnimationEvent</a>）です。</li><li>設定を使わないときのクリップの一覧（名前とモデル内のアニメーション名の対応）はインスペクタでは編集できず、保存データ（シーンやプレハブの JSON）の <code>clips</code> に書きます。サンプル TestBed の <span class=\"path\">Prefabs/Physics/HumanModel.prefab</span> が見本です。</li><li>停止中（編集中）は、最初の状態のクリップの最初のコマの姿勢で見えます。</li><li>クリップの中に動きの無い骨は、骨の初期の姿勢になります。</li></ul>",
+    notes: "<ul><li>状態と遷移の作り方は <a href=\"#script-animator\">アニメーター</a> にあります。値で何本かを混ぜる状態は <a href=\"#anim-blend\">ブレンドツリー</a>、決まったコマでスクリプトを呼ぶのは <a href=\"#anim-events\">アニメーションのイベント</a>（<code>OnAnimationEvent</code>・<a href=\"#api-AnimationEvent\">AnimationEvent</a>）、体の一部だけ別の動きにするのは <a href=\"#anim-layers\">レイヤー</a>、クリップの中の移動でオブジェクトを動かすのは <a href=\"#anim-rootmotion\">クリップの移動</a> です。</li><li>設定を使わないときのクリップの一覧（名前とモデル内のアニメーション名の対応）はインスペクタでは編集できず、保存データ（シーンやプレハブの JSON）の <code>clips</code> に書きます。サンプル TestBed の <span class=\"path\">Prefabs/Physics/HumanModel.prefab</span> が見本です。</li><li>停止中（編集中）は、最初の状態のクリップの最初のコマの姿勢で見えます。</li><li>クリップの中に動きの無い骨は、骨の初期の姿勢になります。</li></ul>",
     examples: [
       {
         title: "例：速さと攻撃のボタンをパラメータへ書く",
@@ -18501,6 +18591,18 @@ void Update()
         return;
     }
     // ここに移動の処理
+}`
+      },
+      {
+        title: "例：走っている間は上半身のレイヤーを重ねない",
+        code: `
+void Update()
+{
+    const bool sprint = Input::IsActionPressed(InputAction::Sprint);
+    owner.animator.SetLayerWeight("UpperBody", sprint ? 0.0f : 1.0f);
+    if (!sprint && Input::IsActionTriggered(InputAction::Attack)) {
+        owner.animator.SetTrigger("Attack");
+    }
 }`
       },
       {

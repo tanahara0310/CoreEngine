@@ -200,6 +200,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Engine\Src\Editor\Animation\AnimatorLayerPanel.cpp" />
     <ClCompile Include="Engine\Src\Editor\Animation\AnimatorPreview.cpp" />
     <ClCompile Include="Engine\Src\Script\Binding\AnimationBinding.cpp" />
     <ClCompile Include="Engine\Src\Animation\BlendTree.cpp" />
@@ -1461,6 +1462,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Utility\Tween\TweenManager.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Engine\Src\Editor\Animation\AnimatorLayerPanel.h" />
     <ClInclude Include="Engine\Src\Editor\Animation\AnimatorPreview.h" />
     <ClInclude Include="Engine\Src\Script\Binding\AnimationBinding.h" />
     <ClInclude Include="Engine\Src\Animation\AnimationEvent.h" />

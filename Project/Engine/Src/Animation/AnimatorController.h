@@ -125,6 +125,9 @@ namespace CoreEngine
         std::string name = "Base";
         std::string defaultState;
         Vector2 anyStatePosition{ -200.0f, 0.0f };
+        float weight = 1.0f;  ///< 重ねる強さ（0〜1。最初のレイヤーは見ない）
+        bool useMask = false;  ///< false なら全部の骨を動かす（最初のレイヤーは見ない）
+        std::vector<std::string> mask;  ///< 動かす骨の名前（useMask のとき）
         std::vector<AnimatorState> states;
         std::vector<AnimatorTransition> transitions;
 
@@ -137,6 +140,7 @@ namespace CoreEngine
     struct AnimatorControllerData
     {
         std::string previewModel;  ///< 窓が骨の名前とクリップの候補に使うモデル
+        std::string rootMotionBone;  ///< クリップの移動を取る骨（空なら木のいちばん上でトラックを持つ骨）
         std::vector<AnimatorParameter> parameters;
         std::vector<AnimatorClip> clips;
         std::vector<AnimatorLayer> layers;

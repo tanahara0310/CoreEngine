@@ -9,6 +9,11 @@
 #include <optional>
 #include <string>
 
+namespace CoreEngine
+{
+    struct Skeleton;
+}
+
 namespace CoreEngine::Editor
 {
     struct AnimatorDocument;
@@ -69,6 +74,10 @@ namespace CoreEngine::Editor::AnimatorWidgets
     /// @brief 数のパラメータを選ぶ欄
     /// @return 変わったら true
     bool FloatParameterCombo(const char* label, const AnimatorControllerData& data, std::string& parameter);
+
+    /// @brief マスクと移動を取る骨に出す骨の木（見本のモデル。無ければ Hierarchy で選んだ、この設定のオブジェクトの骨）
+    /// @return 見つからなければ nullptr
+    const Skeleton* BoneTreeOf(AnimatorDocument& document);
 }
 
 #endif // CORE_EDITOR

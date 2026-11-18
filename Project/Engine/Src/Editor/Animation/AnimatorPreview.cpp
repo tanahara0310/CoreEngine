@@ -24,7 +24,7 @@ namespace CoreEngine::Editor
         if (document.data.layers.empty()) {
             return {};
         }
-        const AnimatorLayer& layer = document.data.layers.front();
+        const AnimatorLayer& layer = document.Layer();
         if (document.selection == AnimatorSelection::State && document.selected >= 0 &&
             document.selected < static_cast<int>(layer.states.size())) {
             return layer.states[static_cast<size_t>(document.selected)].name;
@@ -71,6 +71,7 @@ namespace CoreEngine::Editor
             return;
         }
 
+        runtime_.SetRootMotionEnabled(animator->GetApplyRootMotion());
         const std::string text = AnimatorDocument::ToText(document.data);
         if (text != builtText_ || skeleton != builtSkeleton_) {
             Rebuild(document, *skeleton);
@@ -84,14 +85,14 @@ namespace CoreEngine::Editor
         }
 
         if (document.previewPlaying) {
-            const AnimatorState* const state = document.data.layers.front().FindState(stateName);
-            const float duration = runtime_.GetStateDuration(stateName);
+            const AnimatorState* const state = document.Layer().FindState(stateName);
+            const float duration = runtime_.GetLayerStateDuration(document.activeLayer, stateName);
             if (state && duration > 0.0f) {
                 document.previewTime += Time::UnscaledDeltaTime() * state->speed / duration;
                 document.previewTime -= std::floor(document.previewTime);
             }
         }
-        if (runtime_.EvaluateState(stateName, document.previewTime) &&
+        if (runtime_.EvaluateLayerState(document.activeLayer, stateName, document.previewTime) &&
             animator->ShowPreviewPose(runtime_.GetSkeletonSpaceMatrices())) {
             document.previewObject = object->GetName();
         }

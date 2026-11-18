@@ -72,6 +72,10 @@ public:
     float GetSpeed() const { return speed_; }
     void SetSpeed(float speed) { speed_ = speed; }
 
+    /// @brief クリップの移動でオブジェクトを動かすか（兄弟にキャラクターコントローラーがあればその移動で動かす）
+    bool GetApplyRootMotion() const { return applyRootMotion_; }
+    void SetApplyRootMotion(bool apply) { applyRootMotion_ = apply; }
+
     /// @brief 読み込むクリップを書き出す（識別名・ファイル内の名前・読み込み元ファイル）
     void SaveClipsToJson(json& parameters) const;
 
@@ -128,6 +132,25 @@ public:
     float GetNormalizedTime() const;
 
     bool IsInTransition() const;
+
+    // ===== レイヤー（名前で指す） =====
+
+    /// @brief レイヤーの重み（0〜1）を変える（最初のレイヤーは 1 のまま）
+    void SetLayerWeight(const std::string& layer, float weight);
+    float GetLayerWeight(const std::string& layer);
+
+    /// @brief レイヤーの今の状態の名前（遷移の途中なら移る先）
+    const std::string& GetLayerState(const std::string& layer);
+    bool IsInLayerState(const std::string& layer, const std::string& stateName);
+
+    /// @brief レイヤーの状態をすぐ切り替える
+    void PlayInLayer(const std::string& layer, const std::string& stateName);
+
+    /// @brief レイヤーの状態を混ぜながら切り替える
+    void CrossFadeInLayer(const std::string& layer, const std::string& stateName, float seconds);
+
+    /// @brief レイヤーの今の状態の進み（ループの中の 0〜1）
+    float GetLayerNormalizedTime(const std::string& layer);
 
     // ===== クリップ切り替え（設定を指していないときの名前。指していれば状態の名前として扱う） =====
 
@@ -207,6 +230,9 @@ private:
     /// @brief このフレームに出たイベントを同じオブジェクトのコンポーネントへ配る
     void DispatchEvents();
 
+    /// @brief このフレームのクリップの移動でオブジェクトを動かす
+    void ApplyRootMotion();
+
     /// @brief Switch / SwitchWithBlend に渡す「ループの指定」（設定を指していれば状態の設定のまま）
     std::optional<bool> LoopOverride(bool loop) const;
 
@@ -221,6 +247,9 @@ private:
 
     /// 全体の速さの倍率
     float speed_ = 1.0f;
+
+    /// クリップの移動でオブジェクトを動かすか
+    bool applyRootMotion_ = false;
 
     mutable MeshRendererComponent* renderer_ = nullptr;
     mutable TransformComponent* transform_ = nullptr;
