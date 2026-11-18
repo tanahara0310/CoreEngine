@@ -1068,6 +1068,7 @@ namespace CoreEngine
     void SceneSaveSystem::BeginLoad(GameObjectManager* mgr)
     {
         pendingObjects_.clear();
+        restoredKeys_.clear();
         loadIndex_ = 0;
         loadManager_ = mgr;
 
@@ -1121,6 +1122,7 @@ namespace CoreEngine
             if (found == snapshotData.end()) continue;
 
             pendingObjects_.push_back(PendingObject{ obj.get(), found->second });
+            restoredKeys_.insert(key);
         }
     }
 

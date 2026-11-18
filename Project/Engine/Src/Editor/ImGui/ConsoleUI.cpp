@@ -388,6 +388,8 @@ void ConsoleUI::ClearLog()
         pendingMessages_.clear();
     }
     messages_.clear();
+    // 表示する行と件数も、空になったメッセージからすぐ作り直す
+    RebuildView();
     viewDirty_ = true;
     AddLog("コンソールログをクリアしました", ConsoleLogLevel::Info);
 }

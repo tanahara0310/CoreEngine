@@ -1,0 +1,97 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    16.0,
+                    0.2,
+                    16.0
+                ],
+                "translate": [
+                    0.0,
+                    -0.1,
+                    0.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "boundsPadding": 0.0,
+                "castShadows": 0,
+                "material": null,
+                "materials": [
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            0.72,
+                            0.72,
+                            0.7,
+                            1.0
+                        ],
+                        "dithering": true,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.6,
+                        "vertexAnimSpeed": 1.0,
+                        "vertexAnimStrength": 1.0,
+                        "vertexAnimation": 0
+                    },
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            0.8,
+                            0.8,
+                            0.8,
+                            1.0
+                        ],
+                        "dithering": true,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.5,
+                        "vertexAnimSpeed": 1.0,
+                        "vertexAnimStrength": 1.0,
+                        "vertexAnimation": 0
+                    }
+                ],
+                "model": {
+                    "guid": "e8a79191-50ea-0673-1816-c257f280ba64",
+                    "path": "Engine/Assets/Models/Primitives/Box/cube.obj"
+                },
+                "rayTracing": true,
+                "texture": null,
+                "visibleInReflections": 0
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "c1a7e4f9b2d60835",
+    "name": "Floor",
+    "order": 3
+}
