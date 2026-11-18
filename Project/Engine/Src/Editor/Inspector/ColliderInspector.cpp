@@ -125,7 +125,8 @@ namespace ColliderInspector
 
             const auto* const body = object.GetComponent<RigidbodyComponent>();
             if (body && body->IsDynamic()) {
-                ImGui::TextColored(Editor::Theme::kWarn, "メッシュの形は動く剛体には使えません（ほかのメッシュと当たらず、すり抜けます）");
+                ImGui::TextColored(Editor::Theme::kWarn, "メッシュの形は動く剛体には使えません（物理はこの形を使いません）");
+                UI::Hint("剛体には球・箱・カプセルを組み合わせてください。");
             }
             return changed;
         }
