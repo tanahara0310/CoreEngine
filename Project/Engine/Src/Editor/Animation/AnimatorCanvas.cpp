@@ -9,6 +9,7 @@
 #include "Editor/ImGui/EditorTheme.h"
 #include "Editor/ImGui/ImGuiAll.h"
 #include "Editor/ImGui/Widgets/DragDropPayload.h"
+#include "GameObject/Component/Render/SpriteAnimatorComponent.h"
 
 #include <algorithm>
 #include <cfloat>
@@ -511,6 +512,10 @@ namespace CoreEngine::Editor
                     }
                 }
                 ImGui::EndMenu();
+            }
+            const SpriteAnimatorComponent* const sprite = AnimatorDocument::SelectedSprite();
+            if (ImGui::MenuItem("スプライトアニメから状態を作る", nullptr, false, sprite != nullptr) && sprite) {
+                document.AddClipsFromSprite(*sprite, &world);
             }
             ImGui::Separator();
             if (ImGui::MenuItem("全体を見る")) {

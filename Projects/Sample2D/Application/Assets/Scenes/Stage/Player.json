@@ -69,6 +69,18 @@
             }
         },
         {
+            "type": "Animator",
+            "enabled": true,
+            "parameters": {
+                "model": "",
+                "controller": {
+                    "guid": "f4169be9-b152-4fa7-a9a8-74447b30db93",
+                    "path": "Application/Assets/Animators/Player.animator"
+                },
+                "speed": 1.0
+            }
+        },
+        {
             "type": "Collider",
             "enabled": true,
             "parameters": {

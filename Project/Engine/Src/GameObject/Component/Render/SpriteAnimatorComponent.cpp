@@ -33,14 +33,14 @@ namespace CoreEngine
 
     void SpriteAnimatorComponent::Start()
     {
-        if (!defaultClip_.empty()) {
+        if (!defaultClip_.empty() && !driven_) {
             Play(defaultClip_);
         }
     }
 
     void SpriteAnimatorComponent::Update()
     {
-        if (!playing_) {
+        if (!playing_ || driven_) {
             return;
         }
         const SpriteAnimationClip* const clip = FindClip(currentClip_);
@@ -51,9 +51,8 @@ namespace CoreEngine
 
         time_ += Time::DeltaTime() * speed_;
 
-        const int frameCount = std::abs(clip->lastFrame - clip->firstFrame) + 1;
         if (clip->fps > 0.0f) {
-            const float period = static_cast<float>(frameCount) / clip->fps;
+            const float period = ClipDuration(*clip);
             if (clip->loop) {
                 // ループは 1 周の長さで巻き戻し、時間を大きくしない
                 time_ = std::fmod(time_, period);
@@ -64,7 +63,7 @@ namespace CoreEngine
         }
 
         if (SpriteRendererComponent* const sprite = GetSprite()) {
-            sprite->SetFrame(ResolveFrame(*clip));
+            sprite->SetFrame(ResolveFrame(*clip, clip->loop));
         }
     }
 
@@ -90,6 +89,27 @@ namespace CoreEngine
         playing_ = false;
     }
 
+    bool SpriteAnimatorComponent::ShowClipAt(const std::string& clipName, float seconds)
+    {
+        const SpriteAnimationClip* const clip = FindClip(clipName);
+        if (!clip) {
+            return false;
+        }
+        currentClip_ = clipName;
+        time_ = (std::max)(0.0f, seconds);
+        playing_ = true;
+        if (SpriteRendererComponent* const sprite = GetSprite()) {
+            sprite->SetFrame(ResolveFrame(*clip, false));
+        }
+        return true;
+    }
+
+    float SpriteAnimatorComponent::ClipDuration(const SpriteAnimationClip& clip)
+    {
+        const int frameCount = std::abs(clip.lastFrame - clip.firstFrame) + 1;
+        return clip.fps > 0.0f ? static_cast<float>(frameCount) / clip.fps : 0.0f;
+    }
+
     const SpriteAnimationClip* SpriteAnimatorComponent::FindClip(const std::string& clipName) const
     {
         for (const SpriteAnimationClip& clip : clips_) {
@@ -100,12 +120,12 @@ namespace CoreEngine
         return nullptr;
     }
 
-    int SpriteAnimatorComponent::ResolveFrame(const SpriteAnimationClip& clip) const
+    int SpriteAnimatorComponent::ResolveFrame(const SpriteAnimationClip& clip, bool wrap) const
     {
         const int frameCount = std::abs(clip.lastFrame - clip.firstFrame) + 1;
         const int step = (clip.lastFrame >= clip.firstFrame) ? 1 : -1;
         int index = (clip.fps > 0.0f) ? static_cast<int>(std::floor(time_ * clip.fps)) : 0;
-        index = clip.loop ? (index % frameCount) : (std::min)(index, frameCount - 1);
+        index = wrap ? (index % frameCount) : (std::min)(index, frameCount - 1);
         return clip.firstFrame + step * index;
     }
 

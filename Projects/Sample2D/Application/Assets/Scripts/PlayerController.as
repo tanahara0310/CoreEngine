@@ -1,6 +1,6 @@
 using namespace CoreEngine;
 
-// 左右に走り、地面の上でだけ跳ぶ。向きとアニメは動きから決める。穴に落ちたら最初の位置へ戻る
+// 左右に走り、地面の上でだけ跳ぶ。向きは動きから決め、アニメーターへ速さと接地を渡す。穴に落ちたら最初の位置へ戻る
 [DisplayName("2D：プレイヤー")]
 class PlayerController : ScriptComponent
 {
@@ -37,13 +37,10 @@ class PlayerController : ScriptComponent
         if (move != 0.0f) {
             owner.spriteRenderer.flipX = move < 0.0f;
         }
-        if (!grounded) {
-            owner.spriteAnimator.Play("Jump");
-        } else if (abs(move) > 0.01f) {
-            owner.spriteAnimator.Play("Run");
-        } else {
-            owner.spriteAnimator.Play("Idle");
-        }
+        // どのクリップを出すかはアニメーター（Animators/Player.animator）の遷移が決める
+        Animator@ animator = owner.animator;
+        animator.SetBool("Grounded", grounded);
+        animator.SetFloat("Speed", abs(move));
 
         if (owner.transform.position.y < fallLimit) {
             owner.transform.position = start_;

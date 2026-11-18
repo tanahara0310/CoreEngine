@@ -1,0 +1,66 @@
+{
+    "version": 1,
+    "parameters": [
+        {
+            "name": "Speed",
+            "type": "Float",
+            "default": 0.0
+        }
+    ],
+    "clips": [
+        {
+            "id": "Idle",
+            "sprite": "Idle"
+        },
+        {
+            "id": "Run",
+            "sprite": "Run",
+            "events": [
+                {
+                    "time": 0.25,
+                    "name": "Step",
+                    "int": 1,
+                    "string": "run",
+                    "float": 0.5
+                }
+            ]
+        }
+    ],
+    "layers": [
+        {
+            "name": "Base",
+            "defaultState": "Locomotion",
+            "anyStatePos": [
+                -260.0,
+                180.0
+            ],
+            "states": [
+                {
+                    "name": "Locomotion",
+                    "motion": {
+                        "blend1D": {
+                            "param": "Speed",
+                            "children": [
+                                {
+                                    "clip": "Idle",
+                                    "threshold": 0.0
+                                },
+                                {
+                                    "clip": "Run",
+                                    "threshold": 1.0
+                                }
+                            ]
+                        }
+                    },
+                    "speed": 1.0,
+                    "loop": true,
+                    "pos": [
+                        0.0,
+                        0.0
+                    ]
+                }
+            ],
+            "transitions": []
+        }
+    ]
+}

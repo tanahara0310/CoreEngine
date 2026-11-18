@@ -1,0 +1,136 @@
+{
+    "version": 1,
+    "parameters": [
+        {
+            "name": "Speed",
+            "type": "Float",
+            "default": 0.0
+        },
+        {
+            "name": "Grounded",
+            "type": "Bool",
+            "default": true
+        }
+    ],
+    "clips": [
+        {
+            "id": "Idle",
+            "sprite": "Idle"
+        },
+        {
+            "id": "Run",
+            "sprite": "Run"
+        },
+        {
+            "id": "Jump",
+            "sprite": "Jump"
+        }
+    ],
+    "layers": [
+        {
+            "name": "Base",
+            "defaultState": "Idle",
+            "anyStatePos": [
+                -260.0,
+                180.0
+            ],
+            "states": [
+                {
+                    "name": "Idle",
+                    "motion": {
+                        "clip": "Idle"
+                    },
+                    "speed": 1.0,
+                    "loop": true,
+                    "pos": [
+                        0.0,
+                        0.0
+                    ]
+                },
+                {
+                    "name": "Run",
+                    "motion": {
+                        "clip": "Run"
+                    },
+                    "speed": 1.0,
+                    "loop": true,
+                    "pos": [
+                        260.0,
+                        0.0
+                    ]
+                },
+                {
+                    "name": "Jump",
+                    "motion": {
+                        "clip": "Jump"
+                    },
+                    "speed": 1.0,
+                    "loop": false,
+                    "pos": [
+                        130.0,
+                        -160.0
+                    ]
+                }
+            ],
+            "transitions": [
+                {
+                    "from": "Idle",
+                    "to": "Run",
+                    "conditions": [
+                        {
+                            "param": "Speed",
+                            "op": ">",
+                            "value": 0.01
+                        }
+                    ],
+                    "duration": 0.0
+                },
+                {
+                    "from": "Run",
+                    "to": "Idle",
+                    "conditions": [
+                        {
+                            "param": "Speed",
+                            "op": "<",
+                            "value": 0.01
+                        }
+                    ],
+                    "duration": 0.0
+                },
+                {
+                    "from": "Idle",
+                    "to": "Jump",
+                    "conditions": [
+                        {
+                            "param": "Grounded",
+                            "op": "false"
+                        }
+                    ],
+                    "duration": 0.0
+                },
+                {
+                    "from": "Run",
+                    "to": "Jump",
+                    "conditions": [
+                        {
+                            "param": "Grounded",
+                            "op": "false"
+                        }
+                    ],
+                    "duration": 0.0
+                },
+                {
+                    "from": "Jump",
+                    "to": "Idle",
+                    "conditions": [
+                        {
+                            "param": "Grounded",
+                            "op": "true"
+                        }
+                    ],
+                    "duration": 0.0
+                }
+            ]
+        }
+    ]
+}

@@ -12,6 +12,7 @@
 #include "Editor/Scene/EditorSceneAccess.h"
 #include "Editor/Scene/SceneDebugEditor.h"
 #include "GameObject/Component/Animation/AnimatorComponent.h"
+#include "GameObject/Component/Render/SpriteAnimatorComponent.h"
 #include "GameObject/GameObject.h"
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Graphics/Model/ModelManager.h"
@@ -207,6 +208,42 @@ namespace CoreEngine::Editor::AnimatorWidgets
         if (NameField(document, "名前", clip.id, newName)) {
             document.RenameClip(clipIndex, newName);
         }
+        const SpriteAnimatorComponent* const sprite = AnimatorDocument::SelectedSprite();
+        const bool isSprite = clip.IsSprite();
+        if (ImGui::BeginCombo("種類", isSprite ? "スプライトのクリップ" : "モデルのクリップ")) {
+            if (ImGui::Selectable("モデルのクリップ", !isSprite) && isSprite) {
+                clip.sprite.clear();
+                clip.file = document.data.previewModel;
+                clip.source.clear();
+                document.MarkChanged("クリップの種類を変える");
+            }
+            if (ImGui::Selectable("スプライトのクリップ", isSprite) && !isSprite) {
+                const SpriteAnimationClip* const first = sprite && !sprite->GetClips().empty() ? &sprite->GetClips().front() : nullptr;
+                clip.sprite = sprite && sprite->FindClip(clip.id) ? clip.id : (first && !first->name.empty() ? first->name : clip.id);
+                clip.file.clear();
+                clip.source.clear();
+                document.MarkChanged("クリップの種類を変える");
+            }
+            ImGui::EndCombo();
+        }
+        if (clip.IsSprite()) {
+            SpriteClipFields(document, clip, sprite);
+        } else {
+            ModelClipFields(document, clip);
+        }
+        ClipEvents(document, clipIndex, playhead);
+        if (!allowDelete) {
+            return false;
+        }
+        if (ImGui::SmallButton("このクリップを消す")) {
+            document.DeleteClip(clipIndex);
+            return true;
+        }
+        return false;
+    }
+
+    void ModelClipFields(AnimatorDocument& document, AnimatorClip& clip)
+    {
         if (ModelField("ファイル", clip.file)) {
             document.MarkChanged("クリップのファイルを変える");
         }
@@ -231,15 +268,35 @@ namespace CoreEngine::Editor::AnimatorWidgets
             && std::find(names.begin(), names.end(), clip.source) == names.end()) {
             ImGui::TextColored(Theme::kWarn, "ファイルに「%s」がありません", clip.source.c_str());
         }
-        ClipEvents(document, clipIndex, playhead);
-        if (!allowDelete) {
-            return false;
+    }
+
+    void SpriteClipFields(AnimatorDocument& document, AnimatorClip& clip, const SpriteAnimatorComponent* sprite)
+    {
+        if (sprite && !sprite->GetClips().empty()) {
+            if (ImGui::BeginCombo("スプライトのクリップ", clip.sprite.c_str())) {
+                for (const SpriteAnimationClip& candidate : sprite->GetClips()) {
+                    if (ImGui::Selectable(candidate.name.c_str(), candidate.name == clip.sprite)) {
+                        clip.sprite = candidate.name;
+                        document.MarkChanged("スプライトのクリップを選ぶ");
+                    }
+                }
+                ImGui::EndCombo();
+            }
+            if (!sprite->FindClip(clip.sprite)) {
+                ImGui::PushTextWrapPos(0.0f);
+                ImGui::TextColored(Theme::kWarn, "選んでいるオブジェクトのスプライトアニメに「%s」がありません", clip.sprite.c_str());
+                ImGui::PopTextWrapPos();
+            }
+        } else {
+            std::string newName;
+            if (NameField(document, "スプライトのクリップ", clip.sprite, newName) && !newName.empty()) {
+                clip.sprite = newName;
+                document.MarkChanged("スプライトのクリップを選ぶ");
+            }
+            ImGui::PushTextWrapPos(0.0f);
+            UI::Hint("Hierarchy でスプライトアニメのあるオブジェクトを選ぶと、クリップの候補と尺が出ます。");
+            ImGui::PopTextWrapPos();
         }
-        if (ImGui::SmallButton("このクリップを消す")) {
-            document.DeleteClip(clipIndex);
-            return true;
-        }
-        return false;
     }
 
     void ClipEvents(AnimatorDocument& document, int clipIndex, std::optional<float> playhead)

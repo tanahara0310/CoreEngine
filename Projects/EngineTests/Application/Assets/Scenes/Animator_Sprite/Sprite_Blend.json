@@ -1,0 +1,95 @@
+{
+    "active": true,
+    "components": [
+        {
+            "type": "Transform",
+            "enabled": true,
+            "parameters": {
+                "translate": [
+                    2.0,
+                    0.0,
+                    0.0
+                ],
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "parent": null
+            }
+        },
+        {
+            "type": "SpriteRenderer",
+            "enabled": true,
+            "parameters": {
+                "texture": {
+                    "guid": "73fd37b9-4225-46f3-bb06-66253585ab00",
+                    "path": "Application/Assets/Textures/AnimatorSprite_Numbers.png"
+                },
+                "pixelsPerUnit": 16.0,
+                "filter": 1,
+                "columns": 4,
+                "rows": 2,
+                "orderInLayer": 0
+            }
+        },
+        {
+            "type": "SpriteAnimator",
+            "enabled": true,
+            "parameters": {
+                "defaultClip": "Idle",
+                "speed": 1.0,
+                "clips": [
+                    {
+                        "name": "Idle",
+                        "firstFrame": 0,
+                        "lastFrame": 1,
+                        "fps": 2.0,
+                        "loop": true
+                    },
+                    {
+                        "name": "Run",
+                        "firstFrame": 2,
+                        "lastFrame": 5,
+                        "fps": 8.0,
+                        "loop": true
+                    },
+                    {
+                        "name": "Jump",
+                        "firstFrame": 6,
+                        "lastFrame": 7,
+                        "fps": 4.0,
+                        "loop": false
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Animator",
+            "enabled": true,
+            "parameters": {
+                "model": "",
+                "controller": {
+                    "guid": "9c4e2a71-6b3d-4f58-a0e2-5d17c8b4e3f6",
+                    "path": "Application/Assets/Animators/SpriteBlend.animator"
+                },
+                "speed": 1.0
+            }
+        },
+        {
+            "type": "AnimatorSpriteProbe",
+            "enabled": true,
+            "parameters": {
+                "mode": 1
+            }
+        }
+    ],
+    "id": "a5e1500000000003",
+    "name": "Sprite_Blend",
+    "order": 2
+}

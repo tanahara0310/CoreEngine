@@ -7,13 +7,18 @@
 #include "GameObject/Component/Core/ComponentService.h"
 #include "GameObject/GameObject.h"
 #include "Graphics/Line/LineManager.h"
+#include "Graphics/Model/Animation/Animation.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Model/ModelResource.h"
 #include "Math/MathCore.h"
+#include "GameObject/Component/Render/SpriteAnimatorComponent.h"
+#include "GameObject/Component/Render/SpriteRendererComponent.h"
 #include "Physics/CharacterControllerComponent.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/JsonManager/JsonManager.h"
+#include "Utility/Logger/Logger.h"
 
+#include <algorithm>
 #include <string_view>
 
 REFLECT_DEFINE_BEGIN(CoreEngine::AnimatorComponent, "アニメーション")
@@ -267,33 +272,114 @@ namespace CoreEngine
         const ModelResource* const resource = model ? model->GetModelResource() : nullptr;
         const Skeleton* const skeleton =
             model && model->HasSkinCluster() && resource && resource->GetSkeleton() ? &*resource->GetSkeleton() : nullptr;
+        SpriteAnimatorComponent* const sprite = skeleton ? nullptr : Sibling<SpriteAnimatorComponent>();
         const bool revisionChanged = controllerEntry_ && controllerEntry_->revision != boundRevision_;
-        if (bound_ && model == boundModel_ && skeleton == boundSkeleton_ && !revisionChanged) {
+        if (bound_ && model == boundModel_ && skeleton == boundSkeleton_ && sprite == boundSprite_ && !revisionChanged) {
             return;
         }
 
         bound_ = true;
         boundModel_ = model;
         boundSkeleton_ = skeleton;
+        boundSprite_ = sprite;
         const std::shared_ptr<const AnimatorControllerData> controller = ResolveController();
         boundRevision_ = controllerEntry_ ? controllerEntry_->revision : 0;
+        const bool spriteClips = sprite && controller &&
+            std::any_of(controller->clips.begin(), controller->clips.end(), [](const AnimatorClip& clip) { return clip.IsSprite(); });
 
         std::vector<std::shared_ptr<const Animation>> clips;
         if (controller) {
-            auto* modelMgr = FindService<ModelManager>(*this);
-            clips.reserve(controller->clips.size());
-            for (const AnimatorClip& clip : controller->clips) {
-                clips.push_back(modelMgr && !clip.file.empty() ? modelMgr->AcquireClip(clip.file, clip.source) : nullptr);
-            }
+            clips = AcquireClips(*controller, FindService<ModelManager>(*this), spriteClips ? sprite : nullptr);
         }
         const GameObject* const owner = GetOwner();
+        const std::string ownerName = owner ? owner->GetName() : std::string{};
         runtime_.SetRootMotionEnabled(applyRootMotion_);
-        runtime_.Build(controller, std::move(clips), skeleton, owner ? owner->GetName() : std::string{});
+        runtime_.SetBlendingEnabled(!spriteClips);
+        runtime_.Build(controller, std::move(clips), spriteClips ? &AnimatorRuntime::NoBones() : skeleton, ownerName);
+
+        drivesSprite_ = spriteClips && runtime_.IsReady();
+        if (sprite) {
+            sprite->SetDriven(drivesSprite_ && IsEnabled());
+        }
+        if (drivesSprite_) {
+            for (const AnimatorClip& clip : controller->clips) {
+                if (clip.IsSprite() && !sprite->FindClip(clip.sprite)) {
+                    Logger::GetInstance().Warnf(LogCategory::Graphics, "Animator（{}）: スプライトアニメにクリップ「{}」がありません（クリップ「{}」はコマを変えません）",
+                        ownerName, clip.sprite, clip.id);
+                }
+            }
+        }
+    }
+
+    std::vector<std::shared_ptr<const Animation>> AnimatorComponent::AcquireClips(const AnimatorControllerData& controller,
+        ModelManager* models, const SpriteAnimatorComponent* sprite)
+    {
+        std::vector<std::shared_ptr<const Animation>> clips;
+        clips.reserve(controller.clips.size());
+        for (const AnimatorClip& clip : controller.clips) {
+            if (clip.IsSprite()) {
+                const SpriteAnimationClip* const source = sprite ? sprite->FindClip(clip.sprite) : nullptr;
+                clips.push_back(source ? std::make_shared<const Animation>(Animation{ SpriteAnimatorComponent::ClipDuration(*source), {} })
+                                       : nullptr);
+                continue;
+            }
+            clips.push_back(models && !clip.file.empty() ? models->AcquireClip(clip.file, clip.source) : nullptr);
+        }
+        return clips;
+    }
+
+    void AnimatorComponent::OnEnable()
+    {
+        if (drivesSprite_) {
+            if (SpriteAnimatorComponent* const sprite = Sibling<SpriteAnimatorComponent>()) {
+                sprite->SetDriven(true);
+            }
+        }
+    }
+
+    void AnimatorComponent::OnDisable()
+    {
+        if (drivesSprite_) {
+            if (SpriteAnimatorComponent* const sprite = Sibling<SpriteAnimatorComponent>()) {
+                sprite->SetDriven(false);
+            }
+        }
+    }
+
+    bool AnimatorComponent::DrivesSprite() const
+    {
+        EnsureBound();
+        return drivesSprite_;
+    }
+
+    SpriteAnimatorComponent* AnimatorComponent::GetDrivenSprite() const
+    {
+        return DrivesSprite() ? Sibling<SpriteAnimatorComponent>() : nullptr;
+    }
+
+    void AnimatorComponent::ShowSpriteClip()
+    {
+        SpriteAnimatorComponent* const sprite = Sibling<SpriteAnimatorComponent>();
+        const AnimatorControllerData* const controller = runtime_.GetController();
+        const AnimatorRuntime::ClipSample sample = runtime_.GetLayerVisibleClip(0);
+        if (!sprite || !controller || sample.clip < 0) {
+            return;
+        }
+        const AnimatorClip& clip = controller->clips[static_cast<size_t>(sample.clip)];
+        if (clip.IsSprite()) {
+            sprite->ShowClipAt(clip.sprite, sample.time);
+        }
     }
 
     void AnimatorComponent::Update()
     {
         EnsureBound();
+        if (drivesSprite_) {
+            runtime_.Update(Time::DeltaTime() * speed_);
+            ShowSpriteClip();
+            DispatchEvents();
+            return;
+        }
         if (!runtime_.IsReady() || !boundModel_) {
             return;
         }
@@ -493,12 +579,33 @@ namespace CoreEngine
         return true;
     }
 
+    bool AnimatorComponent::ShowPreviewSprite(const std::string& spriteClip, float seconds)
+    {
+        SpriteAnimatorComponent* const sprite = GetDrivenSprite();
+        SpriteRendererComponent* const renderer = Sibling<SpriteRendererComponent>();
+        if (!sprite || !renderer) {
+            return false;
+        }
+        if (!previewSpriteFrame_) {
+            previewSpriteFrame_ = renderer->GetFrame();
+        }
+        previewing_ = true;
+        return sprite->ShowClipAt(spriteClip, seconds);
+    }
+
     void AnimatorComponent::ClearPreviewPose()
     {
         if (!previewing_) {
             return;
         }
         previewing_ = false;
+        if (previewSpriteFrame_) {
+            if (SpriteRendererComponent* const renderer = Sibling<SpriteRendererComponent>()) {
+                renderer->SetFrame(*previewSpriteFrame_);
+            }
+            previewSpriteFrame_.reset();
+            return;
+        }
         EnsureBound();
         if (boundModel_ && runtime_.IsReady()) {
             boundModel_->UpdateSkinCluster(runtime_.GetSkeletonSpaceMatrices());
@@ -510,7 +617,7 @@ namespace CoreEngine
     const Skeleton* AnimatorComponent::GetSkeleton() const
     {
         EnsureBound();
-        return runtime_.IsReady() ? runtime_.GetSkeleton() : nullptr;
+        return runtime_.IsReady() && !drivesSprite_ ? runtime_.GetSkeleton() : nullptr;
     }
 
     std::span<const Matrix4x4> AnimatorComponent::GetJointMatrices() const

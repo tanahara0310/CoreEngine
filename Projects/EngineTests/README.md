@@ -2,7 +2,7 @@
 
 エンジンの機能を 1 つずつ確かめるためのプロジェクトです。1 つの機能に 1 つのシーンを作ります。
 
-- 形はエンジン組み込みの立方体・球・板だけを使います。モデルは、骨のアニメーションを確かめる箱の人形（`Application/Assets/Models/AnimRobot`。台本で作った物）だけを入れています。テクスチャは確かめる機能に要るときだけ、小さいものを `Application/Assets/Textures` に置きます（VolumetricFog_Shafts の穴の開いた板・VolumetricFog_Transparent の粒）。
+- 形はエンジン組み込みの立方体・球・板だけを使います。モデルは、骨のアニメーションを確かめる箱の人形（`Application/Assets/Models/AnimRobot`。台本で作った物）だけを入れています。テクスチャは確かめる機能に要るときだけ、小さいものを `Application/Assets/Textures` に置きます（VolumetricFog_Shafts の穴の開いた板・VolumetricFog_Transparent の粒・Animator_Sprite の番号入りのコマ）。
 - 既定で入るもの（既定の床・空の環境光・雲・霧・自動露出・ローカル露出・ブルーム・レンズフレア）は、シーンの `_scene.json` と `_environment.json` で切ります。TAA・CAS は `Application/Config/EngineSettings/CVars.json` で切っています。AO（`r.SSAO.Enabled`）は既定のまま入れています（RTAO を確かめるため）。AO は空の環境光だけを暗くするので、空の環境光を切ったシーンには効きません。
 - カメラは固定です。
 - このプロジェクトでは組み合わせの不具合は見つかりません。確かめ終わったら、いつものシーン（アラハなど）も 1 回開いてください。
@@ -497,3 +497,39 @@ RobotLayers.animator の中身:
 3. Robot_Turn は約 8 秒で 1 周の円を歩き、元の場所へ戻る。コンソールの行（2 秒ごと）は 8 秒ごとに同じ距離（約 2.57・3.62・2.54・0.03 m）と、90 度ずつ回る進む向き（89・-1・-91・179 度）をくり返し、高さはキャラクタコントローラが床の上に保つ（0.020）。インスペクタのキャラクタコントローラの速度は約 1.42 m/s。
 4. 再生中に Robot_Turn の「クリップの移動で動かす」を外すと、オブジェクト（カプセル）は止まり、姿勢だけが弧を進んで 2 秒ごとに戻る。入れ直すと、またオブジェクトごと円を歩く。
 5. Project の Animators/RobotRootMotion.animator を開き、右の設定の「移動を取る骨」を開くと、（自動）と骨の名前が並ぶ。
+
+## Animator_Sprite
+
+アニメーターでスプライトアニメ（2D のコマ）を動かす仕組みを確かめます。絵は `Textures/AnimatorSprite_Numbers.png`（横 4・縦 2 の 8 コマに 0〜7 の番号。Idle の 0・1 が青、Run の 2〜5 が緑、Jump の 6・7 が橙）です。
+
+どちらの物にも、スプライト描画・スプライトアニメ（クリップ Idle 0〜1 の 2fps・Run 2〜5 の 8fps・Jump 6〜7 の 4fps でループなし）・Animator・試験のスクリプト（AnimatorSpriteProbe）が付いています。アニメーターの設定のクリップは、モデルのファイルの代わりにスプライトアニメのクリップの名前を指します（`{ "id": "Run", "sprite": "Run" }`）。
+
+| 物 | 見るところ |
+|---|---|
+| Sprite_States | 左。設定は `Animators/SpriteStates.animator`。AnimatorSpriteProbe（mode 0）が 8 秒ごとに Speed を 0（0〜2 秒）→ 1（2〜5 秒）→ 0 にし、5 秒で Jump のトリガーを立てる |
+| Sprite_Blend | 右。設定は `Animators/SpriteBlend.animator`。AnimatorSpriteProbe（mode 1）が 8 秒で Speed を 0 → 1 → 0 と往復させる |
+
+SpriteStates.animator の中身:
+
+| 状態 | 流すもの |
+|---|---|
+| Idle（最初の状態） | クリップ Idle |
+| Run | クリップ Run |
+| Jump（ループなし） | クリップ Jump |
+
+遷移は Idle → Run が Speed > 0.5、Run → Idle が Speed < 0.5、どこからでも → Jump が Jump のトリガー、Jump → Idle が終わりの時刻 1 です。どれも混ぜる秒数を 0.25 にしてありますが、スプライトのクリップを使う設定では混ぜずにすぐ移ります。
+
+SpriteBlend.animator は状態 Locomotion（1D ブレンド。パラメータ Speed。Idle 0・Run 1）だけです。スプライトは混ぜられないので、いちばん重い子のクリップのコマを出します。
+
+クリップ Run には、0.25 秒にイベント Step（数 0.5・整数 1・文字 run）があります。Run は 1 周 0.5 秒です。
+
+確かめ方:
+
+1. 再生すると、コンソールに「AnimatorSpriteProbe（Sprite_States）: 状態 （始め） → Idle・クリップ Idle・コマ 0」が出て、左の絵が 0 と 1 を 0.5 秒ずつくり返す。警告は出ない。
+2. 2 秒で「状態 Idle → Run・クリップ Run・コマ 2」の 1 行で移り、絵は 2 → 3 → 4 → 5 を 0.125 秒ずつくり返す（混ぜる間が無い）。1 秒ごとの行が「1 秒の Step 2」になる。
+3. 5 秒で「状態 Run → Jump・クリップ Jump・コマ 6」、0.25 秒後にコマ 7、0.5 秒で「状態 Jump → Idle」に戻る。Jump と Idle の間は「1 秒の Step 0」。
+4. 右の Sprite_Blend は、Speed が 0.5 より小さい間（0〜2 秒と 6〜8 秒）はクリップ Idle の 0・1、大きい間（2〜6 秒）はクリップ Run の 2〜5 を出し、Run の間は Step が出る。状態はずっと Locomotion。
+5. 再生中に Sprite_States の Animator を切ると、スプライトアニメが自分で進み始める（最後のクリップのまま）。入れ直すと、またアニメーターがコマを決める。スプライトアニメのインスペクタには「今は同じオブジェクトの Animator がコマを決めています」と出る。
+6. 停止中に Project の Animators/SpriteStates.animator を開き、Hierarchy で Sprite_States を選ぶ。左の「クリップ」の Run を開くと「種類」が「スプライトのクリップ」で、「スプライトのクリップ」の候補に Idle・Run・Jump が並び、イベントの帯に尺 0.500 秒と Step の印が出る。
+7. 窓の上の「シーンで見る」を入れて Run の箱を選ぶと、窓の上に「シーンで見る: Sprite_States（Run）」と出て、左の絵が 2〜5 を流れる。「止める」と「進み」のつまみで 1 コマずつ見られる。「シーンで見る」を外すか窓を閉じると、元のコマへ戻る。
+8. キャンバスの何も無い所を右クリックすると「スプライトアニメから状態を作る」があり、左の「スプライトアニメから足す」と同じく、選んでいる物のスプライトアニメのクリップを足す（同じ名前を指すクリップがあれば足さない。確かめたら保存せずに閉じる）。

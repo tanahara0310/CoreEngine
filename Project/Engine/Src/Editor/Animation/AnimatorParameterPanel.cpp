@@ -10,6 +10,7 @@
 #include "Animation/AnimatorRuntime.h"
 #include "Editor/ImGui/EditorTheme.h"
 #include "Editor/ImGui/ImGuiAll.h"
+#include "GameObject/Component/Render/SpriteAnimatorComponent.h"
 
 #include <algorithm>
 #include <optional>
@@ -160,6 +161,14 @@ namespace CoreEngine::Editor
         if (ImGui::Button("空のクリップを足す", ImVec2(-1.0f, 0.0f))) {
             document.AddEmptyClip();
         }
+        const SpriteAnimatorComponent* const sprite = AnimatorDocument::SelectedSprite();
+        ImGui::BeginDisabled(!sprite);
+        if (ImGui::Button("スプライトアニメから足す", ImVec2(-1.0f, 0.0f)) && sprite) {
+            document.AddClipsFromSprite(*sprite, nullptr);
+        }
+        ImGui::EndDisabled();
+        UI::Tooltip(sprite ? "Hierarchy で選んでいるオブジェクトのスプライトアニメのクリップを全部足します。"
+                           : "Hierarchy でスプライトアニメのあるオブジェクトを選ぶと使えます。");
 
         std::vector<AnimatorClip>& clips = document.data.clips;
         if (clips.empty()) {

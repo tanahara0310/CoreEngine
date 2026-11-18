@@ -54,12 +54,17 @@ namespace CoreEngine
     };
 
     /// @brief 設定で使うクリップ 1 本
+    /// @details sprite を書いたクリップは、同じオブジェクトのスプライトアニメのクリップを指す（file と source は見ない）。
     struct AnimatorClip
     {
         std::string id;      ///< 状態とイベントが指す名前
         std::string file;    ///< モデルかアニメーションのファイル（`Application/Assets/…`）
         std::string source;  ///< ファイルの中のアニメーション名（空なら先頭の 1 本）
+        std::string sprite;  ///< スプライトアニメのクリップの名前（空ならモデルのクリップ）
         std::vector<AnimatorClipEvent> events;
+
+        /// @brief スプライトアニメのクリップを指すか
+        bool IsSprite() const { return !sprite.empty(); }
     };
 
     /// @brief 状態が流すものの種類

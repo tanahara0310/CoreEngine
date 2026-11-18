@@ -125,6 +125,7 @@ namespace CoreEngine
                     clip.file = JsonToAssetPath(*file, "アニメーター設定のクリップ「" + clip.id + "」");
                 }
                 clip.source = ReadString(node, "source");
+                clip.sprite = ReadString(node, "sprite");
                 if (const auto events = node.find("events"); events != node.end() && events->is_array()) {
                     for (const json& eventNode : *events) {
                         if (!eventNode.is_object()) {
@@ -385,7 +386,9 @@ namespace CoreEngine
 
             json clips = json::array();
             for (const AnimatorClip& clip : data.clips) {
-                json node = { { "id", clip.id }, { "file", AssetPathToJson(clip.file) }, { "source", clip.source } };
+                json node = clip.sprite.empty()
+                    ? json{ { "id", clip.id }, { "file", AssetPathToJson(clip.file) }, { "source", clip.source } }
+                    : json{ { "id", clip.id }, { "sprite", clip.sprite } };
                 if (!clip.events.empty()) {
                     json events = json::array();
                     for (const AnimatorClipEvent& clipEvent : clip.events) {

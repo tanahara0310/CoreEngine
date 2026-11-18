@@ -9,6 +9,7 @@
 #include "Editor/Scene/SceneDebugEditor.h"
 #include "EngineSystem/PlaybackState.h"
 #include "GameObject/Component/Animation/AnimatorComponent.h"
+#include "GameObject/Component/Render/SpriteAnimatorComponent.h"
 #include "GameObject/GameObject.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Utility/FrameRate/Time.h"
@@ -65,18 +66,21 @@ namespace CoreEngine::Editor
             target_ = object->GetObjectId();
         }
         const Skeleton* const skeleton = animator->GetSkeleton();
+        const SpriteAnimatorComponent* const sprite = animator->GetDrivenSprite();
         const std::string stateName = PreviewStateOf(document);
-        if (!skeleton || stateName.empty()) {
+        if ((!skeleton && !sprite) || stateName.empty()) {
             animator->ClearPreviewPose();
             return;
         }
 
         runtime_.SetRootMotionEnabled(animator->GetApplyRootMotion());
-        const std::string text = AnimatorDocument::ToText(document.data);
-        if (text != builtText_ || skeleton != builtSkeleton_) {
-            Rebuild(document, *skeleton);
+        runtime_.SetBlendingEnabled(!sprite);
+        const std::string text = AnimatorDocument::ToText(document.data) + (sprite ? SpriteClipsKey(*sprite) : std::string{});
+        if (text != builtText_ || skeleton != builtSkeleton_ || sprite != builtSprite_) {
+            Rebuild(document, skeleton, sprite);
             builtText_ = text;
             builtSkeleton_ = skeleton;
+            builtSprite_ = sprite;
         }
         for (const AnimatorParameter& parameter : document.data.parameters) {
             if (parameter.type == AnimatorParameterType::Float) {
@@ -92,10 +96,28 @@ namespace CoreEngine::Editor
                 document.previewTime -= std::floor(document.previewTime);
             }
         }
+        if (sprite) {
+            const AnimatorRuntime::ClipSample sample = runtime_.StateClipAt(document.activeLayer, stateName, document.previewTime);
+            const std::vector<AnimatorClip>& clips = document.data.clips;
+            if (sample.clip >= 0 && sample.clip < static_cast<int>(clips.size()) && clips[static_cast<size_t>(sample.clip)].IsSprite() &&
+                animator->ShowPreviewSprite(clips[static_cast<size_t>(sample.clip)].sprite, sample.time)) {
+                document.previewObject = object->GetName();
+            }
+            return;
+        }
         if (runtime_.EvaluateLayerState(document.activeLayer, stateName, document.previewTime) &&
             animator->ShowPreviewPose(runtime_.GetSkeletonSpaceMatrices())) {
             document.previewObject = object->GetName();
         }
+    }
+
+    std::string AnimatorPreview::SpriteClipsKey(const SpriteAnimatorComponent& sprite)
+    {
+        std::string key;
+        for (const SpriteAnimationClip& clip : sprite.GetClips()) {
+            key += clip.name + ":" + std::to_string(SpriteAnimatorComponent::ClipDuration(clip)) + ";";
+        }
+        return key;
     }
 
     void AnimatorPreview::Stop()
@@ -111,15 +133,11 @@ namespace CoreEngine::Editor
         target_ = ObjectId{};
     }
 
-    void AnimatorPreview::Rebuild(const AnimatorDocument& document, const Skeleton& skeleton)
+    void AnimatorPreview::Rebuild(const AnimatorDocument& document, const Skeleton* skeleton, const SpriteAnimatorComponent* sprite)
     {
         auto data = std::make_shared<AnimatorControllerData>(document.data);
-        std::vector<std::shared_ptr<const Animation>> clips;
-        clips.reserve(data->clips.size());
-        for (const AnimatorClip& clip : data->clips) {
-            clips.push_back(document.models && !clip.file.empty() ? document.models->AcquireClip(clip.file, clip.source) : nullptr);
-        }
-        runtime_.Build(std::move(data), std::move(clips), &skeleton, "シーンで見る");
+        std::vector<std::shared_ptr<const Animation>> clips = AnimatorComponent::AcquireClips(*data, document.models, sprite);
+        runtime_.Build(std::move(data), std::move(clips), sprite ? &AnimatorRuntime::NoBones() : skeleton, "シーンで見る");
     }
 }
 
