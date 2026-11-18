@@ -6,6 +6,7 @@
 #include "GameObject/Component/Light/LightComponent.h"
 #include "Graphics/Light/LightManager.h"
 #include "Graphics/Render/RenderManager.h"
+#include "Scene/SceneSaveSystem.h"
 
 #include <memory>
 
@@ -57,9 +58,13 @@ namespace CoreEngine
             return;
         }
 
+        // 保存データの値を当てた既定の太陽は、シーンが置いた太陽として残す
+        if (ctx.saveSystem && ctx.saveSystem->WasRestored(defaultSun_->GetSerializeKey())) {
+            return;
+        }
+
         // シーンが自前の平行光源を置いていたら、既定の太陽は引っ込む
-        // （保存データが既定の太陽と同じ名前で復元された場合は同じオブジェクトなので残る。
-        //   月だけの平行光源は自前の太陽として数えない）
+        // （月だけの平行光源は自前の太陽として数えない）
         const LightComponent* const own = defaultSun_->GetComponent<LightComponent>();
         bool sceneHasDirectional = false;
         ctx.gameObjectManager->ForEachComponent<LightComponent>(

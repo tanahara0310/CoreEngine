@@ -1,0 +1,8 @@
+{
+    "r.Atmosphere.SkyAmbientEnabled": false,
+    "r.Cloud.Enabled": false,
+    "r.LensFlare.Enabled": false,
+    "r.LocalExposure.Enabled": false,
+    "r.TimeOfDay.Advance": false,
+    "version": "1.0"
+}

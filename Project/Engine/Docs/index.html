@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.96.0">
+<meta name="engine-version" content="0.96.1">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12034,6 +12034,14 @@ python Tools/OkinawaBeach/bake_araha_walk.py
 
   <h2 id="changelog-history">更新履歴</h2>
 
+  <h3 id="changelog-v0-96-1">v0.96.1 <span class="dim">（2026-11-19）</span></h3>
+  <p>エディタの 2 つの不具合を直した版です。</p>
+  <ul>
+    <li><strong>Console のクリア</strong>：<a href="#editor-console">Console</a> の <span class="ui">クリア</span> を押すと、エディタが落ちていました。消したログの行を、同じフレームのうちに描こうとしていたためです。押すとログが消え、「コンソールログをクリアしました」の 1 行だけになります。</li>
+    <li><strong>保存した Sun が消える</strong>：既定の太陽（Sun）を保存したシーンに、ほかの平行光源（月だけのものを除く）を足して保存すると、次に開いたときに Sun が消えていました。そのまま保存すると <code>Sun.json</code> も消えていました。保存した Sun は、ほかの平行光源があっても残ります。保存していない既定の太陽は、今までどおり、シーンにほかの平行光源があれば置きません（<a href="#api-Light">ライト</a>）。</li>
+    <li><strong>試験用のプロジェクト</strong>：<span class="path">Projects/EngineTests</span> に Light_SavedSun のシーンと、README の確かめ方を足しました。Collider_Mesh は保存した Sun でも照らされるようになるので、Sun と Fill の明るさを下げました。</li>
+  </ul>
+
   <h3 id="changelog-v0-96-0">v0.96.0 <span class="dim">（2026-11-19）</span></h3>
   <p>メッシュの形の上で、剛体の球・箱・カプセルが転がり、止まり、眠るようにした版です（<a href="#physics-mesh">モデルの形のまま当てる</a>）。メッシュの形を使わないシーンの物理は、前の版と同じです。</p>
   <ul>
@@ -18232,7 +18240,7 @@ void LateUpdate()   // 追いかける相手が動いた後に動かす
       "<li>光の位置はオブジェクトのワールドの位置です。</li>" +
       "<li>置ける数には上限があります：平行光源 4・点光源 16・スポット 16・エリア 8。超えた分は光りません。</li>" +
       "<li>インスペクタで種類を変えても、強さは前の値のままです（点光源から平行光源にしたら強さを見直します）。</li>" +
-      "<li>シーンに平行光源が無いと、エンジンが既定の太陽を置きます。</li>" +
+      "<li>シーンに平行光源が無いと、エンジンが既定の太陽（Sun）を置きます。Sun を保存したシーンでは、ほかの平行光源を足しても Sun は残ります。</li>" +
       "</ul>",
     see: [["api-SkyBox", "空と大気散乱"]]
   },

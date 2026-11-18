@@ -1,0 +1,73 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    -0.8,
+                    1.0,
+                    0.5
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "boundsPadding": 0.0,
+                "castShadows": 0,
+                "material": null,
+                "materials": [
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            0.92,
+                            0.92,
+                            0.92,
+                            1.0
+                        ],
+                        "dithering": true,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.6,
+                        "vertexAnimSpeed": 1.0,
+                        "vertexAnimStrength": 1.0,
+                        "vertexAnimation": 0
+                    }
+                ],
+                "model": {
+                    "guid": "e16552a6-c74d-f458-71fe-2810a97c3777",
+                    "path": "Engine/Assets/Models/Primitives/Sphere/sphere.obj"
+                },
+                "rayTracing": true,
+                "texture": null,
+                "visibleInReflections": 0
+            },
+            "type": "MeshRenderer"
+        }
+    ],
+    "id": "7d3b9f2e5c0a1648",
+    "name": "Ball",
+    "order": 4
+}

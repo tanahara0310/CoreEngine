@@ -6,6 +6,7 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -72,6 +73,11 @@ namespace CoreEngine
 
         /// @brief 復元の進捗（0.0〜1.0）
         float GetLoadProgress() const;
+
+        /// @brief 最後の読み込みで、保存データ（または控え）の値を当てたオブジェクトか
+        /// @param key 保存キー
+        /// @note 次の BeginLoad まで覚えている。
+        bool WasRestored(const std::string& key) const { return restoredKeys_.contains(key); }
 
         /// @brief シーン JSON のコンポーネントが指すモデルのパスを列挙する（オブジェクトは一切生成しない）
         /// @return 重複を除いたモデルのパスのリスト
@@ -197,6 +203,9 @@ namespace CoreEngine
 
         /// @brief 読み込み中のシーンのオブジェクト（復元し終えたら参照を確かめる）
         GameObjectManager* loadManager_ = nullptr;
+
+        /// @brief 最後の読み込みで値を当てたオブジェクトの保存キー
+        std::unordered_set<std::string> restoredKeys_;
 
         /// @brief 復元する値の元（保存ファイルから読むときは、読み始めにフォルダの中身から作る）
         std::shared_ptr<const SceneSnapshot> restoreSnapshot_;
