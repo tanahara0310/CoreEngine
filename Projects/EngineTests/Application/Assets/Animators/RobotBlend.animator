@@ -1,0 +1,275 @@
+{
+    "version": 1,
+    "previewModel": {
+        "guid": "fd0ce2a1-f28b-49fa-b282-353f5ecccb96",
+        "path": "Application/Assets/Models/AnimRobot/AnimRobot.gltf"
+    },
+    "parameters": [
+        {
+            "name": "Speed",
+            "type": "Float",
+            "default": 0.0
+        },
+        {
+            "name": "MoveX",
+            "type": "Float",
+            "default": 0.0
+        },
+        {
+            "name": "MoveY",
+            "type": "Float",
+            "default": 0.0
+        },
+        {
+            "name": "Strafe",
+            "type": "Bool",
+            "default": false
+        }
+    ],
+    "clips": [
+        {
+            "id": "Idle",
+            "file": {
+                "guid": "fd0ce2a1-f28b-49fa-b282-353f5ecccb96",
+                "path": "Application/Assets/Models/AnimRobot/AnimRobot.gltf"
+            },
+            "source": "Idle"
+        },
+        {
+            "id": "Walk",
+            "file": {
+                "guid": "fd0ce2a1-f28b-49fa-b282-353f5ecccb96",
+                "path": "Application/Assets/Models/AnimRobot/AnimRobot.gltf"
+            },
+            "source": "Walk",
+            "events": [
+                {
+                    "time": 0.25,
+                    "name": "FootL",
+                    "float": 0.5,
+                    "int": 0,
+                    "string": "left"
+                },
+                {
+                    "time": 0.75,
+                    "name": "FootR",
+                    "float": 0.5,
+                    "int": 1,
+                    "string": "right"
+                }
+            ]
+        },
+        {
+            "id": "Run",
+            "file": {
+                "guid": "fd0ce2a1-f28b-49fa-b282-353f5ecccb96",
+                "path": "Application/Assets/Models/AnimRobot/AnimRobot.gltf"
+            },
+            "source": "Run",
+            "events": [
+                {
+                    "time": 0.15,
+                    "name": "FootL",
+                    "float": 1.0,
+                    "int": 0,
+                    "string": "left"
+                },
+                {
+                    "time": 0.45,
+                    "name": "FootR",
+                    "float": 1.0,
+                    "int": 1,
+                    "string": "right"
+                }
+            ]
+        },
+        {
+            "id": "WalkBack",
+            "file": {
+                "guid": "fd0ce2a1-f28b-49fa-b282-353f5ecccb96",
+                "path": "Application/Assets/Models/AnimRobot/AnimRobot.gltf"
+            },
+            "source": "WalkBack",
+            "events": [
+                {
+                    "time": 0.25,
+                    "name": "FootL",
+                    "float": 0.4,
+                    "int": 0,
+                    "string": "left"
+                },
+                {
+                    "time": 0.75,
+                    "name": "FootR",
+                    "float": 0.4,
+                    "int": 1,
+                    "string": "right"
+                }
+            ]
+        },
+        {
+            "id": "StrafeL",
+            "file": {
+                "guid": "fd0ce2a1-f28b-49fa-b282-353f5ecccb96",
+                "path": "Application/Assets/Models/AnimRobot/AnimRobot.gltf"
+            },
+            "source": "StrafeL",
+            "events": [
+                {
+                    "time": 0.2,
+                    "name": "FootL",
+                    "float": 0.4,
+                    "int": 0,
+                    "string": "left"
+                },
+                {
+                    "time": 0.65,
+                    "name": "FootR",
+                    "float": 0.4,
+                    "int": 1,
+                    "string": "right"
+                }
+            ]
+        },
+        {
+            "id": "StrafeR",
+            "file": {
+                "guid": "fd0ce2a1-f28b-49fa-b282-353f5ecccb96",
+                "path": "Application/Assets/Models/AnimRobot/AnimRobot.gltf"
+            },
+            "source": "StrafeR",
+            "events": [
+                {
+                    "time": 0.2,
+                    "name": "FootL",
+                    "float": 0.4,
+                    "int": 0,
+                    "string": "left"
+                },
+                {
+                    "time": 0.65,
+                    "name": "FootR",
+                    "float": 0.4,
+                    "int": 1,
+                    "string": "right"
+                }
+            ]
+        }
+    ],
+    "layers": [
+        {
+            "name": "Base",
+            "defaultState": "Locomotion",
+            "anyStatePos": [
+                -260.0,
+                160.0
+            ],
+            "states": [
+                {
+                    "name": "Locomotion",
+                    "motion": {
+                        "blend1D": {
+                            "param": "Speed",
+                            "children": [
+                                {
+                                    "clip": "Idle",
+                                    "threshold": 0.0
+                                },
+                                {
+                                    "clip": "Walk",
+                                    "threshold": 1.5
+                                },
+                                {
+                                    "clip": "Run",
+                                    "threshold": 4.0
+                                }
+                            ]
+                        }
+                    },
+                    "speed": 1.0,
+                    "loop": true,
+                    "pos": [
+                        0.0,
+                        0.0
+                    ]
+                },
+                {
+                    "name": "Strafe",
+                    "motion": {
+                        "blend2D": {
+                            "paramX": "MoveX",
+                            "paramY": "MoveY",
+                            "children": [
+                                {
+                                    "clip": "Idle",
+                                    "pos": [
+                                        0.0,
+                                        0.0
+                                    ]
+                                },
+                                {
+                                    "clip": "Walk",
+                                    "pos": [
+                                        0.0,
+                                        1.0
+                                    ]
+                                },
+                                {
+                                    "clip": "WalkBack",
+                                    "pos": [
+                                        0.0,
+                                        -1.0
+                                    ]
+                                },
+                                {
+                                    "clip": "StrafeL",
+                                    "pos": [
+                                        -1.0,
+                                        0.0
+                                    ]
+                                },
+                                {
+                                    "clip": "StrafeR",
+                                    "pos": [
+                                        1.0,
+                                        0.0
+                                    ]
+                                }
+                            ]
+                        }
+                    },
+                    "speed": 1.0,
+                    "loop": true,
+                    "pos": [
+                        300.0,
+                        0.0
+                    ]
+                }
+            ],
+            "transitions": [
+                {
+                    "from": "Locomotion",
+                    "to": "Strafe",
+                    "conditions": [
+                        {
+                            "param": "Strafe",
+                            "op": "true"
+                        }
+                    ],
+                    "duration": 0.3
+                },
+                {
+                    "from": "Strafe",
+                    "to": "Locomotion",
+                    "conditions": [
+                        {
+                            "param": "Strafe",
+                            "op": "false"
+                        }
+                    ],
+                    "duration": 0.3
+                }
+            ]
+        }
+    ]
+}

@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "AnimatorRuntime.h"
 
+#include "Animation/BlendTree.h"
 #include "Animation/PoseEvaluator.h"
 #include "Graphics/Model/Animation/Animation.h"
 #include "Graphics/Model/Skeleton/Skeleton.h"
@@ -8,6 +9,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <numeric>
 
 namespace CoreEngine
 {
@@ -52,7 +54,15 @@ namespace CoreEngine
         clips_.resize(controller_->clips.size());
 
         bindings_.resize(clips_.size());
+        eventOrder_.resize(clips_.size());
         for (size_t i = 0; i < clips_.size(); ++i) {
+            const std::vector<AnimatorClipEvent>& events = controller_->clips[i].events;
+            std::vector<int>& order = eventOrder_[i];
+            order.resize(events.size());
+            std::iota(order.begin(), order.end(), 0);
+            std::stable_sort(order.begin(), order.end(), [&events](int a, int b) {
+                return events[static_cast<size_t>(a)].time < events[static_cast<size_t>(b)].time;
+            });
             if (!clips_[i]) {
                 continue;
             }
@@ -63,21 +73,39 @@ namespace CoreEngine
             }
         }
 
-        stateClips_.assign(layer_->states.size(), -1);
+        motions_.assign(layer_->states.size(), {});
         for (size_t i = 0; i < layer_->states.size(); ++i) {
             const AnimatorState& state = layer_->states[i];
             stateIndices_.emplace(state.name, static_cast<int>(i));
-            if (state.clip.empty()) {
+            StateMotion& motion = motions_[i];
+            motion.type = state.motion;
+            if (state.motion == AnimatorMotionType::Clip) {
+                if (state.clip.empty()) {
+                    continue;
+                }
+                motion.clip = FindClipIndex(state.clip);
+                if (motion.clip < 0) {
+                    WarnOnce("clip:" + state.name, "状態「" + state.name + "」のクリップ「" + state.clip + "」がクリップの表にありません");
+                }
                 continue;
             }
-            for (size_t c = 0; c < controller_->clips.size(); ++c) {
-                if (controller_->clips[c].id == state.clip) {
-                    stateClips_[i] = static_cast<int>(c);
-                    break;
-                }
+
+            motion.parameterX = ResolveBlendParameter(state, state.blend.parameterX);
+            if (state.motion == AnimatorMotionType::Blend2D) {
+                motion.parameterY = ResolveBlendParameter(state, state.blend.parameterY);
             }
-            if (stateClips_[i] < 0) {
-                WarnOnce("clip:" + state.name, "状態「" + state.name + "」のクリップ「" + state.clip + "」がクリップの表にありません");
+            if (state.blend.children.empty()) {
+                WarnOnce("children:" + state.name, "状態「" + state.name + "」のブレンドツリーに子がありません");
+            }
+            for (const AnimatorBlendChild& child : state.blend.children) {
+                const int clip = FindClipIndex(child.clip);
+                if (clip < 0) {
+                    WarnOnce("child:" + state.name + child.clip,
+                        "状態「" + state.name + "」のブレンドツリーの子のクリップ「" + child.clip + "」がクリップの表にありません");
+                }
+                motion.childClips.push_back(clip);
+                motion.thresholds.push_back(child.threshold);
+                motion.positions.push_back(child.position);
             }
         }
 
@@ -130,6 +158,7 @@ namespace CoreEngine
         sourcePose_.resize(jointCount);
         targetPose_.resize(jointCount);
         frozenPose_.resize(jointCount);
+        blendScratch_.resize(jointCount);
         matrices_.resize(jointCount);
 
         int defaultState = FindStateIndex(layer_->defaultState);
@@ -150,7 +179,8 @@ namespace CoreEngine
         skeleton_ = nullptr;
         clips_.clear();
         bindings_.clear();
-        stateClips_.clear();
+        eventOrder_.clear();
+        motions_.clear();
         stateIndices_.clear();
         parameterIndices_.clear();
         anyStateTransitions_.clear();
@@ -158,10 +188,12 @@ namespace CoreEngine
         parameters_.clear();
         current_ = Playhead{};
         transition_.reset();
+        events_.clear();
     }
 
     void AnimatorRuntime::Update(float deltaTime)
     {
+        events_.clear();
         if (!IsReady()) {
             return;
         }
@@ -169,11 +201,14 @@ namespace CoreEngine
         if (transition_) {
             if (!transition_->frozenSource) {
                 Advance(current_, deltaTime);
+                CollectEvents(current_, deltaTime);
             }
             Advance(transition_->next, deltaTime);
+            CollectEvents(transition_->next, deltaTime);
             transition_->elapsed += deltaTime;
         } else {
             Advance(current_, deltaTime);
+            CollectEvents(current_, deltaTime);
             CheckTransitions();
         }
 
@@ -198,6 +233,26 @@ namespace CoreEngine
         }
 
         PoseEvaluator::ComputeSkeletonSpace(*skeleton_, pose_, matrices_);
+    }
+
+    float AnimatorRuntime::GetStateDuration(const std::string& stateName) const
+    {
+        return IsReady() ? StateDuration(FindStateIndex(stateName)) : 0.0f;
+    }
+
+    bool AnimatorRuntime::EvaluateState(const std::string& stateName, float normalizedTime)
+    {
+        if (!IsReady()) {
+            return false;
+        }
+        const int state = FindStateIndex(stateName);
+        if (state < 0) {
+            return false;
+        }
+        const Playhead playhead = MakePlayhead(state, std::clamp(normalizedTime, 0.0f, 1.0f), std::nullopt);
+        SamplePlayhead(playhead, pose_);
+        PoseEvaluator::ComputeSkeletonSpace(*skeleton_, pose_, matrices_);
+        return true;
     }
 
     // ===== パラメータ =====
@@ -322,9 +377,7 @@ namespace CoreEngine
         if (!IsReady()) {
             return 0.0f;
         }
-        const Playhead& playhead = transition_ ? transition_->next : current_;
-        const float duration = StateDuration(playhead.state);
-        return duration > 0.0f ? playhead.time / duration : 0.0f;
+        return NormalizedOf(transition_ ? transition_->next : current_);
     }
 
     float AnimatorRuntime::GetTransitionProgress() const
@@ -347,13 +400,77 @@ namespace CoreEngine
 
     // ===== 内部 =====
 
+    bool AnimatorRuntime::IsBlend(int state) const
+    {
+        return state >= 0 && static_cast<size_t>(state) < motions_.size() &&
+            motions_[static_cast<size_t>(state)].type != AnimatorMotionType::Clip;
+    }
+
+    float AnimatorRuntime::ClipDuration(int clip) const
+    {
+        return clip >= 0 && clips_[static_cast<size_t>(clip)] ? clips_[static_cast<size_t>(clip)]->duration : 0.0f;
+    }
+
+    float AnimatorRuntime::ParameterFloat(int parameter) const
+    {
+        return parameter >= 0 ? parameters_[static_cast<size_t>(parameter)].floatValue : 0.0f;
+    }
+
+    void AnimatorRuntime::ComputeWeights(const StateMotion& motion, std::vector<float>& weights) const
+    {
+        const size_t count = motion.childClips.size();
+        weights.assign(count, 0.0f);
+        if (count == 0) {
+            return;
+        }
+        if (motion.type == AnimatorMotionType::Blend1D) {
+            BlendTree::Compute1D(motion.thresholds, ParameterFloat(motion.parameterX), weights);
+        } else {
+            BlendTree::Compute2D(motion.positions,
+                Vector2{ ParameterFloat(motion.parameterX), ParameterFloat(motion.parameterY) }, weights);
+        }
+
+        float total = 0.0f;
+        for (size_t i = 0; i < count; ++i) {
+            const int clip = motion.childClips[i];
+            if (clip < 0 || !clips_[static_cast<size_t>(clip)]) {
+                weights[i] = 0.0f;
+            }
+            total += weights[i];
+        }
+        if (total > 0.0f && total != 1.0f) {
+            for (float& weight : weights) {
+                weight /= total;
+            }
+        }
+    }
+
     float AnimatorRuntime::StateDuration(int state) const
     {
-        if (state < 0 || static_cast<size_t>(state) >= stateClips_.size()) {
+        if (state < 0 || static_cast<size_t>(state) >= motions_.size()) {
             return 0.0f;
         }
-        const int clip = stateClips_[static_cast<size_t>(state)];
-        return clip >= 0 && clips_[static_cast<size_t>(clip)] ? clips_[static_cast<size_t>(clip)]->duration : 0.0f;
+        const StateMotion& motion = motions_[static_cast<size_t>(state)];
+        if (motion.type == AnimatorMotionType::Clip) {
+            return ClipDuration(motion.clip);
+        }
+        ComputeWeights(motion, weights_);
+        float duration = 0.0f;
+        for (size_t i = 0; i < weights_.size(); ++i) {
+            if (weights_[i] > 0.0f) {
+                duration += weights_[i] * ClipDuration(motion.childClips[i]);
+            }
+        }
+        return duration;
+    }
+
+    float AnimatorRuntime::NormalizedOf(const Playhead& playhead) const
+    {
+        if (IsBlend(playhead.state)) {
+            return playhead.time;
+        }
+        const float duration = StateDuration(playhead.state);
+        return duration > 0.0f ? playhead.time / duration : 0.0f;
     }
 
     AnimatorRuntime::Playhead AnimatorRuntime::MakePlayhead(int state, float normalizedOffset, std::optional<bool> loop) const
@@ -361,32 +478,39 @@ namespace CoreEngine
         Playhead playhead;
         playhead.state = state;
         playhead.loop = loop.value_or(layer_->states[static_cast<size_t>(state)].loop);
-        playhead.time = normalizedOffset * StateDuration(state);
+        playhead.time = IsBlend(state) ? normalizedOffset : normalizedOffset * StateDuration(state);
+        playhead.previous = playhead.time;
         return playhead;
     }
 
     void AnimatorRuntime::Advance(Playhead& playhead, float deltaTime) const
     {
         playhead.wrapped = false;
+        playhead.previous = playhead.time;
         if (playhead.state < 0) {
             return;
         }
         const float duration = StateDuration(playhead.state);
-        playhead.time += deltaTime * layer_->states[static_cast<size_t>(playhead.state)].speed;
+        const float speed = layer_->states[static_cast<size_t>(playhead.state)].speed;
         if (duration <= 0.0f) {
             playhead.time = 0.0f;
+            playhead.previous = 0.0f;
             return;
         }
+        const bool blend = IsBlend(playhead.state);
+        // ブレンドツリーは木の尺で割って進みの割合のまま進める
+        const float length = blend ? 1.0f : duration;
+        playhead.time += blend ? deltaTime * speed / duration : deltaTime * speed;
         if (playhead.loop) {
-            if (playhead.time >= duration || playhead.time < 0.0f) {
+            if (playhead.time >= length || playhead.time < 0.0f) {
                 playhead.wrapped = true;
             }
-            playhead.time = std::fmod(playhead.time, duration);
+            playhead.time = std::fmod(playhead.time, length);
             if (playhead.time < 0.0f) {
-                playhead.time += duration;
+                playhead.time += length;
             }
         } else {
-            playhead.time = std::clamp(playhead.time, 0.0f, duration);
+            playhead.time = std::clamp(playhead.time, 0.0f, length);
         }
     }
 
@@ -396,11 +520,111 @@ namespace CoreEngine
         if (duration <= 0.0f) {
             return true;
         }
-        const float normalized = playhead.time / duration;
+        const float normalized = NormalizedOf(playhead);
         if (playhead.loop) {
             return exitTime < 1.0f ? (normalized >= exitTime || playhead.wrapped) : playhead.wrapped;
         }
         return normalized >= (std::min)(exitTime, 1.0f);
+    }
+
+    void AnimatorRuntime::CollectEvents(Playhead& playhead, float deltaTime)
+    {
+        const bool includeFrom = playhead.fresh;
+        playhead.fresh = false;
+        if (playhead.state < 0 || deltaTime < 0.0f || layer_->states[static_cast<size_t>(playhead.state)].speed < 0.0f) {
+            return;
+        }
+        const int clip = EventClip(playhead);
+        if (clip < 0 || eventOrder_[static_cast<size_t>(clip)].empty()) {
+            return;
+        }
+        const float clipDuration = ClipDuration(clip);
+        // ブレンドツリーの進みの割合をそのクリップの秒へ直す
+        const float scale = IsBlend(playhead.state) ? clipDuration : 1.0f;
+        const float from = playhead.previous * scale;
+        const float to = playhead.time * scale;
+        if (playhead.wrapped) {
+            EmitEvents(clip, playhead.state, from, clipDuration, includeFrom);
+            EmitEvents(clip, playhead.state, 0.0f, to, true);
+        } else {
+            EmitEvents(clip, playhead.state, from, to, includeFrom);
+        }
+    }
+
+    int AnimatorRuntime::EventClip(const Playhead& playhead) const
+    {
+        if (playhead.state < 0 || static_cast<size_t>(playhead.state) >= motions_.size()) {
+            return -1;
+        }
+        const StateMotion& motion = motions_[static_cast<size_t>(playhead.state)];
+        if (motion.type == AnimatorMotionType::Clip) {
+            return motion.clip >= 0 && clips_[static_cast<size_t>(motion.clip)] ? motion.clip : -1;
+        }
+        ComputeWeights(motion, weights_);
+        int heaviest = -1;
+        float heaviestWeight = 0.0f;
+        for (size_t i = 0; i < weights_.size(); ++i) {
+            if (weights_[i] > heaviestWeight) {
+                heaviestWeight = weights_[i];
+                heaviest = static_cast<int>(i);
+            }
+        }
+        return heaviest >= 0 ? motion.childClips[static_cast<size_t>(heaviest)] : -1;
+    }
+
+    void AnimatorRuntime::EmitEvents(int clip, int state, float from, float to, bool includeFrom)
+    {
+        if (to < from) {
+            return;
+        }
+        const AnimatorClip& source = controller_->clips[static_cast<size_t>(clip)];
+        for (const int index : eventOrder_[static_cast<size_t>(clip)]) {
+            const AnimatorClipEvent& event = source.events[static_cast<size_t>(index)];
+            const bool afterFrom = includeFrom ? event.time >= from : event.time > from;
+            if (!afterFrom) {
+                continue;
+            }
+            if (event.time > to) {
+                break;
+            }
+            AnimationEvent& fired = events_.emplace_back();
+            fired.name = event.name;
+            fired.clip = source.id;
+            fired.state = layer_->states[static_cast<size_t>(state)].name;
+            fired.floatValue = event.floatValue;
+            fired.intValue = event.intValue;
+            fired.stringValue = event.stringValue;
+        }
+    }
+
+    int AnimatorRuntime::FindClipIndex(const std::string& clipId) const
+    {
+        for (size_t i = 0; i < controller_->clips.size(); ++i) {
+            if (controller_->clips[i].id == clipId) {
+                return static_cast<int>(i);
+            }
+        }
+        return -1;
+    }
+
+    int AnimatorRuntime::ResolveBlendParameter(const AnimatorState& state, const std::string& name)
+    {
+        if (name.empty()) {
+            WarnOnce("blendparam:" + state.name, "状態「" + state.name + "」のブレンドツリーのパラメータが選ばれていません（0 として混ぜます）");
+            return -1;
+        }
+        const auto it = parameterIndices_.find(name);
+        if (it == parameterIndices_.end()) {
+            WarnOnce("blendparam:" + state.name + name,
+                "状態「" + state.name + "」のブレンドツリーのパラメータ「" + name + "」がありません（0 として混ぜます）");
+            return -1;
+        }
+        if (parameters_[static_cast<size_t>(it->second)].type != AnimatorParameterType::Float) {
+            WarnOnce("blendparam:" + state.name + name,
+                "状態「" + state.name + "」のブレンドツリーのパラメータ「" + name + "」が Float ではありません（0 として混ぜます）");
+            return -1;
+        }
+        return it->second;
     }
 
     bool AnimatorRuntime::ConditionsMet(const ResolvedTransition& transition) const
@@ -480,12 +704,42 @@ namespace CoreEngine
 
     void AnimatorRuntime::SamplePlayhead(const Playhead& playhead, Pose& out) const
     {
-        const int clip = playhead.state >= 0 ? stateClips_[static_cast<size_t>(playhead.state)] : -1;
-        if (clip < 0 || !clips_[static_cast<size_t>(clip)]) {
+        if (playhead.state < 0 || static_cast<size_t>(playhead.state) >= motions_.size()) {
             PoseEvaluator::WriteBindPose(*skeleton_, out);
             return;
         }
-        PoseEvaluator::Sample(*skeleton_, bindings_[static_cast<size_t>(clip)], playhead.time, out);
+        const StateMotion& motion = motions_[static_cast<size_t>(playhead.state)];
+        if (motion.type == AnimatorMotionType::Clip) {
+            if (motion.clip < 0 || !clips_[static_cast<size_t>(motion.clip)]) {
+                PoseEvaluator::WriteBindPose(*skeleton_, out);
+                return;
+            }
+            PoseEvaluator::Sample(*skeleton_, bindings_[static_cast<size_t>(motion.clip)], playhead.time, out);
+            return;
+        }
+
+        // 重みのある子を順に混ぜ、混ぜた分の重みの合計で次の子の割合を決める
+        ComputeWeights(motion, weights_);
+        float accumulated = 0.0f;
+        for (size_t i = 0; i < weights_.size(); ++i) {
+            const float weight = weights_[i];
+            if (weight <= 0.0f) {
+                continue;
+            }
+            const int clip = motion.childClips[i];
+            const float clipTime = playhead.time * ClipDuration(clip);
+            if (accumulated <= 0.0f) {
+                PoseEvaluator::Sample(*skeleton_, bindings_[static_cast<size_t>(clip)], clipTime, out);
+                accumulated = weight;
+                continue;
+            }
+            PoseEvaluator::Sample(*skeleton_, bindings_[static_cast<size_t>(clip)], clipTime, blendScratch_);
+            accumulated += weight;
+            PoseEvaluator::Blend(out, blendScratch_, weight / accumulated, out);
+        }
+        if (accumulated <= 0.0f) {
+            PoseEvaluator::WriteBindPose(*skeleton_, out);
+        }
     }
 
     int AnimatorRuntime::FindStateIndex(const std::string& stateName) const

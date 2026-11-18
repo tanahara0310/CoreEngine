@@ -492,6 +492,14 @@ class Collider {
 	void RemoveAll();
 	CoreEngine::GameObject@ get_gameObject() const property;
 }
+class AnimationEvent {
+	string get_name() const property;
+	string get_clip() const property;
+	string get_state() const property;
+	float get_floatValue() const property;
+	int get_intValue() const property;
+	string get_stringValue() const property;
+}
 class TweenHandle {
 	TweenHandle();
 	CoreEngine::TweenHandle& SetEase(CoreEngine::EaseType ease);

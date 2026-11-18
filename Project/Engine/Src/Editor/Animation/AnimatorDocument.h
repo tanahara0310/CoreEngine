@@ -118,6 +118,9 @@ namespace CoreEngine::Editor
         /// @brief ファイルの中のアニメーションの名前（ファイルごとに 1 回だけ調べる）
         const std::vector<std::string>& ClipNamesOf(const std::string& clipFile);
 
+        /// @brief クリップの尺（秒。読めなければ 0。ファイルと中の名前の組ごとに 1 回だけ読む）
+        float ClipDurationOf(const AnimatorClip& clip);
+
         std::filesystem::path file;
         std::string assetPath;  ///< `Application/Assets/…`
         std::string title;
@@ -152,6 +155,24 @@ namespace CoreEngine::Editor
 
         // ファイルの中のアニメーションの名前（ファイルごと）
         std::map<std::string, std::vector<std::string>> clipNames;
+        std::map<std::string, float> clipDurations;  ///< ファイルと中の名前の組ごとの尺
+
+        // イベントの帯でドラッグしている印
+        int eventDragClip = -1;
+        int eventDragIndex = -1;
+
+        // ブレンドツリーの子のうち、クリップの設定を出している子
+        int blendChildFocus = 0;
+
+        // シーンで見る（停止中に、Hierarchy で選んだオブジェクトへ状態の姿勢を出す）
+        bool previewEnabled = false;
+        bool previewPlaying = true;  ///< 進みを時間で進める
+        float previewTime = 0.0f;    ///< 状態の進み（0〜1）
+        std::map<std::string, float> previewFloats;  ///< ブレンドツリーを混ぜる値（無い名前は初めの値）
+        std::string previewObject;   ///< 姿勢を出しているオブジェクトの名前（出していなければ空）
+
+        /// @brief シーンで見るときの数のパラメータの値（決めていなければ初めの値）
+        float PreviewFloat(const std::string& parameterName) const;
 
     private:
         std::string UniqueStateName(const std::string& base) const;

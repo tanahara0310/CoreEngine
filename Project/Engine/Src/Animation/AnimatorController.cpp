@@ -131,8 +131,14 @@ namespace CoreEngine
                             continue;
                         }
                         AnimatorClipEvent clipEvent;
-                        clipEvent.time = ReadFloat(eventNode, "time", 0.0f);
+                        clipEvent.time = (std::max)(0.0f, ReadFloat(eventNode, "time", 0.0f));
                         clipEvent.name = ReadString(eventNode, "name");
+                        clipEvent.floatValue = ReadFloat(eventNode, "float", 0.0f);
+                        if (const auto intValue = eventNode.find("int"); intValue != eventNode.end() && intValue->is_number()) {
+                            clipEvent.intValue = intValue->is_number_integer() ? intValue->get<int>()
+                                                                               : static_cast<int>(intValue->get<float>());
+                        }
+                        clipEvent.stringValue = ReadString(eventNode, "string");
                         clip.events.push_back(std::move(clipEvent));
                     }
                 }
@@ -161,6 +167,69 @@ namespace CoreEngine
             }
         }
 
+        void ReadBlendChildren(const json& node, AnimatorBlendTree& tree)
+        {
+            const auto children = node.find("children");
+            if (children == node.end() || !children->is_array()) {
+                return;
+            }
+            for (const json& childNode : *children) {
+                if (!childNode.is_object()) {
+                    continue;
+                }
+                AnimatorBlendChild child;
+                child.clip = ReadString(childNode, "clip");
+                child.threshold = ReadFloat(childNode, "threshold", 0.0f);
+                if (const auto pos = childNode.find("pos"); pos != childNode.end()) {
+                    child.position = JsonToVector2(*pos, child.position);
+                }
+                tree.children.push_back(std::move(child));
+            }
+        }
+
+        void ReadMotion(const json& motion, AnimatorState& state)
+        {
+            if (const auto blend = motion.find("blend1D"); blend != motion.end() && blend->is_object()) {
+                state.motion = AnimatorMotionType::Blend1D;
+                state.blend.parameterX = ReadString(*blend, "param");
+                ReadBlendChildren(*blend, state.blend);
+                return;
+            }
+            if (const auto blend = motion.find("blend2D"); blend != motion.end() && blend->is_object()) {
+                state.motion = AnimatorMotionType::Blend2D;
+                state.blend.parameterX = ReadString(*blend, "paramX");
+                state.blend.parameterY = ReadString(*blend, "paramY");
+                ReadBlendChildren(*blend, state.blend);
+                return;
+            }
+            state.motion = AnimatorMotionType::Clip;
+            state.clip = ReadString(motion, "clip");
+        }
+
+        json WriteMotion(const AnimatorState& state)
+        {
+            switch (state.motion) {
+            case AnimatorMotionType::Blend1D: {
+                json children = json::array();
+                for (const AnimatorBlendChild& child : state.blend.children) {
+                    children.push_back({ { "clip", child.clip }, { "threshold", child.threshold } });
+                }
+                return { { "blend1D", { { "param", state.blend.parameterX }, { "children", std::move(children) } } } };
+            }
+            case AnimatorMotionType::Blend2D: {
+                json children = json::array();
+                for (const AnimatorBlendChild& child : state.blend.children) {
+                    children.push_back({ { "clip", child.clip }, { "pos", Vector2ToJson(child.position) } });
+                }
+                return { { "blend2D", { { "paramX", state.blend.parameterX }, { "paramY", state.blend.parameterY },
+                                        { "children", std::move(children) } } } };
+            }
+            case AnimatorMotionType::Clip:
+                break;
+            }
+            return { { "clip", state.clip } };
+        }
+
         void ReadLayer(const json& node, AnimatorLayer& layer, std::vector<std::string>* warnings)
         {
             if (std::string name = ReadString(node, "name"); !name.empty()) {
@@ -182,7 +251,7 @@ namespace CoreEngine
                         continue;
                     }
                     if (const auto motion = stateNode.find("motion"); motion != stateNode.end() && motion->is_object()) {
-                        state.clip = ReadString(*motion, "clip");
+                        ReadMotion(*motion, state);
                     }
                     state.speed = ReadFloat(stateNode, "speed", 1.0f);
                     if (const auto loop = stateNode.find("loop"); loop != stateNode.end() && loop->is_boolean()) {
@@ -307,7 +376,17 @@ namespace CoreEngine
                 if (!clip.events.empty()) {
                     json events = json::array();
                     for (const AnimatorClipEvent& clipEvent : clip.events) {
-                        events.push_back({ { "time", clipEvent.time }, { "name", clipEvent.name } });
+                        json eventNode = { { "time", clipEvent.time }, { "name", clipEvent.name } };
+                        if (clipEvent.floatValue != 0.0f) {
+                            eventNode["float"] = clipEvent.floatValue;
+                        }
+                        if (clipEvent.intValue != 0) {
+                            eventNode["int"] = clipEvent.intValue;
+                        }
+                        if (!clipEvent.stringValue.empty()) {
+                            eventNode["string"] = clipEvent.stringValue;
+                        }
+                        events.push_back(std::move(eventNode));
                     }
                     node["events"] = std::move(events);
                 }
@@ -323,7 +402,7 @@ namespace CoreEngine
                 for (const AnimatorState& state : layer.states) {
                     states.push_back({
                         { "name", state.name },
-                        { "motion", { { "clip", state.clip } } },
+                        { "motion", WriteMotion(state) },
                         { "speed", state.speed },
                         { "loop", state.loop },
                         { "pos", Vector2ToJson(state.position) },

@@ -11,6 +11,7 @@
 #include "Graphics/Asset/AssetRef.h"
 #include "Reflection/PropertySerializer.h"
 #include "Reflection/PropertyValue.h"
+#include "Script/Binding/AnimationBinding.h"
 #include "Script/Binding/GameObjectBinding.h"
 #include "Script/Binding/GizmosBinding.h"
 #include "Script/Binding/PhysicsBinding.h"
@@ -152,6 +153,36 @@ namespace CoreEngine
     void ScriptComponent::OnTriggerExit(const CollisionInfo& info)
     {
         InvokeContact(ScriptComponentType::Method::OnTriggerExit, info, true);
+    }
+
+    void ScriptComponent::OnAnimationEvent(const AnimationEvent& event)
+    {
+        if (!type_ || !host_ || !object_) {
+            return;
+        }
+        asIScriptFunction* const function = type_->GetMethod(ScriptComponentType::Method::OnAnimationEvent);
+        if (!function) {
+            return;
+        }
+        if (!objectRefs_.empty()) {
+            ApplyObjectRefs();
+        }
+
+        const auto started = std::chrono::steady_clock::now();
+        Script::ScriptAnimationEvent* const argument = Script::ScriptAnimationEvent::Create(event);
+        const bool finished = host_->CallMethod(function, object_,
+            [argument](asIScriptContext* context) { return context->SetArgObject(0, argument); },
+            [this]() { return DescribeMethod(ScriptComponentType::Method::OnAnimationEvent); });
+        argument->Release();
+
+        const std::chrono::duration<double, std::milli> elapsed = std::chrono::steady_clock::now() - started;
+        type_->AddFrameCost(elapsed.count(), false);
+
+        if (!finished) {
+            SetEnabled(false);
+            Logger::GetInstance().Logf(LogLevel::Error, LogCategory::Script,
+                "{} が止まったので、このコンポーネントを無効にしました", DescribeMethod(ScriptComponentType::Method::OnAnimationEvent));
+        }
     }
 
     void ScriptComponent::ReadProperty(const Reflection::PropertyDescriptor& property, void* out) const

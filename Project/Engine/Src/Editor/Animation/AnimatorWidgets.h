@@ -58,9 +58,17 @@ namespace CoreEngine::Editor::AnimatorWidgets
     /// @brief ドラッグで落とされたモデル（`Application/Assets/…` の綴り。落とされていなければ空）
     std::optional<std::string> AcceptModelDrop();
 
-    /// @brief クリップの名前・ファイル・中の名前の欄
+    /// @brief クリップの名前・ファイル・中の名前の欄と、イベントの帯と表
+    /// @param playhead 帯に線を引く時刻（秒。無ければ引かない）
     /// @return クリップを消したら true
-    bool ClipFields(AnimatorDocument& document, int clipIndex, bool allowDelete);
+    bool ClipFields(AnimatorDocument& document, int clipIndex, bool allowDelete, std::optional<float> playhead = std::nullopt);
+
+    /// @brief クリップのイベントの帯（ドラッグで時刻を変える・ダブルクリックで足す）と表
+    void ClipEvents(AnimatorDocument& document, int clipIndex, std::optional<float> playhead);
+
+    /// @brief 数のパラメータを選ぶ欄
+    /// @return 変わったら true
+    bool FloatParameterCombo(const char* label, const AnimatorControllerData& data, std::string& parameter);
 }
 
 #endif // CORE_EDITOR

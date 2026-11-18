@@ -200,6 +200,9 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Engine\Src\Editor\Animation\AnimatorPreview.cpp" />
+    <ClCompile Include="Engine\Src\Script\Binding\AnimationBinding.cpp" />
+    <ClCompile Include="Engine\Src\Animation\BlendTree.cpp" />
     <ClCompile Include="Engine\Src\Editor\Animation\AnimatorLiveView.cpp" />
     <ClCompile Include="Engine\Src\Editor\Animation\AnimatorWidgets.cpp" />
     <ClCompile Include="Engine\Src\Editor\Animation\AnimatorInspectorPanel.cpp" />
@@ -1458,6 +1461,10 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Utility\Tween\TweenManager.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Engine\Src\Editor\Animation\AnimatorPreview.h" />
+    <ClInclude Include="Engine\Src\Script\Binding\AnimationBinding.h" />
+    <ClInclude Include="Engine\Src\Animation\AnimationEvent.h" />
+    <ClInclude Include="Engine\Src\Animation\BlendTree.h" />
     <ClInclude Include="Engine\Src\Editor\Animation\AnimatorLiveView.h" />
     <ClInclude Include="Engine\Src\Editor\Animation\AnimatorWidgets.h" />
     <ClInclude Include="Engine\Src\Editor\Animation\AnimatorInspectorPanel.h" />

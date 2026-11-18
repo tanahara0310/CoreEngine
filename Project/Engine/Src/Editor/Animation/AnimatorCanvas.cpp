@@ -425,9 +425,19 @@ namespace CoreEngine::Editor
                 outline = Theme::kAccentHover;
                 outlineThickness = 2.5f;
             }
-            std::string sub = state.clip.empty() ? std::string("（クリップなし）") : state.clip;
-            if (!state.clip.empty() && !document.data.FindClip(state.clip)) {
-                sub = "！" + state.clip + " がない";
+            std::string sub;
+            if (state.motion == AnimatorMotionType::Clip) {
+                sub = state.clip.empty() ? std::string("（クリップなし）") : state.clip;
+                if (!state.clip.empty() && !document.data.FindClip(state.clip)) {
+                    sub = "！" + state.clip + " がない";
+                }
+            } else {
+                const bool is2D = state.motion == AnimatorMotionType::Blend2D;
+                sub = std::string(is2D ? "2D " : "1D ") + (state.blend.parameterX.empty() ? "?" : state.blend.parameterX);
+                if (is2D) {
+                    sub += "・" + (state.blend.parameterY.empty() ? std::string("?") : state.blend.parameterY);
+                }
+                sub += "（" + std::to_string(state.blend.children.size()) + " 本）";
             }
             const auto [boxMin, boxMax] = drawBox(state.position, kStateHalfWidth, kStateHalfHeight, fill, outline,
                 outlineThickness, state.name, sub);

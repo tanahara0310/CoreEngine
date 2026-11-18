@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "AnimatorComponent.h"
 
+#include "Animation/BlendTree.h"
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
 #include "GameObject/Component/Core/ComponentService.h"
@@ -237,7 +238,7 @@ namespace CoreEngine
         if (!state && !layer.states.empty()) {
             state = &layer.states.front();
         }
-        const AnimatorClip* clip = state ? controller.FindClip(state->clip) : nullptr;
+        const AnimatorClip* clip = state ? controller.FindClip(BlendTree::PrimaryClip(controller, *state)) : nullptr;
         auto* modelMgr = FindService<ModelManager>(*this);
         if (!clip || clip->file.empty() || !modelMgr) {
             return nullptr;
@@ -288,6 +289,24 @@ namespace CoreEngine
         if (skeletonDebugDrawEnabled_) {
             DrawSkeletonDebugLines();
         }
+        DispatchEvents();
+    }
+
+    void AnimatorComponent::DispatchEvents()
+    {
+        if (runtime_.GetFiredEvents().empty()) {
+            return;
+        }
+        GameObject* const owner = GetOwner();
+        if (!owner) {
+            return;
+        }
+        // 受け取った側が状態を切り替えても配る中身が変わらないよう写してから配る
+        dispatching_ = runtime_.GetFiredEvents();
+        for (const AnimationEvent& event : dispatching_) {
+            owner->DispatchComponentAnimationEvent(event);
+        }
+        dispatching_.clear();
     }
 
     // ===== パラメータ =====
@@ -374,6 +393,30 @@ namespace CoreEngine
     {
         EnsureBound();
         return runtime_;
+    }
+
+    bool AnimatorComponent::ShowPreviewPose(std::span<const Matrix4x4> matrices)
+    {
+        EnsureBound();
+        const Skeleton* const skeleton = runtime_.IsReady() ? runtime_.GetSkeleton() : nullptr;
+        if (!boundModel_ || !skeleton || matrices.size() != skeleton->joints.size()) {
+            return false;
+        }
+        boundModel_->UpdateSkinCluster(matrices);
+        previewing_ = true;
+        return true;
+    }
+
+    void AnimatorComponent::ClearPreviewPose()
+    {
+        if (!previewing_) {
+            return;
+        }
+        previewing_ = false;
+        EnsureBound();
+        if (boundModel_ && runtime_.IsReady()) {
+            boundModel_->UpdateSkinCluster(runtime_.GetSkeletonSpaceMatrices());
+        }
     }
 
     // ===== ジョイント参照 =====

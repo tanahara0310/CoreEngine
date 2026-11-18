@@ -197,6 +197,9 @@ public:
     /// @param trigger どちらかのコライダーがトリガーなら true（OnTrigger* を呼ぶ）。false なら OnCollision*
     void DispatchComponentContact(ContactPhase phase, bool trigger, const CollisionInfo& info);
 
+    /// @brief 有効なコンポーネントへアニメーションのイベントを配る
+    void DispatchComponentAnimationEvent(const AnimationEvent& event);
+
     /// @brief 全コンポーネントの OnDestroy() を呼ぶ（オブジェクト破棄時。有効なものは先に OnDisable()）
     /// @note 実体はまだ解放しない。二重呼び出しはしない。
     void DispatchComponentDestroy();

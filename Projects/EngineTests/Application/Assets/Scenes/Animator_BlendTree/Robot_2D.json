@@ -1,0 +1,59 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "type": "Transform",
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    1.8,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "enabled": true,
+            "type": "MeshRenderer",
+            "parameters": {
+                "model": {
+                    "guid": "fd0ce2a1-f28b-49fa-b282-353f5ecccb96",
+                    "path": "Application/Assets/Models/AnimRobot/AnimRobot.gltf"
+                }
+            }
+        },
+        {
+            "enabled": true,
+            "type": "Animator",
+            "parameters": {
+                "model": "",
+                "controller": {
+                    "guid": "c3f1e2b7-5a64-4d0e-9b8a-2e7d41f6a9c5",
+                    "path": "Application/Assets/Animators/RobotBlend.animator"
+                },
+                "speed": 1.0
+            }
+        },
+        {
+            "enabled": true,
+            "type": "AnimatorBlendProbe",
+            "parameters": {
+                "strafe": true
+            }
+        }
+    ],
+    "id": "a07e5b9d13c62f48",
+    "name": "Robot_2D",
+    "order": 4
+}
