@@ -1,0 +1,54 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "type": "Transform",
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.36,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    -1.5,
+                    7.5,
+                    -17.0
+                ]
+            }
+        },
+        {
+            "enabled": true,
+            "type": "Camera",
+            "parameters": {
+                "background": 1,
+                "backgroundColor": [
+                    0.02,
+                    0.02,
+                    0.025,
+                    1.0
+                ],
+                "farClip": 300.0,
+                "fov": 55.0,
+                "isMainCamera": true,
+                "nearClip": 0.1,
+                "orthographicSize": 5.0,
+                "projection": 0
+            }
+        },
+        {
+            "enabled": true,
+            "type": "MeshPhysicsProbe",
+            "parameters": {}
+        }
+    ],
+    "id": "1f6b3d8e2a4c7059",
+    "name": "MainCamera",
+    "order": 0
+}

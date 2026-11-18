@@ -192,7 +192,8 @@ namespace CoreEngine
 
         for (const RaycastHit& hit : sweepHits_) {
             // 自分の中から飛ばすので、自分自身と通知専用は読み飛ばす
-            if (!hit.collider || hit.object == owner || hit.collider->IsTrigger()) {
+            if (!hit.collider || hit.object == owner || hit.collider->IsTrigger()
+                || !IsShapeUsedByPhysics(*hit.collider)) {
                 continue;
             }
 

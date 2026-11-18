@@ -1,0 +1,74 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "type": "Transform",
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.523599
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.75,
+                    2.562962,
+                    8.887133
+                ]
+            }
+        },
+        {
+            "enabled": true,
+            "type": "MeshRenderer",
+            "parameters": {
+                "model": {
+                    "guid": "f7ebb3c5-d15f-47f9-aa11-98f0aeff1712",
+                    "path": "Application/Assets/Models/Capsule/Capsule.gltf"
+                }
+            }
+        },
+        {
+            "enabled": true,
+            "type": "Collider",
+            "parameters": {
+                "shapes": [
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "static": false,
+                        "trigger": false,
+                        "type": "Capsule",
+                        "radius": 0.3,
+                        "height": 1.6
+                    }
+                ]
+            }
+        },
+        {
+            "enabled": true,
+            "type": "Rigidbody",
+            "version": 2,
+            "parameters": {
+                "bodyType": 0,
+                "mass": 1.0,
+                "useGravity": false,
+                "linearDamping": 0.0,
+                "angularDamping": 0.05
+            }
+        }
+    ],
+    "id": "c5e2a8f71d4b0396",
+    "name": "CapsuleRoller",
+    "order": 6
+}

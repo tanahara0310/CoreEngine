@@ -5,7 +5,9 @@
 #include "Physics/PhysicsWorld.h"
 #include "Utility/Lifetime/ScopedRegistration.h"
 
+#include <cstdint>
 #include <memory>
+#include <unordered_set>
 
 namespace CoreEngine
 {
@@ -52,6 +54,9 @@ namespace CoreEngine
         static CollisionWorld* FindCollisionWorld(SceneContext& ctx);
 
         PhysicsWorld world_;
+
+        /// 物理が使わない形を知らせたコライダーの ID（1 つにつき 1 回だけ知らせる）
+        std::unordered_set<uint64_t> unusedShapeWarned_;
 
         /// 速度と接触点のワイヤ表示（この Feature が所有し、Line パスへはポインタを渡すだけ）
         std::unique_ptr<PhysicsDebugRenderer> debugRenderer_;

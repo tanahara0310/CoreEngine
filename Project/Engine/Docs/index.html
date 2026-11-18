@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.95.0">
+<meta name="engine-version" content="0.96.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5210,7 +5210,7 @@ kbd {
   </div>
 
   <h2 id="physics-mesh">モデルの形のまま当てる（メッシュ）</h2>
-  <p>地形・階段・建物のように、球や箱では形を合わせにくい物は、モデルの三角形をそのまま当たり判定の形にできます。これをメッシュの形と呼びます。メッシュの形は<strong>止まっている物と、スクリプトで動かす物</strong>に使います。重力で動く剛体には使えません。</p>
+  <p>地形・階段・建物のように、球や箱では形を合わせにくい物は、モデルの三角形をそのまま当たり判定の形にできます。これをメッシュの形と呼びます。メッシュの形は<strong>止まっている物と、スクリプトで動かす物</strong>に使います。メッシュの地形の上に、剛体の球・箱・カプセルを転がしたり置いたりできます。重力で動く剛体そのものの形には使えません。</p>
   <ol class="steps">
     <li><strong>形を足す</strong>モデルを描いているオブジェクトにコライダーを付け、<span class="ui">メッシュを追加</span> を押します。足した形は、ほかの形と違って<strong>トリガーがオフ・静止がオン</strong>です（<span class="ui">形状</span> を <span class="ui">Mesh</span> に切り替えたときも同じになります）。</li>
     <li><strong>三角形の出どころを選ぶ</strong><span class="ui">三角形</span> の既定は <span class="ui">同じオブジェクトのモデル</span>（メッシュ描画のモデル）です。見た目より粗い当たり用のモデルを使うときは <span class="ui">モデルのファイル</span> にして、<span class="ui">モデル</span> の欄で選ぶか、ProjectView からモデルを落とします。<span class="ui">LOD</span> で簡単な段を選ぶと、三角形が減って軽くなります。</li>
@@ -5221,7 +5221,8 @@ kbd {
     <thead><tr><th>相手</th><th>メッシュの形との当たり方</th></tr></thead>
     <tbody>
       <tr><td>キャラクタコントローラ</td><td>床・坂・階段・壁・天井として歩ける。三角形の継ぎ目でつまずいたり跳ねたりしない</td></tr>
-      <tr><td>球・箱・カプセル</td><td>押し出し（<code>OnCollision*</code>）とトリガーの知らせ（<code>OnTrigger*</code>）。剛体との接触は 1 点だけなので、剛体の箱は傾いたり揺れたりしやすい</td></tr>
+      <tr><td>球・箱・カプセル</td><td>押し出し（<code>OnCollision*</code>）とトリガーの知らせ（<code>OnTrigger*</code>）</td></tr>
+      <tr><td>剛体（球・箱・カプセル）</td><td>触れた三角形ごとの向きで、最大 4 点で支える。継ぎ目で跳ねずに転がり、坂では摩擦で止まり、平らな所では眠る。箱は面の下に入った角と、三角形のうち箱の中に入った部分の角で支える。速く動く剛体も、厚さの無い三角形を抜けない</td></tr>
       <tr><td>レイキャスト・<code>OverlapSphere</code>・<code>OverlapBox</code></td><td>三角形に当たる。レイキャストは当たった三角形の面の向き（<code>normal</code>）を返す</td></tr>
       <tr><td>ほかのメッシュの形</td><td>当たらない</td></tr>
     </tbody>
@@ -5233,7 +5234,8 @@ kbd {
   <p><span class="ui">表からだけ当たる</span> を入れると、三角形の表（モデルの面が向いている側）にいる物だけを押し返します。下から跳ぶとすり抜けて、上には乗れる足場に使います。押し返すのは、球と箱は中心が、カプセルは芯（上下の丸の中心を結ぶ線）の両端が、すべて表の側にあるときです。裏から入りかけた物は、表へ押し出さずに通します。</p>
   <p>既定はオフ（両面）です。モデルの面が裏返っていても当たるので、ふつうはオフのままにします。</p>
   <div class="callout warn"><p><strong>トリガーは三角形に触れている間だけ知らせます。</strong>閉じたモデル（箱や岩）の中にすっぽり入った物は、三角形に触れていないので、重なっていると分かりません。入ったことを知りたい範囲には、球や箱のトリガーを使います。</p></div>
-  <div class="callout warn"><p><strong>動く剛体には使えません。</strong>剛体（重力で動く物）にメッシュの形を付けると、ほかのメッシュと当たらず床をすり抜けます（インスペクタに警告が出ます）。剛体の形は、球・箱・カプセルを組み合わせて作ります。</p></div>
+  <div class="callout warn"><p><strong>動く剛体の形には使えません。</strong>剛体（重力で動く物）と同じオブジェクトにあるメッシュの形は、物理が使いません（インスペクタに警告が出て、コンソールにも 1 回だけ出ます）。剛体の大きさと回りにくさも、ほかの形から決めます。剛体の形は、球・箱・カプセルを組み合わせて作ります。</p></div>
+  <div class="callout note"><p>スクリプトで動かすメッシュ（動く床）に乗った剛体には、床の動きは伝わりません。床が動くと剛体は押し出されますが、床と一緒には運ばれません。</p></div>
 
   <h3 id="physics-mesh-cvars">メッシュの形の設定（CVar）</h3>
   <div class="table-wrap">
@@ -11615,7 +11617,7 @@ python Tools/OkinawaBeach/bake_araha_walk.py
       <tr><td>キャラクタコントローラが動かない・落ちない</td><td>毎フレーム <code>SimpleMove</code> を呼んでいない。<a href="#physics-character">キャラクタコントローラ</a></td></tr>
       <tr><td>メッシュの形に当たらない</td><td>形の欄に理由が出ていないか（モデルがありません・骨入りのモデル・使える三角形がありません）。<span class="ui">表からだけ当たる</span> が入っていて、裏から来ていないか。トリガーの物がモデルの中にすっぽり入っていないか（三角形に触れていないと分からない）。<a href="#physics-mesh">モデルの形のまま当てる</a></td></tr>
       <tr><td>メッシュの継ぎ目でキャラが引っかかる</td><td>隣の三角形とわずかに折れてつながっている。<code>sys.Collision.MeshFlatEdgeAngle</code>（既定 1 度）を少し大きくすると、その折れ目を継ぎ目として扱う</td></tr>
-      <tr><td>メッシュの形を付けた剛体が床をすり抜ける</td><td>メッシュの形は動く剛体には使えない（ほかのメッシュと当たらない）。剛体の形は球・箱・カプセルを組み合わせる</td></tr>
+      <tr><td>メッシュの形を付けた剛体が床をすり抜ける</td><td>動く剛体と同じオブジェクトのメッシュの形は、物理が使わない（コンソールに警告が出る）。剛体の形は球・箱・カプセルを組み合わせる</td></tr>
       <tr><td>速い弾が敵をすり抜ける</td><td>1 フレームで当たりの大きさより長く動いている。弾を大きく・遅くするか、レイキャストで調べる</td></tr>
       <tr><td>再生を止めても重力が変わったまま</td><td><code>Physics::gravity</code> はプロジェクトの設定（CVar）を書き換え、止めた後に保存される。<code>CVar::Reset("sys.Physics.Gravity")</code> で戻す</td></tr>
     </tbody>
@@ -12031,6 +12033,14 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-96-0">v0.96.0 <span class="dim">（2026-11-19）</span></h3>
+  <p>メッシュの形の上で、剛体の球・箱・カプセルが転がり、止まり、眠るようにした版です（<a href="#physics-mesh">モデルの形のまま当てる</a>）。メッシュの形を使わないシーンの物理は、前の版と同じです。</p>
+  <ul>
+    <li><strong>剛体とメッシュの接触</strong>：触れた三角形ごとの向きで、最大 4 点で剛体を支えます。三角形の継ぎ目で跳ねず、坂では摩擦で止まります。箱は面の下に入った角と、三角形のうち箱の中に入った部分の角で支えるので、平らな所に落とすと面で止まって眠ります。速い物は、厚さの無い三角形の板や地面も抜けません。</li>
+    <li><strong>剛体に付けたメッシュの形</strong>：動く剛体と同じオブジェクトにあるメッシュの形は、物理が使いません。剛体の大きさと回りにくさもほかの形から決めます。インスペクタに警告が出て、コンソールにも 1 回だけ出ます。</li>
+    <li><strong>試験のシーン</strong>：<span class="path">Projects/EngineTests</span> に <code>Physics_MeshGround</code>（20 度の坂と格子の床。坂を転がる球・坂で止まる箱・落として眠る箱・倒れて転がるカプセル・速い球・メッシュの形を持つ剛体を自動で確かめ、結果をコンソールへ出す）を足しました。</li>
+  </ul>
 
   <h3 id="changelog-v0-95-0">v0.95.0 <span class="dim">（2026-11-18）</span></h3>
   <p>モデルの三角形をそのまま当たり判定の形にする、メッシュの形を足した版です（<a href="#physics-mesh">モデルの形のまま当てる</a>）。キャラクタコントローラが、モデルの地形・坂・階段・トンネルの上を歩けます。</p>
@@ -18431,7 +18441,7 @@ void Update()
       "<li><strong>既定はトリガー</strong>です。剛体やキャラクタコントローラで床に立たせる・ぶつけるときは、トリガーを外します。</li>" +
       "<li>どのレイヤー同士が当たるかは、シーンの「当たり判定のレイヤー」で決まります。当たらないときはまずここを確かめます。</li>" +
       "<li>形はツールバーの <span class=\"ui\">◍ Collider</span> で線で表示できます。</li>" +
-      "<li>メッシュの形は止まっている物（地形・建物）とスクリプトで動かす物に使います。動く剛体に付けると、ほかのメッシュと当たりません（<a href=\"#physics-mesh\">モデルの形のまま当てる</a>）。</li>" +
+      "<li>メッシュの形は止まっている物（地形・建物）とスクリプトで動かす物に使います。動く剛体に付けた形は、物理が使いません（<a href=\"#physics-mesh\">モデルの形のまま当てる</a>）。</li>" +
       "<li>スプライトのあるオブジェクトでは、<span class=\"ui\">箱を追加</span> がスプライトの板に重なる大きさ（奥行き 1）で箱を足します。箱ごとの <span class=\"ui\">画像に合わせる</span> で、あとから大きさとオフセットを合わせ直せます。</li>" +
       "</ul>",
     see: [["script-physics", "物理と当たり判定"], ["physics-mesh", "モデルの形のまま当てる"], ["api-Collision", "Collision"], ["api-Physics", "Physics"]]

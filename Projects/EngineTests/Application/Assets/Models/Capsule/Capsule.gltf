@@ -1,0 +1,133 @@
+{
+  "asset": {
+    "version": "2.0",
+    "generator": "make_capsule.py"
+  },
+  "scene": 0,
+  "scenes": [
+    {
+      "name": "Scene",
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "name": "Capsule",
+      "mesh": 0
+    }
+  ],
+  "meshes": [
+    {
+      "name": "Capsule",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 0,
+            "NORMAL": 1,
+            "TEXCOORD_0": 2,
+            "COLOR_0": 3
+          },
+          "indices": 4,
+          "material": 0
+        }
+      ]
+    }
+  ],
+  "materials": [
+    {
+      "name": "Capsule",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.6
+      }
+    }
+  ],
+  "accessors": [
+    {
+      "bufferView": 0,
+      "componentType": 5126,
+      "count": 726,
+      "type": "VEC3",
+      "min": [
+        -0.3,
+        -0.8,
+        -0.3
+      ],
+      "max": [
+        0.3,
+        0.8,
+        0.3
+      ]
+    },
+    {
+      "bufferView": 1,
+      "componentType": 5126,
+      "count": 726,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 2,
+      "componentType": 5126,
+      "count": 726,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 3,
+      "componentType": 5126,
+      "count": 726,
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 4,
+      "componentType": 5125,
+      "count": 3840,
+      "type": "SCALAR"
+    }
+  ],
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteOffset": 0,
+      "byteLength": 8712,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 8712,
+      "byteLength": 8712,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 17424,
+      "byteLength": 5808,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 23232,
+      "byteLength": 11616,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 34848,
+      "byteLength": 15360,
+      "target": 34963
+    }
+  ],
+  "buffers": [
+    {
+      "byteLength": 50208,
+      "uri": "Capsule.bin"
+    }
+  ]
+}

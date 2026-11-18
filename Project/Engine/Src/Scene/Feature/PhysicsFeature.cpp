@@ -16,6 +16,7 @@
 #include "Scene/SceneManager.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/FrameRate/Time.h"
+#include "Utility/Logger/Logger.h"
 
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/CVarPanel.h"
@@ -167,8 +168,14 @@ namespace CoreEngine
                 world_.RegisterBody(&body);
 
                 if (auto* const colliders = owner.GetComponent<ColliderComponent>()) {
-                    colliders->ForEachEnabled(
-                        [](Collider& collider) { collider.SetSimulated(PhysicsKey{}, true); });
+                    colliders->ForEachEnabled([this, &owner](Collider& collider) {
+                        collider.SetSimulated(PhysicsKey{}, true);
+                        if (!IsShapeUsedByPhysics(collider) && unusedShapeWarned_.insert(collider.GetId()).second) {
+                            Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
+                                "「{}」のメッシュの形は動く剛体には使えないので、物理はこの形を使いません（球・箱・カプセルを使ってください）",
+                                owner.GetName());
+                        }
+                    });
                 }
             });
 

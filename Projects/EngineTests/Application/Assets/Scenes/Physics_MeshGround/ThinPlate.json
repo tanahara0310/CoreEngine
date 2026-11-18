@@ -1,0 +1,79 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "type": "Transform",
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    0.2,
+                    1.0,
+                    0.2
+                ],
+                "translate": [
+                    -8.0,
+                    3.0,
+                    -6.0
+                ]
+            }
+        },
+        {
+            "enabled": true,
+            "type": "MeshRenderer",
+            "parameters": {
+                "model": {
+                    "guid": "0d1f8569-e88c-4526-a1ab-d433360de878",
+                    "path": "Engine/Assets/Models/Primitives/Plane/plane.obj"
+                },
+                "materials": [
+                    {
+                        "color": [
+                            0.95,
+                            0.75,
+                            0.25,
+                            1.0
+                        ],
+                        "roughness": 0.6,
+                        "metallic": 0.0,
+                        "lighting": true
+                    }
+                ]
+            }
+        },
+        {
+            "enabled": true,
+            "type": "Collider",
+            "parameters": {
+                "shapes": [
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Mesh",
+                        "mesh": {
+                            "source": "Renderer",
+                            "model": "",
+                            "lod": 0,
+                            "oneSided": false
+                        }
+                    }
+                ]
+            }
+        }
+    ],
+    "id": "e07a5c2d9f1b4863",
+    "name": "ThinPlate",
+    "order": 3
+}

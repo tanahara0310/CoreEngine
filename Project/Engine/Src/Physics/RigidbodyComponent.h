@@ -198,7 +198,7 @@ private:
     /// @brief 兄弟のトランスフォームを引く（控えが無ければ引き直す）
     TransformComponent* FindTransform();
 
-    /// @brief 慣性の計算に使う先頭のコライダー（無ければ nullptr）
+    /// @brief 慣性と大きさの目安に使うコライダー（物理が使う形の先頭。無ければ nullptr）
     const Collider* GetColliderShape() const;
 
     /// @brief 眠っていれば起こす（起きている剛体の止まっていた時間は数え直さない）
@@ -230,4 +230,8 @@ private:
 
     TransformComponent* transform_ = nullptr;
 };
+
+/// @brief 物理がこの形を使うか
+/// @details 動く剛体（Dynamic）と同じオブジェクトにあるメッシュの形は使わない。
+bool IsShapeUsedByPhysics(const Collider& collider);
 }

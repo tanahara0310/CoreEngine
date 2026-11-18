@@ -1,0 +1,66 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "type": "Transform",
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "enabled": true,
+            "type": "MeshRenderer",
+            "parameters": {
+                "model": {
+                    "guid": "05fe1cae-a736-480f-b5ef-43fe850fd4e0",
+                    "path": "Application/Assets/Models/MeshGround/MeshGround.gltf"
+                }
+            }
+        },
+        {
+            "enabled": true,
+            "type": "Collider",
+            "parameters": {
+                "shapes": [
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Mesh",
+                        "mesh": {
+                            "source": "Renderer",
+                            "model": "",
+                            "lod": 0,
+                            "oneSided": false
+                        }
+                    }
+                ]
+            }
+        }
+    ],
+    "id": "b48e1c7a3d905f26",
+    "name": "Ground",
+    "order": 2
+}

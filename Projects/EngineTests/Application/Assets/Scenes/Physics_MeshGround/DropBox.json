@@ -1,0 +1,90 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "type": "Transform",
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.4,
+                    0.6,
+                    0.25
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    4.5,
+                    2.5,
+                    -4.0
+                ]
+            }
+        },
+        {
+            "enabled": true,
+            "type": "MeshRenderer",
+            "parameters": {
+                "model": {
+                    "guid": "e8a79191-50ea-0673-1816-c257f280ba64",
+                    "path": "Engine/Assets/Models/Primitives/Box/cube.obj"
+                },
+                "materials": [
+                    {
+                        "color": [
+                            0.4,
+                            0.5,
+                            0.78,
+                            1.0
+                        ],
+                        "roughness": 0.6,
+                        "metallic": 0.0,
+                        "lighting": true
+                    }
+                ]
+            }
+        },
+        {
+            "enabled": true,
+            "type": "Collider",
+            "parameters": {
+                "shapes": [
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "static": false,
+                        "trigger": false,
+                        "type": "Box",
+                        "size": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "enabled": true,
+            "type": "Rigidbody",
+            "version": 2,
+            "parameters": {
+                "bodyType": 0,
+                "mass": 1.0,
+                "useGravity": false,
+                "linearDamping": 0.0,
+                "angularDamping": 0.05
+            }
+        }
+    ],
+    "id": "0b7c3e9a5f2d6814",
+    "name": "DropBox",
+    "order": 7
+}

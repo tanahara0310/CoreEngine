@@ -347,11 +347,30 @@ namespace CoreEngine
     const Collider* RigidbodyComponent::GetColliderShape() const
     {
         const auto* const colliders = Sibling<ColliderComponent>();
-        return colliders ? colliders->GetFirst() : nullptr;
+        if (!colliders) {
+            return nullptr;
+        }
+        for (size_t index = 0; index < colliders->Count(); ++index) {
+            const Collider* const collider = colliders->Get(index);
+            if (collider && (!IsDynamic() || collider->GetShapeType() != ColliderShapeType::Mesh)) {
+                return collider;
+            }
+        }
+        return nullptr;
     }
 
     TransformComponent* RigidbodyComponent::FindTransform()
     {
         return CachedSibling(transform_);
+    }
+
+    bool IsShapeUsedByPhysics(const Collider& collider)
+    {
+        if (collider.GetShapeType() != ColliderShapeType::Mesh) {
+            return true;
+        }
+        GameObject* const owner = collider.GetOwner();
+        const RigidbodyComponent* const body = owner ? owner->GetComponent<RigidbodyComponent>() : nullptr;
+        return !(body && body->IsEnabled() && body->IsDynamic());
     }
 }

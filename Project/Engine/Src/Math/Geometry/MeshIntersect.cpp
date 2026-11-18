@@ -20,6 +20,12 @@ namespace Geometry
         /// @brief 向きが決まらないほど近い距離
         constexpr float kTiny = 1e-6f;
 
+        /// @brief 剛体を支える点を選ぶとき、別の面とみなす法線の内積（約 18 度）
+        constexpr float kOtherFaceCosine = 0.95f;
+
+        /// @brief 三角形を箱で切り取った多角形の頂点の数の上限（3 頂点＋6 面で 1 つずつ）
+        constexpr int kMaxClipVertices = 9;
+
         enum class ContactKind : uint8_t {
             Face,    ///< 三角形の面の向きで押す
             Radial,  ///< 出っ張りの縁・頂点から形の芯へ向かう向きで押す
@@ -287,10 +293,133 @@ namespace Geometry
             return true;
         }
 
+        float AxisOf(const Vector3& v, int axis)
+        {
+            return (axis == 0) ? v.x : ((axis == 1) ? v.y : v.z);
+        }
+
+        /// @brief 箱のローカルへ移した三角形を、箱の 6 面で切り取る
+        /// @param tolerance 箱の面の外側に許す幅
+        /// @return 残った多角形の頂点の数（0 なら箱と重ならない）
+        int ClipTriangleToBox(const Vector3 local[3], const Vector3& halfExtents, float tolerance,
+                              Vector3 out[kMaxClipVertices])
+        {
+            Vector3 bufferA[kMaxClipVertices];
+            Vector3 bufferB[kMaxClipVertices];
+            Vector3* input = bufferA;
+            Vector3* output = bufferB;
+            int count = 3;
+            for (int i = 0; i < 3; ++i) {
+                input[i] = local[i];
+            }
+
+            for (int plane = 0; plane < 6; ++plane) {
+                const int axis = plane / 2;
+                const float sign = (plane % 2 == 0) ? 1.0f : -1.0f;
+                const float limit = AxisOf(halfExtents, axis) + tolerance;
+
+                // sign * p[axis] <= limit の側を残す
+                int written = 0;
+                for (int i = 0; i < count; ++i) {
+                    const Vector3& from = input[i];
+                    const Vector3& to = input[(i + 1) % count];
+                    const float fromOver = sign * AxisOf(from, axis) - limit;
+                    const float toOver = sign * AxisOf(to, axis) - limit;
+                    if (fromOver <= 0.0f) {
+                        output[written++] = from;
+                    }
+                    if ((fromOver <= 0.0f) != (toOver <= 0.0f) && written < kMaxClipVertices) {
+                        const float t = fromOver / (fromOver - toOver);
+                        output[written++] = from + (to - from) * t;
+                    }
+                }
+                count = written;
+                std::swap(input, output);
+                if (count == 0) {
+                    return 0;
+                }
+            }
+            for (int i = 0; i < count; ++i) {
+                out[i] = input[i];
+            }
+            return count;
+        }
+
+        /// @brief 箱の中の点 local から、向き direction（箱のローカル）へ進んで箱を出るまでの距離
+        float ExitDistance(const Vector3& local, const Vector3& direction, const Vector3& halfExtents)
+        {
+            float result = FLT_MAX;
+            for (int axis = 0; axis < 3; ++axis) {
+                const float d = AxisOf(direction, axis);
+                if (std::abs(d) <= kTiny) {
+                    continue;
+                }
+                const float p = AxisOf(local, axis);
+                const float e = AxisOf(halfExtents, axis);
+                const float room = (d > 0.0f) ? (e - p) : (e + p);
+                result = (std::min)(result, room / std::abs(d));
+            }
+            return (result == FLT_MAX) ? 0.0f : (std::max)(result, 0.0f);
+        }
+
+        /// @brief 押す向きの決まった箱と三角形の接触 base から、箱を支える点を集める
+        /// @details 面で押す接触は、面の下に入った箱の頂点のうち、面の真下が三角形の中にあるものを点にする
+        ///          （三角形の外に出た頂点は隣の三角形が拾う）。
+        ///          加えて、三角形のうち箱の中に入った部分の頂点を点にする。深さは押す向きの逆へ箱を出るまでの距離。
+        ///          点の位置は、三角形の表と箱の奥の中ほど。
+        /// @return 足した点の数
+        int AddBoxPoints(const WorldTriangle& triangle, const OBB& box, const RawContact& base, CandidateList& out)
+        {
+            const Vector3& push = base.push;
+            const Vector3* const c = triangle.corners;
+            const float largest = (std::max)({ box.halfExtents.x, box.halfExtents.y, box.halfExtents.z });
+            const float tolerance = largest * 1e-3f + kTiny;
+            int added = 0;
+
+            const auto add = [&](const Vector3& point, float depth) {
+                RawContact contact = base;
+                contact.point = point;
+                contact.depth = (std::min)(depth, base.depth);
+                out.Add(contact);
+                ++added;
+            };
+
+            if (base.kind == ContactKind::Face) {
+                Vector3 corners[8];
+                box.Corners(corners);
+                const float surface = Dot(c[0], push);
+                for (const Vector3& corner : corners) {
+                    const float depth = surface - Dot(corner, push);
+                    if (!(depth > 0.0f)) {
+                        continue;
+                    }
+                    const Vector3 onPlane = corner + push * depth;
+                    const Vector3 off = ClosestPointOnTriangle(onPlane, c[0], c[1], c[2]).point - onPlane;
+                    if (Dot(off, off) > tolerance * tolerance) {
+                        continue;
+                    }
+                    add(corner + push * (depth * 0.5f), depth);
+                }
+            }
+
+            const Vector3 local[3] = { box.ToLocal(c[0]), box.ToLocal(c[1]), box.ToLocal(c[2]) };
+            Vector3 clipped[kMaxClipVertices];
+            const int count = ClipTriangleToBox(local, box.halfExtents, tolerance, clipped);
+            const Vector3 back{ -Dot(push, box.axes[0]), -Dot(push, box.axes[1]), -Dot(push, box.axes[2]) };
+            for (int i = 0; i < count; ++i) {
+                const float depth = ExitDistance(clipped[i], back, box.halfExtents);
+                const Vector3 point = box.center + box.axes[0] * clipped[i].x
+                                    + box.axes[1] * clipped[i].y + box.axes[2] * clipped[i].z;
+                add(point - push * (depth * 0.5f), depth);
+            }
+            return added;
+        }
+
         /// @brief 箱と三角形を分離軸で調べ、重なりがいちばん小さい向きの接触を作る
         /// @details 押す向きの先にある三角形の部分が内側の縁・頂点になる軸は、押す向きに選ばない。
+        ///          Manifold では箱を支える点を全部足し、Deepest では代表の点 1 つを足す。
         void AddBoxContact(const MeshView& view, const WorldTriangle& triangle, const OBB& box,
-                           float side, float flatCosine, CandidateList& out)
+                           float side, float flatCosine, MeshContactMode mode, CandidateList& out)
         {
             const Vector3* const c = triangle.corners;
             const Vector3 edges[3] = { c[1] - c[0], c[2] - c[1], c[0] - c[2] };
@@ -348,6 +477,9 @@ namespace Geometry
             if (!found) {
                 return;
             }
+            if (mode == MeshContactMode::Manifold && AddBoxPoints(triangle, box, best, out) > 0) {
+                return;
+            }
 
             // 箱の、押す向きと逆でいちばん奥の点から、深さの半分だけ戻した点を代表にする
             Vector3 deepest = box.center;
@@ -359,10 +491,63 @@ namespace Geometry
             out.Add(best);
         }
 
+        /// @brief 深い順に並んだ接触から maxContacts 個を選ぶ
+        /// @details いちばん深い接触から始め、まだ選んでいない向きの面の接触を深い順に 1 つずつ足す。
+        ///          残りは、選んだ点からいちばん遠い点を 1 つずつ足す。
+        int PickManifold(const Contact* contacts, int count, Contact* outContacts, int maxContacts)
+        {
+            bool used[kMaxCandidates] = {};
+            int written = 0;
+            const auto take = [&](int index) {
+                outContacts[written++] = contacts[index];
+                used[index] = true;
+            };
+
+            take(0);
+            for (int i = 1; i < count && written < maxContacts; ++i) {
+                bool otherFace = true;
+                for (int j = 0; j < written; ++j) {
+                    if (Dot(outContacts[j].normal, contacts[i].normal) >= kOtherFaceCosine) {
+                        otherFace = false;
+                        break;
+                    }
+                }
+                if (otherFace) {
+                    take(i);
+                }
+            }
+
+            while (written < maxContacts) {
+                int farthest = -1;
+                float farthestDistanceSq = -1.0f;
+                for (int i = 0; i < count; ++i) {
+                    if (used[i]) {
+                        continue;
+                    }
+                    float nearestSq = FLT_MAX;
+                    for (int j = 0; j < written; ++j) {
+                        const Vector3 delta = contacts[i].point - outContacts[j].point;
+                        nearestSq = (std::min)(nearestSq, Dot(delta, delta));
+                    }
+                    if (nearestSq > farthestDistanceSq) {
+                        farthestDistanceSq = nearestSq;
+                        farthest = i;
+                    }
+                }
+                if (farthest < 0) {
+                    break;
+                }
+                take(farthest);
+            }
+            return written;
+        }
+
         /// @brief 控えた接触を深い順に並べ、縁の重なりとほぼ同じ接触を省いて書き出す
         /// @details 面の向きで押す接触が触れた三角形の頂点だけでできた出っ張りの接触は捨てる
         ///          （面の接触の方が正しい向きを持っている）。
-        int Finish(CandidateList& list, float mergeDistance, Contact* outContacts, int maxContacts)
+        ///          Deepest は深い順に上限まで、Manifold は上限を超えたら PickManifold で選ぶ。
+        int Finish(CandidateList& list, float mergeDistance, MeshContactMode mode,
+                   Contact* outContacts, int maxContacts)
         {
             std::sort(list.begin(), list.end(), [](const RawContact& lhs, const RawContact& rhs) {
                 return lhs.depth > rhs.depth;
@@ -388,9 +573,11 @@ namespace Geometry
             };
 
             const float mergeDistanceSq = mergeDistance * mergeDistance;
+            Contact kept[kMaxCandidates];
+            const int limit = (mode == MeshContactMode::Manifold) ? kMaxCandidates : maxContacts;
             int written = 0;
             for (const RawContact& contact : list) {
-                if (written >= maxContacts) {
+                if (written >= limit) {
                     break;
                 }
                 if (contact.kind == ContactKind::Radial && contact.vertexCount > 0) {
@@ -406,8 +593,8 @@ namespace Geometry
                 const Vector3 normal = contact.push * -1.0f;
                 bool merged = false;
                 for (int i = 0; i < written; ++i) {
-                    const Vector3 delta = outContacts[i].point - contact.point;
-                    if (Dot(outContacts[i].normal, normal) >= kMergeCosine && Dot(delta, delta) <= mergeDistanceSq) {
+                    const Vector3 delta = kept[i].point - contact.point;
+                    if (Dot(kept[i].normal, normal) >= kMergeCosine && Dot(delta, delta) <= mergeDistanceSq) {
                         merged = true;
                         break;
                     }
@@ -416,10 +603,17 @@ namespace Geometry
                     continue;
                 }
 
-                Contact& out = outContacts[written++];
+                Contact& out = kept[written++];
                 out.normal = normal;
                 out.depth = (std::max)(contact.depth, 0.0f);
                 out.point = contact.point;
+            }
+
+            if (written > maxContacts) {
+                return PickManifold(kept, written, outContacts, maxContacts);
+            }
+            for (int i = 0; i < written; ++i) {
+                outContacts[i] = kept[i];
             }
             return written;
         }
@@ -495,7 +689,8 @@ namespace Geometry
     // 三角形ごとの接触
     //================================================
 
-    int CollectMeshContacts(const Sphere& sphere, const MeshView& view, Contact* outContacts, int maxContacts)
+    int CollectMeshContacts(const Sphere& sphere, const MeshView& view, Contact* outContacts, int maxContacts,
+                            MeshContactMode mode)
     {
         if (!view.IsValid() || outContacts == nullptr || maxContacts <= 0 || !(sphere.radius > 0.0f)) {
             return 0;
@@ -519,10 +714,11 @@ namespace Geometry
             AddRoundContact(view, triangle, sphere.center, onTriangle, sphere.radius,
                 side, side * planeDistance, flatCosine, list);
         });
-        return Finish(list, sphere.radius * 0.25f, outContacts, maxContacts);
+        return Finish(list, sphere.radius * 0.25f, mode, outContacts, maxContacts);
     }
 
-    int CollectMeshContacts(const Capsule& capsule, const MeshView& view, Contact* outContacts, int maxContacts)
+    int CollectMeshContacts(const Capsule& capsule, const MeshView& view, Contact* outContacts, int maxContacts,
+                            MeshContactMode mode)
     {
         if (!view.IsValid() || outContacts == nullptr || maxContacts <= 0 || !(capsule.radius > 0.0f)) {
             return 0;
@@ -579,11 +775,27 @@ namespace Geometry
             }
             AddRoundContact(view, triangle, onSegment, onTriangle, capsule.radius,
                 side, side * planeDistance, flatCosine, list);
+
+            // 寝かせたカプセルを両端で支えるよう、同じ側にある両端の球も調べる
+            if (mode == MeshContactMode::Manifold) {
+                const float endDistances[2] = { startDistance, endDistance };
+                const Vector3* const ends[2] = { &capsule.start, &capsule.end };
+                for (int end = 0; end < 2; ++end) {
+                    if (side * endDistances[end] < 0.0f) {
+                        continue;
+                    }
+                    const TrianglePoint onEnd = ClosestPointOnTriangle(*ends[end],
+                        triangle.corners[0], triangle.corners[1], triangle.corners[2]);
+                    AddRoundContact(view, triangle, *ends[end], onEnd, capsule.radius,
+                        side, side * endDistances[end], flatCosine, list);
+                }
+            }
         });
-        return Finish(list, capsule.radius * 0.25f, outContacts, maxContacts);
+        return Finish(list, capsule.radius * 0.25f, mode, outContacts, maxContacts);
     }
 
-    int CollectMeshContacts(const OBB& box, const MeshView& view, Contact* outContacts, int maxContacts)
+    int CollectMeshContacts(const OBB& box, const MeshView& view, Contact* outContacts, int maxContacts,
+                            MeshContactMode mode)
     {
         if (!view.IsValid() || outContacts == nullptr || maxContacts <= 0) {
             return 0;
@@ -602,10 +814,10 @@ namespace Geometry
                 return;
             }
             const float side = (planeDistance >= 0.0f) ? 1.0f : -1.0f;
-            AddBoxContact(view, triangle, box, side, flatCosine, list);
+            AddBoxContact(view, triangle, box, side, flatCosine, mode, list);
         });
         const float smallest = (std::min)({ box.halfExtents.x, box.halfExtents.y, box.halfExtents.z });
-        return Finish(list, smallest * 0.5f, outContacts, maxContacts);
+        return Finish(list, smallest * 0.5f, mode, outContacts, maxContacts);
     }
 
     //================================================

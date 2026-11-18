@@ -10,6 +10,7 @@
 
 #include <cmath>
 #include <limits>
+#include <type_traits>
 
 namespace CoreEngine
 {
@@ -50,6 +51,39 @@ namespace CoreEngine
             tangent1 = Normalize(Cross(normal, reference));
             tangent2 = Cross(normal, tangent1);
         }
+
+        bool IsMesh(const Collider* collider)
+        {
+            return collider && collider->GetShapeType() == ColliderShapeType::Mesh;
+        }
+
+        /// @brief 片方がメッシュの形の組から、剛体を支える接触点を集める
+        /// @param outPoints kMaxManifoldPoints 個ぶんの書き出し先。法線は a から b へ向かう
+        /// @return 集まった数
+        int CollectMeshPoints(const Collider& a, const Collider& b, Geometry::Contact* outPoints)
+        {
+            const bool meshFirst = IsMesh(&a);
+            const Collider& mesh = meshFirst ? a : b;
+            const Collider& other = meshFirst ? b : a;
+            const Geometry::MeshView view = mesh.GetWorldMeshView();
+
+            const int count = VisitWorldShape(other, [&](const auto& shape) -> int {
+                if constexpr (std::is_same_v<std::decay_t<decltype(shape)>, Geometry::MeshView>) {
+                    return 0;
+                } else {
+                    return Geometry::CollectMeshContacts(shape, view, outPoints, kMaxManifoldPoints,
+                        Geometry::MeshContactMode::Manifold);
+                }
+            });
+
+            // 集めた法線は形からメッシュへ向かうので、メッシュが a のときは向きを返す
+            if (meshFirst) {
+                for (int index = 0; index < count; ++index) {
+                    outPoints[index].normal = outPoints[index].normal * -1.0f;
+                }
+            }
+            return count;
+        }
     }
 
     void ContactSolver::SetIterations(int count)
@@ -70,6 +104,9 @@ namespace CoreEngine
 
         for (const ContactPair& pair : pairs) {
             if (pair.a->IsTrigger() || pair.b->IsTrigger()) {
+                continue;
+            }
+            if (!IsShapeUsedByPhysics(*pair.a) || !IsShapeUsedByPhysics(*pair.b)) {
                 continue;
             }
 
@@ -111,10 +148,15 @@ namespace CoreEngine
                 PhysicsMaterialComponent::CombineRestitution(materialA, materialB);
 
             // 面で触れている箱は接触点が複数要る。1 点だけだと支えが足りず倒れてしまう
+            // メッシュとの接触は、点ごとに触れた三角形の向きを法線にする
             Geometry::Contact points[kMaxManifoldPoints];
             int pointCount = 0;
+            const bool meshPair = IsMesh(pair.a) || IsMesh(pair.b);
 
-            if (pair.a->GetShapeType() == ColliderShapeType::Box
+            if (meshPair) {
+                pointCount = CollectMeshPoints(*pair.a, *pair.b, points);
+            }
+            else if (pair.a->GetShapeType() == ColliderShapeType::Box
                 && pair.b->GetShapeType() == ColliderShapeType::Box) {
                 pointCount = Geometry::CollectBoxContacts(
                     pair.a->GetWorldOBB(), pair.b->GetWorldOBB(), constraint.normal,
@@ -129,6 +171,10 @@ namespace CoreEngine
                 ContactConstraint point = constraint;
                 point.point = points[index].point;
                 point.depth = points[index].depth;
+                if (meshPair) {
+                    point.normal = points[index].normal;
+                    MakeTangents(point.normal, point.tangent1, point.tangent2);
+                }
 
                 // 重心から接触点へのてこ。回転の寄与はこの腕で決まる
                 if (point.bodyA && point.bodyA->GetOwner()) {
@@ -165,9 +211,15 @@ namespace CoreEngine
     {
         // 接触点は毎ステップ計算し直すので、同じ場所と見なす距離で探す
         constexpr float kSamePointDistanceSq = 0.0025f;   // 5cm
+        // メッシュの接触は、法線の向きもほぼ同じもの（約 10 度以内）を探す
+        constexpr float kSameNormalCosine = 0.985f;
+        const bool meshPair = IsMesh(constraint.colliderA) || IsMesh(constraint.colliderB);
 
         for (const ContactConstraint& last : previous_) {
             if (last.bodyA != constraint.bodyA || last.bodyB != constraint.bodyB) {
+                continue;
+            }
+            if (meshPair && Dot(last.normal, constraint.normal) < kSameNormalCosine) {
                 continue;
             }
             if (LengthSquared(last.point - constraint.point) <= kSamePointDistanceSq) {
