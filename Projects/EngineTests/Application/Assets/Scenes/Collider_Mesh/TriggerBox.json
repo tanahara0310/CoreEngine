@@ -1,0 +1,87 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "type": "Transform",
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.5,
+                    0.3
+                ],
+                "scale": [
+                    0.6,
+                    0.6,
+                    0.6
+                ],
+                "translate": [
+                    3.0,
+                    1.0,
+                    -2.0
+                ]
+            }
+        },
+        {
+            "enabled": true,
+            "type": "MeshRenderer",
+            "parameters": {
+                "model": {
+                    "guid": "e8a79191-50ea-0673-1816-c257f280ba64",
+                    "path": "Engine/Assets/Models/Primitives/Box/cube.obj"
+                },
+                "materials": [
+                    {
+                        "color": [
+                            1.0,
+                            0.45,
+                            0.3,
+                            1.0
+                        ],
+                        "roughness": 0.8,
+                        "metallic": 0.0,
+                        "lighting": true
+                    }
+                ]
+            }
+        },
+        {
+            "enabled": true,
+            "type": "Collider",
+            "parameters": {
+                "shapes": [
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "static": false,
+                        "trigger": true,
+                        "type": "Box",
+                        "size": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "enabled": true,
+            "type": "MeshTriggerProbe",
+            "parameters": {
+                "low": -0.1,
+                "high": 1.4,
+                "period": 4.0
+            }
+        }
+    ],
+    "id": "0e6c4b8a2d9f7135",
+    "name": "TriggerBox",
+    "order": 7
+}

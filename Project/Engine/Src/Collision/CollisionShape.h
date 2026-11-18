@@ -4,6 +4,7 @@
 
 #include <cstddef>
 #include <iterator>
+#include <string>
 
 /// @file
 /// @brief コライダーの形状記述（ローカル空間）
@@ -19,13 +20,26 @@ namespace CoreEngine
         Sphere,    ///< 球
         Box,       ///< ボックス（オーナーの向きに合わせて回る）
         Capsule,   ///< カプセル（オーナーの上方向に立つ）
+        Mesh,      ///< モデルの三角形（止まっている物の形にそのまま当たる）
         Count,
     };
 
     /// @brief 形状種別の名前（列挙の並びと同じ順。保存データが使う）
-    inline constexpr const char* kColliderShapeTypeNames[] = { "Sphere", "Box", "Capsule" };
+    inline constexpr const char* kColliderShapeTypeNames[] = { "Sphere", "Box", "Capsule", "Mesh" };
     static_assert(std::size(kColliderShapeTypeNames) == static_cast<std::size_t>(ColliderShapeType::Count),
         "ColliderShapeType を増減したら kColliderShapeTypeNames も更新すること");
+
+    /// @brief メッシュの形の三角形をどのモデルから取るか
+    enum class CollisionMeshSource {
+        Renderer,  ///< 同じオブジェクトのメッシュレンダラーのモデル
+        File,      ///< meshModel で指定したモデルのファイル
+        Count,
+    };
+
+    /// @brief 取り出し方の名前（列挙の並びと同じ順。保存データが使う）
+    inline constexpr const char* kCollisionMeshSourceNames[] = { "Renderer", "File" };
+    static_assert(std::size(kCollisionMeshSourceNames) == static_cast<std::size_t>(CollisionMeshSource::Count),
+        "CollisionMeshSource を増減したら kCollisionMeshSourceNames も更新すること");
 
     /// @brief コライダーの形状（オーナー原点を基準としたローカル定義）
     /// @details 実際の判定サイズにはオーナーの GetWorldScale() が乗る。
@@ -47,6 +61,18 @@ namespace CoreEngine
         /// @note 2 * radius を下回る指定は球と同じ形になる。
         float height = 2.0f;
 
+        /// @brief メッシュの三角形の取り出し方（type == Mesh のとき有効）
+        CollisionMeshSource meshSource = CollisionMeshSource::Renderer;
+
+        /// @brief 三角形を取るモデルのファイル（meshSource == File のとき有効）
+        std::string meshModel;
+
+        /// @brief 使う LOD の段（0 が原型。モデルに無い段はいちばん簡単な段になる）
+        int meshLod = 0;
+
+        /// @brief 表からだけ当たる（裏から入った物は押し返さない）
+        bool meshOneSided = false;
+
         /// @brief 半球を除いた円筒部分の長さ
         float CylinderLength() const {
             const float length = height - radius * 2.0f;
@@ -67,6 +93,16 @@ namespace CoreEngine
             CollisionShape shape;
             shape.type = ColliderShapeType::Box;
             shape.size = size;
+            shape.offset = offset;
+            return shape;
+        }
+
+        /// @brief メッシュの形を作る（同じオブジェクトのモデルの三角形を使う）
+        static CollisionShape MakeMesh(int lod = 0, const Vector3& offset = {}) {
+            CollisionShape shape;
+            shape.type = ColliderShapeType::Mesh;
+            shape.meshSource = CollisionMeshSource::Renderer;
+            shape.meshLod = lod;
             shape.offset = offset;
             return shape;
         }

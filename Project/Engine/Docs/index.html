@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.94.0">
+<meta name="engine-version" content="0.95.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5126,7 +5126,7 @@ kbd {
   </ul>
   <p>決まりと流れは <a href="#team">チームで作る（git）</a> にまとめています。</p>
 </article>
-<article class="page" id="script-physics" data-group="スクリプト" data-title="当たり判定と物理" data-nav="当たり判定と物理" data-keywords="コライダー collider 当たり判定 衝突 ぶつかる トリガー trigger ontriggerenter oncollisionenter レイヤー layer 組み合わせ 剛体 rigidbody 重力 力 addforce addimpulse キャラクタコントローラ charactercontroller simplemove jump 接地 レイキャスト raycast 光線 overlapsphere 範囲 物理 浮力 buoyancy 浮く 浮かべる 水 水面 waterprobe 水面の高さ 泳ぐ 沈む 船 ボート">
+<article class="page" id="script-physics" data-group="スクリプト" data-title="当たり判定と物理" data-nav="当たり判定と物理" data-keywords="コライダー collider 当たり判定 衝突 ぶつかる トリガー trigger ontriggerenter oncollisionenter レイヤー layer 組み合わせ 剛体 rigidbody 重力 力 addforce addimpulse キャラクタコントローラ charactercontroller simplemove jump 接地 レイキャスト raycast 光線 overlapsphere 範囲 物理 浮力 buoyancy 浮く 浮かべる 水 水面 waterprobe 水面の高さ 泳ぐ 沈む 船 ボート メッシュ mesh meshcollider 地形 階段 坂 三角形 片面 足場">
   <h1>当たり判定と物理</h1>
   <p class="lead">ぶつかったことを知る（当たり判定）、重力や力で動かす（剛体）、歩くキャラクターを動かす（キャラクタコントローラ）、水に浮かべる（浮力）、光線や範囲で相手を探す（レイキャスト）を説明します。</p>
 
@@ -5138,7 +5138,7 @@ kbd {
     <tbody>
       <tr><td><strong>位置を直接書く</strong></td><td>コライダー</td><td>弾・コイン・シューティングの自機と敵など、当たったことが分かればよいもの</td><td><code>owner.transform.position = …</code></td></tr>
       <tr><td><strong>キャラクタコントローラ</strong></td><td>コライダー（カプセル・トリガーを外す）＋ キャラクタコントローラ</td><td>歩いて跳ぶプレイヤー。坂や段差を上り、壁に沿って滑る</td><td><code>controller.SimpleMove(速度)</code></td></tr>
-      <tr><td><strong>剛体</strong></td><td>コライダー（トリガーを外す）＋ 剛体</td><td>転がる玉・崩れる箱・吹き飛ぶ物。重力と跳ね返りで動くもの</td><td><code>body.AddForce(力)</code></td></tr>
+      <tr><td><strong>剛体</strong></td><td>コライダー（トリガーを外す。形は球・箱・カプセル）＋ 剛体</td><td>転がる玉・崩れる箱・吹き飛ぶ物。重力と跳ね返りで動くもの</td><td><code>body.AddForce(力)</code></td></tr>
     </tbody>
   </table>
   </div>
@@ -5148,8 +5148,8 @@ kbd {
   <p>当たり判定は、<strong>両方のオブジェクトにコライダーが付いていて</strong>、2 つの<strong>レイヤーの組み合わせが「当たる」</strong>になっているときに起きます。</p>
   <ol class="steps">
     <li><strong>コライダーを付ける</strong>Inspector の <span class="ui">＋ コンポーネント追加</span> から <span class="ui">コライダー</span> を選びます。</li>
-    <li><strong>形を足す</strong>付けただけでは形がありません。コライダーの欄の <span class="ui">球を追加</span> か <span class="ui">箱を追加</span> を押します。足した形は、<strong>トリガーがオン</strong>・レイヤー <code>Default</code> です。</li>
-    <li><strong>形を合わせる</strong><span class="ui">形状</span>（Sphere・Box・Capsule）と大きさ、<span class="ui">オフセット</span> を見た目に合わせます。ツールバーの <span class="ui">◍ Collider</span> を押すと、停止中も再生中も形が線で表示されます。線の色は、接触中が赤・トリガーが青・それ以外が緑です。停止中は判定をしないので、赤になるのは一時停止で止めたときだけです。</li>
+    <li><strong>形を足す</strong>付けただけでは形がありません。コライダーの欄の <span class="ui">球を追加</span> か <span class="ui">箱を追加</span> を押します。足した形は、<strong>トリガーがオン</strong>・レイヤー <code>Default</code> です。地形や建物をモデルの形のまま当てるときは <span class="ui">メッシュを追加</span> を押します（<a href="#physics-mesh">モデルの形のまま当てる</a>）。</li>
+    <li><strong>形を合わせる</strong><span class="ui">形状</span>（Sphere・Box・Capsule・Mesh）と大きさ、<span class="ui">オフセット</span> を見た目に合わせます。ツールバーの <span class="ui">◍ Collider</span> を押すと、停止中も再生中も形が線で表示されます。線の色は、接触中が赤・トリガーが青・それ以外が緑です。停止中は判定をしないので、赤になるのは一時停止で止めたときだけです。</li>
     <li><strong>知らせを受けるメソッドを書く</strong>スクリプトに <code>OnTriggerEnter</code> などを書きます（下の表）。</li>
   </ol>
 
@@ -5205,6 +5205,44 @@ kbd {
       <tr><td><code>layer</code> ／ <code>selfLayer</code></td><td>相手 ／ 自分のコライダーのレイヤー</td></tr>
       <tr><td><code>point</code>・<code>normal</code>・<code>depth</code></td><td>接触した点（ワールド座標）・押し出しの向き・めり込みの深さ</td></tr>
       <tr><td><code>impulse</code></td><td>ぶつかった強さ。強く当たったときだけ音を鳴らす、などに使う（剛体どうしのとき）</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2 id="physics-mesh">モデルの形のまま当てる（メッシュ）</h2>
+  <p>地形・階段・建物のように、球や箱では形を合わせにくい物は、モデルの三角形をそのまま当たり判定の形にできます。これをメッシュの形と呼びます。メッシュの形は<strong>止まっている物と、スクリプトで動かす物</strong>に使います。重力で動く剛体には使えません。</p>
+  <ol class="steps">
+    <li><strong>形を足す</strong>モデルを描いているオブジェクトにコライダーを付け、<span class="ui">メッシュを追加</span> を押します。足した形は、ほかの形と違って<strong>トリガーがオフ・静止がオン</strong>です（<span class="ui">形状</span> を <span class="ui">Mesh</span> に切り替えたときも同じになります）。</li>
+    <li><strong>三角形の出どころを選ぶ</strong><span class="ui">三角形</span> の既定は <span class="ui">同じオブジェクトのモデル</span>（メッシュ描画のモデル）です。見た目より粗い当たり用のモデルを使うときは <span class="ui">モデルのファイル</span> にして、<span class="ui">モデル</span> の欄で選ぶか、ProjectView からモデルを落とします。<span class="ui">LOD</span> で簡単な段を選ぶと、三角形が減って軽くなります。</li>
+    <li><strong>確かめる</strong>欄の下に三角形の数と準備にかかった時間が出ます。使えないときは理由が出ます（「モデルがありません」「骨入りのモデルはメッシュの当たりに使えません」など）。ツールバーの <span class="ui">◍ Collider</span> を押すと、カメラの近くの三角形が線で出ます。</li>
+  </ol>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>相手</th><th>メッシュの形との当たり方</th></tr></thead>
+    <tbody>
+      <tr><td>キャラクタコントローラ</td><td>床・坂・階段・壁・天井として歩ける。三角形の継ぎ目でつまずいたり跳ねたりしない</td></tr>
+      <tr><td>球・箱・カプセル</td><td>押し出し（<code>OnCollision*</code>）とトリガーの知らせ（<code>OnTrigger*</code>）。剛体との接触は 1 点だけなので、剛体の箱は傾いたり揺れたりしやすい</td></tr>
+      <tr><td>レイキャスト・<code>OverlapSphere</code>・<code>OverlapBox</code></td><td>三角形に当たる。レイキャストは当たった三角形の面の向き（<code>normal</code>）を返す</td></tr>
+      <tr><td>ほかのメッシュの形</td><td>当たらない</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>オブジェクトの位置・向き・大きさ（軸ごとに違う拡大縮小も）に合わせて当たります。同じモデルを使う物どうしは、三角形の準備を 1 回で済ませて使い回します。準備はそのモデルを初めて当てるときに 1 回だけ行います（目安は 50 万の三角形で 0.5 秒以内）。準備が済めば、1 回の判定は近くの三角形だけを調べるので、三角形が多くても重くなりにくくなっています。</p>
+
+  <h3 id="physics-mesh-onesided">表からだけ当てる</h3>
+  <p><span class="ui">表からだけ当たる</span> を入れると、三角形の表（モデルの面が向いている側）にいる物だけを押し返します。下から跳ぶとすり抜けて、上には乗れる足場に使います。押し返すのは、球と箱は中心が、カプセルは芯（上下の丸の中心を結ぶ線）の両端が、すべて表の側にあるときです。裏から入りかけた物は、表へ押し出さずに通します。</p>
+  <p>既定はオフ（両面）です。モデルの面が裏返っていても当たるので、ふつうはオフのままにします。</p>
+  <div class="callout warn"><p><strong>トリガーは三角形に触れている間だけ知らせます。</strong>閉じたモデル（箱や岩）の中にすっぽり入った物は、三角形に触れていないので、重なっていると分かりません。入ったことを知りたい範囲には、球や箱のトリガーを使います。</p></div>
+  <div class="callout warn"><p><strong>動く剛体には使えません。</strong>剛体（重力で動く物）にメッシュの形を付けると、ほかのメッシュと当たらず床をすり抜けます（インスペクタに警告が出ます）。剛体の形は、球・箱・カプセルを組み合わせて作ります。</p></div>
+
+  <h3 id="physics-mesh-cvars">メッシュの形の設定（CVar）</h3>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>CVar</th><th>既定</th><th>中身</th></tr></thead>
+    <tbody>
+      <tr><td><code>sys.Collision.MeshFlatEdgeAngle</code></td><td>1</td><td>度。隣の三角形とこれより浅い角度で折れている辺は継ぎ目として扱い、面の向きで押す（引っかからない）</td></tr>
+      <tr><td><code>d.Collision.DebugMeshRadius</code></td><td>30</td><td>m。<span class="ui">◍ Collider</span> で線を出す三角形の、カメラからの距離</td></tr>
+      <tr><td><code>d.Collision.DebugMeshMaxTriangles</code></td><td>6000</td><td>線を出す三角形の数の上限</td></tr>
     </tbody>
   </table>
   </div>
@@ -5359,6 +5397,7 @@ kbd {
     }
   </script>
   <p>地面に立っているかは <code>controller.grounded</code> で分かります。落下の速さを消したいとき（リスポーンなど）は <code>controller.velocity = Vector3();</code> とします。</p>
+  <p><span class="ui">登れる坂</span> より急な面は、歩いて押しても登らず、壁のように止まります（上に乗ったときは滑り落ちます）。<span class="ui">越えられる段差</span> より低い段の角には、そのまま乗り上げます。地形や階段をモデルの形のまま歩かせるときは、地形の側に <a href="#physics-mesh">メッシュの形</a> を付けます。</p>
 
   <h2 id="physics-raycast">光線と範囲で相手を探す</h2>
   <p>「銃の先に何があるか」「爆発の範囲に誰がいるか」は、レイキャストと重なりの検索で調べます。</p>
@@ -5394,6 +5433,7 @@ kbd {
       <tr><td>2 つのレイヤーの組み合わせにチェックが入っているか（<a href="#script-layers">当たり判定のレイヤー</a>）</td><td><span class="ui">Scene Settings</span> の <span class="ui">当たり判定のレイヤー</span></td></tr>
       <tr><td>剛体・キャラクタコントローラのコライダーのトリガーが外れているか</td><td>Inspector の <span class="ui">トリガー</span></td></tr>
       <tr><td>両方とも <span class="ui">静止</span> になっていないか</td><td>Inspector の <span class="ui">静止</span></td></tr>
+      <tr><td>メッシュの形が使える状態か（三角形の数が出ているか）。<span class="ui">表からだけ当たる</span> のとき、裏から来ていないか</td><td>Inspector の <span class="ui">コライダー</span> のメッシュの欄（<a href="#physics-mesh">モデルの形のまま当てる</a>）</td></tr>
       <tr><td>メソッドの名前と引数が正しいか（<code>void OnTriggerEnter(Collision@ other)</code>）</td><td>スクリプト</td></tr>
       <tr><td>速すぎてすり抜けていないか（1 フレームで自分の大きさより長く動く）</td><td>弾を大きくする・遅くする・レイキャストで調べる</td></tr>
     </tbody>
@@ -10256,6 +10296,7 @@ kbd {
 
   <h3 id="g3d-move-character">キャラクターを歩かせる</h3>
   <ol class="steps">
+    <li><strong>地形に当たりを付ける</strong>地形や階段のモデルのオブジェクトにコライダーを付け、<span class="ui">メッシュを追加</span> を押します。見た目の形のまま床・坂・階段・壁になります（<a href="#physics-mesh">モデルの形のまま当てる</a>）。平らな床だけなら、箱の形でも構いません。</li>
     <li><strong>形を付ける</strong>コライダーに形を足して <span class="ui">形状</span> を <span class="ui">Capsule</span> にし、<span class="ui">トリガー</span> を外します。</li>
     <li><strong>コントローラを付ける</strong><span class="ui">キャラクタコントローラ</span> を足し、<span class="ui">登れる坂</span>（度）と <span class="ui">越えられる段差</span>（m）を決めます。</li>
     <li><strong>スクリプトで毎フレーム動かす</strong>コントローラは自分では動きません。<code>SimpleMove</code> を毎フレーム呼ぶと、重力と落下も中で足されます。</li>
@@ -11572,6 +11613,9 @@ python Tools/OkinawaBeach/bake_araha_walk.py
       <tr><td>床をすり抜けて落ちる</td><td>コライダーがトリガーのまま。自分のレイヤー × <code>Default</code>（床のレイヤー）にチェックが無い。シーンの床（<span class="ui">Scene Settings</span> の床）がオフ</td></tr>
       <tr><td>剛体の向きが変わらない</td><td>剛体は再生を始めると向きを物理が持つ。<code>angularVelocity</code> か <code>AddTorque</code> で回す</td></tr>
       <tr><td>キャラクタコントローラが動かない・落ちない</td><td>毎フレーム <code>SimpleMove</code> を呼んでいない。<a href="#physics-character">キャラクタコントローラ</a></td></tr>
+      <tr><td>メッシュの形に当たらない</td><td>形の欄に理由が出ていないか（モデルがありません・骨入りのモデル・使える三角形がありません）。<span class="ui">表からだけ当たる</span> が入っていて、裏から来ていないか。トリガーの物がモデルの中にすっぽり入っていないか（三角形に触れていないと分からない）。<a href="#physics-mesh">モデルの形のまま当てる</a></td></tr>
+      <tr><td>メッシュの継ぎ目でキャラが引っかかる</td><td>隣の三角形とわずかに折れてつながっている。<code>sys.Collision.MeshFlatEdgeAngle</code>（既定 1 度）を少し大きくすると、その折れ目を継ぎ目として扱う</td></tr>
+      <tr><td>メッシュの形を付けた剛体が床をすり抜ける</td><td>メッシュの形は動く剛体には使えない（ほかのメッシュと当たらない）。剛体の形は球・箱・カプセルを組み合わせる</td></tr>
       <tr><td>速い弾が敵をすり抜ける</td><td>1 フレームで当たりの大きさより長く動いている。弾を大きく・遅くするか、レイキャストで調べる</td></tr>
       <tr><td>再生を止めても重力が変わったまま</td><td><code>Physics::gravity</code> はプロジェクトの設定（CVar）を書き換え、止めた後に保存される。<code>CVar::Reset("sys.Physics.Gravity")</code> で戻す</td></tr>
     </tbody>
@@ -11987,6 +12031,16 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-95-0">v0.95.0 <span class="dim">（2026-11-18）</span></h3>
+  <p>モデルの三角形をそのまま当たり判定の形にする、メッシュの形を足した版です（<a href="#physics-mesh">モデルの形のまま当てる</a>）。キャラクタコントローラが、モデルの地形・坂・階段・トンネルの上を歩けます。</p>
+  <ul>
+    <li><strong>メッシュの形</strong>：コライダーの <span class="ui">メッシュを追加</span>（スクリプトは <code>collider.AddMesh()</code>）で、同じオブジェクトのモデルの三角形を形にします。三角形はモデルのファイルからも取れ、LOD の段も選べます。<span class="ui">表からだけ当たる</span> を入れると、下から抜けて上に乗れる足場になります。</li>
+    <li><strong>当たるもの</strong>：キャラクタコントローラ、球・箱・カプセルとの押し出しとトリガーの知らせ、レイキャスト、<code>OverlapSphere</code>・<code>OverlapBox</code>。三角形の継ぎ目では引っかかりません。同じモデルを使う物どうしは、三角形の準備を 1 回で済ませて使い回します。剛体を乗せたときの接触は 1 点だけです。</li>
+    <li><strong>インスペクタと線の表示</strong>：形の欄に、三角形の数と準備にかかった時間か、使えない理由が出ます。<span class="ui">◍ Collider</span> では、カメラの近くの三角形を線で出します（<code>d.Collision.DebugMeshRadius</code>・<code>d.Collision.DebugMeshMaxTriangles</code>）。</li>
+    <li><strong>キャラクタコントローラ</strong>：<span class="ui">登れる坂</span> より急な面は、歩いて押しても登らないようにしました。これまでは押し戻しで少しずつ持ち上がり、急な坂や傾けた箱を登れていました。<span class="ui">越えられる段差</span> より低い段の角には、そのまま乗り上げます。メッシュでない形でも同じです。</li>
+    <li><strong>試験のシーン</strong>：<span class="path">Projects/EngineTests</span> に <code>Collider_Mesh</code>（坂・階段・段差・トンネル・薄い壁のある地形と、回して大きさを変えた同じ地形。キャラが自動で走り、結果をコンソールへ出す）を足しました。</li>
+  </ul>
 
   <h3 id="changelog-v0-94-0">v0.94.0 <span class="dim">（2026-11-18）</span></h3>
   <p>アニメーターで、2D のスプライトのコマを状態と遷移で切り替えられるようにした版です（<a href="#anim-sprite">スプライトを動かす</a>）。骨のアニメーションの設定と設定を使わない Animator は、前の版と毎フレーム同じ骨の行列になるのを確かめました。</p>
@@ -18334,19 +18388,23 @@ void Update()
   {
     id: "Collider", kind: "component", cat: "物理", display: "コライダー", type: "Collider",
     accessor: "owner.collider", title: "コライダー（Collider）", brief: "当たり判定の形",
-    keywords: "コライダー 当たり判定 衝突 トリガー 球 箱 カプセル レイヤー 静止 静的",
-    summary: "当たり判定の形を持ちます。1 つのコライダーに、球・箱・カプセルの形をいくつでも持てます。",
+    keywords: "コライダー 当たり判定 衝突 トリガー 球 箱 カプセル メッシュ 地形 三角形 片面 レイヤー 静止 静的",
+    summary: "当たり判定の形を持ちます。1 つのコライダーに、球・箱・カプセル・メッシュ（モデルの三角形）の形をいくつでも持てます。",
     requires: "トランスフォーム",
-    propsText: "<p>インスペクタでは <span class=\"ui\">球を追加</span>・<span class=\"ui\">箱を追加</span> で形を足し、形ごとに次の項目を決めます（カプセルは球か箱を足してから「形状」で切り替えます）。</p>",
+    propsText: "<p>インスペクタでは <span class=\"ui\">球を追加</span>・<span class=\"ui\">箱を追加</span>・<span class=\"ui\">メッシュを追加</span> で形を足し、形ごとに次の項目を決めます（カプセルは球か箱を足してから「形状」で切り替えます）。</p>",
     props: [
-      ["形状", "", "", "Sphere", "Sphere（球）・Box（箱）・Capsule（カプセル）"],
+      ["形状", "", "", "Sphere", "Sphere（球）・Box（箱）・Capsule（カプセル）・Mesh（モデルの三角形）"],
       ["半径", "", "float", "0.5", "球とカプセルの半径（トランスフォームのスケールが掛かる）。"],
       ["高さ", "", "float", "2", "カプセルの全体の高さ。"],
       ["サイズ", "", "Vector3", "(1, 1, 1)", "箱の大きさ。"],
       ["オフセット", "", "Vector3", "(0, 0, 0)", "オブジェクトの原点からの位置（スケールが掛かる）。"],
+      ["三角形", "", "", "同じオブジェクトのモデル", "メッシュの三角形を取るモデル。同じオブジェクトのモデル（メッシュ描画）か、モデルのファイル。"],
+      ["モデル", "", "", "", "三角形を「モデルのファイル」にしたときのモデル。"],
+      ["LOD", "", "int", "0", "メッシュに使うモデルの段。大きいほど三角形が少なく軽い。"],
+      ["表からだけ当たる", "", "bool", "オフ", "メッシュの三角形の表の側にいる物だけを押し返す。"],
       ["レイヤー", "layer", "CollisionLayer", "Default", "当たり判定のグループ。"],
       ["有効", "enabled", "bool", "オン", "この形を使うか。"],
-      ["トリガー", "isTrigger", "bool", "<strong>オン</strong>", "オン：重なりを知らせるだけで押し出さない。オフ：押し出す（剛体・キャラクタに必要）。"],
+      ["トリガー", "isTrigger", "bool", "<strong>オン</strong>", "オン：重なりを知らせるだけで押し出さない。オフ：押し出す（剛体・キャラクタに必要）。メッシュの形はオフで足される。"],
       ["静止", "isStatic", "bool", "オフ", "動かない物（床・壁）。静止同士は判定しない。押し出しで動かない側になる。"]
     ],
     sections: [
@@ -18361,6 +18419,7 @@ void Update()
           { n: "isStatic", s: "bool isStatic", t: "rw", d: "動かない物として扱うか。" },
           { n: "AddSphere", s: "void AddSphere(float radius, CollisionLayer layer = CollisionLayer::Default, const Vector3&in offset = Vector3())", t: "m", d: "球の形を足します（コライダーが無ければ付ける）。" },
           { n: "AddBox", s: "void AddBox(const Vector3&in size, CollisionLayer layer = CollisionLayer::Default, const Vector3&in offset = Vector3())", t: "m", d: "箱の形を足します。" },
+          { n: "AddMesh", s: "void AddMesh(int lod = 0, CollisionLayer layer = CollisionLayer::Default)", t: "m", d: "同じオブジェクトのモデルの三角形で、メッシュの形を足します（トリガーなし・静止）。" },
           { n: "RemoveAll", s: "void RemoveAll()", t: "m", d: "すべての形を外します。" },
           { n: "exists", s: "bool exists", t: "ro", d: "コライダーが付いているか。" },
           { n: "gameObject", s: "GameObject@ gameObject", t: "ro", d: "持ち主の GameObject。" }
@@ -18372,9 +18431,10 @@ void Update()
       "<li><strong>既定はトリガー</strong>です。剛体やキャラクタコントローラで床に立たせる・ぶつけるときは、トリガーを外します。</li>" +
       "<li>どのレイヤー同士が当たるかは、シーンの「当たり判定のレイヤー」で決まります。当たらないときはまずここを確かめます。</li>" +
       "<li>形はツールバーの <span class=\"ui\">◍ Collider</span> で線で表示できます。</li>" +
+      "<li>メッシュの形は止まっている物（地形・建物）とスクリプトで動かす物に使います。動く剛体に付けると、ほかのメッシュと当たりません（<a href=\"#physics-mesh\">モデルの形のまま当てる</a>）。</li>" +
       "<li>スプライトのあるオブジェクトでは、<span class=\"ui\">箱を追加</span> がスプライトの板に重なる大きさ（奥行き 1）で箱を足します。箱ごとの <span class=\"ui\">画像に合わせる</span> で、あとから大きさとオフセットを合わせ直せます。</li>" +
       "</ul>",
-    see: [["script-physics", "物理と当たり判定"], ["api-Collision", "Collision"], ["api-Physics", "Physics"]]
+    see: [["script-physics", "物理と当たり判定"], ["physics-mesh", "モデルの形のまま当てる"], ["api-Collision", "Collision"], ["api-Physics", "Physics"]]
   },
 
   {
@@ -18487,7 +18547,7 @@ void Update()
     summary: "プレイヤーのような歩くキャラクターを動かします。壁に沿って滑り、小さな段差を上り、急な坂では滑り落ち、押されて倒れることはありません。",
     requires: "トランスフォーム・コライダー（先頭の形をカプセルとして使う。カプセルがおすすめ）",
     props: [
-      ["登れる坂", "slopeLimit", "float", "45", "度。これより急な坂では滑り落ちる。"],
+      ["登れる坂", "slopeLimit", "float", "45", "度。これより急な面は歩いて押しても登らず、上に乗ると滑り落ちる。"],
       ["越えられる段差", "stepOffset", "float", "0.3", "m。これ以下の段差は歩いたまま上がる。"],
       ["表面の余白", "skinWidth", "float", "0.02", "m。壁との間に残す隙間。"],
       ["重力を受ける", "useGravity", "bool", "オン", "接地していないと落ちる。"],

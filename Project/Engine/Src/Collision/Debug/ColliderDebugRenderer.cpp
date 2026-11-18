@@ -1,11 +1,13 @@
 #include "pch.h"
 #include "ColliderDebugRenderer.h"
 
+#include "Camera/Camera.h"
 #include "Collision/CollisionWorld.h"
 #include "Graphics/Line/LineManager.h"
 #include "Graphics/Render/Line/LineRendererPipeline.h"
 #include "Utility/CVar/CVar.h"
 
+#include <algorithm>
 #include <vector>
 
 namespace CoreEngine
@@ -41,6 +43,18 @@ namespace CoreEngine
             "d.Collision.DebugSphereSegments", 16,
             "球コライダーの分割数", CVarRange{ 4.0f, 48.0f } };
 
+        CVar<float> cvMeshRadius{
+            "d.Collision.DebugMeshRadius", 30.0f,
+            "メッシュのコライダーの三角形を描く、カメラからの距離（m）", CVarRange{ 1.0f, 500.0f } };
+
+        CVar<int> cvMeshMaxTriangles{
+            "d.Collision.DebugMeshMaxTriangles", 6000,
+            "メッシュのコライダー 1 つで描く三角形の数の上限", CVarRange{ 100.0f, 20000.0f } };
+
+        /// @brief メッシュの三角形を描く範囲の中心（カメラが無ければ形の中心）
+        Vector3 g_meshFocus{ 0.0f, 0.0f, 0.0f };
+        bool    g_hasMeshFocus = false;
+
         /// @brief 球の枠の線を作る
         std::vector<Line> GenerateShapeLines(const Geometry::Sphere& sphere,
             const Vector3& color, float alpha, int segments)
@@ -57,6 +71,37 @@ namespace CoreEngine
                 capsule.start, capsule.end, capsule.radius, color, alpha, segments);
         }
 
+        /// @brief メッシュの三角形の線を作る（カメラの近くだけ・数に上限）
+        std::vector<Line> GenerateShapeLines(const Geometry::MeshView& mesh,
+            const Vector3& color, float alpha, int /*segments*/)
+        {
+            std::vector<Line> lines;
+            if (!mesh.IsValid()) {
+                return lines;
+            }
+            const Geometry::AABB bounds = mesh.WorldBounds();
+            const Vector3 focus = g_hasMeshFocus ? g_meshFocus : bounds.GetCenter();
+            const float radius = cvMeshRadius.Get();
+            const Vector3 reach{ radius, radius, radius };
+            const Geometry::AABB query = mesh.LocalBoxOf(Geometry::AABB(focus - reach, focus + reach));
+
+            const int limit = cvMeshMaxTriangles.Get();
+            int drawn = 0;
+            lines.reserve(static_cast<size_t>((std::min)(limit, 2048)) * 3);
+            mesh.mesh->ForEachTriangleInBox(query, [&](uint32_t triangle) {
+                if (drawn >= limit) {
+                    return;
+                }
+                ++drawn;
+                Vector3 a, b, c;
+                mesh.WorldTriangle(triangle, a, b, c);
+                lines.push_back(Line{ a, b, color, alpha, true });
+                lines.push_back(Line{ b, c, color, alpha, true });
+                lines.push_back(Line{ c, a, color, alpha, true });
+            });
+            return lines;
+        }
+
         /// @brief 向き付きの箱の枠の線を作る（分割数は使わない）
         std::vector<Line> GenerateShapeLines(const Geometry::OBB& box,
             const Vector3& color, float alpha, int /*segments*/)
@@ -69,7 +114,10 @@ namespace CoreEngine
 
     void ColliderDebugRenderer::SubmitLines(LineRendererPipeline& pipeline, const Camera* camera)
     {
-        (void)camera;
+        g_hasMeshFocus = camera != nullptr;
+        if (camera) {
+            g_meshFocus = camera->GetPosition();
+        }
 
         if (!cvDebugDraw.Get() || !worldProvider_) {
             return;

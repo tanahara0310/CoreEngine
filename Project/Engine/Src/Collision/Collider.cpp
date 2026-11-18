@@ -1,14 +1,22 @@
 #include "pch.h"
 #include "Collider.h"
 #include "GameObject/GameObject.h"
+#include "Utility/CVar/CVar.h"
+#include "Utility/Logger/Logger.h"
 
 #include <algorithm>
 #include <cmath>
+#include <numbers>
 
 namespace CoreEngine
 {
 namespace {
     constexpr int kShapeCount = static_cast<int>(ColliderShapeType::Count);
+
+    CVar<float> cvMeshFlatEdgeAngle{
+        "sys.Collision.MeshFlatEdgeAngle", 1.0f,
+        "メッシュの縁を平らとみなす角度（度）。これ以下の折れ目では、継ぎ目に引っかからないよう面の向きで押す",
+        CVarRange{ 0.0f, 30.0f } };
 
     /// @brief 一意 ID の発番。0 は「無効」に予約するので 1 から始める。
     /// @note 再利用しないので ABA が原理的に起きない。64bit なので枯渇は現実的に無い。
@@ -105,6 +113,11 @@ Geometry::Sphere Collider::GetWorldSphere() const
     const Vector3 scale = GetWorldScale();
     const float maxScale = MaxAbsScale(scale);
 
+    if (shape_.type == ColliderShapeType::Mesh) {
+        const Geometry::OBB box = GetWorldOBB();
+        return Geometry::Sphere{ box.center, Length(box.halfExtents) };
+    }
+
     if (shape_.type == ColliderShapeType::Capsule) {
         float radius = 0.0f, halfLength = 0.0f;
         WorldCapsuleMetrics(shape_, scale, radius, halfLength);
@@ -163,6 +176,20 @@ Geometry::OBB Collider::GetWorldOBB() const
         return obb;
     }
 
+    if (shape_.type == ColliderShapeType::Mesh) {
+        // 三角形を包むローカルの箱を、持ち主の向きと拡大縮小で置く（三角形がまだ無ければ大きさ 0）
+        if (owner_) {
+            owner_->GetWorldAxes(obb.axes[0], obb.axes[1], obb.axes[2]);
+        }
+        if (mesh_) {
+            const Geometry::AABB& local = mesh_->Bounds();
+            const Vector3 half = local.GetSize() * 0.5f;
+            obb.center = GetWorldMeshView().ToWorld(local.GetCenter());
+            obb.halfExtents = Vector3{ half.x * std::abs(scale.x), half.y * std::abs(scale.y), half.z * std::abs(scale.z) };
+        }
+        return obb;
+    }
+
     obb.halfExtents = Vector3{
         shape_.size.x * std::abs(scale.x) * 0.5f,
         shape_.size.y * std::abs(scale.y) * 0.5f,
@@ -172,6 +199,70 @@ Geometry::OBB Collider::GetWorldOBB() const
         owner_->GetWorldAxes(obb.axes[0], obb.axes[1], obb.axes[2]);
     }
     return obb;
+}
+
+Geometry::MeshView Collider::GetWorldMeshView() const
+{
+    Geometry::MeshView view;
+    if (shape_.type != ColliderShapeType::Mesh) {
+        return view;
+    }
+    view.mesh = mesh_.get();
+    view.origin = GetWorldCenter();
+    view.scale = GetWorldScale();
+    if (owner_) {
+        owner_->GetWorldAxes(view.axes[0], view.axes[1], view.axes[2]);
+    }
+    view.oneSided = shape_.meshOneSided;
+    view.flatEdgeAngle = cvMeshFlatEdgeAngle.Get() * (std::numbers::pi_v<float> / 180.0f);
+    return view;
+}
+
+Vector3 Collider::GetLocalBoxSize() const
+{
+    if (shape_.type == ColliderShapeType::Mesh) {
+        return mesh_ ? mesh_->Bounds().GetSize() : Vector3{ 0.0f, 0.0f, 0.0f };
+    }
+    return shape_.size;
+}
+
+//================================================
+// メッシュの形
+//================================================
+
+void Collider::RefreshMesh()
+{
+    const CollisionMeshStatus previous = meshStatus_;
+
+    if (shape_.type != ColliderShapeType::Mesh || owner_ == nullptr) {
+        mesh_.reset();
+        meshKey_ = nullptr;
+        meshLod_ = -1;
+        meshStatus_ = CollisionMeshStatus::None;
+        return;
+    }
+
+    const CollisionMeshSourceInfo source = CollisionMeshLibrary::Identify(*owner_, shape_);
+    if (source.key == nullptr) {
+        mesh_.reset();
+        meshKey_ = nullptr;
+        meshLod_ = -1;
+        meshStatus_ = source.status;
+    }
+    else if (source.key != meshKey_ || shape_.meshLod != meshLod_ || !mesh_) {
+        const CollisionMeshLibrary::Result result = CollisionMeshLibrary::Acquire(source.key, shape_.meshLod);
+        mesh_ = result.mesh;
+        meshKey_ = source.key;
+        meshLod_ = shape_.meshLod;
+        meshStatus_ = result.status;
+    }
+
+    // 使えない理由が新しく分かったときだけ知らせる
+    if (meshStatus_ != previous
+        && (meshStatus_ == CollisionMeshStatus::Skinned || meshStatus_ == CollisionMeshStatus::Empty)) {
+        Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
+            "「{}」のメッシュのコライダー: {}", owner_->GetName(), ToDisplayText(meshStatus_));
+    }
 }
 
 Geometry::Capsule Collider::GetWorldCapsule() const

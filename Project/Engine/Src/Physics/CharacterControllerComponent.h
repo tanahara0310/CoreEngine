@@ -127,6 +127,7 @@ private:
     Vector3 gravity_{ 0.0f, -9.81f, 0.0f };
     Vector3 groundNormal_{ 0.0f, 1.0f, 0.0f };
     bool    grounded_ = false;
+    bool    movingHorizontally_ = false;   ///< 横への移動を解いている間 true（登れない面を壁として押し戻す）
 
     CollisionWorld*     world_ = nullptr;
     TransformComponent* transform_ = nullptr;

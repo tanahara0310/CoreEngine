@@ -1,0 +1,78 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "type": "Transform",
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    -0.8726646,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    3.0,
+                    0.4,
+                    4.0
+                ],
+                "translate": [
+                    -6.0,
+                    1.4034,
+                    14.4392
+                ]
+            }
+        },
+        {
+            "enabled": true,
+            "type": "MeshRenderer",
+            "parameters": {
+                "model": {
+                    "guid": "e8a79191-50ea-0673-1816-c257f280ba64",
+                    "path": "Engine/Assets/Models/Primitives/Box/cube.obj"
+                },
+                "materials": [
+                    {
+                        "color": [
+                            0.78,
+                            0.4,
+                            0.3,
+                            1.0
+                        ],
+                        "roughness": 0.8,
+                        "metallic": 0.0,
+                        "lighting": true
+                    }
+                ]
+            }
+        },
+        {
+            "enabled": true,
+            "type": "Collider",
+            "parameters": {
+                "shapes": [
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box",
+                        "size": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ]
+                    }
+                ]
+            }
+        }
+    ],
+    "id": "3d7e0b5a9c1f2486",
+    "name": "BoxRamp50",
+    "order": 8
+}

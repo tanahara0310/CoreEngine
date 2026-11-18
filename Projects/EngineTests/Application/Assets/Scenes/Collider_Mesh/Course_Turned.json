@@ -1,0 +1,66 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "type": "Transform",
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    3.141592653589793,
+                    0.0
+                ],
+                "scale": [
+                    1.25,
+                    1.1,
+                    0.8
+                ],
+                "translate": [
+                    0.0,
+                    0.0,
+                    45.0
+                ]
+            }
+        },
+        {
+            "enabled": true,
+            "type": "MeshRenderer",
+            "parameters": {
+                "model": {
+                    "guid": "69256bec-01c1-47fb-b2fe-78a89db753cd",
+                    "path": "Application/Assets/Models/MeshCourse/MeshCourse.gltf"
+                }
+            }
+        },
+        {
+            "enabled": true,
+            "type": "Collider",
+            "parameters": {
+                "shapes": [
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Mesh",
+                        "mesh": {
+                            "source": "File",
+                            "model": "Application/Assets/Models/MeshCourse/MeshCourse.gltf",
+                            "lod": 0,
+                            "oneSided": false
+                        }
+                    }
+                ]
+            }
+        }
+    ],
+    "id": "d19b5e7a2c40f863",
+    "name": "Course_Turned",
+    "order": 4
+}

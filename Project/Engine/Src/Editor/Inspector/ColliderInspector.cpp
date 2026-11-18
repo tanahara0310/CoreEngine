@@ -6,8 +6,14 @@
 #include "Collision/ColliderComponent.h"
 #include "GameObject/Component/Render/SpriteRendererComponent.h"
 #include "GameObject/GameObject.h"
+#include "Editor/ImGui/EditorTheme.h"
 #include "Editor/ImGui/ImGuiAll.h"
+#include "Editor/ImGui/Widgets/DragDropPayload.h"
 #include "Editor/Inspector/InspectorLayout.h"
+#include "Graphics/Asset/AssetDatabase.h"
+#include "Graphics/Asset/AssetRef.h"
+#include "Graphics/Model/ModelData.h"
+#include "Physics/RigidbodyComponent.h"
 
 #include <string>
 
@@ -36,6 +42,94 @@ namespace ColliderInspector
             return true;
         }
 
+        /// @brief 三角形の取り出し方の表示名（CollisionMeshSource の並びと同じ順）
+        constexpr const char* kMeshSourceLabels[] = { "同じオブジェクトのモデル", "モデルのファイル" };
+        static_assert(std::size(kMeshSourceLabels) == static_cast<std::size_t>(CollisionMeshSource::Count));
+
+        /// @brief 三角形を取るモデルのファイルを選ぶ欄（一覧と ProjectView からのドロップ）
+        bool DrawMeshModelPicker(Collider& collider)
+        {
+            CollisionShape next = collider.GetShape();
+            bool changed = false;
+
+            const char* const preview = next.meshModel.empty() ? "（なし）" : next.meshModel.c_str();
+            if (ImGui::BeginCombo("モデル", preview)) {
+                for (const AssetInfo* info : AssetDatabase::GetInstance().GetAssetsOfType(AssetType::Model)) {
+                    const std::string path = ToAssetPath(*info);
+                    if (ImGui::Selectable(path.c_str(), path == next.meshModel) && path != next.meshModel) {
+                        next.meshModel = path;
+                        changed = true;
+                    }
+                }
+                ImGui::EndCombo();
+            }
+            if (ImGui::BeginDragDropTarget()) {
+                if (const auto fileName = UI::AcceptPayload<std::string>("MODEL_FILE")) {
+                    if (const AssetInfo* dropped = FindAssetInfo(*fileName, AssetType::Model)) {
+                        next.meshModel = ToAssetPath(*dropped);
+                        changed = true;
+                    }
+                }
+                ImGui::EndDragDropTarget();
+            }
+            UI::Hint("ProjectView からモデルのファイルを落としても選べる。");
+
+            if (changed) {
+                collider.SetShape(next);
+            }
+            return changed;
+        }
+
+        /// @brief メッシュの形の設定と状態
+        bool DrawMeshSettings(GameObject& object, Collider& collider)
+        {
+            bool changed = false;
+            CollisionShape next = collider.GetShape();
+
+            if (InspectorLayout::EnumCombo("三角形", next.meshSource, kMeshSourceLabels)) {
+                collider.SetShape(next);
+                changed = true;
+            }
+            if (next.meshSource == CollisionMeshSource::File) {
+                changed |= DrawMeshModelPicker(collider);
+                next = collider.GetShape();
+            }
+
+            int lod = next.meshLod;
+            if (ImGui::SliderInt("LOD", &lod, 0, static_cast<int>(SubMeshData::kMaxLodCount) - 1)) {
+                next.meshLod = lod;
+                collider.SetShape(next);
+                changed = true;
+            }
+            UI::Hint("0 が原型。大きい段ほど三角形が少なく軽い。モデルに無い段はいちばん簡単な段になる。");
+
+            bool oneSided = next.meshOneSided;
+            if (ImGui::Checkbox("表からだけ当たる", &oneSided)) {
+                next.meshOneSided = oneSided;
+                collider.SetShape(next);
+                changed = true;
+            }
+            UI::Hint("裏から入った物は押し返さない（下からすり抜けられる床など）。");
+
+            // 状態と大きさ
+            collider.RefreshMesh();
+            if (const Geometry::TriangleMesh* const mesh = collider.GetMesh()) {
+                const Geometry::TriangleMeshStats& stats = mesh->Stats();
+                UI::HintF("三角形 %u（つぶれていて外した %u）・頂点 %u・%.1f MB・作るのに %.1f ms",
+                    stats.triangles, stats.removedTriangles, stats.vertices,
+                    static_cast<double>(stats.memoryBytes) / (1024.0 * 1024.0),
+                    static_cast<double>(stats.buildMilliseconds));
+            } else {
+                ImGui::TextColored(Editor::Theme::kWarn, "%s", ToDisplayText(collider.GetMeshStatus()));
+            }
+
+            const auto* const body = object.GetComponent<RigidbodyComponent>();
+            if (body && body->IsDynamic()) {
+                ImGui::TextColored(Editor::Theme::kWarn, "メッシュの形は動く剛体には使えません（ほかのメッシュと当たらず、すり抜けます）");
+            }
+            return changed;
+        }
+
         /// @brief 1 本ぶんの編集 UI
         bool DrawOne(GameObject& object, Collider& collider, int index)
         {
@@ -55,6 +149,11 @@ namespace ColliderInspector
                 CollisionShape next = shape;
                 if (InspectorLayout::EnumCombo("形状", next.type, kShapeNames)) {
                     collider.SetShape(next);
+                    // メッシュは止まっている物の形に当てるので、押し出す静止の形にする
+                    if (next.type == ColliderShapeType::Mesh) {
+                        collider.SetTrigger(false);
+                        collider.SetStatic(true);
+                    }
                     changed = true;
                 }
 
@@ -75,6 +174,8 @@ namespace ColliderInspector
                         collider.SetHeight(height);
                         changed = true;
                     }
+                } else if (shape.type == ColliderShapeType::Mesh) {
+                    changed |= DrawMeshSettings(object, collider);
                 } else {
                     Vector3 size = shape.size;
                     if (ImGui::DragFloat3("サイズ", &size.x, 0.01f, 0.0f, 1000.0f)) {
@@ -183,6 +284,11 @@ namespace ColliderInspector
             Vector3 offset{};
             FitBoxToSprite(object, 1.0f, size, offset);
             object.GetOrAddComponent<ColliderComponent>()->AddBox(size, CollisionLayer::Default, offset);
+            changed = true;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("メッシュを追加")) {
+            object.GetOrAddComponent<ColliderComponent>()->AddMesh();
             changed = true;
         }
         ImGui::SameLine();

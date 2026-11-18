@@ -317,8 +317,13 @@ namespace CoreEngine
         // 非アクティブ／削除マーク済みのスキップは ForEachComponent が行う。
         ForEachComponent<ColliderComponent>(
             [collisionWorld](ColliderComponent& colliders) {
+                colliders.RefreshMeshes();
                 // 1 オブジェクトが複数のコライダーを持てる（本体判定 + 攻撃判定など）
                 colliders.ForEachEnabled([collisionWorld](Collider& collider) {
+                    // 三角形がまだ無いメッシュの形は何とも当たらないので載せない
+                    if (collider.GetShapeType() == ColliderShapeType::Mesh && collider.GetMesh() == nullptr) {
+                        return;
+                    }
                     collisionWorld->RegisterCollider(&collider);
                     });
             });

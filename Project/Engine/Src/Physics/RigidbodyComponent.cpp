@@ -291,8 +291,10 @@ namespace CoreEngine
             return 0.5f;
         }
 
-        if (collider->GetShapeType() == ColliderShapeType::Box) {
-            const Vector3& size = collider->GetShape().size;
+        // メッシュは三角形を包む箱として見る
+        if (collider->GetShapeType() == ColliderShapeType::Box
+            || collider->GetShapeType() == ColliderShapeType::Mesh) {
+            const Vector3 size = collider->GetLocalBoxSize();
             return (std::min)({ size.x * std::abs(scale.x),
                                 size.y * std::abs(scale.y),
                                 size.z * std::abs(scale.z) }) * 0.5f;
@@ -317,8 +319,9 @@ namespace CoreEngine
         const Collider* const collider =
             GetOwner() ? GetColliderShape() : nullptr;
 
-        if (collider && collider->GetShapeType() == ColliderShapeType::Box) {
-            const Vector3& size = collider->GetShape().size;
+        if (collider && (collider->GetShapeType() == ColliderShapeType::Box
+                      || collider->GetShapeType() == ColliderShapeType::Mesh)) {
+            const Vector3 size = collider->GetLocalBoxSize();
             const Vector3 scaledSize{
                 size.x * std::abs(scale.x),
                 size.y * std::abs(scale.y),

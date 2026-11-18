@@ -1,0 +1,83 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "type": "Transform",
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    0.4,
+                    0.4,
+                    0.4
+                ],
+                "translate": [
+                    -3.0,
+                    1.0,
+                    -2.0
+                ]
+            }
+        },
+        {
+            "enabled": true,
+            "type": "MeshRenderer",
+            "parameters": {
+                "model": {
+                    "guid": "e16552a6-c74d-f458-71fe-2810a97c3777",
+                    "path": "Engine/Assets/Models/Primitives/Sphere/sphere.obj"
+                },
+                "materials": [
+                    {
+                        "color": [
+                            0.3,
+                            0.6,
+                            1.0,
+                            1.0
+                        ],
+                        "roughness": 0.8,
+                        "metallic": 0.0,
+                        "lighting": true
+                    }
+                ]
+            }
+        },
+        {
+            "enabled": true,
+            "type": "Collider",
+            "parameters": {
+                "shapes": [
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "static": false,
+                        "trigger": true,
+                        "type": "Sphere",
+                        "radius": 1.0
+                    }
+                ]
+            }
+        },
+        {
+            "enabled": true,
+            "type": "MeshTriggerProbe",
+            "parameters": {
+                "low": -0.1,
+                "high": 1.2,
+                "period": 3.0
+            }
+        }
+    ],
+    "id": "f3a07d9e6b2c1584",
+    "name": "TriggerBall",
+    "order": 6
+}

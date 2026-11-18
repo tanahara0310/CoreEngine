@@ -1,0 +1,133 @@
+{
+  "asset": {
+    "version": "2.0",
+    "generator": "make_mesh_course.py"
+  },
+  "scene": 0,
+  "scenes": [
+    {
+      "name": "Scene",
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "name": "MeshCourse",
+      "mesh": 0
+    }
+  ],
+  "meshes": [
+    {
+      "name": "MeshCourse",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 0,
+            "NORMAL": 1,
+            "TEXCOORD_0": 2,
+            "COLOR_0": 3
+          },
+          "indices": 4,
+          "material": 0
+        }
+      ]
+    }
+  ],
+  "materials": [
+    {
+      "name": "Course",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.8
+      }
+    }
+  ],
+  "accessors": [
+    {
+      "bufferView": 0,
+      "componentType": 5126,
+      "count": 4284,
+      "type": "VEC3",
+      "min": [
+        -12.5,
+        0.0,
+        -20.0
+      ],
+      "max": [
+        13.0,
+        2.6,
+        4.0
+      ]
+    },
+    {
+      "bufferView": 1,
+      "componentType": 5126,
+      "count": 4284,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 2,
+      "componentType": 5126,
+      "count": 4284,
+      "type": "VEC2"
+    },
+    {
+      "bufferView": 3,
+      "componentType": 5126,
+      "count": 4284,
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 4,
+      "componentType": 5125,
+      "count": 4284,
+      "type": "SCALAR"
+    }
+  ],
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteOffset": 0,
+      "byteLength": 51408,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 51408,
+      "byteLength": 51408,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 102816,
+      "byteLength": 34272,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 137088,
+      "byteLength": 68544,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 205632,
+      "byteLength": 17136,
+      "target": 34963
+    }
+  ],
+  "buffers": [
+    {
+      "byteLength": 222768,
+      "uri": "MeshCourse.bin"
+    }
+  ]
+}

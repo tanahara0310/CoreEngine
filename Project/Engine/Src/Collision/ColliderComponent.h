@@ -45,6 +45,14 @@ public:
     Collider& AddCapsule(float radius, float height, CollisionLayer layer = CollisionLayer::Default,
                          const Vector3& offset = {});
 
+    /// @brief 同じオブジェクトのモデルの三角形で当たるコライダーを追加する
+    /// @param lod 使う LOD の段（0 が原型）
+    /// @details トリガーなし・静止で付ける（止まっている物の形に当てるため）。
+    Collider& AddMesh(int lod = 0, CollisionLayer layer = CollisionLayer::Default);
+
+    /// @brief メッシュの形の三角形を取り直す（毎フレーム、当たりを調べる前に呼ぶ）
+    void RefreshMeshes();
+
     // ===== 衝突イベントの購読 =====
     // C++ から関数を渡して衝突に反応する入口。コンポーネントなら OnTriggerEnter などを上書きする。
     // 接触は `GameObject::NotifyCollision*` がここと有効なコンポーネントへ配る。
