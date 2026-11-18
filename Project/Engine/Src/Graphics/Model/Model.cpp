@@ -79,13 +79,9 @@ namespace CoreEngine
         return true;
     }
 
-    void Model::SetAnimationPlayer(std::unique_ptr<AnimationPlayer> player) {
-        animationPlayer_ = std::move(player);
-    }
-
-    void Model::UpdateSkinCluster(const Skeleton& skeleton) {
+    void Model::UpdateSkinCluster(std::span<const Matrix4x4> skeletonSpaceMatrices) {
         if (skinCluster_) {
-            SkinClusterGenerator::Update(*skinCluster_, skeleton);
+            SkinClusterGenerator::Update(*skinCluster_, skeletonSpaceMatrices);
         }
     }
 
@@ -317,18 +313,6 @@ namespace CoreEngine
             batch->Submit(key, mtx, materialCBV, surface ? surfaceSlot_ : nullptr);
         }
     }
-
-void Model::UpdateAnimation(float deltaTime) {
-    if (!animationPlayer_) return;
-
-    // アニメーション時刻を進める
-    animationPlayer_->Update(deltaTime);
-
-    // スケルトンの姿勢を SkinCluster のマトリックスパレットへ反映する（コピーなし・参照渡し）
-    if (const Skeleton* skel = animationPlayer_->GetSkeleton()) {
-        UpdateSkinCluster(*skel);
-    }
-}
 
 // ===== ModelDrawPacket 組み立て =====
 

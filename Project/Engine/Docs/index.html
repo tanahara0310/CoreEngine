@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.90.0">
+<meta name="engine-version" content="0.91.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -3127,6 +3127,7 @@ kbd {
       <tr><td>音</td><td><code>.wav</code> <code>.mp3</code></td><td>音の欄（AudioSource など）</td></tr>
       <tr><td>プレハブ</td><td><code>.prefab</code></td><td>Game ビュー（置く）・プレハブの欄</td></tr>
       <tr><td>マテリアル</td><td><code>.mat</code></td><td>スプライト描画と UI 画像の <span class="ui">マテリアル</span> の欄</td></tr>
+      <tr><td>アニメーター設定</td><td><code>.animator</code></td><td>Animator の <span class="ui">設定</span> の欄（ダブルクリックでアニメーターの窓が開く。<a href="#script-animator">アニメーター</a>）</td></tr>
       <tr><td>スクリプト</td><td><code>.as</code></td><td>（ドラッグでは使わない）</td></tr>
       <tr><td>データ</td><td><code>.json</code> <code>.csv</code></td><td>—</td></tr>
     </tbody>
@@ -3638,12 +3639,12 @@ kbd {
   </ul>
 
   <h2 id="export-json">JSON のバイナリ化</h2>
-  <p>シーン・プレハブ・マテリアル（<span class="path">.mat</span>）・物理の材質（<span class="path">.physmat</span>）・水面プロファイル（<span class="path">.waterprofile</span>）・<span class="path">.meta</span>・データ（<a href="#api-DataFile"><code>DataFile</code></a> の JSON）・プロジェクトの設定など、中身が JSON のファイルは、書き出すときに <strong>MessagePack</strong>（JSON と同じ中身をバイナリにした形）へ変換して、同じ名前で書きます。書き出したゲームはこれを読みます。遊ぶ人がメモ帳で開いても中身は読めず、ファイルも小さくなります。暗号ではないので、書き換えを完全に防ぐものではありません。</p>
+  <p>シーン・プレハブ・マテリアル（<span class="path">.mat</span>）・物理の材質（<span class="path">.physmat</span>）・水面プロファイル（<span class="path">.waterprofile</span>）・アニメーター設定（<span class="path">.animator</span>）・<span class="path">.meta</span>・データ（<a href="#api-DataFile"><code>DataFile</code></a> の JSON）・プロジェクトの設定など、中身が JSON のファイルは、書き出すときに <strong>MessagePack</strong>（JSON と同じ中身をバイナリにした形）へ変換して、同じ名前で書きます。書き出したゲームはこれを読みます。遊ぶ人がメモ帳で開いても中身は読めず、ファイルも小さくなります。暗号ではないので、書き換えを完全に防ぐものではありません。</p>
   <div class="table-wrap">
   <table>
     <thead><tr><th>ファイル</th><th>書き出したゲーム</th></tr></thead>
     <tbody>
-      <tr><td><span class="path">.json</span>・<span class="path">.prefab</span>・<span class="path">.mat</span>・<span class="path">.physmat</span>・<span class="path">.waterprofile</span>・<span class="path">.meta</span></td><td>MessagePack に変換して書く（名前は変えない）</td></tr>
+      <tr><td><span class="path">.json</span>・<span class="path">.prefab</span>・<span class="path">.mat</span>・<span class="path">.physmat</span>・<span class="path">.waterprofile</span>・<span class="path">.animator</span>・<span class="path">.meta</span></td><td>MessagePack に変換して書く（名前は変えない）</td></tr>
       <tr><td><span class="path">CookManifest.json</span></td><td>テキストの JSON のまま（変換したものの一覧）</td></tr>
       <tr><td><span class="path">CookedTextureAliases.txt</span></td><td>テキストのまま（1 つにまとめた DDS の一覧）</td></tr>
       <tr><td>スクリプトの <a href="#api-SaveFile"><code>SaveFile</code></a> が書くセーブデータ</td><td>遊ぶ人の PC でテキストの JSON のまま書く</td></tr>
@@ -6026,6 +6027,123 @@ kbd {
     }
   </script>
   <p><code>Scene::ChangeScene</code> 自体にも、短い読み込みの暗転が入ります（<a href="#script-scenes">シーンの切り替え</a>）。</p>
+</article>
+
+<article class="page" id="script-animator" data-group="スクリプト" data-title="アニメーター（状態でアニメーションを切り替える）" data-nav="アニメーター" data-keywords="アニメーター animator animator controller アニメーター設定 .animator 状態 ステートマシン state machine 遷移 transition 矢印 条件 パラメータ parameter float int bool trigger トリガー setfloat setint setbool settrigger resettrigger play crossfade isinstate currentstate normalizedtime isintransition 終わりの時刻 exit time どこからでも any state 混ぜる ブレンド 待機 歩き 走り 攻撃 ジャンプ 落下 クリップ clip 骨 スケルトン 再生中 光る">
+  <h1>アニメーター</h1>
+  <p class="lead">骨の入ったモデルのアニメーションを、「状態」と「遷移」の表で切り替えます。スクリプトは速さやボタンの値（パラメータ）を書くだけで、どのアニメーションへいつ移るかはアニメーターの窓で組みます。</p>
+
+  <h2 id="anim-basics">考え方</h2>
+  <ul>
+    <li><strong>状態</strong>：「待機」「歩き」「攻撃」のように、1 本のアニメーション（クリップ）を流している状態です。キャンバスの箱 1 つが状態 1 つで、橙の箱が最初の状態です。</li>
+    <li><strong>遷移</strong>：状態から状態への矢印です。条件がそろうと、決めた秒数で混ぜながら移ります。</li>
+    <li><strong>パラメータ</strong>：遷移の条件に使う値です。数（Float）・整数（Int）・真偽（Bool）・トリガー（Trigger）の 4 種類があり、スクリプトから書きます。</li>
+    <li><strong>どこからでも</strong>：水色の箱です。ここから出る遷移は、どの状態にいても調べます（落下・やられなど）。</li>
+  </ul>
+  <p>設定は <span class="path">名前.animator</span> のファイル 1 つに入ります。同じ設定を何体ものキャラで使え、パラメータの値と今の状態はキャラごとに別です。</p>
+
+  <h2 id="anim-first">はじめての設定：待機・歩き・攻撃</h2>
+  <ol class="steps">
+    <li><strong>設定を作る</strong>Project の一覧の空いている所を右クリックし、<span class="ui">アニメーター設定を作成...</span> を選びます。名前は <code>Player</code> にして <span class="ui">作成</span> を押すと、<span class="path">Player.animator</span> ができて、アニメーターの窓が開きます。あとから開くときは、Project でダブルクリックします。</li>
+    <li><strong>モデルを落とす</strong>アニメーションの入ったモデル（<span class="path">.gltf</span> など）を、Project からキャンバスへドラッグします。中のアニメーション 1 本ごとに状態ができ、左のクリップの表にも入ります。最初にできた状態が、最初の状態（橙）になります。</li>
+    <li><strong>パラメータを足す</strong>左の <span class="ui">パラメータを足す</span> で、数の <code>Speed</code> とトリガーの <code>Attack</code> を足します。</li>
+    <li><strong>遷移を引く</strong>Idle の箱を右クリックして <span class="ui">遷移を引く</span> を選び、Walk の箱をクリックします。同じように Walk → Idle・Idle → Attack・Attack → Idle も引きます。</li>
+    <li><strong>条件を決める</strong>矢印をクリックすると、右に遷移の設定が出ます。<span class="ui">条件を足す</span> で、Idle → Walk は <code>Speed &gt; 0.1</code>、Walk → Idle は <code>Speed &lt; 0.1</code>、Idle → Attack は <code>Attack</code>（トリガー）にします。Attack → Idle は条件なしで <span class="ui">終わりの時刻で移る</span> を入れ、<code>0.9</code> にします（攻撃を 9 割まで流したら待機へ戻ります）。</li>
+    <li><strong>攻撃はループしない</strong>Attack の箱を選び、右の <span class="ui">ループ</span> を外します。</li>
+    <li><strong>保存する</strong><kbd>Ctrl</kbd>+<kbd>S</kbd> か <span class="ui">保存</span> を押します。</li>
+    <li><strong>キャラに付ける</strong>キャラのオブジェクト（メッシュ描画にそのモデルを付けた物）に Animator（<a href="#api-Animator">アニメーション</a>）を付け、Project の <span class="path">Player.animator</span> を Animator の <span class="ui">設定</span> の欄へドラッグします。</li>
+  </ol>
+  <p>あとはスクリプトでパラメータを書きます。今どの状態にいるかを気にせず、毎フレーム書いてかまいません。</p>
+  <script type="text/x-code" data-lang="as" data-file="PlayerAnimation.as">
+    using namespace CoreEngine;
+
+    // 実際に進んだ速さとボタンを、アニメーターのパラメータへ書く
+    class PlayerAnimation : ScriptComponent
+    {
+        private Vector3 lastPosition_;
+
+        void Start()
+        {
+            lastPosition_ = owner.transform.position;
+        }
+
+        void Update()
+        {
+            const float dt = Time::DeltaTime();
+            if (dt <= 0.0f) {
+                return;
+            }
+            Vector3 moved = owner.transform.position - lastPosition_;
+            lastPosition_ = owner.transform.position;
+            moved.y = 0.0f;
+            owner.animator.SetFloat("Speed", Length(moved) / dt);
+
+            if (Input::IsActionTriggered(InputAction::Attack)) {
+                owner.animator.SetTrigger("Attack");
+            }
+        }
+    }
+  </script>
+  <p>今の状態は <code>owner.animator.currentState</code>（名前）か <code>IsInState("Attack")</code> で分かります。攻撃中は動けないようにする、といった分け方に使います。</p>
+
+  <h2 id="anim-window">窓の操作</h2>
+  <p>窓は、左がパラメータとクリップの表、真ん中がキャンバス、右が選んだもの（状態・遷移・何も選んでいなければ設定全体）の設定です。窓は <span class="ui">Window<span class="arrow">▸</span>General<span class="arrow">▸</span>Animator</span> でも出せます（開いていた設定のタブが並びます）。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>やりたいこと</th><th>操作</th></tr></thead>
+    <tbody>
+      <tr><td>状態を作る</td><td>キャンバスの空いた所を右クリック ▸ <span class="ui">状態を作る</span>。<span class="ui">クリップから状態を作る</span> では表のクリップを選んで作ります。左のクリップをキャンバスへドラッグしても作れます</td></tr>
+      <tr><td>遷移を引く</td><td>状態を右クリック ▸ <span class="ui">遷移を引く</span> のあと、移る先の状態をクリック（やめるときは右クリックか <kbd>Esc</kbd>）。状態を選んだときの右の <span class="ui">遷移を引く</span> でも同じです</td></tr>
+      <tr><td>最初の状態を変える</td><td>状態を右クリック ▸ <span class="ui">最初の状態にする</span></td></tr>
+      <tr><td>消す</td><td>選んで <kbd>Delete</kbd>、または右クリック ▸ <span class="ui">消す</span>。状態を消すと、その状態に出入りする遷移も消えます</td></tr>
+      <tr><td>見る場所を動かす</td><td>箱はドラッグで動かします。キャンバスは中ボタンか空いた所の左ドラッグで動かし、ホイールで拡大縮小します。<span class="ui">全体を見る</span> で全部が入る大きさに戻ります</td></tr>
+      <tr><td>名前を変える</td><td>状態・パラメータ・クリップの名前の欄で書き換えます。遷移・条件・最初の状態の指す名前も一緒に変わります</td></tr>
+      <tr><td>クリップを足す</td><td>モデルを左の <span class="ui">モデルをここへドラッグ</span> へ落とす（中のアニメーションを全部足す）。<span class="ui">空のクリップを足す</span> のあと、ファイルと <span class="ui">中の名前</span> を選んでも足せます</td></tr>
+      <tr><td>戻す・やり直す</td><td><kbd>Ctrl</kbd>+<kbd>Z</kbd>・<kbd>Ctrl</kbd>+<kbd>Y</kbd>（エディタの Undo と同じ）</td></tr>
+      <tr><td>保存する</td><td><kbd>Ctrl</kbd>+<kbd>S</kbd> か <span class="ui">保存</span>。保存していない変更があると、タブに印が付き、閉じるときに聞かれます</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>同じ 2 つの状態の間の行きと帰りの矢印は、少しずらした 2 本の線で描きます。同じ向きに 2 本以上あると、矢印の横に <code>×2</code> のように本数が出ます。</p>
+
+  <h2 id="anim-rules">遷移の決まり</h2>
+  <ul>
+    <li><strong>調べる順番</strong>：毎フレーム、アニメーションの時刻を進めてから、先に「どこからでも」の遷移、次に今の状態から出る遷移を、右の一覧の上から順に調べます。最初に条件がそろった 1 本で移ります。順番は、状態を選んだときの <span class="ui">出ていく遷移</span> の ▲▼ で入れ替えます。</li>
+    <li><strong>条件は全部そろったときだけ</strong>：条件が 2 つ以上あれば、全部そろったときに移ります。「どれか 1 つ」にしたいときは、同じ 2 つの状態の間に遷移を 2 本引きます。</li>
+    <li><strong>比べ方</strong>：数は <code>&gt;</code>・<code>&lt;</code>、整数は <code>&gt;</code>・<code>&lt;</code>・<code>==</code>・<code>!=</code>、真偽は true・false です。トリガーは立っているときにそろいます。</li>
+    <li><strong>トリガー</strong>：<code>SetTrigger</code> で立て、それを条件にした遷移で移ったときに自動で下ります。移れないうちは立ったままなので、要らなくなったら <code>ResetTrigger</code> で下ろします。</li>
+    <li><strong>終わりの時刻</strong>：<span class="ui">終わりの時刻で移る</span> を入れた遷移は、元の状態の進みの割合（1 で 1 回分の終わり）が <span class="ui">終わりの時刻</span> を過ぎてから移ります。条件もあれば、両方そろったときです。ループする状態では、どの周回でも効きます。</li>
+    <li><strong>混ぜる秒数と先の始まり</strong>：<span class="ui">混ぜる秒数</span> の間、元と先の姿勢を混ぜます（0 ならすぐ切り替わります）。<span class="ui">先の始まり</span> は、移った先のクリップをどの割合から流すかです。</li>
+    <li><strong>混ぜている途中</strong>：遷移の途中は次の遷移を調べず、混ぜ終わってから調べます。スクリプトの <code>Play</code>・<code>CrossFade</code> は途中でも効き、その時の姿勢から混ぜ直します。</li>
+    <li><strong>どこからでも</strong>：今の状態そのものへは移りません（落下の途中に落下へ移り直しません）。</li>
+    <li><strong>状態の速さとループ</strong>：状態ごとの <span class="ui">速さ</span>（負なら逆向き）と <span class="ui">ループ</span> で流し方を決めます。ループしない状態は、最後のコマで止まります。Animator の <span class="ui">速さ</span> は全部の状態に掛かる倍率です。</li>
+  </ul>
+
+  <h2 id="anim-play">再生中に見る・値を変える</h2>
+  <ol class="steps">
+    <li>アニメーターの窓で設定を開いたまま、再生します。</li>
+    <li>Hierarchy で、その設定を Animator の <span class="ui">設定</span> に入れたオブジェクトを選びます。</li>
+    <li>今の状態の箱が光り、箱の下に進み具合の帯が出ます。遷移の途中は、その矢印が緑になります。</li>
+    <li>左のパラメータが今の値になり、変えるとそのオブジェクトの動きにすぐ効きます。トリガーは <span class="ui">立てる</span> を押すと立ちます。止めると元の値に戻ります。スクリプトが毎フレーム書いている値は、すぐ書き戻されます。</li>
+  </ol>
+  <p>再生中に設定を保存し直すと、その設定を使っているオブジェクトは最初の状態からやり直します。パラメータの値は、名前と種類が同じものだけ引き継ぎます。</p>
+
+  <h2 id="anim-clips">設定を使わないとき</h2>
+  <p>Animator の <span class="ui">設定</span> を空にしておくと、シーンやプレハブの JSON の <code>clips</code> に書いたクリップを、スクリプトの <code>Switch</code>・<code>SwitchWithBlend</code> で名前を指して切り替えます（<a href="#g3d-anim">アニメーション</a> の見本）。クリップ 1 本ずつが状態になり、最初のクリップから流れます。設定を入れたときは、<code>Switch</code>・<code>SwitchWithBlend</code> に渡した名前を状態の名前として扱います（<code>Play</code>・<code>CrossFade</code> と同じ）。</p>
+
+  <h2 id="anim-trouble">困ったとき</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>こうなる</th><th>見るところ</th></tr></thead>
+    <tbody>
+      <tr><td>動かない・最初の状態のまま</td><td>Animator の <span class="ui">設定</span> に .animator が入っているか。設定を保存したか。遷移の条件のパラメータの名前と、スクリプトで書いている名前が同じか（違うと Console に「パラメータ「…」がありません」が 1 回出ます）</td></tr>
+      <tr><td>攻撃から戻らない</td><td>戻る遷移の <span class="ui">終わりの時刻で移る</span> が入っているか。条件が残っていないか</td></tr>
+      <tr><td>攻撃が何度も出る</td><td>トリガーではなく真偽のパラメータを使っていないか。真偽は下ろすまで条件がそろったままです</td></tr>
+      <tr><td>ポーズが崩れる・一部の骨が動かない</td><td>クリップのファイルが、Animator が付いたモデルと同じ骨（同じ名前）を持っているか。そのクリップに動きの無い骨は、骨の初期の姿勢になります</td></tr>
+      <tr><td>再生中に窓が今の状態を映さない</td><td>Hierarchy でそのオブジェクトを選んでいるか。窓で開いている設定と、Animator の <span class="ui">設定</span> が同じファイルか</td></tr>
+    </tbody>
+  </table>
+  </div>
 </article>
 
 <article class="page" id="script-material" data-group="スクリプト" data-title="マテリアルとシェーダ（スプライト・UI 画像）" data-nav="マテリアルとシェーダ" data-keywords="マテリアル material mat シェーダ shader hlsl ピクセルシェーダ 独自 自作 光る 点滅 グロー ディゾルブ 効果 shadermaterial setmaterialfloat setmaterialvector 上書き 共有 スプライト ui 画像 定数バッファ cbuffer constantbuffer spritematerial.hlsli コマ割り">
@@ -10273,19 +10391,47 @@ kbd {
   <p>光線で当たるのはコライダーを持つ物だけです。クリックで選びたい物には、トリガーのコライダーを付けておきます。範囲の中にいる物をまとめて集めるときは <code>Physics::OverlapSphere</code>（<a href="#g3d-extra">演出</a> の爆発の例）を使います。</p>
 
   <h2 id="g3d-anim">アニメーション</h2>
-  <p>骨の入った glTF モデルのアニメーションは、<a href="#api-Animator">アニメーション</a> コンポーネントが再生します。クリップの一覧（名前とモデルの中のアニメーション名の対応）は、シーンやプレハブの JSON の <code>clips</code> に書きます（サンプル TestBed の <span class="path">Prefabs/Physics/HumanModel.prefab</span> が見本）。スクリプトからは名前で切り替えます。</p>
+  <p>骨の入った glTF モデルのアニメーションは、<a href="#api-Animator">アニメーション</a> コンポーネントが再生します。どのアニメーションへいつ移るかは、アニメーター設定（<span class="path">.animator</span>）の状態と遷移で決めます。作り方は <a href="#script-animator">アニメーター</a> にあります。スクリプトは、遷移の条件に使うパラメータを書くだけです。</p>
   <script type="text/x-code" data-lang="as" data-file="LocomotionAnimation3D.as">
     using namespace CoreEngine;
 
-    // 1 秒あたりの移動量から idle・walk・run を選び、混ぜながら切り替える
+    // 1 秒あたりの移動量と接地を、アニメーターのパラメータへ書く
+    // 設定には Speed（数）・Grounded（真偽）・Jump（トリガー）を足しておく
     class LocomotionAnimation3D : ScriptComponent
     {
-        [Tooltip("これより速いと walk（m/s）")]
-        float walkThreshold = 0.2f;
+        private Vector3 lastPosition_;
 
-        [Tooltip("これより速いと run（m/s）")]
-        float runThreshold = 4.5f;
+        void Start()
+        {
+            lastPosition_ = owner.transform.position;
+        }
 
+        void Update()
+        {
+            const float dt = Time::DeltaTime();
+            if (dt <= 0.0f) {
+                return;
+            }
+            Vector3 moved = owner.transform.position - lastPosition_;
+            lastPosition_ = owner.transform.position;
+            moved.y = 0.0f;
+
+            owner.animator.SetFloat("Speed", Length(moved) / dt);
+            owner.animator.SetBool("Grounded", owner.characterController.grounded);
+            if (owner.characterController.grounded && Input::IsActionTriggered(InputAction::Jump)) {
+                owner.animator.SetTrigger("Jump");
+            }
+        }
+    }
+  </script>
+  <p>設定の遷移は、たとえば Idle → Walk を <code>Speed &gt; 0.2</code>、Walk → Run を <code>Speed &gt; 4.5</code>、「どこからでも」→ Fall を <code>Grounded</code> が false、にします。パラメータは毎フレーム書いてかまいません（同じ値なら何も起きません）。</p>
+  <p>設定を使わずに、スクリプトから名前でクリップを切り替えることもできます。Animator の <span class="ui">設定</span> を空にして、クリップの一覧（名前とモデルの中のアニメーション名の対応）をシーンやプレハブの JSON の <code>clips</code> に書きます（サンプル TestBed の <span class="path">Prefabs/Physics/HumanModel.prefab</span> が見本）。</p>
+  <script type="text/x-code" data-lang="as" data-file="LocomotionClips3D.as">
+    using namespace CoreEngine;
+
+    // 設定を使わない Animator で、速さから idle・walk を選び、変わったときだけ混ぜながら切り替える
+    class LocomotionClips3D : ScriptComponent
+    {
         private Vector3 lastPosition_;
         private string current_ = "";
 
@@ -10303,14 +10449,7 @@ kbd {
             Vector3 moved = owner.transform.position - lastPosition_;
             lastPosition_ = owner.transform.position;
             moved.y = 0.0f;
-            const float speed = Length(moved) / dt;
-
-            string clip = "idle";
-            if (speed > runThreshold) {
-                clip = "run";
-            } else if (speed > walkThreshold) {
-                clip = "walk";
-            }
+            const string clip = Length(moved) / dt > 0.2f ? "walk" : "idle";
             if (clip != current_) {
                 current_ = clip;
                 owner.animator.SwitchWithBlend(clip, 0.25f, true);
@@ -10318,7 +10457,7 @@ kbd {
         }
     }
   </script>
-  <p>切り替えは、変わったときだけ呼びます。<code>SwitchWithBlend</code> は呼ぶたびに混ぜ始めるので、毎フレーム呼ぶと切り替わりません。</p>
+  <p><code>SwitchWithBlend</code> は呼ぶたびに混ぜ始めるので、変わったときだけ呼びます。毎フレーム呼ぶと切り替わりません。</p>
 
   <h2 id="g3d-spawn">敵を出す・消す</h2>
   <p>プレハブから作る手順は 2D と同じです（<a href="#g2d-spawn">弾や敵を出す・消す</a>）。次は、決まった間隔で、まわりのランダムな位置に敵を出すスクリプトです。</p>
@@ -10432,7 +10571,7 @@ kbd {
       <tr><td>物の影が出ない・水面に映らない</td><td>メッシュ描画の <span class="ui">影を落とす</span>・<span class="ui">反射・屈折に映る</span>。<span class="ui">ブレンド</span> が <span class="ui">なし</span> 以外の物は、<span class="ui">自動</span> のままだと影を落とさず映りません（<a href="#g3d-shadow">影と映り込み</a>）</td></tr>
       <tr><td>キャラクターが落ちない・動かない</td><td>スクリプトから毎フレーム <code>SimpleMove</code> を呼んでいるか</td></tr>
       <tr><td>キャラクターや物が床を突き抜ける</td><td>コライダーの <span class="ui">トリガー</span> を外したか</td></tr>
-      <tr><td>アニメーションが切り替わらない</td><td>クリップの名前が JSON の <code>clips</code> と同じか。<code>SwitchWithBlend</code> を毎フレーム呼んでいないか</td></tr>
+      <tr><td>アニメーションが切り替わらない</td><td>設定を使うときは、遷移の条件のパラメータの名前とスクリプトで書く名前が同じか（<a href="#anim-trouble">アニメーターで困ったとき</a>）。設定を使わないときは、クリップの名前が JSON の <code>clips</code> と同じか、<code>SwitchWithBlend</code> を毎フレーム呼んでいないか</td></tr>
       <tr><td>クリックしても何も当たらない</td><td>対象にコライダーがあるか。光線の長さ（<code>maxDistance</code>）</td></tr>
     </tbody>
   </table>
@@ -11575,6 +11714,7 @@ python Tools/OkinawaBeach/bake_araha_walk.py
       <tr><td>物理マテリアル</td><td><span class="path">.physmat</span>（<a href="#api-PhysicsMaterial">書き方</a>）</td></tr>
       <tr><td>水面プロファイル</td><td><span class="path">.waterprofile</span>（<a href="#api-WaterSurface">水面</a>のインスペクタで作る）</td></tr>
       <tr><td>マテリアル（スプライト・UI 画像）</td><td><span class="path">.mat</span>（<a href="#format-material">書き方</a>）・シェーダは <span class="path">.hlsl</span></td></tr>
+      <tr><td>アニメーター設定</td><td><span class="path">.animator</span>（JSON。<a href="#script-animator">アニメーター</a> の窓で作る）</td></tr>
     </tbody>
   </table>
   </div>
@@ -11645,6 +11785,17 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-91-0">v0.91.0 <span class="dim">（2026-11-18）</span></h3>
+  <p>骨のアニメーションを、状態と遷移の表で切り替えられるようにした版です（<a href="#script-animator">アニメーター</a>）。設定を使わない Animator は、これまでと同じ姿勢で動きます。</p>
+  <ul>
+    <li><strong>アニメーター設定</strong>：状態（流すクリップ・速さ・ループ）・遷移（条件・混ぜる秒数・終わりの時刻・先の始まり）・パラメータ（数・整数・真偽・トリガー）・クリップの表を、<span class="path">.animator</span> のファイル 1 つに入れます。Project の右クリックの <span class="ui">アニメーター設定を作成...</span> で作り、Animator の <span class="ui">設定</span> の欄へドラッグして使います。</li>
+    <li><strong>アニメーターの窓</strong>：状態を箱、遷移を箱から箱への矢印で描くキャンバスで組みます。モデルをキャンバスへ落とすと、中のアニメーション 1 本ごとに状態を作ります。Undo・<kbd>Ctrl</kbd>+<kbd>S</kbd> で保存。再生中は、選んだオブジェクトの今の状態と遷移が光り、パラメータをその場で変えられます。</li>
+    <li><strong>スクリプト</strong>：<a href="#api-Animator">Animator</a> に <code>SetFloat</code>・<code>SetInt</code>・<code>SetBool</code>・<code>SetTrigger</code>・<code>ResetTrigger</code>（と <code>Get</code> の 3 つ）・<code>Play</code>・<code>CrossFade</code>・<code>IsInState</code>・<code>currentState</code>・<code>normalizedTime</code>・<code>isInTransition</code>・<code>controller</code>・<code>speed</code> を足しました。<span class="path">as.predefined</span> も作り直しました。</li>
+    <li><strong>姿勢の計算の作り直し</strong>：クリップから姿勢を作る・混ぜる・骨の行列にする処理を 1 か所にまとめ、クリップは読み込んだものを共有します。設定を使わない Animator の <code>Switch</code>・<code>SwitchWithBlend</code> は、前の版と毎フレーム同じ骨の行列になるのを確かめました。違うのは 2 つです。クリップの中に動きの無い骨は、切り替えた時の姿勢ではなく骨の初期の姿勢になります。混ぜている途中にもう一度 <code>SwitchWithBlend</code> を呼ぶと、その時の姿勢から混ぜ直します。</li>
+    <li><strong>書き出し</strong>：<span class="path">.animator</span> は MessagePack にして入れます。書き出すシーンを選んだときは、設定が指すクリップのファイルも入れます。</li>
+    <li><strong>試験のシーン</strong>：<span class="path">Projects/EngineTests</span> に <code>Animator_StateMachine</code>（箱をつないだ骨入りの人形 AnimRobot が、待機・歩き・走り・攻撃・ジャンプ・落下を表の時刻で切り替える。隣に設定を使わない人形）を足しました。</li>
+  </ul>
 
   <h3 id="changelog-v0-90-0">v0.90.0 <span class="dim">（2026-11-17）</span></h3>
   <p>オブジェクトにタグを付けられるようにした版です（<a href="#script-tags">タグで見分ける</a>）。タグを使わないシーン・プレハブ・スクリプトは、これまでと同じに動きます。</p>
@@ -18156,26 +18307,77 @@ class PlayerWalker : ScriptComponent
   {
     id: "Animator", kind: "component", cat: "アニメーション", display: "アニメーション", type: "Animator",
     accessor: "owner.animator", title: "アニメーション（Animator）", brief: "モデルのアニメーション",
-    keywords: "アニメーション スケルトン ボーン モーション 歩く 走る gltf クリップ 切り替え",
-    summary: "glTF モデルに入っている骨のアニメーションを再生します。同じオブジェクトのメッシュ描画を動かします。",
+    keywords: "アニメーション スケルトン ボーン モーション 歩く 走る gltf クリップ 切り替え アニメーター 状態 遷移 パラメータ トリガー animator",
+    summary: "glTF モデルに入っている骨のアニメーションを再生します。アニメーター設定の状態と遷移で切り替え、同じオブジェクトのメッシュ描画を動かします。",
     props: [
-      ["モデル", "model", "string", "", "アニメーションの入ったモデルのパス（例：<code>Application/Assets/Models/human/walk.gltf</code>）。"]
+      ["設定", "controller", "string", "", "アニメーター設定（<span class=\"path\">.animator</span>）のパス。Project からドラッグします。入れ替えると最初の状態から作り直します。空なら <code>clips</code> のクリップを名前で切り替えます。"],
+      ["モデル", "model", "string", "", "アニメーションの入ったモデルのパス（例：<code>Application/Assets/Models/human/walk.gltf</code>）。空なら、同じオブジェクトのメッシュ描画のモデルを使います。"],
+      ["速さ", "speed", "float", "1", "全部の状態に掛かる速さの倍率。"],
+      ["今の状態", "currentState", "string", "", "読み取り専用。今の状態の名前（遷移の途中なら移る先）。"],
+      ["進み", "normalizedTime", "float", "", "読み取り専用。今の状態の進みの割合（ループの中の 0〜1）。"],
+      ["遷移の途中", "isInTransition", "bool", "", "読み取り専用。混ぜながら移っている途中か。"]
     ],
     sections: [
       {
-        title: "操作（スクリプト）",
-        text: "<p>スクリプトからは引数を省略できません（すべて書きます）。</p>",
+        title: "パラメータ（設定を使うとき）",
+        text: "<p>遷移の条件に使う値を書きます。名前は設定のパラメータと同じにします。無い名前や違う種類を書くと、Console に 1 回だけ警告が出ます。</p>",
+        members: [
+          { n: "SetFloat", s: "void SetFloat(const string&in name, float value)", t: "m", d: "数のパラメータを書きます。" },
+          { n: "GetFloat", s: "float GetFloat(const string&in name)", t: "m", d: "数のパラメータを読みます。" },
+          { n: "SetInt", s: "void SetInt(const string&in name, int value)", t: "m", d: "整数のパラメータを書きます。" },
+          { n: "GetInt", s: "int GetInt(const string&in name)", t: "m", d: "整数のパラメータを読みます。" },
+          { n: "SetBool", s: "void SetBool(const string&in name, bool value)", t: "m", d: "真偽のパラメータを書きます。" },
+          { n: "GetBool", s: "bool GetBool(const string&in name)", t: "m", d: "真偽のパラメータを読みます。" },
+          { n: "SetTrigger", s: "void SetTrigger(const string&in name)", t: "m", d: "トリガーを立てます。それを条件にした遷移で移ると自動で下ります。" },
+          { n: "ResetTrigger", s: "void ResetTrigger(const string&in name)", t: "m", d: "立てたトリガーを、移る前に下ろします。" }
+        ]
+      },
+      {
+        title: "状態",
+        members: [
+          { n: "Play", s: "void Play(const string&in state)", t: "m", d: "状態をすぐ切り替えます（遷移の条件は見ません）。" },
+          { n: "CrossFade", s: "void CrossFade(const string&in state, float seconds)", t: "m", d: "seconds 秒かけて混ぜながら状態を切り替えます。遷移の途中でも、その時の姿勢から混ぜ直します。" },
+          { n: "IsInState", s: "bool IsInState(const string&in state)", t: "m", d: "今の状態がその名前か（遷移の途中なら移る先で比べます）。" }
+        ]
+      },
+      {
+        title: "クリップの切り替え（設定を使わないとき）",
+        text: "<p>スクリプトからは引数を省略できません（すべて書きます）。設定を使っているときは、名前を状態の名前として扱い、<code>loop</code> は状態の設定のままです。</p>",
         members: [
           { n: "Switch", s: "bool Switch(const string&in name, bool loop)", t: "m", d: "クリップをすぐに切り替えます。" },
-          { n: "SwitchWithBlend", s: "bool SwitchWithBlend(const string&in name, float duration, bool loop)", t: "m", d: "duration 秒かけて混ぜながら切り替えます（0.3 秒ほどが自然）。" },
-          { n: "GetCurrentClipName", s: "string GetCurrentClipName()", t: "m", d: "再生中のクリップの名前。" }
+          { n: "SwitchWithBlend", s: "bool SwitchWithBlend(const string&in name, float duration, bool loop)", t: "m", d: "duration 秒かけて混ぜながら切り替えます（0.3 秒ほどが自然）。混ぜている途中に呼ぶと、その時の姿勢から混ぜ直します。" },
+          { n: "GetCurrentClipName", s: "string GetCurrentClipName()", t: "m", d: "再生中のクリップの名前（設定を使っていれば状態の名前）。" }
         ]
       }
     ],
-    notes: "<ul><li>クリップの一覧（名前とモデル内のアニメーション名の対応）はインスペクタでは編集できず、保存データ（シーンやプレハブの JSON）の <code>clips</code> に書きます。サンプル TestBed の <span class=\"path\">Prefabs/Physics/HumanModel.prefab</span> が見本です。</li><li>最初のクリップは自動で再生されます。停止中（編集中）は、最初のクリップの最初のコマの姿勢で見えます。</li></ul>",
+    notes: "<ul><li>状態と遷移の作り方は <a href=\"#script-animator\">アニメーター</a> にあります。</li><li>設定を使わないときのクリップの一覧（名前とモデル内のアニメーション名の対応）はインスペクタでは編集できず、保存データ（シーンやプレハブの JSON）の <code>clips</code> に書きます。サンプル TestBed の <span class=\"path\">Prefabs/Physics/HumanModel.prefab</span> が見本です。</li><li>停止中（編集中）は、最初の状態のクリップの最初のコマの姿勢で見えます。</li><li>クリップの中に動きの無い骨は、骨の初期の姿勢になります。</li></ul>",
     examples: [
       {
-        title: "例：止まる・歩くを切り替える",
+        title: "例：速さと攻撃のボタンをパラメータへ書く",
+        code: `
+void Update()
+{
+    const Vector2 stick = Input::GetAxis2D(InputAction::MoveLeft, InputAction::MoveRight,
+                                           InputAction::MoveBack, InputAction::MoveForward);
+    owner.animator.SetFloat("Speed", Length(stick) * 5.0f);
+    if (Input::IsActionTriggered(InputAction::Attack)) {
+        owner.animator.SetTrigger("Attack");
+    }
+}`
+      },
+      {
+        title: "例：攻撃の状態の間は動かない",
+        code: `
+void Update()
+{
+    if (owner.animator.IsInState("Attack")) {
+        return;
+    }
+    // ここに移動の処理
+}`
+      },
+      {
+        title: "例：設定を使わずに止まる・歩くを切り替える",
         code: `
 private bool walking_ = false;
 
@@ -18191,7 +18393,7 @@ void Update()
 }`
       }
     ],
-    see: [["api-MeshRenderer", "メッシュ描画"]]
+    see: [["api-MeshRenderer", "メッシュ描画"], ["script-animator", "アニメーター"]]
   },
 
   // =================================================================== サウンド

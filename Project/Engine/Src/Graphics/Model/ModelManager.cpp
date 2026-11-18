@@ -14,8 +14,7 @@
 #include "Graphics/Material/SurfaceMaterialPipeline.h"
 #include "Diagnostics/EngineStats.h"
 #include "Animation/AnimationLoader.h"
-#include "Animation/AnimationPlayer.h"
-#include "Animation/SkeletonAnimatorFactory.h"
+#include "Animation/PoseEvaluator.h"
 #include "Threading/ThreadBudget.h"
 #include "Threading/ThreadPool.h"
 #include "Utility/Logger/Logger.h"
@@ -119,11 +118,7 @@ namespace CoreEngine
         return instance;
     }
 
-    std::unique_ptr<Model> ModelManager::CreateSkeletonModel(
-        const std::string& filePath,
-        const std::string& animationName,
-        bool loop
-    )
+    std::unique_ptr<Model> ModelManager::CreateSkinnedModel(const std::string& filePath, const Animation* initialPose)
     {
         assert(IsInitialized());
 
@@ -143,64 +138,88 @@ namespace CoreEngine
         // スケルトンがない場合は静的モデルとして返す
         if (!resource->GetSkeleton()) {
             Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "{}",
-                "CreateSkeletonModel: model has no skeleton, created as static model: " + filePath);
+                "CreateSkinnedModel: model has no skeleton, created as static model: " + filePath);
+            return instance;
+        }
+        if (!instance->EnableSkinning()) {
             return instance;
         }
 
-        // アニメーションを取得（名前が空の場合は最初のアニメーション）
-        const Animation* animation = resource->GetAnimation(animationName);
-        if (!animation) {
-            // アニメーションが見つからない場合は静的モデルとして返す
-            Logger::GetInstance().Logf(LogLevel::WARNING, LogCategory::Graphics, "{}",
-                "CreateSkeletonModel: animation not found, created as static model: " + filePath);
-            return instance;
+        // 最初のコマの姿勢でボーン行列を作る（Update が回らない停止中もこの姿勢で描く）
+        const Skeleton& skeleton = *resource->GetSkeleton();
+        Pose pose;
+        if (initialPose) {
+            PoseEvaluator::Sample(skeleton, PoseEvaluator::Bind(skeleton, *initialPose), 0.0f, pose);
+        } else {
+            PoseEvaluator::WriteBindPose(skeleton, pose);
         }
-
-        // スケルトンで頂点を変形して描き、初期アニメーションのコントローラーと切り替え用ファクトリーを持つプレイヤーを注入する
-        instance->EnableSkinning();
-        auto factory = std::make_unique<SkeletonAnimatorFactory>();
-        auto skeletonAnimator = factory->CreateSkeletonAnimator(*resource->GetSkeleton(), *animation, loop);
-        instance->SetAnimationPlayer(std::make_unique<AnimationPlayer>(
-            resource, std::move(skeletonAnimator), std::move(factory)));
-
-        // 時刻を進めずに最初のコマの姿勢でボーン行列を作る（Update が回らない停止中もこの姿勢で描く）
-        instance->UpdateAnimation(0.0f);
+        std::vector<Matrix4x4> matrices;
+        PoseEvaluator::ComputeSkeletonSpace(skeleton, pose, matrices);
+        instance->UpdateSkinCluster(matrices);
 
         return instance;
     }
 
-    bool ModelManager::LoadAnimation(const AnimationLoadInfo& loadInfo)
+    bool ModelManager::ReadFileAnimations(const std::string& resolvedPath,
+        std::vector<std::pair<std::string, Animation>>& out)
     {
-        std::string resolvedModelPath = ResolveFilePath(loadInfo.modelFile);
-
-        std::string resolvedDirectory, resolvedFilename;
-        SplitPath(resolvedModelPath, resolvedDirectory, resolvedFilename);
-
-        // モデルリソースを取得（キャッシュになければ読み込む）
-        ModelResource* resource = LoadModelResourceInternal(resolvedDirectory, resolvedFilename);
-        if (!resource) {
+        if (ModelResource* const resource = GetModelResource(resolvedPath); resource && resource->IsLoaded()) {
+            out = resource->GetFileAnimations();
+            return true;
+        }
+        MeshAsset asset;
+        if (!ModelDerivedData::Load(Logger::GetInstance().Utf8ToPath(resolvedPath), asset)) {
+            Logger::GetInstance().Warnf(LogCategory::Resource, "アニメーションのファイルを読めません: {}", resolvedPath);
             return false;
         }
-
-        // アニメーションの置き場は、モデルと同じファイルのことも別ファイルのこともある。
-        // 同じファイルならモデルと一緒に読んだ物から、別ファイルならそのファイルの .cmesh から名前で選ぶ
-        const Animation* animation = nullptr;
-        MeshAsset animationAsset;
-        if (loadInfo.animationFile.empty()) {
-            animation = AnimationLoader::Select(resource->GetFileAnimations(), loadInfo.sourceAnimationName, resolvedModelPath);
-        } else {
-            const std::string animationPath = ResolveFilePath(loadInfo.animationFile);
-            if (!ModelDerivedData::Load(Logger::GetInstance().Utf8ToPath(animationPath), animationAsset)) {
-                Logger::GetInstance().Warnf(LogCategory::Resource, "アニメーションのファイルを読めません: {}", animationPath);
-                return false;
-            }
-            animation = AnimationLoader::Select(animationAsset.animations, loadInfo.sourceAnimationName, animationPath);
-        }
-        if (!animation) {
-            return false;
-        }
-        resource->AddAnimation(loadInfo.animationName, *animation);
+        out = std::move(asset.animations);
         return true;
+    }
+
+    std::shared_ptr<const Animation> ModelManager::AcquireClip(const std::string& file, const std::string& sourceName)
+    {
+        if (file.empty()) {
+            return nullptr;
+        }
+        const std::string resolvedPath = ResolveFilePath(file);
+        const std::string key = resolvedPath + '|' + sourceName;
+        {
+            std::lock_guard<std::mutex> lock(clipMutex_);
+            if (const auto it = clipCache_.find(key); it != clipCache_.end()) {
+                return it->second;
+            }
+        }
+
+        std::vector<std::pair<std::string, Animation>> animations;
+        if (!ReadFileAnimations(resolvedPath, animations)) {
+            return nullptr;
+        }
+        const Animation* const selected = AnimationLoader::Select(animations, sourceName, resolvedPath);
+        if (!selected) {
+            return nullptr;
+        }
+        auto clip = std::make_shared<const Animation>(*selected);
+
+        std::lock_guard<std::mutex> lock(clipMutex_);
+        const auto [it, inserted] = clipCache_.emplace(key, std::move(clip));
+        return it->second;
+    }
+
+    std::vector<std::string> ModelManager::GetClipNames(const std::string& file)
+    {
+        std::vector<std::string> names;
+        if (file.empty()) {
+            return names;
+        }
+        std::vector<std::pair<std::string, Animation>> animations;
+        if (!ReadFileAnimations(ResolveFilePath(file), animations)) {
+            return names;
+        }
+        names.reserve(animations.size());
+        for (const auto& [name, animation] : animations) {
+            names.push_back(name);
+        }
+        return names;
     }
 
     void ModelManager::ForEachResource(const std::function<void(ModelResource*)>& callback)

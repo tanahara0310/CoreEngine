@@ -667,6 +667,12 @@ namespace CoreEngine
             return AssetType::ShaderGraph;
         }
 
+        // アニメーター設定
+        if (ext == ".animator")
+        {
+            return AssetType::AnimatorController;
+        }
+
         // プレハブ
         if (ext == ".prefab")
         {

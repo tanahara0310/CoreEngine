@@ -23,6 +23,7 @@
 #include "Editor/Scene/SceneDebugEditor.h"
 #include "Editor/ShaderGraph/ShaderGraphAsset.h"
 #include "Editor/ShaderGraph/ShaderGraphEditor.h"
+#include "Editor/Animation/AnimatorEditor.h"
 #include "Graphics/Asset/AssetInfo.h"
 #endif
 #include <algorithm>
@@ -67,6 +68,7 @@ namespace CoreEngine
             case ProjectView::Kind::Material: return { "◍", "マテリアル", Theme::kTextDim };
             case ProjectView::Kind::Shader:   return { "▧", "シェーダ",   Theme::kTextDim };
             case ProjectView::Kind::ShaderGraph: return { "◆", "シェーダーグラフ", Theme::kAccentHover };
+            case ProjectView::Kind::Animator: return { "◎", "アニメーター設定", Theme::kWarm };
             case ProjectView::Kind::Data:     return { "▤", "データ",     Theme::kTextMute };
             default: break;
             }
@@ -123,10 +125,26 @@ namespace CoreEngine
             if (ext == ".shadergraph" || ext == ".shadersubgraph") {
                 return ProjectView::Kind::ShaderGraph;
             }
+            if (ext == ".animator") {
+                return ProjectView::Kind::Animator;
+            }
             if (ext == ".json" || ext == ".csv") {
                 return ProjectView::Kind::Data;
             }
             return ProjectView::Kind::Other;
+        }
+
+        /// @brief アニメーター設定を選んだときの欄
+        void DrawAnimatorFile(const std::filesystem::path& file)
+        {
+            if (ClassifyKind(file, false) != ProjectView::Kind::Animator) {
+                return;
+            }
+            UI::Separator();
+            if (ImGui::Button("アニメーターで開く")) {
+                Editor::AnimatorEditor::Get().Open(file);
+            }
+            UI::Hint("ダブルクリックでも開けます。Animator の「設定」の欄へドラッグすると、その設定で動きます。");
         }
 
         /// @brief シェーダーグラフと、グラフが作ったシェーダを選んだときの欄
@@ -242,6 +260,7 @@ namespace CoreEngine
         DrawNewScriptDialog();
         DrawNewMaterialDialog();
         DrawNewShaderGraphDialog();
+        DrawNewAnimatorDialog();
         DrawRenameDialog();
         DrawDeleteDialog();
         DrawNewFolderDialog();
@@ -493,6 +512,7 @@ namespace CoreEngine
         Editor::ShaderMaterialInspector::DrawFile(selectedPath_);
         Editor::TextureImportInspector::DrawFile(selectedPath_);
         DrawShaderGraphFile(selectedPath_);
+        DrawAnimatorFile(selectedPath_);
 
         UI::Separator();
         UI::SectionHeader("アセット情報");
@@ -706,6 +726,7 @@ namespace CoreEngine
         case Kind::Audio:   payloadType = "AUDIO_FILE";   payloadLabel = "音";         break;
         case Kind::Prefab:  payloadType = "PREFAB_FILE";  payloadLabel = "プレハブ";   break;
         case Kind::Material: payloadType = "MATERIAL_FILE"; payloadLabel = "マテリアル"; break;
+        case Kind::Animator: payloadType = Editor::AnimatorEditor::kControllerPayload; payloadLabel = "アニメーター設定"; break;
         case Kind::ShaderGraph:
             if (Editor::ShaderGraph::IsSubGraphFile(entry.path)) {
                 payloadType = Editor::ShaderGraph::ShaderGraphEditor::kSubGraphPayload;
@@ -1185,7 +1206,7 @@ namespace CoreEngine
             return;
         }
         if (showRenameDialog_ || showDeleteDialog_ || showNewScriptDialog_ || showNewFolderDialog_
-            || showNewMaterialDialog_ || showNewShaderGraphDialog_) {
+            || showNewMaterialDialog_ || showNewShaderGraphDialog_ || showNewAnimatorDialog_) {
             return;
         }
 
@@ -1376,6 +1397,9 @@ namespace CoreEngine
         if (ImGui::MenuItem("シェーダーサブグラフを作成...")) {
             OpenNewShaderGraphDialog(true);
         }
+        if (ImGui::MenuItem("アニメーター設定を作成...")) {
+            OpenNewAnimatorDialog();
+        }
         ImGui::Separator();
         if (ImGui::MenuItem("貼り付け", "Ctrl+V", false, !clipboardPaths_.empty())) {
             PasteIntoCurrentFolder();
@@ -1565,9 +1589,49 @@ namespace CoreEngine
             });
     }
 
+    void ProjectView::OpenNewAnimatorDialog()
+    {
+        showNewAnimatorDialog_ = true;
+        newAnimatorError_.clear();
+        newAnimatorName_[0] = '\0';
+    }
+
+    void ProjectView::DrawNewAnimatorDialog()
+    {
+        std::filesystem::path created;
+        UI::DrawModalDialog({ .title = "新しいアニメーター設定", .width = 460.0f, .commitLabel = "作成",
+                              .show = &showNewAnimatorDialog_, .error = &newAnimatorError_ },
+            [this] {
+                UI::Hint("今開いているフォルダへ、アニメーター設定（名前.animator）を作ります。");
+                UI::Hint("状態・遷移・パラメータはアニメーターの窓で組みます。");
+                UI::Separator();
+                if (ImGui::IsWindowAppearing()) {
+                    ImGui::SetKeyboardFocusHere();
+                }
+                return UI::InputText("名前", newAnimatorName_, sizeof(newAnimatorName_),
+                    ImGuiInputTextFlags_EnterReturnsTrue);
+            },
+            [this, &created] {
+                return Editor::AnimatorEditor::CreateControllerFile(GetCurrentFolder(), newAnimatorName_,
+                    &created, &newAnimatorError_);
+            },
+            [this, &created] {
+                NavigateToDirectory(created.parent_path());
+                selection_.assign(1, created);
+                selectedPath_ = created;
+                Editor::AnimatorEditor::Get().Open(created);
+            });
+    }
+
     void ProjectView::OpenFile(const std::filesystem::path& filePath)
     {
         if (!std::filesystem::exists(filePath)) {
+            return;
+        }
+
+        // アニメーター設定はアニメーターの窓で開く
+        if (ClassifyKind(filePath, false) == Kind::Animator) {
+            Editor::AnimatorEditor::Get().Open(filePath);
             return;
         }
 

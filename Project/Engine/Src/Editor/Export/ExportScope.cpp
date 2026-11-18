@@ -53,7 +53,7 @@ namespace CoreEngine::Editor
         {
             const std::wstring extension = LowerExtension(path);
             return extension == L".json" || extension == L".prefab" || extension == L".mat" ||
-                extension == L".physmat" || extension == L".waterprofile";
+                extension == L".physmat" || extension == L".waterprofile" || extension == L".animator";
         }
 
         /// @brief スクリプトの文字列リテラルを集める（コメントの中は除く）

@@ -67,6 +67,7 @@ namespace CoreEngine
             Material,
             Shader,
             ShaderGraph,
+            Animator,
             Data,
             Other,
         };
@@ -170,6 +171,12 @@ namespace CoreEngine
         /// @brief 新しいシェーダーグラフを作る窓を開く
         /// @param subGraph サブグラフを作る
         void OpenNewShaderGraphDialog(bool subGraph);
+
+        /// @brief 新しいアニメーター設定（.animator）を今のフォルダへ作る窓
+        void DrawNewAnimatorDialog();
+
+        /// @brief 新しいアニメーター設定を作る窓を開く
+        void OpenNewAnimatorDialog();
 
         /// @brief 項目 1 件の右クリックメニュー（コピー・切り取り・名前の変更・削除）
         void DrawEntryContextMenu(const Entry& entry);
@@ -308,6 +315,11 @@ namespace CoreEngine
         char newShaderGraphName_[128] = {};
         int newShaderGraphTarget_ = 0; ///< 作るグラフの目標（`Editor::ShaderGraph::Target` の値）
         std::string newShaderGraphError_;
+
+        // 新しいアニメーター設定を作る窓
+        bool showNewAnimatorDialog_ = false;
+        char newAnimatorName_[128] = {};
+        std::string newAnimatorError_;
 
         // フォルダツリーキャッシュ（毎フレームのファイルシステムスキャンを抑止）
         std::unordered_map<std::string, bool> hasSubdirCache_;

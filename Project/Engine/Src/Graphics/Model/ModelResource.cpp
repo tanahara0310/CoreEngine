@@ -497,29 +497,6 @@ namespace CoreEngine
         return defaultMaterials_[index].get();
     }
 
-    const Animation* ModelResource::GetAnimation(const std::string& name) const {
-        if (animations_.empty()) {
-            return nullptr;
-        }
-
-        // 名前が空文字列の場合は最初のアニメーションを返す
-        if (name.empty()) {
-            return &animations_.begin()->second;
-        }
-
-        // 指定された名前のアニメーションを検索
-        auto it = animations_.find(name);
-        if (it != animations_.end()) {
-            return &it->second;
-        }
-
-        return nullptr;
-    }
-
-    void ModelResource::AddAnimation(const std::string& name, const Animation& animation) {
-        animations_[name] = animation;
-    }
-
     const ModelResource::PBRTextureHandles& ModelResource::GetMaterialTextures(uint32_t materialIndex) const {
         assert(materialIndex < materialTextureHandles_.size());
         return materialTextureHandles_[materialIndex];

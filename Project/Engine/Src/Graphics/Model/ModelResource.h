@@ -76,26 +76,8 @@ namespace CoreEngine
         /// @return ModelData
         const ModelData& GetModelData() const { return modelData_; }
 
-        /// @brief アニメーションを持っているか確認
-        /// @return アニメーションがあればtrue
-        bool HasAnimation() const { return !animations_.empty(); }
-
-        /// @brief アニメーションを取得
-        /// @param name アニメーション名（空文字列の場合は最初のアニメーション）
-        /// @return アニメーションのポインタ（存在しない場合はnullptr）
-        const Animation* GetAnimation(const std::string& name = "") const;
-
-        /// @brief 全てのアニメーションを取得
-        /// @return アニメーションマップ
-        const std::map<std::string, Animation>& GetAnimations() const { return animations_; }
-
         /// @brief モデルのファイルに入っていたアニメーション（ファイル内の名前と順）
         const std::vector<std::pair<std::string, Animation>>& GetFileAnimations() const { return fileAnimations_; }
-
-        /// @brief アニメーションを追加
-        /// @param name アニメーション名
-        /// @param animation アニメーションデータ
-        void AddAnimation(const std::string& name, const Animation& animation);
 
         /// @brief ローカル空間のバウンディングボックスを取得
         /// @return ローカル空間AABB
@@ -232,9 +214,7 @@ namespace CoreEngine
         // GetSubMeshLocalBounds の範囲外警告を初回のみ出すためのフラグ（ログスパム防止）
         mutable bool subMeshBoundsRangeWarned_ = false;
 
-        std::map<std::string, Animation> animations_;
-
-        // モデルのファイルに入っていたアニメーション（LoadAnimation が名前で選んで animations_ へ登録する）
+        // モデルのファイルに入っていたアニメーション（ModelManager::AcquireClip が名前で選んで写す）
         std::vector<std::pair<std::string, Animation>> fileAnimations_;
 
         // マテリアルごとのPBRテクスチャハンドル

@@ -67,8 +67,13 @@ public:
     void SetModelFile(std::string modelPath);
 
     /// @brief スケルトン付きモデルを指定する（`AnimatorComponent` と併用する）
-    /// @param initialClipName 最初に再生するクリップの識別名
-    void SetSkinnedModelFile(std::string modelPath, std::string initialClipName);
+    /// @param initialPose 停止中に描く姿勢のクリップ（その最初のコマ。nullptr なら骨の初期の姿勢）
+    void SetSkinnedModelFile(std::string modelPath, std::shared_ptr<const Animation> initialPose);
+
+    /// @brief 指しているモデルファイルを、骨で頂点を変形して描くようにする（`AnimatorComponent` が呼ぶ）
+    /// @param initialPose 停止中に描く姿勢のクリップ（nullptr なら骨の初期の姿勢）
+    /// @return モデルファイルを指していれば true（読み込み直すのは `ReloadFromSpec`）
+    bool UseSkinning(std::shared_ptr<const Animation> initialPose);
 
     /// @brief 手続き的メッシュを指定する
     void SetPrimitive(std::unique_ptr<IPrimitiveMeshGenerator> generator);
@@ -211,7 +216,7 @@ private:
     std::unique_ptr<Model> model_;
     std::unique_ptr<IPrimitiveMeshGenerator> generator_;
     std::string modelPath_;
-    std::string initialClipName_;
+    std::shared_ptr<const Animation> initialPose_;
     Source source_ = Source::None;
     AssetRef<ModelAsset> modelAsset_;  ///< 保存とインスペクタに出すモデルファイル
     bool awoken_ = false;              ///< Awake を済ませたか

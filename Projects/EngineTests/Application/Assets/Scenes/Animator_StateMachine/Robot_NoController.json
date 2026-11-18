@@ -1,0 +1,68 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "type": "Transform",
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    1.2,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "enabled": true,
+            "type": "MeshRenderer",
+            "parameters": {
+                "model": {
+                    "guid": "fd0ce2a1-f28b-49fa-b282-353f5ecccb96",
+                    "path": "Application/Assets/Models/AnimRobot/AnimRobot.gltf"
+                }
+            }
+        },
+        {
+            "enabled": true,
+            "type": "Animator",
+            "parameters": {
+                "model": "",
+                "controller": null,
+                "speed": 1.0,
+                "clips": [
+                    {
+                        "name": "Idle",
+                        "sourceName": "Idle"
+                    },
+                    {
+                        "name": "Walk",
+                        "sourceName": "Walk"
+                    },
+                    {
+                        "name": "Attack",
+                        "sourceName": "Attack"
+                    }
+                ]
+            }
+        },
+        {
+            "enabled": true,
+            "type": "AnimatorClipProbe",
+            "parameters": {}
+        }
+    ],
+    "id": "20feaf673fcfdac0",
+    "name": "Robot_NoController",
+    "order": 4
+}

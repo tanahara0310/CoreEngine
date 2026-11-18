@@ -1,0 +1,280 @@
+{
+    "version": 1,
+    "previewModel": {
+        "guid": "fd0ce2a1-f28b-49fa-b282-353f5ecccb96",
+        "path": "Application/Assets/Models/AnimRobot/AnimRobot.gltf"
+    },
+    "parameters": [
+        {
+            "name": "Speed",
+            "type": "Float",
+            "default": 0.0
+        },
+        {
+            "name": "Grounded",
+            "type": "Bool",
+            "default": true
+        },
+        {
+            "name": "Attack",
+            "type": "Trigger"
+        },
+        {
+            "name": "Jump",
+            "type": "Trigger"
+        }
+    ],
+    "clips": [
+        {
+            "id": "Idle",
+            "file": {
+                "guid": "fd0ce2a1-f28b-49fa-b282-353f5ecccb96",
+                "path": "Application/Assets/Models/AnimRobot/AnimRobot.gltf"
+            },
+            "source": "Idle"
+        },
+        {
+            "id": "Walk",
+            "file": {
+                "guid": "fd0ce2a1-f28b-49fa-b282-353f5ecccb96",
+                "path": "Application/Assets/Models/AnimRobot/AnimRobot.gltf"
+            },
+            "source": "Walk"
+        },
+        {
+            "id": "Run",
+            "file": {
+                "guid": "fd0ce2a1-f28b-49fa-b282-353f5ecccb96",
+                "path": "Application/Assets/Models/AnimRobot/AnimRobot.gltf"
+            },
+            "source": "Run"
+        },
+        {
+            "id": "Jump",
+            "file": {
+                "guid": "fd0ce2a1-f28b-49fa-b282-353f5ecccb96",
+                "path": "Application/Assets/Models/AnimRobot/AnimRobot.gltf"
+            },
+            "source": "Jump"
+        },
+        {
+            "id": "Attack",
+            "file": {
+                "guid": "fd0ce2a1-f28b-49fa-b282-353f5ecccb96",
+                "path": "Application/Assets/Models/AnimRobot/AnimRobot.gltf"
+            },
+            "source": "Attack"
+        },
+        {
+            "id": "Fall",
+            "file": {
+                "guid": "fd0ce2a1-f28b-49fa-b282-353f5ecccb96",
+                "path": "Application/Assets/Models/AnimRobot/AnimRobot.gltf"
+            },
+            "source": "Fall"
+        }
+    ],
+    "layers": [
+        {
+            "name": "Base",
+            "defaultState": "Idle",
+            "anyStatePos": [
+                -260.0,
+                180.0
+            ],
+            "states": [
+                {
+                    "name": "Idle",
+                    "motion": {
+                        "clip": "Idle"
+                    },
+                    "speed": 1.0,
+                    "loop": true,
+                    "pos": [
+                        0.0,
+                        0.0
+                    ]
+                },
+                {
+                    "name": "Walk",
+                    "motion": {
+                        "clip": "Walk"
+                    },
+                    "speed": 1.0,
+                    "loop": true,
+                    "pos": [
+                        260.0,
+                        0.0
+                    ]
+                },
+                {
+                    "name": "Run",
+                    "motion": {
+                        "clip": "Run"
+                    },
+                    "speed": 1.0,
+                    "loop": true,
+                    "pos": [
+                        520.0,
+                        0.0
+                    ]
+                },
+                {
+                    "name": "Attack",
+                    "motion": {
+                        "clip": "Attack"
+                    },
+                    "speed": 1.0,
+                    "loop": false,
+                    "pos": [
+                        0.0,
+                        -160.0
+                    ]
+                },
+                {
+                    "name": "Jump",
+                    "motion": {
+                        "clip": "Jump"
+                    },
+                    "speed": 1.0,
+                    "loop": false,
+                    "pos": [
+                        260.0,
+                        -160.0
+                    ]
+                },
+                {
+                    "name": "Fall",
+                    "motion": {
+                        "clip": "Fall"
+                    },
+                    "speed": 1.0,
+                    "loop": true,
+                    "pos": [
+                        0.0,
+                        180.0
+                    ]
+                }
+            ],
+            "transitions": [
+                {
+                    "from": "*",
+                    "to": "Fall",
+                    "conditions": [
+                        {
+                            "param": "Grounded",
+                            "op": "false"
+                        }
+                    ],
+                    "duration": 0.2
+                },
+                {
+                    "from": "Idle",
+                    "to": "Walk",
+                    "conditions": [
+                        {
+                            "param": "Speed",
+                            "op": ">",
+                            "value": 0.1
+                        }
+                    ],
+                    "duration": 0.2
+                },
+                {
+                    "from": "Walk",
+                    "to": "Idle",
+                    "conditions": [
+                        {
+                            "param": "Speed",
+                            "op": "<",
+                            "value": 0.1
+                        }
+                    ],
+                    "duration": 0.2
+                },
+                {
+                    "from": "Walk",
+                    "to": "Run",
+                    "conditions": [
+                        {
+                            "param": "Speed",
+                            "op": ">",
+                            "value": 3.0
+                        }
+                    ],
+                    "duration": 0.2
+                },
+                {
+                    "from": "Run",
+                    "to": "Walk",
+                    "conditions": [
+                        {
+                            "param": "Speed",
+                            "op": "<",
+                            "value": 3.0
+                        }
+                    ],
+                    "duration": 0.2
+                },
+                {
+                    "from": "Idle",
+                    "to": "Attack",
+                    "conditions": [
+                        {
+                            "param": "Attack",
+                            "op": "trigger"
+                        }
+                    ],
+                    "duration": 0.1
+                },
+                {
+                    "from": "Walk",
+                    "to": "Attack",
+                    "conditions": [
+                        {
+                            "param": "Attack",
+                            "op": "trigger"
+                        }
+                    ],
+                    "duration": 0.1
+                },
+                {
+                    "from": "Attack",
+                    "to": "Idle",
+                    "conditions": [],
+                    "duration": 0.2,
+                    "exitTime": 0.9
+                },
+                {
+                    "from": "Idle",
+                    "to": "Jump",
+                    "conditions": [
+                        {
+                            "param": "Jump",
+                            "op": "trigger"
+                        }
+                    ],
+                    "duration": 0.1
+                },
+                {
+                    "from": "Jump",
+                    "to": "Idle",
+                    "conditions": [],
+                    "duration": 0.15,
+                    "exitTime": 0.95
+                },
+                {
+                    "from": "Fall",
+                    "to": "Idle",
+                    "conditions": [
+                        {
+                            "param": "Grounded",
+                            "op": "true"
+                        }
+                    ],
+                    "duration": 0.2
+                }
+            ]
+        }
+    ]
+}

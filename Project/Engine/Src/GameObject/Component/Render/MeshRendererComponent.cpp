@@ -84,12 +84,22 @@ namespace CoreEngine
         modelAsset_.SetValue(Reflection::AssetRefValue{ {}, modelPath_ });
     }
 
-    void MeshRendererComponent::SetSkinnedModelFile(std::string modelPath, std::string initialClipName)
+    void MeshRendererComponent::SetSkinnedModelFile(std::string modelPath, std::shared_ptr<const Animation> initialPose)
     {
         modelPath_ = std::move(modelPath);
-        initialClipName_ = std::move(initialClipName);
+        initialPose_ = std::move(initialPose);
         source_ = Source::SkinnedModelFile;
         modelAsset_.SetValue(Reflection::AssetRefValue{ {}, modelPath_ });
+    }
+
+    bool MeshRendererComponent::UseSkinning(std::shared_ptr<const Animation> initialPose)
+    {
+        if ((source_ != Source::ModelFile && source_ != Source::SkinnedModelFile) || modelPath_.empty()) {
+            return false;
+        }
+        initialPose_ = std::move(initialPose);
+        source_ = Source::SkinnedModelFile;
+        return true;
     }
 
     void MeshRendererComponent::SetPrimitive(std::unique_ptr<IPrimitiveMeshGenerator> generator)
@@ -310,7 +320,7 @@ namespace CoreEngine
 
         case Source::SkinnedModelFile:
             if (!modelPath_.empty()) {
-                model_ = modelMgr->CreateSkeletonModel(modelPath_, initialClipName_, true);
+                model_ = modelMgr->CreateSkinnedModel(modelPath_, initialPose_.get());
             }
             break;
 

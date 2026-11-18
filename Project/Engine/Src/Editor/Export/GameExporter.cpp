@@ -186,7 +186,8 @@ namespace CoreEngine::Editor
         {
             const std::wstring extension = MakeFileKey(path.extension());
             return extension == L".json" || extension == L".prefab" || extension == L".mat" ||
-                extension == L".meta" || extension == L".physmat" || extension == L".waterprofile";
+                extension == L".meta" || extension == L".physmat" || extension == L".waterprofile" ||
+                extension == L".animator";
         }
 
         /// @brief 書き出した物を確かめる（変換した物が全部あるか、写さないはずの元のファイルが残っていないか）

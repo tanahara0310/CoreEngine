@@ -1,20 +1,28 @@
 #pragma once
 
+#include "Animation/AnimatorController.h"
+#include "Animation/AnimatorRuntime.h"
 #include "GameObject/Component/Core/IComponent.h"
 #include "GameObject/Component/Render/MeshRendererComponent.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
+#include "Graphics/Asset/AssetRef.h"
 #include "Graphics/Model/Skeleton/Skeleton.h"
 #include "Math/Matrix/Matrix4x4.h"
 #include "Math/Vector/Vector3.h"
 #include "Reflection/Reflect.h"
 
+#include <memory>
 #include <optional>
+#include <span>
 #include <string>
 #include <vector>
 
 namespace CoreEngine
 {
-/// @brief 読み込むアニメーションクリップ 1 件分の指定
+struct Animation;
+class Model;
+
+/// @brief 読み込むアニメーションクリップ 1 件分の指定（設定を指さないときに使う）
 struct AnimationClipDesc {
     /// エンジン内で使う識別名（`Switch()` に渡す名前）
     std::string name;
@@ -25,13 +33,13 @@ struct AnimationClipDesc {
     std::string file;
 };
 
-/// @brief スケルトンアニメーションの駆動（ロード・前進・クリップ切替・ジョイント行列・骨デバッグ描画）。
-/// @details コンストラクタでモデルとクリップを受け取り、`Awake()` でクリップを読んで
-///          兄弟 `MeshRendererComponent` にスキニングモデルを作らせる。`AnimationPlayer` の
-///          実体はその `Model` が持ち、このコンポーネントは操作の側だけを持つ。
+/// @brief スケルトンアニメーションの駆動（状態の切り替え・クリップの再生・ジョイント行列・骨デバッグ描画）。
+/// @details 設定（`.animator`）を指していれば、パラメータと遷移の表で状態を切り替える。
+///          指していなければ `clips` の 1 本ずつを状態にして、`Switch`・`SwitchWithBlend` で切り替える。
+///          `Awake()` で兄弟 `MeshRendererComponent` にスキニングモデルを作らせ、毎フレームの骨の行列をそのモデルへ渡す。
 class AnimatorComponent : public IComponent {
 public:
-    /// @brief モデルを指定せずに作る（既にスキニングモデルを持つ兄弟へ後付けする場合）
+    /// @brief モデルを指定せずに作る（兄弟のメッシュ描画のモデルを使う）
     AnimatorComponent() = default;
 
     /// @brief スケルトンモデルとクリップ 1 本を指定して作る
@@ -41,7 +49,6 @@ public:
         : modelPath_(std::move(modelPath)), clips_{ AnimationClipDesc{ std::move(clipName), "", "" } } {}
 
     /// @brief スケルトンモデルと複数クリップを指定して作る（**先頭が初期クリップ**）
-    /// @note クリップはスケルトン生成より前に全部読む必要があるため、後から足せない。
     AnimatorComponent(std::string modelPath, std::vector<AnimationClipDesc> clips)
         : modelPath_(std::move(modelPath)), clips_(std::move(clips)) {}
 
@@ -52,8 +59,18 @@ public:
     /// @brief スケルトンモデルのファイル名（空 = 兄弟が持っているモデルを使う）
     const std::string& GetModelPath() const { return modelPath_; }
 
-    /// @brief スケルトンモデルのファイル名を差し替える（`Awake` より前に呼ぶ）
-    void SetModelPath(const std::string& modelPath) { modelPath_ = modelPath; }
+    /// @brief スケルトンモデルのファイル名を差し替える（Awake 済みならモデルを作り直す）
+    void SetModelPath(const std::string& modelPath);
+
+    /// @brief 指しているアニメーター設定（何も指していなければ `clips` を使う）
+    const AssetRef<AnimatorControllerAsset>& GetController() const { return controller_; }
+
+    /// @brief アニメーター設定をパスかファイル名で指し直す（Awake 済みなら作り直す）
+    void SetController(std::string_view pathOrName);
+
+    /// @brief 全体の速さの倍率
+    float GetSpeed() const { return speed_; }
+    void SetSpeed(float speed) { speed_ = speed; }
 
     /// @brief 読み込むクリップを書き出す（識別名・ファイル内の名前・読み込み元ファイル）
     void SaveClipsToJson(json& parameters) const;
@@ -63,10 +80,7 @@ public:
 
     // ===== ライフサイクル =====
 
-    /// @brief クリップを読み、兄弟 `MeshRendererComponent` にスキニングモデルを作らせる
-    /// @note モデル未指定（既定コンストラクタ）の場合は何もしない。
-    ///       アニメーションはスケルトン生成より**前**に読む必要があるため、
-    ///       クリップのロードとモデル生成をここで一続きに行う。
+    /// @brief 兄弟 `MeshRendererComponent` にスキニングモデルを作らせる（最初の状態の最初のコマの姿勢で描く）
     void Awake() override;
 
     /// @brief 兄弟のメッシュ描画・トランスフォームを捕まえる
@@ -78,43 +92,70 @@ public:
         return IsAnyOf<MeshRendererComponent, TransformComponent>(other);
     }
 
+    /// @brief 設定か model を指し直したら作り直す
+    void OnPropertyChanged(const Reflection::PropertyDescriptor& property) override;
+
     /// @brief アニメーションを 1 フレーム進める
     /// @note `GameObject::Update()` より前に走る。更新後の姿勢を読む処理は
     ///       `SkeletonSocketComponent` のように `LateUpdate()` で行うこと。
     void Update() override;
 
-    // ===== クリップ切り替え =====
+    // ===== パラメータ（設定を指しているとき） =====
+
+    void SetFloat(const std::string& name, float value);
+    float GetFloat(const std::string& name);
+    void SetInt(const std::string& name, int value);
+    int GetInt(const std::string& name);
+    void SetBool(const std::string& name, bool value);
+    bool GetBool(const std::string& name);
+    void SetTrigger(const std::string& name);
+    void ResetTrigger(const std::string& name);
+
+    // ===== 状態 =====
+
+    /// @brief 状態をすぐ切り替える
+    void Play(const std::string& stateName);
+
+    /// @brief 混ぜながら状態を切り替える
+    void CrossFade(const std::string& stateName, float seconds);
+
+    /// @brief 今の状態の名前（遷移の途中なら移る先）
+    const std::string& GetCurrentState() const;
+
+    bool IsInState(const std::string& stateName) const;
+
+    /// @brief 今の状態の進み（ループの中の 0〜1）
+    float GetNormalizedTime() const;
+
+    bool IsInTransition() const;
+
+    // ===== クリップ切り替え（設定を指していないときの名前。指していれば状態の名前として扱う） =====
 
     /// @brief アニメーションを即座に切り替える
     /// @return 成功したら true
     bool Switch(const std::string& clipName, bool loop = true);
 
-    /// @brief アニメーションをブレンドしながら切り替える
-    /// @details 内部では `AnimationPlayer` が現在姿勢と切り替え先姿勢をジョイント単位で
-    ///          補間する（平行移動・スケールは Lerp、回転は Slerp）。
+    /// @brief アニメーションをブレンドしながら切り替える（平行移動・スケールは Lerp、回転は Slerp）
+    /// @note ブレンドの途中で呼ぶと、その時の姿勢から混ぜ直す。
     bool SwitchWithBlend(const std::string& clipName, float blendDuration = 0.3f, bool loop = true);
 
-    /// @brief 現在再生中のクリップ識別名
-    const std::string& GetCurrentClipName() const { return currentClipName_; }
+    /// @brief 現在再生中のクリップ識別名（設定を指していれば状態の名前）
+    const std::string& GetCurrentClipName() const { return GetCurrentState(); }
 
-    /// @brief 現在のクリップ名を設定する（初期化時に呼ぶ）
-    void SetCurrentClipName(const std::string& name) { currentClipName_ = name; }
-
-    /// @brief 登録済みクリップの識別名を列挙する
+    /// @brief 使えるクリップの識別名を列挙する（設定を指していればその clips の id）
     std::vector<std::string> GetClipNames() const;
 
     // ===== ジョイント参照 =====
-    // 骨のデバッグ表示・武器のソケットアタッチ・ジョイント追従パーティクルは
-    // すべてこの 3 つを土台にしている。
 
-    /// @brief 再生中のスケルトン（アニメーションを持たない場合は nullptr）
+    /// @brief 骨の並び（名前と親子。アニメーションを持たない場合は nullptr）
     const Skeleton* GetSkeleton() const;
+
+    /// @brief 骨ごとのスケルトン空間の行列（最後に作った姿勢。並びは GetSkeleton の joints と同じ）
+    std::span<const Matrix4x4> GetJointMatrices() const;
 
     /// @brief ジョイントのワールド行列
     /// @param jointName ジョイント名（例: "mixamorig:RightHand"）
     /// @return スケルトンが無い／名前が見つからない場合は std::nullopt
-    /// @details ジョイントが持つのはモデルローカルな「スケルトン空間行列」なので、
-    ///          オブジェクトのワールド行列を掛けてワールド空間へ持ち上げる。
     std::optional<Matrix4x4> GetJointWorldMatrix(const std::string& jointName) const;
 
     /// @brief ジョイントのワールド座標
@@ -128,12 +169,35 @@ public:
     /// @brief スケルトンの親子関係を線で描画する
     void DrawSkeletonDebugLines() const;
 
+    // ===== エディタ =====
+
+    /// @brief 実行の状態（窓が今の状態とパラメータを映す・パラメータを書き換える）
+    AnimatorRuntime& GetRuntime() const;
+
 private:
     /// @brief 兄弟コンポーネントが未取得なら取りに行く（Start 前に呼ばれた場合の保険）
     void ResolveSiblings() const;
 
-    /// @brief 再生中の AnimationPlayer（無ければ nullptr）
-    class AnimationPlayer* GetPlayer() const;
+    /// @brief 兄弟のメッシュ描画にスキニングモデルを作らせる
+    void ApplyToRenderer();
+
+    /// @brief 使う設定（設定を指していなければ clips から作ったもの。無ければ nullptr）
+    std::shared_ptr<const AnimatorControllerData> ResolveController() const;
+
+    /// @brief clips から設定を作る（クリップ 1 本ずつを状態にする）
+    std::shared_ptr<const AnimatorControllerData> MakeClipController() const;
+
+    /// @brief クリップのファイルが空のときに読むモデル
+    std::string ClipModelPath() const;
+
+    /// @brief 設定の最初の状態のクリップ
+    std::shared_ptr<const Animation> AcquireInitialClip(const AnimatorControllerData& controller) const;
+
+    /// @brief 兄弟のモデルか設定が変わっていれば、実行の状態を作り直す
+    void EnsureBound() const;
+
+    /// @brief Switch / SwitchWithBlend に渡す「ループの指定」（設定を指していれば状態の設定のまま）
+    std::optional<bool> LoopOverride(bool loop) const;
 
     /// スケルトンモデルのファイル名（空 = 兄弟が既に持っているモデルを使う）
     std::string modelPath_;
@@ -141,11 +205,24 @@ private:
     /// 読み込むクリップ（先頭が初期クリップ）
     std::vector<AnimationClipDesc> clips_;
 
+    /// アニメーター設定
+    AssetRef<AnimatorControllerAsset> controller_;
+
+    /// 全体の速さの倍率
+    float speed_ = 1.0f;
+
     mutable MeshRendererComponent* renderer_ = nullptr;
     mutable TransformComponent* transform_ = nullptr;
 
-    /// 現在再生中のクリップ識別名
-    std::string currentClipName_;
+    mutable AnimatorRuntime runtime_;
+    mutable Model* boundModel_ = nullptr;
+    mutable const Skeleton* boundSkeleton_ = nullptr;
+    mutable std::shared_ptr<const AnimatorControllerLibrary::Entry> controllerEntry_;
+    mutable uint64_t boundRevision_ = 0;
+    mutable bool bound_ = false;
+    mutable std::shared_ptr<const AnimatorControllerData> clipController_;
+
+    bool awoken_ = false;
 
     /// 骨のデバッグ表示フラグ
     bool skeletonDebugDrawEnabled_ = false;

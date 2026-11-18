@@ -189,14 +189,14 @@ CoreEngine::SkinCluster SkinClusterGenerator::CreateSkinCluster(
     return skinCluster;
 }
 
-void SkinClusterGenerator::Update(SkinCluster& skinCluster, const Skeleton& skeleton)
+void SkinClusterGenerator::Update(SkinCluster& skinCluster, std::span<const Matrix4x4> skeletonSpaceMatrices)
 {
-    const std::span<WellForGPU> palette = skinCluster.palette.Write(UINT(skeleton.joints.size()));
-    assert(palette.size() == skeleton.joints.size());
+    const std::span<WellForGPU> palette = skinCluster.palette.Write(UINT(skeletonSpaceMatrices.size()));
+    assert(palette.size() == skeletonSpaceMatrices.size());
 
     for (size_t jointIndex = 0; jointIndex < palette.size(); ++jointIndex) {
         palette[jointIndex].skeletonSpaceMatrix =
-            skinCluster.inverseBindPoseMatrices[jointIndex] * skeleton.joints[jointIndex].skeletonSpaceMatrix;
+            skinCluster.inverseBindPoseMatrices[jointIndex] * skeletonSpaceMatrices[jointIndex];
         palette[jointIndex].skeletonSpaceInverseTransposeMatrix =
             CoreEngine::MathCore::Matrix::Transpose(CoreEngine::MathCore::Matrix::Inverse(palette[jointIndex].skeletonSpaceMatrix));
     }

@@ -45,6 +45,7 @@
 #include "Editor/ImGui/EditorTheme.h"
 #include "Editor/Launcher/ProjectThumbnails.h"
 #include "Editor/ShaderGraph/ShaderGraphEditor.h"
+#include "Editor/Animation/AnimatorEditor.h"
 #include "Editor/ImGui/Wrappers/ImGuiInput.h"
 #include "EngineSystem/Startup/SplashScreen.h"
 #include "Utility/Path/ProjectPaths.h"
@@ -740,6 +741,17 @@ namespace CoreEngine
             .draw = []() { Editor::ShaderGraph::ShaderGraphEditor::Get().Draw(); },
             });
 
+        // アニメーター設定の窓（Project で .animator を開くと出る）
+        Editor::AnimatorEditor::Get().Initialize(engine_);
+        AddPanel({
+            .id = Editor::AnimatorEditor::kPanelId,
+            .placement = Editor::PanelPlacement::Window,
+            .group = Editor::PanelGroup::General,
+            .defaultWidth = 1280.0f,
+            .defaultHeight = 720.0f,
+            .draw = []() { Editor::AnimatorEditor::Get().Draw(); },
+            });
+
         // レイトレーシングのデバッグ窓（Debug メニュー > Ray Tracing）
         // 概要・中間結果・見え方・レイの追跡・加速構造・チェックの 6 つのタブ
         rayTracingDebugPanel_.Initialize(engine_, &gpuProfiler_);
@@ -832,6 +844,9 @@ namespace CoreEngine
 
         // シェーダーグラフの窓の終了処理（imnodes の状態は ImGui より先に解放する）
         Editor::ShaderGraph::ShaderGraphEditor::Get().Finalize();
+
+        // アニメーター設定の窓の終了処理（開いている設定の Undo の履歴を外す）
+        Editor::AnimatorEditor::Get().Finalize();
 
         // レイトレーシングのデバッグ窓の線とゲーム画面へ重ねる口を外し、切り分けのスイッチを戻す
         rayTracingDebugPanel_.Finalize();

@@ -27,19 +27,6 @@ namespace CoreEngine
 // 前方宣言
 class GraphicsCore;
 
-/// @brief アニメーション読み込み情報
-/// @note パスはファイル名のみ指定。ディレクトリは AssetDatabase が自動解決する。
-struct AnimationLoadInfo {
-    std::string modelFile;          ///< モデルファイル名（例: "walk.gltf"）
-    std::string animationName;      ///< 識別用のアニメーション名（例: "walkAnimation"）
-    std::string animationFile = ""; ///< アニメーションファイル名（空 = modelFile と同じ）
-
-    /// ファイル内のアニメーション名（空 = 先頭の 1 本）
-    /// @note 1 ファイルに複数アニメーションが入っている場合に使う（例: Fox.gltf の "Walk"）。
-    ///       animationName（エンジン内の識別キー）とは別物。
-    std::string sourceAnimationName = "";
-};
-
 /// @brief モデルリソースとインスタンスを管理するマネージャークラス
 /// リソースのキャッシュとインスタンスの生成を担当
 class ModelManager {
@@ -73,21 +60,21 @@ public:
     /// @return 作成されたModelのユニークポインタ
     std::unique_ptr<Model> CreateStaticModel(const std::string& filePath);
 
-    /// @brief スケルトンアニメーションモデルを作成（AnimationPlayer 付き）
+    /// @brief 骨で頂点を変形して描くモデルを作成
     /// @param filePath ファイルパス（Assetsフォルダを省略可能）
-    /// @param animationName アニメーション名（空の場合は最初のアニメーション）
-    /// @param loop ループ再生するか
-    /// @return 作成されたModelのユニークポインタ（スケルトンやアニメーションが無い場合は静的モデル）
-    std::unique_ptr<Model> CreateSkeletonModel(
-        const std::string& filePath,
-        const std::string& animationName = "",
-        bool loop = true
-    );
+    /// @param initialPose 最初に描く姿勢のクリップ（その最初のコマで描く。nullptr なら骨の初期の姿勢）
+    /// @return 作成されたModelのユニークポインタ（スケルトンが無い場合は静的モデル）
+    /// @note 姿勢を動かすのは呼び出し側（Animator が Model::UpdateSkinCluster へ骨の行列を渡す）。
+    std::unique_ptr<Model> CreateSkinnedModel(const std::string& filePath, const Animation* initialPose);
 
-    /// @brief アニメーションをモデルリソースに追加
-    /// @param loadInfo アニメーション読み込み情報
-    /// @return 成功したらtrue
-    bool LoadAnimation(const AnimationLoadInfo& loadInfo);
+    /// @brief クリップを読む（同じファイルと名前の組は 1 回だけ読んで共有する）
+    /// @param file モデルかアニメーションのファイル（パスかファイル名）
+    /// @param sourceName ファイルの中のアニメーション名（空なら先頭の 1 本。見つからなければ先頭を使って警告する）
+    /// @return 読めなければ nullptr
+    std::shared_ptr<const Animation> AcquireClip(const std::string& file, const std::string& sourceName);
+
+    /// @brief ファイルの中のアニメーションの名前（ファイルの中の順。読めなければ空）
+    std::vector<std::string> GetClipNames(const std::string& file);
 
     /// @brief 初期化されているか確認
     /// @return 初期化済みならtrue
@@ -161,6 +148,10 @@ private:
     // ファイルパスをキーとしたリソースキャッシュ
     std::unordered_map<std::string, std::unique_ptr<ModelResource>> resourceCache_;
 
+    // 読んだクリップ（解決したパスとファイルの中の名前の組がキー）
+    std::unordered_map<std::string, std::shared_ptr<const Animation>> clipCache_;
+    std::mutex clipMutex_;
+
     // キャッシュのスレッドセーフなアクセス用
     mutable std::mutex cacheMutex_;
     std::set<std::string>       loadingPaths_;  // 現在ロード中のパスセット
@@ -182,6 +173,10 @@ private:
     /// @details ここから下流のモデル読み込みが扱う std::string は一貫して UTF-8。
     ///          Assimp が UTF-8 のパスを要求するため、この鎖を ANSI で汚さないこと。
     std::string ResolveFilePath(const std::string& filePath) const;
+
+    /// @brief ファイルの中のアニメーションを読む（読み込み済みのモデルならそのリソースから写す）
+    /// @return 読めたら true
+    bool ReadFileAnimations(const std::string& resolvedPath, std::vector<std::pair<std::string, Animation>>& out);
 
     /// @brief モデルリソースを読み込む（内部使用・キャッシュあり）
     /// @param directoryPath ディレクトリパス
