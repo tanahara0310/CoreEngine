@@ -1,0 +1,52 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "type": "Light",
+            "parameters": {
+                "type": 0,
+                "color": [
+                    0.75,
+                    0.82,
+                    1.0,
+                    1.0
+                ],
+                "intensity": 12000.0,
+                "direction": [
+                    0.5,
+                    -0.55,
+                    -0.67
+                ],
+                "castShadows": false,
+                "isAtmosphereSun": false,
+                "isAtmosphereMoon": false
+            }
+        },
+        {
+            "enabled": true,
+            "type": "Transform",
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    -9.0,
+                    6.0,
+                    4.0
+                ]
+            }
+        }
+    ],
+    "id": "2b8f6c1d94e7a035",
+    "name": "Fill",
+    "order": 2
+}

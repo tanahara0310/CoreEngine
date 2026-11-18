@@ -3,10 +3,13 @@
 #include "CollisionInfo.h"
 #include "CollisionLayer.h"
 #include "CollisionShape.h"
+#include "Collision/Mesh/CollisionMeshLibrary.h"
 #include "Math/Geometry/Intersect.h"
+#include "Math/Geometry/MeshView.h"
 #include "Physics/PhysicsKey.h"
 
 #include <cstdint>
+#include <memory>
 
 namespace CoreEngine
 {
@@ -50,8 +53,26 @@ public:
     /// @note 軸はオーナーの上方向。半径は最大スケール、全高は上方向のスケールが乗る。
     Geometry::Capsule GetWorldCapsule() const;
 
+    /// @brief ワールドに置いたメッシュの形（type != Mesh や三角形がまだ無いときは何とも当たらない見え方）
+    Geometry::MeshView GetWorldMeshView() const;
+
     /// @brief オーナーのワールドスケール（未設定なら等倍）
     Vector3 GetWorldScale() const;
+
+    // ===== メッシュの形 =====
+
+    /// @brief メッシュの形の三角形を取り直す（出どころと LOD の段が変わっていなければ何もしない）
+    /// @note 当たりを調べる前に毎フレーム呼ぶ。type != Mesh なら持っている三角形を捨てる。
+    void RefreshMesh();
+
+    /// @brief メッシュの形の状態
+    CollisionMeshStatus GetMeshStatus() const { return meshStatus_; }
+
+    /// @brief メッシュの形の三角形（まだ無ければ nullptr）
+    const Geometry::TriangleMesh* GetMesh() const { return mesh_.get(); }
+
+    /// @brief 箱として見たときのローカルの大きさ（箱はその大きさ・メッシュは三角形を包む箱の大きさ）
+    Vector3 GetLocalBoxSize() const;
 
     // ===== 形状 =====
 
@@ -127,6 +148,11 @@ private:
     bool           isStatic_ = false;
     bool           isSimulated_ = false;
     float          lastImpulse_ = 0.0f;
+
+    std::shared_ptr<const Geometry::TriangleMesh> mesh_;
+    const void*         meshKey_ = nullptr;   ///< 三角形を取ったときの出どころ
+    int                 meshLod_ = -1;        ///< 三角形を取ったときの LOD の段
+    CollisionMeshStatus meshStatus_ = CollisionMeshStatus::None;
 };
 
 /// @brief スケールの 3 軸の大きさのうち最大のもの（球の半径に掛ける倍率）
@@ -136,11 +162,12 @@ float MaxAbsScale(const Vector3& scale);
 float WorldCapsuleRadius(const CollisionShape& shape, const Vector3& scale);
 
 /// @brief コライダーの形の種類に合うワールド空間の形状を取り出して f に渡す
-/// @details 球は Geometry::Sphere、カプセルは Geometry::Capsule、それ以外は Geometry::OBB を渡し、f の戻り値を返す。
+/// @details 球は Geometry::Sphere、カプセルは Geometry::Capsule、メッシュは Geometry::MeshView、
+///          箱は Geometry::OBB を渡し、f の戻り値を返す。
 template <typename Func>
 decltype(auto) VisitWorldShape(const Collider& collider, Func&& f)
 {
-    static_assert(static_cast<int>(ColliderShapeType::Count) == 3,
+    static_assert(static_cast<int>(ColliderShapeType::Count) == 4,
         "ColliderShapeType を足したら VisitWorldShape に case を足す");
 
     switch (collider.GetShapeType()) {
@@ -148,6 +175,9 @@ decltype(auto) VisitWorldShape(const Collider& collider, Func&& f)
         return f(collider.GetWorldSphere());
     case ColliderShapeType::Capsule:
         return f(collider.GetWorldCapsule());
+    case ColliderShapeType::Mesh:
+        return f(collider.GetWorldMeshView());
+    case ColliderShapeType::Box:
     default:
         return f(collider.GetWorldOBB());
     }

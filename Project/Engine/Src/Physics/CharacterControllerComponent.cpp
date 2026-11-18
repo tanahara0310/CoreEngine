@@ -7,6 +7,8 @@
 #include "GameObject/Component/Core/ComponentFactory.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "Math/Geometry/Intersect.h"
+#include "Math/Geometry/MeshView.h"
+#include "Math/Geometry/RayCast.h"
 #include "Math/MathCore.h"
 #include "Utility/FrameRate/Time.h"
 
@@ -54,6 +56,12 @@ namespace {
     /// @brief 1 フレームで割ってよい回数の上限
     constexpr int kMaxSubSteps = 8;
 
+    /// @brief メッシュの相手 1 つにつき、1 回の押し戻しで扱う三角形の接触の数の上限
+    constexpr int kMaxMeshContacts = 16;
+
+    /// @brief 段差の上に床があるかを調べる位置の、触れた所から相手の側へ入る距離（m）
+    constexpr float kStepProbeInset = 0.02f;
+
     const Vector3 kUp{ 0.0f, 1.0f, 0.0f };
 
     /// @brief カプセルをすっぽり囲う箱（相手を絞り込むために少し広くする）
@@ -72,6 +80,28 @@ namespace {
         return VisitWorldShape(other, [&](const auto& shape) {
             return Geometry::Intersect(capsule, shape, &outContact);
         });
+    }
+
+    /// @brief 触れた所のすぐ奥に、足元より上で段差の高さまでの間に乗れる床があるか
+    /// @param inward 触れた所から相手の側へ向かう水平の向き（正規化済み）
+    bool HasWalkableTop(const Collider& other, const Vector3& point, const Vector3& inward,
+                        float feetY, float stepOffset, float walkable)
+    {
+        if (stepOffset <= 0.0f) {
+            return false;
+        }
+        // 段差の高さの少し上から真下へ、足元より少し上までを調べる
+        const Vector3 origin{
+            point.x + inward.x * kStepProbeInset,
+            feetY + stepOffset + kStepTolerance,
+            point.z + inward.z * kStepProbeInset };
+        const Geometry::Ray ray{ origin, Vector3{ 0.0f, -1.0f, 0.0f } };
+
+        Geometry::RayHit hit{};
+        const bool found = VisitWorldShape(other, [&](const auto& shape) {
+            return Geometry::Raycast(ray, shape, &hit, 0.0f, stepOffset);
+        });
+        return found && Dot(hit.normal, kUp) >= walkable;
     }
 }
 
@@ -182,11 +212,13 @@ namespace {
     {
         Translate(delta);
 
+        movingHorizontally_ = (delta.y == 0.0f);
         for (int i = 0; i < kResolveIterations; ++i) {
             if (!ResolveOverlaps()) {
                 break;
             }
         }
+        movingHorizontally_ = false;
     }
 
     void CharacterControllerComponent::MoveWithStep(const Vector3& horizontal)
@@ -250,26 +282,60 @@ namespace {
 
         bool pushed = false;
 
-        for (Collider* const other : candidates) {
-            if (!other || other->IsTrigger() || IsOwnCollider(other)) { continue; }
+        // 登れる坂の傾きの限界（押し戻す向きと真上のなす角の cos）
+        const float walkable = std::cos(slopeLimit_ * std::numbers::pi_v<float> / 180.0f);
 
-            Geometry::Contact contact;
-            if (!IntersectWithCollider(capsule, *other, contact)) { continue; }
+        // contact.normal はこちらから相手へ向くので、逆が押し戻す向き
+        const auto pushOut = [&](const Collider& other, const Geometry::Contact& contact) {
+            Vector3 escape = contact.normal * -1.0f;
+            float distance = contact.depth + skinWidth_;
+            if (distance <= 0.0f) { return false; }
 
-            // contact.normal はこちらから相手へ向くので、逆が押し戻す向き
-            const Vector3 escape = contact.normal * -1.0f;
-            const float distance = contact.depth + skinWidth_;
-            if (distance <= 0.0f) { continue; }
+            // 横へ動くときは、登れない上向きの面を壁として真横へ押し戻す。
+            // 奥に乗れる床がある段差の角なら、そのまま押し戻して乗り上げる
+            const float upward = Dot(escape, kUp);
+            if (movingHorizontally_ && upward > 0.0f && upward < walkable) {
+                const Vector3 flat{ escape.x, 0.0f, escape.z };
+                const float flatLength = Length(flat);
+                const float feetY = (std::min)(capsule.start.y, capsule.end.y) - capsule.radius;
+                if (flatLength > 1e-4f &&
+                    !HasWalkableTop(other, contact.point, flat * (-1.0f / flatLength), feetY, stepOffset_, walkable)) {
+                    escape = flat * (1.0f / flatLength);
+                    distance /= flatLength;
+                }
+            }
 
             Translate(escape * distance);
             capsule.start += escape * distance;
             capsule.end += escape * distance;
-            pushed = true;
 
             // 面へ食い込む向きの速度を落とす（壁に沿って滑る）
             const float into = Dot(velocity_, escape);
             if (into < 0.0f) {
                 velocity_ -= escape * into;
+            }
+            return true;
+        };
+
+        for (Collider* const other : candidates) {
+            if (!other || other->IsTrigger() || IsOwnCollider(other)) { continue; }
+
+            if (other->GetShapeType() == ColliderShapeType::Mesh) {
+                // 三角形ごとに、いちばん深いものから 1 つずつ押し戻して調べ直す
+                const Geometry::MeshView view = other->GetWorldMeshView();
+                for (int i = 0; i < kMaxMeshContacts; ++i) {
+                    Geometry::Contact contact;
+                    if (Geometry::CollectMeshContacts(capsule, view, &contact, 1) == 0) { break; }
+                    if (!pushOut(*other, contact)) { break; }
+                    pushed = true;
+                }
+                continue;
+            }
+
+            Geometry::Contact contact;
+            if (!IntersectWithCollider(capsule, *other, contact)) { continue; }
+            if (pushOut(*other, contact)) {
+                pushed = true;
             }
         }
 
@@ -300,19 +366,32 @@ namespace {
         const float limit = std::cos(slopeLimit_ * std::numbers::pi_v<float> / 180.0f);
         float bestSlope = -1.0f;
 
-        for (Collider* const other : candidates) {
-            if (!other || other->IsTrigger() || IsOwnCollider(other)) { continue; }
-
-            Geometry::Contact contact;
-            if (!IntersectWithCollider(capsule, *other, contact)) { continue; }
-
-            // 押し戻す向きが上を向いているほど、床として平ら
+        // 押し戻す向きが上を向いているほど、床として平ら
+        const auto consider = [&](const Geometry::Contact& contact) {
             const Vector3 escape = contact.normal * -1.0f;
             const float slope = Dot(escape, kUp);
             if (slope > bestSlope) {
                 bestSlope = slope;
                 groundNormal_ = escape;
             }
+        };
+
+        for (Collider* const other : candidates) {
+            if (!other || other->IsTrigger() || IsOwnCollider(other)) { continue; }
+
+            if (other->GetShapeType() == ColliderShapeType::Mesh) {
+                Geometry::Contact contacts[kMaxMeshContacts];
+                const int count = Geometry::CollectMeshContacts(capsule, other->GetWorldMeshView(),
+                    contacts, kMaxMeshContacts);
+                for (int i = 0; i < count; ++i) {
+                    consider(contacts[i]);
+                }
+                continue;
+            }
+
+            Geometry::Contact contact;
+            if (!IntersectWithCollider(capsule, *other, contact)) { continue; }
+            consider(contact);
         }
 
         grounded_ = (bestSlope >= limit);

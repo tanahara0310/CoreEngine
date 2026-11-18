@@ -547,6 +547,9 @@
     <ClCompile Include="Engine\Src\Collision\Collider.cpp">
       <Filter>Engine\Src\Collision</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Collision\Mesh\CollisionMeshLibrary.cpp">
+      <Filter>Engine\Src\Collision\Mesh</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Collision\ColliderComponent.cpp">
       <Filter>Engine\Src\Collision</Filter>
     </ClCompile>
@@ -1141,6 +1144,9 @@
     <ClCompile Include="Engine\Src\GameObject\Component\Render\MeshRendererComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\GameObject\Component\Render\MeshCollisionSource.cpp">
+      <Filter>Engine\Src\GameObject\Component\Render</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\Component\Render\SpriteRendererComponent.cpp">
       <Filter>Engine\Src\GameObject\Component\Render</Filter>
     </ClCompile>
@@ -1370,6 +1376,15 @@
       <Filter>Engine\Src\UI</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Math\Geometry\Distance.cpp">
+      <Filter>Engine\Src\Math\Geometry</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Math\Geometry\MeshIntersect.cpp">
+      <Filter>Engine\Src\Math\Geometry</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Math\Geometry\Triangle.cpp">
+      <Filter>Engine\Src\Math\Geometry</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Math\Geometry\TriangleMesh.cpp">
       <Filter>Engine\Src\Math\Geometry</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Math\Geometry\Intersect.cpp">
@@ -2561,6 +2576,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Collision\Collider.h">
       <Filter>Engine\Src\Collision</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Collision\Mesh\CollisionMeshLibrary.h">
+      <Filter>Engine\Src\Collision\Mesh</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Collision\ColliderComponent.h">
       <Filter>Engine\Src\Collision</Filter>
@@ -3882,6 +3900,15 @@
     <ClInclude Include="Engine\Src\Math\Geometry\Distance.h">
       <Filter>Engine\Src\Math\Geometry</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Math\Geometry\MeshView.h">
+      <Filter>Engine\Src\Math\Geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Math\Geometry\Triangle.h">
+      <Filter>Engine\Src\Math\Geometry</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Math\Geometry\TriangleMesh.h">
+      <Filter>Engine\Src\Math\Geometry</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Math\Geometry\Intersect.h">
       <Filter>Engine\Src\Math\Geometry</Filter>
     </ClInclude>
@@ -4816,6 +4843,9 @@
     </Filter>
     <Filter Include="Engine\Src\Collision\Debug">
       <UniqueIdentifier>{A17F62D3-9B08-4C5E-8F31-2E7A64B0C915}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Collision\Mesh">
+      <UniqueIdentifier>{68ECE126-4EC8-4FF4-A303-366CB129ABE2}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Diagnostics">
       <UniqueIdentifier>{C83816DC-1A40-4A78-BE90-6CEC2C178797}</UniqueIdentifier>

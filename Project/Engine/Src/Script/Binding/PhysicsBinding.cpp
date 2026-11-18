@@ -155,6 +155,14 @@ namespace CoreEngine::Script
                 }
             }
 
+            /// @brief 同じオブジェクトのモデルの三角形で当たる形を足す（ColliderComponent が無ければ足す）
+            void AddMesh(int lod, CollisionLayer layer)
+            {
+                if (ColliderComponent* const colliders = FindOrAdd("メッシュの追加")) {
+                    colliders->AddMesh(lod, layer);
+                }
+            }
+
             /// @brief すべての形を取り外す（実体の解放はフレーム末）
             void RemoveAll()
             {
@@ -483,6 +491,8 @@ namespace CoreEngine::Script
             asMETHOD(ScriptCollider, AddSphere), asCALL_THISCALL);
         r.Method("Collider", "void AddBox(const Vector3&in size, CollisionLayer layer = CollisionLayer::Default, const Vector3&in offset = Vector3())",
             asMETHOD(ScriptCollider, AddBox), asCALL_THISCALL);
+        r.Method("Collider", "void AddMesh(int lod = 0, CollisionLayer layer = CollisionLayer::Default)",
+            asMETHOD(ScriptCollider, AddMesh), asCALL_THISCALL);
         r.Method("Collider", "void RemoveAll()", asMETHOD(ScriptCollider, RemoveAll), asCALL_THISCALL);
         r.Method("Collider", "GameObject@ get_gameObject() const property", asMETHOD(ScriptCollider, GetGameObject), asCALL_THISCALL);
         r.Method("GameObject", "Collider@ get_collider() property", asFUNCTION(GetCollider), asCALL_CDECL_OBJLAST);

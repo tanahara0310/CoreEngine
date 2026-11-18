@@ -1,0 +1,66 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "type": "Transform",
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            }
+        },
+        {
+            "enabled": true,
+            "type": "MeshRenderer",
+            "parameters": {
+                "model": {
+                    "guid": "69256bec-01c1-47fb-b2fe-78a89db753cd",
+                    "path": "Application/Assets/Models/MeshCourse/MeshCourse.gltf"
+                }
+            }
+        },
+        {
+            "enabled": true,
+            "type": "Collider",
+            "parameters": {
+                "shapes": [
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Mesh",
+                        "mesh": {
+                            "source": "Renderer",
+                            "model": "",
+                            "lod": 0,
+                            "oneSided": false
+                        }
+                    }
+                ]
+            }
+        }
+    ],
+    "id": "a63f0d2c815e9b47",
+    "name": "Course",
+    "order": 3
+}

@@ -60,8 +60,9 @@ namespace CoreEngine
         // 形を囲む箱（オーナーの軸に沿った 3 辺）と、形全体の体積
         Vector3 extent{};
         float volume = 0.0f;
-        if (collider && collider->GetShapeType() == ColliderShapeType::Box) {
-            const Vector3& size = collider->GetShape().size;
+        if (collider && (collider->GetShapeType() == ColliderShapeType::Box
+                      || collider->GetShapeType() == ColliderShapeType::Mesh)) {
+            const Vector3 size = collider->GetLocalBoxSize();
             extent = { size.x * absScale.x, size.y * absScale.y, size.z * absScale.z };
             volume = extent.x * extent.y * extent.z;
         } else if (collider && collider->GetShapeType() == ColliderShapeType::Capsule) {

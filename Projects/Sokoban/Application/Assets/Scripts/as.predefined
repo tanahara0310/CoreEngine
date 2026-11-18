@@ -489,6 +489,7 @@ class Collider {
 	void set_isStatic(bool) property;
 	void AddSphere(float radius, CoreEngine::CollisionLayer layer = CollisionLayer::Default, const CoreEngine::Vector3&in offset = Vector3());
 	void AddBox(const CoreEngine::Vector3&in size, CoreEngine::CollisionLayer layer = CollisionLayer::Default, const CoreEngine::Vector3&in offset = Vector3());
+	void AddMesh(int lod = 0, CoreEngine::CollisionLayer layer = CollisionLayer::Default);
 	void RemoveAll();
 	CoreEngine::GameObject@ get_gameObject() const property;
 }

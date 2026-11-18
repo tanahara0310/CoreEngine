@@ -385,6 +385,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraParametersEditorModule.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraTransformEditorModule.cpp" />
     <ClCompile Include="Engine\Src\Collision\Collider.cpp" />
+    <ClCompile Include="Engine\Src\Collision\Mesh\CollisionMeshLibrary.cpp" />
     <ClCompile Include="Engine\Src\Collision\ColliderComponent.cpp" />
     <ClCompile Include="Engine\Src\Collision\CollisionResolver.cpp" />
     <ClCompile Include="Engine\Src\Collision\BroadPhase\BruteForceBroadPhase.cpp" />
@@ -583,6 +584,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\GameObject\Component\Render\MaterialComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Animation\AnimatorComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Render\MeshRendererComponent.cpp" />
+    <ClCompile Include="Engine\Src\GameObject\Component\Render\MeshCollisionSource.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Render\SpriteRendererComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Render\SpriteAnimatorComponent.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Render\Text3DRendererComponent.cpp" />
@@ -660,6 +662,9 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\UI\UITextComponent.cpp" />
     <ClCompile Include="Engine\Src\UI\UIToggleComponent.cpp" />
     <ClCompile Include="Engine\Src\Math\Geometry\Distance.cpp" />
+    <ClCompile Include="Engine\Src\Math\Geometry\MeshIntersect.cpp" />
+    <ClCompile Include="Engine\Src\Math\Geometry\Triangle.cpp" />
+    <ClCompile Include="Engine\Src\Math\Geometry\TriangleMesh.cpp" />
     <ClCompile Include="Engine\Src\Math\Geometry\Intersect.cpp" />
     <ClCompile Include="Engine\Src\Math\Geometry\RayCast.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\ConsoleUI.cpp" />
@@ -1590,6 +1595,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Editor\Camera\Module\CameraTransformEditorModule.h" />
     <ClInclude Include="Engine\Src\Editor\Camera\Module\ICameraEditorModule.h" />
     <ClInclude Include="Engine\Src\Collision\Collider.h" />
+    <ClInclude Include="Engine\Src\Collision\Mesh\CollisionMeshLibrary.h" />
     <ClInclude Include="Engine\Src\Collision\ColliderComponent.h" />
     <ClInclude Include="Engine\Src\Collision\CollisionShape.h" />
     <ClInclude Include="Engine\Src\Collision\CollisionInfo.h" />
@@ -2030,6 +2036,9 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\UI\UITextComponent.h" />
     <ClInclude Include="Engine\Src\UI\UIToggleComponent.h" />
     <ClInclude Include="Engine\Src\Math\Geometry\Distance.h" />
+    <ClInclude Include="Engine\Src\Math\Geometry\MeshView.h" />
+    <ClInclude Include="Engine\Src\Math\Geometry\Triangle.h" />
+    <ClInclude Include="Engine\Src\Math\Geometry\TriangleMesh.h" />
     <ClInclude Include="Engine\Src\Math\Geometry\Intersect.h" />
     <ClInclude Include="Engine\Src\Math\Geometry\RayCast.h" />
     <ClInclude Include="Engine\Src\Math\Geometry\Shapes.h" />

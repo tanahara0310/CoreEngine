@@ -33,6 +33,17 @@ namespace
         return CoreEngine::ColliderShapeType::Sphere;
     }
 
+    /// @brief 保存データのメッシュの取り出し方の名前を引く（知らない名前なら同じオブジェクトのモデル）
+    CoreEngine::CollisionMeshSource ParseMeshSource(const std::string& name)
+    {
+        for (std::size_t i = 0; i < std::size(CoreEngine::kCollisionMeshSourceNames); ++i) {
+            if (name == CoreEngine::kCollisionMeshSourceNames[i]) {
+                return static_cast<CoreEngine::CollisionMeshSource>(i);
+            }
+        }
+        return CoreEngine::CollisionMeshSource::Renderer;
+    }
+
     /// @brief 保存データのレイヤーの名前を引く（知らない名前なら Default にして警告する）
     CoreEngine::CollisionLayer ParseLayer(const std::string& name)
     {
@@ -77,6 +88,23 @@ namespace CoreEngine
                                             const Vector3& offset)
     {
         return Add(CollisionShape::MakeCapsule(radius, height, offset), layer);
+    }
+
+    Collider& ColliderComponent::AddMesh(int lod, CollisionLayer layer)
+    {
+        Collider& collider = Add(CollisionShape::MakeMesh(lod), layer);
+        collider.SetTrigger(false);
+        collider.SetStatic(true);
+        return collider;
+    }
+
+    void ColliderComponent::RefreshMeshes()
+    {
+        for (auto& collider : colliders_) {
+            if (collider && collider->GetShapeType() == ColliderShapeType::Mesh) {
+                collider->RefreshMesh();
+            }
+        }
     }
 
     void ColliderComponent::RemoveAll()
@@ -125,6 +153,13 @@ namespace CoreEngine
             } else if (shape.type == ColliderShapeType::Capsule) {
                 entry["radius"] = shape.radius;
                 entry["height"] = shape.height;
+            } else if (shape.type == ColliderShapeType::Mesh) {
+                json mesh = json::object();
+                mesh["source"] = kCollisionMeshSourceNames[static_cast<std::size_t>(shape.meshSource)];
+                mesh["model"] = shape.meshModel;
+                mesh["lod"] = shape.meshLod;
+                mesh["oneSided"] = shape.meshOneSided;
+                entry["mesh"] = std::move(mesh);
             } else {
                 entry["size"] = JsonManager::Vector3ToJson(shape.size);
             }
@@ -163,6 +198,12 @@ namespace CoreEngine
             shape.radius = JsonManager::SafeGet<float>(entry, "radius", shape.radius);
             shape.size = JsonManager::SafeGetVector3(entry, "size", shape.size);
             shape.height = JsonManager::SafeGet<float>(entry, "height", shape.height);
+            if (const auto mesh = entry.find("mesh"); mesh != entry.end() && mesh->is_object()) {
+                shape.meshSource = ParseMeshSource(JsonManager::SafeGet<std::string>(*mesh, "source", kCollisionMeshSourceNames[0]));
+                shape.meshModel = JsonManager::SafeGet<std::string>(*mesh, "model", std::string{});
+                shape.meshLod = (std::max)(JsonManager::SafeGet<int>(*mesh, "lod", 0), 0);
+                shape.meshOneSided = JsonManager::SafeGet<bool>(*mesh, "oneSided", false);
+            }
             const CollisionLayer layer = ParseLayer(JsonManager::SafeGet<std::string>(entry, "layer", ToString(CollisionLayer::Default)));
 
             if (i < colliders_.size() && colliders_[i]) {
