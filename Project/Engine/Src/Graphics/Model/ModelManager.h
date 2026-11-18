@@ -112,6 +112,13 @@ public:
     /// @brief スレッドプールを取得（デバッグ用）
     ThreadPool* GetThreadPool() const { return threadPool_.get(); }
 
+    /// @brief モデルの読み込みのワーカーへ仕事を投げる（プールがまだ無ければ作る）
+    /// @param label 計測の表示に出す名前
+    /// @param work ワーカーで走らせる仕事
+    /// @return 仕事の終わりを待つ future
+    /// @note 読み込んだモデルから作る重い派生データ（当たりのメッシュなど）に使う。メインスレッドから呼ぶ。
+    std::future<void> SubmitWork(const char* label, std::function<void()> work);
+
     /// @brief 全キャッシュ済みリソースに対してコールバックを実行する
     /// @param callback 各 ModelResource* に対して呼ばれるコールバック
     void ForEachResource(const std::function<void(ModelResource*)>& callback);

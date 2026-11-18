@@ -7,8 +7,6 @@
 #include "Math/MathCore.h"
 #include "Utility/Logger/Logger.h"
 
-#include <cmath>
-
 REFLECT_REGISTER(CoreEngine::TransformComponent)
 COMPONENT_REGISTER(CoreEngine::TransformComponent)
 
@@ -21,12 +19,7 @@ namespace CoreEngine
 
     Vector3 TransformComponent::GetWorldScale() const
     {
-        // 行ベクトル規約（p' = p * M）なので、各行が基底ベクトル。その長さがスケール。
-        const auto& m = transform_.GetWorldMatrix().m;
-        auto axisLength = [&m](int row) {
-            return std::sqrt(m[row][0] * m[row][0] + m[row][1] * m[row][1] + m[row][2] * m[row][2]);
-            };
-        return { axisLength(0), axisLength(1), axisLength(2) };
+        return ScaleOfWorldMatrix(transform_.GetWorldMatrix());
     }
 
     bool TransformComponent::ApplyWorldDelta(const Vector3& delta)

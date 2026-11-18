@@ -1,0 +1,120 @@
+{
+  "asset": {
+    "version": "2.0",
+    "generator": "make_many_boxes.py"
+  },
+  "scene": 0,
+  "scenes": [
+    {
+      "name": "Scene",
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "name": "PillarField",
+      "mesh": 0
+    }
+  ],
+  "meshes": [
+    {
+      "name": "PillarField",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 0,
+            "NORMAL": 1,
+            "COLOR_0": 2
+          },
+          "indices": 3,
+          "material": 0
+        }
+      ]
+    }
+  ],
+  "materials": [
+    {
+      "name": "Pillar",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "metallicFactor": 0.0,
+        "roughnessFactor": 0.85
+      }
+    }
+  ],
+  "accessors": [
+    {
+      "bufferView": 0,
+      "componentType": 5126,
+      "count": 32400,
+      "type": "VEC3",
+      "min": [
+        -29.25,
+        0.0,
+        -29.25
+      ],
+      "max": [
+        29.25,
+        2.6,
+        29.25
+      ]
+    },
+    {
+      "bufferView": 1,
+      "componentType": 5126,
+      "count": 32400,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 2,
+      "componentType": 5126,
+      "count": 32400,
+      "type": "VEC4"
+    },
+    {
+      "bufferView": 3,
+      "componentType": 5125,
+      "count": 32400,
+      "type": "SCALAR"
+    }
+  ],
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteOffset": 0,
+      "byteLength": 388800,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 388800,
+      "byteLength": 388800,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 777600,
+      "byteLength": 518400,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 1296000,
+      "byteLength": 129600,
+      "target": 34963
+    }
+  ],
+  "buffers": [
+    {
+      "byteLength": 1425600,
+      "uri": "PillarField.bin"
+    }
+  ]
+}

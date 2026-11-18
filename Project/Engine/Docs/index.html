@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.96.1">
+<meta name="engine-version" content="0.97.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5228,7 +5228,9 @@ kbd {
     </tbody>
   </table>
   </div>
-  <p>オブジェクトの位置・向き・大きさ（軸ごとに違う拡大縮小も）に合わせて当たります。同じモデルを使う物どうしは、三角形の準備を 1 回で済ませて使い回します。準備はそのモデルを初めて当てるときに 1 回だけ行います（目安は 50 万の三角形で 0.5 秒以内）。準備が済めば、1 回の判定は近くの三角形だけを調べるので、三角形が多くても重くなりにくくなっています。</p>
+  <p>オブジェクトの位置・向き・大きさ（軸ごとに違う拡大縮小も）に合わせて当たります。同じモデルを使う物どうしは、三角形の準備を 1 回で済ませて使い回します。準備が済めば、1 回の判定は近くの三角形だけを調べるので、三角形が多くても重くなりにくくなっています。</p>
+  <p>三角形の準備は、シーンを開くときの読み込み（読み込みの段の「当たりのメッシュ」）で、ほかのスレッドで並べて済ませます。<span class="ui">モデルのファイル</span> で選んだ当たり用のモデルも、シーンのモデルと一緒に先に読み込むので、再生の最初のフレームから当たります。非アクティブな物の形も準備します。</p>
+  <div class="callout note"><p>シーンを開いた後にスクリプトで足した形や、読み込みの後にモデルを変えた形は、初めて当てるときにそのフレームで準備します（目安は 50 万の三角形で 0.5 秒以内。その間はそのフレームが止まります）。大きな地形の形は、シーンに置いておきます。</p></div>
 
   <h3 id="physics-mesh-onesided">表からだけ当てる</h3>
   <p><span class="ui">表からだけ当たる</span> を入れると、三角形の表（モデルの面が向いている側）にいる物だけを押し返します。下から跳ぶとすり抜けて、上には乗れる足場に使います。押し返すのは、球と箱は中心が、カプセルは芯（上下の丸の中心を結ぶ線）の両端が、すべて表の側にあるときです。裏から入りかけた物は、表へ押し出さずに通します。</p>
@@ -5424,6 +5426,7 @@ kbd {
     }
   </script>
   <p>レイヤーを複数まとめるときは <code>Physics::LayerMask(CollisionLayer::Enemy) | Physics::LayerMask(CollisionLayer::Boss)</code> のように <code>|</code> でつなぎます。省略（<code>-1</code>）するとすべてのレイヤーが対象です。光線の出発点が自分のコライダーの中にあると、自分に当たることがあります。そのときは出発点を少し前にずらすか、レイヤーで自分を外します。</p>
+  <p>レイキャストと重なりの検索は、形を包む箱が光線や範囲から離れているコライダーを先に外し、残ったものだけを形どおりに調べます。コライダーの位置と包む箱は、物が動いたときだけ計算し直します。止まっている物が多いシーンでも、毎フレーム何本も投げて構いません。</p>
 
   <h2 id="physics-debug">当たらないときの調べ方</h2>
   <div class="table-wrap">
@@ -11617,6 +11620,7 @@ python Tools/OkinawaBeach/bake_araha_walk.py
       <tr><td>キャラクタコントローラが動かない・落ちない</td><td>毎フレーム <code>SimpleMove</code> を呼んでいない。<a href="#physics-character">キャラクタコントローラ</a></td></tr>
       <tr><td>メッシュの形に当たらない</td><td>形の欄に理由が出ていないか（モデルがありません・骨入りのモデル・使える三角形がありません）。<span class="ui">表からだけ当たる</span> が入っていて、裏から来ていないか。トリガーの物がモデルの中にすっぽり入っていないか（三角形に触れていないと分からない）。<a href="#physics-mesh">モデルの形のまま当てる</a></td></tr>
       <tr><td>メッシュの継ぎ目でキャラが引っかかる</td><td>隣の三角形とわずかに折れてつながっている。<code>sys.Collision.MeshFlatEdgeAngle</code>（既定 1 度）を少し大きくすると、その折れ目を継ぎ目として扱う</td></tr>
+      <tr><td>スクリプトでメッシュの形を足したフレームで一瞬止まる</td><td>シーンを開いた後に足した形は、初めて当てるときに三角形を準備する。シーンに置いた形は読み込みの間に準備するので、大きな地形の形はシーンに置いておく。<a href="#physics-mesh">モデルの形のまま当てる</a></td></tr>
       <tr><td>メッシュの形を付けた剛体が床をすり抜ける</td><td>動く剛体と同じオブジェクトのメッシュの形は、物理が使わない（コンソールに警告が出る）。剛体の形は球・箱・カプセルを組み合わせる</td></tr>
       <tr><td>速い弾が敵をすり抜ける</td><td>1 フレームで当たりの大きさより長く動いている。弾を大きく・遅くするか、レイキャストで調べる</td></tr>
       <tr><td>再生を止めても重力が変わったまま</td><td><code>Physics::gravity</code> はプロジェクトの設定（CVar）を書き換え、止めた後に保存される。<code>CVar::Reset("sys.Physics.Gravity")</code> で戻す</td></tr>
@@ -12033,6 +12037,14 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-97-0">v0.97.0 <span class="dim">（2026-11-19）</span></h3>
+  <p>メッシュの形の三角形をシーンの読み込みの間に準備し、コライダーの多いシーンの当たり判定を軽くした版です。当たり方とその結果は前の版と同じです。</p>
+  <ul>
+    <li><strong>読み込みの間に準備する</strong>：シーンの読み込みに「当たりのメッシュ」の段を足しました。シーンのメッシュの形の三角形を、ほかのスレッドで並べて準備します。再生の最初のフレームで止まらなくなりました。<span class="ui">モデルのファイル</span> で選んだ当たり用のモデルも、シーンのモデルと一緒に先に読み込むので、最初のフレームから当たります（<a href="#physics-mesh">モデルの形のまま当てる</a>）。</li>
+    <li><strong>コライダーの多いシーン</strong>：コライダーが、持ち主の位置・向き・大きさと、形を包む箱を覚えておき、持ち主が動いたときだけ計算し直します。レイキャスト・<code>OverlapSphere</code>・<code>OverlapBox</code> は、包む箱が離れているコライダーを先に外します。柱 900 本と箱 100 個の試験のシーンでは、レイキャスト 1 本が 0.10 ms から 0.03 ms に、<code>OverlapBox</code> 1 回が 0.10 ms から 0.025 ms に、キャラの移動と問い合わせを含むスクリプトの更新が毎フレーム 1.9 ms から 0.65 ms になりました（<a href="#physics-raycast">光線と範囲で相手を探す</a>）。</li>
+    <li><strong>試験のシーン</strong>：<span class="path">Projects/EngineTests</span> に <code>Collider_ManyBoxes</code>（柱 900 本の箱の形と別々の箱 100 個の間をキャラが歩き、毎フレーム レイ 8 本と重なりの検索を投げ、球 20 個を落とす。結果をコンソールへ出す）を足しました。</li>
+  </ul>
 
   <h3 id="changelog-v0-96-1">v0.96.1 <span class="dim">（2026-11-19）</span></h3>
   <p>エディタの 2 つの不具合を直した版です。</p>

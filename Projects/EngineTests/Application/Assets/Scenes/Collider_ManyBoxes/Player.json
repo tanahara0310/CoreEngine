@@ -1,0 +1,85 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "type": "Transform",
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    0.02,
+                    0.0
+                ]
+            }
+        },
+        {
+            "enabled": true,
+            "type": "Collider",
+            "parameters": {
+                "shapes": [
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            0.0,
+                            0.9,
+                            0.0
+                        ],
+                        "static": false,
+                        "trigger": false,
+                        "type": "Capsule",
+                        "radius": 0.3,
+                        "height": 1.8
+                    }
+                ]
+            }
+        },
+        {
+            "enabled": true,
+            "type": "CharacterController",
+            "parameters": {}
+        },
+        {
+            "enabled": true,
+            "type": "MeshRenderer",
+            "parameters": {
+                "model": {
+                    "guid": "fd0ce2a1-f28b-49fa-b282-353f5ecccb96",
+                    "path": "Application/Assets/Models/AnimRobot/AnimRobot.gltf"
+                }
+            }
+        },
+        {
+            "enabled": true,
+            "type": "Animator",
+            "parameters": {
+                "model": "",
+                "controller": {
+                    "guid": "7aef64fc-de66-4976-bc46-de338f3d2122",
+                    "path": "Application/Assets/Animators/Robot.animator"
+                },
+                "speed": 1.0,
+                "applyRootMotion": false
+            }
+        },
+        {
+            "enabled": true,
+            "type": "ManyBoxesProbe",
+            "parameters": {}
+        }
+    ],
+    "id": "91c4e7b3a0d6f258",
+    "name": "Player",
+    "order": 4
+}

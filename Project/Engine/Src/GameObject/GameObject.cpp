@@ -60,25 +60,24 @@ namespace CoreEngine
     }
 
     void GameObject::GetWorldAxes(Vector3& axisX, Vector3& axisY, Vector3& axisZ) const {
-        axisX = { 1.0f, 0.0f, 0.0f };
-        axisY = { 0.0f, 1.0f, 0.0f };
-        axisZ = { 0.0f, 0.0f, 1.0f };
-
         auto* transform = GetComponent<TransformComponent>();
         if (!transform) {
+            axisX = { 1.0f, 0.0f, 0.0f };
+            axisY = { 0.0f, 1.0f, 0.0f };
+            axisZ = { 0.0f, 0.0f, 1.0f };
             return;
         }
+        AxesOfWorldMatrix(transform->Get().GetWorldMatrix(), axisX, axisY, axisZ);
+    }
 
-        // 行ベクトル規約（p' = p * M）なので各行が基底ベクトル。長さはスケールなので正規化する
-        const Matrix4x4& world = transform->Get().GetWorldMatrix();
-        Vector3* const axes[3] = { &axisX, &axisY, &axisZ };
-
-        for (int row = 0; row < 3; ++row) {
-            const Vector3 basis{ world.m[row][0], world.m[row][1], world.m[row][2] };
-            if (LengthSquared(basis) > 1e-12f) {
-                *axes[row] = Normalize(basis);
-            }
+    const Matrix4x4* GameObject::FindWorldMatrix() const {
+        const uint64_t layout = GetLayoutVersion();
+        if (worldMatrixLayout_ != layout) {
+            const auto* transform = GetComponent<TransformComponent>();
+            worldMatrix_ = transform ? &transform->Get().GetWorldMatrix() : nullptr;
+            worldMatrixLayout_ = layout;
         }
+        return worldMatrix_;
     }
 
     bool GameObject::TryApplyCollisionPush(const Vector3& delta) {

@@ -3,6 +3,7 @@
 #include "IComponent.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <type_traits>
@@ -43,6 +44,7 @@ public:
         raw->owner_ = ownerObject_;
         raw->attachedByCode_ = dataAttachDepth_ == 0;
         components_.push_back(std::move(owned));
+        ++layoutVersion_;
         InvokeAwake(*raw);
         return raw;
     }
@@ -104,6 +106,10 @@ public:
 
     /// @brief アタッチされているコンポーネント数（取り外し済みは含まない）
     size_t GetComponentCount() const;
+
+    /// @brief 付いているコンポーネントの並びが変わるたびに増える番号
+    /// @note 付ける・外す・付け直すたびに増える。控えた兄弟のポインタがまだ使えるかを見るのに使う。
+    uint64_t GetLayoutVersion() const { return layoutVersion_; }
 
     /// @brief 全コンポーネントを列挙する（**nullptr スロットが混ざりうる**ので要チェック）
     const std::vector<std::unique_ptr<IComponent>>& GetAllComponents() const {
@@ -264,6 +270,9 @@ private:
 
     /// `DataAttachScope` の入れ子の深さ（0 より大きい間に付いたものは、コードが付けたものではない）
     int dataAttachDepth_ = 0;
+
+    /// 並びが変わるたびに増える番号（`GetLayoutVersion()`）
+    uint64_t layoutVersion_ = 1;
 
     /// OnDestroy() を発行済みか（二重発行の防止）
     bool destroyDispatched_ = false;

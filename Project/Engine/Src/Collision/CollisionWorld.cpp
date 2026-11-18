@@ -7,6 +7,8 @@
 #include "Utility/Random/Hash.h"
 
 #include <algorithm>
+#include <cmath>
+#include <utility>
 
 namespace CoreEngine
 {
@@ -207,6 +209,63 @@ namespace CoreEngine
             return ((layerMask >> static_cast<uint32_t>(collider.GetLayer())) & 1u) != 0;
         }
 
+        /// @brief 前絞りで箱を広げる量（固定の分と、座標の大きさに比例する分）
+        constexpr float kPrefilterMargin = 0.01f;
+        constexpr float kPrefilterRelative = 1e-5f;
+
+        /// @brief 前絞りに使う、少し広げた箱
+        Geometry::AABB Inflate(const Geometry::AABB& box)
+        {
+            const float magnitude = (std::max)({
+                std::abs(box.min.x), std::abs(box.min.y), std::abs(box.min.z),
+                std::abs(box.max.x), std::abs(box.max.y), std::abs(box.max.z) });
+            const float margin = kPrefilterMargin + magnitude * kPrefilterRelative;
+            const Vector3 grow{ margin, margin, margin };
+            return Geometry::AABB{ box.min - grow, box.max + grow };
+        }
+
+        /// @brief 2 つの箱が離れているのが確かか（NaN が混ざると離れていない扱い）
+        bool Separated(const Geometry::AABB& a, const Geometry::AABB& b)
+        {
+            return a.min.x > b.max.x || a.max.x < b.min.x
+                || a.min.y > b.max.y || a.max.y < b.min.y
+                || a.min.z > b.max.z || a.max.z < b.min.z;
+        }
+
+        /// @brief 中心と半分の大きさから、符号によらず包む箱を作る
+        Geometry::AABB QueryBounds(const Vector3& center, const Vector3& half)
+        {
+            const Vector3 extent{ std::abs(half.x), std::abs(half.y), std::abs(half.z) };
+            return Inflate(Geometry::AABB{ center - extent, center + extent });
+        }
+
+        /// @brief レイが 0 から maxDistance までの間に箱を通りうるか
+        /// @note 起点が箱の中なら通る扱い。NaN が混ざると通る扱い。
+        bool RayMayHit(const Geometry::Ray& ray, const Geometry::AABB& box, float maxDistance)
+        {
+            const float origin[3]    = { ray.origin.x, ray.origin.y, ray.origin.z };
+            const float direction[3] = { ray.direction.x, ray.direction.y, ray.direction.z };
+            const float low[3]       = { box.min.x, box.min.y, box.min.z };
+            const float high[3]      = { box.max.x, box.max.y, box.max.z };
+
+            float enter = 0.0f;
+            float exit = maxDistance;
+            for (int axis = 0; axis < 3; ++axis) {
+                if (direction[axis] == 0.0f) {
+                    if (origin[axis] < low[axis] || origin[axis] > high[axis]) { return false; }
+                    continue;
+                }
+                const float inverse = 1.0f / direction[axis];
+                float t0 = (low[axis] - origin[axis]) * inverse;
+                float t1 = (high[axis] - origin[axis]) * inverse;
+                if (t0 > t1) { std::swap(t0, t1); }
+                if (t0 > enter) { enter = t0; }
+                if (t1 < exit) { exit = t1; }
+                if (enter > exit) { return false; }
+            }
+            return true;
+        }
+
         /// @brief コライダー 1 つに対するレイ判定
         bool RaycastCollider(const Collider& collider, const Geometry::Ray& ray,
                              float maxDistance, Geometry::RayHit& outHit)
@@ -226,6 +285,8 @@ namespace CoreEngine
 
         for (Collider* collider : colliders_) {
             if (!collider->IsEnabled() || !MatchesLayer(*collider, layerMask)) { continue; }
+
+            if (!RayMayHit(ray, Inflate(collider->GetWorldAABB()), nearest)) { continue; }
 
             Geometry::RayHit hit{};
             if (!RaycastCollider(*collider, ray, nearest, hit)) { continue; }
@@ -249,6 +310,8 @@ namespace CoreEngine
         for (Collider* collider : colliders_) {
             if (!collider->IsEnabled() || !MatchesLayer(*collider, layerMask)) { continue; }
 
+            if (!RayMayHit(ray, Inflate(collider->GetWorldAABB()), maxDistance)) { continue; }
+
             Geometry::RayHit hit{};
             if (!RaycastCollider(*collider, ray, maxDistance, hit)) { continue; }
 
@@ -268,8 +331,12 @@ namespace CoreEngine
     void CollisionWorld::OverlapSphere(const Geometry::Sphere& sphere, uint64_t layerMask,
                                        std::vector<Collider*>& outColliders) const
     {
+        const float reach = std::abs(sphere.radius);
+        const Geometry::AABB queryBounds = QueryBounds(sphere.center, Vector3{ reach, reach, reach });
+
         for (Collider* collider : colliders_) {
             if (!collider->IsEnabled() || !MatchesLayer(*collider, layerMask)) { continue; }
+            if (Separated(queryBounds, collider->GetWorldAABB())) { continue; }
 
             const bool hit = VisitWorldShape(*collider, [&](const auto& shape) {
                 return Geometry::Intersect(sphere, shape);
@@ -283,9 +350,11 @@ namespace CoreEngine
     {
         // 問い合わせの箱も向きを持つ形として扱い、判定を OBB へ一本化する
         const Geometry::OBB queryBox{ box.GetCenter(), box.GetSize() * 0.5f };
+        const Geometry::AABB queryBounds = QueryBounds(queryBox.center, queryBox.halfExtents);
 
         for (Collider* collider : colliders_) {
             if (!collider->IsEnabled() || !MatchesLayer(*collider, layerMask)) { continue; }
+            if (Separated(queryBounds, collider->GetWorldAABB())) { continue; }
 
             const bool hit = VisitWorldShape(*collider, [&](const auto& shape) {
                 return Geometry::Intersect(queryBox, shape);

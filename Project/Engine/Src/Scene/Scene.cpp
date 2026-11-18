@@ -5,7 +5,9 @@
 #include "Camera/CameraManager.h"
 #include "Camera/Camera.h"
 #include "Camera/Rig/CameraRig.h"
+#include "Collision/ColliderComponent.h"
 #include "Collision/CollisionLayer.h"
+#include "Collision/Mesh/CollisionMeshLibrary.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/Render/RenderManager.h"
 #include "Scene/SceneManager.h"
@@ -22,6 +24,8 @@
 #include "Utility/Logger/Logger.h"
 #include "Utility/FrameRate/FrameRateController.h"
 #include <algorithm>
+#include <chrono>
+#include <exception>
 #include <utility>
 
 
@@ -49,6 +53,10 @@ namespace CoreEngine
             [this] { return sceneSaveSystem_->StepLoad(); },
             [this] { return sceneSaveSystem_->GetLoadProgress(); }));
         sequence.Add("Feature の後処理", [this] { RunPostSceneInitialize(); });
+        sequence.Add(std::make_unique<PollingStartupTask>("当たりのメッシュ",
+            [this] { return BeginCollisionMeshBuild(); },
+            [this] { return IsCollisionMeshBuildDone(); },
+            [this] { return GetCollisionMeshBuildProgress(); }));
     }
 
     void Scene::SetupSceneCore(EngineSystem* engine)
@@ -258,6 +266,80 @@ namespace CoreEngine
         return (progress.second == 0)
             ? 1.0f
             : static_cast<float>(progress.first) / static_cast<float>(progress.second);
+    }
+
+    bool Scene::BeginCollisionMeshBuild()
+    {
+        collisionMeshBuilds_.clear();
+        collisionMeshBuildsDone_ = 0;
+        collisionMeshBuildsTotal_ = 0;
+
+        auto* modelManager = engine_ ? engine_->GetService<ModelManager>() : nullptr;
+        if (!modelManager) {
+            return false;
+        }
+
+        // 同じ出どころと段は 1 回だけ作る
+        std::vector<std::pair<const void*, int>> requests;
+        for (const auto& object : gameObjectManager_.GetAllObjects()) {
+            if (!object) { continue; }
+            for (const ColliderComponent* colliders : object->GetComponents<ColliderComponent>()) {
+                for (size_t i = 0; i < colliders->Count(); ++i) {
+                    const Collider* const collider = colliders->Get(i);
+                    if (!collider || collider->GetShapeType() != ColliderShapeType::Mesh) { continue; }
+
+                    const CollisionShape& shape = collider->GetShape();
+                    const CollisionMeshSourceInfo source = CollisionMeshLibrary::Identify(*object, shape);
+                    const std::pair<const void*, int> request{ source.key, (std::max)(shape.meshLod, 0) };
+                    if (source.key == nullptr
+                        || CollisionMeshLibrary::Contains(request.first, request.second)
+                        || std::find(requests.begin(), requests.end(), request) != requests.end()) {
+                        continue;
+                    }
+                    requests.push_back(request);
+                }
+            }
+        }
+        if (requests.empty()) {
+            return false;
+        }
+
+        Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
+            "当たりのメッシュを読み込みの間に {} 個作ります", requests.size());
+        for (const auto& [key, lod] : requests) {
+            collisionMeshBuilds_.push_back(modelManager->SubmitWork("CollisionMesh",
+                [key, lod] { CollisionMeshLibrary::Acquire(key, lod); }));
+        }
+        collisionMeshBuildsTotal_ = requests.size();
+        return true;
+    }
+
+    bool Scene::IsCollisionMeshBuildDone()
+    {
+        for (auto it = collisionMeshBuilds_.begin(); it != collisionMeshBuilds_.end();) {
+            if (it->wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
+                ++it;
+                continue;
+            }
+            try {
+                it->get();
+            }
+            catch (const std::exception& e) {
+                // 作れなかった形は、使うときに作り直す
+                Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
+                    "当たりのメッシュを読み込みの間に作れませんでした: {}", e.what());
+            }
+            ++collisionMeshBuildsDone_;
+            it = collisionMeshBuilds_.erase(it);
+        }
+        return collisionMeshBuilds_.empty();
+    }
+
+    float Scene::GetCollisionMeshBuildProgress() const
+    {
+        return (collisionMeshBuildsTotal_ == 0)
+            ? 1.0f
+            : static_cast<float>(collisionMeshBuildsDone_) / static_cast<float>(collisionMeshBuildsTotal_);
     }
 
     bool Scene::BeginSceneDataRestore()

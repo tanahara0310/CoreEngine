@@ -9,6 +9,7 @@
 #include <unordered_set>
 #include <vector>
 #include "SceneSaveSystem.h"
+#include "Collision/CollisionShape.h"
 #include "GameObject/Component/Core/ObjectRef.h"
 #include "GameObject/GameObjectManager.h"
 #include "Graphics/Asset/AssetDatabase.h"
@@ -433,6 +434,36 @@ namespace CoreEngine
             }
         }
 
+        /// @brief コライダーのメッシュの形が、ファイルで指すモデルを探す
+        /// @param add 見つけたモデルのアセット情報を受け取る
+        template <typename AddFunction>
+        void CollectColliderMeshModels(const json& entry, const AddFunction& add)
+        {
+            const auto type = entry.find("type");
+            if (type == entry.end() || !type->is_string() || type->get_ref<const std::string&>() != "Collider") {
+                return;
+            }
+            const json& parameters = entry.at("parameters");
+            const auto shapes = parameters.find("shapes");
+            if (shapes == parameters.end() || !shapes->is_array()) {
+                return;
+            }
+
+            const std::string fileSource = kCollisionMeshSourceNames[static_cast<int>(CollisionMeshSource::File)];
+            for (const auto& shape : *shapes) {
+                if (!shape.is_object()) { continue; }
+                const auto mesh = shape.find("mesh");
+                if (mesh == shape.end() || !mesh->is_object()) { continue; }
+                const auto source = mesh->find("source");
+                const auto model = mesh->find("model");
+                if (source == mesh->end() || !source->is_string() || source->get_ref<const std::string&>() != fileSource
+                    || model == mesh->end() || !model->is_string()) {
+                    continue;
+                }
+                add(AssetDatabase::GetInstance().FindAssetByPath(model->get_ref<const std::string&>()));
+            }
+        }
+
         /// @brief components 配列からモデルを指す参照を探し、そのパスを重ならないように足す
         /// @details 参照は AssetRef と、モデルの綴りの文字列（Animator の model など）の 2 通り
         void CollectModelRefs(const json& components, std::vector<std::string>& modelPaths)
@@ -466,6 +497,7 @@ namespace CoreEngine
                         add(ResolveAssetRef(ref));
                     }
                 }
+                CollectColliderMeshModels(entry, add);
             }
         }
 

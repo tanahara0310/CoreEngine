@@ -60,6 +60,9 @@ namespace CoreEngine
         /// @brief 出どころと LOD の段の三角形の集まりを出す（控えに無ければ作って控える）
         static Result Acquire(const void* key, int lod);
 
+        /// @brief 出どころと LOD の段の三角形の集まりを、もう控えているか
+        static bool Contains(const void* key, int lod);
+
         /// @brief 控えを全部捨てる
         static void Clear();
 

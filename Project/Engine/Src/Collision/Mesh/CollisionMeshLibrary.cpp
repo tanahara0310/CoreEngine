@@ -103,6 +103,13 @@ namespace CoreEngine
         return result;
     }
 
+    bool CollisionMeshLibrary::Contains(const void* key, int lod)
+    {
+        LibraryState& state = State();
+        std::lock_guard<std::mutex> lock(state.mutex);
+        return state.meshes.find({ key, (std::max)(lod, 0) }) != state.meshes.end();
+    }
+
     void CollisionMeshLibrary::Clear()
     {
         LibraryState& state = State();

@@ -82,4 +82,12 @@ private:
     Vector3 rotationEuler_ = { 0.0f, 0.0f, 0.0f };
     Vector3 translate_ = { 0.0f, 0.0f, 0.0f };
 };
+
+/// @brief ワールド行列の拡大縮小（各行の長さ）
+/// @note 行ベクトル規約（p' = p * M）なので、各行が基底ベクトル。
+Vector3 ScaleOfWorldMatrix(const Matrix4x4& world);
+
+/// @brief ワールド行列の向き（各行を正規化した 3 本の軸）
+/// @note 長さがほぼ 0 の行は、その軸をワールド軸のまま返す。
+void AxesOfWorldMatrix(const Matrix4x4& world, Vector3& axisX, Vector3& axisY, Vector3& axisZ);
 }
