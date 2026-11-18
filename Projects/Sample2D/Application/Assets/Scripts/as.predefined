@@ -425,6 +425,7 @@ class GameObject {
 	CoreEngine::Buoyancy@ get_buoyancy() property;
 	CoreEngine::Camera@ get_camera() property;
 	CoreEngine::CharacterController@ get_characterController() property;
+	CoreEngine::FogVolume@ get_fogVolume() property;
 	CoreEngine::GpuParticleSystem@ get_gpuParticleSystem() property;
 	CoreEngine::Light@ get_light() property;
 	CoreEngine::Material@ get_material() property;
@@ -885,6 +886,28 @@ class CharacterController {
 	void Move(const CoreEngine::Vector3&in);
 	void SimpleMove(const CoreEngine::Vector3&in);
 	void Jump(float);
+}
+class FogVolume {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	CoreEngine::GameObject@ get_gameObject() const property;
+	int get_shape() const property;
+	void set_shape(int) property;
+	CoreEngine::Vector3 get_size() const property;
+	void set_size(const CoreEngine::Vector3&in) property;
+	float get_edgeFade() const property;
+	void set_edgeFade(float) property;
+	float get_density() const property;
+	void set_density(float) property;
+	CoreEngine::Vector4 get_albedo() const property;
+	void set_albedo(const CoreEngine::Vector4&in) property;
+	CoreEngine::Vector4 get_emissiveColor() const property;
+	void set_emissiveColor(const CoreEngine::Vector4&in) property;
+	float get_emissiveIntensity() const property;
+	void set_emissiveIntensity(float) property;
+	float get_noiseStrength() const property;
+	void set_noiseStrength(float) property;
 }
 class GpuParticleSystem {
 	bool get_exists() const property;

@@ -3,6 +3,10 @@
 
 #ifdef CORE_EDITOR
 
+#include "Editor/Scene/EditorSceneAccess.h"
+#include "Editor/Scene/SceneDebugEditor.h"
+#include "GameObject/Component/Render/SpriteAnimatorComponent.h"
+#include "GameObject/GameObject.h"
 #include "Graphics/Asset/AssetDatabase.h"
 #include "Graphics/Model/Animation/Animation.h"
 #include "Graphics/Model/ModelManager.h"
@@ -192,6 +196,11 @@ namespace CoreEngine::Editor
 
     float AnimatorDocument::ClipDurationOf(const AnimatorClip& clip)
     {
+        if (clip.IsSprite()) {
+            const SpriteAnimatorComponent* const sprite = SelectedSprite();
+            const SpriteAnimationClip* const source = sprite ? sprite->FindClip(clip.sprite) : nullptr;
+            return source ? SpriteAnimatorComponent::ClipDuration(*source) : 0.0f;
+        }
         const std::string key = clip.file + "|" + clip.source;
         if (const auto found = clipDurations.find(key); found != clipDurations.end()) {
             return found->second;
@@ -585,6 +594,53 @@ namespace CoreEngine::Editor
             notice += "・状態 " + std::to_string(column) + " 個";
         }
         notice += "を足しました。";
+    }
+
+    void AnimatorDocument::AddClipsFromSprite(const SpriteAnimatorComponent& sprite, const Vector2* position)
+    {
+        const std::vector<SpriteAnimationClip>& sources = sprite.GetClips();
+        if (sources.empty()) {
+            notice = "スプライトアニメにクリップがありません。";
+            return;
+        }
+        int column = 0;
+        int added = 0;
+        for (const SpriteAnimationClip& source : sources) {
+            std::string id;
+            for (const AnimatorClip& clip : data.clips) {
+                if (clip.sprite == source.name) {
+                    id = clip.id;
+                    break;
+                }
+            }
+            if (id.empty()) {
+                AnimatorClip clip;
+                clip.id = UniqueClipId(source.name.empty() ? std::string("Sprite") : source.name);
+                clip.sprite = source.name;
+                id = clip.id;
+                data.clips.push_back(std::move(clip));
+                ++added;
+            }
+            if (position) {
+                const Vector2 at{ position->x + static_cast<float>(column % 3) * 210.0f,
+                    position->y + static_cast<float>(column / 3) * 90.0f };
+                AddState(at, id);
+                ++column;
+            }
+        }
+        MarkChanged("スプライトアニメからクリップを足す");
+        notice = "スプライトアニメから " + std::to_string(sources.size()) + " 本（新しいクリップ " + std::to_string(added) + " 本）";
+        if (position) {
+            notice += "・状態 " + std::to_string(column) + " 個";
+        }
+        notice += "を足しました。";
+    }
+
+    const SpriteAnimatorComponent* AnimatorDocument::SelectedSprite()
+    {
+        SceneDebugEditor* const sceneEditor = SceneAccess::SceneEditor();
+        const GameObject* const object = sceneEditor ? sceneEditor->GetSelectedObject() : nullptr;
+        return object ? object->GetComponent<SpriteAnimatorComponent>() : nullptr;
     }
 
     void AnimatorDocument::MoveTransition(int transitionIndex, int direction)

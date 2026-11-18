@@ -659,6 +659,9 @@ namespace CoreEngine::Editor
             transition.duration = std::max(0.0f, transition.duration);
             document.MarkChanged("遷移の混ぜる秒数を変える");
         }
+        if (std::any_of(document.data.clips.begin(), document.data.clips.end(), [](const AnimatorClip& clip) { return clip.IsSprite(); })) {
+            UI::Tooltip("スプライトのクリップを使う設定では混ぜずに、条件がそろったときにすぐ移ります。");
+        }
         if (ImGui::Checkbox("終わりの時刻で移る", &transition.hasExitTime)) {
             document.MarkChanged("遷移の終わりの時刻を変える");
         }

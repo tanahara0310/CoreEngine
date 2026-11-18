@@ -16,6 +16,7 @@
 namespace CoreEngine
 {
     class ModelManager;
+    class SpriteAnimatorComponent;
 }
 
 namespace CoreEngine::Editor
@@ -132,6 +133,13 @@ namespace CoreEngine::Editor
         /// @param position 状態も作るときの位置（nullptr ならクリップだけ足す）
         void AddClipsFromModel(const std::string& modelAssetPath, const Vector2* position);
 
+        /// @brief スプライトアニメのクリップを、それを指すクリップとして表へ足す（同じ名前を指すクリップがあれば足さない）
+        /// @param position 状態も作るときの位置（nullptr ならクリップだけ足す）
+        void AddClipsFromSprite(const SpriteAnimatorComponent& sprite, const Vector2* position);
+
+        /// @brief Hierarchy で選んでいるオブジェクトのスプライトアニメ（無ければ nullptr）
+        static const SpriteAnimatorComponent* SelectedSprite();
+
         /// @brief 同じ元から出る遷移の中で 1 つ前か後ろへ動かす
         void MoveTransition(int transitionIndex, int direction);
 
@@ -139,6 +147,7 @@ namespace CoreEngine::Editor
         const std::vector<std::string>& ClipNamesOf(const std::string& clipFile);
 
         /// @brief クリップの尺（秒。読めなければ 0。ファイルと中の名前の組ごとに 1 回だけ読む）
+        /// @details スプライトのクリップは、Hierarchy で選んでいるオブジェクトのスプライトアニメのクリップの尺（毎回引く）。
         float ClipDurationOf(const AnimatorClip& clip);
 
         std::filesystem::path file;

@@ -28,6 +28,7 @@ namespace CoreEngine
     ///          途中の姿勢を写して止めた姿勢から混ぜる。
     ///          クリップの状態は時刻を秒で、ブレンドツリーの状態は進みの割合で持つ。
     ///          2 枚目からのレイヤーは重みとマスクの分だけ下の姿勢を上書きし、流すものの無い状態では下の姿勢のままにする。
+    ///          混ぜない設定（スプライト）では、遷移と CrossFade の秒数を見ずにすぐ切り替え、見せるクリップを GetLayerVisibleClip で渡す。
     class AnimatorRuntime
     {
     public:
@@ -46,6 +47,16 @@ namespace CoreEngine
             Vector3 position{};  ///< 水平の移動（y は 0）
             float yaw = 0.0f;    ///< 縦の軸まわりの回転（ラジアン）
         };
+
+        /// @brief 見せるクリップとその中の時刻
+        struct ClipSample
+        {
+            int clip = -1;      ///< 設定の clips の番号（流すものが無ければ -1）
+            float time = 0.0f;  ///< クリップの中の秒
+        };
+
+        /// @brief 骨の無い骨の並び（スプライトのように姿勢を使わないときに Build へ渡す）
+        static const Skeleton& NoBones();
 
         /// @brief 設定と骨の並びから作り直す
         /// @param controller 設定
@@ -110,6 +121,19 @@ namespace CoreEngine
 
         /// @brief レイヤーの今の重み（無いレイヤーは 0）
         float GetLayerWeight(int layer) const;
+
+        // ===== 見せるクリップ =====
+
+        /// @brief 遷移と CrossFade で混ぜるか（false なら秒数を見ずにすぐ切り替える）
+        void SetBlendingEnabled(bool enabled) { blendingEnabled_ = enabled; }
+        bool IsBlendingEnabled() const { return blendingEnabled_; }
+
+        /// @brief レイヤーの今見せるクリップ（遷移の途中なら移る先。ブレンドツリーはいちばん重い子）
+        ClipSample GetLayerVisibleClip(int layer) const;
+
+        /// @brief レイヤーの状態の決まった進みで見せるクリップ（時刻・遷移・イベントは変えない）
+        /// @param normalizedTime 0〜1
+        ClipSample StateClipAt(int layer, const std::string& stateName, float normalizedTime) const;
 
         // ===== クリップの移動 =====
 
@@ -296,6 +320,8 @@ namespace CoreEngine
         void CollectEvents(const LayerState& layer, Playhead& playhead, float deltaTime);
         /// @brief イベントを読むクリップ（無ければ -1）
         int EventClip(const LayerState& layer, const Playhead& playhead) const;
+        /// @brief 流れの見せるクリップと、その中の秒
+        ClipSample SampleClip(const LayerState& layer, const Playhead& playhead) const;
         /// @brief クリップの [from, to]（includeFrom が false なら (from, to]）のイベントを足す
         void EmitEvents(const LayerState& layer, int clip, int state, float from, float to, bool includeFrom);
         int FindClipIndex(const std::string& clipId) const;
@@ -338,6 +364,7 @@ namespace CoreEngine
 
         std::vector<ParameterValue> parameters_;
 
+        bool blendingEnabled_ = true;
         bool rootMotionEnabled_ = false;
         RootMotion rootMotion_;
         int rootJoint_ = -1;

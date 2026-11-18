@@ -23,6 +23,7 @@ namespace CoreEngine
     /// @brief 兄弟のスプライト描画のコマを、クリップに沿って進めるコンポーネント
     /// @details クリップはスプライトのコマ割り（横と縦のコマ数）の番号で書く。
     ///          再生中だけ進み、ループしないクリップは最後のコマで止まる。
+    ///          アニメーターに動かされている間は自分では進まず、ShowClipAt で渡されたクリップと時刻のコマを出す。
     class SpriteAnimatorComponent : public IComponent
     {
     public:
@@ -54,6 +55,21 @@ namespace CoreEngine
         /// @brief 流しているか（ループしないクリップが終わると false）
         bool IsPlaying() const { return playing_; }
 
+        // ===== アニメーターから動かす =====
+
+        /// @brief アニメーターに動かされているか（true の間は Start と Update で自分では進めない）
+        void SetDriven(bool driven) { driven_ = driven; }
+        bool IsDriven() const { return driven_; }
+
+        /// @brief クリップの決まった時刻のコマを出す
+        /// @param clipName クリップの名前（見つからなければ何もしない）
+        /// @param seconds クリップの頭からの秒（尺を越えた分は最後のコマ）
+        /// @return クリップが見つかれば true
+        bool ShowClipAt(const std::string& clipName, float seconds);
+
+        /// @brief クリップ 1 周の秒（fps が 0 以下なら 0）
+        static float ClipDuration(const SpriteAnimationClip& clip);
+
         // ===== 設定 =====
 
         /// @brief 再生を始めたときに流すクリップ（空なら流さない）
@@ -78,7 +94,8 @@ namespace CoreEngine
 
     private:
         /// @brief 経過時間から、クリップの中の今のコマを決める
-        int ResolveFrame(const SpriteAnimationClip& clip) const;
+        /// @param wrap true ならコマの数で巻き戻し、false なら最後のコマで止める
+        int ResolveFrame(const SpriteAnimationClip& clip, bool wrap) const;
 
         /// @brief 兄弟のスプライト描画
         SpriteRendererComponent* GetSprite() const;
@@ -90,5 +107,6 @@ namespace CoreEngine
         std::string currentClip_;
         float time_ = 0.0f;
         bool playing_ = false;
+        bool driven_ = false;
     };
 }

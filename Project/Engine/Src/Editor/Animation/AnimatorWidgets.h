@@ -11,6 +11,7 @@
 
 namespace CoreEngine
 {
+    class SpriteAnimatorComponent;
     struct Skeleton;
 }
 
@@ -63,10 +64,17 @@ namespace CoreEngine::Editor::AnimatorWidgets
     /// @brief ドラッグで落とされたモデル（`Application/Assets/…` の綴り。落とされていなければ空）
     std::optional<std::string> AcceptModelDrop();
 
-    /// @brief クリップの名前・ファイル・中の名前の欄と、イベントの帯と表
+    /// @brief クリップの名前・種類・指す先の欄と、イベントの帯と表
     /// @param playhead 帯に線を引く時刻（秒。無ければ引かない）
     /// @return クリップを消したら true
     bool ClipFields(AnimatorDocument& document, int clipIndex, bool allowDelete, std::optional<float> playhead = std::nullopt);
+
+    /// @brief モデルのクリップのファイルと中の名前の欄
+    void ModelClipFields(AnimatorDocument& document, AnimatorClip& clip);
+
+    /// @brief スプライトのクリップの指す名前の欄
+    /// @param sprite 候補を出すスプライトアニメ（nullptr なら名前を手で書く欄）
+    void SpriteClipFields(AnimatorDocument& document, AnimatorClip& clip, const SpriteAnimatorComponent* sprite);
 
     /// @brief クリップのイベントの帯（ドラッグで時刻を変える・ダブルクリックで足す）と表
     void ClipEvents(AnimatorDocument& document, int clipIndex, std::optional<float> playhead);

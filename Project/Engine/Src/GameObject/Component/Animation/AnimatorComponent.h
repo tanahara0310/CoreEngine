@@ -21,6 +21,8 @@ namespace CoreEngine
 {
 struct Animation;
 class Model;
+class ModelManager;
+class SpriteAnimatorComponent;
 
 /// @brief 読み込むアニメーションクリップ 1 件分の指定（設定を指さないときに使う）
 struct AnimationClipDesc {
@@ -37,6 +39,8 @@ struct AnimationClipDesc {
 /// @details 設定（`.animator`）を指していれば、パラメータと遷移の表で状態を切り替える。
 ///          指していなければ `clips` の 1 本ずつを状態にして、`Switch`・`SwitchWithBlend` で切り替える。
 ///          `Awake()` で兄弟 `MeshRendererComponent` にスキニングモデルを作らせ、毎フレームの骨の行列をそのモデルへ渡す。
+///          骨入りのモデルが無く、兄弟にスプライトアニメがあり、設定にスプライトのクリップがあれば、
+///          混ぜずに状態を切り替え、最初のレイヤーの見せるクリップと時刻をスプライトアニメへ渡す。
 class AnimatorComponent : public IComponent {
 public:
     /// @brief モデルを指定せずに作る（兄弟のメッシュ描画のモデルを使う）
@@ -95,6 +99,12 @@ public:
     {
         return IsAnyOf<MeshRendererComponent, TransformComponent>(other);
     }
+
+    /// @brief スプライトアニメを動かしていれば、また動かす
+    void OnEnable() override;
+
+    /// @brief スプライトアニメを動かしていれば、自分で進むように戻す
+    void OnDisable() override;
 
     /// @brief 設定か model を指し直したら作り直す
     void OnPropertyChanged(const Reflection::PropertyDescriptor& property) override;
@@ -202,8 +212,26 @@ public:
     /// @return 描かせられたら true
     bool ShowPreviewPose(std::span<const Matrix4x4> matrices);
 
-    /// @brief ShowPreviewPose をやめて、実行の状態の姿勢へ戻す
+    /// @brief ShowPreviewPose・ShowPreviewSprite をやめて、元の姿勢とコマへ戻す
     void ClearPreviewPose();
+
+    // ===== スプライト =====
+
+    /// @brief スプライトアニメを動かしているか（骨入りのモデルが無く、設定にスプライトのクリップがある）
+    bool DrivesSprite() const;
+
+    /// @brief 動かしているスプライトアニメ（動かしていなければ nullptr）
+    SpriteAnimatorComponent* GetDrivenSprite() const;
+
+    /// @brief スプライトアニメのクリップの決まった時刻のコマを出す（停止中に窓の「シーンで見る」が使う）
+    /// @return 出せたら true
+    bool ShowPreviewSprite(const std::string& spriteClip, float seconds);
+
+    /// @brief 設定の clips と同じ並びのクリップを用意する
+    /// @param sprite スプライトのクリップの尺を読むスプライトアニメ（nullptr ならスプライトのクリップは nullptr）
+    /// @note スプライトのクリップは、尺だけを持つトラックの無いクリップにする。
+    static std::vector<std::shared_ptr<const Animation>> AcquireClips(const AnimatorControllerData& controller,
+        ModelManager* models, const SpriteAnimatorComponent* sprite);
 
 private:
     /// @brief 兄弟コンポーネントが未取得なら取りに行く（Start 前に呼ばれた場合の保険）
@@ -233,6 +261,9 @@ private:
     /// @brief このフレームのクリップの移動でオブジェクトを動かす
     void ApplyRootMotion();
 
+    /// @brief 最初のレイヤーの見せるクリップと時刻をスプライトアニメへ渡す
+    void ShowSpriteClip();
+
     /// @brief Switch / SwitchWithBlend に渡す「ループの指定」（設定を指していれば状態の設定のまま）
     std::optional<bool> LoopOverride(bool loop) const;
 
@@ -257,6 +288,8 @@ private:
     mutable AnimatorRuntime runtime_;
     mutable Model* boundModel_ = nullptr;
     mutable const Skeleton* boundSkeleton_ = nullptr;
+    mutable const SpriteAnimatorComponent* boundSprite_ = nullptr;  ///< 作り直しを決める比べにだけ使う
+    mutable bool drivesSprite_ = false;
     mutable std::shared_ptr<const AnimatorControllerLibrary::Entry> controllerEntry_;
     mutable uint64_t boundRevision_ = 0;
     mutable bool bound_ = false;
@@ -265,6 +298,7 @@ private:
 
     bool awoken_ = false;
     bool previewing_ = false;
+    std::optional<int> previewSpriteFrame_;  ///< 「シーンで見る」の前のスプライトのコマ
 
     /// 骨のデバッグ表示フラグ
     bool skeletonDebugDrawEnabled_ = false;

@@ -37,6 +37,12 @@ namespace CoreEngine
         }
     }
 
+    const Skeleton& AnimatorRuntime::NoBones()
+    {
+        static const Skeleton kNoBones{ -1, {}, {} };
+        return kNoBones;
+    }
+
     void AnimatorRuntime::Build(std::shared_ptr<const AnimatorControllerData> controller,
         std::vector<std::shared_ptr<const Animation>> clips, const Skeleton* skeleton, std::string ownerName)
     {
@@ -90,7 +96,7 @@ namespace CoreEngine
                 continue;
             }
             bindings_[i] = PoseEvaluator::Bind(*skeleton_, *clips_[i]);
-            if (bindings_[i].matchedCount == 0) {
+            if (bindings_[i].matchedCount == 0 && !controller_->clips[i].IsSprite()) {
                 WarnOnce("bind:" + controller_->clips[i].id,
                     "クリップ「" + controller_->clips[i].id + "」に、このモデルの骨の名前と同じトラックがありません（動きません）");
             }
@@ -533,7 +539,7 @@ namespace CoreEngine
 
     bool AnimatorRuntime::CrossFadeInLayer(int layer, const std::string& stateName, float seconds, std::optional<bool> loop)
     {
-        if (seconds <= 0.0f) {
+        if (seconds <= 0.0f || !blendingEnabled_) {
             return PlayInLayer(layer, stateName, loop);
         }
         LayerState* const target = IsReady() ? LayerAt(layer) : nullptr;
@@ -794,6 +800,38 @@ namespace CoreEngine
         return heaviest >= 0 ? motion.childClips[static_cast<size_t>(heaviest)] : -1;
     }
 
+    AnimatorRuntime::ClipSample AnimatorRuntime::SampleClip(const LayerState& layer, const Playhead& playhead) const
+    {
+        ClipSample sample;
+        sample.clip = EventClip(layer, playhead);
+        if (sample.clip >= 0) {
+            sample.time = IsBlend(layer, playhead.state) ? playhead.time * ClipDuration(sample.clip) : playhead.time;
+        }
+        return sample;
+    }
+
+    AnimatorRuntime::ClipSample AnimatorRuntime::GetLayerVisibleClip(int layer) const
+    {
+        const LayerState* const state = IsReady() ? LayerAt(layer) : nullptr;
+        if (!state) {
+            return {};
+        }
+        return SampleClip(*state, state->transition ? state->transition->next : state->current);
+    }
+
+    AnimatorRuntime::ClipSample AnimatorRuntime::StateClipAt(int layer, const std::string& stateName, float normalizedTime) const
+    {
+        const LayerState* const state = IsReady() ? LayerAt(layer) : nullptr;
+        const int index = state ? FindStateIndex(*state, stateName) : -1;
+        if (index < 0) {
+            return {};
+        }
+        Playhead playhead = MakePlayhead(*state, index, 0.0f, std::nullopt);
+        const float normalized = std::clamp(normalizedTime, 0.0f, 1.0f);
+        playhead.time = IsBlend(*state, index) ? normalized : normalized * StateDuration(*state, index);
+        return SampleClip(*state, playhead);
+    }
+
     void AnimatorRuntime::EmitEvents(const LayerState& layer, int clip, int state, float from, float to, bool includeFrom)
     {
         if (to < from) {
@@ -915,7 +953,7 @@ namespace CoreEngine
             }
         }
         const Playhead next = MakePlayhead(layer, transition.to, transition.offset, std::nullopt);
-        if (transition.duration <= 0.0f) {
+        if (transition.duration <= 0.0f || !blendingEnabled_) {
             layer.current = next;
             layer.transition.reset();
             return;

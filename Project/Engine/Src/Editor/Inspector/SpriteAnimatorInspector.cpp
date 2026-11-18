@@ -4,6 +4,7 @@
 #ifdef CORE_EDITOR
 
 #include "Editor/ImGui/ImGuiAll.h"
+#include "GameObject/Component/Animation/AnimatorComponent.h"
 #include "GameObject/Component/Render/SpriteAnimatorComponent.h"
 #include "GameObject/Component/Render/SpriteRendererComponent.h"
 #include "GameObject/GameObject.h"
@@ -84,6 +85,13 @@ namespace SpriteAnimatorInspector
             changed = true;
         }
         UI::Hint("スクリプトからは owner.spriteAnimator.Play(\"名前\") で流す。");
+        ImGui::PushTextWrapPos(0.0f);
+        if (animator.IsDriven()) {
+            UI::Hint("今は同じオブジェクトの Animator がコマを決めています（Play と自分の再生は効きません）。");
+        } else if (owner && owner->GetComponent<AnimatorComponent>()) {
+            UI::Hint("Animator の設定でスプライトのクリップを指すと、再生中は Animator がコマを決めます。");
+        }
+        ImGui::PopTextWrapPos();
         return changed;
     }
 }

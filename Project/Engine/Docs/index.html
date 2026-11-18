@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.93.0">
+<meta name="engine-version" content="0.94.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2336,7 +2336,7 @@ kbd {
     <tbody>
       <tr><td><span class="path">Projects/Sokoban</span></td><td>倉庫番。スクリプト 1 本（<span class="path">SokobanBoard.as</span>）とプレハブ 5 つだけで、文字で書いた盤面からステージを組み立てる小さな見本。ステージはインスペクタの <code>stages</code> に 1 行足せば増やせます。</td></tr>
       <tr><td><span class="path">Projects/TestBed</span></td><td>エンジンの機能ごとの試験場（物理・キャラクターの歩行・UI・水面・カメラの揺れ・スクリプトのシューター）と、エディタの拡張の見本（<a href="#editor-ext-samples">見本とテスト</a>）。基本図形と小さなモデルだけで作っているので、すぐに開けます。</td></tr>
-      <tr><td><span class="path">Projects/Sample2D</span></td><td>2D の横スクロールの見本。走る・跳ぶ・コインを集める・ゴールに着く、の 1 ステージに、クリックした所へ箱を落とす遊びを足したもの。スプライトのアニメ・平行投影のカメラの追従・遠景・剛体の軸の固定・トリガーを、スクリプト 6 本（プレイヤー・進行・コイン・ゴール・カメラの追従・遠景）で使っています。使っている機能は <a href="#guide-2d">2D ゲームの作り方</a> で説明しています。</td></tr>
+      <tr><td><span class="path">Projects/Sample2D</span></td><td>2D の横スクロールの見本。走る・跳ぶ・コインを集める・ゴールに着く、の 1 ステージに、クリックした所へ箱を落とす遊びを足したもの。スプライトのアニメとアニメーター・平行投影のカメラの追従・遠景・剛体の軸の固定・トリガーを、スクリプト 6 本（プレイヤー・進行・コイン・ゴール・カメラの追従・遠景）で使っています。使っている機能は <a href="#guide-2d">2D ゲームの作り方</a> で説明しています。</td></tr>
       <tr><td><span class="path">Projects/FogShowcase</span></td><td>ボリュメトリックフォグの見本で、シーンは 2 つです。夕暮れの森の遺跡（<code>ForestRuins</code>・初期シーン）では、低い太陽が木の間から差す光の筋・谷にたまった霧を照らす 6 つの灯籠・列柱の奥の祭壇を照らすスポットライトと光る霧・150m より奥の遠いもや・風で流れる霧のむらを見られます。モデルは簡単な形で作った 19 個（合わせて約 2.4 万三角形）です。月夜の墓地（<code>Graveyard</code>）では、逆光の月が枯れ木の枝越しに霧へ落とす光の筋・地を這う霧・門灯と灯籠と蝋燭の暖かい光・霊廟の扉からこぼれる緑の光を見られます。墓地のモデルは色・凹凸・粗さの画像を貼った写実寄りの 35 個（合わせて約 13 万三角形）です。どちらのシーンもスクリプトはなく、霧のむらが流れるのは再生中だけです。使っている機能は <a href="#api-HeightFog">高さフォグ</a> と <a href="#api-FogVolume">局所の霧</a> で説明しています。</td></tr>
     </tbody>
   </table>
@@ -6030,9 +6030,9 @@ kbd {
   <p><code>Scene::ChangeScene</code> 自体にも、短い読み込みの暗転が入ります（<a href="#script-scenes">シーンの切り替え</a>）。</p>
 </article>
 
-<article class="page" id="script-animator" data-group="スクリプト" data-title="アニメーター（状態でアニメーションを切り替える）" data-nav="アニメーター" data-keywords="アニメーター animator animator controller アニメーター設定 .animator 状態 ステートマシン state machine 遷移 transition 矢印 条件 パラメータ parameter float int bool trigger トリガー setfloat setint setbool settrigger resettrigger play crossfade isinstate currentstate normalizedtime isintransition 終わりの時刻 exit time どこからでも any state 混ぜる ブレンド 待機 歩き 走り 攻撃 ジャンプ 落下 クリップ clip 骨 スケルトン 再生中 光る ブレンドツリー blend tree 1d 2d 横歩き 後ろ歩き 混ぜ方 アニメーションのイベント animation event onanimationevent animationevent 足音 効果音 シーンで見る プレビュー preview 停止中 レイヤー layer 重み weight マスク mask 上半身 体の一部 setlayerweight getlayerweight getlayerstate isinlayerstate playinlayer crossfadeinlayer getlayernormalizedtime ルートモーション root motion クリップの移動 applyrootmotion 移動を取る骨 足が滑る">
+<article class="page" id="script-animator" data-group="スクリプト" data-title="アニメーター（状態でアニメーションを切り替える）" data-nav="アニメーター" data-keywords="アニメーター animator animator controller アニメーター設定 .animator 状態 ステートマシン state machine 遷移 transition 矢印 条件 パラメータ parameter float int bool trigger トリガー setfloat setint setbool settrigger resettrigger play crossfade isinstate currentstate normalizedtime isintransition 終わりの時刻 exit time どこからでも any state 混ぜる ブレンド 待機 歩き 走り 攻撃 ジャンプ 落下 クリップ clip 骨 スケルトン 再生中 光る ブレンドツリー blend tree 1d 2d 横歩き 後ろ歩き 混ぜ方 アニメーションのイベント animation event onanimationevent animationevent 足音 効果音 シーンで見る プレビュー preview 停止中 レイヤー layer 重み weight マスク mask 上半身 体の一部 setlayerweight getlayerweight getlayerstate isinlayerstate playinlayer crossfadeinlayer getlayernormalizedtime ルートモーション root motion クリップの移動 applyrootmotion 移動を取る骨 足が滑る スプライト sprite 2d コマ スプライトアニメ spriteanimator ドット絵 スプライトのクリップ">
   <h1>アニメーター</h1>
-  <p class="lead">骨の入ったモデルのアニメーションを、「状態」と「遷移」の表で切り替えます。スクリプトは速さやボタンの値（パラメータ）を書くだけで、どのアニメーションへいつ移るかはアニメーターの窓で組みます。</p>
+  <p class="lead">骨の入ったモデルのアニメーションと、2D のスプライトのコマのアニメを、「状態」と「遷移」の表で切り替えます。スクリプトは速さやボタンの値（パラメータ）を書くだけで、どのアニメーションへいつ移るかはアニメーターの窓で組みます。</p>
 
   <h2 id="anim-basics">考え方</h2>
   <ul>
@@ -6099,7 +6099,7 @@ kbd {
       <tr><td>消す</td><td>選んで <kbd>Delete</kbd>、または右クリック ▸ <span class="ui">消す</span>。状態を消すと、その状態に出入りする遷移も消えます</td></tr>
       <tr><td>見る場所を動かす</td><td>箱はドラッグで動かします。キャンバスは中ボタンか空いた所の左ドラッグで動かし、ホイールで拡大縮小します。<span class="ui">全体を見る</span> で全部が入る大きさに戻ります</td></tr>
       <tr><td>名前を変える</td><td>状態・パラメータ・クリップの名前の欄で書き換えます。遷移・条件・最初の状態の指す名前も一緒に変わります</td></tr>
-      <tr><td>クリップを足す</td><td>モデルを左の <span class="ui">モデルをここへドラッグ</span> へ落とす（中のアニメーションを全部足す）。<span class="ui">空のクリップを足す</span> のあと、ファイルと <span class="ui">中の名前</span> を選んでも足せます</td></tr>
+      <tr><td>クリップを足す</td><td>モデルを左の <span class="ui">モデルをここへドラッグ</span> へ落とす（中のアニメーションを全部足す）。<span class="ui">空のクリップを足す</span> のあと、ファイルと <span class="ui">中の名前</span> を選んでも足せます。スプライトのクリップは <span class="ui">スプライトアニメから足す</span>（<a href="#anim-sprite">スプライトを動かす</a>）</td></tr>
       <tr><td>レイヤーを足す・選ぶ</td><td>左の <span class="ui">レイヤーを足す</span>。名前をクリックすると、キャンバスがそのレイヤーの状態と遷移に替わります。右クリック ▸ <span class="ui">上へ</span>・<span class="ui">下へ</span>・<span class="ui">消す</span>（最初のレイヤーは動かせず、消せません）。くわしくは <a href="#anim-layers">レイヤー</a></td></tr>
       <tr><td>戻す・やり直す</td><td><kbd>Ctrl</kbd>+<kbd>Z</kbd>・<kbd>Ctrl</kbd>+<kbd>Y</kbd>（エディタの Undo と同じ）</td></tr>
       <tr><td>保存する</td><td><kbd>Ctrl</kbd>+<kbd>S</kbd> か <span class="ui">保存</span>。保存していない変更があると、タブに印が付き、閉じるときに聞かれます</td></tr>
@@ -6269,6 +6269,57 @@ kbd {
   </ul>
   <p>スクリプトからは <code>owner.animator.applyRootMotion</code> で入れ外しできます。外すと、取っていた分は姿勢へ戻り、姿勢だけが進んでクリップの頭で元の場所へ戻ります。</p>
 
+  <h2 id="anim-sprite">スプライト（2D）を動かす</h2>
+  <p>クリップに、同じオブジェクトの <a href="#api-SpriteAnimator">スプライトアニメ</a> のクリップを指すと、2D のキャラのコマもアニメーターの状態と遷移で切り替えられます。スクリプトは <code>Play("Run")</code> を呼び分けずに、速さや接地をパラメータへ書くだけになります。</p>
+  <ol class="steps">
+    <li><strong>スプライトアニメを作る</strong>キャラにスプライト描画とスプライトアニメを付け、<code>Idle</code>・<code>Run</code>・<code>Jump</code> などのクリップを作っておきます（<a href="#g2d-anim">アニメ</a>）。</li>
+    <li><strong>クリップを足す</strong>アニメーター設定を作って窓で開き、Hierarchy でそのキャラを選んだまま、窓の左の <span class="ui">スプライトアニメから足す</span> を押します。スプライトアニメのクリップ 1 本ごとに、スプライトのクリップができます。キャンバスの空いた所を右クリック ▸ <span class="ui">スプライトアニメから状態を作る</span> なら、状態まで並べて作ります。</li>
+    <li><strong>遷移を引く</strong>パラメータ（例：数の <code>Speed</code>・真偽の <code>Grounded</code>）を足し、3D と同じに遷移と条件を決めます。跳ぶクリップの状態は <span class="ui">ループ</span> を外します。</li>
+    <li><strong>キャラに付ける</strong>同じオブジェクトに Animator（<a href="#api-Animator">アニメーション</a>）を付け、設定を <span class="ui">設定</span> の欄へドラッグします。<span class="ui">モデル</span> は空のままにします。</li>
+  </ol>
+  <script type="text/x-code" data-lang="as" data-file="PlayerAnimation2D.as">
+    using namespace CoreEngine;
+
+    // 速さと接地をアニメーターへ書く。どのクリップのコマを出すかは遷移が決める
+    class PlayerAnimation2D : ScriptComponent
+    {
+        void Update()
+        {
+            const float move = Input::GetAxis(InputAction::MoveLeft, InputAction::MoveRight);
+            if (move != 0.0f) {
+                owner.spriteRenderer.flipX = move < 0.0f;
+            }
+            Animator@ animator = owner.animator;
+            animator.SetFloat("Speed", abs(move));
+            animator.SetBool("Grounded", IsGrounded());
+        }
+
+        // 足もとへ 3 本のレイを飛ばし、自分以外に当たれば地面の上
+        private bool IsGrounded()
+        {
+            const Vector3 center = owner.transform.position + Vector3(0.0f, -0.4f, 0.0f);
+            for (int i = -1; i <= 1; ++i) {
+                array<RaycastHit@>@ hits = Physics::RaycastAll(center + Vector3(0.25f * i, 0.0f, 0.0f),
+                    Vector3(0.0f, -1.0f, 0.0f), 0.15f);
+                for (uint k = 0; k < hits.length(); ++k) {
+                    if (hits[k].gameObject.name != owner.name) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+    }
+  </script>
+  <ul>
+    <li><strong>クリップの種類</strong>：クリップの設定の <span class="ui">種類</span> を <span class="ui">スプライトのクリップ</span> にし、<span class="ui">スプライトのクリップ</span> でスプライトアニメのクリップの名前を選びます。候補と尺（コマ数 ÷ fps）は、Hierarchy でスプライトアニメのあるオブジェクトを選んでいるときに出ます。</li>
+    <li><strong>どちらがコマを決めるか</strong>：設定にスプライトのクリップがあり、同じオブジェクトにスプライトアニメがあれば、Animator がコマを決めます。そのあいだスプライトアニメは自分ではコマを進めず、<code>Play</code>・<code>Stop</code> と <span class="ui">最初のクリップ</span> は効きません。Animator のチェックを外すと、スプライトアニメが自分で流し始めます。骨の入ったモデルを描いているオブジェクトでは、骨のアニメーションを動かします。</li>
+    <li><strong>混ぜない</strong>：コマは混ぜられないので、遷移の <span class="ui">混ぜる秒数</span> とスクリプトの <code>CrossFade</code> の秒数は使わず、条件がそろったときにすぐ移ります。ブレンドツリーでは、いちばん重い子のクリップのコマを出します。</li>
+    <li><strong>時間とループ</strong>：コマはスプライトアニメのクリップの fps で数えます。状態の <span class="ui">速さ</span>・<span class="ui">ループ</span>・<span class="ui">終わりの時刻</span> と Animator の <span class="ui">速さ</span> も効き、ループしない状態は最後のコマで止まります。ループは状態の <span class="ui">ループ</span> で決まり、スプライトアニメのクリップの <span class="ui">ループ</span> は見ません。</li>
+    <li><strong>イベントとレイヤー</strong>：<a href="#anim-events">イベント</a> は 3D と同じに届きます。コマを決めるのは最初のレイヤーだけです。</li>
+    <li><strong>シーンで見る</strong>：停止中の <a href="#anim-preview">シーンで見る</a> でも、選んだ状態のコマが出ます。外すと元のコマへ戻ります。</li>
+  </ul>
+
   <h2 id="anim-clips">設定を使わないとき</h2>
   <p>Animator の <span class="ui">設定</span> を空にしておくと、シーンやプレハブの JSON の <code>clips</code> に書いたクリップを、スクリプトの <code>Switch</code>・<code>SwitchWithBlend</code> で名前を指して切り替えます（<a href="#g3d-anim">アニメーション</a> の見本）。クリップ 1 本ずつが状態になり、最初のクリップから流れます。設定を入れたときは、<code>Switch</code>・<code>SwitchWithBlend</code> に渡した名前を状態の名前として扱います（<code>Play</code>・<code>CrossFade</code> と同じ）。</p>
 
@@ -6289,6 +6340,8 @@ kbd {
       <tr><td>クリップの移動で動かない</td><td>Animator の <span class="ui">クリップの移動で動かす</span> が入っているか。再生中か。クリップの腰が前へ進んでいるか（その場で歩くクリップでは動きません）。<span class="ui">移動を取る骨</span> がモデルにある骨か（無い名前だと Console に警告が出て、（自動）の骨を使います）</td></tr>
       <tr><td>クリップの移動で速く動きすぎる・ずれる</td><td>スクリプトでも同じオブジェクトを動かしていないか（<code>SimpleMove</code> や位置を書いていないか）</td></tr>
       <tr><td>「シーンで見る」で動かない</td><td>停止中か。Hierarchy で選んだオブジェクトの Animator の <span class="ui">設定</span> が、窓で開いている設定と同じファイルか。キャンバスで状態を選んだか</td></tr>
+      <tr><td>スプライトのコマが変わらない</td><td>Animator の <span class="ui">設定</span> に .animator が入っているか。<span class="ui">モデル</span> が空か。クリップの <span class="ui">スプライトのクリップ</span> の名前が、同じオブジェクトのスプライトアニメのクリップの名前と同じか（違うと Console に「スプライトアニメにクリップ「…」がありません」が出ます）</td></tr>
+      <tr><td>スプライトアニメの <code>Play</code> が効かない</td><td>同じオブジェクトの Animator がスプライトのクリップを指していると、Animator がコマを決めます。遷移の条件で切り替えるか、Animator の <code>Play</code> で状態を指します</td></tr>
     </tbody>
   </table>
   </div>
@@ -9421,7 +9474,7 @@ kbd {
     <li>警告もコンパイルエラーになります（<a href="#script-overview-warnings">一覧</a>）。</li>
   </ul>
 </article>
-<article class="page" id="guide-2d" data-group="ゲームの作り方" data-title="2D ゲームの作り方" data-nav="2D ゲーム" data-keywords="2D 作り方 横スクロール 見下ろし トップダウン シューティング アクション パズル スプライト ドット絵 コマ アニメ スプライトシート 平行投影 カメラ スクロール ズーム 描画順 重なり 当たり判定 剛体 トリガー マウス クリック 弾 プレハブ サンプルコード">
+<article class="page" id="guide-2d" data-group="ゲームの作り方" data-title="2D ゲームの作り方" data-nav="2D ゲーム" data-keywords="2D 作り方 横スクロール 見下ろし トップダウン シューティング アクション パズル スプライト ドット絵 コマ アニメ スプライトシート 平行投影 アニメーター animator 状態 遷移 カメラ スクロール ズーム 描画順 重なり 当たり判定 剛体 トリガー マウス クリック 弾 プレハブ サンプルコード">
   <h1>2D ゲームの作り方</h1>
   <p class="lead">2D のゲームは、平行投影のカメラで正面から映した 3D のシーンとして作ります。絵はスプライト（画像を貼った板）にして z = 0 の面に並べ、動き・当たり判定・UI・音には 3D と同じ部品を使います。このページでは、2D のゲームで使うものを機能ごとに、サンプルコードで説明します。</p>
 
@@ -9586,6 +9639,7 @@ kbd {
         }
     }
   </script>
+  <p>クリップが増えて <code>Play</code> の呼び分けが込み入ってきたら、<a href="#anim-sprite">アニメーター</a> の状態と遷移の表にできます。スクリプトは速さや接地をパラメータへ書くだけになります（Sample2D のプレイヤーがこの形です）。</p>
   <p>アニメにせず、コマを直接選ぶこともできます（残りの体力で顔の絵を変えるなど）。</p>
   <script type="text/x-code" data-lang="as">
     owner.spriteRenderer.frame = Clamp(3 - hp, 0, 3);
@@ -11933,6 +11987,16 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-94-0">v0.94.0 <span class="dim">（2026-11-18）</span></h3>
+  <p>アニメーターで、2D のスプライトのコマを状態と遷移で切り替えられるようにした版です（<a href="#anim-sprite">スプライトを動かす</a>）。骨のアニメーションの設定と設定を使わない Animator は、前の版と毎フレーム同じ骨の行列になるのを確かめました。</p>
+  <ul>
+    <li><strong>スプライトのクリップ</strong>：アニメーター設定のクリップの <span class="ui">種類</span> を <span class="ui">スプライトのクリップ</span> にすると、同じオブジェクトの <a href="#api-SpriteAnimator">スプライトアニメ</a> のクリップを名前で指します。再生中は Animator がコマを決め、スプライトアニメは自分では進みません（<code>Play</code>・<code>Stop</code> は効きません）。遷移はコマを混ぜずにすぐ移り、ブレンドツリーではいちばん重い子のコマを出します。イベント・状態の速さ・ループ・終わりの時刻はそのまま効きます。</li>
+    <li><strong>アニメーターの窓</strong>：Hierarchy でスプライトアニメのあるオブジェクトを選んでいるとき、左の <span class="ui">スプライトアニメから足す</span> でクリップを、キャンバスの右クリック ▸ <span class="ui">スプライトアニメから状態を作る</span> で状態までまとめて作れます。クリップの設定にスプライトのクリップの候補と尺が出ます。停止中の <span class="ui">シーンで見る</span> でもコマが出ます。</li>
+    <li><strong>インスペクタ</strong>：スプライトアニメに、Animator がコマを決めているかどうかの説明が出ます。</li>
+    <li><strong>サンプル</strong>：<span class="path">Projects/Sample2D</span> のプレイヤーは、<span class="path">Application/Assets/Animators/Player.animator</span>（待機・走る・跳ぶ）で切り替えます。スクリプトは速さと接地をパラメータへ書くだけになりました。</li>
+    <li><strong>試験のシーン</strong>：<span class="path">Projects/EngineTests</span> に <code>Animator_Sprite</code>（番号入りのコマの板 2 枚。左は状態と遷移、右は速さで混ぜるブレンドツリー。状態の変わり目・コマ・イベントの数をコンソールへ出す）を足しました。</li>
+  </ul>
 
   <h3 id="changelog-v0-93-0">v0.93.0 <span class="dim">（2026-11-18）</span></h3>
   <p>アニメーターに、状態の表を重ねるレイヤー（重みと骨のマスク）と、クリップの中の移動でオブジェクトを動かすクリップの移動（ルートモーション）を足した版です（<a href="#script-animator">アニメーター</a>）。レイヤーが 1 枚の設定・設定を使わない Animator は、前の版と毎フレーム同じ骨の行列になるのを確かめました。</p>
@@ -17923,7 +17987,7 @@ void Update()
   {
     id: "SpriteAnimator", kind: "component", cat: "描画", display: "スプライトアニメ", type: "SpriteAnimator",
     accessor: "owner.spriteAnimator", title: "スプライトアニメ（SpriteAnimator）", brief: "スプライトのコマを時間で進める",
-    keywords: "アニメ アニメーション スプライトシート コマ パラパラ クリップ 歩く 走る 2D fps ループ",
+    keywords: "アニメ アニメーション スプライトシート コマ パラパラ クリップ 歩く 走る 2D fps ループ アニメーター 状態 遷移",
     summary: "同じオブジェクトの <a href=\"#api-SpriteRenderer\">スプライト描画</a> のコマを、クリップに沿って時間で進めます。クリップは「最初のコマから最後のコマまでを、1 秒に fps コマの速さで流す」という決まりの集まりです。",
     requires: "スプライト描画（コマ割りの横と縦のコマ数を決めておく）",
     props: [
@@ -17951,6 +18015,7 @@ void Update()
       "<li>コマが進むのは再生中だけです。編集中は、スプライト描画の <span class=\"ui\">コマ</span> に入れたコマが見えます。</li>" +
       "<li>時間は <code>Time::DeltaTime()</code> で進むので、<code>Time::SetTimeScale</code> の遅送り・一時停止に合わせて動きます。</li>" +
       "<li>1 コマずつ別々の画像になっているアニメは、1 枚のスプライトシートにまとめて使います。</li>" +
+      "<li>同じオブジェクトの <a href=\"#api-Animator\">Animator</a> の設定がスプライトのクリップを指していると、再生中は Animator がコマを決めます。そのあいだ <code>Play</code>・<code>Stop</code> と <span class=\"ui\">最初のクリップ</span> は効きません（<a href=\"#anim-sprite\">スプライトを動かす</a>）。</li>" +
       "</ul>",
     examples: [
       {
@@ -17972,7 +18037,7 @@ void Update()
 }`
       }
     ],
-    see: [["api-SpriteRenderer", "スプライト描画"], ["guide-2d", "2D ゲームの作り方"]]
+    see: [["api-SpriteRenderer", "スプライト描画"], ["anim-sprite", "アニメーターでスプライトを動かす"], ["guide-2d", "2D ゲームの作り方"]]
   },
 
   {
@@ -18509,8 +18574,8 @@ class PlayerWalker : ScriptComponent
   {
     id: "Animator", kind: "component", cat: "アニメーション", display: "アニメーション", type: "Animator",
     accessor: "owner.animator", title: "アニメーション（Animator）", brief: "モデルのアニメーション",
-    keywords: "アニメーション スケルトン ボーン モーション 歩く 走る gltf クリップ 切り替え アニメーター 状態 遷移 パラメータ トリガー animator レイヤー マスク 重み 上半身 ルートモーション クリップの移動 applyrootmotion",
-    summary: "glTF モデルに入っている骨のアニメーションを再生します。アニメーター設定の状態と遷移で切り替え、同じオブジェクトのメッシュ描画を動かします。",
+    keywords: "アニメーション スケルトン ボーン モーション 歩く 走る gltf クリップ 切り替え アニメーター 状態 遷移 パラメータ トリガー animator レイヤー マスク 重み 上半身 ルートモーション クリップの移動 applyrootmotion スプライト 2d コマ",
+    summary: "glTF モデルに入っている骨のアニメーションを再生します。アニメーター設定の状態と遷移で切り替え、同じオブジェクトのメッシュ描画を動かします。設定がスプライトのクリップを指していれば、同じオブジェクトのスプライトアニメのコマを切り替えます。",
     props: [
       ["設定", "controller", "string", "", "アニメーター設定（<span class=\"path\">.animator</span>）のパス。Project からドラッグします。入れ替えると最初の状態から作り直します。空なら <code>clips</code> のクリップを名前で切り替えます。"],
       ["モデル", "model", "string", "", "アニメーションの入ったモデルのパス（例：<code>Application/Assets/Models/human/walk.gltf</code>）。空なら、同じオブジェクトのメッシュ描画のモデルを使います。"],
@@ -18567,7 +18632,7 @@ class PlayerWalker : ScriptComponent
         ]
       }
     ],
-    notes: "<ul><li>状態と遷移の作り方は <a href=\"#script-animator\">アニメーター</a> にあります。値で何本かを混ぜる状態は <a href=\"#anim-blend\">ブレンドツリー</a>、決まったコマでスクリプトを呼ぶのは <a href=\"#anim-events\">アニメーションのイベント</a>（<code>OnAnimationEvent</code>・<a href=\"#api-AnimationEvent\">AnimationEvent</a>）、体の一部だけ別の動きにするのは <a href=\"#anim-layers\">レイヤー</a>、クリップの中の移動でオブジェクトを動かすのは <a href=\"#anim-rootmotion\">クリップの移動</a> です。</li><li>設定を使わないときのクリップの一覧（名前とモデル内のアニメーション名の対応）はインスペクタでは編集できず、保存データ（シーンやプレハブの JSON）の <code>clips</code> に書きます。サンプル TestBed の <span class=\"path\">Prefabs/Physics/HumanModel.prefab</span> が見本です。</li><li>停止中（編集中）は、最初の状態のクリップの最初のコマの姿勢で見えます。</li><li>クリップの中に動きの無い骨は、骨の初期の姿勢になります。</li></ul>",
+    notes: "<ul><li>状態と遷移の作り方は <a href=\"#script-animator\">アニメーター</a> にあります。値で何本かを混ぜる状態は <a href=\"#anim-blend\">ブレンドツリー</a>、決まったコマでスクリプトを呼ぶのは <a href=\"#anim-events\">アニメーションのイベント</a>（<code>OnAnimationEvent</code>・<a href=\"#api-AnimationEvent\">AnimationEvent</a>）、体の一部だけ別の動きにするのは <a href=\"#anim-layers\">レイヤー</a>、クリップの中の移動でオブジェクトを動かすのは <a href=\"#anim-rootmotion\">クリップの移動</a>、2D のスプライトのコマを切り替えるのは <a href=\"#anim-sprite\">スプライトを動かす</a> です。</li><li>設定を使わないときのクリップの一覧（名前とモデル内のアニメーション名の対応）はインスペクタでは編集できず、保存データ（シーンやプレハブの JSON）の <code>clips</code> に書きます。サンプル TestBed の <span class=\"path\">Prefabs/Physics/HumanModel.prefab</span> が見本です。</li><li>停止中（編集中）は、最初の状態のクリップの最初のコマの姿勢で見えます。</li><li>クリップの中に動きの無い骨は、骨の初期の姿勢になります。</li></ul>",
     examples: [
       {
         title: "例：速さと攻撃のボタンをパラメータへ書く",

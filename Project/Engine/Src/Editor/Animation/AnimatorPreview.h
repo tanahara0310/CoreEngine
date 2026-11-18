@@ -10,6 +10,7 @@
 namespace CoreEngine
 {
     class AnimatorComponent;
+    class SpriteAnimatorComponent;
     struct Skeleton;
 }
 
@@ -39,12 +40,17 @@ namespace CoreEngine::Editor
         static bool UsesDocument(const AnimatorComponent& animator, const AnimatorDocument& document);
 
     private:
-        void Rebuild(const AnimatorDocument& document, const Skeleton& skeleton);
+        /// @param sprite スプライトアニメを動かしているときはそのコンポーネント（骨の並びの代わりに使う）
+        void Rebuild(const AnimatorDocument& document, const Skeleton* skeleton, const SpriteAnimatorComponent* sprite);
+
+        /// @brief スプライトアニメのクリップの名前と尺を並べた文字（変わったら作り直す）
+        static std::string SpriteClipsKey(const SpriteAnimatorComponent& sprite);
 
         ObjectId target_{};
         AnimatorRuntime runtime_;
         std::string builtText_;
         const Skeleton* builtSkeleton_ = nullptr;
+        const SpriteAnimatorComponent* builtSprite_ = nullptr;
     };
 }
 
