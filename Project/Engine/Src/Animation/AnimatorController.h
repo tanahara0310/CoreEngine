@@ -48,6 +48,9 @@ namespace CoreEngine
     {
         float time = 0.0f;  ///< 秒
         std::string name;
+        float floatValue = 0.0f;
+        int intValue = 0;
+        std::string stringValue;
     };
 
     /// @brief 設定で使うクリップ 1 本
@@ -59,11 +62,38 @@ namespace CoreEngine
         std::vector<AnimatorClipEvent> events;
     };
 
+    /// @brief 状態が流すものの種類
+    enum class AnimatorMotionType
+    {
+        Clip,     ///< クリップ 1 本
+        Blend1D,  ///< パラメータ 1 つで隣の 2 本を混ぜる
+        Blend2D,  ///< パラメータ 2 つで平面に置いたクリップを混ぜる（Freeform Directional）
+    };
+
+    /// @brief ブレンドツリーの子 1 つ
+    struct AnimatorBlendChild
+    {
+        std::string clip;      ///< クリップの id
+        float threshold = 0.0f;  ///< 1D の境の値
+        Vector2 position{};      ///< 2D の平面の位置
+    };
+
+    /// @brief ブレンドツリー（入れ子にしない）
+    /// @details 子は進みの割合を共有し、木の尺は子の尺を重みで平均したものになる。
+    struct AnimatorBlendTree
+    {
+        std::string parameterX;  ///< 1D のパラメータ・2D の横
+        std::string parameterY;  ///< 2D の縦
+        std::vector<AnimatorBlendChild> children;
+    };
+
     /// @brief 状態 1 つ
     struct AnimatorState
     {
         std::string name;
-        std::string clip;  ///< 流すクリップの id（空なら骨の初期の姿勢）
+        AnimatorMotionType motion = AnimatorMotionType::Clip;
+        std::string clip;  ///< 流すクリップの id（motion が Clip のとき。空なら骨の初期の姿勢）
+        AnimatorBlendTree blend;  ///< motion が Blend1D・Blend2D のとき
         float speed = 1.0f;
         bool loop = true;
         Vector2 position{};  ///< 窓のキャンバスの位置

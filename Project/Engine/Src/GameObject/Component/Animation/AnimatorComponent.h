@@ -174,6 +174,14 @@ public:
     /// @brief 実行の状態（窓が今の状態とパラメータを映す・パラメータを書き換える）
     AnimatorRuntime& GetRuntime() const;
 
+    /// @brief 渡した骨の行列で描かせる（停止中に窓の「シーンで見る」が使う）
+    /// @param matrices 骨ごとのスケルトン空間の行列（GetSkeleton の joints と同じ数）
+    /// @return 描かせられたら true
+    bool ShowPreviewPose(std::span<const Matrix4x4> matrices);
+
+    /// @brief ShowPreviewPose をやめて、実行の状態の姿勢へ戻す
+    void ClearPreviewPose();
+
 private:
     /// @brief 兄弟コンポーネントが未取得なら取りに行く（Start 前に呼ばれた場合の保険）
     void ResolveSiblings() const;
@@ -195,6 +203,9 @@ private:
 
     /// @brief 兄弟のモデルか設定が変わっていれば、実行の状態を作り直す
     void EnsureBound() const;
+
+    /// @brief このフレームに出たイベントを同じオブジェクトのコンポーネントへ配る
+    void DispatchEvents();
 
     /// @brief Switch / SwitchWithBlend に渡す「ループの指定」（設定を指していれば状態の設定のまま）
     std::optional<bool> LoopOverride(bool loop) const;
@@ -221,8 +232,10 @@ private:
     mutable uint64_t boundRevision_ = 0;
     mutable bool bound_ = false;
     mutable std::shared_ptr<const AnimatorControllerData> clipController_;
+    std::vector<AnimationEvent> dispatching_;
 
     bool awoken_ = false;
+    bool previewing_ = false;
 
     /// 骨のデバッグ表示フラグ
     bool skeletonDebugDrawEnabled_ = false;

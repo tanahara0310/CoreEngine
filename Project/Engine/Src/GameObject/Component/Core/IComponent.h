@@ -9,6 +9,7 @@ namespace CoreEngine
 class GameObject;
 class ComponentHost;
 struct CollisionInfo;
+struct AnimationEvent;
 
 /// @brief GameObject にアタッチする機能単位の基底クラス。
 /// @details 呼び出し順は Awake（Add直後）→ OnEnable（有効になったとき）→ Start（初回更新）→ Update →
@@ -76,6 +77,12 @@ public:
 
     /// @brief トリガーのコライダーから離れた
     virtual void OnTriggerExit(const CollisionInfo&) {}
+
+    // ===== アニメーション =====
+
+    /// @brief 同じオブジェクトのアニメーターが流すクリップのイベントの時刻を過ぎた
+    /// @note アニメーターの Update の中で呼ばれる（無効なコンポーネントには届かない）。
+    virtual void OnAnimationEvent(const AnimationEvent&) {}
 
     // ===== シリアライズ =====
 

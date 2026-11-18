@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.91.0">
+<meta name="engine-version" content="0.92.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -4063,7 +4063,7 @@ kbd {
   </ul>
 </article>
 
-<article class="page" id="script-lifecycle" data-group="スクリプト" data-title="イベント関数とライフサイクル" data-nav="イベント関数とライフサイクル" data-keywords="awake start update fixedupdate lateupdate ondestroy onscriptreloaded ondrawgizmos ギズモ 呼ばれる順番 順序 フレーム 実行順 ライフサイクル イベント">
+<article class="page" id="script-lifecycle" data-group="スクリプト" data-title="イベント関数とライフサイクル" data-nav="イベント関数とライフサイクル" data-keywords="awake start update fixedupdate lateupdate ondestroy onscriptreloaded ondrawgizmos onanimationevent アニメーションのイベント ギズモ 呼ばれる順番 順序 フレーム 実行順 ライフサイクル イベント">
   <h1>イベント関数とライフサイクル</h1>
   <p class="lead">スクリプトのクラスに決まった名前の関数を書くと、エンジンが決まったタイミングで呼びます。どの関数がいつ呼ばれるかを知っておくと、処理をどこに書けばよいかが決まります。</p>
 
@@ -4078,6 +4078,7 @@ kbd {
       <tr><td><code>void FixedUpdate()</code></td><td>物理の固定ステップごと（既定 1/60 秒）。1 フレームに 0 回のことも複数回のこともある</td><td>いいえ</td></tr>
       <tr><td><code>void LateUpdate()</code></td><td>毎フレーム、全オブジェクトの Update の後</td><td>いいえ</td></tr>
       <tr><td><code>void OnTriggerEnter(Collision@ other)</code> など</td><td>当たり判定の結果が出たとき（LateUpdate の後）。<a href="#script-physics">詳しく</a></td><td>いいえ</td></tr>
+      <tr><td><code>void OnAnimationEvent(AnimationEvent@ event)</code></td><td>同じオブジェクトの Animator が、クリップに置いたイベントの時刻を過ぎたフレーム（Animator の更新の中）。<a href="#anim-events">詳しく</a></td><td>いいえ</td></tr>
       <tr><td><code>void OnDestroy()</code></td><td>オブジェクトを破棄するとき・コンポーネントを外すときに 1 回</td><td>—</td></tr>
       <tr><td><code>void OnScriptReloaded()</code></td><td>エディタでスクリプトを読み直した後に 1 回</td><td>呼ばれる</td></tr>
       <tr><td><code>void OnDrawGizmos()</code></td><td>エディタのシーンビューを描くフレームごと。<code>Gizmos::</code> で目印を描く（<a href="#script-editor-gizmos">詳しく</a>）</td><td><strong>呼ばれる</strong>（書き出したゲームでは呼ばれない）</td></tr>
@@ -6029,13 +6030,13 @@ kbd {
   <p><code>Scene::ChangeScene</code> 自体にも、短い読み込みの暗転が入ります（<a href="#script-scenes">シーンの切り替え</a>）。</p>
 </article>
 
-<article class="page" id="script-animator" data-group="スクリプト" data-title="アニメーター（状態でアニメーションを切り替える）" data-nav="アニメーター" data-keywords="アニメーター animator animator controller アニメーター設定 .animator 状態 ステートマシン state machine 遷移 transition 矢印 条件 パラメータ parameter float int bool trigger トリガー setfloat setint setbool settrigger resettrigger play crossfade isinstate currentstate normalizedtime isintransition 終わりの時刻 exit time どこからでも any state 混ぜる ブレンド 待機 歩き 走り 攻撃 ジャンプ 落下 クリップ clip 骨 スケルトン 再生中 光る">
+<article class="page" id="script-animator" data-group="スクリプト" data-title="アニメーター（状態でアニメーションを切り替える）" data-nav="アニメーター" data-keywords="アニメーター animator animator controller アニメーター設定 .animator 状態 ステートマシン state machine 遷移 transition 矢印 条件 パラメータ parameter float int bool trigger トリガー setfloat setint setbool settrigger resettrigger play crossfade isinstate currentstate normalizedtime isintransition 終わりの時刻 exit time どこからでも any state 混ぜる ブレンド 待機 歩き 走り 攻撃 ジャンプ 落下 クリップ clip 骨 スケルトン 再生中 光る ブレンドツリー blend tree 1d 2d 横歩き 後ろ歩き 混ぜ方 アニメーションのイベント animation event onanimationevent animationevent 足音 効果音 シーンで見る プレビュー preview 停止中">
   <h1>アニメーター</h1>
   <p class="lead">骨の入ったモデルのアニメーションを、「状態」と「遷移」の表で切り替えます。スクリプトは速さやボタンの値（パラメータ）を書くだけで、どのアニメーションへいつ移るかはアニメーターの窓で組みます。</p>
 
   <h2 id="anim-basics">考え方</h2>
   <ul>
-    <li><strong>状態</strong>：「待機」「歩き」「攻撃」のように、1 本のアニメーション（クリップ）を流している状態です。キャンバスの箱 1 つが状態 1 つで、橙の箱が最初の状態です。</li>
+    <li><strong>状態</strong>：「待機」「歩き」「攻撃」のように、1 本のアニメーション（クリップ）を流している状態です。キャンバスの箱 1 つが状態 1 つで、橙の箱が最初の状態です。1 本のかわりに、パラメータの値で何本かを混ぜる<a href="#anim-blend">ブレンドツリー</a>も流せます。</li>
     <li><strong>遷移</strong>：状態から状態への矢印です。条件がそろうと、決めた秒数で混ぜながら移ります。</li>
     <li><strong>パラメータ</strong>：遷移の条件に使う値です。数（Float）・整数（Int）・真偽（Bool）・トリガー（Trigger）の 4 種類があり、スクリプトから書きます。</li>
     <li><strong>どこからでも</strong>：水色の箱です。ここから出る遷移は、どの状態にいても調べます（落下・やられなど）。</li>
@@ -6128,6 +6129,85 @@ kbd {
   </ol>
   <p>再生中に設定を保存し直すと、その設定を使っているオブジェクトは最初の状態からやり直します。パラメータの値は、名前と種類が同じものだけ引き継ぎます。</p>
 
+  <h2 id="anim-blend">ブレンドツリー：値で何本かを混ぜる</h2>
+  <p>歩きと走りを速さで混ぜる、前・後ろ・横歩きを向きで混ぜる、といった状態を 1 つの箱で作ります。速さが 1.5 と 4 の間なら歩きと走りを割合で混ぜるので、遷移を何本も引かずに、なめらかに移り変わります。</p>
+  <ol class="steps">
+    <li><strong>状態を作る</strong>キャンバスで状態を作って選び、右の <span class="ui">流すもの</span> を <span class="ui">1D ブレンド（パラメータ 1 つ）</span> か <span class="ui">2D ブレンド（パラメータ 2 つ）</span> にします。</li>
+    <li><strong>パラメータを選ぶ</strong>1D は <span class="ui">パラメータ</span>、2D は <span class="ui">横のパラメータ</span> と <span class="ui">縦のパラメータ</span> に、数（Float）のパラメータを選びます。</li>
+    <li><strong>子を足す</strong><span class="ui">子を足す</span> を押すか、左のクリップを <span class="ui">子を足す</span> へ落とします。子ごとにクリップと、1D なら<strong>境の値</strong>（パラメータがこの値のとき、この子だけになる）、2D なら<strong>平面の位置</strong>を決めます。</li>
+    <li><strong>混ざり方を見る</strong>上の図に今の値と子の位置が出て、子の行の右に割合（%）が出ます。図の値をドラッグすると混ざり方が変わります（停止中は保存しない見るだけの値、再生中はそのオブジェクトのパラメータ）。</li>
+  </ol>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>種類</th><th>混ぜ方</th><th>向いているもの</th></tr></thead>
+    <tbody>
+      <tr><td>1D ブレンド</td><td>値をはさむ隣の 2 本を、近いほうを多く混ぜます。いちばん小さい境より下はその子だけ、いちばん大きい境より上もその子だけです</td><td>待機 0・歩き 1.5・走り 4 を速さで</td></tr>
+      <tr><td>2D ブレンド</td><td>子を平面に置き、値の向きと長さで近い子を混ぜます。原点に止まっている姿勢、周りに向きごとの動きを置きます（向きを長さより強く見ます）</td><td>待機 (0, 0)・前 (0, 1)・後ろ (0, -1)・左 (-1, 0)・右 (1, 0) を、移動の向きで</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li><strong>進みをそろえる</strong>：子は 1 回分の長さが違っても、進みの割合をそろえて流れます（歩きの右足と走りの右足が同じ時に出る）。状態の 1 回分の長さは、子の長さを割合で平均したものです。</li>
+    <li><strong>クリップが無い子</strong>：表に無いクリップを指す子は混ぜず、残りの子で割合を分け直します。</li>
+    <li><strong>終わりの時刻</strong>：ブレンドツリーの状態から出る遷移の <span class="ui">終わりの時刻</span> も、そろえた進みの割合で見ます。</li>
+  </ul>
+  <script type="text/x-code" data-lang="as" data-file="StrafeAnimation.as">
+    using namespace CoreEngine;
+
+    // スティックの向きを、2D ブレンドの MoveX・MoveY へ書く
+    class StrafeAnimation : ScriptComponent
+    {
+        void Update()
+        {
+            const Vector2 stick = Input::GetAxis2D(InputAction::MoveLeft, InputAction::MoveRight,
+                                                   InputAction::MoveBack, InputAction::MoveForward);
+            owner.animator.SetFloat("MoveX", stick.x);
+            owner.animator.SetFloat("MoveY", stick.y);
+        }
+    }
+  </script>
+
+  <h2 id="anim-events">アニメーションのイベント：決まったコマで知らせる</h2>
+  <p>クリップの決まった時刻に名前を付けておくと、アニメーションがその時刻を過ぎたフレームで、同じオブジェクトのスクリプトの <code>OnAnimationEvent</code> が呼ばれます。足が着いたコマで足音を鳴らす、剣を振り下ろしたコマで当たり判定を出す、といったことに使います。</p>
+  <ol class="steps">
+    <li><strong>クリップを開く</strong>状態を選んだ右の、クリップの設定の <span class="ui">イベント</span> に帯が出ます（帯の左端が 0 秒、右端がクリップの尺）。ブレンドツリーでは、子の行の左の丸を押すと、その子のクリップの設定が下に出ます。左のクリップの表の ▶ を開いても同じ設定が出ます。</li>
+    <li><strong>イベントを足す</strong>帯の空いた所をダブルクリックするか、<span class="ui">イベントを足す</span> を押します。帯の印はドラッグで時刻を動かせます。</li>
+    <li><strong>名前と値を決める</strong>帯の下の表で、時刻・名前と、スクリプトへ渡す数・整数・文字を決めます（使わない値はそのままでかまいません）。</li>
+    <li><strong>保存する</strong>保存すると、再生中のオブジェクトにもすぐ効きます。</li>
+  </ol>
+  <script type="text/x-code" data-lang="as" data-file="Footsteps.as">
+    using namespace CoreEngine;
+
+    // 歩きと走りのクリップに FootL・FootR のイベントを置き、足音を鳴らす
+    class Footsteps : ScriptComponent
+    {
+        void OnAnimationEvent(AnimationEvent@ event)
+        {
+            if (event.name == "FootL" || event.name == "FootR") {
+                // event.floatValue に音の大きさを入れておく（歩き 0.5・走り 1.0 など）
+                Log(event.clip + " の " + event.name + "（大きさ " + event.floatValue + "）");
+            }
+        }
+    }
+  </script>
+  <ul>
+    <li><strong>いつ届くか</strong>：Animator が時刻を進めたフレームで、Animator の更新の中から呼ばれます。同じクリップのイベントが 1 フレームにいくつも過ぎたときは、時刻の順に届きます。ループする状態では周回ごとに 1 回ずつ届き、ループの終わりをまたいだフレームでは、終わりの前と始めの後の両方を届けます。</li>
+    <li><strong>ブレンドツリー</strong>：いちばん重い子のクリップのイベントだけが届きます（歩きと走りを混ぜていても、足音は 1 回分）。</li>
+    <li><strong>遷移の途中</strong>：混ぜている間は、元の状態と移る先の状態の両方のイベントが届きます。どちらのものかは <code>event.state</code> で分かります。</li>
+    <li><strong>届かないとき</strong>：状態の速さが負のとき（逆向きの再生）は届きません。停止中の <a href="#anim-preview">シーンで見る</a> でも届きません。</li>
+  </ul>
+
+  <h2 id="anim-preview">停止中に「シーンで見る」</h2>
+  <p>再生しなくても、選んだ状態の動きをシーンの中のキャラで見られます。保存する前の中身で動くので、ブレンドツリーの境の値やイベントの時刻を変えながら確かめられます。</p>
+  <ol class="steps">
+    <li>アニメーターの窓の上の <span class="ui">シーンで見る</span> を入れます。</li>
+    <li>Hierarchy で、その設定を Animator の <span class="ui">設定</span> に入れたオブジェクトを選びます。</li>
+    <li>キャンバスで状態を選ぶと、窓の上に「シーンで見る: オブジェクト（状態）」と出て、そのオブジェクトがその状態の動きをします。</li>
+    <li><span class="ui">止める</span>・<span class="ui">流す</span> で止めたり流したりし、<span class="ui">進み</span> のつまみで 1 回分の中の位置を選べます。イベントの帯には、今の位置の線が出ます。</li>
+    <li>ブレンドツリーの状態では、図の値をドラッグすると混ざり方が変わります。この値は見るためだけのもので、設定には保存されません。</li>
+  </ol>
+  <p><span class="ui">シーンで見る</span> を外すか、窓を閉じるか、再生を始めると、キャラは元の姿勢へ戻ります。再生中は使えません（再生中は <a href="#anim-play">今の状態</a> が映ります）。</p>
+
   <h2 id="anim-clips">設定を使わないとき</h2>
   <p>Animator の <span class="ui">設定</span> を空にしておくと、シーンやプレハブの JSON の <code>clips</code> に書いたクリップを、スクリプトの <code>Switch</code>・<code>SwitchWithBlend</code> で名前を指して切り替えます（<a href="#g3d-anim">アニメーション</a> の見本）。クリップ 1 本ずつが状態になり、最初のクリップから流れます。設定を入れたときは、<code>Switch</code>・<code>SwitchWithBlend</code> に渡した名前を状態の名前として扱います（<code>Play</code>・<code>CrossFade</code> と同じ）。</p>
 
@@ -6141,6 +6221,9 @@ kbd {
       <tr><td>攻撃が何度も出る</td><td>トリガーではなく真偽のパラメータを使っていないか。真偽は下ろすまで条件がそろったままです</td></tr>
       <tr><td>ポーズが崩れる・一部の骨が動かない</td><td>クリップのファイルが、Animator が付いたモデルと同じ骨（同じ名前）を持っているか。そのクリップに動きの無い骨は、骨の初期の姿勢になります</td></tr>
       <tr><td>再生中に窓が今の状態を映さない</td><td>Hierarchy でそのオブジェクトを選んでいるか。窓で開いている設定と、Animator の <span class="ui">設定</span> が同じファイルか</td></tr>
+      <tr><td>ブレンドツリーが 1 本しか流れない</td><td>パラメータに数（Float）のパラメータを選んだか。スクリプトで書いている名前と同じか。1D は値が子の境の値の間に来ているか</td></tr>
+      <tr><td><code>OnAnimationEvent</code> が呼ばれない</td><td>スクリプトが Animator と同じオブジェクトに付いているか。引数が <code>AnimationEvent@</code> 1 つか。ブレンドツリーでは、イベントを置いたクリップがいちばん重い子か。状態の速さが負になっていないか</td></tr>
+      <tr><td>「シーンで見る」で動かない</td><td>停止中か。Hierarchy で選んだオブジェクトの Animator の <span class="ui">設定</span> が、窓で開いている設定と同じファイルか。キャンバスで状態を選んだか</td></tr>
     </tbody>
   </table>
   </div>
@@ -11786,6 +11869,17 @@ python Tools/OkinawaBeach/bake_araha_walk.py
 
   <h2 id="changelog-history">更新履歴</h2>
 
+  <h3 id="changelog-v0-92-0">v0.92.0 <span class="dim">（2026-11-18）</span></h3>
+  <p>アニメーターに、値で何本かを混ぜるブレンドツリーと、決まったコマでスクリプトを呼ぶイベントを足した版です（<a href="#script-animator">アニメーター</a>）。クリップ 1 本の状態と設定を使わない Animator は、前の版と毎フレーム同じ骨の行列になるのを確かめました。</p>
+  <ul>
+    <li><strong>ブレンドツリー</strong>：状態の <span class="ui">流すもの</span> を <span class="ui">1D ブレンド</span>（パラメータ 1 つ。待機・歩き・走りを速さで）か <span class="ui">2D ブレンド</span>（パラメータ 2 つ。前・後ろ・横歩きを向きで）にできます。子は進みの割合をそろえて流れます。窓の右に、今の値と子の割合の図が出て、値をドラッグして混ざり方を見られます（<a href="#anim-blend">ブレンドツリー</a>）。</li>
+    <li><strong>アニメーションのイベント</strong>：クリップの帯に時刻・名前・数・整数・文字のイベントを置くと、その時刻を過ぎたフレームで、同じオブジェクトのスクリプトの <code>OnAnimationEvent(AnimationEvent@)</code> が呼ばれます。ループでは周回ごとに 1 回、ブレンドツリーではいちばん重い子のクリップだけ、遷移の途中は元と先の両方から届きます（<a href="#anim-events">アニメーションのイベント</a>）。</li>
+    <li><strong>シーンで見る</strong>：停止中に窓の <span class="ui">シーンで見る</span> を入れて Hierarchy でキャラを選ぶと、選んだ状態の動きを保存する前の中身でシーンの中に出します。止める・流す・進みのつまみで 1 コマずつ見られます（<a href="#anim-preview">停止中に「シーンで見る」</a>）。</li>
+    <li><strong>スクリプト</strong>：イベント関数 <code>OnAnimationEvent</code> と、その引数の <a href="#api-AnimationEvent">AnimationEvent</a>（<code>name</code>・<code>clip</code>・<code>state</code>・<code>floatValue</code>・<code>intValue</code>・<code>stringValue</code>）を足しました。<span class="path">ScriptComponent.as</span> と <span class="path">as.predefined</span> も作り直しました。</li>
+    <li><strong>試験のシーン</strong>：<span class="path">Projects/EngineTests</span> に <code>Animator_BlendTree</code>（速さで混ぜる人形と、向きで混ぜて円を描いて歩く人形。足音のイベントを数えてコンソールへ出す）を足しました。人形 AnimRobot に後ろ歩き・左右の横歩きのクリップを足しました。</li>
+    <li><strong>直したこと</strong>：アニメーターの窓で、保存していないタブの × を押しても「保存して閉じる・保存せずに閉じる・やめる」の確認が出ず、タブが閉じられなかったのを直しました。</li>
+  </ul>
+
   <h3 id="changelog-v0-91-0">v0.91.0 <span class="dim">（2026-11-18）</span></h3>
   <p>骨のアニメーションを、状態と遷移の表で切り替えられるようにした版です（<a href="#script-animator">アニメーター</a>）。設定を使わない Animator は、これまでと同じ姿勢で動きます。</p>
   <ul>
@@ -13099,6 +13193,7 @@ window.CE_API = [
           { n: "OnTriggerEnter", s: "void OnTriggerEnter(Collision@ other)", t: "m", d: "どちらかがトリガーのコライダーと重なり始めたとき。コライダーの既定はトリガーなので、多くの場面ではこれを書きます。" },
           { n: "OnTriggerStay", s: "void OnTriggerStay(Collision@ other)", t: "m", d: "トリガーと重なっている間、毎フレーム。" },
           { n: "OnTriggerExit", s: "void OnTriggerExit(Collision@ other)", t: "m", d: "トリガーから離れたとき。" },
+          { n: "OnAnimationEvent", s: "void OnAnimationEvent(AnimationEvent@ event)", t: "m", d: "同じオブジェクトの Animator が、クリップに置いたイベントの時刻を過ぎたフレーム。足音や攻撃の当たりを出すコマに使います（<a href=\"#anim-events\">アニメーションのイベント</a>）。" },
           { n: "OnDrawGizmos", s: "void OnDrawGizmos()", t: "m", d: "エディタのシーンビューを描くフレームごと（編集中も呼ばれ、書き出したゲームでは呼ばれない）。<code>Gizmos::</code> で道筋や範囲などの目印を描きます。" },
           { n: "OnDrawGizmosSelected", s: "void OnDrawGizmosSelected()", t: "m", d: "持ち主のオブジェクトを選んでいる間だけ、OnDrawGizmos の後に呼ばれます。" }
         ]
@@ -13999,6 +14094,38 @@ void Vanish()
       }
     ],
     see: [["lang-funcdef", "関数ハンドルとデリゲート"], ["api-Tween", "Tween"]]
+  },
+
+  // =================================================================== アニメーション
+  {
+    id: "AnimationEvent", kind: "class", cat: "アニメーション", brief: "アニメーションのイベントの中身",
+    keywords: "アニメーションのイベント 足音 コマ onanimationevent クリップ",
+    summary: "<code>OnAnimationEvent</code> に渡される、クリップに置いたイベントの中身です。名前と値は、アニメーターの窓でクリップのイベントに決めたものです。",
+    sections: [
+      {
+        title: "プロパティ", members: [
+          { n: "name", s: "string name", t: "ro", d: "イベントの名前。" },
+          { n: "clip", s: "string clip", t: "ro", d: "イベントを置いたクリップの名前（アニメーター設定のクリップの表の名前）。" },
+          { n: "state", s: "string state", t: "ro", d: "そのクリップを流していた状態の名前。遷移の途中は、元と先のどちらから来たかの見分けに使います。" },
+          { n: "floatValue", s: "float floatValue", t: "ro", d: "イベントに決めた数。" },
+          { n: "intValue", s: "int intValue", t: "ro", d: "イベントに決めた整数。" },
+          { n: "stringValue", s: "string stringValue", t: "ro", d: "イベントに決めた文字。" }
+        ]
+      }
+    ],
+    examples: [
+      {
+        title: "例：足音のイベントを受け取る",
+        code: `
+void OnAnimationEvent(AnimationEvent@ event)
+{
+    if (event.name == "FootL" || event.name == "FootR") {
+        Log(event.clip + " の足音（大きさ " + event.floatValue + "）");
+    }
+}`
+      }
+    ],
+    see: [["anim-events", "アニメーションのイベント"], ["api-Animator", "アニメーション（Animator）"]]
   },
 
   // =================================================================== UI
@@ -18350,7 +18477,7 @@ class PlayerWalker : ScriptComponent
         ]
       }
     ],
-    notes: "<ul><li>状態と遷移の作り方は <a href=\"#script-animator\">アニメーター</a> にあります。</li><li>設定を使わないときのクリップの一覧（名前とモデル内のアニメーション名の対応）はインスペクタでは編集できず、保存データ（シーンやプレハブの JSON）の <code>clips</code> に書きます。サンプル TestBed の <span class=\"path\">Prefabs/Physics/HumanModel.prefab</span> が見本です。</li><li>停止中（編集中）は、最初の状態のクリップの最初のコマの姿勢で見えます。</li><li>クリップの中に動きの無い骨は、骨の初期の姿勢になります。</li></ul>",
+    notes: "<ul><li>状態と遷移の作り方は <a href=\"#script-animator\">アニメーター</a> にあります。値で何本かを混ぜる状態は <a href=\"#anim-blend\">ブレンドツリー</a>、決まったコマでスクリプトを呼ぶのは <a href=\"#anim-events\">アニメーションのイベント</a>（<code>OnAnimationEvent</code>・<a href=\"#api-AnimationEvent\">AnimationEvent</a>）です。</li><li>設定を使わないときのクリップの一覧（名前とモデル内のアニメーション名の対応）はインスペクタでは編集できず、保存データ（シーンやプレハブの JSON）の <code>clips</code> に書きます。サンプル TestBed の <span class=\"path\">Prefabs/Physics/HumanModel.prefab</span> が見本です。</li><li>停止中（編集中）は、最初の状態のクリップの最初のコマの姿勢で見えます。</li><li>クリップの中に動きの無い骨は、骨の初期の姿勢になります。</li></ul>",
     examples: [
       {
         title: "例：速さと攻撃のボタンをパラメータへ書く",

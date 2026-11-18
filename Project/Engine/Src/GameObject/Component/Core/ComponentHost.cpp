@@ -319,6 +319,17 @@ namespace CoreEngine
         }
     }
 
+    void ComponentHost::DispatchComponentAnimationEvent(const AnimationEvent& event)
+    {
+        // 通知の中で足したコンポーネントには、このイベントを配らない
+        const size_t count = components_.size();
+        for (size_t i = 0; i < count && i < components_.size(); ++i) {
+            IComponent* component = components_[i].get();
+            if (!component || !component->IsEnabled()) { continue; }
+            component->OnAnimationEvent(event);
+        }
+    }
+
     void ComponentHost::DispatchComponentDestroy()
     {
         if (destroyDispatched_) { return; }

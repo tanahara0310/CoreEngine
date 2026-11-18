@@ -392,7 +392,7 @@ DXR 1.1 に対応していない GPU では、物の影は霧に落ちません�
 
 アニメーター設定（`.animator` の状態・遷移・パラメータ）と、設定を指さない Animator を確かめます。空の環境光は入れています。
 
-人形は `Models/AnimRobot/AnimRobot.gltf`（箱をつないだ骨 11 本の人形。クリップは Idle・Walk・Run・Jump・Attack・Fall）です。設定は `Animators/Robot.animator` です。
+人形は `Models/AnimRobot/AnimRobot.gltf`（箱をつないだ骨 11 本の人形。クリップは Idle・Walk・Run・Jump・Attack・Fall・WalkBack・StrafeL・StrafeR）です。設定は `Animators/Robot.animator` です。
 
 | 物 | 見るところ |
 |---|---|
@@ -423,3 +423,33 @@ Robot.animator の中身:
 3. Robot_NoController のコンソールの行が「切り替え Walk」「切り替え Attack」「切り替え Idle」の順に出て、Attack の腕の振りは 1 回で止まる。
 4. Project の Animators/Robot.animator をダブルクリックしてアニメーターの窓を開き、再生中に Hierarchy で Robot を選ぶ。今の状態の箱が光り、下に進み具合の帯が出て、遷移の途中は矢印が緑になる。
 5. Robot の AnimatorStateMachineProbe の「autoDrive」を外すと、パラメータを書かなくなる。窓の左の Speed を 1 にすると Walk へ、Attack の「立てる」を押すと攻撃する（止めると戻る）。
+
+## Animator_BlendTree
+
+ブレンドツリー（1D・2D）・アニメーションのイベント・停止中の「シーンで見る」を確かめます。人形は Animator_StateMachine と同じで、設定は `Animators/RobotBlend.animator` です。
+
+| 物 | 見るところ |
+|---|---|
+| Robot_1D | 左の人形。試験のスクリプト（AnimatorBlendProbe・strafe が false）が 12 秒ごとに Speed を 0 → 4 → 0 と往復させる（0〜2 秒 0・2〜6 秒 上げる・6〜8 秒 4・8〜12 秒 下げる） |
+| Robot_2D | 右の人形。AnimatorBlendProbe（strafe が true）が向き (MoveX, MoveY) を前 → 右 → 後ろ → 左と 12 秒で 1 周させ、その向きへ 0.6 m/s で動かす |
+
+RobotBlend.animator の中身:
+
+| 状態 | 流すもの |
+|---|---|
+| Locomotion（最初の状態） | 1D ブレンド。パラメータ Speed。Idle 0・Walk 1.5・Run 4 |
+| Strafe | 2D ブレンド。パラメータ MoveX・MoveY。Idle (0, 0)・Walk (0, 1)・WalkBack (0, -1)・StrafeL (-1, 0)・StrafeR (1, 0) |
+
+遷移は Locomotion → Strafe が Strafe が true、Strafe → Locomotion が Strafe が false（どちらも 0.3 秒で混ぜる）です。
+
+クリップのイベントは、Walk・Run・WalkBack・StrafeL・StrafeR に FootL（数 0、文字 left）と FootR（数 1、文字 right）が 1 回ずつあります。小数は Walk 0.5・Run 1.0・ほか 0.4 です。Idle にはありません。AnimatorBlendProbe は足音を数え、1 秒ごとにコンソールへ「足音 L 1・R 1（最後は Walk・数 0.50）」のように出します。
+
+確かめ方:
+
+1. 再生すると、Robot_2D のコンソールに「状態 Locomotion → Strafe」が出る。Robot_1D は Locomotion のまま。
+2. Robot_1D の行: Speed が 0 の間は「足音 L 0・R 0」（いちばん重いのは Idle で、Idle にはイベントがない）。Speed が上がると Walk の足音が出て、2.75 を越えると「最後は Run・数 1.00」に変わる。Speed 4 の間は 1 秒に L・R が 1〜2 回ずつ（Run は 0.6 秒）。
+3. Robot_2D の行: 向きが回るにつれて、最後のクリップが Walk → StrafeR → WalkBack → StrafeL → Walk と変わり、足音は 1 秒に L・R が 1 回ずつ前後。
+4. Project の Animators/RobotBlend.animator を開き、再生中に Hierarchy で Robot_2D を選んで Strafe の箱を選ぶ。右の 2D の図で今の値の点が円を回り、子の割合（%）が変わる。
+5. 停止中に窓の上の「シーンで見る」を入れ、Hierarchy で Robot_1D を選び、Locomotion の箱を選ぶ。窓の上に「シーンで見る: Robot_1D（Locomotion）」と出て、Robot_1D がその場で動く。右の 1D の図の値の線をドラッグすると、Idle → Walk → Run と混ざり方が変わる（保存はしない）。「止める」と「進み」のつまみで 1 コマずつ見られる。
+6. Locomotion の「子」の Walk の行の左の丸を押すと、下に Walk のクリップの設定が出て、イベントの帯に FootL・FootR の印が出る。「シーンで見る」の間は帯に今の位置の線が出る。印をドラッグすると時刻が変わり、帯のダブルクリックでイベントが足せる（確かめたら保存せずに閉じる）。
+7. 「シーンで見る」を外すか窓を閉じると、人形は元の姿勢へ戻る。

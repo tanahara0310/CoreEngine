@@ -1,8 +1,10 @@
 #pragma once
 
+#include "Animation/AnimationEvent.h"
 #include "Animation/AnimatorController.h"
 #include "Animation/Pose.h"
 #include "Math/Matrix/Matrix4x4.h"
+#include "Math/Vector/Vector2.h"
 
 #include <memory>
 #include <optional>
@@ -17,9 +19,11 @@ namespace CoreEngine
     struct Skeleton;
 
     /// @brief 1 体ぶんのアニメーターの実行の状態
-    /// @details 1 フレームの順番は「時刻を進める → 遷移を調べる → 姿勢を作る → 遷移が終わっていれば先の状態へ移る → 骨の行列」。
+    /// @details 1 フレームの順番は「時刻を進める → イベントを集める → 遷移を調べる → 姿勢を作る →
+    ///          遷移が終わっていれば先の状態へ移る → 骨の行列」。
     ///          遷移の途中は次の遷移を調べない。スクリプトの Play・CrossFade は遷移の途中でも効き、
     ///          途中の姿勢を写して止めた姿勢から混ぜる。
+    ///          クリップの状態は時刻を秒で、ブレンドツリーの状態は進みの割合で持つ。
     class AnimatorRuntime
     {
     public:
@@ -47,8 +51,19 @@ namespace CoreEngine
         /// @brief 流せる状態か（設定と骨の並びがそろっているか）
         bool IsReady() const { return controller_ && skeleton_ && layer_; }
 
-        /// @brief 時間を進めて姿勢と骨の行列を作る
+        /// @brief 時間を進めて姿勢と骨の行列を作り、このフレームのイベントを集める
         void Update(float deltaTime);
+
+        /// @brief 最後の Update で出たイベント（出た順）
+        const std::vector<AnimationEvent>& GetFiredEvents() const { return events_; }
+
+        /// @brief 状態の尺（秒。ブレンドツリーは今のパラメータの重みで子の尺を平均したもの。無い状態は 0）
+        float GetStateDuration(const std::string& stateName) const;
+
+        /// @brief 状態の決まった進みの姿勢と骨の行列を作る（時刻・遷移・イベントは変えない）
+        /// @param normalizedTime 0〜1
+        /// @return 状態が見つかれば true
+        bool EvaluateState(const std::string& stateName, float normalizedTime);
 
         /// @brief 骨ごとのスケルトン空間の行列（最後に作ったもの）
         const std::vector<Matrix4x4>& GetSkeletonSpaceMatrices() const { return matrices_; }
@@ -111,9 +126,23 @@ namespace CoreEngine
         struct Playhead
         {
             int state = -1;
-            float time = 0.0f;   ///< 秒
+            float time = 0.0f;      ///< クリップの状態は秒・ブレンドツリーの状態は進みの割合
+            float previous = 0.0f;  ///< 最後に進める前の time
             bool loop = true;
             bool wrapped = false;  ///< 最後に進めたときにループの頭へ戻ったか
+            bool fresh = true;     ///< 入ってからまだイベントを集めていない
+        };
+
+        /// @brief 状態が流すもの（引き当てた番号）
+        struct StateMotion
+        {
+            AnimatorMotionType type = AnimatorMotionType::Clip;
+            int clip = -1;          ///< クリップの状態のクリップ（無ければ -1）
+            int parameterX = -1;    ///< ブレンドツリーのパラメータ（無ければ -1。値は 0 とみなす）
+            int parameterY = -1;
+            std::vector<int> childClips;  ///< 子ごとのクリップ（無ければ -1）
+            std::vector<float> thresholds;
+            std::vector<Vector2> positions;
         };
 
         /// @brief 流れている遷移
@@ -146,10 +175,27 @@ namespace CoreEngine
             int tableIndex = -1;
         };
 
+        bool IsBlend(int state) const;
+        float ClipDuration(int clip) const;
+        float ParameterFloat(int parameter) const;
+        /// @brief ブレンドツリーの子の重み（クリップの無い子は 0 にして足して 1 へ直す）
+        void ComputeWeights(const StateMotion& motion, std::vector<float>& weights) const;
+        /// @brief 状態の尺（ブレンドツリーは子の尺を重みで平均したもの）
         float StateDuration(int state) const;
+        float NormalizedOf(const Playhead& playhead) const;
         Playhead MakePlayhead(int state, float normalizedOffset, std::optional<bool> loop) const;
         void Advance(Playhead& playhead, float deltaTime) const;
         bool ExitReached(const Playhead& playhead, float exitTime) const;
+        /// @brief 進めた流れのイベントを集める（ブレンドツリーはいちばん重い子のクリップだけ）
+        /// @details 範囲は (前の時刻, 今の時刻]。入ってから初めて集めるときは前の時刻ちょうども含める。
+        ///          速さが負のときは集めない。
+        void CollectEvents(Playhead& playhead, float deltaTime);
+        /// @brief イベントを読むクリップ（無ければ -1）
+        int EventClip(const Playhead& playhead) const;
+        /// @brief クリップの [from, to]（includeFrom が false なら (from, to]）のイベントを足す
+        void EmitEvents(int clip, int state, float from, float to, bool includeFrom);
+        int FindClipIndex(const std::string& clipId) const;
+        int ResolveBlendParameter(const AnimatorState& state, const std::string& name);
         bool ConditionsMet(const ResolvedTransition& transition) const;
         void CheckTransitions();
         void Fire(const ResolvedTransition& transition);
@@ -166,7 +212,8 @@ namespace CoreEngine
 
         std::vector<std::shared_ptr<const Animation>> clips_;
         std::vector<ClipBinding> bindings_;              ///< クリップごと
-        std::vector<int> stateClips_;                     ///< 状態ごとのクリップの番号（無ければ -1）
+        std::vector<std::vector<int>> eventOrder_;        ///< クリップごとのイベントの番号（時刻の順）
+        std::vector<StateMotion> motions_;                ///< 状態ごと
         std::unordered_map<std::string, int> stateIndices_;
         std::unordered_map<std::string, int> parameterIndices_;
         std::vector<ResolvedTransition> anyStateTransitions_;
@@ -180,7 +227,10 @@ namespace CoreEngine
         Pose sourcePose_;
         Pose targetPose_;
         Pose frozenPose_;
+        mutable Pose blendScratch_;
+        mutable std::vector<float> weights_;
         std::vector<Matrix4x4> matrices_;
+        std::vector<AnimationEvent> events_;
         std::unordered_set<std::string> warned_;
     };
 }

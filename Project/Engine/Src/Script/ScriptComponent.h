@@ -54,6 +54,7 @@ namespace CoreEngine
         void OnTriggerEnter(const CollisionInfo& info) override;
         void OnTriggerStay(const CollisionInfo& info) override;
         void OnTriggerExit(const CollisionInfo& info) override;
+        void OnAnimationEvent(const AnimationEvent& event) override;
 
         /// @brief プロパティの値を読み出す（型の記述子の読み出しの口）
         /// @param out `property.type` に対応する型の実体

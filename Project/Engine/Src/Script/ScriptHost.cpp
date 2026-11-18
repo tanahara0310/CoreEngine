@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Script/ScriptHost.h"
 
+#include "Script/Binding/AnimationBinding.h"
 #include "Script/Binding/AudioBinding.h"
 #include "Script/Binding/BindingRegistrar.h"
 #include "Script/Binding/CameraRigBinding.h"
@@ -378,6 +379,7 @@ namespace CoreEngine
         configured = Script::RegisterTimeBinding(engine_) && configured;
         configured = Script::RegisterGameObjectBinding(engine_) && configured;
         configured = Script::RegisterPhysicsBinding(engine_, services.engine) && configured;
+        configured = Script::RegisterAnimationBinding(engine_) && configured;
         configured = Script::RegisterInputBinding(engine_, services.input) && configured;
         if (!services.input) {
             logger.Logf(LogLevel::Warn, LogCategory::Script, "入力が見つからないので、スクリプトの Input は常に押されていないを返します");

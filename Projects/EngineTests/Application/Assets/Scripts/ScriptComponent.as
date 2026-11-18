@@ -90,6 +90,10 @@ abstract class ScriptComponent
     // トリガーのコライダーから離れたとき
     void OnTriggerExit(Collision@ other) {}
 
+    // 同じオブジェクトのアニメーターが流すクリップのイベントの時刻を過ぎたとき（アニメーターの Update の中）。
+    // event.name がイベントの名前。event.floatValue・intValue・stringValue に窓で付けた値が入る
+    void OnAnimationEvent(AnimationEvent@ event) {}
+
     // エディタのシーンビューを描くフレームごと（編集中も呼ばれる。書き出したゲームでは呼ばれない）。
     // Gizmos:: で道筋や範囲などの目印を描く
     void OnDrawGizmos() {}

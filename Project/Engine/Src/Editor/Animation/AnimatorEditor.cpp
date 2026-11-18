@@ -73,6 +73,7 @@ namespace CoreEngine::Editor
         for (const std::unique_ptr<AnimatorDocument>& document : documents_) {
             EditorCommandStack::Get().RemoveCommandsReferencing(document.get());
         }
+        preview_.Forget();
         documents_.clear();
         activeDocument_ = 0;
         closingDocument_.reset();
@@ -185,6 +186,7 @@ namespace CoreEngine::Editor
             focusRequested_ = false;
         }
         if (documents_.empty()) {
+            preview_.Stop();
             UI::Hint("Project で .animator をダブルクリックすると、ここで開きます。");
             UI::Hint("新しい設定は Project の右クリック > アニメーター設定を作成 で作れます。");
             UI::Hint("作った設定を Animator の「設定」の欄へドラッグすると、その設定で動きます。");
@@ -192,6 +194,7 @@ namespace CoreEngine::Editor
         }
 
         std::optional<size_t> closeNow;
+        bool openCloseDialog = false;
         if (ImGui::BeginTabBar("##AnimatorTabs", ImGuiTabBarFlags_Reorderable)) {
             for (size_t index = 0; index < documents_.size(); ++index) {
                 AnimatorDocument& document = *documents_[index];
@@ -211,13 +214,17 @@ namespace CoreEngine::Editor
                 if (!open) {
                     if (dirty) {
                         closingDocument_ = index;
-                        ImGui::OpenPopup(kCloseDialog);
+                        openCloseDialog = true;
                     } else {
                         closeNow = index;
                     }
                 }
             }
             ImGui::EndTabBar();
+        }
+        // 確認の窓は DrawCloseDialog と同じ ID の並び（タブバーの外）で開く
+        if (openCloseDialog) {
+            ImGui::OpenPopup(kCloseDialog);
         }
         DrawCloseDialog();
         if (closeNow) {
@@ -271,6 +278,7 @@ namespace CoreEngine::Editor
         if (index >= documents_.size()) {
             return;
         }
+        preview_.Stop();
         EditorCommandStack::Get().RemoveCommandsReferencing(documents_[index].get());
         documents_.erase(documents_.begin() + static_cast<std::ptrdiff_t>(index));
         if (activeDocument_ >= documents_.size()) {
@@ -288,6 +296,7 @@ namespace CoreEngine::Editor
         }
 
         const AnimatorLiveView live = AnimatorLiveView::Find(document);
+        preview_.Update(document);
         DrawToolbar(document, live);
 
         const ImGuiStyle& style = ImGui::GetStyle();
@@ -308,7 +317,7 @@ namespace CoreEngine::Editor
 
         ImGui::SameLine();
         ImGui::BeginChild("##AnimatorInspector", ImVec2(0.0f, height), ImGuiChildFlags_Borders);
-        inspectorPanel_.Draw(document);
+        inspectorPanel_.Draw(document, live);
         ImGui::EndChild();
 
         if (!document.notice.empty()) {
@@ -331,15 +340,46 @@ namespace CoreEngine::Editor
             document.frameRequested = true;
         }
         ImGui::SameLine();
+        DrawPreviewControls(document);
+        ImGui::SameLine();
         ImGui::TextDisabled("|");
         ImGui::SameLine();
-        if (live.runtime) {
+        if (document.previewEnabled && !PlaybackStateManager::GetInstance().IsInPlayMode()) {
+            const std::string state = AnimatorPreview::PreviewStateOf(document);
+            if (document.previewObject.empty()) {
+                UI::Hint("Hierarchy で、この設定の Animator を付けたオブジェクトを選んでください。");
+            } else {
+                ImGui::TextColored(Theme::kWarm, "シーンで見る: %s（%s）", document.previewObject.c_str(), state.c_str());
+            }
+        } else if (live.runtime) {
             ImGui::TextColored(Theme::kOk, "再生中: %s（%s）", live.objectName.c_str(),
                 live.currentState.empty() ? "状態なし" : live.currentState.c_str());
         } else if (PlaybackStateManager::GetInstance().IsInPlayMode()) {
             UI::Hint("Hierarchy でこの設定を使うオブジェクトを選ぶと、今の状態が映ります。");
         } else {
             UI::Hint("右クリックで状態を作り、状態の右クリック > 遷移を引く でつなぎます。");
+        }
+    }
+
+    void AnimatorEditor::DrawPreviewControls(AnimatorDocument& document)
+    {
+        const bool playMode = PlaybackStateManager::GetInstance().IsInPlayMode();
+        ImGui::BeginDisabled(playMode);
+        ImGui::Checkbox("シーンで見る", &document.previewEnabled);
+        ImGui::EndDisabled();
+        UI::Tooltip("停止中に、Hierarchy で選んだオブジェクト（この設定の Animator を付けたもの）へ、選んだ状態の姿勢を出します。"
+            "保存する前の中身で動きます。");
+        if (!document.previewEnabled || playMode) {
+            return;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button(document.previewPlaying ? "止める##preview" : "流す##preview")) {
+            document.previewPlaying = !document.previewPlaying;
+        }
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(140.0f);
+        if (ImGui::SliderFloat("##previewTime", &document.previewTime, 0.0f, 1.0f, "進み %.2f")) {
+            document.previewPlaying = false;
         }
     }
 

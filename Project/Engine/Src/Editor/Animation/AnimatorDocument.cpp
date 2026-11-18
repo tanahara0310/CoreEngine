@@ -4,6 +4,7 @@
 #ifdef CORE_EDITOR
 
 #include "Graphics/Asset/AssetDatabase.h"
+#include "Graphics/Model/Animation/Animation.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
@@ -186,6 +187,21 @@ namespace CoreEngine::Editor
         return clipNames.emplace(clipFile, std::move(names)).first->second;
     }
 
+    float AnimatorDocument::ClipDurationOf(const AnimatorClip& clip)
+    {
+        const std::string key = clip.file + "|" + clip.source;
+        if (const auto found = clipDurations.find(key); found != clipDurations.end()) {
+            return found->second;
+        }
+        float duration = 0.0f;
+        if (models && !clip.file.empty()) {
+            if (const std::shared_ptr<const Animation> animation = models->AcquireClip(clip.file, clip.source)) {
+                duration = animation->duration;
+            }
+        }
+        return clipDurations.emplace(key, duration).first->second;
+    }
+
     // ---------------------------------------------------------------- 編集
 
     void AnimatorDocument::Select(AnimatorSelection kind, int index)
@@ -343,8 +359,30 @@ namespace CoreEngine::Editor
                     }
                 }
             }
+            for (AnimatorState& state : layer.states) {
+                if (state.blend.parameterX == oldName) {
+                    state.blend.parameterX = newName;
+                }
+                if (state.blend.parameterY == oldName) {
+                    state.blend.parameterY = newName;
+                }
+            }
+        }
+        if (const auto it = previewFloats.find(oldName); it != previewFloats.end()) {
+            const float value = it->second;
+            previewFloats.erase(it);
+            previewFloats[newName] = value;
         }
         MarkChanged("パラメータの名前を変える");
+    }
+
+    float AnimatorDocument::PreviewFloat(const std::string& parameterName) const
+    {
+        if (const auto it = previewFloats.find(parameterName); it != previewFloats.end()) {
+            return it->second;
+        }
+        const AnimatorParameter* const parameter = data.FindParameter(parameterName);
+        return parameter && parameter->type == AnimatorParameterType::Float ? parameter->defaultFloat : 0.0f;
     }
 
     void AnimatorDocument::AddEmptyClip()
@@ -363,6 +401,11 @@ namespace CoreEngine::Editor
             for (AnimatorState& state : layer.states) {
                 if (state.clip == id) {
                     state.clip.clear();
+                }
+                for (AnimatorBlendChild& child : state.blend.children) {
+                    if (child.clip == id) {
+                        child.clip.clear();
+                    }
                 }
             }
         }
@@ -387,6 +430,11 @@ namespace CoreEngine::Editor
             for (AnimatorState& state : layer.states) {
                 if (state.clip == oldName) {
                     state.clip = newName;
+                }
+                for (AnimatorBlendChild& child : state.blend.children) {
+                    if (child.clip == oldName) {
+                        child.clip = newName;
+                    }
                 }
             }
         }

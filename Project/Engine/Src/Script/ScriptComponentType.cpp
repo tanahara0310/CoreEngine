@@ -38,6 +38,7 @@ namespace CoreEngine
             "void OnTriggerEnter(CoreEngine::Collision@)",
             "void OnTriggerStay(CoreEngine::Collision@)",
             "void OnTriggerExit(CoreEngine::Collision@)",
+            "void OnAnimationEvent(CoreEngine::AnimationEvent@)",
             "void OnDrawGizmos()",
             "void OnDrawGizmosSelected()",
         };
@@ -57,6 +58,7 @@ namespace CoreEngine
             "OnTriggerEnter",
             "OnTriggerStay",
             "OnTriggerExit",
+            "OnAnimationEvent",
             "OnDrawGizmos",
             "OnDrawGizmosSelected",
         };
