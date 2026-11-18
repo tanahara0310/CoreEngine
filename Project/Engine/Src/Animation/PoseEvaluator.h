@@ -30,6 +30,10 @@ namespace CoreEngine::PoseEvaluator
     /// @note out は from と同じ配列でもよい。
     void Blend(const Pose& from, const Pose& to, float weight, Pose& out);
 
+    /// @brief 骨 1 本の姿勢を混ぜる（移動と拡縮は Lerp・回転は Slerp）
+    /// @param weight to の重み（0〜1）
+    JointPose BlendJoint(const JointPose& from, const JointPose& to, float weight);
+
     /// @brief 姿勢から骨ごとのスケルトン空間の行列を作る
     /// @note 骨は親が子より前に並んでいるものとして、並びの順に親の行列を掛ける。
     void ComputeSkeletonSpace(const Skeleton& skeleton, std::span<const JointPose> pose, std::vector<Matrix4x4>& out);

@@ -27,6 +27,7 @@ namespace CoreEngine::Editor
         State,
         AnyState,
         Transition,
+        Layer,  ///< レイヤー（selected はレイヤーの番号）
     };
 
     /// @brief キャンバスの上の何か
@@ -44,7 +45,7 @@ namespace CoreEngine::Editor
 
     /// @brief アニメーターの窓で開いている設定 1 つ（中身・キャンバスの見え方・選んでいるもの・編集の操作）
     /// @details 編集の操作は data を書き換え、MarkChanged で操作の名前を残す。Undo の履歴へ積むのは窓が行う。
-    ///          窓は 1 枚目の層だけを扱うので、層は必ず 1 枚以上ある。
+    ///          キャンバスと状態・遷移の操作は activeLayer の層を扱う。層は必ず 1 枚以上ある。
     struct AnimatorDocument
     {
         /// @brief ファイルから読む（読めなければ nullptr。読めたが直したところは notice に並べる）
@@ -76,6 +77,25 @@ namespace CoreEngine::Editor
         // ===== 編集 =====
 
         void Select(AnimatorSelection kind, int index);
+
+        /// @brief 窓が今扱っている層（キャンバス・状態・遷移）
+        AnimatorLayer& Layer();
+        const AnimatorLayer& Layer() const;
+
+        /// @brief 扱う層を変える（選んでいる状態と遷移は外す）
+        void SetActiveLayer(int layerIndex);
+
+        /// @brief 空の層を足して、それを扱う
+        void AddLayer();
+
+        /// @brief 層を消す（最初の層は消さない）
+        void DeleteLayer(int layerIndex);
+
+        /// @brief 層の名前を変える
+        void RenameLayer(int layerIndex, const std::string& newName);
+
+        /// @brief 2 枚目からの層の中で 1 つ前か後ろへ動かす
+        void MoveLayer(int layerIndex, int direction);
 
         /// @return 作った状態の番号
         int AddState(const Vector2& position, const std::string& clip);
@@ -134,6 +154,9 @@ namespace CoreEngine::Editor
         std::string notice;        ///< 窓の下に出す知らせ
         bool selectOnNextFrame = false;
 
+        int activeLayer = 0;  ///< 窓が扱っている層の番号
+        std::string skeletonTried;  ///< 骨の木を出すために読み込んだ見本のモデル
+
         // キャンバス
         bool viewInitialized = false;
         ImVec2 pan{ 0.0f, 0.0f };  ///< キャンバスの左上からワールドの原点までの画面の距離
@@ -178,6 +201,7 @@ namespace CoreEngine::Editor
         std::string UniqueStateName(const std::string& base) const;
         std::string UniqueClipId(const std::string& base) const;
         std::string UniqueParameterName(const std::string& base) const;
+        std::string UniqueLayerName(const std::string& base) const;
     };
 }
 

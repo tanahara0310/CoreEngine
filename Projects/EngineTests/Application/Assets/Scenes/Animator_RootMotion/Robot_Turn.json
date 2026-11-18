@@ -1,0 +1,88 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "type": "Transform",
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    2.0,
+                    0.0,
+                    -0.5
+                ]
+            }
+        },
+        {
+            "enabled": true,
+            "type": "Collider",
+            "parameters": {
+                "shapes": [
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            0.0,
+                            0.9,
+                            0.0
+                        ],
+                        "static": false,
+                        "trigger": false,
+                        "type": "Capsule",
+                        "radius": 0.3,
+                        "height": 1.8
+                    }
+                ]
+            }
+        },
+        {
+            "enabled": true,
+            "type": "CharacterController",
+            "parameters": {}
+        },
+        {
+            "enabled": true,
+            "type": "MeshRenderer",
+            "parameters": {
+                "model": {
+                    "guid": "fd0ce2a1-f28b-49fa-b282-353f5ecccb96",
+                    "path": "Application/Assets/Models/AnimRobot/AnimRobot.gltf"
+                }
+            }
+        },
+        {
+            "enabled": true,
+            "type": "Animator",
+            "parameters": {
+                "model": "",
+                "controller": {
+                    "guid": "e45a0c97-81d3-4b6f-9c2e-0f7a3d18b6e2",
+                    "path": "Application/Assets/Animators/RobotRootMotion.animator"
+                },
+                "speed": 1.0,
+                "applyRootMotion": true
+            }
+        },
+        {
+            "enabled": true,
+            "type": "AnimatorRootMotionProbe",
+            "parameters": {
+                "state": "Turn",
+                "resetDistance": 0.0
+            }
+        }
+    ],
+    "id": "e18c6b2a07f594d3",
+    "name": "Robot_Turn",
+    "order": 5
+}

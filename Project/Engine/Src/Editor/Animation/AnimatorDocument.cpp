@@ -139,12 +139,15 @@ namespace CoreEngine::Editor
         linkFrom.reset();
         dragging = {};
         nameEditId = 0;
-        const AnimatorLayer& layer = data.layers.front();
+        activeLayer = std::clamp(activeLayer, 0, static_cast<int>(data.layers.size()) - 1);
+        const AnimatorLayer& layer = Layer();
         const bool stateGone = selection == AnimatorSelection::State
             && (selected < 0 || selected >= static_cast<int>(layer.states.size()));
         const bool transitionGone = selection == AnimatorSelection::Transition
             && (selected < 0 || selected >= static_cast<int>(layer.transitions.size()));
-        if (stateGone || transitionGone) {
+        const bool layerGone = selection == AnimatorSelection::Layer
+            && (selected < 0 || selected >= static_cast<int>(data.layers.size()));
+        if (stateGone || transitionGone || layerGone) {
             Select(AnimatorSelection::None, -1);
         }
         return true;
@@ -211,9 +214,102 @@ namespace CoreEngine::Editor
         nameEditId = 0;
     }
 
+    AnimatorLayer& AnimatorDocument::Layer()
+    {
+        if (data.layers.empty()) {
+            data.layers.emplace_back();
+        }
+        activeLayer = std::clamp(activeLayer, 0, static_cast<int>(data.layers.size()) - 1);
+        return data.layers[static_cast<size_t>(activeLayer)];
+    }
+
+    const AnimatorLayer& AnimatorDocument::Layer() const
+    {
+        const int index = std::clamp(activeLayer, 0, static_cast<int>(data.layers.size()) - 1);
+        return data.layers[static_cast<size_t>(index)];
+    }
+
+    void AnimatorDocument::SetActiveLayer(int layerIndex)
+    {
+        if (layerIndex < 0 || layerIndex >= static_cast<int>(data.layers.size()) || layerIndex == activeLayer) {
+            return;
+        }
+        activeLayer = layerIndex;
+        linkFrom.reset();
+        dragging = {};
+        frameRequested = true;
+        Select(AnimatorSelection::None, -1);
+    }
+
+    void AnimatorDocument::AddLayer()
+    {
+        AnimatorLayer layer;
+        layer.name = UniqueLayerName("Layer");
+        data.layers.push_back(std::move(layer));
+        const int index = static_cast<int>(data.layers.size()) - 1;
+        SetActiveLayer(index);
+        Select(AnimatorSelection::Layer, index);
+        MarkChanged("レイヤーを足す");
+    }
+
+    void AnimatorDocument::DeleteLayer(int layerIndex)
+    {
+        if (layerIndex <= 0 || layerIndex >= static_cast<int>(data.layers.size())) {
+            return;
+        }
+        data.layers.erase(data.layers.begin() + layerIndex);
+        if (activeLayer >= layerIndex) {
+            activeLayer = (std::max)(0, activeLayer - 1);
+        }
+        linkFrom.reset();
+        dragging = {};
+        frameRequested = true;
+        Select(AnimatorSelection::None, -1);
+        MarkChanged("レイヤーを消す");
+    }
+
+    void AnimatorDocument::RenameLayer(int layerIndex, const std::string& newName)
+    {
+        if (newName.empty()) {
+            notice = "レイヤーの名前が空です。";
+            return;
+        }
+        for (const AnimatorLayer& layer : data.layers) {
+            if (layer.name == newName) {
+                notice = "同じ名前のレイヤーがあります: " + newName;
+                return;
+            }
+        }
+        data.layers[static_cast<size_t>(layerIndex)].name = newName;
+        MarkChanged("レイヤーの名前を変える");
+    }
+
+    void AnimatorDocument::MoveLayer(int layerIndex, int direction)
+    {
+        const int target = layerIndex + direction;
+        const int count = static_cast<int>(data.layers.size());
+        if (layerIndex <= 0 || layerIndex >= count || target <= 0 || target >= count) {
+            return;
+        }
+        std::swap(data.layers[static_cast<size_t>(layerIndex)], data.layers[static_cast<size_t>(target)]);
+        if (activeLayer == layerIndex) {
+            activeLayer = target;
+        } else if (activeLayer == target) {
+            activeLayer = layerIndex;
+        }
+        if (selection == AnimatorSelection::Layer) {
+            if (selected == layerIndex) {
+                selected = target;
+            } else if (selected == target) {
+                selected = layerIndex;
+            }
+        }
+        MarkChanged("レイヤーの順を変える");
+    }
+
     int AnimatorDocument::AddState(const Vector2& position, const std::string& clip)
     {
-        AnimatorLayer& layer = data.layers.front();
+        AnimatorLayer& layer = Layer();
         AnimatorState state;
         state.name = UniqueStateName(clip.empty() ? std::string("State") : clip);
         state.clip = clip;
@@ -228,7 +324,7 @@ namespace CoreEngine::Editor
 
     void AnimatorDocument::AddTransition(int from, int to)
     {
-        AnimatorLayer& layer = data.layers.front();
+        AnimatorLayer& layer = Layer();
         if (from == to || to < 0 || to >= static_cast<int>(layer.states.size()) || from >= static_cast<int>(layer.states.size())) {
             return;
         }
@@ -250,6 +346,9 @@ namespace CoreEngine::Editor
         case AnimatorSelection::Transition:
             DeleteTransition(selected);
             break;
+        case AnimatorSelection::Layer:
+            DeleteLayer(selected);
+            break;
         case AnimatorSelection::AnyState:
         case AnimatorSelection::None:
             break;
@@ -258,7 +357,7 @@ namespace CoreEngine::Editor
 
     void AnimatorDocument::DeleteState(int stateIndex)
     {
-        AnimatorLayer& layer = data.layers.front();
+        AnimatorLayer& layer = Layer();
         if (stateIndex < 0 || stateIndex >= static_cast<int>(layer.states.size())) {
             return;
         }
@@ -276,7 +375,7 @@ namespace CoreEngine::Editor
 
     void AnimatorDocument::DeleteTransition(int transitionIndex)
     {
-        AnimatorLayer& layer = data.layers.front();
+        AnimatorLayer& layer = Layer();
         if (transitionIndex < 0 || transitionIndex >= static_cast<int>(layer.transitions.size())) {
             return;
         }
@@ -287,7 +386,7 @@ namespace CoreEngine::Editor
 
     void AnimatorDocument::SetDefaultState(int stateIndex)
     {
-        AnimatorLayer& layer = data.layers.front();
+        AnimatorLayer& layer = Layer();
         if (stateIndex < 0 || stateIndex >= static_cast<int>(layer.states.size())) {
             return;
         }
@@ -297,7 +396,7 @@ namespace CoreEngine::Editor
 
     void AnimatorDocument::RenameState(int stateIndex, const std::string& newName)
     {
-        AnimatorLayer& layer = data.layers.front();
+        AnimatorLayer& layer = Layer();
         if (newName.empty() || newName == AnimatorControllerFormat::kAnyState) {
             notice = "状態の名前に使えません。";
             return;
@@ -490,7 +589,7 @@ namespace CoreEngine::Editor
 
     void AnimatorDocument::MoveTransition(int transitionIndex, int direction)
     {
-        AnimatorLayer& layer = data.layers.front();
+        AnimatorLayer& layer = Layer();
         const int count = static_cast<int>(layer.transitions.size());
         if (transitionIndex < 0 || transitionIndex >= count) {
             return;
@@ -516,7 +615,7 @@ namespace CoreEngine::Editor
 
     std::string AnimatorDocument::UniqueStateName(const std::string& base) const
     {
-        const AnimatorLayer& layer = data.layers.front();
+        const AnimatorLayer& layer = Layer();
         if (AnimatorStateIndexOf(layer, base) < 0 && base != AnimatorControllerFormat::kAnyState) {
             return base;
         }
@@ -536,6 +635,22 @@ namespace CoreEngine::Editor
         for (int n = 2;; ++n) {
             const std::string candidate = base + " " + std::to_string(n);
             if (!data.FindClip(candidate)) {
+                return candidate;
+            }
+        }
+    }
+
+    std::string AnimatorDocument::UniqueLayerName(const std::string& base) const
+    {
+        const auto taken = [this](const std::string& name) {
+            return std::any_of(data.layers.begin(), data.layers.end(), [&](const AnimatorLayer& layer) { return layer.name == name; });
+            };
+        if (!taken(base)) {
+            return base;
+        }
+        for (int n = 2;; ++n) {
+            const std::string candidate = base + " " + std::to_string(n);
+            if (!taken(candidate)) {
                 return candidate;
             }
         }

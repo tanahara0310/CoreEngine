@@ -1,0 +1,99 @@
+{
+    "version": 1,
+    "previewModel": {
+        "guid": "fd0ce2a1-f28b-49fa-b282-353f5ecccb96",
+        "path": "Application/Assets/Models/AnimRobot/AnimRobot.gltf"
+    },
+    "parameters": [],
+    "clips": [
+        {
+            "id": "WalkForward",
+            "file": {
+                "guid": "fd0ce2a1-f28b-49fa-b282-353f5ecccb96",
+                "path": "Application/Assets/Models/AnimRobot/AnimRobot.gltf"
+            },
+            "source": "WalkForward",
+            "events": [
+                {
+                    "time": 0.25,
+                    "name": "FootL",
+                    "float": 0.5,
+                    "int": 0,
+                    "string": "left"
+                },
+                {
+                    "time": 0.75,
+                    "name": "FootR",
+                    "float": 0.5,
+                    "int": 1,
+                    "string": "right"
+                }
+            ]
+        },
+        {
+            "id": "WalkTurn",
+            "file": {
+                "guid": "fd0ce2a1-f28b-49fa-b282-353f5ecccb96",
+                "path": "Application/Assets/Models/AnimRobot/AnimRobot.gltf"
+            },
+            "source": "WalkTurn"
+        },
+        {
+            "id": "Idle",
+            "file": {
+                "guid": "fd0ce2a1-f28b-49fa-b282-353f5ecccb96",
+                "path": "Application/Assets/Models/AnimRobot/AnimRobot.gltf"
+            },
+            "source": "Idle"
+        }
+    ],
+    "layers": [
+        {
+            "name": "Base",
+            "defaultState": "Forward",
+            "anyStatePos": [
+                -260.0,
+                160.0
+            ],
+            "states": [
+                {
+                    "name": "Forward",
+                    "motion": {
+                        "clip": "WalkForward"
+                    },
+                    "speed": 1.0,
+                    "loop": true,
+                    "pos": [
+                        0.0,
+                        0.0
+                    ]
+                },
+                {
+                    "name": "Turn",
+                    "motion": {
+                        "clip": "WalkTurn"
+                    },
+                    "speed": 1.0,
+                    "loop": true,
+                    "pos": [
+                        300.0,
+                        0.0
+                    ]
+                },
+                {
+                    "name": "Idle",
+                    "motion": {
+                        "clip": "Idle"
+                    },
+                    "speed": 1.0,
+                    "loop": true,
+                    "pos": [
+                        150.0,
+                        180.0
+                    ]
+                }
+            ],
+            "transitions": []
+        }
+    ]
+}

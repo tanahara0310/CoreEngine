@@ -392,7 +392,7 @@ DXR 1.1 に対応していない GPU では、物の影は霧に落ちません�
 
 アニメーター設定（`.animator` の状態・遷移・パラメータ）と、設定を指さない Animator を確かめます。空の環境光は入れています。
 
-人形は `Models/AnimRobot/AnimRobot.gltf`（箱をつないだ骨 11 本の人形。クリップは Idle・Walk・Run・Jump・Attack・Fall・WalkBack・StrafeL・StrafeR）です。設定は `Animators/Robot.animator` です。
+人形は `Models/AnimRobot/AnimRobot.gltf`（箱をつないだ骨 11 本の人形。クリップは Idle・Walk・Run・Jump・Attack・Fall・WalkBack・StrafeL・StrafeR・WalkForward・WalkTurn）です。設定は `Animators/Robot.animator` です。
 
 | 物 | 見るところ |
 |---|---|
@@ -453,3 +453,47 @@ RobotBlend.animator の中身:
 5. 停止中に窓の上の「シーンで見る」を入れ、Hierarchy で Robot_1D を選び、Locomotion の箱を選ぶ。窓の上に「シーンで見る: Robot_1D（Locomotion）」と出て、Robot_1D がその場で動く。右の 1D の図の値の線をドラッグすると、Idle → Walk → Run と混ざり方が変わる（保存はしない）。「止める」と「進み」のつまみで 1 コマずつ見られる。
 6. Locomotion の「子」の Walk の行の左の丸を押すと、下に Walk のクリップの設定が出て、イベントの帯に FootL・FootR の印が出る。「シーンで見る」の間は帯に今の位置の線が出る。印をドラッグすると時刻が変わり、帯のダブルクリックでイベントが足せる（確かめたら保存せずに閉じる）。
 7. 「シーンで見る」を外すか窓を閉じると、人形は元の姿勢へ戻る。
+
+## Animator_Layers
+
+レイヤー・重み・マスク（体の一部だけ別の動き）を確かめます。人形は Animator_StateMachine と同じで、設定は `Animators/RobotLayers.animator` です。
+
+| 物 | 見るところ |
+|---|---|
+| Robot_Layered | 左の人形。試験のスクリプト（AnimatorLayerProbe・useLayer が true）が 12 秒ごとに、1 秒で重み 1・5 秒で重み 0.5・9 秒で重み 0 にして、そのたびに Attack のトリガーを立てる |
+| Robot_BaseOnly | 右の人形。AnimatorLayerProbe（useLayer が false）が UpperBody の重みをいつも 0 にする（脚の動きを比べる見本） |
+
+RobotLayers.animator の中身:
+
+| レイヤー | 中身 |
+|---|---|
+| Base（最初のレイヤー） | 状態 Walk だけ（Walk のクリップ。足音のイベント FootL・FootR） |
+| UpperBody（重み 1・マスクあり） | マスクは Spine・Head・UpperArm.L・LowerArm.L・UpperArm.R・LowerArm.R。状態 None（流すもの無し・最初の状態）と Attack（Attack のクリップ・ループしない・0.3 秒にイベント Swing）。None → Attack はトリガー Attack（0.15 秒）、Attack → None は終わりの時刻 0.95（0.25 秒） |
+
+確かめ方:
+
+1. 再生すると、2 体とも同じ歩きで、脚の動きが揃っている。
+2. 1 秒・5 秒（と 12 秒ごと）に、Robot_Layered だけ上半身で攻撃する。脚は Robot_BaseOnly と同じ歩きのまま。5 秒の回は重み 0.5 なので腕の振りが小さい。9 秒の回は重み 0 なので見た目は変わらない。
+3. Robot_Layered のコンソールの行が「重み 1.00 で Attack」「UpperBody None → Attack・Base は Walk」「Swing（レイヤー UpperBody・クリップ Attack・状態 Attack）」「UpperBody Attack → None」の順に出る。重み 0 の回は状態は移るが Swing は出ない。始めに 1 回だけ「FootL（レイヤー Base・クリップ Walk）」が出る。
+4. Project の Animators/RobotLayers.animator を開く。左のレイヤーの表に Base（土台）と UpperBody（1.00・マスク）が並ぶ。UpperBody を選ぶと、キャンバスが None・Attack の表に替わり、右に重み・マスクの骨の木が出る。骨の木で Spine を外すと下の骨もまとめて外れ、Ctrl+Z で戻る（確かめたら保存せずに閉じる）。
+5. 再生中に Hierarchy で Robot_Layered を選ぶと、窓の上に「再生中: Robot_Layered（None）」と出て、右に「再生中の重み」が出る。スクリプトが重みを変えると、つまみも動く。つまみを下げてから左のパラメータ Attack の「立てる」を押すと、腕の振りが小さくなる（止めると戻る）。
+
+## Animator_RootMotion
+
+クリップの移動（ルートモーション：クリップの中の腰の移動と向きの変化でオブジェクトを動かす）を確かめます。人形は同じで、設定は `Animators/RobotRootMotion.animator`（状態 Forward・Turn・Idle。「移動を取る骨」は（自動）で Hips になる）です。
+
+クリップ WalkForward（1 秒）は腰が前へ 1.42m 進み、WalkTurn（2 秒）は腰が左回りに 90 度向きを変えながら半径 1.81m の弧を進みます。
+
+| 物 | 見るところ |
+|---|---|
+| Robot_RootMotion | 奥の人形。Animator の「クリップの移動で動かす」が入っている。試験のスクリプト（AnimatorRootMotionProbe）が Forward を流し、始めの場所から 7m 進んだら始めの場所へ戻す |
+| Robot_InPlace | 手前の人形。「クリップの移動で動かす」が切れている。Forward を流す |
+| Robot_Turn | 右の人形。「クリップの移動で動かす」が入っていて、キャラクタコントローラとカプセルのコライダーが付いている。Turn を流す |
+
+確かめ方:
+
+1. 再生すると、Robot_RootMotion は脚の運びに合わせて床を右へ進み（足が滑らない）、約 5 秒で 7m 進んで始めの場所へ戻る。コンソールに「7.xx m 進んだので始めの場所へ戻す」が出る。
+2. Robot_InPlace はオブジェクトが動かず、姿勢だけが 1 秒で 1.42m 前へ出て、頭へ戻るたびに元の場所へ戻る（クリップの移動を使わないときの見え方）。
+3. Robot_Turn は約 8 秒で 1 周の円を歩き、元の場所へ戻る。コンソールの行（2 秒ごと）は 8 秒ごとに同じ距離（約 2.57・3.62・2.54・0.03 m）と、90 度ずつ回る進む向き（89・-1・-91・179 度）をくり返し、高さはキャラクタコントローラが床の上に保つ（0.020）。インスペクタのキャラクタコントローラの速度は約 1.42 m/s。
+4. 再生中に Robot_Turn の「クリップの移動で動かす」を外すと、オブジェクト（カプセル）は止まり、姿勢だけが弧を進んで 2 秒ごとに戻る。入れ直すと、またオブジェクトごと円を歩く。
+5. Project の Animators/RobotRootMotion.animator を開き、右の設定の「移動を取る骨」を開くと、（自動）と骨の名前が並ぶ。

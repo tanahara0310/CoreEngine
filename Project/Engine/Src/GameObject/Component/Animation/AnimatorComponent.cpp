@@ -10,6 +10,7 @@
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Model/ModelResource.h"
 #include "Math/MathCore.h"
+#include "Physics/CharacterControllerComponent.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/JsonManager/JsonManager.h"
 
@@ -22,6 +23,8 @@ REFLECT_DEFINE_BEGIN(CoreEngine::AnimatorComponent, "アニメーション")
         p.tooltip = "骨入りのモデル（空なら同じオブジェクトのメッシュ描画のモデルを使う）")
     REFLECT_ASSET_REF(controller_, "設定")
     REFLECT_PROPERTY(speed_, "速さ", p.range = Range(0.0f, 4.0f, 0.01f), p.tooltip = "全体の速さの倍率。1 で各状態の速さどおり")
+    REFLECT_PROPERTY(applyRootMotion_, "クリップの移動で動かす",
+        p.tooltip = "最初のレイヤーのクリップの根の骨の水平の移動と向きの回転でオブジェクトを動かす（キャラクターコントローラーがあればその移動で動かす）")
     REFLECT_READONLY_ACCESSOR("currentState", "今の状態", GetCurrentState)
     REFLECT_READONLY_ACCESSOR("normalizedTime", "進み", GetNormalizedTime)
     REFLECT_READONLY_ACCESSOR("isInTransition", "遷移の途中", IsInTransition)
@@ -36,6 +39,13 @@ REFLECT_DEFINE_BEGIN(CoreEngine::AnimatorComponent, "アニメーション")
     REFLECT_METHOD("Play", "状態をすぐ切り替える", Play)
     REFLECT_METHOD("CrossFade", "混ぜながら状態を切り替える", CrossFade)
     REFLECT_METHOD("IsInState", "今の状態か", IsInState)
+    REFLECT_METHOD("SetLayerWeight", "レイヤーの重みを変える", SetLayerWeight)
+    REFLECT_METHOD("GetLayerWeight", "レイヤーの重みを読む", GetLayerWeight)
+    REFLECT_METHOD("GetLayerState", "レイヤーの今の状態", GetLayerState)
+    REFLECT_METHOD("IsInLayerState", "レイヤーの今の状態か", IsInLayerState)
+    REFLECT_METHOD("PlayInLayer", "レイヤーの状態をすぐ切り替える", PlayInLayer)
+    REFLECT_METHOD("CrossFadeInLayer", "レイヤーの状態を混ぜながら切り替える", CrossFadeInLayer)
+    REFLECT_METHOD("GetLayerNormalizedTime", "レイヤーの今の状態の進み", GetLayerNormalizedTime)
     REFLECT_METHOD("Switch", "クリップの切り替え", Switch)
     REFLECT_METHOD("SwitchWithBlend", "クリップの切り替え（ブレンド）", SwitchWithBlend)
     REFLECT_METHOD("GetCurrentClipName", "再生中のクリップ名", GetCurrentClipName)
@@ -163,6 +173,10 @@ namespace CoreEngine
     void AnimatorComponent::OnPropertyChanged(const Reflection::PropertyDescriptor& property)
     {
         const std::string_view name{ property.name };
+        if (name == "applyRootMotion") {
+            runtime_.SetRootMotionEnabled(applyRootMotion_);
+            return;
+        }
         if (name != "controller" && name != "model") {
             return;
         }
@@ -273,6 +287,7 @@ namespace CoreEngine
             }
         }
         const GameObject* const owner = GetOwner();
+        runtime_.SetRootMotionEnabled(applyRootMotion_);
         runtime_.Build(controller, std::move(clips), skeleton, owner ? owner->GetName() : std::string{});
     }
 
@@ -283,8 +298,12 @@ namespace CoreEngine
             return;
         }
 
+        runtime_.SetRootMotionEnabled(applyRootMotion_);
         runtime_.Update(Time::DeltaTime() * speed_);
         boundModel_->UpdateSkinCluster(runtime_.GetSkeletonSpaceMatrices());
+        if (applyRootMotion_) {
+            ApplyRootMotion();
+        }
 
         if (skeletonDebugDrawEnabled_) {
             DrawSkeletonDebugLines();
@@ -307,6 +326,29 @@ namespace CoreEngine
             owner->DispatchComponentAnimationEvent(event);
         }
         dispatching_.clear();
+    }
+
+    void AnimatorComponent::ApplyRootMotion()
+    {
+        const float deltaTime = Time::DeltaTime();
+        GameObject* const owner = GetOwner();
+        if (previewing_ || deltaTime <= 0.0f || !transform_ || !owner) {
+            return;
+        }
+        const AnimatorRuntime::RootMotion& motion = runtime_.GetRootMotion();
+        const Vector3 world = MathCore::CoordinateTransform::TransformNormal(motion.position, transform_->Get().GetWorldMatrix());
+        CharacterControllerComponent* const controller = owner->GetComponent<CharacterControllerComponent>();
+        if (controller && controller->IsEnabled()) {
+            // 落下はコントローラーが積むので、止まっているフレームも渡す
+            controller->SimpleMove(world * (1.0f / deltaTime));
+        } else if (motion.position.x != 0.0f || motion.position.z != 0.0f) {
+            transform_->ApplyWorldDelta(world);
+        }
+        if (motion.yaw != 0.0f) {
+            const Quaternion turn = MathCore::QuaternionMath::MakeRotateAxisAngle(Vector3{ 0.0f, 1.0f, 0.0f }, motion.yaw);
+            transform_->SetRotation(MathCore::QuaternionMath::Normalize(transform_->GetRotation() * turn));
+            transform_->SyncWorldMatrix();
+        }
     }
 
     // ===== パラメータ =====
@@ -356,6 +398,50 @@ namespace CoreEngine
     {
         EnsureBound();
         return runtime_.IsInTransition();
+    }
+
+    // ===== レイヤー =====
+
+    void AnimatorComponent::SetLayerWeight(const std::string& layer, float weight)
+    {
+        EnsureBound();
+        runtime_.SetLayerWeight(runtime_.ResolveLayer(layer), weight);
+    }
+
+    float AnimatorComponent::GetLayerWeight(const std::string& layer)
+    {
+        EnsureBound();
+        return runtime_.GetLayerWeight(runtime_.ResolveLayer(layer));
+    }
+
+    const std::string& AnimatorComponent::GetLayerState(const std::string& layer)
+    {
+        EnsureBound();
+        return runtime_.GetLayerStateName(runtime_.ResolveLayer(layer));
+    }
+
+    bool AnimatorComponent::IsInLayerState(const std::string& layer, const std::string& stateName)
+    {
+        EnsureBound();
+        return runtime_.IsInLayerState(runtime_.ResolveLayer(layer), stateName);
+    }
+
+    void AnimatorComponent::PlayInLayer(const std::string& layer, const std::string& stateName)
+    {
+        EnsureBound();
+        runtime_.PlayInLayer(runtime_.ResolveLayer(layer), stateName);
+    }
+
+    void AnimatorComponent::CrossFadeInLayer(const std::string& layer, const std::string& stateName, float seconds)
+    {
+        EnsureBound();
+        runtime_.CrossFadeInLayer(runtime_.ResolveLayer(layer), stateName, seconds);
+    }
+
+    float AnimatorComponent::GetLayerNormalizedTime(const std::string& layer)
+    {
+        EnsureBound();
+        return runtime_.GetLayerNormalizedTime(runtime_.ResolveLayer(layer));
     }
 
     std::optional<bool> AnimatorComponent::LoopOverride(bool loop) const

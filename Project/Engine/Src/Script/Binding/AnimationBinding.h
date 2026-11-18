@@ -19,6 +19,7 @@ namespace CoreEngine::Script
         std::string GetName() const { return event_.name; }
         std::string GetClip() const { return event_.clip; }
         std::string GetState() const { return event_.state; }
+        std::string GetLayer() const { return event_.layer; }
         float GetFloat() const { return event_.floatValue; }
         int GetInt() const { return event_.intValue; }
         std::string GetString() const { return event_.stringValue; }

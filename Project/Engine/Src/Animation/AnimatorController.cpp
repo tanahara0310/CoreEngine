@@ -239,6 +239,15 @@ namespace CoreEngine
             if (const auto pos = node.find("anyStatePos"); pos != node.end()) {
                 layer.anyStatePosition = JsonToVector2(*pos, layer.anyStatePosition);
             }
+            layer.weight = std::clamp(ReadFloat(node, "weight", 1.0f), 0.0f, 1.0f);
+            if (const auto mask = node.find("mask"); mask != node.end() && mask->is_array()) {
+                layer.useMask = true;
+                for (const json& bone : *mask) {
+                    if (bone.is_string()) {
+                        layer.mask.push_back(bone.get<std::string>());
+                    }
+                }
+            }
             if (const auto states = node.find("states"); states != node.end() && states->is_array()) {
                 for (const json& stateNode : *states) {
                     if (!stateNode.is_object()) {
@@ -333,6 +342,7 @@ namespace CoreEngine
             if (const auto preview = root.find("previewModel"); preview != root.end()) {
                 out.previewModel = JsonToAssetPath(*preview, "アニメーター設定の previewModel");
             }
+            out.rootMotionBone = ReadString(root, "rootMotionBone");
             ReadParameters(root, out, warnings);
             ReadClips(root, out);
             if (const auto layers = root.find("layers"); layers != root.end() && layers->is_array()) {
@@ -356,6 +366,9 @@ namespace CoreEngine
             json root = json::object();
             root["version"] = kVersion;
             root["previewModel"] = AssetPathToJson(data.previewModel);
+            if (!data.rootMotionBone.empty()) {
+                root["rootMotionBone"] = data.rootMotionBone;
+            }
 
             json parameters = json::array();
             for (const AnimatorParameter& parameter : data.parameters) {
@@ -398,6 +411,12 @@ namespace CoreEngine
             for (const AnimatorLayer& layer : data.layers) {
                 json node = { { "name", layer.name }, { "defaultState", layer.defaultState },
                               { "anyStatePos", Vector2ToJson(layer.anyStatePosition) } };
+                if (&layer != &data.layers.front()) {
+                    node["weight"] = layer.weight;
+                    if (layer.useMask) {
+                        node["mask"] = layer.mask;
+                    }
+                }
                 json states = json::array();
                 for (const AnimatorState& state : layer.states) {
                     states.push_back({

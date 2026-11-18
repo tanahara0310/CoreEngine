@@ -515,6 +515,7 @@ class AnimationEvent {
 	string get_name() const property;
 	string get_clip() const property;
 	string get_state() const property;
+	string get_layer() const property;
 	float get_floatValue() const property;
 	int get_intValue() const property;
 	string get_stringValue() const property;
@@ -780,6 +781,8 @@ class Animator {
 	void set_controller(const string&in) property;
 	float get_speed() const property;
 	void set_speed(float) property;
+	bool get_applyRootMotion() const property;
+	void set_applyRootMotion(bool) property;
 	string get_currentState() const property;
 	float get_normalizedTime() const property;
 	bool get_isInTransition() const property;
@@ -794,6 +797,13 @@ class Animator {
 	void Play(const string&in);
 	void CrossFade(const string&in, float);
 	bool IsInState(const string&in);
+	void SetLayerWeight(const string&in, float);
+	float GetLayerWeight(const string&in);
+	string GetLayerState(const string&in);
+	bool IsInLayerState(const string&in, const string&in);
+	void PlayInLayer(const string&in, const string&in);
+	void CrossFadeInLayer(const string&in, const string&in, float);
+	float GetLayerNormalizedTime(const string&in);
 	bool Switch(const string&in, bool);
 	bool SwitchWithBlend(const string&in, float, bool);
 	string GetCurrentClipName();

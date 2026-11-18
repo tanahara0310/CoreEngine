@@ -4,6 +4,7 @@
 
 #include "AnimatorCanvas.h"
 #include "AnimatorInspectorPanel.h"
+#include "AnimatorLayerPanel.h"
 #include "AnimatorParameterPanel.h"
 #include "AnimatorPreview.h"
 
@@ -24,7 +25,7 @@ namespace CoreEngine::Editor
     struct AnimatorLiveView;
 
     /// @brief アニメーター設定（.animator）の窓（開いた設定をタブで並べる）
-    /// @details 左にパラメータとクリップ、中に状態の箱と遷移の矢印、右に選んだものの設定を出す。
+    /// @details 左にレイヤー・パラメータ・クリップ、中に選んだレイヤーの状態の箱と遷移の矢印、右に選んだものの設定を出す。
     ///          再生中に Hierarchy で選んだオブジェクトの Animator がこの設定を使っていれば、その実行の状態を映す。
     ///          停止中は「シーンで見る」で、選んだ状態の姿勢をそのオブジェクトへ出せる。
     ///          窓はタブ・開く・閉じる・Undo の履歴へ積むことを受け持ち、中身の描画は 3 つの部品へ任せる。
@@ -85,6 +86,7 @@ namespace CoreEngine::Editor
         std::optional<size_t> closingDocument_;
         bool focusRequested_ = false;
 
+        AnimatorLayerPanel layerPanel_;
         AnimatorParameterPanel parameterPanel_;
         AnimatorCanvas canvas_;
         AnimatorInspectorPanel inspectorPanel_;

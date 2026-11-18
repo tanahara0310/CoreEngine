@@ -13,6 +13,7 @@
 #include "Editor/ImGui/EditorTheme.h"
 #include "Editor/ImGui/ImGuiAll.h"
 #include "Editor/ImGui/Widgets/DragDropPayload.h"
+#include "Graphics/Model/Skeleton/Skeleton.h"
 
 #include <algorithm>
 #include <cmath>
@@ -275,7 +276,7 @@ namespace CoreEngine::Editor
 
     void AnimatorInspectorPanel::Draw(AnimatorDocument& document, const AnimatorLiveView& live)
     {
-        const AnimatorLayer& layer = document.data.layers.front();
+        const AnimatorLayer& layer = document.Layer();
         switch (document.selection) {
         case AnimatorSelection::State:
             if (document.selected >= 0 && document.selected < static_cast<int>(layer.states.size())) {
@@ -292,6 +293,7 @@ namespace CoreEngine::Editor
                 return;
             }
             break;
+        case AnimatorSelection::Layer:
         case AnimatorSelection::None:
             break;
         }
@@ -300,12 +302,15 @@ namespace CoreEngine::Editor
 
     void AnimatorInspectorPanel::DrawControllerInspector(AnimatorDocument& document)
     {
-        AnimatorLayer& layer = document.data.layers.front();
+        AnimatorLayer& layer = document.Layer();
         UI::SectionHeader("設定");
         ImGui::TextWrapped("%s", document.assetPath.c_str());
         ImGui::Spacing();
 
         const std::string preview = layer.defaultState.empty() ? std::string("（なし）") : layer.defaultState;
+        if (document.data.layers.size() > 1) {
+            ImGui::TextDisabled("レイヤー「%s」", layer.name.c_str());
+        }
         if (ImGui::BeginCombo("最初の状態", preview.c_str())) {
             for (size_t i = 0; i < layer.states.size(); ++i) {
                 if (ImGui::Selectable(layer.states[i].name.c_str(), layer.states[i].name == layer.defaultState)) {
@@ -317,17 +322,41 @@ namespace CoreEngine::Editor
         if (AnimatorWidgets::ModelField("見本のモデル", document.data.previewModel)) {
             document.MarkChanged("見本のモデルを変える");
         }
-        UI::Hint("空のクリップを足すときのファイルに使います。");
+        UI::Hint("空のクリップを足すときのファイルと、マスクの骨の木に使います。");
+
+        const Skeleton* const skeleton = AnimatorWidgets::BoneTreeOf(document);
+        std::string& rootBone = document.data.rootMotionBone;
+        if (ImGui::BeginCombo("移動を取る骨", rootBone.empty() ? "（自動）" : rootBone.c_str())) {
+            if (ImGui::Selectable("（自動）", rootBone.empty())) {
+                rootBone.clear();
+                document.MarkChanged("移動を取る骨を変える");
+            }
+            if (skeleton) {
+                for (size_t i = 0; i < skeleton->joints.size(); ++i) {
+                    ImGui::PushID(static_cast<int>(i));
+                    const std::string& name = skeleton->joints[i].name;
+                    if (ImGui::Selectable(name.c_str(), name == rootBone)) {
+                        rootBone = name;
+                        document.MarkChanged("移動を取る骨を変える");
+                    }
+                    ImGui::PopID();
+                }
+            }
+            ImGui::EndCombo();
+        }
+        UI::Tooltip("Animator の「クリップの移動で動かす」を入れたとき、この骨の水平の移動と向きの回転でオブジェクトを動かします。"
+            "自動は、骨の木のいちばん上でクリップのトラックを持つ骨です。");
 
         ImGui::Spacing();
-        ImGui::TextWrapped("状態 %zu 個・遷移 %zu 本・パラメータ %zu 個・クリップ %zu 本", layer.states.size(), layer.transitions.size(),
-            document.data.parameters.size(), document.data.clips.size());
+        ImGui::TextWrapped("レイヤー %zu 枚・状態 %zu 個・遷移 %zu 本・パラメータ %zu 個・クリップ %zu 本", document.data.layers.size(),
+            layer.states.size(), layer.transitions.size(), document.data.parameters.size(), document.data.clips.size());
 
         UI::SectionHeader("使い方");
         ImGui::PushTextWrapPos(0.0f);
         UI::Hint("・キャンバスの右クリックで状態を作ります。");
         UI::Hint("・状態の右クリック > 遷移を引く のあと、移る先の状態をクリックします。");
         UI::Hint("・遷移を選ぶと、条件・混ぜる秒数・終わりの時刻を決められます。");
+        UI::Hint("・左のレイヤーを足すと、上に重ねる状態の表を作れます。マスクで体の一部だけにできます。");
         UI::Hint("・ホイールで拡大縮小、中ボタンか空いた所の左ドラッグで動かします。");
         UI::Hint("・スクリプトからは animator.SetFloat(\"Speed\", 1.0f) のように値を書きます。");
         ImGui::PopTextWrapPos();
@@ -335,7 +364,7 @@ namespace CoreEngine::Editor
 
     void AnimatorInspectorPanel::DrawStateInspector(AnimatorDocument& document, int stateIndex, const AnimatorLiveView& live)
     {
-        AnimatorLayer& layer = document.data.layers.front();
+        AnimatorLayer& layer = document.Layer();
         UI::SectionHeader("状態");
         {
             std::string newName;
@@ -387,7 +416,7 @@ namespace CoreEngine::Editor
 
     void AnimatorInspectorPanel::DrawClipMotion(AnimatorDocument& document, int stateIndex, const AnimatorLiveView& live)
     {
-        AnimatorState& state = document.data.layers.front().states[static_cast<size_t>(stateIndex)];
+        AnimatorState& state = document.Layer().states[static_cast<size_t>(stateIndex)];
         const std::string clipPreview = state.clip.empty() ? std::string("（なし: 骨の初期の姿勢）") : state.clip;
         if (ImGui::BeginCombo("クリップ", clipPreview.c_str())) {
             if (ImGui::Selectable("（なし: 骨の初期の姿勢）", state.clip.empty())) {
@@ -423,7 +452,7 @@ namespace CoreEngine::Editor
 
     void AnimatorInspectorPanel::DrawBlendTree(AnimatorDocument& document, int stateIndex, const AnimatorLiveView& live)
     {
-        AnimatorState& state = document.data.layers.front().states[static_cast<size_t>(stateIndex)];
+        AnimatorState& state = document.Layer().states[static_cast<size_t>(stateIndex)];
         AnimatorBlendTree& tree = state.blend;
         const bool is2D = state.motion == AnimatorMotionType::Blend2D;
         if (AnimatorWidgets::FloatParameterCombo(is2D ? "横のパラメータ" : "パラメータ", document.data, tree.parameterX)) {
@@ -573,7 +602,7 @@ namespace CoreEngine::Editor
 
     void AnimatorInspectorPanel::DrawTransitionList(AnimatorDocument& document, const std::string& from)
     {
-        const AnimatorLayer& layer = document.data.layers.front();
+        const AnimatorLayer& layer = document.Layer();
         std::vector<int> indices;
         for (size_t t = 0; t < layer.transitions.size(); ++t) {
             if (layer.transitions[t].from == from) {
@@ -614,7 +643,7 @@ namespace CoreEngine::Editor
 
     void AnimatorInspectorPanel::DrawTransitionInspector(AnimatorDocument& document, int transitionIndex)
     {
-        AnimatorLayer& layer = document.data.layers.front();
+        AnimatorLayer& layer = document.Layer();
         AnimatorTransition& transition = layer.transitions[static_cast<size_t>(transitionIndex)];
         const bool fromAny = transition.from == AnimatorControllerFormat::kAnyState;
         UI::SectionHeader("遷移");
