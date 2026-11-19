@@ -8,6 +8,7 @@
 #include "Graphics/Render/RenderItem.h"
 #include "Graphics/Render/RenderPassType.h"
 #include "Graphics/Pipeline/PipelineStateManager.h"
+#include "Math/Matrix/Matrix4x4.h"
 #include "Math/Vector/Vector3.h"
 #include "Utility/JsonManager/JsonManager.h"
 
@@ -122,6 +123,10 @@ namespace CoreEngine
         /// @note `TransformComponent` が無ければワールド軸をそのまま返す。
         void GetWorldAxes(Vector3& axisX, Vector3& axisY, Vector3& axisZ) const;
 
+        /// @brief `TransformComponent` のワールド行列（無ければ nullptr）
+        /// @note 見つけた場所はコンポーネントの並びが変わるまで控える。位置・向き・拡大はこの行列から出す。
+        const Matrix4x4* FindWorldMatrix() const;
+
         // ===== 識別子 =====
 
         /// @brief シーン内で重複しない ID
@@ -215,6 +220,9 @@ namespace CoreEngine
         GameObjectManager* objectManager_ = nullptr;  ///< 登録先（AddObject 時に注入される）
         ObjectId objectId_{};  ///< シーン内の ID（登録時に GameObjectManager が決める）
         AssetRef<PrefabAsset> prefab_;  ///< 元になったプレハブ
+
+        mutable const Matrix4x4* worldMatrix_ = nullptr;  ///< FindWorldMatrix が見つけた行列
+        mutable uint64_t worldMatrixLayout_ = 0;          ///< 見つけたときのコンポーネントの並びの番号
 
         friend class GameObjectManager;  ///< spawner_ / objectManager_ / objectId_ への書き込みを許可
     };

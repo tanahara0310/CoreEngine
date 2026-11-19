@@ -6,6 +6,7 @@
 #include "Collision/Mesh/CollisionMeshLibrary.h"
 #include "Math/Geometry/Intersect.h"
 #include "Math/Geometry/MeshView.h"
+#include "Math/Matrix/Matrix4x4.h"
 #include "Physics/PhysicsKey.h"
 
 #include <cstdint>
@@ -44,6 +45,7 @@ public:
 
     /// @brief ワールド空間の AABB（type != Box でも外接 AABB として使える）
     /// @note ボックスが回転している場合は、回転後の箱に外接する AABB を返す。
+    ///       持ち主の行列と形と三角形が前と同じなら、前に出した箱を返す。
     Geometry::AABB GetWorldAABB() const;
 
     /// @brief ワールド空間の向き付きボックス（type != Box でも外接ボックスとして使える）
@@ -77,7 +79,7 @@ public:
     // ===== 形状 =====
 
     const CollisionShape& GetShape() const { return shape_; }
-    void SetShape(const CollisionShape& shape) { shape_ = shape; }
+    void SetShape(const CollisionShape& shape) { shape_ = shape; boundsValid_ = false; }
     ColliderShapeType GetShapeType() const { return shape_.type; }
 
     /// @brief 球とカプセルの半径を変更する（Box 形状には無効）
@@ -87,14 +89,14 @@ public:
     /// @brief カプセルの全高を変更する（他の形状には無効）
     void SetHeight(float height);
     /// @brief ローカルオフセットを変更する
-    void SetOffset(const Vector3& offset) { shape_.offset = offset; }
+    void SetOffset(const Vector3& offset) { shape_.offset = offset; boundsValid_ = false; }
 
     // ===== プロパティ =====
 
     void SetLayer(CollisionLayer layer) { layer_ = layer; }
     CollisionLayer GetLayer() const { return layer_; }
 
-    void SetOwner(GameObject* owner) { owner_ = owner; }
+    void SetOwner(GameObject* owner) { owner_ = owner; frameCached_ = false; boundsValid_ = false; }
     GameObject* GetOwner() const { return owner_; }
 
     void SetEnabled(bool enabled) { isEnabled_ = enabled; }
@@ -139,6 +141,21 @@ public:
     void OnCollisionExit(Collider* other);
 
 private:
+    /// @brief 持ち主のワールドの位置・向き・拡大縮小
+    struct WorldFrame {
+        Vector3 position{ 0.0f, 0.0f, 0.0f };
+        Vector3 axes[3] = { { 1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f }, { 0.0f, 0.0f, 1.0f } };  ///< 正規化した向き
+        Vector3 scale{ 1.0f, 1.0f, 1.0f };
+    };
+
+    /// @brief 持ち主の位置・向き・拡大縮小を取る
+    /// @note 持ち主のワールド行列が前に取ったときと同じなら、前に出した値を返す。
+    ///       行列が変わったときは外接の箱の控えも捨てる。持ち主が無ければ原点・ワールド軸・等倍。
+    const WorldFrame& GetWorldFrame() const;
+
+    /// @brief オフセットを持ち主の向きと拡大縮小で置いた、ワールドの中心
+    Vector3 WorldCenterIn(const WorldFrame& frame) const;
+
     uint64_t       id_ = 0;
     CollisionShape shape_{};
     GameObject*    owner_ = nullptr;
@@ -153,6 +170,12 @@ private:
     const void*         meshKey_ = nullptr;   ///< 三角形を取ったときの出どころ
     int                 meshLod_ = -1;        ///< 三角形を取ったときの LOD の段
     CollisionMeshStatus meshStatus_ = CollisionMeshStatus::None;
+
+    mutable WorldFrame     frame_;                 ///< GetWorldFrame が出した値
+    mutable Matrix4x4      frameMatrix_{};         ///< frame_ を出したときの持ち主の行列
+    mutable bool           frameCached_ = false;   ///< frame_ が持ち主の行列から出したものか
+    mutable Geometry::AABB bounds_;                ///< GetWorldAABB が出した箱
+    mutable bool           boundsValid_ = false;   ///< bounds_ を使えるか
 };
 
 /// @brief スケールの 3 軸の大きさのうち最大のもの（球の半径に掛ける倍率）

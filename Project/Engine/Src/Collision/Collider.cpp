@@ -3,9 +3,11 @@
 #include "GameObject/GameObject.h"
 #include "Utility/CVar/CVar.h"
 #include "Utility/Logger/Logger.h"
+#include "WorldTransform/WorldTransform.h"
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <numbers>
 
 namespace CoreEngine
@@ -62,29 +64,64 @@ bool Collider::Intersects(const Collider& other, Geometry::Contact* outContact) 
 // ワールド空間の形状
 //================================================
 
-Vector3 Collider::GetWorldScale() const
+const Collider::WorldFrame& Collider::GetWorldFrame() const
 {
-    if (owner_ == nullptr) return { 1.0f, 1.0f, 1.0f };
-    return owner_->GetWorldScale();
+    if (owner_ == nullptr) {
+        frame_ = WorldFrame{};
+        frameCached_ = false;
+        boundsValid_ = false;
+        return frame_;
+    }
+
+    const Matrix4x4* const world = owner_->FindWorldMatrix();
+    if (world == nullptr) {
+        // 行列を持たない持ち主は控えずに毎回取る
+        frame_.position = owner_->GetWorldPosition();
+        frame_.scale = owner_->GetWorldScale();
+        owner_->GetWorldAxes(frame_.axes[0], frame_.axes[1], frame_.axes[2]);
+        frameCached_ = false;
+        boundsValid_ = false;
+        return frame_;
+    }
+
+    if (frameCached_ && std::memcmp(&frameMatrix_, world, sizeof(Matrix4x4)) == 0) {
+        return frame_;
+    }
+
+    frameMatrix_ = *world;
+    frame_.position = { world->m[3][0], world->m[3][1], world->m[3][2] };
+    frame_.scale = ScaleOfWorldMatrix(*world);
+    AxesOfWorldMatrix(*world, frame_.axes[0], frame_.axes[1], frame_.axes[2]);
+    frameCached_ = true;
+    boundsValid_ = false;
+    return frame_;
 }
 
-Vector3 Collider::GetWorldCenter() const
+Vector3 Collider::WorldCenterIn(const WorldFrame& frame) const
 {
     if (owner_ == nullptr) return shape_.offset;
 
-    const Vector3 scale = GetWorldScale();
+    const Vector3& scale = frame.scale;
     const Vector3 scaledOffset{
         shape_.offset.x * scale.x,
         shape_.offset.y * scale.y,
         shape_.offset.z * scale.z
     };
     // オフセットは持ち主の向きに合わせて回す
-    Vector3 axisX, axisY, axisZ;
-    owner_->GetWorldAxes(axisX, axisY, axisZ);
     const Vector3 rotatedOffset =
-        axisX * scaledOffset.x + axisY * scaledOffset.y + axisZ * scaledOffset.z;
+        frame.axes[0] * scaledOffset.x + frame.axes[1] * scaledOffset.y + frame.axes[2] * scaledOffset.z;
 
-    return owner_->GetWorldPosition() + rotatedOffset;
+    return frame.position + rotatedOffset;
+}
+
+Vector3 Collider::GetWorldScale() const
+{
+    return GetWorldFrame().scale;
+}
+
+Vector3 Collider::GetWorldCenter() const
+{
+    return WorldCenterIn(GetWorldFrame());
 }
 
 float MaxAbsScale(const Vector3& scale)
@@ -110,7 +147,8 @@ namespace {
 
 Geometry::Sphere Collider::GetWorldSphere() const
 {
-    const Vector3 scale = GetWorldScale();
+    const WorldFrame& frame = GetWorldFrame();
+    const Vector3 scale = frame.scale;
     const float maxScale = MaxAbsScale(scale);
 
     if (shape_.type == ColliderShapeType::Mesh) {
@@ -121,7 +159,7 @@ Geometry::Sphere Collider::GetWorldSphere() const
     if (shape_.type == ColliderShapeType::Capsule) {
         float radius = 0.0f, halfLength = 0.0f;
         WorldCapsuleMetrics(shape_, scale, radius, halfLength);
-        return Geometry::Sphere{ GetWorldCenter(), halfLength + radius };
+        return Geometry::Sphere{ WorldCenterIn(frame), halfLength + radius };
     }
 
     if (shape_.type == ColliderShapeType::Box) {
@@ -132,32 +170,45 @@ Geometry::Sphere Collider::GetWorldSphere() const
             shape_.size.y * std::abs(scale.y) * 0.5f,
             shape_.size.z * std::abs(scale.z) * 0.5f
         };
-        return Geometry::Sphere{ GetWorldCenter(), Length(half) };
+        return Geometry::Sphere{ WorldCenterIn(frame), Length(half) };
     }
 
-    return Geometry::Sphere{ GetWorldCenter(), shape_.radius * maxScale };
+    return Geometry::Sphere{ WorldCenterIn(frame), shape_.radius * maxScale };
 }
 
 Geometry::AABB Collider::GetWorldAABB() const
 {
-    const Vector3 center = GetWorldCenter();
-    const Vector3 scale = GetWorldScale();
-
-    if (shape_.type == ColliderShapeType::Sphere) {
-        const float r = shape_.radius * MaxAbsScale(scale);
-        const Vector3 extent{ r, r, r };
-        return Geometry::AABB{ center - extent, center + extent };
+    const WorldFrame& frame = GetWorldFrame();
+    if (boundsValid_) {
+        return bounds_;
     }
 
-    return GetWorldOBB().ToAABB();
+    Geometry::AABB bounds;
+    if (shape_.type == ColliderShapeType::Sphere) {
+        const Vector3 center = WorldCenterIn(frame);
+        const float r = shape_.radius * MaxAbsScale(frame.scale);
+        const Vector3 extent{ r, r, r };
+        bounds = Geometry::AABB{ center - extent, center + extent };
+    }
+    else {
+        bounds = GetWorldOBB().ToAABB();
+    }
+
+    // 持ち主の行列から出した形だけを控える（行列の無い持ち主は毎回出し直す）
+    if (frameCached_) {
+        bounds_ = bounds;
+        boundsValid_ = true;
+    }
+    return bounds;
 }
 
 Geometry::OBB Collider::GetWorldOBB() const
 {
-    const Vector3 scale = GetWorldScale();
+    const WorldFrame& frame = GetWorldFrame();
+    const Vector3 scale = frame.scale;
 
     Geometry::OBB obb;
-    obb.center = GetWorldCenter();
+    obb.center = WorldCenterIn(frame);
 
     if (shape_.type == ColliderShapeType::Sphere) {
         // 球を箱として見るときは外接する立方体にする
@@ -166,21 +217,19 @@ Geometry::OBB Collider::GetWorldOBB() const
         return obb;
     }
 
+    obb.axes[0] = frame.axes[0];
+    obb.axes[1] = frame.axes[1];
+    obb.axes[2] = frame.axes[2];
+
     if (shape_.type == ColliderShapeType::Capsule) {
         float radius = 0.0f, halfLength = 0.0f;
         WorldCapsuleMetrics(shape_, scale, radius, halfLength);
         obb.halfExtents = Vector3{ radius, halfLength + radius, radius };
-        if (owner_) {
-            owner_->GetWorldAxes(obb.axes[0], obb.axes[1], obb.axes[2]);
-        }
         return obb;
     }
 
     if (shape_.type == ColliderShapeType::Mesh) {
         // 三角形を包むローカルの箱を、持ち主の向きと拡大縮小で置く（三角形がまだ無ければ大きさ 0）
-        if (owner_) {
-            owner_->GetWorldAxes(obb.axes[0], obb.axes[1], obb.axes[2]);
-        }
         if (mesh_) {
             const Geometry::AABB& local = mesh_->Bounds();
             const Vector3 half = local.GetSize() * 0.5f;
@@ -195,9 +244,6 @@ Geometry::OBB Collider::GetWorldOBB() const
         shape_.size.y * std::abs(scale.y) * 0.5f,
         shape_.size.z * std::abs(scale.z) * 0.5f
     };
-    if (owner_) {
-        owner_->GetWorldAxes(obb.axes[0], obb.axes[1], obb.axes[2]);
-    }
     return obb;
 }
 
@@ -207,12 +253,13 @@ Geometry::MeshView Collider::GetWorldMeshView() const
     if (shape_.type != ColliderShapeType::Mesh) {
         return view;
     }
+    const WorldFrame& frame = GetWorldFrame();
     view.mesh = mesh_.get();
-    view.origin = GetWorldCenter();
-    view.scale = GetWorldScale();
-    if (owner_) {
-        owner_->GetWorldAxes(view.axes[0], view.axes[1], view.axes[2]);
-    }
+    view.origin = WorldCenterIn(frame);
+    view.scale = frame.scale;
+    view.axes[0] = frame.axes[0];
+    view.axes[1] = frame.axes[1];
+    view.axes[2] = frame.axes[2];
     view.oneSided = shape_.meshOneSided;
     view.flatEdgeAngle = cvMeshFlatEdgeAngle.Get() * (std::numbers::pi_v<float> / 180.0f);
     return view;
@@ -233,8 +280,12 @@ Vector3 Collider::GetLocalBoxSize() const
 void Collider::RefreshMesh()
 {
     const CollisionMeshStatus previous = meshStatus_;
+    const Geometry::TriangleMesh* const previousMesh = mesh_.get();
 
     if (shape_.type != ColliderShapeType::Mesh || owner_ == nullptr) {
+        if (previousMesh) {
+            boundsValid_ = false;
+        }
         mesh_.reset();
         meshKey_ = nullptr;
         meshLod_ = -1;
@@ -257,6 +308,10 @@ void Collider::RefreshMesh()
         meshStatus_ = result.status;
     }
 
+    if (mesh_.get() != previousMesh) {
+        boundsValid_ = false;
+    }
+
     // 使えない理由が新しく分かったときだけ知らせる
     if (meshStatus_ != previous
         && (meshStatus_ == CollisionMeshStatus::Skinned || meshStatus_ == CollisionMeshStatus::Empty)) {
@@ -267,7 +322,8 @@ void Collider::RefreshMesh()
 
 Geometry::Capsule Collider::GetWorldCapsule() const
 {
-    const Vector3 center = GetWorldCenter();
+    const WorldFrame& frame = GetWorldFrame();
+    const Vector3 center = WorldCenterIn(frame);
 
     // カプセル以外は、長さの無いカプセル（＝外接球）として扱う
     if (shape_.type != ColliderShapeType::Capsule) {
@@ -276,14 +332,9 @@ Geometry::Capsule Collider::GetWorldCapsule() const
     }
 
     float radius = 0.0f, halfLength = 0.0f;
-    WorldCapsuleMetrics(shape_, GetWorldScale(), radius, halfLength);
+    WorldCapsuleMetrics(shape_, frame.scale, radius, halfLength);
 
-    Vector3 axisX{ 1.0f, 0.0f, 0.0f }, axisY{ 0.0f, 1.0f, 0.0f }, axisZ{ 0.0f, 0.0f, 1.0f };
-    if (owner_) {
-        owner_->GetWorldAxes(axisX, axisY, axisZ);
-    }
-
-    const Vector3 half = axisY * halfLength;
+    const Vector3 half = frame.axes[1] * halfLength;
     return Geometry::Capsule{ center - half, center + half, radius };
 }
 
@@ -295,6 +346,7 @@ void Collider::SetRadius(float radius)
 {
     if (shape_.type == ColliderShapeType::Sphere || shape_.type == ColliderShapeType::Capsule) {
         shape_.radius = radius;
+        boundsValid_ = false;
     }
 }
 
@@ -302,6 +354,7 @@ void Collider::SetSize(const Vector3& size)
 {
     if (shape_.type == ColliderShapeType::Box) {
         shape_.size = size;
+        boundsValid_ = false;
     }
 }
 
@@ -309,6 +362,7 @@ void Collider::SetHeight(float height)
 {
     if (shape_.type == ColliderShapeType::Capsule) {
         shape_.height = height;
+        boundsValid_ = false;
     }
 }
 

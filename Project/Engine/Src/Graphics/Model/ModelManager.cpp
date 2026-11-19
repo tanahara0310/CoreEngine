@@ -410,6 +410,12 @@ namespace CoreEngine
         }
     }
 
+    std::future<void> ModelManager::SubmitWork(const char* label, std::function<void()> work)
+    {
+        EnsureThreadPool();
+        return threadPool_->Submit(label, std::move(work));
+    }
+
     void ModelManager::EnsureThreadPool()
     {
         if (!threadPool_) {

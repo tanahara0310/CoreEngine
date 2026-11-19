@@ -58,6 +58,7 @@ namespace CoreEngine
         raw->owner_ = ownerObject_;
         raw->attachedByCode_ = dataAttachDepth_ == 0;
         components_.push_back(std::move(component));
+        ++layoutVersion_;
         if (invokeAwake) {
             InvokeAwake(*raw);
         }
@@ -81,6 +82,7 @@ namespace CoreEngine
         // 生ポインタを保持している可能性があるため、フレーム末まで残す。
         // 配列からは消さず nullptr にすることで、進行中のインデックス走査をずらさない。
         retired_.push_back(std::move(slot));
+        ++layoutVersion_;
     }
 
     bool ComponentHost::RemoveComponent(IComponent* component)
@@ -120,6 +122,7 @@ namespace CoreEngine
                 }
                 // スロットは nullptr にして残し、フレーム末に詰める
                 detached_.push_back(std::move(slot));
+                ++layoutVersion_;
                 return position;
             }
             ++position;
@@ -202,6 +205,7 @@ namespace CoreEngine
         }
 
         components_.insert(insertAt, std::move(component));
+        ++layoutVersion_;
     }
 
     std::optional<std::size_t> ComponentHost::FindComponentPosition(const IComponent* component) const

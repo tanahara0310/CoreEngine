@@ -1,0 +1,78 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "type": "Transform",
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    72.0,
+                    0.2,
+                    80.0
+                ],
+                "translate": [
+                    0.0,
+                    -0.1,
+                    3.0
+                ]
+            }
+        },
+        {
+            "enabled": true,
+            "type": "MeshRenderer",
+            "parameters": {
+                "model": {
+                    "guid": "e8a79191-50ea-0673-1816-c257f280ba64",
+                    "path": "Engine/Assets/Models/Primitives/Box/cube.obj"
+                },
+                "materials": [
+                    {
+                        "color": [
+                            0.4,
+                            0.42,
+                            0.4,
+                            1.0
+                        ],
+                        "roughness": 0.7,
+                        "metallic": 0.0,
+                        "lighting": true
+                    }
+                ]
+            }
+        },
+        {
+            "enabled": true,
+            "type": "Collider",
+            "parameters": {
+                "shapes": [
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "static": true,
+                        "trigger": false,
+                        "type": "Box",
+                        "size": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ]
+                    }
+                ]
+            }
+        }
+    ],
+    "id": "2f7c9e1b4a6d8053",
+    "name": "Floor",
+    "order": 2
+}

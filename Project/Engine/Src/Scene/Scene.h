@@ -4,6 +4,7 @@
 #include "GameObject/GameObjectManager.h"
 #include "Collision/CollisionConfig.h"
 #include "Scene/Feature/ISceneFeature.h"
+#include <future>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -86,6 +87,17 @@ namespace CoreEngine
 
         /// @brief 全 Feature の PostSceneInitialize（シーンのオブジェクトが出そろった後）
         void RunPostSceneInitialize();
+
+        /// @brief シーンのメッシュの形が使う三角形の集まりを、ワーカーで作り始める
+        /// @return 待つものがあれば true（済むまで IsCollisionMeshBuildDone で調べる）
+        /// @note 非アクティブなオブジェクトの分も作る。モデルの読み込みを待っている形は作らない（使うときに作る）。
+        bool BeginCollisionMeshBuild();
+
+        /// @brief 三角形の集まりを作り終えたか
+        bool IsCollisionMeshBuildDone();
+
+        /// @brief 三角形の集まりを作る進み具合（0.0〜1.0）
+        float GetCollisionMeshBuildProgress() const;
 
         /// @brief マニフェストのシーンの設定を当てる（シーンのコードより後＝保存した値が勝つ）
         void ApplyManifestSettings();
@@ -188,5 +200,10 @@ namespace CoreEngine
 
         // 保存ファイルの代わりに読む控え（空ならファイルから読む）
         std::shared_ptr<const SceneSnapshot> restoreSnapshot_;
+
+        // 読み込みの間に作っている三角形の集まり（作り終えたものは done 側へ数える）
+        std::vector<std::future<void>> collisionMeshBuilds_;
+        size_t collisionMeshBuildsDone_ = 0;
+        size_t collisionMeshBuildsTotal_ = 0;
     };
 }
