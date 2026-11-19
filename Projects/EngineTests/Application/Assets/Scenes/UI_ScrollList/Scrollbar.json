@@ -1,0 +1,103 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchorMax": [
+                    1.0,
+                    1.0
+                ],
+                "anchorMin": [
+                    1.0,
+                    0.0
+                ],
+                "anchoredPosition": [
+                    -6.0,
+                    0.0
+                ],
+                "parent": {
+                    "comp": "RectTransform",
+                    "ref": "adff21d1970c7ad7"
+                },
+                "pivot": [
+                    1.0,
+                    0.5
+                ],
+                "rotation": 0.0,
+                "scale": [
+                    1.0,
+                    1.0
+                ],
+                "size": [
+                    18.0,
+                    -72.0
+                ],
+                "sortOrder": 1
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    0.08,
+                    0.08,
+                    0.1,
+                    1.0
+                ],
+                "columns": 1,
+                "frame": 0,
+                "material": null,
+                "rows": 1,
+                "texture": null
+            },
+            "type": "UIImage"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "direction": 2,
+                "disabledColor": [
+                    0.6,
+                    0.6,
+                    0.6,
+                    0.5
+                ],
+                "fill": null,
+                "handle": {
+                    "comp": "RectTransform",
+                    "ref": "8653d189af938528"
+                },
+                "hoveredColor": [
+                    0.85,
+                    0.9,
+                    1.0,
+                    1.0
+                ],
+                "interactable": true,
+                "maxValue": 1.0,
+                "minValue": 0.0,
+                "navigationStep": 0.0,
+                "normalColor": [
+                    0.62,
+                    0.66,
+                    0.74,
+                    1.0
+                ],
+                "pressedColor": [
+                    0.7,
+                    0.78,
+                    0.95,
+                    1.0
+                ],
+                "value": 0.0,
+                "wholeNumbers": false
+            },
+            "type": "UISlider"
+        }
+    ],
+    "id": "be680536b92eb6c6",
+    "name": "Scrollbar",
+    "order": 205
+}

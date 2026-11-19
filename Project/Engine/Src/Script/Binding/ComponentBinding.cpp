@@ -14,6 +14,7 @@
 #include "Script/Binding/GameObjectBinding.h"
 #include "Script/Binding/ScriptRefCounted.h"
 #include "UI/RectTransformComponent.h"
+#include "UI/UIScrollViewComponent.h"
 #include "Utility/Logger/Logger.h"
 
 #include <angelscript.h>
@@ -129,6 +130,24 @@ namespace CoreEngine::Script
             void SetRectParentKeepingPosition(ScriptEngineComponent* parent)
             {
                 SetRectParent(parent, true);
+            }
+
+            /// @brief target が窓に入るまで中身を動かす（UIScrollView の型だけで使う）
+            void ScrollViewTo(ScriptGameObject* target)
+            {
+                auto* const view = dynamic_cast<UIScrollViewComponent*>(FindOrWarn("ScrollTo"));
+                if (!view) {
+                    return;
+                }
+                GameObject* const object = target ? target->Resolve() : nullptr;
+                const RectTransformComponent* const rect =
+                    object ? object->GetComponent<RectTransformComponent>() : nullptr;
+                if (!rect) {
+                    Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Script,
+                        "UIScrollView.ScrollTo: 相手の GameObject が無いか RectTransform が付いていません");
+                    return;
+                }
+                view->ScrollTo(*rect);
             }
 
             IComponent* Find() const
@@ -428,6 +447,12 @@ namespace CoreEngine::Script
                     asMETHOD(ScriptEngineComponent, SetRectParentKeepingPosition), asCALL_THISCALL);
                 r.Method(name, "bool SetParent(RectTransform@+ parent, bool keepPosition = true)",
                     asMETHOD(ScriptEngineComponent, SetRectParent), asCALL_THISCALL);
+            }
+
+            // スクロールの中の物を窓へ入れる
+            if (type.name == "UIScrollView") {
+                r.Method(name, "void ScrollTo(GameObject@+ target)",
+                    asMETHOD(ScriptEngineComponent, ScrollViewTo), asCALL_THISCALL);
             }
         }
     }

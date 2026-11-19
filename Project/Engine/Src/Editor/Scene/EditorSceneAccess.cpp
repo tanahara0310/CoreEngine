@@ -3,6 +3,7 @@
 
 #ifdef CORE_EDITOR
 
+#include "Editor/Command/EditorCommandStack.h"
 #include "Editor/Scene/SceneDebugEditor.h"
 #include "EngineSystem/EngineSystem.h"
 #include "EngineSystem/Subsystem/DebugSubsystem.h"
@@ -10,12 +11,28 @@
 #include "GameObject/GameObjectManager.h"
 #include "Scene/SceneManager.h"
 #include "Editor/ImGui/GameDebugUI.h"
+#include "UI/RectTransformComponent.h"
+#include "UI/UILayoutPass.h"
 
 namespace CoreEngine::Editor
 {
     namespace
     {
         EngineSystem* sEngine = nullptr;
+
+        /// @brief 並べる処理が書き換えた UI トランスフォームを、直前の操作を取り消すときに書き換える前へ戻す
+        void KeepLayoutRectForUndo(RectTransformComponent& rect, const UILayoutPass::RectState& before)
+        {
+            EditorCommandStack& stack = EditorCommandStack::Get();
+            if (!stack.CanAttachToLast(&rect)) {
+                return;
+            }
+            stack.AttachToLast(&rect, [handle = ComponentHandle::Of(rect), before] {
+                if (auto* const target = dynamic_cast<RectTransformComponent*>(handle.Resolve())) {
+                    before.ApplyTo(*target);
+                }
+            });
+        }
     }
 
     void SceneAccess::Bind(EngineSystem* engine)
@@ -52,6 +69,11 @@ namespace CoreEngine::Editor
         if (SceneDebugEditor* const editor = SceneEditor()) {
             editor->Deselect(object);
         }
+    }
+
+    void SceneAccess::KeepLayoutChangesInUndo(bool enabled)
+    {
+        UILayoutPass::SetRectChangedCallback(enabled ? &KeepLayoutRectForUndo : nullptr);
     }
 
     ComponentHandle ComponentHandle::Of(const IComponent& component)

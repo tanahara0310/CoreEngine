@@ -17,7 +17,12 @@
 #include "Scene/PrefabSystem.h"
 #include "UI/RectTransformComponent.h"
 #include "UI/UIButtonComponent.h"
+#include "UI/UIContentSizeFitterComponent.h"
 #include "UI/UIImageComponent.h"
+#include "UI/UILayoutGroupComponent.h"
+#include "UI/UIMaskComponent.h"
+#include "UI/UIScrollViewComponent.h"
+#include "UI/UISliderComponent.h"
 #include "UI/UITextComponent.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/String/FailWith.h"
@@ -73,6 +78,30 @@ namespace CoreEngine::ObjectEditing
 
         /// 作った UI パネルの色
         const Vector4 kNewPanelColor = { 1.0f, 1.0f, 1.0f, 0.39f };
+
+        /// スクロールの一覧の各オブジェクトの名前
+        constexpr const char* kScrollViewObjectName = "Scroll View";
+        constexpr const char* kScrollContentObjectName = "Content";
+        constexpr const char* kScrollItemObjectName = "Item";
+        constexpr const char* kScrollbarObjectName = "Scrollbar";
+        constexpr const char* kScrollbarHandleObjectName = "Handle";
+
+        /// 作ったスクロールの一覧の窓の大きさ（px）と色
+        const Vector2 kNewScrollViewSize = { 400.0f, 300.0f };
+        const Vector4 kNewScrollViewColor = { 0.12f, 0.13f, 0.16f, 0.9f };
+
+        /// 中身の内側の余白（左・上・右・下。右はスクロールバーの分を空ける）と項目の間隔（px）
+        const Vector4 kNewScrollContentPadding = { 8.0f, 8.0f, 28.0f, 8.0f };
+        constexpr float kNewScrollContentSpacing = 4.0f;
+
+        /// 最初に入れておく項目の数
+        constexpr int kNewScrollItemCount = 3;
+
+        /// スクロールバーの幅・つまみの長さ・窓の端からの間（px）と色
+        constexpr float kScrollbarWidth = 16.0f;
+        constexpr float kScrollbarHandleLength = 48.0f;
+        constexpr float kScrollbarInset = 4.0f;
+        const Vector4 kNewScrollbarColor = { 0.08f, 0.08f, 0.1f, 1.0f };
 
         /// 子孫をたどる深さの上限
         constexpr int kMaxHierarchyDepth = 64;
@@ -324,14 +353,16 @@ namespace CoreEngine::ObjectEditing
             rect.SetAnchoredPosition({ 0.0f, 0.0f });
         }
 
-        /// @brief 画像とボタンを持つオブジェクトと、その子の文字のオブジェクトを作る（1 回の Undo で両方消える）
-        GameObject* CreateButton(const Context& context)
+        /// @brief 画像とボタンを持つオブジェクトと、その子の文字のオブジェクトを作る
+        /// @param parent ボタンの親（nullptr なら親なし）
+        GameObject* CreateButtonObjects(const Context& context, const std::string& name,
+                                        RectTransformComponent* parent, const std::string& label)
         {
-            const std::string name = MakeUniqueName(*context.manager, kButtonObjectName);
-            Editor::BatchScope batch(name + " を作る");
-
-            GameObject* const button = CreateObject(context, name, [](GameObject& created) {
+            GameObject* const button = CreateObject(context, name, [parent](GameObject& created) {
                 if (RectTransformComponent* const rect = created.AddComponent<RectTransformComponent>()) {
+                    if (parent) {
+                        rect->SetParent(parent, false);
+                    }
                     rect->SetSize(kNewButtonSize);
                 }
                 created.AddComponent<UIImageComponent>();
@@ -342,20 +373,129 @@ namespace CoreEngine::ObjectEditing
             }
 
             RectTransformComponent* const buttonRect = button->GetComponent<RectTransformComponent>();
-            CreateObject(context, MakeUniqueName(*context.manager, kTextObjectName), [buttonRect](GameObject& created) {
-                if (RectTransformComponent* const rect = created.AddComponent<RectTransformComponent>()) {
-                    rect->SetParent(buttonRect, false);
-                    StretchToParent(*rect);
-                }
-                if (UITextComponent* const text = created.AddComponent<UITextComponent>()) {
-                    text->SetFieldAutoFit(false);
-                    text->SetText(kNewButtonString);
-                    text->SetAlign(TextAlignH::Center, TextAlignV::Middle);
-                    text->SetColor(kNewButtonTextColor);
-                }
-            });
-            LogCreated("UI のボタン", *button);
+            CreateObject(context, MakeUniqueName(*context.manager, kTextObjectName),
+                [buttonRect, &label](GameObject& created) {
+                    if (RectTransformComponent* const rect = created.AddComponent<RectTransformComponent>()) {
+                        rect->SetParent(buttonRect, false);
+                        StretchToParent(*rect);
+                    }
+                    if (UITextComponent* const text = created.AddComponent<UITextComponent>()) {
+                        text->SetFieldAutoFit(false);
+                        text->SetText(label);
+                        text->SetAlign(TextAlignH::Center, TextAlignV::Middle);
+                        text->SetColor(kNewButtonTextColor);
+                    }
+                });
             return button;
+        }
+
+        /// @brief 画像とボタンを持つオブジェクトと、その子の文字のオブジェクトを作る（1 回の Undo で両方消える）
+        GameObject* CreateButton(const Context& context)
+        {
+            const std::string name = MakeUniqueName(*context.manager, kButtonObjectName);
+            Editor::BatchScope batch(name + " を作る");
+
+            GameObject* const button = CreateButtonObjects(context, name, nullptr, kNewButtonString);
+            if (button) {
+                LogCreated("UI のボタン", *button);
+            }
+            return button;
+        }
+
+        /// @brief マスクした窓・縦に並べる中身・項目 3 つ・縦のスクロールバーを作る（1 回の Undo で全部消える）
+        GameObject* CreateScrollView(const Context& context)
+        {
+            const std::string name = MakeUniqueName(*context.manager, kScrollViewObjectName);
+            Editor::BatchScope batch(name + " を作る");
+
+            GameObject* const view = CreateObject(context, name, [](GameObject& created) {
+                if (RectTransformComponent* const rect = created.AddComponent<RectTransformComponent>()) {
+                    rect->SetSize(kNewScrollViewSize);
+                }
+                if (UIImageComponent* const image = created.AddComponent<UIImageComponent>()) {
+                    image->SetColor(kNewScrollViewColor);
+                }
+                created.AddComponent<UIMaskComponent>();
+                created.AddComponent<UIScrollViewComponent>();
+            });
+            if (!view) {
+                return nullptr;
+            }
+            RectTransformComponent* const viewRect = view->GetComponent<RectTransformComponent>();
+
+            // 中身は窓の上辺に付けて横いっぱいに伸ばし、高さは並べた項目に合わせる
+            GameObject* const content = CreateObject(context, MakeUniqueName(*context.manager, kScrollContentObjectName),
+                [viewRect](GameObject& created) {
+                    if (RectTransformComponent* const rect = created.AddComponent<RectTransformComponent>()) {
+                        rect->SetParent(viewRect, false);
+                        rect->SetAnchors({ 0.0f, 0.0f }, { 1.0f, 0.0f });
+                        rect->SetPivot({ 0.5f, 0.0f });
+                        rect->SetAnchoredPosition({ 0.0f, 0.0f });
+                        rect->SetSize({ 0.0f, 0.0f });
+                    }
+                    if (UILayoutGroupComponent* const group = created.AddComponent<UILayoutGroupComponent>()) {
+                        group->SetLayoutType(UILayoutType::Vertical);
+                        group->SetPadding(kNewScrollContentPadding);
+                        group->SetSpacing(kNewScrollContentSpacing);
+                        group->SetControlChildSize(1, false);
+                        group->SetForceExpand(1, false);
+                    }
+                    if (UIContentSizeFitterComponent* const fitter = created.AddComponent<UIContentSizeFitterComponent>()) {
+                        fitter->SetHorizontalFit(UIFitMode::Unconstrained);
+                        fitter->SetVerticalFit(UIFitMode::PreferredSize);
+                    }
+                });
+            RectTransformComponent* const contentRect = content ? content->GetComponent<RectTransformComponent>() : nullptr;
+            for (int i = 1; contentRect && i <= kNewScrollItemCount; ++i) {
+                CreateButtonObjects(context, MakeUniqueName(*context.manager, kScrollItemObjectName),
+                    contentRect, std::format("項目 {}", i));
+            }
+
+            // スクロールバーは窓の右端に、つまみの半分ずつ上下を空けて置く
+            GameObject* const bar = CreateObject(context, MakeUniqueName(*context.manager, kScrollbarObjectName),
+                [viewRect](GameObject& created) {
+                    if (RectTransformComponent* const rect = created.AddComponent<RectTransformComponent>()) {
+                        rect->SetParent(viewRect, false);
+                        rect->SetAnchors({ 1.0f, 0.0f }, { 1.0f, 1.0f });
+                        rect->SetPivot({ 1.0f, 0.5f });
+                        rect->SetAnchoredPosition({ -kScrollbarInset, 0.0f });
+                        rect->SetSize({ kScrollbarWidth, -(kScrollbarHandleLength + kScrollbarInset * 2.0f) });
+                    }
+                    if (UIImageComponent* const image = created.AddComponent<UIImageComponent>()) {
+                        image->SetColor(kNewScrollbarColor);
+                    }
+                    if (UISliderComponent* const slider = created.AddComponent<UISliderComponent>()) {
+                        slider->SetDirection(UISliderComponent::Direction::TopToBottom);
+                        slider->SetValue(0.0f);
+                    }
+                });
+            RectTransformComponent* const barRect = bar ? bar->GetComponent<RectTransformComponent>() : nullptr;
+            GameObject* const handle = barRect
+                ? CreateObject(context, MakeUniqueName(*context.manager, kScrollbarHandleObjectName),
+                    [barRect](GameObject& created) {
+                        if (RectTransformComponent* const rect = created.AddComponent<RectTransformComponent>()) {
+                            rect->SetParent(barRect, false);
+                            rect->SetSize({ kScrollbarWidth, kScrollbarHandleLength });
+                        }
+                        created.AddComponent<UIImageComponent>();
+                    })
+                : nullptr;
+
+            if (UIScrollViewComponent* const scroll = view->GetComponent<UIScrollViewComponent>()) {
+                scroll->SetContent(contentRect);
+                if (UISliderComponent* const slider = bar ? bar->GetComponent<UISliderComponent>() : nullptr) {
+                    if (handle) {
+                        slider->SetHandle(handle->GetComponent<RectTransformComponent>());
+                    }
+                    // つまみを繋ぐ前にスライダーが塗った帯の色を戻す
+                    if (UIImageComponent* const track = bar->GetComponent<UIImageComponent>()) {
+                        track->SetColor(kNewScrollbarColor);
+                    }
+                    scroll->SetVerticalScrollbar(slider);
+                }
+            }
+            LogCreated("UI のスクロールの一覧", *view);
+            return view;
         }
 
         /// @brief 親いっぱいに伸ばした半透明の画像を持つオブジェクトを作る
@@ -512,6 +652,9 @@ namespace CoreEngine::ObjectEditing
         }
         if (kind == UIElementKind::Panel) {
             return CreatePanel(context);
+        }
+        if (kind == UIElementKind::ScrollView) {
+            return CreateScrollView(context);
         }
 
         const char* const baseName = (kind == UIElementKind::Text) ? kTextObjectName : kImageObjectName;

@@ -30,6 +30,9 @@ namespace CoreEngine
 
     void UISliderComponent::LateUpdate()
     {
+        if (visualPending_) {
+            ApplyVisual();
+        }
         ApplyLayout();
     }
 
@@ -98,6 +101,21 @@ namespace CoreEngine
         direction_ = direction;
         // 伸びる側が入れ替わるので、置き直しの判定を無効にする
         laidOutNormalized_ = -1.0f;
+    }
+
+    void UISliderComponent::SetFill(RectTransformComponent* fill)
+    {
+        fill_.Set(fill);
+        laidOutNormalized_ = -1.0f;
+        ApplyLayout();
+    }
+
+    void UISliderComponent::SetHandle(RectTransformComponent* handle)
+    {
+        handle_.Set(handle);
+        laidOutNormalized_ = -1.0f;
+        ApplyVisual();
+        ApplyLayout();
     }
 
     void UISliderComponent::OnDrag(const Vector2& pointerOnCanvas, const Vector2& canvasSize)
@@ -169,9 +187,15 @@ namespace CoreEngine
     {
         // つまみを繋いでいればそちらを、繋いでいなければ帯そのものを塗る
         UIImageComponent* target = nullptr;
-        if (RectTransformComponent* const handle = handle_.Get()) {
+        if (handle_.GetObjectId().IsValid()) {
+            RectTransformComponent* const handle = handle_.Get();
+            if (!handle) {
+                visualPending_ = true;
+                return;
+            }
             target = handle->Sibling<UIImageComponent>();
         }
+        visualPending_ = false;
         if (!target) {
             target = Sibling<UIImageComponent>();
         }
@@ -201,26 +225,28 @@ namespace CoreEngine
         }
 
         const UILayout& track = rect->GetLayout();
+        // アンカーが開いている帯は、親の大きさから決まる実際の大きさで測る
+        const Vector2 trackSize = (track.IsStretchedX() || track.IsStretchedY())
+            ? rect->GetRectSize(rect->FindCanvasSize()) : track.size;
         const float normalized = std::clamp(GetNormalizedValue(), 0.0f, 1.0f);
-        if (LayoutIsUpToDate(track.anchoredPos, track.size, normalized)) {
+        if (LayoutIsUpToDate(track.anchoredPos, trackSize, normalized)) {
             return;
         }
         laidOutPosition_ = track.anchoredPos;
-        laidOutSize_ = track.size;
+        laidOutSize_ = trackSize;
         laidOutNormalized_ = normalized;
 
-        // アンカーは画面基準なので、繋いだ相手にも帯と同じアンカーを使わせて座標系を揃える。
-        // 揃えたうえで、帯の左上からの距離で置く
+        // 帯のアンカーの最小の点から見た帯の左上（アンカーが開いていても「位置 − 基準点 × 大きさの差」）
         const Vector2 trackMin = {
             track.anchoredPos.x - track.pivot.x * track.size.x,
             track.anchoredPos.y - track.pivot.y * track.size.y,
         };
         const Vector2 trackCenter = {
-            trackMin.x + track.size.x * 0.5f,
-            trackMin.y + track.size.y * 0.5f,
+            trackMin.x + trackSize.x * 0.5f,
+            trackMin.y + trackSize.y * 0.5f,
         };
 
-        const float length = IsHorizontal() ? track.size.x : track.size.y;
+        const float length = IsHorizontal() ? trackSize.x : trackSize.y;
         const float filledLength = length * normalized;
         // 値が増える向きが座標と逆なら、埋まるのは反対側の端から
         const float filledStart = IsReversed() ? (length - filledLength) : 0.0f;
@@ -234,13 +260,13 @@ namespace CoreEngine
             };
 
         // 帯の子にした相手は、帯の左上にアンカーを付けて帯の中で置く。
-        // 子でない相手は、帯と同じアンカーを使わせて座標系を揃える
+        // 子でない相手は、帯のアンカーの最小の点に付けて帯の左上から測る
         const auto anchorTo = [&](RectTransformComponent& target, const Vector2& topLeftOffset) {
             if (target.GetParent() == rect) {
                 target.SetAnchor(UIAnchor::TopLeft);
                 return topLeftOffset;
             }
-            target.SetAnchors(track.anchorMin, track.anchorMax);
+            target.SetAnchors(track.anchorMin, track.anchorMin);
             return trackMin;
         };
 
@@ -248,7 +274,7 @@ namespace CoreEngine
             const Vector2 origin = anchorTo(*fill, { 0.0f, 0.0f });
             Vector2 size = fill->GetSize();
             Vector2 center = fill->GetParent() == rect
-                ? Vector2{ track.size.x * 0.5f, track.size.y * 0.5f } : trackCenter;
+                ? Vector2{ trackSize.x * 0.5f, trackSize.y * 0.5f } : trackCenter;
             if (IsHorizontal()) {
                 size.x = filledLength;
                 center.x = origin.x + filledStart + filledLength * 0.5f;
@@ -266,7 +292,7 @@ namespace CoreEngine
             // つまみは埋まっている側の先端に置く
             const float along = IsReversed() ? (length - filledLength) : filledLength;
             Vector2 center = handle->GetParent() == rect
-                ? Vector2{ track.size.x * 0.5f, track.size.y * 0.5f } : trackCenter;
+                ? Vector2{ trackSize.x * 0.5f, trackSize.y * 0.5f } : trackCenter;
             if (IsHorizontal()) {
                 center.x = origin.x + along;
             }

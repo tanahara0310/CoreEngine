@@ -16,6 +16,7 @@
 #include "Utility/Logger/Logger.h"
 
 #include <algorithm>
+#include <cmath>
 
 namespace
 {
@@ -193,6 +194,19 @@ namespace CoreEngine
         return { measuredSizeEm_.x * fontSize_, measuredSizeEm_.y * fontSize_ };
     }
 
+    Vector2 UITextComponent::GetPreferredSize()
+    {
+        if (!font_ && !fontResolveFailed_) {
+            ResolveFont();
+        }
+        RectTransformComponent* const rect = GetRectTransform();
+        if (rect && font_ && font_->IsValid()) {
+            const Vector2 canvasSize = renderer_ ? renderer_->GetScreenSize() : rect->FindCanvasSize();
+            UpdateGeometry(*rect, canvasSize);
+        }
+        return GetMeasuredSize();
+    }
+
     bool UITextComponent::RequiresComponent(const IComponent& other) const
     {
         return IsAnyOf<RectTransformComponent>(other);
@@ -320,9 +334,21 @@ namespace CoreEngine
         // 頂点が em 単位なので、フォントサイズがそのまま拡大率になる
         const Matrix4x4 world = rect->BuildDrawMatrix({ fontSize_, fontSize_ }, canvasSize);
 
-        // 親の UI マスクの外は描かない
+        // 親の UI マスクの外は描かない。枠からはみ出す字の分だけ広げて見て、外へ出切っていれば積まない
         UIRect clip;
         const bool clipped = rect->FindClipRect(canvasSize, clip);
+        if (clipped && fontSize_ > 0.0f) {
+            const Vector2 measured = GetMeasuredSize();
+            const Vector2 field = rect->GetRectSize(canvasSize);
+            const float overflow = (std::max)({ measured.x - field.x, measured.y - field.y, 0.0f });
+            // world の行の長さはフォントサイズ × 親と自分の拡大
+            const float emOnCanvas = (std::max)(std::hypot(world.m[0][0], world.m[0][1]),
+                                                std::hypot(world.m[1][0], world.m[1][1]));
+            const float margin = emOnCanvas * (1.0f + overflow / fontSize_);
+            if (!rect->GetCanvasQuad(canvasSize).Bounds().Overlaps(clip, margin)) {
+                return;
+            }
+        }
 
         // ドローコールは出さず、レンダラーのバッチへ積むだけ
         renderer_->Submit(font_, glyphVertices_.data(), glyphVertices_.size(), world, style_,

@@ -1,0 +1,71 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchor": 0,
+                "anchoredPosition": [
+                    1360.0,
+                    340.0
+                ],
+                "pivot": [
+                    0.0,
+                    0.0
+                ],
+                "rotation": 0.0,
+                "size": [
+                    420.0,
+                    300.0
+                ],
+                "sortOrder": 0
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    0.14,
+                    0.16,
+                    0.21,
+                    1.0
+                ],
+                "columns": 1,
+                "frame": 0,
+                "material": null,
+                "rows": 1,
+                "texture": null
+            },
+            "type": "UIImage"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "cellSize": [
+                    100.0,
+                    80.0
+                ],
+                "childAlignment": 4,
+                "constraintCount": 3,
+                "gridConstraint": 1,
+                "gridSpacing": [
+                    10.0,
+                    10.0
+                ],
+                "layoutType": 2,
+                "padding": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "reverseOrder": false
+            },
+            "type": "UILayoutGroup"
+        }
+    ],
+    "id": "ef6d6b54594b2957",
+    "name": "Grid3",
+    "order": 37
+}

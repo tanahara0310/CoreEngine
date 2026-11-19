@@ -44,6 +44,7 @@ namespace CoreEngine
             Image,  ///< UI 画像
             Button, ///< UI ボタン（文字を子に持つ）
             Panel,  ///< 親いっぱいに伸ばした UI 画像
+            ScrollView, ///< マスクした窓と縦に並べる中身・項目・スクロールバー
         };
 
         /// @brief 作るパーティクルの種類

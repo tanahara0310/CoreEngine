@@ -472,6 +472,7 @@ namespace CoreEngine
 
         // Undo / Redo が今のシーンを引けるようにし、再生の前にシーンを控え、停止したら控えから組み直す
         Editor::SceneAccess::Bind(engine_);
+        Editor::SceneAccess::KeepLayoutChangesInUndo(true);
         playModeController_ = std::make_unique<Editor::PlayModeController>();
         playModeController_->Initialize(engine_, gameDebugUI_.get());
         gameDebugUI_->SetPlayModeController(playModeController_.get());
@@ -830,6 +831,7 @@ namespace CoreEngine
         if (gameDebugUI_) {
             gameDebugUI_->SetPlayModeController(nullptr);
         }
+        Editor::SceneAccess::KeepLayoutChangesInUndo(false);
         Editor::SceneAccess::Bind(nullptr);
 
         // コンソールUIへのログ転送を解除（ImGui解放前に行う）

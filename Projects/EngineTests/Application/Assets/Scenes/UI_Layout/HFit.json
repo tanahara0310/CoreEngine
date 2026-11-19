@@ -1,0 +1,74 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchor": 0,
+                "anchoredPosition": [
+                    520.0,
+                    740.0
+                ],
+                "pivot": [
+                    0.0,
+                    0.0
+                ],
+                "rotation": 0.0,
+                "size": [
+                    373.89844,
+                    53.242188
+                ],
+                "sortOrder": 0
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    0.14,
+                    0.16,
+                    0.21,
+                    1.0
+                ],
+                "columns": 1,
+                "frame": 0,
+                "material": null,
+                "rows": 1,
+                "texture": null
+            },
+            "type": "UIImage"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "childAlignment": 0,
+                "childForceExpandHeight": false,
+                "childForceExpandWidth": false,
+                "controlChildHeight": true,
+                "controlChildWidth": true,
+                "layoutType": 1,
+                "padding": [
+                    12.0,
+                    8.0,
+                    12.0,
+                    8.0
+                ],
+                "reverseOrder": false,
+                "spacing": 16.0
+            },
+            "type": "UILayoutGroup"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "horizontalFit": 2,
+                "verticalFit": 2
+            },
+            "type": "UIContentSizeFitter"
+        }
+    ],
+    "id": "bce1e9d56a7ce0c4",
+    "name": "HFit",
+    "order": 49
+}

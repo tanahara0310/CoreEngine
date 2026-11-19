@@ -118,11 +118,16 @@ namespace CoreEngine
         }
     }
 
+    Vector2 UIImageComponent::GetFrameSize() const
+    {
+        return { textureSize_.x / static_cast<float>(columns_), textureSize_.y / static_cast<float>(rows_) };
+    }
+
     void UIImageComponent::SetNativeSize()
     {
         RectTransformComponent* const rect = GetRectTransform();
         if (rect && textureSize_.x > 0.0f && textureSize_.y > 0.0f) {
-            rect->SetSize({ textureSize_.x / static_cast<float>(columns_), textureSize_.y / static_cast<float>(rows_) });
+            rect->SetSize(GetFrameSize());
         }
     }
 
@@ -498,6 +503,14 @@ namespace CoreEngine
         }
 
         const Vector2 canvasSize = renderer_->GetScreenSize();
+
+        // 親の UI マスクの外へ出切っていれば描かない
+        UIRect clip;
+        const bool clipped = rect->FindClipRect(canvasSize, clip);
+        if (clipped && !rect->GetCanvasQuad(canvasSize).Bounds().Overlaps(clip, 1.0f)) {
+            return;
+        }
+
         const UILayout& layout = rect->GetLayout();
         const Vector2 size = rect->GetRectSize(canvasSize);
         const bool pivotChanged = layout.pivot.x != builtPivot_.x || layout.pivot.y != builtPivot_.y;
@@ -547,8 +560,6 @@ namespace CoreEngine
         const D3D12_GPU_VIRTUAL_ADDRESS transformAddress = renderer_->GetTransformGpuAddress(bufferIndex);
 
         // 親の UI マスクの外は描かない
-        UIRect clip;
-        const bool clipped = rect->FindClipRect(canvasSize, clip);
         renderer_->ApplyClip(commandList, clipped ? &clip : nullptr);
 
         commandList->IASetVertexBuffers(0, 1, &vertexBufferView);

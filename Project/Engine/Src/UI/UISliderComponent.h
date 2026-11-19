@@ -18,7 +18,7 @@ namespace CoreEngine
     ///          大きさと位置を合わせる。繋がなくても値は動く。
     /// @note ポインタは帯のどこを押しても、その位置の値になる。
     ///       フォーカス中は向きの入力で動き、その向きのフォーカス送りは起きない。
-    /// @warning 繋いだ相手のアンカーは帯と同じものに揃える（同じ座標系で置くため）。
+    /// @warning 繋いだ相手のアンカーは書き換える（帯の子なら帯の左上、子でなければ帯のアンカーの最小の点）。
     class UISliderComponent final : public UISelectableComponent
     {
     public:
@@ -100,10 +100,15 @@ namespace CoreEngine
         Direction GetDirection() const { return direction_; }
         void SetDirection(Direction direction);
 
+        /// @brief 値に合わせて置く「伸びる帯」と「つまみ」を繋ぐ（nullptr で外す）
+        void SetFill(RectTransformComponent* fill);
+        void SetHandle(RectTransformComponent* handle);
+
         // ===== IUIInteractable =====
 
         bool AcceptsInput() const override { return IsInteractable() && IsEnabled(); }
         void OnDrag(const Vector2& pointerOnCanvas, const Vector2& canvasSize) override;
+        bool CapturesDrag() const override { return true; }
         bool OnNavigate(UINavigationDirection direction) override;
 
     private:
@@ -114,6 +119,7 @@ namespace CoreEngine
         void ApplyPointer(const Vector2& pointerOnCanvas, const Vector2& canvasSize);
 
         /// @brief つまみ（繋いでいなければ帯そのもの）の画像へ色を写す
+        /// @note 繋いだつまみがまだ見つからない間は塗らず、見つかってから塗る
         void ApplyVisual() override;
 
         /// @brief 値に合わせて伸びる帯とつまみを置く
@@ -147,6 +153,9 @@ namespace CoreEngine
 
         /// 値が変わったフレーム（0 は一度も変わっていない）
         uint64_t changedFrame_ = 0;
+
+        /// 繋いだつまみが見つからず、まだ色を塗っていない
+        bool visualPending_ = false;
 
         // 前に置いたときの帯と値（変わっていなければ置き直さない）
         Vector2 laidOutPosition_{};

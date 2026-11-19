@@ -3,6 +3,7 @@
 
 #include "EngineSystem/EngineSystem.h"
 #include "EngineSystem/PlaybackState.h"
+#include "GameObject/GameObject.h"
 #include "GameObject/GameObjectManager.h"
 #include "Graphics/Render/UI/UIRenderer.h"
 #include "Graphics/Render/RenderManager.h"
@@ -15,9 +16,11 @@
 #include "UI/IUIInteractable.h"
 #include "UI/RectTransformComponent.h"
 #include "UI/UIPointer.h"
+#include "UI/UIScrollViewComponent.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
 
+#include <cmath>
 #include <iterator>
 
 namespace CoreEngine
@@ -41,6 +44,9 @@ namespace CoreEngine
 
         /// そのあと送り続ける間隔［秒］
         constexpr float kRepeatInterval = 0.12f;
+
+        /// ホイール 1 目盛りの値
+        constexpr float kWheelPerNotch = 120.0f;
     }
 
     UIInteractionFeature* UIInteractionFeature::FindCurrent(EngineSystem* engine)
@@ -128,6 +134,11 @@ namespace CoreEngine
             pressedByKey_ = true;
             pressed_->OnPressBegin();
         }
+
+        // ---- スクロール（ホイール・押して動かす） ----
+        // ドラッグに切り替えたら押していたボタンを離すので、押したまま動かす処理より先に見る
+        UIScrollViewComponent* const scrollUnder = PickScrollView(ctx, canvasSize, onCanvas, pointer.IsOver());
+        UpdateScroll(scrollUnder, canvasSize, onCanvas, pointer, query);
 
         // ---- 押したまま動かしている ----
         // つまみを掴んで引きずる UI はここで位置を受け取る
@@ -242,6 +253,119 @@ namespace CoreEngine
         else if (focused_ && !focused.accepts) {
             focused_->OnFocusExit();
             focused_ = nullptr;
+        }
+    }
+
+    UIScrollViewComponent* UIInteractionFeature::PickScrollView(SceneContext& ctx, const Vector2& canvasSize,
+                                                                const Vector2& pointer, bool pointerOver)
+    {
+        UIScrollViewComponent* best = nullptr;
+        int bestOrder = 0;
+        bool targetFound = false;
+
+        ctx.gameObjectManager->ForEachComponent<UIScrollViewComponent>([&](UIScrollViewComponent& view) {
+            if (&view == scrollTarget_) {
+                targetFound = true;
+            }
+            if (!pointerOver) {
+                return;
+            }
+            const RectTransformComponent* const rect = view.GetRectTransform();
+            if (!rect || !rect->IsActiveInHierarchy() || !rect->ContainsCanvasPoint(pointer, canvasSize)) {
+                return;
+            }
+            // 中のスクロールほど後に描くので、描く順の大きい方を採る
+            const int order = rect->GetPointerOrder();
+            if (!best || order >= bestOrder) {
+                best = &view;
+                bestOrder = order;
+            }
+            });
+
+        // 消えた・止められたスクロールは知らせずに手放す（ドラッグの途切れはスクロールの側で気づく）
+        if (scrollTarget_ && !targetFound) {
+            scrollTarget_ = nullptr;
+            scrollDragging_ = false;
+        }
+
+        // スクロールの外の、手前の押せる UI の上では動かさない
+        if (best && hovered_) {
+            const RectTransformComponent* const viewRect = best->GetRectTransform();
+            const RectTransformComponent* const hoveredRect = hovered_->GetRectTransform();
+            if (hoveredRect && !viewRect->IsSelfOrDescendant(hoveredRect)
+                && hovered_->GetPointerSortOrder() > bestOrder) {
+                return nullptr;
+            }
+        }
+        return best;
+    }
+
+    void UIInteractionFeature::UpdateScroll(UIScrollViewComponent* under, const Vector2& canvasSize,
+                                            const Vector2& onCanvas, const UIPointer& pointer,
+                                            const InputQuery* query)
+    {
+        // ホイールはポインタの下のスクロールへ
+        if (under && query) {
+            const int wheel = query->GetWheelDelta();
+            if (wheel != 0) {
+                under->Scroll(static_cast<float>(wheel) / kWheelPerNotch);
+            }
+        }
+
+        // 押した。つまみを掴む UI を押したときは、その UI に任せる
+        if (pointer.IsPressed() && under && !scrollTarget_) {
+            const bool captured = pressed_ && !pressedByKey_ && pressed_->CapturesDrag();
+            if (!captured) {
+                scrollTarget_ = under;
+                scrollPressPoint_ = onCanvas;
+                scrollDragging_ = false;
+            }
+        }
+        if (!scrollTarget_) {
+            return;
+        }
+
+        if (!pointer.IsHeld()) {
+            if (scrollDragging_) {
+                scrollTarget_->EndDrag();
+            }
+            scrollTarget_ = nullptr;
+            scrollDragging_ = false;
+            return;
+        }
+
+        // 押した所から十分に動いたらドラッグにする。押していたボタンは押されなかったことにする
+        if (!scrollDragging_) {
+            const float dx = onCanvas.x - scrollPressPoint_.x;
+            const float dy = onCanvas.y - scrollPressPoint_.y;
+            if (std::sqrt(dx * dx + dy * dy) < UIScrollViewComponent::kDragThreshold) {
+                return;
+            }
+            if (pressed_ && !pressedByKey_) {
+                pressed_->OnPressEnd(false);
+                pressed_ = nullptr;
+            }
+            scrollTarget_->BeginDrag(scrollPressPoint_, canvasSize);
+            scrollDragging_ = true;
+        }
+        scrollTarget_->Drag(onCanvas, canvasSize);
+    }
+
+    void UIInteractionFeature::ScrollIntoView(const IUIInteractable& target)
+    {
+        const RectTransformComponent* const rect = target.GetRectTransform();
+        if (!rect) {
+            return;
+        }
+        // 中のスクロールから外のスクロールの順に、それぞれの窓へ入れる
+        const RectTransformComponent* current = rect->GetParent();
+        for (int depth = 0; current && depth < RectTransformComponent::kMaxDepth; ++depth) {
+            const GameObject* const owner = current->GetOwner();
+            UIScrollViewComponent* const view = owner ? owner->GetComponent<UIScrollViewComponent>() : nullptr;
+            if (view && view->IsEnabled()) {
+                view->ScrollTo(*rect);
+            }
+            current = current->GetParent();
         }
     }
 
@@ -386,6 +510,7 @@ namespace CoreEngine
         focused_ = next;
         if (focused_) {
             focused_->OnFocusEnter();
+            ScrollIntoView(*focused_);
         }
     }
 
@@ -401,6 +526,9 @@ namespace CoreEngine
         }
         SetFocus(nullptr);
         repeatActive_ = false;
+        // ドラッグの途切れはスクロールの側で気づいて離す
+        scrollTarget_ = nullptr;
+        scrollDragging_ = false;
     }
 
     void UIInteractionFeature::Finalize(SceneContext& ctx)
@@ -412,5 +540,7 @@ namespace CoreEngine
         focused_ = nullptr;
         repeatActive_ = false;
         wasPlaying_ = false;
+        scrollTarget_ = nullptr;
+        scrollDragging_ = false;
     }
 }

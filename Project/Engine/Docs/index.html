@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.98.0">
+<meta name="engine-version" content="0.99.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5597,7 +5597,7 @@ kbd {
   </ul>
 </article>
 
-<article class="page" id="script-ui" data-group="スクリプト" data-title="UI を作る" data-nav="UI" data-keywords="ui hud 画面 文字 テキスト uitext 画像 uiimage ボタン uibutton スライダー uislider トグル uitoggle アンカー anchor ピボット pivot recttransform フォーカス focus clearfocus メニュー タイトル スコア フォント font 親子 parent setparent findchild 伸ばす stretch 余白 9 スライス sliced ゲージ fill fillamount マスク uimask 切り抜き パネル">
+<article class="page" id="script-ui" data-group="スクリプト" data-title="UI を作る" data-nav="UI" data-keywords="ui hud 画面 文字 テキスト uitext 画像 uiimage ボタン uibutton スライダー uislider トグル uitoggle アンカー anchor ピボット pivot recttransform フォーカス focus clearfocus メニュー タイトル スコア フォント font 親子 parent setparent findchild 伸ばす stretch 余白 9 スライス sliced ゲージ fill fillamount マスク uimask 切り抜き パネル 並べる レイアウト layout uilayoutgroup 格子 grid 余白 間隔 uilayoutelement uicontentsizefitter 大きさ合わせ スクロール uiscrollview 一覧 リスト スクロールバー">
   <h1>UI を作る</h1>
   <p class="lead">スコアや体力ゲージのような HUD、タイトル画面やポーズメニューのボタンを作ります。UI は 3D の世界とは別の、画面に重ねる平面に置きます。</p>
 
@@ -5639,6 +5639,7 @@ kbd {
       <tr><td>画像・ゲージ</td><td><span class="ui">GameObject<span class="arrow">▸</span>UI<span class="arrow">▸</span>画像</span>（または Canvas タブの <span class="ui">＋ 画像</span>）。テクスチャが空なら白い四角になり、色を付けて使えます</td></tr>
       <tr><td>パネル（背景）</td><td><span class="ui">GameObject<span class="arrow">▸</span>UI<span class="arrow">▸</span>パネル</span>。画面いっぱい（親の子にすれば親いっぱい）に伸びる、半透明の白い画像を作る</td></tr>
       <tr><td>ボタン</td><td><span class="ui">GameObject<span class="arrow">▸</span>UI<span class="arrow">▸</span>ボタン（文字付き）</span>。画像と UI ボタンを持つオブジェクトと、その子の文字を一度に作る（<kbd>Ctrl</kbd>+<kbd>Z</kbd> 1 回で両方消える）</td></tr>
+      <tr><td>スクロールの一覧</td><td><span class="ui">GameObject<span class="arrow">▸</span>UI<span class="arrow">▸</span>スクロールの一覧</span>。マスクした窓・縦に並べる中身・項目 3 つ・スクロールバーを一度に作る（<a href="#ui-scroll">下で説明</a>）</td></tr>
       <tr><td>スライダー・トグル</td><td>画像を作り、<span class="ui">UI スライダー</span> ／ <span class="ui">UI トグル</span> を足す（<a href="#ui-slider">下で説明</a>）</td></tr>
     </tbody>
   </table>
@@ -5758,6 +5759,82 @@ kbd {
     <li>回したマスクは、回した四角を囲む傾いていない四角で切ります（コンソールに 1 回だけ警告が出ます）。</li>
     <li>スクリプトで <code>uiMask.enabled = false</code> にすると、切るのをやめます。</li>
   </ul>
+
+  <h2 id="ui-layout">子を並べる（UI を並べる）</h2>
+  <p>メニューのボタンの列やアイテムの格子は、親に <a href="#api-UILayoutGroup">UI を並べる</a> を足します（<span class="ui">＋ コンポーネント追加</span> ▸ <span class="ui">UI</span> ▸ <span class="ui">UI を並べる</span>）。子の位置と大きさを毎フレーム決めるので、子を足す・消す・止めると並びが詰まります。停止中の編集でもすぐ並び直します。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>項目</th><th>意味</th></tr></thead>
+    <tbody>
+      <tr><td><span class="ui">並べ方</span></td><td><strong>縦に並べる</strong>（上から下）・<strong>横に並べる</strong>（左から右）・<strong>格子</strong>（同じ大きさのマスに、左から右・上から下）</td></tr>
+      <tr><td><span class="ui">内側の余白</span></td><td>親の四角の内側に空ける幅。左・上・右・下の順（px）</td></tr>
+      <tr><td><span class="ui">間隔</span> ／ <span class="ui">マスの間隔</span></td><td>隣の子との間（px）。格子は横と縦を別に決める</td></tr>
+      <tr><td><span class="ui">子の寄せ方</span></td><td>子を並べても余る所を、9 か所のどちらへ寄せるか</td></tr>
+      <tr><td><span class="ui">子の幅を決める</span> ／ <span class="ui">子の高さを決める</span></td><td>入れると、子の大きさを中身（文字の大きさ・画像のテクスチャの大きさ）か <a href="#api-UILayoutElement">UI の並べられ方</a> の値で決める。外すと子の今の大きさのまま並べる</td></tr>
+      <tr><td><span class="ui">子を横へ広げる</span> ／ <span class="ui">子を縦へ広げる</span></td><td>余った大きさを子へ等しく分ける。並べる向きと交わる向き（縦に並べるときの幅）では、子を親の内側いっぱいにする</td></tr>
+      <tr><td><span class="ui">逆の順に並べる</span></td><td>描く順の後ろの子から並べる</td></tr>
+      <tr><td><span class="ui">マスの大きさ</span> ／ <span class="ui">列と行の決め方</span></td><td>格子だけ。子はすべてマスの大きさになる。列は <strong>幅に入るだけ</strong>・<strong>列の数を決める</strong>・<strong>行の数を決める</strong> から選ぶ</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li><strong>並べる順</strong>：子の描く順（Hierarchy の順と <span class="ui">描画順</span>）のとおりに並べます。止めた（<code>active = false</code>）子は飛ばします。</li>
+    <li><strong>並べられた子</strong>：アンカーは左上の 1 点になり、位置と大きさはインスペクタで変えても次のフレームに並べ直されます。並べたくない子には <a href="#api-UILayoutElement">UI の並べられ方</a> を足して <span class="ui">並べない</span> を入れます。</li>
+    <li><strong>子ごとの大きさ</strong>：子に <span class="ui">UI の並べられ方</span> を足すと、最小の大きさ・望む大きさ・余りの取り分を子ごとに決められます。望む幅 100 のボタンと、余りの取り分 1 の入力欄を横に並べると、入力欄が残りの幅を全部もらいます。</li>
+    <li><strong>入れ子</strong>：並べる部品を持つ子は、自分の子を並べた大きさ（余白と間隔を含む）を望む大きさにします。行の中に横の並びを入れ、その行を縦に並べられます。</li>
+  </ul>
+
+  <h3 id="ui-fit">大きさを中身に合わせる</h3>
+  <p>並べた子の数や文字の長さに合わせて、自分の大きさを変えたいときは <a href="#api-UIContentSizeFitter">UI の大きさを中身に合わせる</a> を足します。横と縦それぞれで <span class="ui">合わせない</span>・<span class="ui">最小の大きさ</span>・<span class="ui">望む大きさ</span> から選びます。</p>
+  <ul>
+    <li><strong>並べる部品と一緒に</strong>：縦に並べる親の縦を <span class="ui">望む大きさ</span> にすると、親の高さが「上と下の余白＋子の高さ＋間隔」になります。スクロールの一覧の中身はこの形にします。</li>
+    <li><strong>文字に</strong>：幅を決めた（<span class="ui">文字に合わせる</span> を外した）UI テキストの縦を <span class="ui">望む大きさ</span> にすると、折り返した行の数だけ高さが伸びます。</li>
+    <li>UI を並べる親に並べられている子に付けても、大きさは親の並べ方が決めます。</li>
+  </ul>
+
+  <h2 id="ui-scroll">スクロールする一覧（UI スクロール）</h2>
+  <p>アイテムの一覧やステージの選択のように、窓より長い中身は <a href="#api-UIScrollView">UI スクロール</a> で動かします。<span class="ui">GameObject<span class="arrow">▸</span>UI<span class="arrow">▸</span>スクロールの一覧</span> で、次の形を一度に作れます（<kbd>Ctrl</kbd>+<kbd>Z</kbd> 1 回で全部消える）。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>オブジェクト</th><th>持つもの</th><th>役目</th></tr></thead>
+    <tbody>
+      <tr><td>Scroll View</td><td>UI 画像・UI マスク・UI スクロール</td><td>見える窓。はみ出た行を切り、ホイールとドラッグを受ける</td></tr>
+      <tr><td>　Content</td><td>UI を並べる（縦）・UI の大きさを中身に合わせる（縦）</td><td>中身。窓の上の端に横いっぱいに付け、高さは並べた行に合わせる</td></tr>
+      <tr><td>　　項目 1〜3</td><td>UI 画像・UI ボタン（子に文字）</td><td>行。複製して増やす</td></tr>
+      <tr><td>　Scrollbar</td><td>UI 画像・UI スライダー（上から下）</td><td>窓の右の端のスクロールバー（無くてもよい）</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li><strong>ホイール</strong>：窓の上で 1 目盛り回すと、行 1 本分（並べた最初の子の高さ＋間隔）動きます。<span class="ui">ホイール 1 目盛りの量</span> で px を決めることもできます。</li>
+    <li><strong>ドラッグ</strong>：行を掴んで 8px より動かすとスクロールになり、その行は押したことになりません。放すと慣性で滑り、端では止まります（跳ね返りません）。スライダーのつまみはドラッグしてもスクロールになりません。</li>
+    <li><strong>キー・パッド</strong>：上下で窓の外の行にも進めます。選んだ行は、窓の中に見えるまで一覧が動きます。</li>
+    <li><strong>窓の外の行</strong>：描かず、押せません。100 行の一覧でも、描くのは窓に入った行だけです。</li>
+    <li><strong>スクロールバー</strong>：<span class="ui">縦のスクロールバー</span> に UI スライダーを繋ぐと、一覧の位置と一緒に動き、つまみを掴むと一覧が動きます。上が先頭になるよう、スライダーの <span class="ui">向き</span> は <span class="ui">上から下</span> にします。</li>
+  </ul>
+  <p>スクリプトからは、位置（<code>normalizedPosition</code>。0 が先頭、1 が末尾）を読み書きし、<code>ScrollTo</code> で決めた行を窓の中へ出します。</p>
+  <script type="text/x-code" data-lang="as" data-file="ItemList.as">
+    using namespace CoreEngine;
+
+    // 一覧を開いたら先頭へ戻し、前に選んでいた行を見せて選ぶ
+    class ItemList : ScriptComponent
+    {
+        [ObjectRef] GameObject@ scrollView;
+        [ObjectRef] GameObject@ lastSelected;
+
+        void Open()
+        {
+            UIScrollView@ scroll = scrollView.uiScrollView;
+            scroll.StopMovement();
+            scroll.normalizedPosition = Vector2(0.0f, 0.0f);
+            if (lastSelected !is null) {
+                scroll.ScrollTo(lastSelected);
+                lastSelected.uiButton.Focus();
+            }
+        }
+    }
+  </script>
+  <div class="callout warn" data-title="中身は窓の直接の子にする"><p>UI スクロールの <span class="ui">中身</span> には、窓（UI スクロールを持つオブジェクト）の直接の子を繋ぎます。孫や別の所の UI を繋ぐと動きません。中身のアンカーは窓の上の端（横に動かすなら左の端）に付けます。</p></div>
 
   <h2 id="ui-text">文字を書き換える（HUD）</h2>
   <p>スクリプトに <code>[ObjectRef]</code> の欄を作り、インスペクタで文字のオブジェクトを繋ぎます。<code>uiText.text</code> に入れた文字列がそのまま表示されます。</p>
@@ -12145,6 +12222,21 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-99-0">v0.99.0 <span class="dim">（2026-11-19）</span></h3>
+  <p>子の UI を縦・横・格子に並べる部品と、大きさを中身に合わせる部品、窓より長い一覧を動かすスクロールを足した版です（<a href="#ui-layout">子を並べる</a>・<a href="#ui-scroll">スクロールする一覧</a>）。新しい部品を使わない今の UI の見た目・押せる範囲・保存の形は、前の版と同じです。</p>
+  <ul>
+    <li><strong>UI を並べる</strong>：子の UI を描く順に縦・横・格子に並べる <a href="#api-UILayoutGroup">UI を並べる</a> を足しました。内側の余白・間隔・9 か所の寄せ方・子の大きさを決めるか・余りを子へ分けるか・逆の順・格子のマスの大きさと列（行）の数を選べます。止めた子は飛ばします。子ごとの最小・望む大きさ・余りの取り分は <a href="#api-UILayoutElement">UI の並べられ方</a> で決め、<span class="ui">並べない</span> で並びから外せます。</li>
+    <li><strong>大きさを中身に合わせる</strong>：自分の大きさを、並べた子か文字の大きさに合わせる <a href="#api-UIContentSizeFitter">UI の大きさを中身に合わせる</a> を足しました。幅を決めた文字は、折り返した行の数だけ高さが伸びます（<a href="#ui-fit">大きさを中身に合わせる</a>）。</li>
+    <li><strong>UI スクロール</strong>：窓より長い中身を動かす <a href="#api-UIScrollView">UI スクロール</a> を足しました。ホイールは 1 目盛りで行 1 本分、ドラッグは放すと慣性で滑って端で止まります。8px より動かすとドラッグになり、押していたボタンは押したことになりません。キー・パッドで窓の外の行へも進め、選んだ行が見えるまで動きます。スクロールバーにする UI スライダーを繋げます。</li>
+    <li><strong>窓の外は描かない</strong>：UI マスクの外にある UI 画像と UI テキストを描かないようにしました。100 行の一覧でも、描くのは窓に入った行だけです。</li>
+    <li><strong>作るメニュー</strong>：<span class="ui">GameObject<span class="arrow">▸</span>UI</span> に <span class="ui">スクロールの一覧</span>（マスクした窓・縦に並べる中身・項目 3 つ・スクロールバー）を足しました。</li>
+    <li><strong>元に戻す</strong>：並べ方・子の大きさを決めるか などを変えて並べ直された子の位置と大きさも、<kbd>Ctrl</kbd>+<kbd>Z</kbd> でその操作と一緒に戻ります。格子にしてから縦に戻しても、子の高さは格子のマスの大きさのまま残りません。</li>
+    <li><strong>UI スライダーのつまみの色</strong>：つまみを繋いだ UI スライダーが、シーンを開いた直後（つまみがまだ見つからない間）に、つまみではなく帯の画像を <span class="ui">通常の色</span> で塗っていたのを直しました。帯はインスペクタで決めた色のままになります。</li>
+    <li><strong>UI スライダーの伸びる帯</strong>：帯のアンカーを開いて親に合わせて伸ばすと、つまみと伸びる帯を <span class="ui">大きさの差</span> の欄の値の長さで置いていたのを直しました。実際の帯の長さで置くので、スクロールバーのつまみも一覧の位置に付いてきます。</li>
+    <li><strong>スクリプト</strong>：<code>uiLayoutGroup</code>・<code>uiLayoutElement</code>・<code>uiContentSizeFitter</code>・<code>uiScrollView</code> を足しました。UI スクロールは <code>normalizedPosition</code>・<code>velocity</code>・<code>StopMovement</code>・<code>ScrollTo</code> を持ちます。</li>
+    <li><strong>試験のシーン</strong>：<span class="path">Projects/EngineTests</span> に <code>UI_Layout</code>（縦・横・寄せ・逆の順・格子・大きさ合わせ）と <code>UI_ScrollList</code>（100 行の一覧とスクロールバー）を足しました。どちらも結果をコンソールへ出します。</li>
+  </ul>
 
   <h3 id="changelog-v0-98-0">v0.98.0 <span class="dim">（2026-11-19）</span></h3>
   <p>UI を親子にしてまとめ、親に合わせて伸ばせるようにし、角の崩れない枠・ゲージ・はみ出た所を切るマスクを足した版です（<a href="#ui-parent">親子にしてまとめる</a>）。親子を使わない今の UI の見た目・押せる範囲・保存の形は、前の版と同じです。</p>
@@ -19232,6 +19324,88 @@ void SetHp(float ratio)   // 0〜1
     ],
     notes: "<ul><li>マスクの中にマスクがあれば、2 つが重なった所だけを描きます。</li><li>回したマスクは、回した四角を囲む傾いていない四角で切り、コンソールに 1 回だけ警告を出します。</li></ul>",
     see: [["ui-mask", "はみ出た所を切る"], ["api-RectTransform", "UI トランスフォーム"]]
+  },
+
+  {
+    id: "UILayoutGroup", kind: "component", cat: "UI", display: "UI を並べる", type: "UILayoutGroup",
+    accessor: "owner.uiLayoutGroup", title: "UI を並べる（UILayoutGroup）", brief: "子の UI を縦・横・格子に並べる",
+    keywords: "レイアウト 並べる 縦 横 格子 グリッド 余白 パディング 間隔 寄せ 揃え 広げる メニュー 一覧 layout",
+    summary: "子の UI（UI トランスフォームの親が自分のもの）を、描く順に縦・横・格子に並べ、位置と大きさを書きます。止めた子は飛ばします。毎フレーム並べ直すので、停止中の編集でもすぐ反映されます。",
+    requires: "UI トランスフォーム（自動で足します）",
+    props: [
+      ["並べ方", "layoutType", "int", "0", "0 = 縦に並べる、1 = 横に並べる、2 = 格子"],
+      ["内側の余白", "padding", "Vector4", "(0, 0, 0, 0)", "左・上・右・下（px）。"],
+      ["間隔", "spacing", "float", "0", "縦・横のとき、隣の子との間（px）。"],
+      ["マスの間隔", "gridSpacing", "Vector2", "(0, 0)", "格子のとき、横・縦の隣のマスとの間（px）。"],
+      ["マスの大きさ", "cellSize", "Vector2", "(100, 100)", "格子のとき、子はすべてこの大きさになる。"],
+      ["列と行の決め方", "gridConstraint", "int", "0", "格子のとき。0 = 幅に入るだけ、1 = 列の数を決める、2 = 行の数を決める"],
+      ["列（行）の数", "constraintCount", "int", "2", "列か行の数を決めるとき（1 以上）。"],
+      ["子の寄せ方", "childAlignment", "int", "0（左上）", "子を並べても余る所をどちらへ寄せるか。<code>UIAnchor</code> の並び（0 = 左上 … 4 = 中央 … 8 = 右下）。"],
+      ["子の幅を決める ／ 子の高さを決める", "controlChildWidth ／ controlChildHeight", "bool", "オン ／ オン", "縦・横のとき。入れると子の大きさを、中身か UI の並べられ方の値で決める。外すと子の今の大きさのまま並べる。"],
+      ["子を横へ広げる ／ 子を縦へ広げる", "childForceExpandWidth ／ childForceExpandHeight", "bool", "オン ／ オン", "縦・横のとき。余った大きさを子へ等しく分ける。"],
+      ["逆の順に並べる", "reverseOrder", "bool", "オフ", "描く順の後ろの子から並べる。"]
+    ],
+    notes: "<ul><li>並べた子のアンカーは左上の 1 点になります。並べた向きの位置と大きさは、インスペクタやスクリプトで変えても次のフレームに並べ直されます。</li><li>子が望む大きさは、UI テキストなら文字の大きさ、テクスチャを指した UI 画像なら 1 コマの大きさ、並べる部品を持つ子なら並べた大きさです。<a href=\"#api-UILayoutElement\">UI の並べられ方</a> で上書きできます。</li><li>格子の子は、決めた列（行）の数で左から右・上から下へ並び、ブロック全体を子の寄せ方へ寄せます。</li></ul>",
+    see: [["ui-layout", "子を並べる"], ["api-UILayoutElement", "UI の並べられ方"], ["api-UIContentSizeFitter", "UI の大きさを中身に合わせる"]]
+  },
+
+  {
+    id: "UILayoutElement", kind: "component", cat: "UI", display: "UI の並べられ方", type: "UILayoutElement",
+    accessor: "owner.uiLayoutElement", title: "UI の並べられ方（UILayoutElement）", brief: "並べられるときの大きさを子ごとに決める",
+    keywords: "レイアウト 最小 望む 優先 余り 取り分 flexible preferred 並べない 無視",
+    summary: "UI を並べる親に並べられるときの、最小の大きさ・望む大きさ・余りの取り分を、この UI だけ決めます。<span class=\"ui\">並べない</span> を入れると並びに入りません。",
+    requires: "UI トランスフォーム（自動で足します）",
+    props: [
+      ["並べない", "ignoreLayout", "bool", "オフ", "入れると親の並びに入らず、自分の位置と大きさのまま。"],
+      ["最小の幅 ／ 最小の高さ", "minWidth ／ minHeight", "float", "-1", "これより小さくしない。負の値なら使わない。"],
+      ["望む幅 ／ 望む高さ", "preferredWidth ／ preferredHeight", "float", "-1", "余りが無いときの大きさ。負の値なら中身の大きさ。"],
+      ["余りの取り分（横） ／ 余りの取り分（縦）", "flexibleWidth ／ flexibleHeight", "float", "-1", "望む大きさを並べても余る所を、この比で分けてもらう。負の値なら 0（親の「広げる」を入れると 1）。"]
+    ],
+    notes: "<p>並べ方の大きさは、親が <span class=\"ui\">子の幅（高さ）を決める</span> を入れた向きだけに効きます。足りないときは、望む大きさから最小の大きさへ向けて全員を同じ割合で縮めます。</p>",
+    see: [["ui-layout", "子を並べる"], ["api-UILayoutGroup", "UI を並べる"]]
+  },
+
+  {
+    id: "UIContentSizeFitter", kind: "component", cat: "UI", display: "UI の大きさを中身に合わせる", type: "UIContentSizeFitter",
+    accessor: "owner.uiContentSizeFitter", title: "UI の大きさを中身に合わせる（UIContentSizeFitter）", brief: "自分の大きさを中身に合わせる",
+    keywords: "大きさ 合わせる 自動 伸びる 高さ 幅 中身 文字 折り返し fitter content size",
+    summary: "自分の大きさを、並べた子（UI を並べる）か文字（UI テキスト）の大きさに合わせます。横と縦を別に決めます。",
+    requires: "UI トランスフォーム（自動で足します）",
+    props: [
+      ["横の合わせ方", "horizontalFit", "int", "0", "0 = 合わせない、1 = 最小の大きさ、2 = 望む大きさ"],
+      ["縦の合わせ方", "verticalFit", "int", "2", "0 = 合わせない、1 = 最小の大きさ、2 = 望む大きさ"]
+    ],
+    notes: "<ul><li>UI を並べる親に並べられている子では、大きさは親の並べ方が決めます。</li><li>幅を決めた UI テキストの縦を <span class=\"ui\">望む大きさ</span> にすると、折り返した行の数だけ高さが伸びます。</li></ul>",
+    see: [["ui-fit", "大きさを中身に合わせる"], ["api-UILayoutGroup", "UI を並べる"]]
+  },
+
+  {
+    id: "UIScrollView", kind: "component", cat: "UI", display: "UI スクロール", type: "UIScrollView",
+    accessor: "owner.uiScrollView", title: "UI スクロール（UIScrollView）", brief: "窓より長い中身をホイール・ドラッグ・キーで動かす",
+    keywords: "スクロール 一覧 リスト ホイール ドラッグ 慣性 スクロールバー 窓 scroll",
+    summary: "自分の四角を窓にして、中身（直接の子の UI）を動かします。窓の上でのホイール・ドラッグと、キー・パッドで選んだ行に付いて動きます。はみ出た行を切るには、同じオブジェクトに <a href=\"#api-UIMask\">UI マスク</a> を足します。",
+    requires: "UI トランスフォーム（自動で足します）",
+    props: [
+      ["中身", "", "UI トランスフォーム", "なし", "動かす UI。このオブジェクトの直接の子を繋ぐ。"],
+      ["横に動く ／ 縦に動く", "horizontal ／ vertical", "bool", "オフ ／ オン", ""],
+      ["慣性", "inertia", "bool", "オン", "ドラッグを放した後も滑る。"],
+      ["減速", "decelerationRate", "float", "0.135", "慣性の速さが 1 秒で何倍になるか（0 で止まる・1 で落ちない）。"],
+      ["ホイール 1 目盛りの量", "wheelStep", "float", "0", "px。0 なら中身の UI を並べるの最初の子の大きさ＋間隔（無ければ 40）。"],
+      ["横のスクロールバー ／ 縦のスクロールバー", "", "UI スライダー", "なし", "位置と一緒に動き、掴むと中身を動かすスライダー。"]
+    ],
+    sections: [
+      {
+        title: "スクリプトから使えるメンバー", members: [
+          { n: "normalizedPosition", s: "Vector2 normalizedPosition", t: "rw", d: "位置（0〜1）。<strong>0 が先頭（上・左）、1 が末尾（下・右）</strong>。中身が窓より短い向きは 0。書くと慣性は止まりません。" },
+          { n: "velocity", s: "Vector2 velocity", t: "rw", d: "慣性の速さ（px/秒。中身の動く向き）。" },
+          { n: "StopMovement", s: "void StopMovement()", t: "m", d: "慣性を止めます。" },
+          { n: "ScrollTo", s: "void ScrollTo(GameObject@+ target)", t: "m", d: "中身の子孫の <code>target</code> が窓の中に入るまで、いちばん少なく動かします。もう入っていれば動きません。" },
+          { n: "enabled", s: "bool enabled", t: "rw", d: "動かすか。" }
+        ]
+      }
+    ],
+    notes: "<ul><li>ドラッグは、押した所から 8px より動くと始まり、押していたボタンは押したことになりません。UI スライダーのつまみはドラッグしてもスクロールになりません。</li><li>端では止まり、跳ね返りません。</li><li>キー・パッドで選んだ UI が中身の子孫なら、窓の中に見えるまで動きます。窓の外の行も選べます。</li><li>窓の UI マスクの外にある UI 画像と UI テキストは描きません。</li></ul>",
+    see: [["ui-scroll", "スクロールする一覧"], ["api-UIMask", "UI マスク"], ["api-UISlider", "UI スライダー"]]
   },
 
   {
