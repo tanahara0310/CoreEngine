@@ -102,7 +102,6 @@ namespace CoreEngine::ObjectEditing
         constexpr float kScrollbarHandleLength = 48.0f;
         constexpr float kScrollbarInset = 4.0f;
         const Vector4 kNewScrollbarColor = { 0.08f, 0.08f, 0.1f, 1.0f };
-        const Vector4 kNewScrollbarHandleColor = { 0.6f, 0.62f, 0.68f, 1.0f };
 
         /// 子孫をたどる深さの上限
         constexpr int kMaxHierarchyDepth = 64;
@@ -478,9 +477,7 @@ namespace CoreEngine::ObjectEditing
                             rect->SetParent(barRect, false);
                             rect->SetSize({ kScrollbarWidth, kScrollbarHandleLength });
                         }
-                        if (UIImageComponent* const image = created.AddComponent<UIImageComponent>()) {
-                            image->SetColor(kNewScrollbarHandleColor);
-                        }
+                        created.AddComponent<UIImageComponent>();
                     })
                 : nullptr;
 
@@ -489,6 +486,10 @@ namespace CoreEngine::ObjectEditing
                 if (UISliderComponent* const slider = bar ? bar->GetComponent<UISliderComponent>() : nullptr) {
                     if (handle) {
                         slider->SetHandle(handle->GetComponent<RectTransformComponent>());
+                    }
+                    // つまみを繋ぐ前にスライダーが塗った帯の色を戻す
+                    if (UIImageComponent* const track = bar->GetComponent<UIImageComponent>()) {
+                        track->SetColor(kNewScrollbarColor);
                     }
                     scroll->SetVerticalScrollbar(slider);
                 }

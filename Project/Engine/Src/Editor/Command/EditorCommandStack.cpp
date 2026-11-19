@@ -3,9 +3,56 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <utility>
 
 namespace CoreEngine::Editor
 {
+    namespace
+    {
+        /// @brief 操作と、その操作に続いて変わった相手の戻す処理を、1 回の Undo で戻すコマンド
+        class FollowUpCommand final : public IEditorCommand
+        {
+        public:
+            explicit FollowUpCommand(std::unique_ptr<IEditorCommand> inner) : inner_(std::move(inner)) {}
+
+            bool Has(const void* key) const
+            {
+                return std::any_of(followUps_.begin(), followUps_.end(),
+                    [key](const FollowUp& followUp) { return followUp.key == key; });
+            }
+
+            void Add(const void* key, std::function<void()> restore)
+            {
+                followUps_.push_back({ key, std::move(restore) });
+            }
+
+            void Undo() override
+            {
+                // 続いて変わった相手を先に戻し、操作そのものが変えた値は操作の Undo で戻す
+                for (auto it = followUps_.rbegin(); it != followUps_.rend(); ++it) {
+                    if (it->restore) { it->restore(); }
+                }
+                inner_->Undo();
+            }
+
+            void Redo() override { inner_->Redo(); }
+            std::string GetLabel() const override { return inner_->GetLabel(); }
+            bool References(const void* target) const override { return inner_->References(target); }
+            bool AffectsScene() const override { return inner_->AffectsScene(); }
+            bool SurvivesSceneReload() const override { return inner_->SurvivesSceneReload(); }
+
+        private:
+            struct FollowUp
+            {
+                const void* key = nullptr;
+                std::function<void()> restore;
+            };
+
+            std::unique_ptr<IEditorCommand> inner_;
+            std::vector<FollowUp> followUps_;
+        };
+    }
+
     EditorCommandStack& EditorCommandStack::Get()
     {
         static EditorCommandStack instance;
@@ -80,6 +127,29 @@ namespace CoreEngine::Editor
 
         PushToUndo(std::move(command));
         return true;
+    }
+
+    bool EditorCommandStack::CanAttachToLast(const void* key) const
+    {
+        if (undo_.empty() || inPlaySession_ || batchDepth_ > 0 || applying_ || discardDepth_ > 0) {
+            return false;
+        }
+        const auto* const followUp = dynamic_cast<const FollowUpCommand*>(undo_.back().get());
+        return !followUp || !followUp->Has(key);
+    }
+
+    void EditorCommandStack::AttachToLast(const void* key, std::function<void()> restore)
+    {
+        if (!CanAttachToLast(key)) {
+            return;
+        }
+        auto* followUp = dynamic_cast<FollowUpCommand*>(undo_.back().get());
+        if (!followUp) {
+            auto wrapped = std::make_unique<FollowUpCommand>(std::move(undo_.back()));
+            followUp = wrapped.get();
+            undo_.back() = std::move(wrapped);
+        }
+        followUp->Add(key, std::move(restore));
     }
 
     std::string EditorCommandStack::PeekUndoLabel() const

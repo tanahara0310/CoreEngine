@@ -22,6 +22,17 @@ namespace CoreEngine
         /// 並べる部品・大きさを合わせる部品の数
         int gLiveCount = 0;
 
+        /// UI トランスフォームを書き換えたときに呼ぶ関数
+        UILayoutPass::RectChanged gRectChanged = nullptr;
+
+        /// @brief 書き換えた後の値が前と違えば、書き換えたことを知らせる
+        void NotifyIfChanged(RectTransformComponent& rect, const UILayoutPass::RectState& before)
+        {
+            if (gRectChanged && !(UILayoutPass::RectState::Of(rect) == before)) {
+                gRectChanged(rect, before);
+            }
+        }
+
         /// @brief 1 つの向きの大きさの決まり方
         struct AxisSizes
         {
@@ -315,7 +326,9 @@ namespace CoreEngine
                     fits = true;
                 }
                 if (fits) {
+                    const UILayoutPass::RectState before = UILayoutPass::RectState::Of(*node.rect);
                     node.rect->SetRectSize(size, canvasSize_);
+                    NotifyIfChanged(*node.rect, before);
                 }
             }
 
@@ -323,6 +336,7 @@ namespace CoreEngine
             void PlaceChild(int index, int axis, float position, float size)
             {
                 RectTransformComponent& rect = *nodes_[index].rect;
+                const UILayoutPass::RectState before = UILayoutPass::RectState::Of(rect);
                 Vector2 anchorMin = rect.GetAnchorMin();
                 Vector2 anchorMax = rect.GetAnchorMax();
                 SetAxisOf(anchorMin, axis, 0.0f);
@@ -339,6 +353,7 @@ namespace CoreEngine
                     SetAxisOf(anchored, axis, pivoted);
                     rect.SetAnchoredPosition(anchored);
                 }
+                NotifyIfChanged(rect, before);
             }
 
             /// @brief 縦か横に 1 列で並べる
@@ -470,6 +485,23 @@ namespace CoreEngine
 
     namespace UILayoutPass
     {
+        RectState RectState::Of(const RectTransformComponent& rect)
+        {
+            return { rect.GetAnchorMin(), rect.GetAnchorMax(), rect.GetSize(), rect.GetAnchoredPosition() };
+        }
+
+        void RectState::ApplyTo(RectTransformComponent& rect) const
+        {
+            rect.SetAnchors(anchorMin, anchorMax);
+            rect.SetSize(size);
+            rect.SetAnchoredPosition(anchoredPosition);
+        }
+
+        void SetRectChangedCallback(RectChanged callback)
+        {
+            gRectChanged = callback;
+        }
+
         void NotifyCreated()
         {
             ++gLiveCount;

@@ -3,6 +3,7 @@
 #include "Editor/Command/EditorCommand.h"
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -94,6 +95,17 @@ namespace CoreEngine::Editor
         /// @brief Undo / Redo の適用中か
         /// @note 適用によって走る編集処理が、それ自体を履歴へ積み直さないようにするためのフラグ
         bool IsApplying() const noexcept { return applying_; }
+
+        /// @brief 直前の操作に、相手の戻す処理をまだ付けられるか
+        /// @param key 相手の目印
+        /// @return 操作が無い・再生中・一括操作の途中・Undo / Redo の適用中・その相手をもう付けた、なら false
+        bool CanAttachToLast(const void* key) const;
+
+        /// @brief 直前の操作に続いて変わった相手を、その操作を取り消したときに一緒に戻す
+        /// @param key 相手の目印（同じ相手は最初に付けた戻す処理だけを残す）
+        /// @param restore 相手を変わる前へ戻す処理（操作を取り消す直前に、付けた逆の順で呼ぶ）
+        /// @note `CanAttachToLast` が false のときは何もしない
+        void AttachToLast(const void* key, std::function<void()> restore);
 
     private:
         EditorCommandStack() = default;

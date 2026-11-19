@@ -42,6 +42,10 @@ namespace CoreEngine::Editor
 
         /// @brief オブジェクトを選んでいたら選択を外す
         void Deselect(const GameObject& object);
+
+        /// @brief UI を並べる処理が子の四角を書き換えたら、直前の操作を取り消すときに一緒に戻す
+        /// @param enabled false で戻さなくする
+        void KeepLayoutChangesInUndo(bool enabled);
     }
 
     /// @brief シーンを組み直しても同じコンポーネントを指す目印

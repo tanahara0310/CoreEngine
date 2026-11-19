@@ -39,6 +39,12 @@ class UIScrollProbe : ScriptComponent
             Log("UIScrollProbe: 速さを入れて StopMovement すると速さ " + scroll.velocity.y + "（期待 0）");
             scroll.normalizedPosition = Vector2(0.0f, 0.0f);
             rows_[0].uiButton.Focus();
+        } else if (frame_ == 8) {
+            Log("UIScrollProbe: 位置 0 でつまみの中心は帯の上端から " + HandleOffset(false) + "（期待 0）");
+            list_.uiScrollView.normalizedPosition = Vector2(0.0f, 1.0f);
+        } else if (frame_ == 9) {
+            Log("UIScrollProbe: 位置 1 でつまみの中心は帯の下端から " + HandleOffset(true) + "（期待 0）");
+            list_.uiScrollView.normalizedPosition = Vector2(0.0f, 0.0f);
         }
 
         ReportClicks();
@@ -108,6 +114,15 @@ class UIScrollProbe : ScriptComponent
             }
         }
         return count;
+    }
+
+    // スクロールバーのつまみの中心が、帯の上端（bottom なら下端）からどれだけずれているか
+    float HandleOffset(bool bottom)
+    {
+        Vector4 bar = owner.FindObject("Scrollbar").rectTransform.rect;
+        Vector4 handle = owner.FindObject("Handle").rectTransform.rect;
+        float edge = bottom ? bar.y + bar.w : bar.y;
+        return handle.y + handle.w * 0.5f - edge;
     }
 
     // 行の一部でも窓に入っているか

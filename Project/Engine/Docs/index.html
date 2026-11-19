@@ -12231,6 +12231,9 @@ python Tools/OkinawaBeach/bake_araha_walk.py
     <li><strong>UI スクロール</strong>：窓より長い中身を動かす <a href="#api-UIScrollView">UI スクロール</a> を足しました。ホイールは 1 目盛りで行 1 本分、ドラッグは放すと慣性で滑って端で止まります。8px より動かすとドラッグになり、押していたボタンは押したことになりません。キー・パッドで窓の外の行へも進め、選んだ行が見えるまで動きます。スクロールバーにする UI スライダーを繋げます。</li>
     <li><strong>窓の外は描かない</strong>：UI マスクの外にある UI 画像と UI テキストを描かないようにしました。100 行の一覧でも、描くのは窓に入った行だけです。</li>
     <li><strong>作るメニュー</strong>：<span class="ui">GameObject<span class="arrow">▸</span>UI</span> に <span class="ui">スクロールの一覧</span>（マスクした窓・縦に並べる中身・項目 3 つ・スクロールバー）を足しました。</li>
+    <li><strong>元に戻す</strong>：並べ方・子の大きさを決めるか などを変えて並べ直された子の位置と大きさも、<kbd>Ctrl</kbd>+<kbd>Z</kbd> でその操作と一緒に戻ります。格子にしてから縦に戻しても、子の高さは格子のマスの大きさのまま残りません。</li>
+    <li><strong>UI スライダーのつまみの色</strong>：つまみを繋いだ UI スライダーが、シーンを開いた直後（つまみがまだ見つからない間）に、つまみではなく帯の画像を <span class="ui">通常の色</span> で塗っていたのを直しました。帯はインスペクタで決めた色のままになります。</li>
+    <li><strong>UI スライダーの伸びる帯</strong>：帯のアンカーを開いて親に合わせて伸ばすと、つまみと伸びる帯を <span class="ui">大きさの差</span> の欄の値の長さで置いていたのを直しました。実際の帯の長さで置くので、スクロールバーのつまみも一覧の位置に付いてきます。</li>
     <li><strong>スクリプト</strong>：<code>uiLayoutGroup</code>・<code>uiLayoutElement</code>・<code>uiContentSizeFitter</code>・<code>uiScrollView</code> を足しました。UI スクロールは <code>normalizedPosition</code>・<code>velocity</code>・<code>StopMovement</code>・<code>ScrollTo</code> を持ちます。</li>
     <li><strong>試験のシーン</strong>：<span class="path">Projects/EngineTests</span> に <code>UI_Layout</code>（縦・横・寄せ・逆の順・格子・大きさ合わせ）と <code>UI_ScrollList</code>（100 行の一覧とスクロールバー）を足しました。どちらも結果をコンソールへ出します。</li>
   </ul>
