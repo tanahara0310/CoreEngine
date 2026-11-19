@@ -194,6 +194,7 @@ namespace CoreEngine::Reflection
         EmptyText       emptyText = nullptr;   ///< AssetRef が何も指していないときに欄へ出す文字（nullptr なら「（なし）」）
         StringChoices   stringChoices = nullptr;  ///< String を候補の一覧から選ぶときの候補（nullptr なら入力欄）
         SaveCondition   saveWhen = nullptr;       ///< 保存するかを持ち主の状態で決める（nullptr なら常に保存。ほかの値から決まる値に使う）
+        SaveCondition   visibleWhen = nullptr;    ///< インスペクタに出すかを持ち主の状態で決める（nullptr なら常に出す。ほかの値で使い道が変わる値に使う）
 
         /// @brief 読み書きの口が揃っているか
         bool IsValid() const { return get != nullptr && set != nullptr; }

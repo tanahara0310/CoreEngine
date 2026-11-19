@@ -133,6 +133,9 @@ namespace CoreEngine
         // ゲームオブジェクト管理（新システム）
         GameObjectManager gameObjectManager_;
 
+        // UI の描く順を親子に合わせて並べ直したか
+        bool uiDrawOrderResolved_ = false;
+
         // === 派生クラス用ヘルパーメソッド ===
 
         /// @brief シーン横断機能（Feature）を追加登録する（所有権は Scene へ移動）

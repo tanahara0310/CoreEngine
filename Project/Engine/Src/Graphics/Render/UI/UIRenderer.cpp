@@ -5,12 +5,33 @@
 #include "Graphics/RootSignature/RootSignatureConfig.h"
 #include "Graphics/Render/RenderTarget/SceneDepth.h"
 #include "Graphics/Render/UI/UIBindings.h"
+#include "UI/UIElement.h"
 #include "Utility/Logger/Logger.h"
 #include "WinApp/WinApp.h"
+#include <algorithm>
 #include <cassert>
+#include <cmath>
 
 namespace CoreEngine
 {
+    namespace
+    {
+        /// @brief UI を重ねている間の、切る四角の状態
+        struct OverlayClipState
+        {
+            uint32_t   targetWidth = 0;
+            uint32_t   targetHeight = 0;
+            bool       applied = false;
+            D3D12_RECT current{};
+        };
+
+        OverlayClipState& ClipState()
+        {
+            static OverlayClipState state;
+            return state;
+        }
+    }
+
     void UIRenderer::Initialize(ID3D12Device* device) {
         const std::string debugName = GetPipelineDebugName();
 
@@ -50,7 +71,8 @@ namespace CoreEngine
 
         Initialize(dxCommon->GetDevice());
 
-        quadIndexResource_ = ResourceFactory::CreateQuadIndexBuffer(dxCommon->GetDevice(), quadIndexBufferView_);
+        quadIndexResource_ = ResourceFactory::CreateQuadIndexBuffer(dxCommon->GetDevice(), quadIndexBufferView_,
+            kMaxQuadsPerImage);
 
         // フレームごとに変換行列の定数バッファを 1 本作り、マップしたままにする
         const size_t poolCount = GetConstantBufferPoolCount();
@@ -165,5 +187,69 @@ namespace CoreEngine
         Matrix4x4 viewMatrix = MathCore::Matrix::Identity();
 
         return worldMatrix * viewMatrix * CalculateProjectionMatrix();
+    }
+
+    Matrix4x4 UIRenderer::CalculateWVPFromWorld(const Matrix4x4& world) const {
+        // ビューは単位行列（UI はカメラ非依存）
+        Matrix4x4 viewMatrix = MathCore::Matrix::Identity();
+
+        return world * viewMatrix * CalculateProjectionMatrix();
+    }
+
+    void UIRenderer::BeginOverlay(uint32_t width, uint32_t height) {
+        OverlayClipState& state = ClipState();
+        state.targetWidth = width;
+        state.targetHeight = height;
+        state.applied = false;
+    }
+
+    void UIRenderer::EndOverlay(ID3D12GraphicsCommandList* cmdList) {
+        OverlayClipState& state = ClipState();
+        if (state.applied && cmdList) {
+            const D3D12_RECT full = { 0, 0, static_cast<LONG>(state.targetWidth), static_cast<LONG>(state.targetHeight) };
+            cmdList->RSSetScissorRects(1, &full);
+        }
+        state.applied = false;
+        state.targetWidth = 0;
+        state.targetHeight = 0;
+    }
+
+    void UIRenderer::ApplyClip(ID3D12GraphicsCommandList* cmdList, const UIRect* clip) const {
+        OverlayClipState& state = ClipState();
+        if (!cmdList || state.targetWidth == 0 || state.targetHeight == 0) {
+            return;
+        }
+        if (!clip) {
+            if (state.applied) {
+                const D3D12_RECT full = { 0, 0, static_cast<LONG>(state.targetWidth), static_cast<LONG>(state.targetHeight) };
+                cmdList->RSSetScissorRects(1, &full);
+                state.applied = false;
+            }
+            return;
+        }
+
+        // キャンバス座標を描く先の px へ直し、外側へ丸める
+        const Vector2 canvas = GetScreenSize();
+        const float scaleX = static_cast<float>(state.targetWidth) / canvas.x;
+        const float scaleY = static_cast<float>(state.targetHeight) / canvas.y;
+        const auto clampX = [&](float value) {
+            return static_cast<LONG>(std::clamp(value, 0.0f, static_cast<float>(state.targetWidth)));
+        };
+        const auto clampY = [&](float value) {
+            return static_cast<LONG>(std::clamp(value, 0.0f, static_cast<float>(state.targetHeight)));
+        };
+        D3D12_RECT rect{};
+        rect.left = clampX(std::floor(clip->min.x * scaleX));
+        rect.top = clampY(std::floor(clip->min.y * scaleY));
+        rect.right = (std::max)(rect.left, clampX(std::ceil(clip->max.x * scaleX)));
+        rect.bottom = (std::max)(rect.top, clampY(std::ceil(clip->max.y * scaleY)));
+
+        if (state.applied && rect.left == state.current.left && rect.top == state.current.top
+            && rect.right == state.current.right && rect.bottom == state.current.bottom) {
+            return;
+        }
+        cmdList->RSSetScissorRects(1, &rect);
+        state.current = rect;
+        state.applied = true;
     }
 }

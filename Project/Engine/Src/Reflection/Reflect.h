@@ -328,6 +328,33 @@ namespace CoreEngine::Reflection
             d.properties.push_back(p);                                                 \
         }
 
+/// @brief `ObjectRef<T>` で表す参照を getter / setter で足す
+/// @param NameLiteral 保存キー
+/// @param GetterName `Reflection::ObjectRefValue` を返すメンバ関数（引数なし）
+/// @param SetterName `const Reflection::ObjectRefValue&` を受け取るメンバ関数
+/// @param RefType 繋ぎ先の判定に使う `ObjectRef<T>` の型
+/// @param ... 省略可。`p.saveWhen = …` など
+#define REFLECT_OBJECT_REF_ACCESSOR(NameLiteral, DisplayNameLiteral, GetterName, SetterName, RefType, ...) \
+        {                                                                              \
+            ::CoreEngine::Reflection::PropertyDescriptor p;                            \
+            p.name = NameLiteral;                                                      \
+            p.displayName = DisplayNameLiteral;                                        \
+            p.type = ::CoreEngine::Reflection::PropertyType::ObjectRef;                \
+            p.get = [](const ::CoreEngine::Reflection::PropertyDescriptor&,            \
+                       const void* o, void* out) {                                     \
+                *static_cast<::CoreEngine::Reflection::ObjectRefValue*>(out) =         \
+                    static_cast<const Self*>(o)->GetterName();                         \
+            };                                                                         \
+            p.set = [](const ::CoreEngine::Reflection::PropertyDescriptor&,            \
+                       void* o, const void* in) {                                      \
+                static_cast<Self*>(o)->SetterName(                                     \
+                    *static_cast<const ::CoreEngine::Reflection::ObjectRefValue*>(in)); \
+            };                                                                         \
+            p.acceptsComponent = &RefType::Accepts;                                    \
+            __VA_ARGS__;                                                               \
+            d.properties.push_back(p);                                                 \
+        }
+
 /// @brief `AssetRef<T>` 型のメンバをプロパティとして足す
 /// @param MemberExpr インスタンスからの式（`buildSe_` など）
 #define REFLECT_ASSET_REF(MemberExpr, DisplayNameLiteral)                              \

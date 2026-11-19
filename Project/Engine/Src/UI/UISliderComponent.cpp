@@ -139,15 +139,24 @@ namespace CoreEngine
         if (!rect) {
             return;
         }
-        const UIRect track = rect->GetLayout().CalculateRect(canvasSize);
+
+        // 親のある帯は、自分の座標（回転と拡大を外した座標）へ戻して測る
+        UIRect track = rect->GetCanvasBounds(canvasSize);
+        Vector2 pointer = pointerOnCanvas;
+        if (rect->GetParent()) {
+            if (!rect->CanvasToLocal(pointerOnCanvas, canvasSize, pointer)) {
+                return;
+            }
+            track = rect->GetLocalRect(canvasSize);
+        }
         const Vector2 size = track.Size();
 
         const float length = IsHorizontal() ? size.x : size.y;
         if (length <= 0.0f) {
             return;
         }
-        const float along = IsHorizontal() ? (pointerOnCanvas.x - track.min.x)
-                                           : (pointerOnCanvas.y - track.min.y);
+        const float along = IsHorizontal() ? (pointer.x - track.min.x)
+                                           : (pointer.y - track.min.y);
 
         float normalized = std::clamp(along / length, 0.0f, 1.0f);
         if (IsReversed()) {
@@ -224,32 +233,45 @@ namespace CoreEngine
                                          center.y + (pivot.y - 0.5f) * size.y });
             };
 
+        // 帯の子にした相手は、帯の左上にアンカーを付けて帯の中で置く。
+        // 子でない相手は、帯と同じアンカーを使わせて座標系を揃える
+        const auto anchorTo = [&](RectTransformComponent& target, const Vector2& topLeftOffset) {
+            if (target.GetParent() == rect) {
+                target.SetAnchor(UIAnchor::TopLeft);
+                return topLeftOffset;
+            }
+            target.SetAnchors(track.anchorMin, track.anchorMax);
+            return trackMin;
+        };
+
         if (fill) {
-            fill->SetAnchor(track.anchor);
+            const Vector2 origin = anchorTo(*fill, { 0.0f, 0.0f });
             Vector2 size = fill->GetSize();
-            Vector2 center = trackCenter;
+            Vector2 center = fill->GetParent() == rect
+                ? Vector2{ track.size.x * 0.5f, track.size.y * 0.5f } : trackCenter;
             if (IsHorizontal()) {
                 size.x = filledLength;
-                center.x = trackMin.x + filledStart + filledLength * 0.5f;
+                center.x = origin.x + filledStart + filledLength * 0.5f;
             }
             else {
                 size.y = filledLength;
-                center.y = trackMin.y + filledStart + filledLength * 0.5f;
+                center.y = origin.y + filledStart + filledLength * 0.5f;
             }
             fill->SetSize(size);
             place(*fill, center);
         }
 
         if (handle) {
-            handle->SetAnchor(track.anchor);
+            const Vector2 origin = anchorTo(*handle, { 0.0f, 0.0f });
             // つまみは埋まっている側の先端に置く
             const float along = IsReversed() ? (length - filledLength) : filledLength;
-            Vector2 center = trackCenter;
+            Vector2 center = handle->GetParent() == rect
+                ? Vector2{ track.size.x * 0.5f, track.size.y * 0.5f } : trackCenter;
             if (IsHorizontal()) {
-                center.x = trackMin.x + along;
+                center.x = origin.x + along;
             }
             else {
-                center.y = trackMin.y + along;
+                center.y = origin.y + along;
             }
             place(*handle, center);
         }

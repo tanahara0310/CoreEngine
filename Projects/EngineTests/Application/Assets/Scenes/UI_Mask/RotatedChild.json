@@ -1,0 +1,61 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchorMax": [
+                    0.5,
+                    0.5
+                ],
+                "anchorMin": [
+                    0.5,
+                    0.5
+                ],
+                "anchoredPosition": [
+                    0.0,
+                    0.0
+                ],
+                "parent": {
+                    "comp": "RectTransform",
+                    "ref": "c6acf65d9f5d307d"
+                },
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "rotation": -0.3490658503988659,
+                "scale": [
+                    1.0,
+                    1.0
+                ],
+                "size": [
+                    560.0,
+                    60.0
+                ],
+                "sortOrder": 0
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    0.3,
+                    0.7,
+                    0.9,
+                    1.0
+                ],
+                "columns": 1,
+                "frame": 0,
+                "material": null,
+                "rows": 1,
+                "texture": null
+            },
+            "type": "UIImage"
+        }
+    ],
+    "id": "cbe577fa99705ef4",
+    "name": "RotatedChild",
+    "order": 14
+}

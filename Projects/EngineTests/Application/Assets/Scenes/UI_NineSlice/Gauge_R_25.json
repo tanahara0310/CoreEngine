@@ -1,0 +1,51 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchor": 4,
+                "anchoredPosition": [
+                    -360.0,
+                    410.0
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "rotation": 0.0,
+                "size": [
+                    120.0,
+                    120.0
+                ],
+                "sortOrder": 1
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    0.3,
+                    0.8,
+                    0.45,
+                    1.0
+                ],
+                "columns": 1,
+                "fillAmount": 0.25,
+                "fillClockwise": true,
+                "fillMethod": 2,
+                "fillOrigin": 3,
+                "frame": 0,
+                "imageType": 2,
+                "material": null,
+                "rows": 1,
+                "texture": null
+            },
+            "type": "UIImage"
+        }
+    ],
+    "id": "e2b8e1256cb480bb",
+    "name": "Gauge_R_25",
+    "order": 51
+}

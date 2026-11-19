@@ -15,6 +15,7 @@
 namespace CoreEngine
 {
     class SceneDepth;
+    struct UIRect;
 
     /// @brief UI 描画専用レンダラー（カメラ非依存・スクリーン固定座標）
     /// @details 画面ピクセル座標（左上原点・Y 軸下正）の正射影で描き、パイプラインの最後に呼ばれる。
@@ -29,6 +30,9 @@ namespace CoreEngine
 
         /// @brief 1 フレームに描ける UI 要素の数（すべてのビューの合計）
         static constexpr size_t kMaxUICount = 4096;
+
+        /// @brief UI 画像 1 枚が使える四角の数（共有のインデックスバッファの長さ。9 スライスの 9 枚）
+        static constexpr uint32_t kMaxQuadsPerImage = 9;
 
         /// @brief 定数バッファ内での変換行列 1 個ぶんの間隔（CBV の配置に合わせて 256 バイト単位）
         static constexpr size_t kTransformStride =
@@ -66,6 +70,23 @@ namespace CoreEngine
         /// @param scale    スケール
         /// @param rotation 回転（ラジアン）
         Matrix4x4 CalculateWVPMatrix(const Vector3& position, const Vector3& scale, const Vector3& rotation) const;
+
+        /// @brief ワールド行列（中身の座標 → スクリーン px）から WVP 行列を計算
+        Matrix4x4 CalculateWVPFromWorld(const Matrix4x4& world) const;
+
+        // ===== はみ出しを切る四角（UI 画像と UI テキストで共有） =====
+
+        /// @brief UI を重ね始める（描く先の大きさを控え、切る四角を外した状態にする）
+        /// @param width 描く先の幅（px）
+        /// @param height 描く先の高さ（px）
+        static void BeginOverlay(uint32_t width, uint32_t height);
+
+        /// @brief UI を重ね終える（切る四角を差していたら、描く先全体へ戻す）
+        static void EndOverlay(ID3D12GraphicsCommandList* cmdList);
+
+        /// @brief 次に描く物を切る四角を差す（nullptr なら切らない。前と同じなら何もしない）
+        /// @param clip キャンバス座標の四角（描く先の px へ直し、外側へ丸めて差す）
+        void ApplyClip(ID3D12GraphicsCommandList* cmdList, const UIRect* clip) const;
 
         /// @brief 基準解像度を設定（可変対応）
         /// @note 0 以下の場合はエンジン既定の基準解像度（WinApp::kReferenceWidth/Height）

@@ -2,6 +2,7 @@
 #include "AssetType.h"
 #include <string>
 #include <filesystem>
+#include <array>
 #include <cstdint>
 
 namespace CoreEngine
@@ -19,6 +20,7 @@ namespace CoreEngine
         uint64_t lastModified;               // 最終更新時刻（Unix time）
         std::string colorSpace;              // 画像の取り込み設定（.meta の import.colorSpace。"srgb" / "linear" / "normal"、書いていなければ空）
         std::string format;                  // 画像の取り込み設定（.meta の import.format。"bc7" / "bc3" / "bc1" / "bc5" / "none"、書いていなければ空）
+        std::array<float, 4> sliceBorder{};  // 画像の 9 スライスの枠の幅（.meta の import.sliceBorder。左・上・右・下の px、書いていなければ 0）
 
         AssetInfo()
             : type(AssetType::Unknown)

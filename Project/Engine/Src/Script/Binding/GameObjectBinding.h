@@ -150,8 +150,12 @@ namespace CoreEngine::Script
         /// @brief 型名のコンポーネントが付いているか
         bool HasComponentByName(const std::string& typeName) const;
 
-        /// @brief Transform の子のオブジェクト（同じ管理者の中を、並んでいる順に探す）
+        /// @brief Transform と UI トランスフォームの子のオブジェクト（同じ管理者の中を、並んでいる順に探す）
         CScriptArray* GetChildren() const;
+
+        /// @brief 名前の子を探す（"Panel/Button" のように / で孫までたどれる）
+        /// @return 見つからなければ null
+        ScriptGameObject* FindChild(const std::string& name) const;
 
         /// @brief 付いているスクリプトのコンポーネントを型で探す（`?&out` の受け口）
         /// @param reference スクリプトのクラスのハンドルの置き場

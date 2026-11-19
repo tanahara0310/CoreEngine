@@ -2,6 +2,7 @@
 
 #include "Graphics/Render/UI/UIRenderer.h"
 #include "Text/MsdfTextBatch.h"
+#include "UI/UIElement.h"
 
 #include <cstdint>
 
@@ -59,10 +60,12 @@ namespace CoreEngine
         /// @param vertexCount 頂点数（4 の倍数）
         /// @param world em → スクリーン px の変換
         /// @param style 色・縁取り・太さ
+        /// @param clip 切る四角（キャンバス座標。nullptr なら切らない）。変わったらその時点でフラッシュする
         void Submit(const MsdfFont* font,
             const TextGlyphVertex* glyphVertices, size_t vertexCount,
             const Matrix4x4& world,
-            const TextDrawStyle& style);
+            const TextDrawStyle& style,
+            const UIRect* clip = nullptr);
 
         // ===== デバッグ表示用 =====
         /// @brief 直近フレームのドローコール数（バッチングの効きを見る）
@@ -115,6 +118,9 @@ namespace CoreEngine
         ID3D12GraphicsCommandList* cmdList_ = nullptr;
         /// 積んでいる頂点（フォントが変わったらフラッシュ）
         MsdfTextBatch batch_;
+        /// 積んでいる頂点を切る四角（切る四角が変わったらフラッシュ）
+        bool batchClipped_ = false;
+        UIRect batchClip_{};
         /// 直近にログへ出したドローコール数（変化したときだけ出す）
         uint32_t loggedDrawCalls_ = 0;
     };

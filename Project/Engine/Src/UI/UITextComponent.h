@@ -142,10 +142,10 @@ namespace CoreEngine
         void ResolveFont();
 
         /// @brief 枠・基準点・グリフの変化を見て、要るなら頂点を組み直すか枠を合わせ直す
-        void UpdateGeometry(RectTransformComponent& rect);
+        void UpdateGeometry(RectTransformComponent& rect, const Vector2& canvasSize);
 
         /// @brief 文字列からグリフの矩形の並び（em 単位）を組む
-        void RebuildGeometry(RectTransformComponent& rect);
+        void RebuildGeometry(RectTransformComponent& rect, const Vector2& canvasSize);
 
         /// @brief 枠を文字列の大きさにする
         void FitRect(RectTransformComponent& rect);
@@ -187,6 +187,8 @@ namespace CoreEngine
 
         /// 最後に文字列へ合わせた枠の大きさ（`hasFitted_` のときだけ意味を持つ）
         Vector2 fittedSize_ = { 0.0f, 0.0f };
+        /// 頂点を組んだときの枠の実際の大きさ（アンカーが開いていれば親の大きさで変わる）
+        Vector2 builtFieldSize_ = { 0.0f, 0.0f };
         bool hasFitted_ = false;
 
         /// グリフ数の上限の警告を 1 回だけ出す

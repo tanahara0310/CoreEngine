@@ -1,0 +1,64 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchorMax": [
+                    1.0,
+                    0.0
+                ],
+                "anchorMin": [
+                    0.0,
+                    0.0
+                ],
+                "anchoredPosition": [
+                    0.0,
+                    16.0
+                ],
+                "parent": null,
+                "pivot": [
+                    0.5,
+                    0.0
+                ],
+                "rotation": 0.0,
+                "scale": [
+                    1.0,
+                    1.0
+                ],
+                "size": [
+                    -64.0,
+                    56.0
+                ],
+                "sortOrder": 0
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "columns": 1,
+                "fillCenter": true,
+                "frame": 0,
+                "imageType": 1,
+                "material": null,
+                "overrideBorder": false,
+                "rows": 1,
+                "texture": {
+                    "guid": "84383462-b484-4cc4-bb21-ef2ecb49a2b1",
+                    "path": "Application/Assets/Textures/UI_Frame.png"
+                }
+            },
+            "type": "UIImage"
+        }
+    ],
+    "id": "169008724392873a",
+    "name": "Slice_Stretched",
+    "order": 14
+}

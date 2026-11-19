@@ -59,7 +59,7 @@ namespace CoreEngine
     int UISelectableComponent::GetPointerSortOrder() const
     {
         const RectTransformComponent* const rect = GetRectTransform();
-        return rect ? rect->GetSortOrder() : 0;
+        return rect ? rect->GetPointerOrder() : 0;
     }
 
     void UISelectableComponent::OnPointerEnter()

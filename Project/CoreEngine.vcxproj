@@ -240,6 +240,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Editor\Inspector\InspectorRenderer.cpp" />
     <ClCompile Include="Engine\Src\Editor\Inspector\ObjectInspector.cpp" />
     <ClCompile Include="Engine\Src\Editor\Inspector\PrefabAssetInspector.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Inspector\RectTransformInspector.cpp" />
     <ClCompile Include="Engine\Src\Editor\Inspector\TagField.cpp" />
     <ClCompile Include="Engine\Src\Editor\Command\EditorCommandStack.cpp" />
     <ClCompile Include="Engine\Src\Editor\Panel\EditorPanelRegistry.cpp" />
@@ -661,6 +662,8 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\UI\UISliderComponent.cpp" />
     <ClCompile Include="Engine\Src\UI\UITextComponent.cpp" />
     <ClCompile Include="Engine\Src\UI\UIToggleComponent.cpp" />
+    <ClCompile Include="Engine\Src\UI\UIMaskComponent.cpp" />
+    <ClCompile Include="Engine\Src\UI\UIDrawOrder.cpp" />
     <ClCompile Include="Engine\Src\Math\Geometry\Distance.cpp" />
     <ClCompile Include="Engine\Src\Math\Geometry\MeshIntersect.cpp" />
     <ClCompile Include="Engine\Src\Math\Geometry\Triangle.cpp" />
@@ -1503,6 +1506,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Editor\Inspector\InspectorRenderer.h" />
     <ClInclude Include="Engine\Src\Editor\Inspector\ObjectInspector.h" />
     <ClInclude Include="Engine\Src\Editor\Inspector\PrefabAssetInspector.h" />
+    <ClInclude Include="Engine\Src\Editor\Inspector\RectTransformInspector.h" />
     <ClInclude Include="Engine\Src\Editor\Inspector\TagField.h" />
     <ClInclude Include="Engine\Src\Editor\Command\EditorCommand.h" />
     <ClInclude Include="Engine\Src\Editor\Command\EditorCommandStack.h" />
@@ -2035,6 +2039,8 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\UI\UISliderComponent.h" />
     <ClInclude Include="Engine\Src\UI\UITextComponent.h" />
     <ClInclude Include="Engine\Src\UI\UIToggleComponent.h" />
+    <ClInclude Include="Engine\Src\UI\UIMaskComponent.h" />
+    <ClInclude Include="Engine\Src\UI\UIDrawOrder.h" />
     <ClInclude Include="Engine\Src\Math\Geometry\Distance.h" />
     <ClInclude Include="Engine\Src\Math\Geometry\MeshView.h" />
     <ClInclude Include="Engine\Src\Math\Geometry\Triangle.h" />

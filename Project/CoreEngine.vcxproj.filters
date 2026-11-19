@@ -121,6 +121,9 @@
     <ClCompile Include="Engine\Src\Editor\Inspector\PrefabAssetInspector.cpp">
       <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Inspector\RectTransformInspector.cpp">
+      <Filter>Engine\Src\Editor\Inspector</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Inspector\TagField.cpp">
       <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClCompile>
@@ -1375,6 +1378,12 @@
     <ClCompile Include="Engine\Src\UI\UIToggleComponent.cpp">
       <Filter>Engine\Src\UI</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\UI\UIMaskComponent.cpp">
+      <Filter>Engine\Src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\UI\UIDrawOrder.cpp">
+      <Filter>Engine\Src\UI</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Math\Geometry\Distance.cpp">
       <Filter>Engine\Src\Math\Geometry</Filter>
     </ClCompile>
@@ -2299,6 +2308,9 @@
       <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Inspector\PrefabAssetInspector.h">
+      <Filter>Engine\Src\Editor\Inspector</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Inspector\RectTransformInspector.h">
       <Filter>Engine\Src\Editor\Inspector</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Inspector\TagField.h">
@@ -3895,6 +3907,12 @@
       <Filter>Engine\Src\UI</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\UI\UIToggleComponent.h">
+      <Filter>Engine\Src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\UI\UIMaskComponent.h">
+      <Filter>Engine\Src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\UI\UIDrawOrder.h">
       <Filter>Engine\Src\UI</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Math\Geometry\Distance.h">

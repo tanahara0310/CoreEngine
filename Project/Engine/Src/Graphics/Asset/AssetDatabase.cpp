@@ -329,7 +329,8 @@ namespace CoreEngine
     bool AssetDatabase::SetImportSettings(const std::filesystem::path& assetPath, const std::string& colorSpace,
         const std::string& format)
     {
-        AssetMetadata::ImportSettings settings;
+        // 9 スライスの枠の幅は今の .meta の値のまま書く
+        AssetMetadata::ImportSettings settings = AssetMetadata::LoadImportSettings(AssetMetadata::GetMetaFilePath(assetPath));
         settings.colorSpace = colorSpace;
         settings.format = format;
         if (!AssetMetadata::SaveImportSettings(AssetMetadata::GetMetaFilePath(assetPath), settings)) {
@@ -343,6 +344,32 @@ namespace CoreEngine
             info.colorSpace = colorSpace;
             info.format = format;
         }
+        return true;
+    }
+
+    std::array<float, 4> AssetDatabase::GetSliceBorder(std::string_view path) const
+    {
+        std::shared_lock lock(mutex_);
+        const AssetInfo* info = FindByPathUnlocked(path);
+        return info ? info->sliceBorder : std::array<float, 4>{};
+    }
+
+    bool AssetDatabase::SetSliceBorder(const std::filesystem::path& assetPath, const std::array<float, 4>& border)
+    {
+        AssetMetadata::ImportSettings settings = AssetMetadata::LoadImportSettings(AssetMetadata::GetMetaFilePath(assetPath));
+        settings.sliceBorder = border;
+        if (!AssetMetadata::SaveImportSettings(AssetMetadata::GetMetaFilePath(assetPath), settings)) {
+            return false;
+        }
+
+        {
+            std::unique_lock lock(mutex_);
+            const AssetInfo* found = FindByPathUnlocked(Logger::GetInstance().PathToUtf8(assetPath));
+            if (found) {
+                assetsByGUID_.at(found->guid).sliceBorder = border;
+            }
+        }
+        sliceBorderRevision_.fetch_add(1, std::memory_order_relaxed);
         return true;
     }
 
@@ -498,6 +525,7 @@ namespace CoreEngine
             const AssetMetadata::ImportSettings import = AssetMetadata::LoadImportSettings(AssetMetadata::GetMetaFilePath(assetPath));
             info.colorSpace = import.colorSpace;
             info.format = import.format;
+            info.sliceBorder = import.sliceBorder;
         }
 
         return info;
@@ -575,6 +603,7 @@ namespace CoreEngine
                 const AssetMetadata::ImportSettings import = AssetMetadata::LoadImportSettings(metaPath);
                 info.colorSpace = import.colorSpace;
                 info.format = import.format;
+                info.sliceBorder = import.sliceBorder;
                 ++registeredTextures;
             } else {
                 ++registeredModels;

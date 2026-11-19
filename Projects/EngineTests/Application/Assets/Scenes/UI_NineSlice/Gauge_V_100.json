@@ -1,0 +1,50 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchor": 4,
+                "anchoredPosition": [
+                    200.0,
+                    230.0
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "rotation": 0.0,
+                "size": [
+                    32.0,
+                    120.0
+                ],
+                "sortOrder": 1
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    0.3,
+                    0.8,
+                    0.45,
+                    1.0
+                ],
+                "columns": 1,
+                "fillAmount": 1.0,
+                "fillMethod": 1,
+                "fillOrigin": 2,
+                "frame": 0,
+                "imageType": 2,
+                "material": null,
+                "rows": 1,
+                "texture": null
+            },
+            "type": "UIImage"
+        }
+    ],
+    "id": "570edfc4035d4df7",
+    "name": "Gauge_V_100",
+    "order": 43
+}

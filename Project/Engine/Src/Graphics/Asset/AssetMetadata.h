@@ -1,5 +1,6 @@
 #pragma once
 #include "AssetType.h"
+#include <array>
 #include <string>
 #include <filesystem>
 #include <unordered_map>
@@ -25,12 +26,13 @@ namespace CoreEngine
         {
             std::string colorSpace; // "srgb" / "linear" / "normal"。空なら頼まれた色空間で読む
             std::string format;     // "bc7" / "bc3" / "bc1" / "bc5" / "none"。空なら既定の形式
+            std::array<float, 4> sliceBorder{}; // 9 スライスの枠の幅（左・上・右・下の px）。すべて 0 なら書かない
         };
 
         // メタファイルから画像の取り込み設定を読み取る（書いていない・読めない・ほかの値の項目は空）
         static ImportSettings LoadImportSettings(const std::filesystem::path& metaFilePath);
 
-        // メタファイルの import の色空間と形式を書き換える（GUID などほかの項目は残す。空の項目は消す）
+        // メタファイルの import の色空間・形式・9 スライスの枠の幅を書き換える（GUID などほかの項目は残す。空の項目は消す）
         static bool SaveImportSettings(const std::filesystem::path& metaFilePath, const ImportSettings& settings);
 
         // メタファイルを保存

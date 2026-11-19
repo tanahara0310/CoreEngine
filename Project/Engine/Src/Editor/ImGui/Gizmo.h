@@ -10,6 +10,15 @@ namespace CoreEngine
     class GameObject;
     class Camera;
 
+    /// @brief UI 要素を置いている親の座標（ギズモが親の中で動かすのに使う）
+    struct UIGizmoFrame
+    {
+        bool      hasParent = false;                   ///< 親があるか（無ければ親の座標 = キャンバス座標）
+        Matrix4x4 parentToCanvas{};                    ///< 親の座標 → キャンバス座標（親があるときだけ使う）
+        Vector2   anchorBase = { 0.0f, 0.0f };         ///< 位置が 0 のときの基準点（親の座標）
+        Vector2   sizeBase = { 0.0f, 0.0f };           ///< 大きさが 0 のときの実際の大きさ（伸ばしている向きだけ 0 でない）
+    };
+
     /// @brief ImGuizmo操作クラス
     class Gizmo {
     public:
@@ -36,6 +45,7 @@ namespace CoreEngine
         /// @param layout 操作対象のレイアウト。変更はこの引数へ直接書き戻す
         /// @param referenceSize UI の基準解像度（UIRenderer::GetScreenSize）
         /// @param mode 操作モード
+        /// @param frame 親の座標
         /// @return 変更された場合 true
         /// @details
         ///  UI はカメラに依存しないので、ビューを単位行列、
@@ -46,7 +56,7 @@ namespace CoreEngine
         ///  スケールは `UILayout::size` に対応させてある。
         ///  スプライトの scale と同じ感覚で矩形を伸ばせるようにするため。
         static bool ManipulateUI(UILayout& layout, const Vector2& referenceSize,
-            Mode mode = Mode::Translate);
+            Mode mode, const UIGizmoFrame& frame);
 
         /// @brief ワールド座標 1 点を移動ギズモで操作する
         /// @param position 操作対象。変更はここへ直接書き戻す

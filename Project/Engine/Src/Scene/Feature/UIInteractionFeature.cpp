@@ -182,7 +182,9 @@ namespace CoreEngine
 
         ctx.gameObjectManager->ForEachComponent<IUIInteractable>(
             [&](IUIInteractable& candidate) {
-                const bool accepts = candidate.AcceptsInput();
+                // 親が隠れている UI は受け付けない
+                const RectTransformComponent* const rect = candidate.GetRectTransform();
+                const bool accepts = candidate.AcceptsInput() && (!rect || rect->IsActiveInHierarchy());
 
                 // 覚えている相手がまだ居るかをここで確かめる
                 // （走査に出てこないものは、消えたか止まっている）
@@ -199,8 +201,7 @@ namespace CoreEngine
                 if (!accepts || !pointerOver) {
                     return;
                 }
-                const RectTransformComponent* const rect = candidate.GetRectTransform();
-                if (!rect || !rect->GetLayout().ContainsPoint(pointer, canvasSize)) {
+                if (!rect || !rect->ContainsCanvasPoint(pointer, canvasSize)) {
                     return;
                 }
                 // 描画順が大きいほど手前。同じなら後から見つかった方を手前として扱う
@@ -318,7 +319,7 @@ namespace CoreEngine
             return;
         }
         const Vector2 dir = UINavigation::ToVector(direction);
-        const Vector2 from = UINavigation::EdgePoint(rect->GetLayout().CalculateRect(canvasSize), dir);
+        const Vector2 from = UINavigation::EdgePoint(rect->GetCanvasBounds(canvasSize), dir);
 
         IUIInteractable* best = nullptr;
         float bestScore = 0.0f;
@@ -329,11 +330,11 @@ namespace CoreEngine
                     return;
                 }
                 const RectTransformComponent* const candidateRect = candidate.GetRectTransform();
-                if (!candidateRect) {
+                if (!candidateRect || !candidateRect->IsActiveInHierarchy()) {
                     return;
                 }
                 const Vector2 center =
-                    UINavigation::Center(candidateRect->GetLayout().CalculateRect(canvasSize));
+                    UINavigation::Center(candidateRect->GetCanvasBounds(canvasSize));
                 const float score = UINavigation::Score(from, dir, center);
                 if (score > bestScore) {
                     bestScore = score;
@@ -359,11 +360,11 @@ namespace CoreEngine
                     return;
                 }
                 const RectTransformComponent* const rect = candidate.GetRectTransform();
-                if (!rect) {
+                if (!rect || !rect->IsActiveInHierarchy()) {
                     return;
                 }
                 // 画面の左上にいちばん近いものから始める
-                const Vector2 center = UINavigation::Center(rect->GetLayout().CalculateRect(canvasSize));
+                const Vector2 center = UINavigation::Center(rect->GetCanvasBounds(canvasSize));
                 const float distance = center.x + center.y;
                 if (!best || distance < bestDistance) {
                     best = &candidate;

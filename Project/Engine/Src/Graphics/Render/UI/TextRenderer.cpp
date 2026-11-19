@@ -70,7 +70,8 @@ namespace CoreEngine
     void TextRenderer::Submit(const MsdfFont* font,
         const TextGlyphVertex* glyphVertices, size_t vertexCount,
         const Matrix4x4& world,
-        const TextDrawStyle& style)
+        const TextDrawStyle& style,
+        const UIRect* clip)
     {
         if (!font || !glyphVertices || vertexCount == 0) { return; }
 
@@ -78,6 +79,19 @@ namespace CoreEngine
         // ここでバッチを切る。UI は 1 フォントで作ることが多いので実質 1 本にまとまる
         if (batch_.GetFont() && batch_.GetFont() != font) {
             Flush();
+        }
+
+        // 切る四角が変わったら、積んだ分を描いてから切る四角を差し替える
+        const bool clipped = clip != nullptr;
+        const bool clipChanged = clipped != batchClipped_
+            || (clipped && (clip->min.x != batchClip_.min.x || clip->min.y != batchClip_.min.y
+                || clip->max.x != batchClip_.max.x || clip->max.y != batchClip_.max.y));
+        if (clipChanged) {
+            if (!batch_.IsEmpty()) {
+                Flush();
+            }
+            batchClipped_ = clipped;
+            batchClip_ = clipped ? *clip : UIRect{};
         }
 
         // 共有インデックスバッファの長さを超えるなら、いったん描いてから続ける
@@ -95,6 +109,8 @@ namespace CoreEngine
             batch_.Clear();
             return;
         }
+
+        ApplyClip(cmdList_, batchClipped_ ? &batchClip_ : nullptr);
 
         const BindingTable& bindings = GetBindings();
         batch_.Draw(cmdList_, graphicsCore->GetUploadRing(), CalculateProjectionMatrix(),
