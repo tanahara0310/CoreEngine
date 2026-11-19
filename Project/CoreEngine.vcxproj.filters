@@ -1384,6 +1384,21 @@
     <ClCompile Include="Engine\Src\UI\UIDrawOrder.cpp">
       <Filter>Engine\Src\UI</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\UI\UILayoutGroupComponent.cpp">
+      <Filter>Engine\Src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\UI\UILayoutElementComponent.cpp">
+      <Filter>Engine\Src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\UI\UIContentSizeFitterComponent.cpp">
+      <Filter>Engine\Src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\UI\UILayoutPass.cpp">
+      <Filter>Engine\Src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\UI\UIScrollViewComponent.cpp">
+      <Filter>Engine\Src\UI</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Math\Geometry\Distance.cpp">
       <Filter>Engine\Src\Math\Geometry</Filter>
     </ClCompile>
@@ -3913,6 +3928,21 @@
       <Filter>Engine\Src\UI</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\UI\UIDrawOrder.h">
+      <Filter>Engine\Src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\UI\UILayoutGroupComponent.h">
+      <Filter>Engine\Src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\UI\UILayoutElementComponent.h">
+      <Filter>Engine\Src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\UI\UIContentSizeFitterComponent.h">
+      <Filter>Engine\Src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\UI\UILayoutPass.h">
+      <Filter>Engine\Src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\UI\UIScrollViewComponent.h">
       <Filter>Engine\Src\UI</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Math\Geometry\Distance.h">

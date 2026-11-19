@@ -477,7 +477,11 @@ class GameObject {
 	CoreEngine::SpriteAnimator@ get_spriteAnimator() property;
 	CoreEngine::SpriteRenderer@ get_spriteRenderer() property;
 	CoreEngine::Text3DRenderer@ get_text3DRenderer() property;
+	CoreEngine::UIContentSizeFitter@ get_uiContentSizeFitter() property;
+	CoreEngine::UILayoutElement@ get_uiLayoutElement() property;
+	CoreEngine::UILayoutGroup@ get_uiLayoutGroup() property;
 	CoreEngine::UIMask@ get_uiMask() property;
+	CoreEngine::UIScrollView@ get_uiScrollView() property;
 	CoreEngine::UISlider@ get_uiSlider() property;
 	CoreEngine::UIToggle@ get_uiToggle() property;
 	CoreEngine::WaterProbe@ get_waterProbe() property;
@@ -1311,6 +1315,68 @@ class Text3DRenderer {
 	int get_depthMode() const property;
 	void set_depthMode(int) property;
 }
+class UIContentSizeFitter {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	CoreEngine::GameObject@ get_gameObject() const property;
+	int get_horizontalFit() const property;
+	void set_horizontalFit(int) property;
+	int get_verticalFit() const property;
+	void set_verticalFit(int) property;
+}
+class UILayoutElement {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	CoreEngine::GameObject@ get_gameObject() const property;
+	bool get_ignoreLayout() const property;
+	void set_ignoreLayout(bool) property;
+	float get_minWidth() const property;
+	void set_minWidth(float) property;
+	float get_minHeight() const property;
+	void set_minHeight(float) property;
+	float get_preferredWidth() const property;
+	void set_preferredWidth(float) property;
+	float get_preferredHeight() const property;
+	void set_preferredHeight(float) property;
+	float get_flexibleWidth() const property;
+	void set_flexibleWidth(float) property;
+	float get_flexibleHeight() const property;
+	void set_flexibleHeight(float) property;
+}
+class UILayoutGroup {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	CoreEngine::GameObject@ get_gameObject() const property;
+	int get_layoutType() const property;
+	void set_layoutType(int) property;
+	CoreEngine::Vector4 get_padding() const property;
+	void set_padding(const CoreEngine::Vector4&in) property;
+	float get_spacing() const property;
+	void set_spacing(float) property;
+	CoreEngine::Vector2 get_gridSpacing() const property;
+	void set_gridSpacing(const CoreEngine::Vector2&in) property;
+	CoreEngine::Vector2 get_cellSize() const property;
+	void set_cellSize(const CoreEngine::Vector2&in) property;
+	int get_gridConstraint() const property;
+	void set_gridConstraint(int) property;
+	int get_constraintCount() const property;
+	void set_constraintCount(int) property;
+	int get_childAlignment() const property;
+	void set_childAlignment(int) property;
+	bool get_controlChildWidth() const property;
+	void set_controlChildWidth(bool) property;
+	bool get_controlChildHeight() const property;
+	void set_controlChildHeight(bool) property;
+	bool get_childForceExpandWidth() const property;
+	void set_childForceExpandWidth(bool) property;
+	bool get_childForceExpandHeight() const property;
+	void set_childForceExpandHeight(bool) property;
+	bool get_reverseOrder() const property;
+	void set_reverseOrder(bool) property;
+}
 class UIMask {
 	bool get_exists() const property;
 	bool get_enabled() const property;
@@ -1318,6 +1384,28 @@ class UIMask {
 	CoreEngine::GameObject@ get_gameObject() const property;
 	bool get_showMaskGraphic() const property;
 	void set_showMaskGraphic(bool) property;
+}
+class UIScrollView {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	CoreEngine::GameObject@ get_gameObject() const property;
+	bool get_horizontal() const property;
+	void set_horizontal(bool) property;
+	bool get_vertical() const property;
+	void set_vertical(bool) property;
+	bool get_inertia() const property;
+	void set_inertia(bool) property;
+	float get_decelerationRate() const property;
+	void set_decelerationRate(float) property;
+	float get_wheelStep() const property;
+	void set_wheelStep(float) property;
+	CoreEngine::Vector2 get_normalizedPosition() const property;
+	void set_normalizedPosition(const CoreEngine::Vector2&in) property;
+	CoreEngine::Vector2 get_velocity() const property;
+	void set_velocity(const CoreEngine::Vector2&in) property;
+	void StopMovement();
+	void ScrollTo(CoreEngine::GameObject@ target);
 }
 class UISlider {
 	bool get_exists() const property;

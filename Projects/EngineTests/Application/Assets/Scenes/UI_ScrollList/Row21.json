@@ -1,0 +1,92 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchorMax": [
+                    0.0,
+                    0.0
+                ],
+                "anchorMin": [
+                    0.0,
+                    0.0
+                ],
+                "anchoredPosition": [
+                    8.0,
+                    1268.0
+                ],
+                "parent": {
+                    "comp": "RectTransform",
+                    "ref": "b06ac64208b93210"
+                },
+                "pivot": [
+                    0.0,
+                    0.0
+                ],
+                "rotation": 0.0,
+                "scale": [
+                    1.0,
+                    1.0
+                ],
+                "size": [
+                    560.0,
+                    56.0
+                ],
+                "sortOrder": 0
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    0.26,
+                    0.31,
+                    0.41,
+                    1.0
+                ],
+                "columns": 1,
+                "frame": 0,
+                "material": null,
+                "rows": 1,
+                "texture": null
+            },
+            "type": "UIImage"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "disabledColor": [
+                    0.45,
+                    0.45,
+                    0.45,
+                    0.6
+                ],
+                "hoveredColor": [
+                    0.375,
+                    0.4375,
+                    0.5625,
+                    1.0
+                ],
+                "interactable": true,
+                "normalColor": [
+                    0.26,
+                    0.31,
+                    0.41,
+                    1.0
+                ],
+                "pressedColor": [
+                    0.182,
+                    0.217,
+                    0.287,
+                    1.0
+                ]
+            },
+            "type": "UIButton"
+        }
+    ],
+    "id": "f5f13d5b492af713",
+    "name": "Row21",
+    "order": 47
+}

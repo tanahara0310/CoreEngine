@@ -100,10 +100,15 @@ namespace CoreEngine
         Direction GetDirection() const { return direction_; }
         void SetDirection(Direction direction);
 
+        /// @brief 値に合わせて置く「伸びる帯」と「つまみ」を繋ぐ（nullptr で外す）
+        void SetFill(RectTransformComponent* fill);
+        void SetHandle(RectTransformComponent* handle);
+
         // ===== IUIInteractable =====
 
         bool AcceptsInput() const override { return IsInteractable() && IsEnabled(); }
         void OnDrag(const Vector2& pointerOnCanvas, const Vector2& canvasSize) override;
+        bool CapturesDrag() const override { return true; }
         bool OnNavigate(UINavigationDirection direction) override;
 
     private:

@@ -57,6 +57,10 @@ namespace CoreEngine
             (void)canvasSize;
         }
 
+        /// @brief ポインタで押したまま動かしたとき、自分で受け取り続けるか
+        /// @return true なら、スクロールの中にあっても中身のドラッグに切り替わらない（つまみを掴むスライダーなど）
+        virtual bool CapturesDrag() const { return false; }
+
         /// @brief フォーカス中に向きの入力が来た
         /// @param direction 入力された向き
         /// @return true を返すと、その向きへのフォーカス送りは起きない

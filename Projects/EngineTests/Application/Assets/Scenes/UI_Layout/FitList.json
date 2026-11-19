@@ -1,0 +1,74 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchor": 0,
+                "anchoredPosition": [
+                    60.0,
+                    600.0
+                ],
+                "pivot": [
+                    0.0,
+                    0.0
+                ],
+                "rotation": 0.0,
+                "size": [
+                    300.0,
+                    150.0
+                ],
+                "sortOrder": 0
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    0.14,
+                    0.16,
+                    0.21,
+                    1.0
+                ],
+                "columns": 1,
+                "frame": 0,
+                "material": null,
+                "rows": 1,
+                "texture": null
+            },
+            "type": "UIImage"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "childAlignment": 0,
+                "childForceExpandHeight": false,
+                "childForceExpandWidth": true,
+                "controlChildHeight": false,
+                "controlChildWidth": true,
+                "layoutType": 0,
+                "padding": [
+                    10.0,
+                    10.0,
+                    10.0,
+                    10.0
+                ],
+                "reverseOrder": false,
+                "spacing": 5.0
+            },
+            "type": "UILayoutGroup"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "horizontalFit": 0,
+                "verticalFit": 2
+            },
+            "type": "UIContentSizeFitter"
+        }
+    ],
+    "id": "c09a6ff01a16567d",
+    "name": "FitList",
+    "order": 44
+}

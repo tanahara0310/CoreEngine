@@ -1,0 +1,66 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchor": 0,
+                "anchoredPosition": [
+                    520.0,
+                    80.0
+                ],
+                "pivot": [
+                    0.0,
+                    0.0
+                ],
+                "rotation": 0.0,
+                "size": [
+                    600.0,
+                    200.0
+                ],
+                "sortOrder": 0
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    0.14,
+                    0.16,
+                    0.21,
+                    1.0
+                ],
+                "columns": 1,
+                "frame": 0,
+                "material": null,
+                "rows": 1,
+                "texture": null
+            },
+            "type": "UIImage"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "childAlignment": 0,
+                "childForceExpandHeight": true,
+                "childForceExpandWidth": false,
+                "controlChildHeight": true,
+                "controlChildWidth": true,
+                "layoutType": 1,
+                "padding": [
+                    10.0,
+                    10.0,
+                    10.0,
+                    10.0
+                ],
+                "reverseOrder": false,
+                "spacing": 10.0
+            },
+            "type": "UILayoutGroup"
+        }
+    ],
+    "id": "81a63c0490c8cc7c",
+    "name": "HList",
+    "order": 10
+}

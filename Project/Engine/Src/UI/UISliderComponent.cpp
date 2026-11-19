@@ -100,6 +100,20 @@ namespace CoreEngine
         laidOutNormalized_ = -1.0f;
     }
 
+    void UISliderComponent::SetFill(RectTransformComponent* fill)
+    {
+        fill_.Set(fill);
+        laidOutNormalized_ = -1.0f;
+        ApplyLayout();
+    }
+
+    void UISliderComponent::SetHandle(RectTransformComponent* handle)
+    {
+        handle_.Set(handle);
+        laidOutNormalized_ = -1.0f;
+        ApplyLayout();
+    }
+
     void UISliderComponent::OnDrag(const Vector2& pointerOnCanvas, const Vector2& canvasSize)
     {
         if (IsInteractable()) {

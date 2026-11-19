@@ -9,6 +9,8 @@ namespace CoreEngine
     class EngineSystem;
     class IUIInteractable;
     class InputQuery;
+    class UIPointer;
+    class UIScrollViewComponent;
 
     /// @brief ポインタとキー・パッドで UI を操作する Feature
     /// @details 毎フレーム、ポインタが指している相手と、キー・パッドで選んでいる相手（フォーカス）を
@@ -65,6 +67,20 @@ namespace CoreEngine
         /// @brief 消えた相手・受け付けなくなった相手を手放す
         void ReleaseLost(const Presence& hovered, const Presence& focused, const Presence& pressed);
 
+        /// @brief ポインタの下のいちばん手前のスクロールを探す（掴んでいるスクロールが消えていたら手放す）
+        /// @return ポインタの下に無いか、スクロールの外の手前の UI に覆われていれば nullptr
+        UIScrollViewComponent* PickScrollView(SceneContext& ctx, const Vector2& canvasSize,
+                                              const Vector2& pointer, bool pointerOver);
+
+        /// @brief ホイールとドラッグでスクロールを動かす
+        /// @details 押して `UIScrollViewComponent::kDragThreshold` 動かすとドラッグにし、
+        ///          押していたボタンは押されなかったことにする。
+        void UpdateScroll(UIScrollViewComponent* under, const Vector2& canvasSize, const Vector2& onCanvas,
+                          const UIPointer& pointer, const InputQuery* query);
+
+        /// @brief 選んだ相手を含むスクロールを、相手が窓に入るまで動かす
+        static void ScrollIntoView(const IUIInteractable& target);
+
         /// @brief キー・パッドでの送りを見る（押しっぱなしのくり返しもここ）
         void UpdateNavigation(SceneContext& ctx, const Vector2& canvasSize,
                               const InputQuery& query);
@@ -98,6 +114,12 @@ namespace CoreEngine
 
         // 押し始めたのが決定キーか（false ならポインタ）。離したかを同じ入力で見るため
         bool pressedByKey_ = false;
+
+        // ポインタで押したスクロールと、押した所（キャンバス座標）。離すまで持つ
+        UIScrollViewComponent* scrollTarget_ = nullptr;
+        Vector2 scrollPressPoint_{};
+        // 押してから動かしてドラッグに切り替えたか
+        bool scrollDragging_ = false;
 
         // 押しっぱなしで送り続けるための状態
         UINavigationDirection repeatDirection_ = UINavigationDirection::Up;

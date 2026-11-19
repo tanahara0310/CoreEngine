@@ -158,7 +158,8 @@ namespace CoreEngine::ComponentEditing
                 { "環境", { "Light", "SkyBox", "VolumetricCloud", "HeightFog", "FogVolume", "PostProcess", "WaterSurface", "WaterProbe" } },
                 { "エフェクト", { "ParticleSystem", "GpuParticleSystem" } },
                 { "物理", { "Collider", "Rigidbody", "CharacterController", "PhysicsMaterial", "Buoyancy" } },
-                { "UI", { "RectTransform", "UIImage", "UIText", "UIButton", "UISlider", "UIToggle", "UIMask" } },
+                { "UI", { "RectTransform", "UIImage", "UIText", "UIButton", "UISlider", "UIToggle", "UIMask",
+                    "UILayoutGroup", "UILayoutElement", "UIContentSizeFitter", "UIScrollView" } },
                 { "音", { "AudioSource", "AudioListener" } },
             };
             return categories;

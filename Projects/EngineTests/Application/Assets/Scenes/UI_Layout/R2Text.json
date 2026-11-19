@@ -1,0 +1,72 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchorMax": [
+                    1.0,
+                    1.0
+                ],
+                "anchorMin": [
+                    0.0,
+                    0.0
+                ],
+                "anchoredPosition": [
+                    0.0,
+                    0.0
+                ],
+                "parent": {
+                    "comp": "RectTransform",
+                    "ref": "63d8aa62aa635677"
+                },
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "rotation": 0.0,
+                "scale": [
+                    1.0,
+                    1.0
+                ],
+                "size": [
+                    0.0,
+                    0.0
+                ],
+                "sortOrder": 0
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "alignH": 1,
+                "alignV": 1,
+                "color": [
+                    0.1,
+                    0.1,
+                    0.12,
+                    1.0
+                ],
+                "fieldAutoFit": false,
+                "font": "Default",
+                "fontSize": 28.0,
+                "lineSpacing": 1.0,
+                "outlineColor": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "outlineWidth": 0.0,
+                "text": "R2",
+                "weight": 0.0,
+                "wrapWidth": 0.0
+            },
+            "type": "UIText"
+        }
+    ],
+    "id": "959985709aef3095",
+    "name": "R2Text",
+    "order": 24
+}

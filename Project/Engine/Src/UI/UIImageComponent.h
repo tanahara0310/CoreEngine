@@ -145,6 +145,12 @@ namespace CoreEngine
         /// @brief テクスチャの実際の大きさ（px）
         Vector2 GetTextureSize() const { return textureSize_; }
 
+        /// @brief テクスチャを指しているか（指していなければ白い矩形を描く）
+        bool HasTexture() const { return textureAsset_.IsSet(); }
+
+        /// @brief 1 コマの画素数（テクスチャの大きさをコマ数で割った大きさ）
+        Vector2 GetFrameSize() const;
+
         /// @brief テクスチャの GPU ハンドル（読み込む前は 0）
         D3D12_GPU_DESCRIPTOR_HANDLE GetTextureGpuHandle() const { return textureHandle_.gpuHandle; }
 

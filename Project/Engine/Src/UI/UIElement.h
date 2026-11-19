@@ -32,6 +32,13 @@ namespace CoreEngine
             result.max = { (std::max)(result.max.x, result.min.x), (std::max)(result.max.y, result.min.y) };
             return result;
         }
+
+        /// @brief margin だけ広げた other と重なる所があるか
+        bool Overlaps(const UIRect& other, float margin = 0.0f) const
+        {
+            return min.x < other.max.x + margin && other.min.x - margin < max.x
+                && min.y < other.max.y + margin && other.min.y - margin < max.y;
+        }
     };
 
     /// @brief 回転を反映した 4 隅（キャンバス座標。右回りに並ぶ）

@@ -359,6 +359,9 @@ namespace CoreEngine
             if (ImGui::MenuItem("パネル")) {
                 sceneDebugEditor_->CreateUIObject(ObjectEditing::UIElementKind::Panel);
             }
+            if (ImGui::MenuItem("スクロールの一覧")) {
+                sceneDebugEditor_->CreateUIObject(ObjectEditing::UIElementKind::ScrollView);
+            }
             ImGui::EndMenu();
         }
 

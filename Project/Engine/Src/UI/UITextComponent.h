@@ -128,6 +128,10 @@ namespace CoreEngine
         /// @brief 最後に組んだ文字列を囲む大きさ（px）
         Vector2 GetMeasuredSize() const;
 
+        /// @brief 並べるときに使う中身の大きさ（px。文字列を囲む大きさ）
+        /// @details 文字列・フォント・枠が変わって組み直しが要るなら、ここで組み直してから返す。
+        Vector2 GetPreferredSize();
+
         /// @brief 描くグリフの数
         uint32_t GetGlyphCount() const { return static_cast<uint32_t>(glyphVertices_.size() / 4); }
 
