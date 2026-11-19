@@ -59,53 +59,72 @@ namespace CoreEngine
             ImVec2 max;
         };
 
-        /// @brief 形そのものは `UILayout` が持つ。ここは板の上へ写すだけ
+        /// @brief 形そのものは `RectTransformComponent` が持つ。ここは板の上へ写すだけ
         /// @note 「基準解像度で回してから画面へ引き伸ばす」順序は実際の描画と同じ。
         ///       逆にすると縦横比の違う画面で回転がずれる
-        ScreenQuad ComputeImageQuad(const UILayout& layout,
+        ScreenQuad ComputeImageQuad(const RectTransformComponent& rect,
                                     const ImVec2& canvasMin,
                                     const Vector2& referenceSize,
                                     const Vector2& scale)
         {
-            const UIQuad quad = layout.CalculateQuad(referenceSize);
+            const UIQuad quad = rect.GetCanvasQuad(referenceSize);
             ScreenQuad out;
             out.tl = ToScreen(quad.topLeft, canvasMin, scale);
             out.tr = ToScreen(quad.topRight, canvasMin, scale);
             out.br = ToScreen(quad.bottomRight, canvasMin, scale);
             out.bl = ToScreen(quad.bottomLeft, canvasMin, scale);
-            out.center = ToScreen(layout.CalculateScreenPosition(referenceSize), canvasMin, scale);
+            out.center = ToScreen(rect.GetCanvasPivot(referenceSize), canvasMin, scale);
             return out;
         }
 
-        ScreenRect ComputeImageRect(const UILayout& layout,
+        ScreenRect ComputeImageRect(const RectTransformComponent& rect,
                                     const ImVec2& canvasMin,
                                     const Vector2& referenceSize,
                                     const Vector2& scale)
         {
-            const UIRect rect = layout.CalculateRect(referenceSize);
+            const UIRect bounds = rect.GetCanvasBounds(referenceSize);
             ScreenRect out;
-            out.min = ToScreen(rect.min, canvasMin, scale);
-            out.max = ToScreen(rect.max, canvasMin, scale);
+            out.min = ToScreen(bounds.min, canvasMin, scale);
+            out.max = ToScreen(bounds.max, canvasMin, scale);
             return out;
         }
 
-        /// @brief 点が要素の上にあるか（当たり判定は `UILayout` が持つ）
-        bool PointInElement(const ImVec2& point, const UILayout& layout,
+        /// @brief 点が要素の上にあるか（当たり判定は `RectTransformComponent` が持つ）
+        bool PointInElement(const ImVec2& point, const RectTransformComponent& rect,
                             const ImVec2& canvasMin, const Vector2& referenceSize,
                             const Vector2& scale)
         {
-            return layout.ContainsPoint(ToCanvas(point, canvasMin, scale), referenceSize);
+            return rect.ContainsCanvasPoint(ToCanvas(point, canvasMin, scale), referenceSize);
+        }
+
+        /// @brief 点線を引く
+        void AddDashedLine(ImDrawList* drawList, const ImVec2& from, const ImVec2& to, ImU32 color)
+        {
+            constexpr float kDash = 6.0f;
+            const float dx = to.x - from.x;
+            const float dy = to.y - from.y;
+            const float length = std::sqrt(dx * dx + dy * dy);
+            if (length <= 0.0f) { return; }
+            for (float at = 0.0f; at < length; at += kDash * 2.0f) {
+                const float end = (std::min)(at + kDash, length);
+                drawList->AddLine(ImVec2(from.x + dx * at / length, from.y + dy * at / length),
+                    ImVec2(from.x + dx * end / length, from.y + dy * end / length), color, 1.0f);
+            }
+        }
+
+        /// @brief アンカーの印（小さな三角。先がアンカーの点を指す）
+        void AddAnchorMark(ImDrawList* drawList, const ImVec2& point, float signX, float signY, ImU32 color)
+        {
+            constexpr float kSize = 7.0f;
+            drawList->AddTriangleFilled(point,
+                ImVec2(point.x + signX * kSize, point.y + signY * kSize * 0.45f),
+                ImVec2(point.x + signX * kSize * 0.45f, point.y + signY * kSize), color);
         }
 
         /// @brief 控えた配置を UI トランスフォームへ書き戻す
         void ApplyLayout(RectTransformComponent& rect, const UILayout& layout)
         {
-            rect.SetAnchor(layout.anchor);
-            rect.SetAnchoredPosition(layout.anchoredPos);
-            rect.SetPivot(layout.pivot);
-            rect.SetSize(layout.size);
-            rect.SetRotation(layout.rotation);
-            rect.SetSortOrder(layout.sortOrder);
+            rect.SetLayout(layout);
         }
 
         /// @brief 配置の変更を、控えた配置へ戻す・やり直すコマンドとして履歴へ積む
@@ -123,7 +142,9 @@ namespace CoreEngine
         /// @brief 2 つの配置が同じか
         bool SameLayout(const UILayout& a, const UILayout& b)
         {
-            return a.anchor == b.anchor
+            return a.anchorMin.x == b.anchorMin.x && a.anchorMin.y == b.anchorMin.y
+                && a.anchorMax.x == b.anchorMax.x && a.anchorMax.y == b.anchorMax.y
+                && a.scale.x == b.scale.x && a.scale.y == b.scale.y
                 && a.anchoredPos.x == b.anchoredPos.x && a.anchoredPos.y == b.anchoredPos.y
                 && a.pivot.x == b.pivot.x && a.pivot.y == b.pivot.y
                 && a.size.x == b.size.x && a.size.y == b.size.y
@@ -265,15 +286,15 @@ namespace CoreEngine
             if (!obj || !obj->IsActive() || obj->IsMarkedForDestroy()) { continue; }
 
             RectTransformComponent* const rect = obj->GetComponent<RectTransformComponent>();
-            if (!rect) { continue; }
+            if (!rect || !rect->IsActiveInHierarchy()) { continue; }
             elements.push_back(CanvasElement{ obj.get(), rect,
                 obj->GetComponent<UIImageComponent>(), obj->GetComponent<UITextComponent>() });
         }
-        // 描く順（描画順の小さい順。同じなら画像の後に文字）に並べ、後ろほど手前にする
+        // 描く順（描画順の小さい順。同じなら画像の後に文字。親子があれば親の直後に子）に並べ、後ろほど手前にする
         std::stable_sort(elements.begin(), elements.end(),
             [](const CanvasElement& a, const CanvasElement& b) {
-                const int orderA = a.Layout().sortOrder;
-                const int orderB = b.Layout().sortOrder;
+                const int orderA = a.rect->GetPointerOrder();
+                const int orderB = b.rect->GetPointerOrder();
                 if (orderA != orderB) { return orderA < orderB; }
                 const int passA = (a.text != nullptr) ? 1 : 0;
                 const int passB = (b.text != nullptr) ? 1 : 0;
@@ -286,8 +307,7 @@ namespace CoreEngine
         for (const CanvasElement& element : elements) {
             if (useLivePreview) { break; }
 
-            const UILayout& layout = element.Layout();
-            ScreenQuad quad = ComputeImageQuad(layout, canvasMin, referenceSize, scale);
+            ScreenQuad quad = ComputeImageQuad(*element.rect, canvasMin, referenceSize, scale);
 
             if (element.image && element.image->IsEnabled()) {
                 D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle = element.image->GetTextureGpuHandle();
@@ -365,10 +385,10 @@ namespace CoreEngine
                 UIImageComponent* const image = elements[i].image;
                 if (!image || !image->IsEnabled() || !image->IsInteractable()) { continue; }
 
-                const UILayout& layout = elements[i].Layout();
-                if (!PointInElement(mousePos, layout, canvasMin, referenceSize, scale)) { continue; }
+                const RectTransformComponent& transform = *elements[i].rect;
+                if (!PointInElement(mousePos, transform, canvasMin, referenceSize, scale)) { continue; }
 
-                ScreenRect rect = ComputeImageRect(layout, canvasMin, referenceSize, scale);
+                ScreenRect rect = ComputeImageRect(transform, canvasMin, referenceSize, scale);
                 drawList->AddRectFilled(rect.min, rect.max, IM_COL32(255, 255, 255, 30));
                 image->InvokeOnHover();
 
@@ -490,8 +510,17 @@ namespace CoreEngine
                 gizmoTargetId_ = selected->object->GetObjectId();
             }
 
+            // 親があれば親の座標で動かす
             UILayout layout = selected->Layout();
-            if (Gizmo::ManipulateUI(layout, referenceSize, mode)) {
+            UIGizmoFrame frame;
+            UIRect parentRect;
+            frame.hasParent = selected->rect->ComputeParentFrame(referenceSize, parentRect, frame.parentToCanvas);
+            UILayout zero = layout;
+            zero.anchoredPos = { 0.0f, 0.0f };
+            frame.anchorBase = zero.CalculatePivotPosition(parentRect);
+            const Vector2 actualSize = layout.CalculateSize(parentRect);
+            frame.sizeBase = { actualSize.x - layout.size.x, actualSize.y - layout.size.y };
+            if (Gizmo::ManipulateUI(layout, referenceSize, mode, frame)) {
                 selected->rect->SetAnchoredPosition(layout.anchoredPos);
                 selected->rect->SetRotation(layout.rotation);
 
@@ -522,7 +551,7 @@ namespace CoreEngine
         {
             const CanvasElement* picked = nullptr;
             for (int i = static_cast<int>(elements.size()) - 1; i >= 0; --i) {
-                if (PointInElement(mousePos, elements[i].Layout(), canvasMin, referenceSize, scale)) {
+                if (PointInElement(mousePos, *elements[i].rect, canvasMin, referenceSize, scale)) {
                     picked = &elements[i];
                     break;
                 }
@@ -534,7 +563,29 @@ namespace CoreEngine
         // 掴む場所はギズモなので、枠は「どこが選ばれているか」を示すだけ
         selected = FindSelected(elements);
         if (selected) {
-            ScreenQuad quad = ComputeImageQuad(selected->Layout(), canvasMin, referenceSize, scale);
+            // 親の四角を点線で出す
+            if (const RectTransformComponent* const parent = selected->rect->GetParent()) {
+                const ScreenQuad parentQuad = ComputeImageQuad(*parent, canvasMin, referenceSize, scale);
+                constexpr ImU32 kParentColor = IM_COL32(255, 255, 255, 150);
+                AddDashedLine(drawList, parentQuad.tl, parentQuad.tr, kParentColor);
+                AddDashedLine(drawList, parentQuad.tr, parentQuad.br, kParentColor);
+                AddDashedLine(drawList, parentQuad.br, parentQuad.bl, kParentColor);
+                AddDashedLine(drawList, parentQuad.bl, parentQuad.tl, kParentColor);
+            }
+
+            // アンカーの四隅を小さな三角で出す（1 点に重なっていれば 4 つが集まる）
+            const UILayout& layout = selected->Layout();
+            constexpr ImU32 kAnchorColor = IM_COL32(255, 255, 255, 230);
+            const auto mark = [&](float x, float y, float signX, float signY) {
+                const Vector2 point = selected->rect->GetAnchorCanvasPoint({ x, y }, referenceSize);
+                AddAnchorMark(drawList, ToScreen(point, canvasMin, scale), signX, signY, kAnchorColor);
+            };
+            mark(layout.anchorMin.x, layout.anchorMin.y, -1.0f, -1.0f);
+            mark(layout.anchorMax.x, layout.anchorMin.y, 1.0f, -1.0f);
+            mark(layout.anchorMax.x, layout.anchorMax.y, 1.0f, 1.0f);
+            mark(layout.anchorMin.x, layout.anchorMax.y, -1.0f, 1.0f);
+
+            ScreenQuad quad = ComputeImageQuad(*selected->rect, canvasMin, referenceSize, scale);
             drawList->AddQuad(quad.tl, quad.tr, quad.br, quad.bl,
                 IM_COL32(0, 200, 255, 220), 2.0f);
         }

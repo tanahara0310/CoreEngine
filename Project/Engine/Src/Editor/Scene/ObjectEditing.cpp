@@ -16,6 +16,7 @@
 #include "Particle/ParticleSystemComponent.h"
 #include "Scene/PrefabSystem.h"
 #include "UI/RectTransformComponent.h"
+#include "UI/UIButtonComponent.h"
 #include "UI/UIImageComponent.h"
 #include "UI/UITextComponent.h"
 #include "Utility/Logger/Logger.h"
@@ -54,6 +55,27 @@ namespace CoreEngine::ObjectEditing
 
         /// 作った UI テキストの文字列
         constexpr const char* kNewTextString = "新しいテキスト";
+
+        /// UI ボタンのオブジェクトの名前
+        constexpr const char* kButtonObjectName = "Button";
+
+        /// UI パネルのオブジェクトの名前
+        constexpr const char* kPanelObjectName = "Panel";
+
+        /// 作った UI ボタンの文字列
+        constexpr const char* kNewButtonString = "ボタン";
+
+        /// 作った UI ボタンの大きさ（px）
+        const Vector2 kNewButtonSize = { 160.0f, 40.0f };
+
+        /// 作った UI ボタンの文字の色
+        const Vector4 kNewButtonTextColor = { 0.2f, 0.2f, 0.2f, 1.0f };
+
+        /// 作った UI パネルの色
+        const Vector4 kNewPanelColor = { 1.0f, 1.0f, 1.0f, 0.39f };
+
+        /// 子孫をたどる深さの上限
+        constexpr int kMaxHierarchyDepth = 64;
 
         /// UI を複製したときにずらす量（px）
         constexpr float kUIDuplicateOffset = 10.0f;
@@ -222,21 +244,25 @@ namespace CoreEngine::ObjectEditing
                 true, true));
         }
 
-        /// @brief オブジェクトの子孫を、子から先の順に集める
+        /// @brief オブジェクトの子孫（Transform と UI トランスフォームの子）を、子から先の順に集める
         void CollectDescendants(const GameObjectManager& manager, const GameObject& object,
-                                std::vector<GameObject*>& out)
+                                std::vector<GameObject*>& out, int depth = 0)
         {
             const TransformComponent* const transform = object.GetComponent<TransformComponent>();
-            if (!transform) {
+            const RectTransformComponent* const rect = object.GetComponent<RectTransformComponent>();
+            if ((!transform && !rect) || depth >= kMaxHierarchyDepth) {
                 return;
             }
             for (const auto& candidate : manager.GetAllObjects()) {
-                if (!candidate || candidate->IsMarkedForDestroy()) {
+                if (!candidate || candidate->IsMarkedForDestroy() || candidate.get() == &object) {
                     continue;
                 }
                 const TransformComponent* const child = candidate->GetComponent<TransformComponent>();
-                if (child && child->GetParent() == transform) {
-                    CollectDescendants(manager, *candidate, out);
+                const RectTransformComponent* const childRect = candidate->GetComponent<RectTransformComponent>();
+                const bool isChild = (transform && child && child->GetParent() == transform)
+                    || (rect && childRect && childRect->GetParent() == rect);
+                if (isChild) {
+                    CollectDescendants(manager, *candidate, out, depth + 1);
                     out.push_back(candidate.get());
                 }
             }
@@ -288,6 +314,66 @@ namespace CoreEngine::ObjectEditing
         {
             Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
                 "ObjectEditing: {} \"{}\" を作りました", kind, object.GetName());
+        }
+
+        /// @brief UI トランスフォームを親いっぱいに伸ばす
+        void StretchToParent(RectTransformComponent& rect)
+        {
+            rect.SetAnchors({ 0.0f, 0.0f }, { 1.0f, 1.0f });
+            rect.SetSize({ 0.0f, 0.0f });
+            rect.SetAnchoredPosition({ 0.0f, 0.0f });
+        }
+
+        /// @brief 画像とボタンを持つオブジェクトと、その子の文字のオブジェクトを作る（1 回の Undo で両方消える）
+        GameObject* CreateButton(const Context& context)
+        {
+            const std::string name = MakeUniqueName(*context.manager, kButtonObjectName);
+            Editor::BatchScope batch(name + " を作る");
+
+            GameObject* const button = CreateObject(context, name, [](GameObject& created) {
+                if (RectTransformComponent* const rect = created.AddComponent<RectTransformComponent>()) {
+                    rect->SetSize(kNewButtonSize);
+                }
+                created.AddComponent<UIImageComponent>();
+                created.AddComponent<UIButtonComponent>();
+            });
+            if (!button) {
+                return nullptr;
+            }
+
+            RectTransformComponent* const buttonRect = button->GetComponent<RectTransformComponent>();
+            CreateObject(context, MakeUniqueName(*context.manager, kTextObjectName), [buttonRect](GameObject& created) {
+                if (RectTransformComponent* const rect = created.AddComponent<RectTransformComponent>()) {
+                    rect->SetParent(buttonRect, false);
+                    StretchToParent(*rect);
+                }
+                if (UITextComponent* const text = created.AddComponent<UITextComponent>()) {
+                    text->SetFieldAutoFit(false);
+                    text->SetText(kNewButtonString);
+                    text->SetAlign(TextAlignH::Center, TextAlignV::Middle);
+                    text->SetColor(kNewButtonTextColor);
+                }
+            });
+            LogCreated("UI のボタン", *button);
+            return button;
+        }
+
+        /// @brief 親いっぱいに伸ばした半透明の画像を持つオブジェクトを作る
+        GameObject* CreatePanel(const Context& context)
+        {
+            GameObject* const panel = CreateObject(context, MakeUniqueName(*context.manager, kPanelObjectName),
+                [](GameObject& created) {
+                    if (RectTransformComponent* const rect = created.AddComponent<RectTransformComponent>()) {
+                        StretchToParent(*rect);
+                    }
+                    if (UIImageComponent* const image = created.AddComponent<UIImageComponent>()) {
+                        image->SetColor(kNewPanelColor);
+                    }
+                });
+            if (panel) {
+                LogCreated("UI のパネル", *panel);
+            }
+            return panel;
         }
     }
 
@@ -421,6 +507,13 @@ namespace CoreEngine::ObjectEditing
 
     GameObject* CreateUI(const Context& context, UIElementKind kind)
     {
+        if (kind == UIElementKind::Button) {
+            return CreateButton(context);
+        }
+        if (kind == UIElementKind::Panel) {
+            return CreatePanel(context);
+        }
+
         const char* const baseName = (kind == UIElementKind::Text) ? kTextObjectName : kImageObjectName;
 
         // UI トランスフォームを先頭に付ける
@@ -439,6 +532,62 @@ namespace CoreEngine::ObjectEditing
             LogCreated("UI のオブジェクト", *object);
         }
         return object;
+    }
+
+    bool CanSetUIParent(const GameObject& child, const GameObject* parent)
+    {
+        const RectTransformComponent* const rect = child.GetComponent<RectTransformComponent>();
+        if (!rect || child.IsMarkedForDestroy()) {
+            return false;
+        }
+        if (!parent) {
+            return rect->GetParent() != nullptr;
+        }
+        if (parent == &child || parent->IsMarkedForDestroy()) {
+            return false;
+        }
+        const RectTransformComponent* const parentRect = parent->GetComponent<RectTransformComponent>();
+        if (!parentRect || rect->GetParent() == parentRect) {
+            return false;
+        }
+        return !rect->IsSelfOrDescendant(parentRect);
+    }
+
+    bool SetUIParent(GameObject& child, GameObject* parent)
+    {
+        if (!CanSetUIParent(child, parent)) {
+            return false;
+        }
+        RectTransformComponent* const rect = child.GetComponent<RectTransformComponent>();
+        RectTransformComponent* const parentRect = parent ? parent->GetComponent<RectTransformComponent>() : nullptr;
+
+        // 親と配置をまとめて控え、まとめて戻す
+        struct ParentState
+        {
+            UILayout layout;
+            Reflection::ObjectRefValue parent;
+        };
+        const auto capture = [](RectTransformComponent& target) {
+            return ParentState{ target.GetLayout(), target.GetParentValue() };
+        };
+        const auto restore = [](RectTransformComponent& target, const ParentState& state) {
+            target.SetParentValue(state.parent);
+            target.SetLayout(state.layout);
+        };
+
+        ParentState before = capture(*rect);
+        if (!rect->SetParent(parentRect, true)) {
+            return false;
+        }
+
+        const std::string label = parent
+            ? child.GetName() + " を " + parent->GetName() + " の子にする"
+            : child.GetName() + " の親を外す";
+        Editor::EditorCommandStack::Get().Push(
+            std::make_unique<Editor::ComponentStateCommand<RectTransformComponent, ParentState>>(
+                label, *rect, std::move(before), capture, restore));
+        Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System, "ObjectEditing: {}", label);
+        return true;
     }
 
     GameObject* Duplicate(const Context& context, const GameObject& source)

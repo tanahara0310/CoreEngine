@@ -2,6 +2,7 @@
 #include "AssetMetadata.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
+#include <algorithm>
 #include <sstream>
 #include <random>
 #include <iomanip>
@@ -81,6 +82,24 @@ namespace CoreEngine
         settings.colorSpace = read("colorSpace", { "srgb", "linear", "normal" }, "\"srgb\"・\"linear\"・\"normal\" のどれか");
         settings.format = read("format", { "bc7", "bc3", "bc1", "bc5", "none" },
             "\"bc7\"・\"bc3\"・\"bc1\"・\"bc5\"・\"none\" のどれか");
+
+        // 9 スライスの枠の幅は、0 以上の数 4 つの並びだけを受け取る
+        const auto border = import->find("sliceBorder");
+        if (border != import->end()) {
+            bool valid = border->is_array() && border->size() == settings.sliceBorder.size();
+            for (size_t i = 0; valid && i < settings.sliceBorder.size(); ++i) {
+                valid = (*border)[i].is_number() && (*border)[i].get<float>() >= 0.0f;
+            }
+            if (valid) {
+                for (size_t i = 0; i < settings.sliceBorder.size(); ++i) {
+                    settings.sliceBorder[i] = (*border)[i].get<float>();
+                }
+            } else {
+                log.Logf(LogLevel::Warn, LogCategory::System,
+                    "{} の import.sliceBorder は 0 以上の数 4 つ（左・上・右・下）で書きます（読み飛ばしました）",
+                    log.PathToUtf8(metaFilePath));
+            }
+        }
         return settings;
     }
 
@@ -108,6 +127,13 @@ namespace CoreEngine
         };
         assign("colorSpace", settings.colorSpace);
         assign("format", settings.format);
+        const bool hasBorder = std::any_of(settings.sliceBorder.begin(), settings.sliceBorder.end(),
+            [](float value) { return value != 0.0f; });
+        if (hasBorder) {
+            import["sliceBorder"] = settings.sliceBorder;
+        } else {
+            import.erase("sliceBorder");
+        }
         if (import.empty()) {
             data.erase("import");
         } else {

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.97.0">
+<meta name="engine-version" content="0.98.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -3036,12 +3036,12 @@ kbd {
       <tr><td>名前を変える</td><td><strong>Inspector の一番上の名前欄</strong>で変えます</td></tr>
       <tr><td>複製</td><td><kbd>Ctrl</kbd>+<kbd>D</kbd>（Hierarchy か Game を選んでいるとき）</td></tr>
       <tr><td>削除</td><td><kbd>Delete</kbd>、または <span class="ui">GameObject<span class="arrow">▸</span>削除</span></td></tr>
-      <tr><td>親子にする</td><td>子にしたいものを選び、Inspector の <span class="ui">トランスフォーム</span> の <span class="ui">親</span> 欄で親を選ぶ（Hierarchy の行を <span class="ui">親</span> 欄へドラッグしても設定できます）</td></tr>
+      <tr><td>親子にする</td><td>子にしたいものを選び、Inspector の <span class="ui">トランスフォーム</span> の <span class="ui">親</span> 欄で親を選ぶ（Hierarchy の行を <span class="ui">親</span> 欄へドラッグしても設定できます）。UI は、子にしたい行を親の行へドラッグしても親子にでき、シーンの名前の行へ落とすと親を外します（<a href="#ui-parent">UI の親子</a>）</td></tr>
       <tr><td>プレハブにする</td><td>行を右クリック <span class="ui">プレハブとして保存</span>。<a href="#editor-prefab">詳しく</a></td></tr>
     </tbody>
   </table>
   </div>
-  <div class="callout note"><p>Hierarchy の中でのドラッグによる親子付けと、名前での絞り込みはありません。親子は Inspector の <span class="ui">親</span> 欄で決めます。</p></div>
+  <div class="callout note"><p>Hierarchy の中でのドラッグによる親子付けは UI だけで、3D のオブジェクトの親子は Inspector の <span class="ui">親</span> 欄で決めます。名前での絞り込みはありません。</p></div>
   <div class="callout warn"><p><kbd>Ctrl</kbd>+<kbd>C</kbd> も、文字を入力しているとき以外は<strong>選んでいるオブジェクトの複製</strong>になります。コピーのつもりで押すと複製が増えるので注意してください。</p></div>
 </article>
 
@@ -5597,7 +5597,7 @@ kbd {
   </ul>
 </article>
 
-<article class="page" id="script-ui" data-group="スクリプト" data-title="UI を作る" data-nav="UI" data-keywords="ui hud 画面 文字 テキスト uitext 画像 uiimage ボタン uibutton スライダー uislider トグル uitoggle アンカー anchor ピボット pivot recttransform フォーカス focus clearfocus メニュー タイトル スコア フォント font">
+<article class="page" id="script-ui" data-group="スクリプト" data-title="UI を作る" data-nav="UI" data-keywords="ui hud 画面 文字 テキスト uitext 画像 uiimage ボタン uibutton スライダー uislider トグル uitoggle アンカー anchor ピボット pivot recttransform フォーカス focus clearfocus メニュー タイトル スコア フォント font 親子 parent setparent findchild 伸ばす stretch 余白 9 スライス sliced ゲージ fill fillamount マスク uimask 切り抜き パネル">
   <h1>UI を作る</h1>
   <p class="lead">スコアや体力ゲージのような HUD、タイトル画面やポーズメニューのボタンを作ります。UI は 3D の世界とは別の、画面に重ねる平面に置きます。</p>
 
@@ -5628,7 +5628,7 @@ kbd {
     </tbody>
   </table>
   </div>
-  <p>右上に置くものは右上から、下の中央に置くものは下から測ると、位置の数字が小さく分かりやすくなります。UI には親子のレイアウトはなく、どの要素も画面に対して個別に置きます。重なり順は <span class="ui">描画順</span>（<code>sortOrder</code>）が大きいほど手前です。</p>
+  <p>右上に置くものは右上から、下の中央に置くものは下から測ると、位置の数字が小さく分かりやすくなります。UI の要素はほかの UI の子にでき、子は親の四角から測ります（<a href="#ui-parent">親子にしてまとめる</a>）。重なり順は <span class="ui">描画順</span>（<code>sortOrder</code>）が大きいほど手前です。</p>
 
   <h2 id="ui-create">UI を置く</h2>
   <div class="table-wrap">
@@ -5636,14 +5636,128 @@ kbd {
     <thead><tr><th>作りたいもの</th><th>作り方</th></tr></thead>
     <tbody>
       <tr><td>文字</td><td><span class="ui">GameObject<span class="arrow">▸</span>UI<span class="arrow">▸</span>テキスト</span>（または Canvas タブの <span class="ui">＋ テキスト</span>）</td></tr>
-      <tr><td>画像・パネル・ゲージ</td><td><span class="ui">GameObject<span class="arrow">▸</span>UI<span class="arrow">▸</span>画像</span>（または Canvas タブの <span class="ui">＋ 画像</span>）。テクスチャが空なら白い四角になり、色を付けて使えます</td></tr>
-      <tr><td>ボタン</td><td>画像を作り、<span class="ui">＋ コンポーネント追加</span> で <span class="ui">UI ボタン</span> を足す。文字は別のテキストを重ねる</td></tr>
+      <tr><td>画像・ゲージ</td><td><span class="ui">GameObject<span class="arrow">▸</span>UI<span class="arrow">▸</span>画像</span>（または Canvas タブの <span class="ui">＋ 画像</span>）。テクスチャが空なら白い四角になり、色を付けて使えます</td></tr>
+      <tr><td>パネル（背景）</td><td><span class="ui">GameObject<span class="arrow">▸</span>UI<span class="arrow">▸</span>パネル</span>。画面いっぱい（親の子にすれば親いっぱい）に伸びる、半透明の白い画像を作る</td></tr>
+      <tr><td>ボタン</td><td><span class="ui">GameObject<span class="arrow">▸</span>UI<span class="arrow">▸</span>ボタン（文字付き）</span>。画像と UI ボタンを持つオブジェクトと、その子の文字を一度に作る（<kbd>Ctrl</kbd>+<kbd>Z</kbd> 1 回で両方消える）</td></tr>
       <tr><td>スライダー・トグル</td><td>画像を作り、<span class="ui">UI スライダー</span> ／ <span class="ui">UI トグル</span> を足す（<a href="#ui-slider">下で説明</a>）</td></tr>
     </tbody>
   </table>
   </div>
   <p>配置は Game の隣の <span class="ui">Canvas</span> タブで、<span class="ui">Edit Mode</span> をオンにして編集します（<a href="#editor-viewport">Game ビュー</a>）。</p>
-  <div class="callout warn" data-title="文字と画像は別のオブジェクトにする"><p>描くコンポーネントは 1 つのオブジェクトに 1 つまでです。UI テキストと UI 画像は同じオブジェクトに付けられません。ボタンの文字は、ボタン（画像）とは別のテキストのオブジェクトを重ね、描画順を 1 つ大きくします。</p></div>
+  <div class="callout warn" data-title="文字と画像は別のオブジェクトにする"><p>描くコンポーネントは 1 つのオブジェクトに 1 つまでです。UI テキストと UI 画像は同じオブジェクトに付けられません。ボタンの文字は、ボタン（画像）の子のテキストにします。<span class="ui">ボタン（文字付き）</span> で作ると、最初からこの形になります。</p></div>
+
+  <h2 id="ui-parent">親子にしてまとめる</h2>
+  <p>UI の要素は、ほかの UI の子にできます。<a href="#editor-hierarchy">Hierarchy</a> で、子にしたい行を親にしたい行へドラッグします。シーンの名前の行へ落とすと親を外します。どちらも画面の上の見た目は変わらず、<kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せます。</p>
+  <ul>
+    <li><strong>子は親と一緒に動く</strong>：子の位置は親の四角から測ります。親を動かす・回す・拡大すると子も付いてきます。親を止める（<code>active = false</code>）と、子も消えて押せなくなります。</li>
+    <li><strong>描く順</strong>：子は親のすぐ後（手前）に描きます。兄弟の間は <span class="ui">描画順</span> の大きいほうが手前です。</li>
+    <li><strong>ボタンの文字</strong>：文字をボタンの子にすると、文字の上を押してもボタンが押されます。押したときの色はボタンの画像だけに付き、文字は自分の色のままです。</li>
+  </ul>
+
+  <h3 id="ui-stretch">親に合わせて伸ばす</h3>
+  <p>アンカーは 2 つの点、<span class="ui">アンカー（左上）</span> と <span class="ui">アンカー（右下）</span> で決めます。親の四角（親が無ければ画面）の左上が (0, 0)、右下が (1, 1) です。2 つが同じ点なら、これまでどおりその点から測ります。2 つが離れている向きは、親の大きさに合わせて伸びます。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>したいこと</th><th>アンカー（左上）</th><th>アンカー（右下）</th></tr></thead>
+    <tbody>
+      <tr><td>親の真ん中に置く（大きさは変わらない）</td><td>(0.5, 0.5)</td><td>(0.5, 0.5)</td></tr>
+      <tr><td>親いっぱいに広げる</td><td>(0, 0)</td><td>(1, 1)</td></tr>
+      <tr><td>親の上の端に、横いっぱいの帯を置く（タイトルバー）</td><td>(0, 0)</td><td>(1, 0)</td></tr>
+      <tr><td>親の右の端に、縦いっぱいの帯を置く（スクロールバー）</td><td>(1, 0)</td><td>(1, 1)</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>伸びる向きの <span class="ui">大きさ</span> は、2 つのアンカーの間の幅との差です（0 で親と同じ幅）。インスペクタでは、その向きを親の縁からの <span class="ui">余白</span>（左・上・右・下。px）で見せます。</p>
+
+  <h3 id="ui-anchor-presets">アンカーの選択</h3>
+  <p>インスペクタの <span class="ui">UI トランスフォーム</span> の一番上にある <span class="ui">アンカーの選択</span> を押すと、横（左・中央・右・横いっぱい）と縦（上・中央・下・縦いっぱい）を組み合わせた 16 通りの格子が出ます。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>選び方</th><th>変わるもの</th></tr></thead>
+    <tbody>
+      <tr><td>そのままクリック</td><td>アンカーだけ。画面の上の位置と大きさは保ちます</td></tr>
+      <tr><td><kbd>Shift</kbd> を押しながら</td><td>基準点も、選んだアンカーと同じ所にします</td></tr>
+      <tr><td><kbd>Alt</kbd> を押しながら</td><td>位置も 0 にします。伸びる向きは余白も 0 になり、親いっぱいに広がります</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>Canvas タブで UI を選ぶと、親の四角を破線で、アンカーの位置を三角の印で出します。</p>
+
+  <h3 id="ui-parent-script">スクリプトから親子を扱う</h3>
+  <script type="text/x-code" data-lang="as">
+    // 親を決める。画面の上の位置はそのまま（第 2 引数を false にすると、今の値のまま親の中で測る）
+    item.rectTransform.SetParent(list.rectTransform);
+
+    // 親を外す（画面の上の位置はそのまま）
+    item.rectTransform.SetParent(null);
+
+    // parent に書いても付け替えられる（ハンドルなので @ を付ける）
+    @item.rectTransform.parent = list.rectTransform;
+
+    // 名前で子を探す。"/" で区切ると孫まで辿る（見つからなければ null）
+    GameObject@ title = window.FindChild("TitleBar/TitleText");
+
+    // 画面の上の四角（x, y が左上、z, w が幅と高さ。1920×1080 の px）
+    Vector4 r = window.rectTransform.rect;
+  </script>
+  <p>自分や自分の子孫を親にすることはできません（警告を出して <code>false</code> を返します）。<code>GetChildren()</code> は、トランスフォームの子と UI の子のどちらも返します。</p>
+
+  <h2 id="ui-slice">伸ばしても角が崩れない枠（9 スライス）</h2>
+  <p>角の丸いパネルや枠の画像をそのまま伸ばすと、角までつぶれます。UI 画像の <span class="ui">描き方</span> を <span class="ui">9 スライス</span> にすると、画像を縦横 3 つずつに分け、4 つの角は元の大きさのまま、辺と真ん中だけを伸ばします。小さいボタンにも大きいウィンドウにも、同じ画像 1 枚が使えます。</p>
+  <ol class="steps">
+    <li><strong>枠の幅をテクスチャに書く</strong>Project でテクスチャを選び、Inspector の <span class="ui">9 スライスの縁</span> に、伸ばさない角の幅（左・上・右・下。テクスチャの px）を入れます。テクスチャの設定（<span class="path">.meta</span>）に保存され、そのテクスチャを使う UI 画像のすべてに効きます。</li>
+    <li><strong>UI 画像の描き方を変える</strong>そのテクスチャを指す UI 画像で、<span class="ui">描き方</span> を <span class="ui">9 スライス</span> にします。</li>
+  </ol>
+  <ul>
+    <li><span class="ui">真ん中を描く</span> を外すと、枠だけを描きます。</li>
+    <li>その UI 画像だけ幅を変えたいときは、<span class="ui">枠の幅を上書き</span> を入れて <span class="ui">枠の幅</span> を決めます。</li>
+    <li>UI 画像が左右（上下）の枠の幅の合計より小さいときは、角を同じ割合で縮めて重ならないようにします。</li>
+  </ul>
+
+  <h3 id="ui-fill">ゲージ（塗る量）</h3>
+  <p><span class="ui">描き方</span> を <span class="ui">塗る量</span> にすると、<span class="ui">塗る量</span>（<code>fillAmount</code>。0〜1）の割合だけを描きます。大きさは変えずに描く所を減らすので、画像の絵は伸び縮みしません。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>塗る向き</th><th>塗り始め</th><th>使い道</th></tr></thead>
+    <tbody>
+      <tr><td>横</td><td>左・右</td><td>体力ゲージ</td></tr>
+      <tr><td>縦</td><td>下・上</td><td>溜まっていくゲージ</td></tr>
+      <tr><td>円</td><td>上（12 時）・右・下・左。<span class="ui">時計回り</span> を外すと反時計回り</td><td>技の待ち時間・読み込み中の輪</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <script type="text/x-code" data-lang="as" data-file="HpGauge.as">
+    using namespace CoreEngine;
+
+    class HpGauge : ScriptComponent
+    {
+        [ObjectRef] [Tooltip("体力ゲージの UI 画像")]
+        GameObject@ hpBar;
+
+        void Start()
+        {
+            // インスペクタで決めておいてもよい
+            hpBar.uiImage.imageType = UIImageType::Filled;
+            hpBar.uiImage.fillMethod = UIFillMethod::Horizontal;
+            hpBar.uiImage.fillOrigin = UIFillOrigin::Left;
+        }
+
+        // 体力の割合（0〜1。外は丸める）
+        void SetHp(float ratio)
+        {
+            hpBar.uiImage.fillAmount = ratio;
+        }
+    }
+  </script>
+
+  <h2 id="ui-mask">はみ出た所を切る（UI マスク）</h2>
+  <p>スクロールする一覧や、窓の中だけに出したい絵には、親に <span class="ui">UI マスク</span> を足します（<span class="ui">＋ コンポーネント追加</span> ▸ <span class="ui">UI</span> ▸ <span class="ui">UI マスク</span>）。子と孫の UI は、親の四角からはみ出た所を描かず、はみ出た所はマウスでも押せません。</p>
+  <ul>
+    <li>マスクの中にマスクがあれば、2 つが重なった所だけを描きます。</li>
+    <li><span class="ui">自分の画像を描く</span> を外すと、マスクの UI 画像を描かずに、切る範囲としてだけ使います。</li>
+    <li>回したマスクは、回した四角を囲む傾いていない四角で切ります（コンソールに 1 回だけ警告が出ます）。</li>
+    <li>スクリプトで <code>uiMask.enabled = false</code> にすると、切るのをやめます。</li>
+  </ul>
 
   <h2 id="ui-text">文字を書き換える（HUD）</h2>
   <p>スクリプトに <code>[ObjectRef]</code> の欄を作り、インスペクタで文字のオブジェクトを繋ぎます。<code>uiText.text</code> に入れた文字列がそのまま表示されます。</p>
@@ -5690,9 +5804,8 @@ kbd {
 
   <h2 id="ui-button">ボタンを押せるようにする</h2>
   <ol class="steps">
-    <li><strong>見た目の画像を作る</strong><span class="ui">GameObject<span class="arrow">▸</span>UI<span class="arrow">▸</span>画像</span> で作り、大きさと色を決めます。</li>
-    <li><strong>UI ボタンを足す</strong><span class="ui">＋ コンポーネント追加</span> ▸ <span class="ui">UI ボタン</span>。マウスが乗ったとき・押したときの色が画像に書き込まれます。</li>
-    <li><strong>文字を重ねる</strong><span class="ui">UI<span class="arrow">▸</span>テキスト</span> で文字を作り、ボタンと同じ位置に置いて、描画順をボタンより 1 つ大きくします。</li>
+    <li><strong>ボタンを作る</strong><span class="ui">GameObject<span class="arrow">▸</span>UI<span class="arrow">▸</span>ボタン（文字付き）</span> で、画像と UI ボタンを持つオブジェクトと、その子の文字を作ります。今ある画像に <span class="ui">＋ コンポーネント追加</span> ▸ <span class="ui">UI ボタン</span> を足しても作れます。</li>
+    <li><strong>見た目を決める</strong>ボタンの大きさと色を決め、子の文字を書き換えます。マウスが乗ったとき・押したときの色はボタンの画像に書き込まれ、文字は自分の色のままです。</li>
     <li><strong>スクリプトで押されたかを見る</strong><code>uiButton.wasClicked</code> を Update で毎フレーム確かめます。</li>
   </ol>
   <script type="text/x-code" data-lang="as" data-file="TitleMenu.as">
@@ -11440,14 +11553,11 @@ python Tools/OkinawaBeach/bake_araha_walk.py
 
     class PauseMenu : ScriptComponent
     {
-        [ObjectRef] [Tooltip("ポーズ中に出す背景の UI 画像")]
+        [ObjectRef] [Tooltip("ポーズ中に出す背景の UI 画像（ボタンはこの子にしておく）")]
         GameObject@ panel;
 
         [ObjectRef] [Tooltip("「つづける」のボタン")]
         GameObject@ resumeButton;
-
-        [ObjectRef] [Tooltip("「つづける」のボタンの文字")]
-        GameObject@ resumeLabel;
 
         private bool paused_ = false;
 
@@ -11470,10 +11580,8 @@ python Tools/OkinawaBeach/bake_araha_walk.py
             paused_ = paused;
             Time::SetTimeScale(paused ? 0.0f : 1.0f);
 
-            // UI に親子は無いので、部品を 1 つずつ出し入れする
+            // ボタンとその文字はパネルの子なので、パネルだけで一緒に出し入れできる
             panel.active = paused;
-            resumeButton.active = paused;
-            resumeLabel.active = paused;
 
             if (paused) {
                 resumeButton.uiButton.Focus();     // キー・パッドで選べるように
@@ -12037,6 +12145,18 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-98-0">v0.98.0 <span class="dim">（2026-11-19）</span></h3>
+  <p>UI を親子にしてまとめ、親に合わせて伸ばせるようにし、角の崩れない枠・ゲージ・はみ出た所を切るマスクを足した版です（<a href="#ui-parent">親子にしてまとめる</a>）。親子を使わない今の UI の見た目・押せる範囲・保存の形は、前の版と同じです。</p>
+  <ul>
+    <li><strong>UI の親子</strong>：UI トランスフォームに <span class="ui">親</span> を足しました。Hierarchy で行を親の行へドラッグすると子になり、シーンの名前の行へ落とすと親を外します（<kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せます）。子は親の四角から測り、親の移動・回転・拡大・非表示に付いてきます。描く順は親のすぐ後です。</li>
+    <li><strong>伸びるアンカー</strong>：アンカーを 2 つの点（左上・右下）で決め、離した向きは親の大きさに合わせて伸びるようにしました。インスペクタの <span class="ui">アンカーの選択</span> で 16 通りから選べ（<kbd>Shift</kbd> で基準点も、<kbd>Alt</kbd> で位置も合わせる）、伸びる向きは余白で入力します。<span class="ui">拡大</span> も足しました。Canvas タブでは、選んだ UI の親の四角を破線で、アンカーを三角の印で出します（<a href="#ui-stretch">親に合わせて伸ばす</a>）。</li>
+    <li><strong>9 スライスとゲージ</strong>：UI 画像に <span class="ui">描き方</span> を足しました。<span class="ui">9 スライス</span> は角を伸ばさず辺と真ん中だけを伸ばし、枠の幅はテクスチャの Inspector の <span class="ui">9 スライスの縁</span> で決めます。<span class="ui">塗る量</span> は横・縦・円の向きに割合だけを描きます（<a href="#ui-slice">9 スライス</a>・<a href="#ui-fill">ゲージ</a>）。</li>
+    <li><strong>UI マスク</strong>：子と孫の UI を自分の四角の中だけに描き、はみ出た所では押せなくする <a href="#api-UIMask">UI マスク</a> を足しました。マスクの中のマスクは、重なった所だけを描きます。</li>
+    <li><strong>作るメニュー</strong>：<span class="ui">GameObject<span class="arrow">▸</span>UI</span> に <span class="ui">ボタン（文字付き）</span>（ボタンと、その子の文字）と <span class="ui">パネル</span>（親いっぱいの半透明の画像）を足しました。</li>
+    <li><strong>スクリプト</strong>：UI トランスフォームに <code>anchorMin</code>・<code>anchorMax</code>・<code>sizeDelta</code>・<code>scale</code>・<code>parent</code>・<code>SetParent</code>・<code>rect</code>、UI 画像に <code>imageType</code>・<code>fillAmount</code>・<code>fillMethod</code>・<code>fillOrigin</code>・<code>fillClockwise</code>・<code>fillCenter</code>、<code>GameObject</code> に <code>FindChild</code> を足しました。<code>GetChildren</code> は UI の子も返します。</li>
+    <li><strong>試験のシーン</strong>：<span class="path">Projects/EngineTests</span> に <code>UI_Nested</code>（親子・伸びる子・ボタンの文字）、<code>UI_NineSlice</code>（大きさの違う 9 スライスと、目盛り付きのゲージ）、<code>UI_Mask</code>（はみ出た子・入れ子のマスク・回したマスク）を足しました。どれも結果をコンソールへ出します。</li>
+  </ul>
 
   <h3 id="changelog-v0-97-0">v0.97.0 <span class="dim">（2026-11-19）</span></h3>
   <p>メッシュの形の三角形をシーンの読み込みの間に準備し、コライダーの多いシーンの当たり判定を軽くした版です。当たり方とその結果は前の版と同じです。</p>
@@ -13476,7 +13596,8 @@ class Rotator : ScriptComponent
           { n: "AddComponent", s: "bool AddComponent(const string&in typeName)", t: "m", d: "型名（<code>\"Rigidbody\"</code> やスクリプトのクラス名）のコンポーネントを足します。足せたら <code>true</code>。同じ型が付いていれば <code>false</code>、知らない型名は例外。エディタの道具（EditorWindow とメニューの関数）から呼ぶと <kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せます。" },
           { n: "RemoveComponent", s: "bool RemoveComponent(const string&in typeName)", t: "m", d: "型名のコンポーネントを外します。付いていない・ほかのコンポーネントが使っている（メッシュ描画が使う Transform など）なら <code>false</code>。" },
           { n: "HasComponent", s: "bool HasComponent(const string&in typeName) const", t: "m", d: "型名のコンポーネントが付いているか。" },
-          { n: "GetChildren", s: "GameObject@[]@ GetChildren() const", t: "m", d: "Transform の子のオブジェクト（孫は含まない）。シーンのオブジェクトを順に調べるので、毎フレームより必要なときに呼びます。" },
+          { n: "GetChildren", s: "GameObject@[]@ GetChildren() const", t: "m", d: "子のオブジェクト（トランスフォームの子と UI の子。孫は含まない）。シーンのオブジェクトを順に調べるので、毎フレームより必要なときに呼びます。" },
+          { n: "FindChild", s: "GameObject@ FindChild(const string&in name) const", t: "m", d: "名前で子を探します。<code>\"TitleBar/TitleText\"</code> のように <code>/</code> で区切ると孫まで辿ります。見つからなければ <code>null</code>。同じ名前の子が複数あるときは最初に見つかったもの。" },
           { n: "SpawnUIText", s: "UIText@ SpawnUIText(const string&in fontName, const string&in text, const string&in name) const", t: "m", d: "同じシーンに UI の文字を作ります。<strong>シーンには保存されません</strong>。基準点（pivot）は左上 <code>(0, 0)</code> になります。" },
           { n: "SpawnUIImage", s: "UIImage@ SpawnUIImage(const string&in texturePath, const string&in name) const", t: "m", d: "同じシーンに UI の画像を作ります。大きさはテクスチャの大きさに合わせます。<strong>シーンには保存されません</strong>。" },
           { n: "opEquals", s: "bool opEquals(const GameObject&in) const", t: "op", d: "<code>a == b</code> で同じ実体を指しているかを比べます（どちらかに実体が無ければ <code>false</code>）。ハンドルそのものが同じかは <code>a is b</code> で比べます。" }
@@ -14419,6 +14540,30 @@ void Awake()
     summary: "文字の縦の揃えです。",
     values: [["Top", 0, "上揃え"], ["Middle", 1, "中央揃え"], ["Bottom", 2, "下揃え"]],
     see: [["api-UIText", "UIText"]]
+  },
+
+  {
+    id: "UIImageType", kind: "enum", cat: "UI", brief: "UI 画像の描き方",
+    keywords: "描き方 9 スライス 塗る量 ゲージ",
+    summary: "UI 画像の描き方です。",
+    values: [["Simple", 0, "単純（四角 1 枚に伸ばす）"], ["Sliced", 1, "9 スライス（角は伸ばさず辺と真ん中だけ伸ばす）"], ["Filled", 2, "塗る量（割合だけ描く）"]],
+    see: [["api-UIImage", "UIImage"], ["ui-slice", "9 スライス"]]
+  },
+
+  {
+    id: "UIFillMethod", kind: "enum", cat: "UI", brief: "塗る量の向き",
+    keywords: "ゲージ 横 縦 円",
+    summary: "描き方が塗る量のときの、塗る向きです。",
+    values: [["Horizontal", 0, "横"], ["Vertical", 1, "縦"], ["Radial360", 2, "円（360 度）"]],
+    see: [["api-UIImage", "UIImage"], ["ui-fill", "ゲージ"]]
+  },
+
+  {
+    id: "UIFillOrigin", kind: "enum", cat: "UI", brief: "塗り始める側",
+    keywords: "ゲージ 塗り始め",
+    summary: "塗り始める側です。横は Left か Right、縦は Bottom か Top を使います（ほかの値は Left・Bottom と同じ）。円は、その向き（Top = 12 時）から塗ります。",
+    values: [["Left", 0, "左（円は 9 時）"], ["Right", 1, "右（円は 3 時）"], ["Bottom", 2, "下（円は 6 時）"], ["Top", 3, "上（円は 12 時）"]],
+    see: [["api-UIImage", "UIImage"], ["ui-fill", "ゲージ"]]
   },
 
   // =================================================================== サウンド
@@ -18904,18 +19049,30 @@ void Explode(const Vector3 &in position, int count)
   {
     id: "RectTransform", kind: "component", cat: "UI", display: "UI トランスフォーム", type: "RectTransform",
     accessor: "owner.rectTransform", title: "UI トランスフォーム（RectTransform）", brief: "UI の位置と大きさ",
-    keywords: "UI 配置 アンカー 基準点 ピボット 大きさ 描画順 レイアウト",
-    summary: "UI の位置・大きさ・描画順を決めます。UI の画面は<strong>1920×1080 固定</strong>で、左上が原点・下が +Y のピクセル単位です（画面の大きさが違っても拡大・縮小して合わせます）。",
+    keywords: "UI 配置 アンカー 基準点 ピボット 大きさ 描画順 レイアウト 親子 親 伸ばす 余白 拡大",
+    summary: "UI の位置・大きさ・描画順と、UI の親子を決めます。UI の画面は<strong>1920×1080 固定</strong>で、左上が原点・下が +Y のピクセル単位です（画面の大きさが違っても拡大・縮小して合わせます）。親のある UI は、親の四角から測ります。",
     props: [
-      ["アンカー", "anchor", "int（UIAnchor）", "4（中央）", "画面のどこから測るか：0 = 左上、1 = 上、2 = 右上、3 = 左、4 = 中央、5 = 右、6 = 左下、7 = 下、8 = 右下"],
+      ["アンカーの選択", "anchor", "UIAnchor", "中央", "インスペクタは 16 通りの格子から選ぶ（<a href=\"#ui-anchor-presets\">アンカーの選択</a>）。スクリプトの <code>anchor</code> は 9 か所のどれかで、書くと 2 つのアンカーをその点にする。"],
+      ["アンカー（左上） ／ アンカー（右下）", "anchorMin ／ anchorMax", "Vector2", "(0.5, 0.5) ／ (0.5, 0.5)", "親の四角（親が無ければ画面）のどこから測るか。(0, 0) が左上、(1, 1) が右下。2 つを離した向きは、親の大きさに合わせて伸びる。"],
       ["位置", "anchoredPosition", "Vector2", "(0, 0)", "アンカーからの位置（px。下が +Y）。"],
-      ["基準点", "pivot", "Vector2", "(0.5, 0.5)", "自分のどこを位置に合わせるか。(0, 0) が左上、(1, 1) が右下。"],
-      ["大きさ", "size", "Vector2", "(100, 100)", "px。"],
+      ["基準点", "pivot", "Vector2", "(0.5, 0.5)", "自分のどこを位置に合わせるか。(0, 0) が左上、(1, 1) が右下。回転と拡大の中心でもある。"],
+      ["大きさ", "size ／ sizeDelta", "Vector2", "(100, 100)", "px。アンカーを離した向きは、アンカーの間の幅（高さ）との差（0 で同じ幅）で、インスペクタは余白（左・上・右・下）で見せる。"],
       ["回転", "rotation", "float", "0", "インスペクタは度、スクリプトはラジアン。"],
-      ["描画順", "sortOrder", "int", "0", "大きいほど手前。同じなら文字が画像の上。"]
+      ["拡大", "scale", "Vector2", "(1, 1)", "大きさは変えずに、自分と子を基準点を中心に拡大する。"],
+      ["描画順", "sortOrder", "int", "0", "大きいほど手前。同じなら文字が画像の上。子は親のすぐ後に描き、兄弟の間でこの順に並べる。"],
+      ["親", "parent", "RectTransform", "なし", "親の UI。Hierarchy で子にしたい行を親の行へドラッグしても決められる。"]
     ],
-    notes: "<ul><li>UI には親子のレイアウトはありません。どの要素も画面に対して個別に置きます。</li><li>画面の右上に置くときは、アンカーを右上、基準点を (1, 0) にして、位置を (-40, 30) のように内側へずらします。</li></ul>",
-    see: [["script-ui", "UI を作る"], ["api-UIAnchor", "UIAnchor"]]
+    sections: [
+      {
+        title: "スクリプトから使えるメンバー（親子）", members: [
+          { n: "parent", s: "RectTransform@ parent", t: "rw", d: "親（無ければ <code>null</code>）。<code>@rect.parent = 親;</code> と <code>@</code> を付けて書くと、<code>SetParent(親, true)</code> と同じ。" },
+          { n: "SetParent", s: "bool SetParent(RectTransform@+ parent, bool keepPosition = true)", t: "m", d: "親を決めます（<code>null</code> で外す）。<code>keepPosition</code> が <code>true</code> なら画面の上の位置・大きさ・向きを保つように値を直し、<code>false</code> なら今の値のまま親の中で測ります。自分や自分の子孫は親にできず、警告を出して <code>false</code> を返します。" },
+          { n: "rect", s: "Vector4 rect", t: "ro", d: "画面の上の四角（x, y が左上、z, w が幅と高さ。1920×1080 の px）。回っているときは、それを囲む四角。" }
+        ]
+      }
+    ],
+    notes: "<ul><li>親を動かす・回す・拡大すると子も付いてきて、親を止めると子も消えて押せなくなります（<a href=\"#ui-parent\">親子にしてまとめる</a>）。</li><li>画面の右上に置くときは、アンカーを右上、基準点を (1, 0) にして、位置を (-40, 30) のように内側へずらします。</li><li>親が無く、アンカーが 9 か所のどれか 1 点で、拡大が 1 の UI は、これまでの版と同じ形でシーンに保存します。</li></ul>",
+    see: [["script-ui", "UI を作る"], ["ui-stretch", "親に合わせて伸ばす"], ["api-UIAnchor", "UIAnchor"]]
   },
 
   {
@@ -18964,7 +19121,7 @@ void Explode(const Vector3 &in position, int count)
         ]
       }
     ],
-    notes: "<ul><li>UI テキストと UI 画像は同じオブジェクトに付けられません（描画するコンポーネントは 1 つまで）。ボタンの文字は、ボタンの画像の上に別のテキストのオブジェクトを重ね、描画順を 1 つ大きくします。</li><li>日本語の行末の禁則処理に対応しています。</li></ul>",
+    notes: "<ul><li>UI テキストと UI 画像は同じオブジェクトに付けられません（描画するコンポーネントは 1 つまで）。ボタンの文字は、ボタンの子のテキストにします（<span class=\"ui\">GameObject ▸ UI ▸ ボタン（文字付き）</span> で作るとこの形になる）。</li><li>日本語の行末の禁則処理に対応しています。</li></ul>",
     examples: [
       {
         title: "例：スコアを表示する",
@@ -18989,7 +19146,7 @@ void AddScore(int points)
   {
     id: "UIImage", kind: "component", cat: "UI", display: "UI 画像", type: "UIImage",
     accessor: "owner.uiImage", title: "UI 画像（UIImage）", brief: "画面に重ねる画像",
-    keywords: "画像 アイコン ゲージ HP バー テクスチャ 背景 パネル",
+    keywords: "画像 アイコン ゲージ HP バー テクスチャ 背景 パネル 9 スライス 枠 塗る量 fill 円 クールダウン",
     summary: "画面に重ねる画像です。アイコン・ゲージ・パネル・ボタンの見た目に使います。<span class=\"ui\">GameObject<span class=\"arrow\">▸</span>UI<span class=\"arrow\">▸</span>画像</span> で作れます。",
     requires: "UI トランスフォーム（自動で足します）",
     props: [
@@ -18997,7 +19154,14 @@ void AddScore(int points)
       ["色", "color", "Vector4（色）", "白", "掛け合わせる色。"],
       ["マテリアル", "material", "string（マテリアル）", "なし", "描き方を決めるシェーダと値（.mat）。指さなければテクスチャ × 色で描く（<a href=\"#script-material\">マテリアルとシェーダ</a>）。"],
       ["横のコマ数 ／ 縦のコマ数", "columns ／ rows", "int", "1 ／ 1", "テクスチャを横と縦に何コマへ分けるか（ボタンや数字を並べたシート用）。"],
-      ["コマ", "frame", "int", "0", "描くコマ。左上を 0 として右へ数え、行の終わりで次の行へ進む。範囲外は端のコマに丸める。"]
+      ["コマ", "frame", "int", "0", "描くコマ。左上を 0 として右へ数え、行の終わりで次の行へ進む。範囲外は端のコマに丸める。"],
+      ["描き方", "imageType", "UIImageType", "単純", "単純：四角 1 枚に伸ばす／9 スライス：角は伸ばさず辺と真ん中だけ伸ばす／塗る量：割合だけ描く（<a href=\"#ui-slice\">9 スライス</a>・<a href=\"#ui-fill\">ゲージ</a>）。"],
+      ["真ん中を描く", "fillCenter", "bool", "オン", "9 スライスのとき。外すと枠だけを描く。"],
+      ["枠の幅を上書き ／ 枠の幅", "", "bool ／ Vector4", "オフ ／ (0, 0, 0, 0)", "9 スライスのとき。外すとテクスチャの <span class=\"ui\">9 スライスの縁</span> を使う。幅は左・上・右・下（テクスチャの px）。"],
+      ["塗る向き", "fillMethod", "UIFillMethod", "横", "塗る量のとき。横・縦・円。"],
+      ["塗る量", "fillAmount", "float", "1", "塗る量のとき。0 で何も描かず、1 で全部描く（外は丸める）。"],
+      ["塗り始め", "fillOrigin", "UIFillOrigin", "左", "塗る量のとき。横は左か右、縦は下か上、円はその向き（上 = 12 時）から塗る。"],
+      ["時計回り", "fillClockwise", "bool", "オン", "円のとき。"]
     ],
     sections: [
       {
@@ -19009,6 +19173,12 @@ void AddScore(int points)
           { n: "rows", s: "int rows", t: "rw", d: "縦のコマ数。" },
           { n: "frame", s: "int frame", t: "rw", d: "描くコマ。" },
           { n: "SetNativeSize", s: "void SetNativeSize()", t: "m", d: "表示の大きさを 1 コマの画素数にします。" },
+          { n: "imageType", s: "UIImageType imageType", t: "rw", d: "描き方（単純・9 スライス・塗る量）。" },
+          { n: "fillCenter", s: "bool fillCenter", t: "rw", d: "9 スライスで真ん中を描くか。" },
+          { n: "fillMethod", s: "UIFillMethod fillMethod", t: "rw", d: "塗る向き。" },
+          { n: "fillAmount", s: "float fillAmount", t: "rw", d: "塗る量（0〜1）。" },
+          { n: "fillOrigin", s: "UIFillOrigin fillOrigin", t: "rw", d: "塗り始める側。" },
+          { n: "fillClockwise", s: "bool fillClockwise", t: "rw", d: "円を時計回りに塗るか。" },
           { n: "material", s: "string material", t: "rw", d: "マテリアル（.mat）のパス。空なら標準の描き方。" },
           { n: "SetMaterialFloat", s: "void SetMaterialFloat(const string&in name, float value)", t: "m", d: "マテリアルの値（数）を、この UI 画像だけ上書きします。" },
           { n: "SetMaterialInt", s: "void SetMaterialInt(const string&in name, int value)", t: "m", d: "整数の値を上書きします。" },
@@ -19030,25 +19200,38 @@ void AddScore(int points)
     ],
     examples: [
       {
-        title: "例：HP ゲージ（基準点を左端 (0, 0.5) にしておくと左から減る）",
+        title: "例：HP ゲージ（描き方を「塗る量」、塗る向きを「横」にした UI 画像）",
         code: `
 [ObjectRef] GameObject@ hpBar;
-private float fullWidth_ = 0.0f;
-
-void Start()
-{
-    fullWidth_ = hpBar.uiImage.size.x;
-}
 
 void SetHp(float ratio)   // 0〜1
 {
-    Vector2 size = hpBar.uiImage.size;
-    size.x = fullWidth_ * Saturate(ratio);
-    hpBar.uiImage.size = size;
+    hpBar.uiImage.fillAmount = ratio;   // 右から減る（塗り始めが左）
 }`
       }
     ],
     see: [["script-ui", "UI を作る"], ["api-UIButton", "UI ボタン"], ["script-material", "マテリアルとシェーダ"]]
+  },
+
+  {
+    id: "UIMask", kind: "component", cat: "UI", display: "UI マスク", type: "UIMask",
+    accessor: "owner.uiMask", title: "UI マスク（UIMask）", brief: "子の UI を自分の四角の中だけに描く",
+    keywords: "マスク 切り抜き クリップ はみ出し スクロール 窓 一覧",
+    summary: "子と孫の UI を、自分の UI トランスフォームの四角の中だけに描きます。はみ出た所は描かず、マウスでも押せません。",
+    requires: "UI トランスフォーム（自動で足します）",
+    props: [
+      ["自分の画像を描く", "showMaskGraphic", "bool", "オン", "外すと、同じオブジェクトの UI 画像を描かずに、切る範囲としてだけ使う。"]
+    ],
+    sections: [
+      {
+        title: "スクリプトから使えるメンバー", members: [
+          { n: "enabled", s: "bool enabled", t: "rw", d: "切るか。<code>false</code> にすると子をはみ出たまま描きます。" },
+          { n: "showMaskGraphic", s: "bool showMaskGraphic", t: "rw", d: "同じオブジェクトの UI 画像を描くか。" }
+        ]
+      }
+    ],
+    notes: "<ul><li>マスクの中にマスクがあれば、2 つが重なった所だけを描きます。</li><li>回したマスクは、回した四角を囲む傾いていない四角で切り、コンソールに 1 回だけ警告を出します。</li></ul>",
+    see: [["ui-mask", "はみ出た所を切る"], ["api-RectTransform", "UI トランスフォーム"]]
   },
 
   {
@@ -19078,7 +19261,7 @@ void SetHp(float ratio)   // 0〜1
         ]
       }
     ],
-    notes: "<ul><li>ボタンの作り方：<span class=\"ui\">GameObject ▸ UI ▸ 画像</span> で画像を作り、<span class=\"ui\">＋ コンポーネント追加</span> で <span class=\"ui\">UI ボタン</span> を足す。文字は別の UI テキストを重ねて、描画順を 1 つ大きくする。</li><li>クリックはマウスの左ボタンを同じボタンの上で押して離したとき、またはキー・パッドで選んで決定（<code>UIConfirm</code>）したときです。</li><li>キーやパッドで選んでいる間は、ゲームの操作（Game のアクション）が止まります。メニューを閉じたら <code>UI::ClearFocus()</code>。</li></ul>",
+    notes: "<ul><li>ボタンの作り方：<span class=\"ui\">GameObject ▸ UI ▸ ボタン（文字付き）</span> で、画像と UI ボタンのオブジェクトと、その子の文字を作る。今ある画像に <span class=\"ui\">＋ コンポーネント追加</span> で <span class=\"ui\">UI ボタン</span> を足してもよい。子の文字の上を押してもボタンが押される。</li><li>クリックはマウスの左ボタンを同じボタンの上で押して離したとき、またはキー・パッドで選んで決定（<code>UIConfirm</code>）したときです。</li><li>キーやパッドで選んでいる間は、ゲームの操作（Game のアクション）が止まります。メニューを閉じたら <code>UI::ClearFocus()</code>。</li></ul>",
     examples: [
       {
         title: "例：タイトル画面のボタン", file: "TitleMenu.as",

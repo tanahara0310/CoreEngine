@@ -10,6 +10,7 @@
 #include "Script/Binding/ComponentBinding.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
 #include "Script/ScriptComponent.h"
+#include "UI/RectTransformComponent.h"
 #include "Utility/Logger/Logger.h"
 
 #ifdef CORE_EDITOR
@@ -20,6 +21,7 @@
 #include <angelscript.h>
 #include <scriptarray/scriptarray.h>
 
+#include <string_view>
 #include <unordered_set>
 
 namespace CoreEngine::Script
@@ -405,21 +407,51 @@ namespace CoreEngine::Script
         return object && FindComponentByName(*object, typeName) != nullptr;
     }
 
+    namespace
+    {
+        /// @brief candidate が parent の直接の子か（Transform か UI トランスフォームの親で見る）
+        bool IsDirectChild(const GameObject& candidate, const GameObject& parent)
+        {
+            if (const TransformComponent* const transform = parent.GetComponent<TransformComponent>()) {
+                const TransformComponent* const child = candidate.GetComponent<TransformComponent>();
+                if (child && child->GetParent() == transform) {
+                    return true;
+                }
+            }
+            if (const RectTransformComponent* const rect = parent.GetComponent<RectTransformComponent>()) {
+                const RectTransformComponent* const child = candidate.GetComponent<RectTransformComponent>();
+                if (child && child->GetParent() == rect) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// @brief parent の直接の子から名前の合うものを探す（並んでいる順で最初のもの）
+        const GameObject* FindDirectChild(const GameObjectManager& manager, const GameObject& parent,
+                                          std::string_view name)
+        {
+            for (const auto& candidate : manager.GetAllObjects()) {
+                if (candidate && !candidate->IsMarkedForDestroy() && candidate.get() != &parent
+                    && candidate->GetName() == name && IsDirectChild(*candidate, parent)) {
+                    return candidate.get();
+                }
+            }
+            return nullptr;
+        }
+    }
+
     CScriptArray* ScriptGameObject::GetChildren() const
     {
         CScriptArray* const result = CreateArray("array<GameObject@>");
         const GameObject* const self = ResolveOrWarn("子の検索");
-        const TransformComponent* const transform = self ? self->GetComponent<TransformComponent>() : nullptr;
         const GameObjectManager* const manager = self ? self->GetObjectManager() : nullptr;
-        if (!result || !transform || !manager) {
+        if (!result || !manager) {
             return result;
         }
         for (const auto& candidate : manager->GetAllObjects()) {
-            if (!candidate || candidate->IsMarkedForDestroy()) {
-                continue;
-            }
-            const TransformComponent* const child = candidate->GetComponent<TransformComponent>();
-            if (!child || child->GetParent() != transform) {
+            if (!candidate || candidate->IsMarkedForDestroy() || candidate.get() == self
+                || !IsDirectChild(*candidate, *self)) {
                 continue;
             }
             ScriptGameObject* handle = CreateForObject(candidate.get());
@@ -427,6 +459,22 @@ namespace CoreEngine::Script
             handle->Release();
         }
         return result;
+    }
+
+    ScriptGameObject* ScriptGameObject::FindChild(const std::string& name) const
+    {
+        const GameObject* current = ResolveOrWarn("子の検索");
+        const GameObjectManager* const manager = current ? current->GetObjectManager() : nullptr;
+        if (!manager || name.empty()) {
+            return nullptr;
+        }
+        std::string_view rest = name;
+        while (current && !rest.empty()) {
+            const std::size_t slash = rest.find('/');
+            current = FindDirectChild(*manager, *current, rest.substr(0, slash));
+            rest = (slash == std::string_view::npos) ? std::string_view{} : rest.substr(slash + 1);
+        }
+        return current ? CreateForObject(current) : nullptr;
     }
 
     bool ScriptGameObject::GetComponent(void* reference, int typeId) const
@@ -500,6 +548,7 @@ namespace CoreEngine::Script
         r.Method("GameObject", "bool RemoveComponent(const string &in typeName)", asMETHOD(ScriptGameObject, RemoveComponentByName), asCALL_THISCALL);
         r.Method("GameObject", "bool HasComponent(const string &in typeName) const", asMETHOD(ScriptGameObject, HasComponentByName), asCALL_THISCALL);
         r.Method("GameObject", "array<GameObject@>@ GetChildren() const", asMETHOD(ScriptGameObject, GetChildren), asCALL_THISCALL);
+        r.Method("GameObject", "GameObject@ FindChild(const string &in name) const", asMETHOD(ScriptGameObject, FindChild), asCALL_THISCALL);
         r.Method("GameObject", "GameObject@ InstantiatePrefab(const string &in prefabPath, const string &in name) const",
             asMETHOD(ScriptGameObject, InstantiatePrefab), asCALL_THISCALL);
 

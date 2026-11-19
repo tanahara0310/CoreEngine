@@ -5,6 +5,7 @@
 
 #include "Collision/ColliderComponent.h"
 #include "Editor/Inspector/ColliderInspector.h"
+#include "Editor/Inspector/RectTransformInspector.h"
 #include "Editor/Inspector/ShaderMaterialInspector.h"
 #include "Editor/Inspector/SpriteAnimatorInspector.h"
 #include "Editor/Command/EditorCommandStack.h"
@@ -177,7 +178,12 @@ namespace CoreEngine::Editor::ComponentInspectors
     void RegisterEngineTypes()
     {
         AddPermanent("Transform", { .shownFirst = true });
-        AddPermanent("RectTransform", { .shownFirst = true });
+        AddPermanent("RectTransform", {
+            .shownFirst = true,
+            .drawProperties = [](IComponent& component, const InspectorRenderer::DrawContext& context) {
+                return RectTransformInspector::Draw(component, context);
+            },
+        });
         AddPermanent("Animator", { .displayName = "アニメーション" });
         AddPermanent("SkeletonSocket", { .displayName = "ソケット追従" });
 

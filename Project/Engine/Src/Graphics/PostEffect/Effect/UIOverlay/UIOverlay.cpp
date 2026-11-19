@@ -3,6 +3,7 @@
 #include "Graphics/PostEffect/Graph/PostEffectGraphBuilder.h"
 #include "Graphics/Render/Pass/RenderPass.h"
 #include "Graphics/Render/RenderManager.h"
+#include "Graphics/Render/UI/UIRenderer.h"
 #ifdef CORE_EDITOR
 #include "Editor/ImGui/ImguiManager.h"
 #endif
@@ -30,7 +31,9 @@ namespace CoreEngine
                 // 入力を写してから、その上へ UI を描く
                 Draw(passContext.reads[0]);
                 if (renderManager && !uiHidden_) {
+                    UIRenderer::BeginOverlay(passContext.width, passContext.height);
                     renderManager->DrawOverlayQueuePass(passContext.cmdList, viewType);
+                    UIRenderer::EndOverlay(passContext.cmdList);
                 }
             });
     }

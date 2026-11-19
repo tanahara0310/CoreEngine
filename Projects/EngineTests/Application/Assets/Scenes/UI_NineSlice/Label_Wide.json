@@ -1,0 +1,53 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchor": 4,
+                "anchoredPosition": [
+                    -400.0,
+                    -400.0
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "rotation": 0.0,
+                "sortOrder": 2
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "alignH": 1,
+                "alignV": 1,
+                "color": [
+                    0.8,
+                    0.84,
+                    0.92,
+                    1.0
+                ],
+                "fieldAutoFit": true,
+                "font": "Default",
+                "fontSize": 20.0,
+                "lineSpacing": 1.0,
+                "outlineColor": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "outlineWidth": 0.0,
+                "text": "9 スライス（角は 16px のまま）",
+                "weight": 0.0,
+                "wrapWidth": 0.0
+            },
+            "type": "UIText"
+        }
+    ],
+    "id": "f69c1b26edf6ca65",
+    "name": "Label_Wide",
+    "order": 5
+}

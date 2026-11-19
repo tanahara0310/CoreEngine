@@ -353,6 +353,12 @@ namespace CoreEngine
             if (ImGui::MenuItem("画像")) {
                 sceneDebugEditor_->CreateUIObject(ObjectEditing::UIElementKind::Image);
             }
+            if (ImGui::MenuItem("ボタン（文字付き）")) {
+                sceneDebugEditor_->CreateUIObject(ObjectEditing::UIElementKind::Button);
+            }
+            if (ImGui::MenuItem("パネル")) {
+                sceneDebugEditor_->CreateUIObject(ObjectEditing::UIElementKind::Panel);
+            }
             ImGui::EndMenu();
         }
 

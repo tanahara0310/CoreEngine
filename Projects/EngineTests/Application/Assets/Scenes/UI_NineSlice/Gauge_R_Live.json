@@ -1,0 +1,51 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchor": 4,
+                "anchoredPosition": [
+                    560.0,
+                    410.0
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "rotation": 0.0,
+                "size": [
+                    120.0,
+                    120.0
+                ],
+                "sortOrder": 1
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    0.95,
+                    0.7,
+                    0.3,
+                    1.0
+                ],
+                "columns": 1,
+                "fillAmount": 0.0,
+                "fillClockwise": true,
+                "fillMethod": 2,
+                "fillOrigin": 3,
+                "frame": 0,
+                "imageType": 2,
+                "material": null,
+                "rows": 1,
+                "texture": null
+            },
+            "type": "UIImage"
+        }
+    ],
+    "id": "7b319d00b61e5d44",
+    "name": "Gauge_R_Live",
+    "order": 60
+}

@@ -24,6 +24,7 @@
 #include "Scene/PrefabSystem.h"
 #include "Scene/SceneManager.h"
 #include "Scene/SceneSaveSystem.h"
+#include "UI/RectTransformComponent.h"
 #include "Editor/Command/EditorCommand.h"
 #include "Editor/Scene/EditorSceneAccess.h"
 #include "Editor/Scene/LastOpenedScene.h"
@@ -40,6 +41,7 @@
 #include "Math/Geometry/RayCast.h"
 #include "Utility/Logger/Logger.h"
 #include <algorithm>
+#include <cstring>
 #include <filesystem>
 
 namespace
@@ -638,8 +640,11 @@ namespace CoreEngine
             if (IsSceneDirty()) {
                 sceneLabel += " *";
             }
-            if (ImGui::TreeNodeEx("##sceneRoot", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth,
-                    "%s", sceneLabel.c_str())) {
+            const bool sceneOpen = ImGui::TreeNodeEx("##sceneRoot",
+                ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth, "%s", sceneLabel.c_str());
+            // シーンの枝へ落とした UI は親を外す
+            AcceptUIParentDrop(nullptr);
+            if (sceneOpen) {
                 for (GameObject* const root : hierarchyRoots_) {
                     DrawHierarchyRow(*root);
                 }
@@ -669,9 +674,7 @@ namespace CoreEngine
             if (!object || !gameObjectManager_->IsShownInIsolation(*object)) {
                 continue;
             }
-            const TransformComponent* const transform = object->GetComponent<TransformComponent>();
-            const TransformComponent* const parent = transform ? transform->GetParent() : nullptr;
-            GameObject* const parentObject = parent ? parent->GetOwner() : nullptr;
+            GameObject* const parentObject = FindHierarchyParent(*object);
             // 親がいてもシーンから消えていれば根として出す（迷子にしない）
             if (parentObject && parentObject != object.get()) {
                 hierarchyChildren_[parentObject].push_back(object.get());
@@ -682,20 +685,60 @@ namespace CoreEngine
         }
     }
 
+    GameObject* SceneDebugEditor::FindHierarchyParent(const GameObject& object)
+    {
+        if (const TransformComponent* const transform = object.GetComponent<TransformComponent>()) {
+            const TransformComponent* const parent = transform->GetParent();
+            return parent ? parent->GetOwner() : nullptr;
+        }
+        if (const RectTransformComponent* const rect = object.GetComponent<RectTransformComponent>()) {
+            const RectTransformComponent* const parent = rect->GetParent();
+            return parent ? parent->GetOwner() : nullptr;
+        }
+        return nullptr;
+    }
+
     bool SceneDebugEditor::IsAncestorOf(const GameObject& object, const GameObject& descendant) const
     {
-        const TransformComponent* transform = descendant.GetComponent<TransformComponent>();
-        for (int depth = 0; transform && depth < 64; ++depth) {
-            const TransformComponent* const parent = transform->GetParent();
+        const GameObject* current = &descendant;
+        for (int depth = 0; current && depth < 64; ++depth) {
+            const GameObject* const parent = FindHierarchyParent(*current);
             if (!parent) {
                 return false;
             }
-            if (parent->GetOwner() == &object) {
+            if (parent == &object) {
                 return true;
             }
-            transform = parent;
+            current = parent;
         }
         return false;
+    }
+
+    GameObject* SceneDebugEditor::FindDraggedObject(const void* payloadData, int payloadSize) const
+    {
+        if (!gameObjectManager_ || !payloadData || payloadSize != static_cast<int>(sizeof(std::uint64_t))) {
+            return nullptr;
+        }
+        std::uint64_t idValue = 0;
+        std::memcpy(&idValue, payloadData, sizeof(idValue));
+        return gameObjectManager_->FindObject(ObjectId{ idValue });
+    }
+
+    void SceneDebugEditor::AcceptUIParentDrop(GameObject* parent)
+    {
+        if (prefabMode_.IsOpen() || !ImGui::BeginDragDropTarget()) {
+            return;
+        }
+        // UI を UI の上へ落としたときだけ受ける（自分や自分の子孫の上は受けない）
+        if (const ImGuiPayload* const peek = ImGui::AcceptDragDropPayload(
+                InspectorRenderer::kObjectDragPayload, ImGuiDragDropFlags_AcceptPeekOnly)) {
+            GameObject* const dragged = FindDraggedObject(peek->Data, peek->DataSize);
+            if (dragged && ObjectEditing::CanSetUIParent(*dragged, parent)
+                && ImGui::AcceptDragDropPayload(InspectorRenderer::kObjectDragPayload)) {
+                ObjectEditing::SetUIParent(*dragged, parent);
+            }
+        }
+        ImGui::EndDragDropTarget();
     }
 
     void SceneDebugEditor::DrawHierarchyRow(GameObject& object)
@@ -751,6 +794,7 @@ namespace CoreEngine
             ImGui::TextUnformatted(object.GetDisplayName());
             ImGui::EndDragDropSource();
         }
+        AcceptUIParentDrop(&object);
         DrawObjectContextMenu(object);
 
         // 状態に応じた色（破棄待ちは赤、非アクティブは淡く）

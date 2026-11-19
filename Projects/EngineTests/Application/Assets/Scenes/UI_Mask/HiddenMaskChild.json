@@ -1,0 +1,61 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchorMax": [
+                    0.5,
+                    0.5
+                ],
+                "anchorMin": [
+                    0.5,
+                    0.5
+                ],
+                "anchoredPosition": [
+                    0.0,
+                    0.0
+                ],
+                "parent": {
+                    "comp": "RectTransform",
+                    "ref": "d84866030a979439"
+                },
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "rotation": 0.0,
+                "scale": [
+                    1.0,
+                    1.0
+                ],
+                "size": [
+                    640.0,
+                    120.0
+                ],
+                "sortOrder": 0
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    0.85,
+                    0.3,
+                    0.6,
+                    1.0
+                ],
+                "columns": 1,
+                "frame": 0,
+                "material": null,
+                "rows": 1,
+                "texture": null
+            },
+            "type": "UIImage"
+        }
+    ],
+    "id": "4f62f4937ffadedb",
+    "name": "HiddenMaskChild",
+    "order": 11
+}

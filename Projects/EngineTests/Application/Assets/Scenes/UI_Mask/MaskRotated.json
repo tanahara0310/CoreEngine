@@ -1,0 +1,65 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchorMax": [
+                    0.5,
+                    0.5
+                ],
+                "anchorMin": [
+                    0.5,
+                    0.5
+                ],
+                "anchoredPosition": [
+                    360.0,
+                    220.0
+                ],
+                "parent": null,
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "rotation": 0.3490658503988659,
+                "scale": [
+                    1.0,
+                    1.0
+                ],
+                "size": [
+                    300.0,
+                    180.0
+                ],
+                "sortOrder": 0
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    0.3,
+                    0.3,
+                    0.4,
+                    1.0
+                ],
+                "columns": 1,
+                "frame": 0,
+                "material": null,
+                "rows": 1,
+                "texture": null
+            },
+            "type": "UIImage"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "showMaskGraphic": true
+            },
+            "type": "UIMask"
+        }
+    ],
+    "id": "c6acf65d9f5d307d",
+    "name": "MaskRotated",
+    "order": 13
+}

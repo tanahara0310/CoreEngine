@@ -1,0 +1,46 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchor": 4,
+                "anchoredPosition": [
+                    -79.99999999999999,
+                    480.0
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "rotation": 0.0,
+                "size": [
+                    8.0,
+                    8.0
+                ],
+                "sortOrder": 2
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "columns": 1,
+                "frame": 0,
+                "material": null,
+                "rows": 1,
+                "texture": null
+            },
+            "type": "UIImage"
+        }
+    ],
+    "id": "7a87099c72b5e114",
+    "name": "Mark_R_50",
+    "order": 55
+}

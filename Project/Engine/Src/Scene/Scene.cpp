@@ -21,6 +21,7 @@
 #include "Scene/Feature/GroundFeature.h"
 #include "Scene/Feature/CollisionFeature.h"
 #include "Scene/Feature/SceneFeatureRegistry.h"
+#include "UI/UIDrawOrder.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/FrameRate/FrameRateController.h"
 #include <algorithm>
@@ -402,6 +403,9 @@ namespace CoreEngine
         if (!renderManager || !activeCamera3D) {
             return;
         }
+
+        // 親子のある UI は、親のすぐ後に子を描くよう描画順を振り直す
+        ResolveUIDrawOrder(gameObjectManager_, uiDrawOrderResolved_);
 
         // 全てのゲームオブジェクトを描画キューに追加
         gameObjectManager_.RegisterAllToRender(renderManager);

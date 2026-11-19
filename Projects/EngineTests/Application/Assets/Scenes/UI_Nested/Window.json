@@ -1,0 +1,46 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchor": 4,
+                "anchoredPosition": [
+                    -380.0,
+                    0.0
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "rotation": 0.0,
+                "size": [
+                    600.0,
+                    400.0
+                ],
+                "sortOrder": 0
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    0.16,
+                    0.18,
+                    0.24,
+                    1.0
+                ],
+                "columns": 1,
+                "frame": 0,
+                "material": null,
+                "rows": 1,
+                "texture": null
+            },
+            "type": "UIImage"
+        }
+    ],
+    "id": "377c36c09c37d74b",
+    "name": "Window",
+    "order": 2
+}

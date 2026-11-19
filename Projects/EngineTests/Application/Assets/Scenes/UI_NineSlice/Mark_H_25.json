@@ -1,0 +1,46 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchor": 4,
+                "anchoredPosition": [
+                    -410.0,
+                    90.0
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "rotation": 0.0,
+                "size": [
+                    2.0,
+                    48.0
+                ],
+                "sortOrder": 2
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "columns": 1,
+                "frame": 0,
+                "material": null,
+                "rows": 1,
+                "texture": null
+            },
+            "type": "UIImage"
+        }
+    ],
+    "id": "15f20fd7060931a9",
+    "name": "Mark_H_25",
+    "order": 24
+}

@@ -220,11 +220,20 @@ namespace CoreEngine
         void DrawHierarchyRow(GameObject& object);
 
         /// @brief 親子の対応をこのフレーム分だけ作る
-        /// @details Transform の親を逆に辿れるようにする。親を持たないものが根になる。
+        /// @details Transform と UI トランスフォームの親を逆に辿れるようにする。親を持たないものが根になる。
         void BuildHierarchyLinks();
+
+        /// @brief Hierarchy での親（Transform か UI トランスフォームの親の持ち主。無ければ nullptr）
+        static GameObject* FindHierarchyParent(const GameObject& object);
 
         /// @brief `object` が `descendant` の先祖か（送り先までの道を開くのに使う）
         bool IsAncestorOf(const GameObject& object, const GameObject& descendant) const;
+
+        /// @brief Hierarchy の行から運んでいるオブジェクト（ID の荷物から引く。無ければ nullptr）
+        GameObject* FindDraggedObject(const void* payloadData, int payloadSize) const;
+
+        /// @brief 直前の項目へ落とした UI を parent の子にする（nullptr なら親を外す）
+        void AcceptUIParentDrop(GameObject* parent);
 
         /// @brief 選んでいるオブジェクトへエディタのカメラを寄せる
         /// @details 大きさが分かるものはそれが収まる距離まで、分からないものは既定の距離。

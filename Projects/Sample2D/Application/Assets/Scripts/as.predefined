@@ -157,6 +157,22 @@ enum TextAlignV {
 	Middle = 1,
 	Bottom = 2
 }
+enum UIImageType {
+	Simple = 0,
+	Sliced = 1,
+	Filled = 2
+}
+enum UIFillMethod {
+	Horizontal = 0,
+	Vertical = 1,
+	Radial360 = 2
+}
+enum UIFillOrigin {
+	Left = 0,
+	Right = 1,
+	Bottom = 2,
+	Top = 3
+}
 enum AudioBus {
 	BGM = 0,
 	SE = 1,
@@ -412,6 +428,7 @@ class GameObject {
 	bool RemoveComponent(const string&in typeName);
 	bool HasComponent(const string&in typeName) const;
 	CoreEngine::GameObject@[]@ GetChildren() const;
+	CoreEngine::GameObject@ FindChild(const string&in name) const;
 	CoreEngine::GameObject@ InstantiatePrefab(const string&in prefabPath, const string&in name) const;
 	CoreEngine::Collider@ get_collider() property;
 	CoreEngine::UIText@ get_uiText() property;
@@ -439,6 +456,7 @@ class GameObject {
 	CoreEngine::SpriteAnimator@ get_spriteAnimator() property;
 	CoreEngine::SpriteRenderer@ get_spriteRenderer() property;
 	CoreEngine::Text3DRenderer@ get_text3DRenderer() property;
+	CoreEngine::UIMask@ get_uiMask() property;
 	CoreEngine::UISlider@ get_uiSlider() property;
 	CoreEngine::UIToggle@ get_uiToggle() property;
 	CoreEngine::WaterProbe@ get_waterProbe() property;
@@ -586,6 +604,18 @@ class UIImage {
 	string get_texture() const property;
 	void set_texture(const string&in) property;
 	void SetNativeSize();
+	CoreEngine::UIImageType get_imageType() const property;
+	void set_imageType(CoreEngine::UIImageType) property;
+	float get_fillAmount() const property;
+	void set_fillAmount(float) property;
+	CoreEngine::UIFillMethod get_fillMethod() const property;
+	void set_fillMethod(CoreEngine::UIFillMethod) property;
+	CoreEngine::UIFillOrigin get_fillOrigin() const property;
+	void set_fillOrigin(CoreEngine::UIFillOrigin) property;
+	bool get_fillClockwise() const property;
+	void set_fillClockwise(bool) property;
+	bool get_fillCenter() const property;
+	void set_fillCenter(bool) property;
 	int get_columns() const property;
 	void set_columns(int) property;
 	int get_rows() const property;
@@ -1070,16 +1100,28 @@ class RectTransform {
 	CoreEngine::GameObject@ get_gameObject() const property;
 	int get_anchor() const property;
 	void set_anchor(int) property;
+	CoreEngine::Vector2 get_anchorMin() const property;
+	void set_anchorMin(const CoreEngine::Vector2&in) property;
+	CoreEngine::Vector2 get_anchorMax() const property;
+	void set_anchorMax(const CoreEngine::Vector2&in) property;
 	CoreEngine::Vector2 get_anchoredPosition() const property;
 	void set_anchoredPosition(const CoreEngine::Vector2&in) property;
 	CoreEngine::Vector2 get_pivot() const property;
 	void set_pivot(const CoreEngine::Vector2&in) property;
 	CoreEngine::Vector2 get_size() const property;
 	void set_size(const CoreEngine::Vector2&in) property;
+	CoreEngine::Vector2 get_sizeDelta() const property;
+	void set_sizeDelta(const CoreEngine::Vector2&in) property;
 	float get_rotation() const property;
 	void set_rotation(float) property;
+	CoreEngine::Vector2 get_scale() const property;
+	void set_scale(const CoreEngine::Vector2&in) property;
 	int get_sortOrder() const property;
 	void set_sortOrder(int) property;
+	CoreEngine::Vector4 get_rect() const property;
+	CoreEngine::RectTransform@ get_parent() const property;
+	void set_parent(CoreEngine::RectTransform@ parent) property;
+	bool SetParent(CoreEngine::RectTransform@ parent, bool keepPosition = true);
 }
 class Rigidbody {
 	bool get_exists() const property;
@@ -1247,6 +1289,14 @@ class Text3DRenderer {
 	void set_billboard(int) property;
 	int get_depthMode() const property;
 	void set_depthMode(int) property;
+}
+class UIMask {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	CoreEngine::GameObject@ get_gameObject() const property;
+	bool get_showMaskGraphic() const property;
+	void set_showMaskGraphic(bool) property;
 }
 class UISlider {
 	bool get_exists() const property;

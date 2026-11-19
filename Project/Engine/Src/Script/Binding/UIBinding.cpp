@@ -291,6 +291,84 @@ namespace CoreEngine::Script
                 }
             }
 
+            int GetImageType() const
+            {
+                const Element* const element = FindOrWarn("画像の種類の読み取り");
+                return element ? static_cast<int>(element->GetImageType()) : 0;
+            }
+
+            void SetImageType(int value)
+            {
+                if (Element* const element = FindOrWarn("画像の種類の変更")) {
+                    element->SetImageType(static_cast<UIImageType>(value));
+                }
+            }
+
+            float GetFillAmount() const
+            {
+                const Element* const element = FindOrWarn("塗る量の読み取り");
+                return element ? element->GetFillAmount() : 1.0f;
+            }
+
+            void SetFillAmount(float value)
+            {
+                if (Element* const element = FindOrWarn("塗る量の変更")) {
+                    element->SetFillAmount(value);
+                }
+            }
+
+            int GetFillMethod() const
+            {
+                const Element* const element = FindOrWarn("塗る向きの読み取り");
+                return element ? static_cast<int>(element->GetFillMethod()) : 0;
+            }
+
+            void SetFillMethod(int value)
+            {
+                if (Element* const element = FindOrWarn("塗る向きの変更")) {
+                    element->SetFillMethod(static_cast<UIFillMethod>(value));
+                }
+            }
+
+            int GetFillOrigin() const
+            {
+                const Element* const element = FindOrWarn("塗り始めの読み取り");
+                return element ? static_cast<int>(element->GetFillOrigin()) : 0;
+            }
+
+            void SetFillOrigin(int value)
+            {
+                if (Element* const element = FindOrWarn("塗り始めの変更")) {
+                    element->SetFillOrigin(static_cast<UIFillOrigin>(value));
+                }
+            }
+
+            bool IsFillClockwise() const
+            {
+                const Element* const element = FindOrWarn("塗る回りの読み取り");
+                return element ? element->IsFillClockwise() : true;
+            }
+
+            void SetFillClockwise(bool value)
+            {
+                if (Element* const element = FindOrWarn("塗る回りの変更")) {
+                    element->SetFillClockwise(value);
+                }
+            }
+
+            bool IsFillCenter() const
+            {
+                const Element* const element = FindOrWarn("真ん中を描くかの読み取り");
+                return element ? element->IsFillCenter() : true;
+            }
+
+            void SetFillCenter(bool value)
+            {
+                if (Element* const element = FindOrWarn("真ん中を描くかの変更")) {
+                    element->SetFillCenter(value);
+                }
+            }
+
             int GetColumns() const
             {
                 const Element* const element = FindOrWarn("横のコマ数の読み取り");
@@ -661,6 +739,23 @@ namespace CoreEngine::Script
             r.EnumValue("TextAlignV", "Bottom", static_cast<int>(TextAlignV::Bottom));
         }
 
+        void RegisterImageEnums(BindingRegistrar& r)
+        {
+            r.Enum("UIImageType");
+            r.EnumValue("UIImageType", "Simple", static_cast<int>(UIImageType::Simple));
+            r.EnumValue("UIImageType", "Sliced", static_cast<int>(UIImageType::Sliced));
+            r.EnumValue("UIImageType", "Filled", static_cast<int>(UIImageType::Filled));
+            r.Enum("UIFillMethod");
+            r.EnumValue("UIFillMethod", "Horizontal", static_cast<int>(UIFillMethod::Horizontal));
+            r.EnumValue("UIFillMethod", "Vertical", static_cast<int>(UIFillMethod::Vertical));
+            r.EnumValue("UIFillMethod", "Radial360", static_cast<int>(UIFillMethod::Radial360));
+            r.Enum("UIFillOrigin");
+            r.EnumValue("UIFillOrigin", "Left", static_cast<int>(UIFillOrigin::Left));
+            r.EnumValue("UIFillOrigin", "Right", static_cast<int>(UIFillOrigin::Right));
+            r.EnumValue("UIFillOrigin", "Bottom", static_cast<int>(UIFillOrigin::Bottom));
+            r.EnumValue("UIFillOrigin", "Top", static_cast<int>(UIFillOrigin::Top));
+        }
+
         /// @brief UI テキスト / UI 画像に共通の型・配置・色の口を登録する
         template <class Element>
         void RegisterElement(BindingRegistrar& r, const char* type)
@@ -720,6 +815,18 @@ namespace CoreEngine::Script
             r.Method("UIImage", "string get_texture() const property", asMETHOD(Handle, GetTexture), asCALL_THISCALL);
             r.Method("UIImage", "void set_texture(const string &in) property", asMETHOD(Handle, SetTexture), asCALL_THISCALL);
             r.Method("UIImage", "void SetNativeSize()", asMETHOD(Handle, SetNativeSize), asCALL_THISCALL);
+            r.Method("UIImage", "UIImageType get_imageType() const property", asMETHOD(Handle, GetImageType), asCALL_THISCALL);
+            r.Method("UIImage", "void set_imageType(UIImageType) property", asMETHOD(Handle, SetImageType), asCALL_THISCALL);
+            r.Method("UIImage", "float get_fillAmount() const property", asMETHOD(Handle, GetFillAmount), asCALL_THISCALL);
+            r.Method("UIImage", "void set_fillAmount(float) property", asMETHOD(Handle, SetFillAmount), asCALL_THISCALL);
+            r.Method("UIImage", "UIFillMethod get_fillMethod() const property", asMETHOD(Handle, GetFillMethod), asCALL_THISCALL);
+            r.Method("UIImage", "void set_fillMethod(UIFillMethod) property", asMETHOD(Handle, SetFillMethod), asCALL_THISCALL);
+            r.Method("UIImage", "UIFillOrigin get_fillOrigin() const property", asMETHOD(Handle, GetFillOrigin), asCALL_THISCALL);
+            r.Method("UIImage", "void set_fillOrigin(UIFillOrigin) property", asMETHOD(Handle, SetFillOrigin), asCALL_THISCALL);
+            r.Method("UIImage", "bool get_fillClockwise() const property", asMETHOD(Handle, IsFillClockwise), asCALL_THISCALL);
+            r.Method("UIImage", "void set_fillClockwise(bool) property", asMETHOD(Handle, SetFillClockwise), asCALL_THISCALL);
+            r.Method("UIImage", "bool get_fillCenter() const property", asMETHOD(Handle, IsFillCenter), asCALL_THISCALL);
+            r.Method("UIImage", "void set_fillCenter(bool) property", asMETHOD(Handle, SetFillCenter), asCALL_THISCALL);
             r.Method("UIImage", "int get_columns() const property", asMETHOD(Handle, GetColumns), asCALL_THISCALL);
             r.Method("UIImage", "void set_columns(int) property", asMETHOD(Handle, SetColumns), asCALL_THISCALL);
             r.Method("UIImage", "int get_rows() const property", asMETHOD(Handle, GetRows), asCALL_THISCALL);
@@ -806,6 +913,7 @@ namespace CoreEngine::Script
         BindingRegistrar r(engine);
         RegisterAnchor(r);
         RegisterTextAlign(r);
+        RegisterImageEnums(r);
         RegisterText(r);
         RegisterImage(r);
         RegisterButton(r);

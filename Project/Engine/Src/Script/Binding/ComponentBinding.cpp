@@ -13,6 +13,7 @@
 #include "Script/Binding/BindingRegistrar.h"
 #include "Script/Binding/GameObjectBinding.h"
 #include "Script/Binding/ScriptRefCounted.h"
+#include "UI/RectTransformComponent.h"
 #include "Utility/Logger/Logger.h"
 
 #include <angelscript.h>
@@ -82,6 +83,52 @@ namespace CoreEngine::Script
             {
                 owner_.AddRef();
                 return &owner_;
+            }
+
+            /// @brief 親の UI トランスフォームのハンドル（RectTransform の型だけで使う。親が無ければ null）
+            ScriptEngineComponent* GetRectParent() const
+            {
+                const auto* const rect = dynamic_cast<const RectTransformComponent*>(Find());
+                const RectTransformComponent* const parent = rect ? rect->GetParent() : nullptr;
+                ScriptGameObject* const parentObject =
+                    parent ? ScriptGameObject::CreateForObject(parent->GetOwner()) : nullptr;
+                if (!parentObject) {
+                    return nullptr;
+                }
+                auto* const handle = new ScriptEngineComponent(*parentObject, type_);
+                parentObject->Release();
+                return handle;
+            }
+
+            /// @brief 親の UI トランスフォームを付け替える（RectTransform の型だけで使う。null で親を外す）
+            /// @return 付け替えたら true（自分か自分の子孫を親にしようとしたら false）
+            bool SetRectParent(ScriptEngineComponent* parent, bool keepPosition)
+            {
+                auto* const rect = dynamic_cast<RectTransformComponent*>(FindOrWarn("親の変更"));
+                if (!rect) {
+                    return false;
+                }
+                RectTransformComponent* parentRect = nullptr;
+                if (parent) {
+                    parentRect = dynamic_cast<RectTransformComponent*>(parent->Find());
+                    if (!parentRect) {
+                        Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Script,
+                            "RectTransform.SetParent: 親にする GameObject が無いか RectTransform が付いていません");
+                        return false;
+                    }
+                }
+                if (!rect->SetParent(parentRect, keepPosition)) {
+                    Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Script,
+                        "RectTransform.SetParent: 自分か自分の子孫は親にできません");
+                    return false;
+                }
+                return true;
+            }
+
+            /// @brief `parent` のプロパティへの代入（画面上の位置を保つ）
+            void SetRectParentKeepingPosition(ScriptEngineComponent* parent)
+            {
+                SetRectParent(parent, true);
             }
 
             IComponent* Find() const
@@ -372,6 +419,16 @@ namespace CoreEngine::Script
 
             r.GenericMethod("GameObject", (type.name + "@ get_" + LowerFirst(type.name) + "() property").c_str(),
                 &GenericGetFromObject, &type);
+
+            // UI トランスフォームの親の読み書きと付け替え
+            if (type.name == "RectTransform") {
+                r.Method(name, "RectTransform@ get_parent() const property",
+                    asMETHOD(ScriptEngineComponent, GetRectParent), asCALL_THISCALL);
+                r.Method(name, "void set_parent(RectTransform@+ parent) property",
+                    asMETHOD(ScriptEngineComponent, SetRectParentKeepingPosition), asCALL_THISCALL);
+                r.Method(name, "bool SetParent(RectTransform@+ parent, bool keepPosition = true)",
+                    asMETHOD(ScriptEngineComponent, SetRectParent), asCALL_THISCALL);
+            }
         }
     }
 

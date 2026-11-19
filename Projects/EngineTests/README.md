@@ -2,7 +2,7 @@
 
 エンジンの機能を 1 つずつ確かめるためのプロジェクトです。1 つの機能に 1 つのシーンを作ります。
 
-- 形はエンジン組み込みの立方体・球・板だけを使います。モデルは、骨のアニメーションを確かめる箱の人形（`Application/Assets/Models/AnimRobot`）と、メッシュの当たり判定を確かめる地形（`Application/Assets/Models/MeshCourse`・`MeshGround`）と、剛体のカプセルの見た目（`Application/Assets/Models/Capsule`）だけを入れています。どれも台本で作った物です。テクスチャは確かめる機能に要るときだけ、小さいものを `Application/Assets/Textures` に置きます（VolumetricFog_Shafts の穴の開いた板・VolumetricFog_Transparent の粒・Animator_Sprite の番号入りのコマ）。
+- 形はエンジン組み込みの立方体・球・板だけを使います。モデルは、骨のアニメーションを確かめる箱の人形（`Application/Assets/Models/AnimRobot`）と、メッシュの当たり判定を確かめる地形（`Application/Assets/Models/MeshCourse`・`MeshGround`）と、剛体のカプセルの見た目（`Application/Assets/Models/Capsule`）だけを入れています。どれも台本で作った物です。テクスチャは確かめる機能に要るときだけ、小さいものを `Application/Assets/Textures` に置きます（VolumetricFog_Shafts の穴の開いた板・VolumetricFog_Transparent の粒・Animator_Sprite の番号入りのコマ・UI_NineSlice の枠）。
 - 既定で入るもの（既定の床・空の環境光・雲・霧・自動露出・ローカル露出・ブルーム・レンズフレア）は、シーンの `_scene.json` と `_environment.json` で切ります。TAA・CAS は `Application/Config/EngineSettings/CVars.json` で切っています。AO（`r.SSAO.Enabled`）は既定のまま入れています（RTAO を確かめるため）。AO は空の環境光だけを暗くするので、空の環境光を切ったシーンには効きません。
 - カメラは固定です。
 - このプロジェクトでは組み合わせの不具合は見つかりません。確かめ終わったら、いつものシーン（アラハなど）も 1 回開いてください。
@@ -641,3 +641,71 @@ SpriteBlend.animator は状態 Locomotion（1D ブレンド。パラメータ Sp
 6. 停止中に Project の Animators/SpriteStates.animator を開き、Hierarchy で Sprite_States を選ぶ。左の「クリップ」の Run を開くと「種類」が「スプライトのクリップ」で、「スプライトのクリップ」の候補に Idle・Run・Jump が並び、イベントの帯に尺 0.500 秒と Step の印が出る。
 7. 窓の上の「シーンで見る」を入れて Run の箱を選ぶと、窓の上に「シーンで見る: Sprite_States（Run）」と出て、左の絵が 2〜5 を流れる。「止める」と「進み」のつまみで 1 コマずつ見られる。「シーンで見る」を外すか窓を閉じると、元のコマへ戻る。
 8. キャンバスの何も無い所を右クリックすると「スプライトアニメから状態を作る」があり、左の「スプライトアニメから足す」と同じく、選んでいる物のスプライトアニメのクリップを足す（同じ名前を指すクリップがあれば足さない。確かめたら保存せずに閉じる）。
+
+## UI_Nested
+
+UI の親子（親の四角から測る・伸びるアンカー・親と一緒に動く・Hierarchy のドラッグ・スクリプトの `SetParent`・`FindChild`）を確かめます。
+
+| 物 | 見るところ |
+|---|---|
+| Window | 左の濃い窓（600×400）。子が TitleBar・Body・OkButton の 3 つ |
+| TitleBar・TitleText | 窓の上の端に横いっぱいに伸びた青い帯（アンカー (0, 0)〜(1, 0)・高さ 56）と、その中いっぱいの文字 |
+| Body・BodyText | 窓の中に余白（左 16・上 72・右 16・下 80）で伸びた板と、その左上の文字 |
+| OkButton・OkText | 窓の右下に寄せたボタン（アンカー・基準点 (1, 1)）と、黄色の子の文字 OK |
+| Loose・LooseText | 窓の下の緑の板。親なし。スクリプトが付け替えて外す |
+| Spinner・Arm・ArmTip | 右上の橙の四角（30 度・拡大 1.25）と、その右の腕・腕の先の白い四角。孫まで回転と拡大が付いてくる |
+| HiddenParent・HiddenChild | 止めた（非表示の）親と、その子の赤いボタン。どちらも見えず、押せない |
+| Probe | 試験のスクリプト（UINestedProbe）。最初のフレームで調べてコンソールへ出し、押されたボタンも出す |
+
+確かめ方:
+
+1. 再生すると、コンソールに UINestedProbe の行が 5 つ出て、どれも期待どおり（Window の子 3 個・TitleBar/TitleText が見つかる・幅が 600 と 600・Window を 800 にすると TitleBar も 800・Loose の付け替えでずれ 0 / 0・Window を自分の子の子にするのは断られる）。
+2. 文字 OK の上をクリックすると「OK が押された（文字の上でも押せる）」が出る。押している間、ボタンの青は変わるが OK の黄色はそのまま。HiddenParent のあった所（右下の空き）をクリックしても何も出ない。
+3. 停止中に Window を選び、Canvas タブで動かす・回す・インスペクタの拡大を変えると、TitleBar・Body・OkButton と文字が一緒に変わる。インスペクタの大きさの幅を変えると、TitleBar と Body が伸び縮みし、OkButton は右下に付いたまま。Canvas タブには、選んだ子の親の四角が破線で、アンカーが三角の印で出る。
+4. Hierarchy で Loose の行を Window の行へドラッグすると、Loose が Window の子になり、画面の上の位置は変わらない。Window を動かすと Loose も付いてくる。<kbd>Ctrl</kbd>+<kbd>Z</kbd> で親なしに戻る。Loose の行をシーンの名前の行へ落としても親が外れる（確かめたら保存せずに戻す）。
+5. TitleBar を選んでインスペクタの「アンカーの選択」を押すと 16 通りの格子が出て、今の形（横いっぱい・上）の枠が光る。Shift を押しながら選ぶと基準点も、Alt を押しながら選ぶと位置も変わる。伸びている向きは「余白」の行で入力できる（確かめたら保存せずに戻す）。
+
+## UI_NineSlice
+
+9 スライス（角は伸ばさず辺と真ん中だけ伸ばす）と、塗る量（ゲージ）を確かめます。枠の絵は `Textures/UI_Frame.png`（48×48。角の丸い枠で、四隅に赤・緑・青・黄の丸）で、テクスチャの設定の「9 スライスの縁」が 16・16・16・16 です。
+
+| 物 | 見るところ |
+|---|---|
+| Slice_Small | 左上の小さい枠（96×64）。角の丸と四隅の丸は大きい枠と同じ大きさ |
+| Slice_Wide・Simple_Wide | 同じ大きさの横長の枠。上が 9 スライス、下が単純（角の丸と四隅の丸が横に伸びる） |
+| Slice_Tall | 縦長の 9 スライス |
+| Slice_NoCenter | 「真ん中を描く」を外した枠（真ん中が抜けて後ろが見える） |
+| Slice_Override | 「枠の幅を上書き」で 8px にした枠（角が半分の幅で切られる） |
+| Slice_Stretched | 画面の上の端に横いっぱいに伸びた枠 |
+| Gauge_H・V・R の 0・25・50・100 | 横（左から）・縦（下から）・円（12 時から時計回り）のゲージを、塗る量 0・0.25・0.5・1 で並べたもの。白い印が期待する塗りの端 |
+| Gauge_H・V・R_Live | 右の列のゲージ。再生中に 3 秒で 0 から 1 まで進む |
+| Probe | 試験のスクリプト（UINineSliceProbe） |
+
+確かめ方:
+
+1. 停止中に見て、小さい枠・横長・縦長・上の端の枠の四隅の丸がどれも同じ大きさで、Simple_Wide だけ丸が横に伸びている。
+2. ゲージの塗りの端が白い印に合う（0 は何も描かない・1 は全部描く・円の 0.25 は 3 時まで・0.5 は 6 時まで）。
+3. 再生すると、コンソールに UINineSliceProbe の行が 4 つ出て、どれも期待どおり。右の列のゲージが 3 秒ごとに 0 から 1 へ進む。
+4. Project の Textures/UI_Frame.png を選ぶと、インスペクタに「9 スライスの縁」が 16・16・16・16 で出る。左を 4 にすると、この絵を使う 9 スライスの枠の左の角がすぐ細くなる（確かめたら 16 に戻す）。
+
+## UI_Mask
+
+UI マスク（子をマスクの四角の中だけに描き、はみ出た所では押せない）を確かめます。
+
+| 物 | 見るところ |
+|---|---|
+| MaskA | 左の濃い窓（480×360）。UI マスク付き |
+| BigStripe・LongText | MaskA より長い橙の帯と、長い文字列。どちらも MaskA の端で切れる |
+| EdgeButton・EdgeText | MaskA の右の端に半分はみ出した青いボタン。左半分だけ見えて押せる |
+| GhostButton | MaskA の外に置いた赤いボタン。見えず、押せない |
+| MaskB・Inner | MaskA の右下の角に置いた、UI マスク付きの子（300×240）と、その中の大きな緑の板。緑は MaskA と MaskB の重なった所だけに出る |
+| MaskHidden・HiddenMaskChild | 「自分の画像を描く」を外したマスク。白い板は描かれず、紫の帯がその四角で切れる |
+| MaskRotated・RotatedChild | 20 度回したマスク。水色の帯は、回した四角を囲む傾いていない四角で切れる |
+| Probe | 試験のスクリプト（UIMaskProbe）。押されたボタンを出し、再生中に M キーで MaskA のマスクを入り切りする |
+
+確かめ方:
+
+1. 停止中に見て、BigStripe・LongText・EdgeButton が MaskA の端で切れ、GhostButton が見えない。緑の Inner は MaskA と MaskB の重なった四角だけに出る。シーンを開いたときに、MaskRotated の警告（回しているので囲む四角で切る）が 1 回出る。
+2. 再生すると、コンソールに「UIMaskProbe: MaskA のマスク = 入・MaskB の親 = MaskA」が出る。再生中に MaskRotated の警告は増えない。
+3. EdgeButton の見えている左半分をクリックすると「EdgeButton が押された」が出る。切れて見えない右半分と、GhostButton のあった所をクリックしても何も出ない。
+4. M キーを押すと「MaskA のマスクを切にした」が出て、帯・文字・EdgeButton の右半分・GhostButton が MaskA の外まで出る。GhostButton をクリックすると「GhostButton が押された」が出る。もう一度 M で元に戻る。

@@ -41,4 +41,43 @@ namespace CoreEngine
         return { 0.0f, 0.0f };
     }
 
+    /// @brief アンカーを親の四角の中の割合（0,0 = 左上 / 1,1 = 右下）にする
+    inline Vector2 GetAnchorNormalized(UIAnchor anchor)
+    {
+        switch (anchor) {
+        case UIAnchor::TopLeft:      return { 0.0f, 0.0f };
+        case UIAnchor::TopCenter:    return { 0.5f, 0.0f };
+        case UIAnchor::TopRight:     return { 1.0f, 0.0f };
+        case UIAnchor::MiddleLeft:   return { 0.0f, 0.5f };
+        case UIAnchor::Center:       return { 0.5f, 0.5f };
+        case UIAnchor::MiddleRight:  return { 1.0f, 0.5f };
+        case UIAnchor::BottomLeft:   return { 0.0f, 1.0f };
+        case UIAnchor::BottomCenter: return { 0.5f, 1.0f };
+        case UIAnchor::BottomRight:  return { 1.0f, 1.0f };
+        }
+        return { 0.5f, 0.5f };
+    }
+
+    /// @brief 2 点のアンカーが 9 か所のどれか 1 点に重なっていれば、その種別を返す
+    /// @return 開いている・9 か所のどれでもないときは false
+    inline bool TryGetAnchor(const Vector2& anchorMin, const Vector2& anchorMax, UIAnchor& outAnchor)
+    {
+        if (anchorMin.x != anchorMax.x || anchorMin.y != anchorMax.y) {
+            return false;
+        }
+        const auto column = [](float value) -> int {
+            if (value == 0.0f) { return 0; }
+            if (value == 0.5f) { return 1; }
+            if (value == 1.0f) { return 2; }
+            return -1;
+        };
+        const int x = column(anchorMin.x);
+        const int y = column(anchorMin.y);
+        if (x < 0 || y < 0) {
+            return false;
+        }
+        outAnchor = static_cast<UIAnchor>(y * 3 + x);
+        return true;
+    }
+
 } // namespace CoreEngine

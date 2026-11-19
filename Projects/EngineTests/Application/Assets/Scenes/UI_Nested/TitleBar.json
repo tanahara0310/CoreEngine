@@ -1,0 +1,61 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchorMax": [
+                    1.0,
+                    0.0
+                ],
+                "anchorMin": [
+                    0.0,
+                    0.0
+                ],
+                "anchoredPosition": [
+                    0.0,
+                    0.0
+                ],
+                "parent": {
+                    "comp": "RectTransform",
+                    "ref": "377c36c09c37d74b"
+                },
+                "pivot": [
+                    0.5,
+                    0.0
+                ],
+                "rotation": 0.0,
+                "scale": [
+                    1.0,
+                    1.0
+                ],
+                "size": [
+                    0.0,
+                    56.0
+                ],
+                "sortOrder": 0
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    0.3,
+                    0.42,
+                    0.7,
+                    1.0
+                ],
+                "columns": 1,
+                "frame": 0,
+                "material": null,
+                "rows": 1,
+                "texture": null
+            },
+            "type": "UIImage"
+        }
+    ],
+    "id": "f2234534f9e8a973",
+    "name": "TitleBar",
+    "order": 3
+}

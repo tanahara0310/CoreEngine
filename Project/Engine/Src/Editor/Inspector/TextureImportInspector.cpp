@@ -46,6 +46,12 @@ namespace CoreEngine::Editor::TextureImportInspector
             Choice{ "none", "圧縮しない" },
         };
 
+        /// 9 スライスの縁の欄の成分の文字
+        constexpr const char* kBorderLabels[4] = { "左", "上", "右", "下" };
+
+        /// 9 スライスの縁の上限（px）
+        constexpr float kMaxBorder = 16384.0f;
+
         /// @brief 左にラベル・右に欄の 1 行を始める
         void BeginRow(const char* label)
         {
@@ -96,8 +102,13 @@ namespace CoreEngine::Editor::TextureImportInspector
             return true;
         }
 
+        // 縁は動かしている間は欄の中だけで持ち、離したときに .meta へ書く
+        static std::string editingBorderPath;
+        static std::array<float, 4> editingBorder{};
+
         std::string colorSpace = database.GetImportColorSpace(path);
         std::string format = database.GetImportFormat(path);
+        std::array<float, 4> border = editingBorderPath == path ? editingBorder : database.GetSliceBorder(path);
         bool changed = false;
         if (ImGui::BeginTable("##textureImport", 2, ImGuiTableFlags_SizingStretchProp)) {
             ImGui::TableSetupColumn("##label", ImGuiTableColumnFlags_WidthFixed, 130.0f);
@@ -106,13 +117,27 @@ namespace CoreEngine::Editor::TextureImportInspector
             changed |= DrawChoice("##colorSpace", kColorSpaces, colorSpace);
             BeginRow("圧縮");
             changed |= DrawChoice("##format", kFormats, format);
+            BeginRow("9 スライスの縁");
+            ImGui::SetNextItemWidth(-FLT_MIN);
+            if (InspectorLayout::VectorField("##sliceBorder", border.data(), 4, 1.0f, 0.0f, kMaxBorder,
+                    kBorderLabels, "%.0f")) {
+                editingBorderPath = path;
+                editingBorder = border;
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("UI 画像の種類を「9 スライス」にしたとき、伸ばさずに描く縁の幅（画像の px）");
+            }
             ImGui::EndTable();
         }
         if (changed) {
             database.SetImportSettings(file, colorSpace, format);
         }
+        if (editingBorderPath == path && !ImGui::IsAnyItemActive()) {
+            database.SetSliceBorder(file, editingBorder);
+            editingBorderPath.clear();
+        }
         InspectorLayout::Hint("変えた設定は .meta に書き、次に読み込むときの変換に使います。"
-            "開いているシーンの画像は、エディタを開き直すと変わります。");
+            "開いているシーンの画像は、エディタを開き直すと変わります（9 スライスの縁はすぐに効きます）。");
         return true;
     }
 }

@@ -814,7 +814,7 @@ namespace CoreEngine
                      const InspectorRenderer::DrawContext& context, const std::string& ownerLabel)
         {
             bool changed = false;
-            if (!p.IsVisible() || !p.IsValid()) {
+            if (!p.IsVisible() || !p.IsValid() || (p.visibleWhen && !p.visibleWhen(instance))) {
                 return changed;
             }
 

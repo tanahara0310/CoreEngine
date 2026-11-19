@@ -42,6 +42,8 @@ namespace CoreEngine
         {
             Text,   ///< UI テキスト
             Image,  ///< UI 画像
+            Button, ///< UI ボタン（文字を子に持つ）
+            Panel,  ///< 親いっぱいに伸ばした UI 画像
         };
 
         /// @brief 作るパーティクルの種類
@@ -81,9 +83,19 @@ namespace CoreEngine
         GameObject* CreateSprite(const Context& context, const std::string& baseName, const std::string& texturePath,
                                  std::optional<float> pixelsPerUnit, const Vector3& position);
 
-        /// @brief UI トランスフォームと、UI テキストか UI 画像を持つオブジェクトを画面の中央に作る
-        /// @return 作ったオブジェクト（作れなければ nullptr）
+        /// @brief UI のオブジェクトを画面の中央に作る
+        /// @details ボタンは文字のオブジェクトを子に作り、1 回の Undo で両方消える。
+        /// @return 作ったオブジェクト（ボタンなら親のボタン。作れなければ nullptr）
         GameObject* CreateUI(const Context& context, UIElementKind kind);
+
+        /// @brief child を parent の UI の子にできるか（parent が nullptr なら親を外せるか）
+        /// @details どちらかが UI でない・自分か自分の子孫を親にする・今と同じなら false。
+        bool CanSetUIParent(const GameObject& child, const GameObject* parent);
+
+        /// @brief UI の親を付け替えて Undo に積む（画面上の位置・回転・大きさは保つ）
+        /// @param parent 新しい親（nullptr で親を外す）
+        /// @return 付け替えたら true
+        bool SetUIParent(GameObject& child, GameObject* parent);
 
         /// @brief オブジェクトを複製する
         /// @details 名前は「名前 (1)」にし、位置は 3D なら X へ 1、UI なら右下へ 10px ずらす。
@@ -95,7 +107,7 @@ namespace CoreEngine
         /// @note Undo で、同じ ID・保存キー・値のオブジェクトを作り直す。
         bool Delete(const Context& context, GameObject& object);
 
-        /// @brief オブジェクトを、Transform の子孫ごと消す（1 回の Undo で戻る）
+        /// @brief オブジェクトを、Transform と UI トランスフォームの子孫ごと消す（1 回の Undo で戻る）
         /// @return 消したら true（消せないものが 1 つでもあれば何も消さない）
         bool DeleteWithDescendants(const Context& context, GameObject& object);
 

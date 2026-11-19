@@ -1,7 +1,9 @@
 #pragma once
 #include "AssetInfo.h"
 #include "AssetType.h"
+#include <array>
 #include <atomic>
+#include <cstdint>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -71,6 +73,19 @@ namespace CoreEngine
         /// @return 書けたら true
         /// @note 読み込み済みのテクスチャは作り直さない（次に読み込むときに新しい設定で変換する）
         bool SetImportSettings(const std::filesystem::path& assetPath, const std::string& colorSpace, const std::string& format);
+
+        /// @brief 画像の 9 スライスの枠の幅（.meta の import.sliceBorder。左・上・右・下の px）を返す
+        /// @param path FindAssetByPath と同じ書き方のパス（UTF-8）
+        /// @return 登録されていない・書いていなければすべて 0
+        std::array<float, 4> GetSliceBorder(std::string_view path) const;
+
+        /// @brief 画像の 9 スライスの枠の幅を .meta に書き、登録している情報も書き換える
+        /// @param assetPath 画像の絶対パス
+        /// @return 書けたら true
+        bool SetSliceBorder(const std::filesystem::path& assetPath, const std::array<float, 4>& border);
+
+        /// @brief 9 スライスの枠の幅を書き換えるたびに進む番号（使う側が読み直す合図）
+        uint32_t GetSliceBorderRevision() const { return sliceBorderRevision_.load(std::memory_order_relaxed); }
 
         /// @brief 指定した種類のアセット情報を相対パス順に返す
         std::vector<const AssetInfo*> GetAssetsOfType(AssetType type) const;
@@ -144,6 +159,7 @@ namespace CoreEngine
 
         // 索引の 4 つの表（assetsByGUID_ など）を守るロック
         mutable std::shared_mutex mutex_;
+        std::atomic<uint32_t> sliceBorderRevision_{ 0 };
 
         // 並列スキャン用スレッドプール（初回スキャン時に生成、完了後解放）
         std::unique_ptr<ThreadPool> threadPool_;

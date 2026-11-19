@@ -158,7 +158,7 @@ namespace CoreEngine
         return changed;
     }
 
-    bool Gizmo::ManipulateUI(UILayout& layout, const Vector2& referenceSize, Mode mode)
+    bool Gizmo::ManipulateUI(UILayout& layout, const Vector2& referenceSize, Mode mode, const UIGizmoFrame& frame)
     {
         if (referenceSize.x <= 0.0f || referenceSize.y <= 0.0f) { return false; }
 
@@ -184,18 +184,23 @@ namespace CoreEngine
 
         // ギズモの原点はピボット位置（アンカー点 + AnchoredPosition）。
         // 矩形の中心ではなくピボットに出すのは、UI の回転・拡縮の基準がそこだから
-        const Vector2 anchorPoint = GetAnchorPoint(layout.anchor, referenceSize);
+        const Vector2 anchorPoint = frame.anchorBase;
         const Vector3 translate(
             anchorPoint.x + layout.anchoredPos.x,
             anchorPoint.y + layout.anchoredPos.y,
             0.0f);
 
-        // 矩形の大きさをそのままスケールとして渡す。
+        // 矩形の実際の大きさ × 拡大をスケールとして渡す。
         // スプライトの scale と同じ扱いになり、SCALE ハンドルで矩形を伸ばせる
+        const float scaleX = layout.scale.x != 0.0f ? layout.scale.x : 1.0f;
+        const float scaleY = layout.scale.y != 0.0f ? layout.scale.y : 1.0f;
         Matrix4x4 worldMatrix = MathCore::Matrix::MakeAffine(
-            Vector3(layout.size.x, layout.size.y, 1.0f),
+            Vector3((frame.sizeBase.x + layout.size.x) * scaleX, (frame.sizeBase.y + layout.size.y) * scaleY, 1.0f),
             Vector3(0.0f, 0.0f, layout.rotation),
             translate);
+        if (frame.hasParent) {
+            worldMatrix = worldMatrix * frame.parentToCanvas;
+        }
 
         ImGuizmo::SetOrthographic(true);
 
@@ -208,6 +213,11 @@ namespace CoreEngine
         RememberOver();
 
         if (!changed) { return false; }
+
+        // 親があれば、親の座標へ戻してから分ける
+        if (frame.hasParent) {
+            worldMatrix = worldMatrix * MathCore::Matrix::Inverse(frame.parentToCanvas);
+        }
 
         Vector3 newTranslation, rotationDegrees, newScale;
         ImGuizmo::DecomposeMatrixToComponents(
@@ -225,8 +235,8 @@ namespace CoreEngine
         // 潰れた矩形はヒット判定もギズモも掴めなくなるので下限を設ける
         constexpr float kMinSize = 1.0f;
         layout.size = {
-            (std::max)(kMinSize, newScale.x),
-            (std::max)(kMinSize, newScale.y),
+            (std::max)(kMinSize, newScale.x / scaleX) - frame.sizeBase.x,
+            (std::max)(kMinSize, newScale.y / scaleY) - frame.sizeBase.y,
         };
 
         return true;

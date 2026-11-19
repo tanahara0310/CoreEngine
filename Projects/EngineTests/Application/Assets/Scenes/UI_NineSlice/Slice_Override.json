@@ -1,0 +1,58 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchor": 4,
+                "anchoredPosition": [
+                    260.0,
+                    -190.0
+                ],
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "rotation": 0.0,
+                "size": [
+                    240.0,
+                    96.0
+                ],
+                "sortOrder": 0
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "border": [
+                    8.0,
+                    8.0,
+                    8.0,
+                    8.0
+                ],
+                "color": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "columns": 1,
+                "fillCenter": true,
+                "frame": 0,
+                "imageType": 1,
+                "material": null,
+                "overrideBorder": true,
+                "rows": 1,
+                "texture": {
+                    "guid": "84383462-b484-4cc4-bb21-ef2ecb49a2b1",
+                    "path": "Application/Assets/Textures/UI_Frame.png"
+                }
+            },
+            "type": "UIImage"
+        }
+    ],
+    "id": "34f40d483630871b",
+    "name": "Slice_Override",
+    "order": 12
+}

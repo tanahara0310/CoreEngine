@@ -11,6 +11,7 @@
 #include "Text/MsdfFont.h"
 #include "Text/TextGeometryBuilder.h"
 #include "UI/RectTransformComponent.h"
+#include "UI/UIElement.h"
 #include "Utility/Algorithm/AssignIfChanged.h"
 #include "Utility/Logger/Logger.h"
 
@@ -202,7 +203,7 @@ namespace CoreEngine
         return CachedSibling(rect_);
     }
 
-    void UITextComponent::UpdateGeometry(RectTransformComponent& rect)
+    void UITextComponent::UpdateGeometry(RectTransformComponent& rect, const Vector2& canvasSize)
     {
         // 文字列に合わせた後で大きさを変えられたら、その大きさの枠に固定する
         if (fieldAutoFit_ && hasFitted_) {
@@ -221,14 +222,22 @@ namespace CoreEngine
             geometryDirty_ = true;
         }
 
+        // アンカーが開いている枠は、親の大きさが変わっても組み直す
+        if (!fieldAutoFit_ && (rect.GetLayout().IsStretchedX() || rect.GetLayout().IsStretchedY())) {
+            const Vector2 fieldSize = rect.GetRectSize(canvasSize);
+            if (fieldSize.x != builtFieldSize_.x || fieldSize.y != builtFieldSize_.y) {
+                geometryDirty_ = true;
+            }
+        }
+
         if (geometryDirty_) {
-            RebuildGeometry(rect);
+            RebuildGeometry(rect, canvasSize);
         } else if (fitDirty_) {
             FitRect(rect);
         }
     }
 
-    void UITextComponent::RebuildGeometry(RectTransformComponent& rect)
+    void UITextComponent::RebuildGeometry(RectTransformComponent& rect, const Vector2& canvasSize)
     {
         geometryDirty_ = false;
         fitDirty_ = false;
@@ -239,7 +248,8 @@ namespace CoreEngine
         if (!font_ || !font_->IsValid()) { return; }
 
         // 折り返し幅と枠は px なので em へ直す。枠を固定しているならその幅で折る
-        const Vector2 fieldSize = rect.GetSize();
+        const Vector2 fieldSize = rect.GetRectSize(canvasSize);
+        builtFieldSize_ = fieldSize;
         const float wrapWidth = fieldAutoFit_ ? wrapWidth_ : fieldSize.x;
 
         TextGeometry::BuildParams params{};
@@ -280,8 +290,10 @@ namespace CoreEngine
     {
         fitDirty_ = false;
 
-        // 行が 1 つも無い（空文字列）ときは大きさを 0 へ潰さない。潰すと Canvas で選び直せなくなる
-        if (lineCount_ > 0) {
+        // 行が 1 つも無い（空文字列）ときは大きさを 0 へ潰さない。潰すと Canvas で選び直せなくなる。
+        // アンカーが開いている枠は文字に合わせない
+        const bool stretched = rect.GetLayout().IsStretchedX() || rect.GetLayout().IsStretchedY();
+        if (lineCount_ > 0 && !stretched) {
             rect.SetSize(GetMeasuredSize());
         }
         fittedSize_ = rect.GetSize();
@@ -299,20 +311,21 @@ namespace CoreEngine
         if (!view.cmdList || !renderer_ || !font_ || !font_->IsValid()) { return; }
 
         RectTransformComponent* const rect = GetRectTransform();
-        if (!rect) { return; }
+        if (!rect || !rect->IsActiveInHierarchy()) { return; }
 
-        UpdateGeometry(*rect);
+        const Vector2 canvasSize = renderer_->GetScreenSize();
+        UpdateGeometry(*rect, canvasSize);
         if (glyphVertices_.empty()) { return; }
 
-        const UILayout& layout = rect->GetLayout();
-        const Vector2 screenPosition = layout.CalculateScreenPosition(renderer_->GetScreenSize());
-        const Vector3 position = { screenPosition.x, screenPosition.y, 0.0f };
         // 頂点が em 単位なので、フォントサイズがそのまま拡大率になる
-        const Vector3 scale = { fontSize_, fontSize_, 1.0f };
-        const Vector3 rotation = { 0.0f, 0.0f, layout.rotation };
-        const Matrix4x4 world = Matrix::MakeAffine(scale, rotation, position);
+        const Matrix4x4 world = rect->BuildDrawMatrix({ fontSize_, fontSize_ }, canvasSize);
+
+        // 親の UI マスクの外は描かない
+        UIRect clip;
+        const bool clipped = rect->FindClipRect(canvasSize, clip);
 
         // ドローコールは出さず、レンダラーのバッチへ積むだけ
-        renderer_->Submit(font_, glyphVertices_.data(), glyphVertices_.size(), world, style_);
+        renderer_->Submit(font_, glyphVertices_.data(), glyphVertices_.size(), world, style_,
+            clipped ? &clip : nullptr);
     }
 }
