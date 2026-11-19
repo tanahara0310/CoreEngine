@@ -134,6 +134,8 @@ namespace CoreEngine::ObjectEditing
         constexpr float kDropdownScrollbarWidth = 12.0f;
         const Vector4 kNewDropdownScrollbarColor = { 0.82f, 0.83f, 0.86f, 1.0f };
         const Vector4 kNewDropdownHandleColor = { 0.5f, 0.52f, 0.58f, 1.0f };
+        const Vector4 kNewDropdownHandleHoveredColor = { 0.4f, 0.42f, 0.48f, 1.0f };
+        const Vector4 kNewDropdownHandlePressedColor = { 0.32f, 0.34f, 0.4f, 1.0f };
 
         /// 子孫をたどる深さの上限
         constexpr int kMaxHierarchyDepth = 64;
@@ -701,6 +703,9 @@ namespace CoreEngine::ObjectEditing
                     if (handle) {
                         slider->SetHandle(handle->GetComponent<RectTransformComponent>());
                     }
+                    // スライダーはつまみを状態ごとの色で塗る
+                    slider->SetStateColors(kNewDropdownHandleColor, kNewDropdownHandleHoveredColor,
+                                           kNewDropdownHandlePressedColor);
                     // つまみを繋ぐ前にスライダーが塗った帯の色を戻す
                     if (UIImageComponent* const track = bar->GetComponent<UIImageComponent>()) {
                         track->SetColor(kNewDropdownScrollbarColor);

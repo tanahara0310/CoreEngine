@@ -29,6 +29,10 @@ class UIDropdownProbe : ScriptComponent
         if (frame_ == 5) {
             CheckScript();
         }
+        if (frame_ == 10) {
+            // キー・パッドの上下左右で選び始められるよう、外のボタンを選んでおく
+            owner.FindObject("OutsideButton").uiButton.Focus();
+        }
         ReportChanges();
         ReportBlocked();
         UpdateStatus();

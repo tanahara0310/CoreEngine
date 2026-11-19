@@ -51,6 +51,14 @@ namespace CoreEngine
         ApplyVisual();
     }
 
+    void UISelectableComponent::SetStateColors(const Vector4& normal, const Vector4& hovered, const Vector4& pressed)
+    {
+        normalColor_ = normal;
+        hoveredColor_ = hovered;
+        pressedColor_ = pressed;
+        ApplyVisual();
+    }
+
     RectTransformComponent* UISelectableComponent::GetRectTransform() const
     {
         return Sibling<RectTransformComponent>();

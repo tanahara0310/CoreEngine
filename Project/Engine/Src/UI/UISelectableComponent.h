@@ -41,6 +41,9 @@ namespace CoreEngine
         /// @brief 押せるかを変える（押せなくしたら、乗っている・選んでいる・押している状態を消す）
         void SetInteractable(bool value);
 
+        /// @brief 通常・乗せた・押したときの色を変え、今の状態の色を塗り直す
+        void SetStateColors(const Vector4& normal, const Vector4& hovered, const Vector4& pressed);
+
         // ===== IUIInteractable =====
 
         RectTransformComponent* GetRectTransform() const override;
