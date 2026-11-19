@@ -22,6 +22,7 @@
 #include "Scene/Feature/CollisionFeature.h"
 #include "Scene/Feature/SceneFeatureRegistry.h"
 #include "UI/UIDrawOrder.h"
+#include "UI/UIDropdownComponent.h"
 #include "UI/UILayoutPass.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/FrameRate/FrameRateController.h"
@@ -407,6 +408,9 @@ namespace CoreEngine
 
         // UI を並べる部品・大きさを合わせる部品を効かせる
         ResolveUILayout(gameObjectManager_);
+
+        // 開いたばかりのドロップダウンの一覧を、並べた行に合わせて置く
+        PlaceOpenDropdownLists(gameObjectManager_);
 
         // 親子のある UI は、親のすぐ後に子を描くよう描画順を振り直す
         ResolveUIDrawOrder(gameObjectManager_, uiDrawOrderResolved_);

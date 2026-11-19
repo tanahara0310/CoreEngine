@@ -45,6 +45,7 @@ namespace CoreEngine
             Button, ///< UI ボタン（文字を子に持つ）
             Panel,  ///< 親いっぱいに伸ばした UI 画像
             ScrollView, ///< マスクした窓と縦に並べる中身・項目・スクロールバー
+            Dropdown,   ///< 押す所・今の値の文字・矢印と、隠した一覧のひな形
         };
 
         /// @brief 作るパーティクルの種類

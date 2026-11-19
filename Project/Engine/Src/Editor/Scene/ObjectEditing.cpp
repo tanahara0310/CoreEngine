@@ -18,6 +18,8 @@
 #include "UI/RectTransformComponent.h"
 #include "UI/UIButtonComponent.h"
 #include "UI/UIContentSizeFitterComponent.h"
+#include "UI/UIDropdownComponent.h"
+#include "UI/UIDropdownItemComponent.h"
 #include "UI/UIImageComponent.h"
 #include "UI/UILayoutGroupComponent.h"
 #include "UI/UIMaskComponent.h"
@@ -102,6 +104,36 @@ namespace CoreEngine::ObjectEditing
         constexpr float kScrollbarHandleLength = 48.0f;
         constexpr float kScrollbarInset = 4.0f;
         const Vector4 kNewScrollbarColor = { 0.08f, 0.08f, 0.1f, 1.0f };
+
+        /// ドロップダウンの各オブジェクトの名前
+        constexpr const char* kDropdownObjectName = "Dropdown";
+        constexpr const char* kDropdownLabelObjectName = "Label";
+        constexpr const char* kDropdownArrowObjectName = "Arrow";
+        constexpr const char* kDropdownTemplateObjectName = "Template";
+        constexpr const char* kDropdownItemObjectName = "Item";
+        constexpr const char* kDropdownItemCheckmarkObjectName = "Item Checkmark";
+        constexpr const char* kDropdownItemLabelObjectName = "Item Label";
+
+        /// 作ったドロップダウンの選択肢
+        constexpr const char* kNewDropdownOptions[] = { "選択肢 A", "選択肢 B", "選択肢 C" };
+
+        /// 作ったドロップダウンの押す所の大きさ・一覧の高さ・行の高さ（px）
+        const Vector2 kNewDropdownSize = { 240.0f, 40.0f };
+        constexpr float kNewDropdownListHeight = 200.0f;
+        constexpr float kNewDropdownItemHeight = 36.0f;
+
+        /// 作ったドロップダウンの文字の大きさ（押す所・矢印・行・印）
+        constexpr float kNewDropdownFontSize = 24.0f;
+        constexpr float kNewDropdownArrowFontSize = 16.0f;
+        constexpr float kNewDropdownItemFontSize = 22.0f;
+
+        /// 作ったドロップダウンの一覧の中身の余白（左・上・右・下。右はスクロールバーの分を空ける）
+        const Vector4 kNewDropdownContentPadding = { 4.0f, 4.0f, 20.0f, 4.0f };
+
+        /// 作ったドロップダウンの一覧のスクロールバーの幅と色
+        constexpr float kDropdownScrollbarWidth = 12.0f;
+        const Vector4 kNewDropdownScrollbarColor = { 0.82f, 0.83f, 0.86f, 1.0f };
+        const Vector4 kNewDropdownHandleColor = { 0.5f, 0.52f, 0.58f, 1.0f };
 
         /// 子孫をたどる深さの上限
         constexpr int kMaxHierarchyDepth = 64;
@@ -498,6 +530,202 @@ namespace CoreEngine::ObjectEditing
             return view;
         }
 
+        /// @brief 親の中で左右（上下）を空けて伸ばす
+        /// @param inset 親の端からの間（左・上・右・下。px）
+        void StretchWithInset(RectTransformComponent& rect, const Vector4& inset)
+        {
+            rect.SetAnchors({ 0.0f, 0.0f }, { 1.0f, 1.0f });
+            rect.SetSize({ -(inset.x + inset.z), -(inset.y + inset.w) });
+            rect.SetAnchoredPosition({ (inset.x - inset.z) * 0.5f, (inset.y - inset.w) * 0.5f });
+        }
+
+        /// @brief 文字を 1 つ持つ UI のオブジェクトを作る
+        /// @param place 文字の UI トランスフォームを置く処理（RectTransformComponent& を受ける）
+        template <class Place>
+        GameObject* CreateTextObject(const Context& context, const std::string& baseName, RectTransformComponent* parent,
+                                     const std::string& label, float fontSize, TextAlignH alignH, Place&& place)
+        {
+            return CreateObject(context, MakeUniqueName(*context.manager, baseName),
+                [&](GameObject& created) {
+                    if (RectTransformComponent* const rect = created.AddComponent<RectTransformComponent>()) {
+                        rect->SetParent(parent, false);
+                        place(*rect);
+                    }
+                    if (UITextComponent* const text = created.AddComponent<UITextComponent>()) {
+                        text->SetFieldAutoFit(false);
+                        text->SetText(label);
+                        text->SetFontSize(fontSize);
+                        text->SetAlign(alignH, TextAlignV::Middle);
+                        text->SetColor(kNewButtonTextColor);
+                    }
+                });
+        }
+
+        /// @brief 押す所・今の値の文字・矢印と、隠した一覧のひな形（行のひな形とスクロールバー）を作る（1 回の Undo で全部消える）
+        GameObject* CreateDropdown(const Context& context)
+        {
+            const std::string name = MakeUniqueName(*context.manager, kDropdownObjectName);
+            Editor::BatchScope batch(name + " を作る");
+
+            GameObject* const dropdown = CreateObject(context, name, [](GameObject& created) {
+                if (RectTransformComponent* const rect = created.AddComponent<RectTransformComponent>()) {
+                    rect->SetSize(kNewDropdownSize);
+                }
+                created.AddComponent<UIImageComponent>();
+                if (UIDropdownComponent* const component = created.AddComponent<UIDropdownComponent>()) {
+                    component->SetOptions({ std::begin(kNewDropdownOptions), std::end(kNewDropdownOptions) });
+                }
+            });
+            if (!dropdown) {
+                return nullptr;
+            }
+            RectTransformComponent* const dropdownRect = dropdown->GetComponent<RectTransformComponent>();
+
+            // 今の値の文字は左を詰め、右は矢印の分を空ける
+            GameObject* const label = CreateTextObject(context, kDropdownLabelObjectName, dropdownRect,
+                kNewDropdownOptions[0], kNewDropdownFontSize, TextAlignH::Left,
+                [](RectTransformComponent& rect) { StretchWithInset(rect, { 12.0f, 0.0f, 32.0f, 0.0f }); });
+            CreateTextObject(context, kDropdownArrowObjectName, dropdownRect, "▼", kNewDropdownArrowFontSize, TextAlignH::Center,
+                [](RectTransformComponent& rect) {
+                    rect.SetAnchors({ 1.0f, 0.5f }, { 1.0f, 0.5f });
+                    rect.SetAnchoredPosition({ -18.0f, 0.0f });
+                    rect.SetSize({ 24.0f, 24.0f });
+                });
+
+            // 一覧は押す所の下辺に付けて横いっぱいに伸ばす
+            GameObject* const list = CreateObject(context, MakeUniqueName(*context.manager, kDropdownTemplateObjectName),
+                [dropdownRect](GameObject& created) {
+                    if (RectTransformComponent* const rect = created.AddComponent<RectTransformComponent>()) {
+                        rect->SetParent(dropdownRect, false);
+                        rect->SetAnchors({ 0.0f, 1.0f }, { 1.0f, 1.0f });
+                        rect->SetPivot({ 0.5f, 0.0f });
+                        rect->SetAnchoredPosition({ 0.0f, 2.0f });
+                        rect->SetSize({ 0.0f, kNewDropdownListHeight });
+                    }
+                    created.AddComponent<UIImageComponent>();
+                    created.AddComponent<UIMaskComponent>();
+                    created.AddComponent<UIScrollViewComponent>();
+                });
+            RectTransformComponent* const listRect = list ? list->GetComponent<RectTransformComponent>() : nullptr;
+
+            GameObject* const content = listRect
+                ? CreateObject(context, MakeUniqueName(*context.manager, kScrollContentObjectName),
+                    [listRect](GameObject& created) {
+                        if (RectTransformComponent* const rect = created.AddComponent<RectTransformComponent>()) {
+                            rect->SetParent(listRect, false);
+                            rect->SetAnchors({ 0.0f, 0.0f }, { 1.0f, 0.0f });
+                            rect->SetPivot({ 0.5f, 0.0f });
+                            rect->SetAnchoredPosition({ 0.0f, 0.0f });
+                            rect->SetSize({ 0.0f, 0.0f });
+                        }
+                        if (UILayoutGroupComponent* const group = created.AddComponent<UILayoutGroupComponent>()) {
+                            group->SetLayoutType(UILayoutType::Vertical);
+                            group->SetPadding(kNewDropdownContentPadding);
+                            group->SetSpacing(0.0f);
+                            group->SetControlChildSize(1, false);
+                            group->SetForceExpand(1, false);
+                        }
+                        if (UIContentSizeFitterComponent* const fitter = created.AddComponent<UIContentSizeFitterComponent>()) {
+                            fitter->SetHorizontalFit(UIFitMode::Unconstrained);
+                            fitter->SetVerticalFit(UIFitMode::PreferredSize);
+                        }
+                    })
+                : nullptr;
+            RectTransformComponent* const contentRect = content ? content->GetComponent<RectTransformComponent>() : nullptr;
+
+            // 行のひな形：背景の画像・選んでいる行の印・選択肢の文字
+            GameObject* const item = contentRect
+                ? CreateObject(context, MakeUniqueName(*context.manager, kDropdownItemObjectName),
+                    [contentRect](GameObject& created) {
+                        if (RectTransformComponent* const rect = created.AddComponent<RectTransformComponent>()) {
+                            rect->SetParent(contentRect, false);
+                            rect->SetSize({ kNewDropdownSize.x, kNewDropdownItemHeight });
+                        }
+                        created.AddComponent<UIImageComponent>();
+                        created.AddComponent<UIDropdownItemComponent>();
+                    })
+                : nullptr;
+            RectTransformComponent* const itemRect = item ? item->GetComponent<RectTransformComponent>() : nullptr;
+            GameObject* const checkmark = itemRect
+                ? CreateTextObject(context, kDropdownItemCheckmarkObjectName, itemRect, "✓", kNewDropdownItemFontSize,
+                    TextAlignH::Center, [](RectTransformComponent& rect) {
+                        rect.SetAnchors({ 0.0f, 0.5f }, { 0.0f, 0.5f });
+                        rect.SetAnchoredPosition({ 16.0f, 0.0f });
+                        rect.SetSize({ 24.0f, 24.0f });
+                    })
+                : nullptr;
+            GameObject* const itemLabel = itemRect
+                ? CreateTextObject(context, kDropdownItemLabelObjectName, itemRect, kNewDropdownOptions[0],
+                    kNewDropdownItemFontSize, TextAlignH::Left,
+                    [](RectTransformComponent& rect) { StretchWithInset(rect, { 32.0f, 0.0f, 8.0f, 0.0f }); })
+                : nullptr;
+
+            // スクロールバーは一覧の右端に、つまみの半分ずつ上下を空けて置く。つまみは行と同じ高さ
+            GameObject* const bar = listRect
+                ? CreateObject(context, MakeUniqueName(*context.manager, kScrollbarObjectName),
+                    [listRect](GameObject& created) {
+                        if (RectTransformComponent* const rect = created.AddComponent<RectTransformComponent>()) {
+                            rect->SetParent(listRect, false);
+                            rect->SetAnchors({ 1.0f, 0.0f }, { 1.0f, 1.0f });
+                            rect->SetPivot({ 1.0f, 0.5f });
+                            rect->SetAnchoredPosition({ -kScrollbarInset, 0.0f });
+                            rect->SetSize({ kDropdownScrollbarWidth, -(kNewDropdownItemHeight + kScrollbarInset * 2.0f) });
+                        }
+                        if (UIImageComponent* const image = created.AddComponent<UIImageComponent>()) {
+                            image->SetColor(kNewDropdownScrollbarColor);
+                        }
+                        if (UISliderComponent* const slider = created.AddComponent<UISliderComponent>()) {
+                            slider->SetDirection(UISliderComponent::Direction::TopToBottom);
+                            slider->SetValue(0.0f);
+                        }
+                    })
+                : nullptr;
+            RectTransformComponent* const barRect = bar ? bar->GetComponent<RectTransformComponent>() : nullptr;
+            GameObject* const handle = barRect
+                ? CreateObject(context, MakeUniqueName(*context.manager, kScrollbarHandleObjectName),
+                    [barRect](GameObject& created) {
+                        if (RectTransformComponent* const rect = created.AddComponent<RectTransformComponent>()) {
+                            rect->SetParent(barRect, false);
+                            rect->SetSize({ kDropdownScrollbarWidth, kNewDropdownItemHeight });
+                        }
+                        if (UIImageComponent* const image = created.AddComponent<UIImageComponent>()) {
+                            image->SetColor(kNewDropdownHandleColor);
+                        }
+                    })
+                : nullptr;
+
+            // 繋ぐ
+            if (UIScrollViewComponent* const scroll = list ? list->GetComponent<UIScrollViewComponent>() : nullptr) {
+                scroll->SetContent(contentRect);
+                if (UISliderComponent* const slider = bar ? bar->GetComponent<UISliderComponent>() : nullptr) {
+                    if (handle) {
+                        slider->SetHandle(handle->GetComponent<RectTransformComponent>());
+                    }
+                    // つまみを繋ぐ前にスライダーが塗った帯の色を戻す
+                    if (UIImageComponent* const track = bar->GetComponent<UIImageComponent>()) {
+                        track->SetColor(kNewDropdownScrollbarColor);
+                    }
+                    scroll->SetVerticalScrollbar(slider);
+                }
+            }
+            UIDropdownItemComponent* const itemComponent = item ? item->GetComponent<UIDropdownItemComponent>() : nullptr;
+            if (itemComponent && checkmark) {
+                itemComponent->SetCheckmark(checkmark->GetComponent<RectTransformComponent>());
+            }
+            if (UIDropdownComponent* const component = dropdown->GetComponent<UIDropdownComponent>()) {
+                component->SetCaptionText(label ? label->GetComponent<UITextComponent>() : nullptr);
+                component->SetTemplate(listRect);
+                component->SetItem(itemComponent, itemLabel ? itemLabel->GetComponent<UITextComponent>() : nullptr);
+            }
+
+            // 一覧のひな形は隠しておく（再生中に開くと出る）
+            if (list) {
+                list->SetActive(false);
+            }
+            LogCreated("UI のドロップダウン", *dropdown);
+            return dropdown;
+        }
+
         /// @brief 親いっぱいに伸ばした半透明の画像を持つオブジェクトを作る
         GameObject* CreatePanel(const Context& context)
         {
@@ -655,6 +883,9 @@ namespace CoreEngine::ObjectEditing
         }
         if (kind == UIElementKind::ScrollView) {
             return CreateScrollView(context);
+        }
+        if (kind == UIElementKind::Dropdown) {
+            return CreateDropdown(context);
         }
 
         const char* const baseName = (kind == UIElementKind::Text) ? kTextObjectName : kImageObjectName;

@@ -669,6 +669,9 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\UI\UIContentSizeFitterComponent.cpp" />
     <ClCompile Include="Engine\Src\UI\UILayoutPass.cpp" />
     <ClCompile Include="Engine\Src\UI\UIScrollViewComponent.cpp" />
+    <ClCompile Include="Engine\Src\UI\UIDropdownComponent.cpp" />
+    <ClCompile Include="Engine\Src\UI\UIDropdownItemComponent.cpp" />
+    <ClCompile Include="Engine\Src\UI\UIHierarchyClone.cpp" />
     <ClCompile Include="Engine\Src\Math\Geometry\Distance.cpp" />
     <ClCompile Include="Engine\Src\Math\Geometry\MeshIntersect.cpp" />
     <ClCompile Include="Engine\Src\Math\Geometry\Triangle.cpp" />
@@ -2051,6 +2054,9 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\UI\UIContentSizeFitterComponent.h" />
     <ClInclude Include="Engine\Src\UI\UILayoutPass.h" />
     <ClInclude Include="Engine\Src\UI\UIScrollViewComponent.h" />
+    <ClInclude Include="Engine\Src\UI\UIDropdownComponent.h" />
+    <ClInclude Include="Engine\Src\UI\UIDropdownItemComponent.h" />
+    <ClInclude Include="Engine\Src\UI\UIHierarchyClone.h" />
     <ClInclude Include="Engine\Src\Math\Geometry\Distance.h" />
     <ClInclude Include="Engine\Src\Math\Geometry\MeshView.h" />
     <ClInclude Include="Engine\Src\Math\Geometry\Triangle.h" />

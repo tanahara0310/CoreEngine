@@ -4,11 +4,14 @@
 #include "Math/Vector/Vector2.h"
 #include "UI/UINavigation.h"
 
+#include <vector>
+
 namespace CoreEngine
 {
     class EngineSystem;
     class IUIInteractable;
     class InputQuery;
+    class RectTransformComponent;
     class UIPointer;
     class UIScrollViewComponent;
 
@@ -17,6 +20,8 @@ namespace CoreEngine
     ///          決めて配る。押せる UI は `IUIInteractable` を実装して受け取る。
     ///          ポインタで押したときも、フォーカス中に決定キーを押したときも、同じ口へ届く。
     /// @note 再生中だけ動かす。編集中に効かせると、置いている最中に押されてしまう。
+    ///       一覧を開いている UI（ドロップダウン）があれば、ポインタ・スクロール・フォーカスはその一覧の中だけに配り、
+    ///       一覧の外を押す・戻る（`UICancel`）で閉じさせる。
     class UIInteractionFeature : public ISceneFeature {
     public:
         /// @brief 今開いているシーンのものを引く
@@ -55,17 +60,43 @@ namespace CoreEngine
             bool accepts = false; ///< 操作を受け付ける状態
         };
 
+        /// @brief このフレームに見つけた、開いている一覧
+        struct PopupScan {
+            IUIInteractable* owner = nullptr;      ///< 一覧を開いている UI（無ければ nullptr）
+            RectTransformComponent* root = nullptr; ///< その一覧
+            Presence previous;                     ///< 前のフレームの持ち主がまだ居るか
+        };
+
+        /// @brief ポインタの下にあった押せる UI
+        struct PointerHit {
+            IUIInteractable* target = nullptr;
+            const RectTransformComponent* rect = nullptr;
+            int order = 0;
+        };
+
         /// @brief 覚えている相手の生存を確かめつつ、ポインタの下の手前の 1 つを探す
         /// @param ctx シーン
         /// @param canvasSize UI の基準解像度
         /// @param pointer キャンバス座標でのポインタ
         /// @param pointerOver ポインタがゲーム画面の上にあるか
+        /// @param outPopup 開いている一覧（一覧が開いていれば、その中の物だけを探す）
         /// @return ポインタの下にある、いちばん手前の押せる UI（無ければ nullptr）
         IUIInteractable* ScanAndPick(SceneContext& ctx, const Vector2& canvasSize,
-                                     const Vector2& pointer, bool pointerOver);
+                                     const Vector2& pointer, bool pointerOver, PopupScan& outPopup);
 
         /// @brief 消えた相手・受け付けなくなった相手を手放す
         void ReleaseLost(const Presence& hovered, const Presence& focused, const Presence& pressed);
+
+        /// @brief 一覧が開いた・閉じたときにフォーカスを移す
+        /// @details 開いたときにキー・パッドで選んでいたら一覧の最初の相手へ、
+        ///          閉じたときに一覧の中をキー・パッドで選んでいたら一覧の持ち主へ戻す。
+        void ChangePopup(SceneContext& ctx, const Vector2& canvasSize, const PopupScan& scan);
+
+        /// @brief 一覧が開いている間、candidate が一覧の中にあってキー・パッドで選べるか（開いていなければ true）
+        bool IsPopupFocusCandidate(const IUIInteractable& candidate) const;
+
+        /// @brief 一覧を開いたときにフォーカスを置く相手
+        IUIInteractable* FindPopupInitialFocus(SceneContext& ctx, const Vector2& canvasSize) const;
 
         /// @brief ポインタの下のいちばん手前のスクロールを探す（掴んでいるスクロールが消えていたら手放す）
         /// @return ポインタの下に無いか、スクロールの外の手前の UI に覆われていれば nullptr
@@ -125,6 +156,15 @@ namespace CoreEngine
         UINavigationDirection repeatDirection_ = UINavigationDirection::Up;
         bool repeatActive_ = false;
         float repeatTimer_ = 0.0f;
+
+        // 一覧を開いている UI と、その一覧（無ければ nullptr）
+        IUIInteractable* popupOwner_ = nullptr;
+        RectTransformComponent* popupRoot_ = nullptr;
+        // 一覧が開いている間にキー・パッドで選んでいたか（閉じたら持ち主へフォーカスを戻す）
+        bool popupKeyboard_ = false;
+
+        // ポインタの下にあった押せる UI（毎フレーム使い回す）
+        std::vector<PointerHit> hits_;
 
         // 前のフレームに再生中だったか（やめた瞬間に 1 回だけ戻すため）
         bool wasPlaying_ = false;

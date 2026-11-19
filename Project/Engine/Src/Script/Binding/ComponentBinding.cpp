@@ -14,10 +14,12 @@
 #include "Script/Binding/GameObjectBinding.h"
 #include "Script/Binding/ScriptRefCounted.h"
 #include "UI/RectTransformComponent.h"
+#include "UI/UIDropdownComponent.h"
 #include "UI/UIScrollViewComponent.h"
 #include "Utility/Logger/Logger.h"
 
 #include <angelscript.h>
+#include <scriptarray/scriptarray.h>
 
 #include <algorithm>
 #include <array>
@@ -148,6 +150,40 @@ namespace CoreEngine::Script
                     return;
                 }
                 view->ScrollTo(*rect);
+            }
+
+            /// @brief 選択肢の写し（UIDropdown の型だけで使う。スクリプトの中から呼ばれたときだけ作れる）
+            CScriptArray* GetDropdownOptions() const
+            {
+                asIScriptContext* const context = asGetActiveContext();
+                asIScriptEngine* const engine = context ? context->GetEngine() : nullptr;
+                asITypeInfo* const type = engine ? engine->GetTypeInfoByDecl("array<string>") : nullptr;
+                if (!type) {
+                    return nullptr;
+                }
+                const auto* const dropdown = dynamic_cast<const UIDropdownComponent*>(FindOrWarn("options の読み取り"));
+                const std::vector<std::string> empty;
+                const std::vector<std::string>& options = dropdown ? dropdown->GetOptions() : empty;
+                CScriptArray* const array = CScriptArray::Create(type, static_cast<asUINT>(options.size()));
+                for (asUINT i = 0; array && i < array->GetSize(); ++i) {
+                    *static_cast<std::string*>(array->At(i)) = options[i];
+                }
+                return array;
+            }
+
+            /// @brief 選択肢を置き換える（UIDropdown の型だけで使う）
+            void SetDropdownOptions(const CScriptArray& options)
+            {
+                auto* const dropdown = dynamic_cast<UIDropdownComponent*>(FindOrWarn("options の書き込み"));
+                if (!dropdown) {
+                    return;
+                }
+                std::vector<std::string> values;
+                values.reserve(options.GetSize());
+                for (asUINT i = 0; i < options.GetSize(); ++i) {
+                    values.push_back(*static_cast<const std::string*>(options.At(i)));
+                }
+                dropdown->SetOptions(values);
             }
 
             IComponent* Find() const
@@ -453,6 +489,14 @@ namespace CoreEngine::Script
             if (type.name == "UIScrollView") {
                 r.Method(name, "void ScrollTo(GameObject@+ target)",
                     asMETHOD(ScriptEngineComponent, ScrollViewTo), asCALL_THISCALL);
+            }
+
+            // ドロップダウンの選択肢（文字の配列）の読み書き
+            if (type.name == "UIDropdown") {
+                r.Method(name, "array<string>@ get_options() const property",
+                    asMETHOD(ScriptEngineComponent, GetDropdownOptions), asCALL_THISCALL);
+                r.Method(name, "void set_options(const array<string>&in options) property",
+                    asMETHOD(ScriptEngineComponent, SetDropdownOptions), asCALL_THISCALL);
             }
         }
     }

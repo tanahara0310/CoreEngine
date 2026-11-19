@@ -12,7 +12,8 @@ namespace CoreEngine
 {
     void ResolveUIDrawOrder(GameObjectManager& manager, bool& resolved)
     {
-        if (!RectTransformComponent::AnyHasParent() && !resolved) {
+        const bool anyOnTop = RectTransformComponent::AnyDrawnOnTop();
+        if (!RectTransformComponent::AnyHasParent() && !anyOnTop && !resolved) {
             return;
         }
 
@@ -23,7 +24,7 @@ namespace CoreEngine
             anyParent = anyParent || rect.GetParent() != nullptr;
             });
 
-        if (!anyParent) {
+        if (!anyParent && !anyOnTop) {
             for (RectTransformComponent* const rect : items) {
                 rect->ApplyRenderOrder();
             }
@@ -62,9 +63,11 @@ namespace CoreEngine
             std::stable_sort(list.begin(), list.end(), bySortOrder);
         }
 
-        // 根から深さ優先でたどり、たどった順に描く順を振る
+        // 根から深さ優先でたどり、たどった順に描く順を振る。
+        // 手前に描く物は見つけた順に控え、ほかを全部たどってから、その物を根としてたどる
         std::vector<bool> visited(items.size(), false);
         std::vector<int> stack;
+        std::vector<int> onTop;
         int sequence = 0;
         const auto walk = [&](int root) {
             stack.push_back(root);
@@ -77,16 +80,49 @@ namespace CoreEngine
                 visited[index] = true;
                 items[index]->ApplyResolvedRenderOrder(RectTransformComponent::kRenderOrderBase + sequence++);
                 const std::vector<int>& list = children[index];
+                if (anyOnTop) {
+                    for (const int child : list) {
+                        if (items[child]->IsDrawnOnTop() && !visited[child]) {
+                            onTop.push_back(child);
+                        }
+                    }
+                }
                 for (auto it = list.rbegin(); it != list.rend(); ++it) {
-                    stack.push_back(*it);
+                    if (!anyOnTop || !items[*it]->IsDrawnOnTop()) {
+                        stack.push_back(*it);
+                    }
                 }
             }
         };
         for (const int root : roots) {
+            if (anyOnTop && items[root]->IsDrawnOnTop()) {
+                onTop.push_back(root);
+                continue;
+            }
             walk(root);
         }
 
+        // 自分か先祖が手前に描く物か（先祖が輪になっていても数だけでやめる）
+        const auto isUnderOnTop = [&](int index) {
+            for (int step = 0; index >= 0 && step < count; ++step, index = parentOf[index]) {
+                if (items[index]->IsDrawnOnTop()) {
+                    return true;
+                }
+            }
+            return false;
+        };
+
         // 親をたどると輪になっている物は、輪の中で最初の物から描く
+        for (int i = 0; i < count; ++i) {
+            if (!visited[i] && !(anyOnTop && isUnderOnTop(i))) {
+                walk(i);
+            }
+        }
+
+        // 手前に描く物（その中でさらに手前に描く物は後ろへ足される）
+        for (std::size_t k = 0; k < onTop.size(); ++k) {
+            walk(onTop[k]);
+        }
         for (int i = 0; i < count; ++i) {
             if (!visited[i]) {
                 walk(i);

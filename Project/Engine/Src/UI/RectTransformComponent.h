@@ -216,6 +216,14 @@ namespace CoreEngine
         /// @brief ポインタの当たりで比べる順（大きいほど手前。並べ直していれば描く順、いなければ描画順）
         int GetPointerOrder() const { return hasResolvedOrder_ ? resolvedOrder_ : layout_.sortOrder; }
 
+        /// @brief 自分と子孫を、ほかのすべての UI の後（手前）に描き、親の `UIMask` にも切らせないか
+        /// @note 保存しない。ドロップダウンが開いている一覧に使う。
+        bool IsDrawnOnTop() const { return drawnOnTop_; }
+        void SetDrawnOnTop(bool onTop);
+
+        /// @brief 手前に描く UI トランスフォームが 1 つでもあるか
+        static bool AnyDrawnOnTop();
+
         // ===== 変更の検知 =====
 
         /// @brief 基準点か大きさが変わるたびに進む番号
@@ -236,5 +244,6 @@ namespace CoreEngine
         bool hasResolvedOrder_ = false;
         bool sizeDriven_ = false;
         bool linked_ = false;
+        bool drawnOnTop_ = false;
     };
 }

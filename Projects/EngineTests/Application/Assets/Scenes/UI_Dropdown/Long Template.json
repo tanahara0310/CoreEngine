@@ -1,0 +1,88 @@
+{
+    "active": false,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchorMax": [
+                    1.0,
+                    1.0
+                ],
+                "anchorMin": [
+                    0.0,
+                    1.0
+                ],
+                "anchoredPosition": [
+                    0.0,
+                    2.0
+                ],
+                "parent": {
+                    "comp": "RectTransform",
+                    "ref": "052015c915354031"
+                },
+                "pivot": [
+                    0.5,
+                    0.0
+                ],
+                "rotation": 0.0,
+                "scale": [
+                    1.0,
+                    1.0
+                ],
+                "size": [
+                    0.0,
+                    320.0
+                ],
+                "sortOrder": 0
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "columns": 1,
+                "frame": 0,
+                "material": null,
+                "rows": 1,
+                "texture": null
+            },
+            "type": "UIImage"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "showMaskGraphic": true
+            },
+            "type": "UIMask"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "content": {
+                    "comp": "RectTransform",
+                    "ref": "45831033cba1b53a"
+                },
+                "decelerationRate": 0.135,
+                "horizontal": false,
+                "horizontalScrollbar": null,
+                "inertia": true,
+                "vertical": true,
+                "verticalScrollbar": {
+                    "comp": "UISlider",
+                    "ref": "872cc1d46bd30e05"
+                },
+                "wheelStep": 0.0
+            },
+            "type": "UIScrollView"
+        }
+    ],
+    "id": "081161c944a05880",
+    "name": "Long Template",
+    "order": 20
+}
