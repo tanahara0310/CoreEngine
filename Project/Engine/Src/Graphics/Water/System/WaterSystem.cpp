@@ -414,7 +414,7 @@ namespace CoreEngine
         // 被覆の判定をメッシュと同じ基準にするための頂点の分割数
         out.meshSubdivisions = static_cast<float>(waterPlane.GetResolution());
 
-        // RT の水面の法線へ足す波紋
+        // RT の水面と高さの問い合わせへ足す波紋
         ripple_.Capture(domain, waterPlane, out);
     }
 

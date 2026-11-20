@@ -92,6 +92,59 @@ float2 EvaluateRippleSlope(
     return slope;
 }
 
+// 段の代表の波長 [マス]
+static const float kRippleGeometryWavelengthCells = 16.0f;
+// 代表の波長あたりの頂点の数がこの数以下の段は形に出さず、この数以上の段はそのまま出す
+static const float kRippleGeometryMinVerticesPerWave = 4.0f;
+static const float kRippleGeometryFullVerticesPerWave = 8.0f;
+
+/// @brief 頂点の間隔 vertexSpacing [m] の格子で、段の波紋を形（頂点の高さ）に入れる重み [0,1]
+float ComputeRippleGeometryLevelWeight(float cellSize, float vertexSpacing)
+{
+    const float verticesPerWave = kRippleGeometryWavelengthCells * cellSize / max(vertexSpacing, 1.0e-4f);
+    return smoothstep(kRippleGeometryMinVerticesPerWave, kRippleGeometryFullVerticesPerWave, verticesPerWave);
+}
+
+/// @brief 水面の頂点に足す波紋の高さ [m]（頂点の格子で表せる段の和に strength を掛けた値）
+/// @param worldXZ 頂点が描かれる位置のワールド XZ [m]
+/// @param vertexSpacing 頂点の格子の間隔 [m]（ComputeRippleGeometryLevelWeight）
+float EvaluateRippleVertexHeight(
+    Texture2DArray<float4> surface,
+    float2 worldXZ,
+    float vertexSpacing,
+    float4 originsXZ01,
+    float2 origin2XZ,
+    float3 invSizes,
+    float strength)
+{
+    float height = 0.0f;
+    [unroll]
+    for (uint level = 0; level < kRippleLevelCount; ++level)
+    {
+        const float invSize = (level == 0) ? invSizes.x : ((level == 1) ? invSizes.y : invSizes.z);
+        if (invSize <= 0.0f)
+        {
+            continue;
+        }
+        const float cellSize = 1.0f / (invSize * (float)kRippleResolution);
+        const float weight = ComputeRippleGeometryLevelWeight(cellSize, vertexSpacing);
+        if (weight <= 0.0f)
+        {
+            continue;
+        }
+        const float2 origin = (level == 0) ? originsXZ01.xy : ((level == 1) ? originsXZ01.zw : origin2XZ);
+        const float2 cellCoord = (worldXZ - origin) * (invSize * (float)kRippleResolution);
+        const float2 edgeDistance = min(cellCoord, (float)kRippleResolution - cellCoord);
+        const float edgeFade = smoothstep(0.0f, kRippleSpongeCells, min(edgeDistance.x, edgeDistance.y));
+        if (edgeFade <= 0.0f)
+        {
+            continue;
+        }
+        height += LoadRippleSurfaceBilinear(surface, cellCoord, level).x * (weight * edgeFade);
+    }
+    return height * strength;
+}
+
 /// @brief デバッグ表示用に、全部の段の高さの和と段ごとの傾きの大きさを返す（strength を掛けた値）
 void EvaluateRippleDebug(
     Texture2DArray<float4> surface,

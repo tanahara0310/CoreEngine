@@ -105,7 +105,7 @@ namespace CoreEngine
         // 水が引いたあとの濡れ跡
         WaterWetnessBinding wetness{};
 
-        // 水の波紋（RT の水面の法線へ足す）
+        // 水の波紋（RT の水面と高さの問い合わせの形と法線へ足す）
         WaterRippleBinding ripple{};
     };
 

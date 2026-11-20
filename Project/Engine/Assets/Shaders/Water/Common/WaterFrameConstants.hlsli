@@ -120,7 +120,7 @@ cbuffer WaterFrameConstants : register(b5)
     // ---- 水の波紋の格子（gWaterRipple。WaterRippleGrid.hlsli）----
     float4 gRippleOriginsXZ01;   // 段 0・段 1 の XZ の最小の角 [m]（xy = 段 0・zw = 段 1）
     float2 gRippleOrigin2XZ;     // 段 2 の XZ の最小の角 [m]
-    float gRippleStrength;       // 波紋の傾きに掛ける倍率
+    float gRippleStrength;       // 波紋の高さと傾きに掛ける倍率
     int gRippleEnabled;          // 1 = gWaterRipple を読む
     float3 gRippleInvSizes;      // 段ごとの一辺の長さの逆数 [1/m]（0 の段は読まない）
     float gRipplePad;

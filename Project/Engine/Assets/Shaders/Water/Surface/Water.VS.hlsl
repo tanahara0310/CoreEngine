@@ -18,9 +18,12 @@ cbuffer WaterConstants : register(b4)
 #include "../Common/WaterFrameConstants.hlsli"
 #include "../Common/WaterShoreMesh.hlsli"
 #include "../Common/WaterSeaMap.hlsli"
+#include "../Common/WaterRippleGrid.hlsli"
 
 // 海の範囲マップ（水深と上の物までの高さ。gSeaMapEnabled = 0 のときは読まない）
 Texture2D<float4> gWaterSeaMap : register(t29);
+// 水の波紋の面（gRippleEnabled = 0 のときは読まない。Water.PS と同じレジスタ）
+Texture2DArray<float4> gWaterRipple : register(t30);
 
 // ===== 水面専用出力構造体 =====
 struct WaterVSOutput
@@ -83,6 +86,14 @@ WaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
         const float4 seaMapValue = SampleWaterSeaMap(
             gWaterSeaMap, restPos.xz, gSeaMapOriginXZ, gSeaMapTexelsPerMeter, gSeaMapResolution);
         totalOffset *= ComputeWaterSeaMapWaveScale(seaMapValue, true, gSeaMapDepthOffset, gSeaMapInvWaveHeight);
+    }
+
+    // 描かれる位置の波紋の高さ（粗い格子の間隔で表せる段だけ。RT の EvaluateDrawnSurfaceHeight と同じ式）
+    if (gRippleEnabled != 0)
+    {
+        totalOffset.y += EvaluateRippleVertexHeight(
+            gWaterRipple, restPos.xz + totalOffset.xz, max(gMeshCellSizeXZ.x, gMeshCellSizeXZ.y),
+            gRippleOriginsXZ01, gRippleOrigin2XZ, gRippleInvSizes, gRippleStrength);
     }
 
     // 潮の分だけ水面全体を上下させる（静止水面からの波の高さ waveHeight には含めない）
