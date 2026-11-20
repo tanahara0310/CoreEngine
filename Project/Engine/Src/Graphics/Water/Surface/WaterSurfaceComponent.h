@@ -122,6 +122,10 @@ namespace CoreEngine
             REFLECT_PROPERTY(profile_.foamCascadeWeights, "波の大きさごとの重み", p.range = Range(0.0f, 1.0f),
                 p.tooltip = "白波を立てる傾きの寄与（大・中・小のカスケード）")
 
+            // ---- 波紋 ----
+            REFLECT_PROPERTY(profile_.rippleStrength, "波紋の強さ", p.range = Range(0.0f, 4.0f),
+                p.tooltip = "波紋の傾きに掛ける倍率（0 でこの水には波紋を描かない）")
+
             REFLECT_METHOD("SetTideHeight", "潮位を指定する", SetTideHeight,
                 m.tooltip = "月と太陽の代わりに、この高さ [m] を潮位にする。ClearTideHeight で戻す")
             REFLECT_METHOD("ClearTideHeight", "潮位の指定をやめる", ClearTideHeight,

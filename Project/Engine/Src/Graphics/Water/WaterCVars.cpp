@@ -35,6 +35,12 @@ namespace CoreEngine
         CVar<float> WetnessDrySeconds{ "r.Water.Wetness.DrySeconds", 60.0f,
             "水から出た面の濡れ具合が 1/e になるまでの時間 [s]", CVarRange{ 1.0f, 3600.0f } };
 
+        // ---- 波紋 ----
+        CVar<bool> RippleEnabled{ "r.Water.Ripple.Enabled", true,
+            "物が落ちた所や水を進む物の周りに、カメラの前に置いた格子で波紋を広げる" };
+        CVar<float> RippleDamping{ "r.Water.Ripple.Damping", 0.4f,
+            "波紋の振幅が 1/e になるまでの時間の逆数 [1/s]（大きいほど早く消える）", CVarRange{ 0.0f, 5.0f } };
+
         // ---- コースティクス ----
         CVar<int> CausticsBackend{ "r.Water.Caustics.Backend", 0,
             "生成方式（0: レイトレーシング / 1: スクリーンスペース。SS は Gerstner 専用）",

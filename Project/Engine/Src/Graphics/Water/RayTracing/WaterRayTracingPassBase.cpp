@@ -265,6 +265,19 @@ namespace CoreEngine
         surfaceConstants.seaMapSrvIndex = seaMap.srvHeapIndex;
         surfaceConstants.seaMapDepthOffset = seaMap.depthOffset;
         surfaceConstants.seaMapInvWaveHeight = seaMap.invWaveHeight;
+        const WaterRippleBinding& ripple = surfaceData.ripple;
+        surfaceConstants.rippleOriginsXZ01[0] = ripple.originsXZ[0][0];
+        surfaceConstants.rippleOriginsXZ01[1] = ripple.originsXZ[0][1];
+        surfaceConstants.rippleOriginsXZ01[2] = ripple.originsXZ[1][0];
+        surfaceConstants.rippleOriginsXZ01[3] = ripple.originsXZ[1][1];
+        surfaceConstants.rippleOrigin2XZ[0] = ripple.originsXZ[2][0];
+        surfaceConstants.rippleOrigin2XZ[1] = ripple.originsXZ[2][1];
+        surfaceConstants.rippleStrength = ripple.strength;
+        surfaceConstants.rippleSrvIndex = ripple.srvHeapIndex;
+        for (int c = 0; c < 3; ++c) {
+            surfaceConstants.rippleInvSizes[c] = ripple.invSizes[c];
+        }
+        surfaceConstants.rippleEnabled = (ripple.enabled != 0 && ripple.strength > 0.0f) ? 1u : 0u;
         return surfaceConstants;
     }
 

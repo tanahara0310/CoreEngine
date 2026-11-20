@@ -86,9 +86,16 @@ namespace CoreEngine
             uint32_t seaMapResolution[2] = { 0, 0 };
             float seaMapDepthOffset = 0.0f;
             float seaMapInvWaveHeight = 0.0f;
+            // ---- 水の波紋の格子（WaterRippleBinding の同名の値）----
+            float rippleOriginsXZ01[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+            float rippleOrigin2XZ[2] = { 0.0f, 0.0f };
+            float rippleStrength = 0.0f;
+            uint32_t rippleSrvIndex = 0;
+            float rippleInvSizes[3] = { 0.0f, 0.0f, 0.0f };
+            uint32_t rippleEnabled = 0;
         };
 
-        static_assert(sizeof(WaterSurfaceConstants) == 16 + 32 * kMaxWaterSurfaceWaveCount + 128,
+        static_assert(sizeof(WaterSurfaceConstants) == 16 + 32 * kMaxWaterSurfaceWaveCount + 176,
             "WaterSurfaceConstants layout mismatch with RTWaterSurfaceCommon.hlsli cbuffer");
 
         static constexpr Cb::Field kWaterSurfaceConstantsFields[] = {
@@ -107,6 +114,9 @@ namespace CoreEngine
             CB_FIELD(WaterSurfaceConstants, seaMapTexelsPerMeter), CB_FIELD(WaterSurfaceConstants, seaMapSrvIndex),
             CB_FIELD(WaterSurfaceConstants, seaMapResolution), CB_FIELD(WaterSurfaceConstants, seaMapDepthOffset),
             CB_FIELD(WaterSurfaceConstants, seaMapInvWaveHeight),
+            CB_FIELD(WaterSurfaceConstants, rippleOriginsXZ01), CB_FIELD(WaterSurfaceConstants, rippleOrigin2XZ),
+            CB_FIELD(WaterSurfaceConstants, rippleStrength), CB_FIELD(WaterSurfaceConstants, rippleSrvIndex),
+            CB_FIELD(WaterSurfaceConstants, rippleInvSizes), CB_FIELD(WaterSurfaceConstants, rippleEnabled),
         };
         CB_VERIFY_LAYOUT(WaterSurfaceConstants, kWaterSurfaceConstantsFields);
         CB_BIND_HLSL(WaterSurfaceConstants, kWaterSurfaceConstantsFields, "WaterSurfaceData");

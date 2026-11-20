@@ -25,6 +25,10 @@ namespace CoreEngine
         extern CVar<bool>    WetnessEnabled;
         extern CVar<float>   WetnessDrySeconds;
 
+        // ---- 波紋 ----
+        extern CVar<bool>    RippleEnabled;
+        extern CVar<float>   RippleDamping;
+
         // ---- コースティクス ----
         extern CVar<int>     CausticsBackend; // 0=RT / 1=ScreenSpace（コンボは水面パネル。NoUI）
         extern CVar<float>   CausticsIntensity;

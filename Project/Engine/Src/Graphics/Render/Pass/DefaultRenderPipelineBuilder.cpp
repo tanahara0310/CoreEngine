@@ -16,6 +16,7 @@
 #include "Graphics/Render/Pass/WaterShoreFoamPass.h"
 #include "Graphics/Render/Pass/FFTOceanPass.h"
 #include "Graphics/Render/Pass/WaterHeightQueryPass.h"
+#include "Graphics/Render/Pass/WaterRipplePass.h"
 #include "Graphics/Render/Pass/WaterShoreMeshDisplacementPass.h"
 #include "Graphics/Render/Pass/AtmosphereLUTPass.h"
 #include "Graphics/Render/Pass/AerialPerspectivePass.h"
@@ -65,6 +66,11 @@ namespace CoreEngine
         // どれもこの結果を読むので、その前に置く（コストの分類は水面）
         pipeline.AddPass(
             std::make_unique<FFTOceanPass>(), RenderPassPhase::FrameSetup, 40,
+            GpuTimingCategory::Water);
+
+        // フレーム前処理: 水の波紋の源を入れて波を進める。水面と RT の水面パスが読む
+        pipeline.AddPass(
+            std::make_unique<WaterRipplePass>(), RenderPassPhase::FrameSetup, 41,
             GpuTimingCategory::Water);
 
         // フレーム前処理: 岸の細かい格子の頂点の変位を書く。RT の水面パスと水面の高さの問い合わせが読む

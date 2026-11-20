@@ -117,5 +117,11 @@ void WaterShaderResourceBinder::Bind(
     if (renderResources.HasSeaMap()) {
         binder.Set(table_[WaterBind::gWaterSeaMap], renderResources.seaMapSRV);
     }
+
+    // 水の波紋
+    // （未接続のフレームはシェーダー側フラグ gRippleEnabled=0 で参照されない）
+    if (renderResources.HasRipple()) {
+        binder.Set(table_[WaterBind::gWaterRipple], renderResources.rippleSRV);
+    }
 }
 }

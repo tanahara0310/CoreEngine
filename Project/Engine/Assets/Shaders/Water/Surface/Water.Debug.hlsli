@@ -106,6 +106,9 @@ struct WaterDebugContext
     float foamWhitecapInstant;
     float foamWhitecapResidue;
     float foamShoreCoverage;
+    // 波紋（モード 25・26）。全部の段の高さの和 [m] と段ごとの傾きの大きさ
+    float rippleHeight;
+    float3 rippleLevelSlope;
 };
 
 /// @brief 現在のデバッグ表示モードに対応する色を返す
@@ -300,6 +303,19 @@ float3 ResolveWaterDebugColor(WaterDebugContext ctx)
     if (gDepthDebugViewMode == 24)
     {
         return float3(ctx.foamWhitecapInstant, ctx.foamWhitecapResidue, ctx.foamShoreCoverage);
+    }
+
+    // 25: 波紋の高さ。赤 = 上がった所・青 = 下がった所（±1 cm で最も濃い）
+    if (gDepthDebugViewMode == 25)
+    {
+        const float scaled = ctx.rippleHeight / 0.01f;
+        return float3(saturate(scaled), 0.0f, saturate(-scaled));
+    }
+
+    // 26: 波紋の段ごとの傾きの大きさ。赤 = 近く（6.25 cm）・緑 = 中（25 cm）・青 = 遠く（1 m）（傾き 0.2 で最も濃い）
+    if (gDepthDebugViewMode == 26)
+    {
+        return saturate(ctx.rippleLevelSlope / 0.2f);
     }
 
     // 未知のモード（黄色）

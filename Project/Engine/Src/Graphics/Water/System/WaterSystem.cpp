@@ -192,6 +192,7 @@ namespace CoreEngine
             WaterFrameBinding binding{};
             appearance_.Bind(frame, binding);
             wave_.Bind(domain, binding);
+            ripple_.Bind(domain, binding);
             waterPlane->ApplyFrameBinding(binding);
 
             CaptureSurface(domain, *waterPlane, secondarySurfaceStates_.emplace_back());
@@ -249,6 +250,7 @@ namespace CoreEngine
             const WaterWaveCapabilities waveCapabilities = wave_.GetDrawnModel(*waterPlane).GetCapabilities();
             appearance_.ApplySettings(frame);
             foam_.ApplySettings(frame, waveCapabilities, wave_.GetFFTOceanTime());
+            ripple_.Advance(frame, Time::DeltaTime());
             caustics_.ApplySettings(frame);
             rayTracing_.ApplySettings(frame);
             shore_.UpdateWindow(frame, waveCapabilities);
@@ -411,6 +413,9 @@ namespace CoreEngine
         }
         // 被覆の判定をメッシュと同じ基準にするための頂点の分割数
         out.meshSubdivisions = static_cast<float>(waterPlane.GetResolution());
+
+        // RT の水面の法線へ足す波紋
+        ripple_.Capture(domain, waterPlane, out);
     }
 
     WaterFrameBinding WaterSystem::BuildFrameBinding(const WaterFrameContext& frame) const
@@ -422,6 +427,7 @@ namespace CoreEngine
         seaMap_.Bind(frame.domain, snapshot_, binding);
         wave_.Bind(frame.domain, binding);
         foam_.Bind(frame.domain, binding);
+        ripple_.Bind(frame.domain, binding);
         return binding;
     }
 

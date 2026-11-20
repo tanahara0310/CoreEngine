@@ -279,6 +279,21 @@ namespace CoreEngine
         frameCB_.seaMapDepthOffset = seaMap.depthOffset;
         frameCB_.seaMapInvWaveHeight = seaMap.invWaveHeight;
 
+        // 水の波紋
+        const WaterRippleBinding& ripple = binding.ripple;
+        frameCB_.rippleStrength = profile_.rippleStrength;
+        frameCB_.rippleEnabled =
+            (renderResources_.HasRipple() && ripple.enabled != 0 && profile_.rippleStrength > 0.0f) ? 1 : 0;
+        frameCB_.rippleOriginsXZ01[0] = ripple.originsXZ[0][0];
+        frameCB_.rippleOriginsXZ01[1] = ripple.originsXZ[0][1];
+        frameCB_.rippleOriginsXZ01[2] = ripple.originsXZ[1][0];
+        frameCB_.rippleOriginsXZ01[3] = ripple.originsXZ[1][1];
+        frameCB_.rippleOrigin2XZ[0] = ripple.originsXZ[2][0];
+        frameCB_.rippleOrigin2XZ[1] = ripple.originsXZ[2][1];
+        for (int c = 0; c < 3; ++c) {
+            frameCB_.rippleInvSizes[c] = ripple.invSizes[c];
+        }
+
         frameCB_.skyAmbientScale = binding.skyAmbientScale;
         for (int c = 0; c < 3; ++c) {
             frameCB_.fftCascadeMeanSquareSlope[c] = binding.fftCascadeMeanSquareSlope[c];

@@ -168,6 +168,13 @@ struct WaterFrameConstants {
 	// ---- 水面メッシュの範囲（岸の細かい格子の頂点をこの範囲へ寄せる）----
 	float meshGridSizeXZ[2] = { 0.0f, 0.0f }; // 粗い格子の XZ の一辺の長さ [m]（最小の角は meshGridOriginXZ）
 	float meshGridPad[2] = { 0.0f, 0.0f };
+	// ---- 水の波紋の格子（gWaterRipple。WaterRippleBinding の同名の値）----
+	float rippleOriginsXZ01[4] = { 0.0f, 0.0f, 0.0f, 0.0f }; // 段 0・段 1 の XZ の最小の角 [m]（xy = 段 0・zw = 段 1）
+	float rippleOrigin2XZ[2] = { 0.0f, 0.0f };               // 段 2 の XZ の最小の角 [m]
+	float rippleStrength = 0.0f;                             // 波紋の傾きに掛ける倍率
+	int rippleEnabled = 0;                                   // 1 = gWaterRipple を読む
+	float rippleInvSizes[3] = { 0.0f, 0.0f, 0.0f };          // 段ごとの一辺の長さの逆数 [1/m]（0 の段は読まない）
+	float ripplePad = 0.0f;
 };
 
 // 全フィールドのオフセットを HLSL packing 規則から機械的に導出して検証する。
@@ -175,7 +182,7 @@ struct WaterFrameConstants {
 // （RTシャドウの cbuffer 配列ずれ事故と同型）。
 // 以前はここに「absorptionCoeff は 16B 境界」「cameraNearZ は 80」といった個別 assert を
 // 人手で並べていたが、下の表が全フィールドを検査するので不要になった。
-static_assert(sizeof(WaterFrameConstants) == 304, "WaterFrameConstants size mismatch with HLSL cbuffer");
+static_assert(sizeof(WaterFrameConstants) == 352, "WaterFrameConstants size mismatch with HLSL cbuffer");
 static constexpr Cb::Field kWaterFrameConstantsFields[] = {
     CB_FIELD(WaterFrameConstants, reflectionEnabled), CB_FIELD(WaterFrameConstants, fresnelReflectanceScale),
     CB_FIELD(WaterFrameConstants, fresnelBaseReflectance), CB_FIELD(WaterFrameConstants, depthFadeEnabled),
@@ -206,6 +213,9 @@ static constexpr Cb::Field kWaterFrameConstantsFields[] = {
     CB_FIELD(WaterFrameConstants, foamResidueOriginsXZ), CB_FIELD(WaterFrameConstants, foamResidueInvSizes),
     CB_FIELD(WaterFrameConstants, foamResidueMeanCoverage), CB_FIELD(WaterFrameConstants, foamPatternTime),
     CB_FIELD(WaterFrameConstants, meshGridSizeXZ), CB_FIELD(WaterFrameConstants, meshGridPad),
+    CB_FIELD(WaterFrameConstants, rippleOriginsXZ01), CB_FIELD(WaterFrameConstants, rippleOrigin2XZ),
+    CB_FIELD(WaterFrameConstants, rippleStrength), CB_FIELD(WaterFrameConstants, rippleEnabled),
+    CB_FIELD(WaterFrameConstants, rippleInvSizes), CB_FIELD(WaterFrameConstants, ripplePad),
 };
 CB_VERIFY_LAYOUT(WaterFrameConstants, kWaterFrameConstantsFields);
 CB_BIND_HLSL(WaterFrameConstants, kWaterFrameConstantsFields, "WaterFrameConstants");

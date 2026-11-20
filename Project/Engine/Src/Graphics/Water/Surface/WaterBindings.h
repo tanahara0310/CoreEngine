@@ -27,6 +27,7 @@ namespace CoreEngine::WaterBind
         gWaterSeabedHeight,
         gWaterShoreFoam,
         gWaterSeaMap,
+        gWaterRipple,
         Count
     };
 
@@ -75,6 +76,9 @@ namespace CoreEngine::WaterBind
 
         // 海の範囲マップ（水面の範囲全体の水深と上の物までの高さ。頂点シェーダーが読む）
         { "gWaterSeaMap",            kSRV, kCond },
+
+        // 水の波紋（カメラの前に置いた 3 段の格子の高さと傾き。ピクセルシェーダーが読む）
+        { "gWaterRipple",            kSRV, kCond },
     };
 
     static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");

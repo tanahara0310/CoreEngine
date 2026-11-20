@@ -51,6 +51,9 @@ namespace CoreEngine
             WaterFoamDefaults::kCascadeWeights[2] };                 ///< カスケード別の勾配の重み（大・中・小）
         float foamDecaySeconds = WaterFoamDefaults::kDecaySeconds;   ///< 泡が e^-1 まで減る時間 [s]
 
+        // ---- 波紋 ----
+        float rippleStrength = 1.0f; ///< 波紋の傾きに掛ける倍率（0 = この水には波紋を描かない）
+
         /// @brief 実効吸収係数（ベース値＋濁りの分）
         Vector3 EffectiveAbsorption() const;
 

@@ -25,6 +25,16 @@ namespace CoreEngine
         float invWaveHeight = 0.0f;         ///< 波の高さ（有義波高）の逆数 [1/m]
     };
 
+    /// @brief 水の波紋の格子（WaterRippleSimulation）の結線
+    /// @details 面は段ごとに (高さ, ∂h/∂x, ∂h/∂z, 0)（WaterRippleGrid.hlsli）
+    struct WaterRippleBinding {
+        uint32_t srvHeapIndex = 0;             ///< 面の SRV のシェーダー可視ヒープの中の番号（RT が ResourceDescriptorHeap で引く）
+        uint32_t enabled = 0;                  ///< 1 = どれかの段に波紋がある
+        float originsXZ[3][2] = {};            ///< 段ごとの XZ の最小の角 [m]
+        float invSizes[3] = {};                ///< 段ごとの一辺の長さの逆数 [1/m]（0 の段は読まない）
+        float strength = 0.0f;                 ///< 傾きに掛ける倍率（水面の値）
+    };
+
     /// @brief FFT の海の波面のテクスチャと傾きの大きさ（FFTOceanWaveModel が書く）
     /// @details FFT の海で描いていないときは enabled = 0 のまま
     struct WaterFFTOceanInput {
@@ -94,6 +104,9 @@ namespace CoreEngine
 
         // 水が引いたあとの濡れ跡
         WaterWetnessBinding wetness{};
+
+        // 水の波紋（RT の水面の法線へ足す）
+        WaterRippleBinding ripple{};
     };
 
 }

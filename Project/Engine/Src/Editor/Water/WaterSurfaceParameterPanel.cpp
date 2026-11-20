@@ -4,6 +4,7 @@
 #ifdef CORE_EDITOR
 
 #include "Graphics/Water/Foam/WaterWhitecapFoam.h"
+#include "Graphics/Water/Ripple/WaterRippleSimulation.h"
 #include "Graphics/Water/System/WaterSystem.h"
 #include "Graphics/Water/Surface/WaterSurfaceComponent.h"
 #include "Graphics/Water/WaterCVars.h"
@@ -23,6 +24,7 @@
 #include "Scene/Environment/WindCVars.h"
 #include "Utility/CVar/CVarRegistry.h"
 #include "Utility/CVar/CVarUndoStack.h"
+#include "Utility/FrameRate/Time.h"
 #include "Utility/Path/ProjectPaths.h"
 #include "Utility/Random/RandomGenerator.h"
 
@@ -236,6 +238,7 @@ bool WaterSurfaceParameterPanel::Draw(WaterSurfaceComponent& water, const Inspec
 	changed = DrawWaterColorSection(target) || changed;
 	changed = DrawSurfaceSection(target) || changed;
 	changed = DrawFoamSection(target, runtimeController) || changed;
+	changed = DrawRippleSection(target) || changed;
 	DrawWetnessSection();
 	DrawCausticsSection(target);
 	return changed;
@@ -535,6 +538,31 @@ bool WaterSurfaceParameterPanel::DrawFoamSection(const Target& target, WaterSyst
 	changed = target.Rows({ "foamOpacity", "foamDecaySeconds", "foamCascadeWeights" }) || changed;
 	ImGui::EndDisabled();
 	InspectorLayout::Hint("白波の割合はシーンの風速から観測式で決まる。白波の量はその倍率。");
+	return changed;
+}
+
+bool WaterSurfaceParameterPanel::DrawRippleSection(const Target& target) {
+	if (!InspectorLayout::Foldout("波紋", false)) {
+		return false;
+	}
+	const bool changed = target.Rows({ "rippleStrength" });
+	CVarUI::DrawRow(&WaterCVars::RippleEnabled, "波紋を進める（プロジェクト）");
+	ImGui::BeginDisabled(!WaterCVars::RippleEnabled.Get());
+	CVarUI::DrawRow(&WaterCVars::RippleDamping, "消える速さ（プロジェクト）", "%.2f /s");
+
+	const GameObject* const owner = target.water.GetOwner();
+	WaterRippleSimulation* const ripple = FindWaterRippleSimulation(owner ? owner->GetEngineSystem() : nullptr);
+	ImGui::BeginDisabled(ripple == nullptr || Time::IsPaused());
+	if (ImGui::Button("水面の真ん中に波紋を起こす") && ripple) {
+		const Vector2 origin = target.water.GetMeshOriginXZ();
+		const Vector2 size = target.water.GetMeshSizeXZ();
+		ripple->AddRipple(
+			Vector3{ origin.x + 0.5f * size.x, target.water.GetWaterLevel(), origin.y + 0.5f * size.y }, 0.3f, 0.05f);
+	}
+	ImGui::EndDisabled();
+	ImGui::EndDisabled();
+	InspectorLayout::Hint("スクリプトからは Water::AddRipple(位置, 半径, 深さ) で起こす。波紋はカメラの前に置いた 3 段の格子"
+		"（32 m・128 m・512 m）で進み、カメラに近いほど細かい波まで出る。停止中は水の時間が止まっているので、ボタンは再生中だけ押せる。");
 	return changed;
 }
 

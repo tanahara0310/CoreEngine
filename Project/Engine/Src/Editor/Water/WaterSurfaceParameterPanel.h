@@ -72,6 +72,9 @@ private:
 	/// @brief 泡
 	bool DrawFoamSection(const Target& target, CoreEngine::WaterSystem* runtimeController);
 
+	/// @brief 波紋（水の強さ・プロジェクトの設定・試しに起こすボタン）
+	bool DrawRippleSection(const Target& target);
+
 	/// @brief 濡れ跡（プロジェクトの設定）
 	void DrawWetnessSection();
 

@@ -8,6 +8,7 @@
 #include "Graphics/Water/System/WaterCausticsModule.h"
 #include "Graphics/Water/System/WaterFoamModule.h"
 #include "Graphics/Water/System/WaterRayTracingModule.h"
+#include "Graphics/Water/System/WaterRippleModule.h"
 #include "Graphics/Water/System/WaterSeaMapModule.h"
 #include "Graphics/Water/System/WaterSettings.h"
 #include "Graphics/Water/System/WaterShoreModule.h"
@@ -150,6 +151,7 @@ namespace CoreEngine
         WaterShoreModule shore_{};
         WaterSeaMapModule seaMap_{};
         WaterWetnessModule wetness_{};
+        WaterRippleModule ripple_{};
 
         /// @brief 受け渡し先（Finalize で取り消すために保持。非所有）
         RenderDomainContext* publishTarget_ = nullptr;

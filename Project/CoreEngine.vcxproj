@@ -272,6 +272,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Script\Binding\CVarBinding.cpp" />
     <ClCompile Include="Engine\Src\Script\Binding\GizmosBinding.cpp" />
     <ClCompile Include="Engine\Src\Script\Binding\RenderingBinding.cpp" />
+    <ClCompile Include="Engine\Src\Script\Binding\WaterBinding.cpp" />
     <ClCompile Include="Engine\Src\Script\Metadata\MetadataParser.cpp" />
     <ClCompile Include="Engine\Src\Script\ScriptComponent.cpp" />
     <ClCompile Include="Engine\Src\Script\ScriptComponentType.cpp" />
@@ -290,6 +291,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Graphics\Water\System\WaterFoamModule.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\System\WaterRayTracingModule.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\System\WaterSeaMapModule.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\System\WaterRippleModule.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\System\WaterSettings.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\System\WaterShoreModule.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\System\WaterSystem.cpp" />
@@ -343,6 +345,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterSeaMapPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\WaterShoreFoamPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\WaterShoreMeshDisplacementPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\WaterRipplePass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterReflectionPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\SceneColorCopyPass.cpp" />
@@ -376,6 +379,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterSurfaceComponent.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterSurfaceMeshGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterShoreMeshDisplacement.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\Ripple\WaterRippleSimulation.cpp" />
     <ClCompile Include="Engine\Src\Camera\CameraManager.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraClipPlayerModule.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\CameraDebugUI.cpp" />
@@ -1563,6 +1567,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Script\Binding\RandomBinding.h" />
     <ClInclude Include="Engine\Src\Script\Binding\CVarBinding.h" />
     <ClInclude Include="Engine\Src\Script\Binding\RenderingBinding.h" />
+    <ClInclude Include="Engine\Src\Script\Binding\WaterBinding.h" />
     <ClInclude Include="Engine\Src\Script\Metadata\MetadataParser.h" />
     <ClInclude Include="Engine\Src\Script\ScriptComponent.h" />
     <ClInclude Include="Engine\Src\Script\ScriptComponentType.h" />
@@ -1585,6 +1590,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\Water\System\WaterFrameContext.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\System\WaterRayTracingModule.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\System\WaterSeaMapModule.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\System\WaterRippleModule.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\System\WaterSettings.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\System\WaterShoreModule.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\System\WaterSystem.h" />
@@ -1595,6 +1601,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterSurfaceComponent.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterSurfaceMeshGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterShoreMeshDisplacement.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\Ripple\WaterRippleSimulation.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterRenderResources.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterWetnessHistory.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterShaderResourceBinder.h" />
@@ -1823,6 +1830,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterSeaMapPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\WaterShoreFoamPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\WaterShoreMeshDisplacementPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\WaterRipplePass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterReflectionPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\SceneColorCopyPass.h" />
