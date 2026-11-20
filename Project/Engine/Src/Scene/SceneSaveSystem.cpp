@@ -803,6 +803,28 @@ namespace CoreEngine
         return names;
     }
 
+    std::optional<std::filesystem::file_time_type> SceneSaveSystem::FindLastWriteTime(const std::string& sceneName)
+    {
+        namespace fs = std::filesystem;
+        std::optional<fs::file_time_type> newest;
+
+        std::error_code ec;
+        const fs::path dir = ProjectPaths::Resolve(MakeSceneDir(sceneName));
+        if (!fs::is_directory(dir, ec)) {
+            return newest;
+        }
+        for (const auto& entry : fs::directory_iterator(dir, ec)) {
+            if (!entry.is_regular_file(ec)) {
+                continue;
+            }
+            const fs::file_time_type time = entry.last_write_time(ec);
+            if (!ec && (!newest || time > *newest)) {
+                newest = time;
+            }
+        }
+        return newest;
+    }
+
     bool SceneSaveSystem::IsValidSceneName(const std::string& name, std::string* error)
     {
         if (name.empty()) {

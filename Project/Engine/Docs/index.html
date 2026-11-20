@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.101.0">
+<meta name="engine-version" content="0.102.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2797,7 +2797,8 @@ kbd {
       <tr><td><span class="ui">最近のプロジェクト</span></td><td></td><td>最近開いたプロジェクト（最大 10 件）。</td></tr>
       <tr><td><span class="ui">シーンを保存</span></td><td class="nowrap"><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>今のシーンを保存します（再生中は保存できません）。</td></tr>
       <tr><td><span class="ui">新しいシーン…</span></td><td></td><td>シーンを作って開きます。<a href="#editor-scenes">詳しく</a></td></tr>
-      <tr><td><span class="ui">シーンを開く</span></td><td></td><td>シーンの一覧から開きます。未保存の変更があれば確認が出ます。</td></tr>
+      <tr><td><span class="ui">シーンを開く</span></td><td></td><td>シーンの一覧から開きます。上の欄で名前を絞り込め、最近開いたシーンが先に並び、名前の頭が同じシーンは群にまとまります。未保存の変更があれば確認が出ます。<a href="#scenes-open">詳しく</a></td></tr>
+      <tr><td><span class="ui">シーンを探して開く…</span></td><td class="nowrap"><kbd>Ctrl</kbd>+<kbd>O</kbd></td><td>画面の上に欄を出し、名前の一部を打って <kbd>Enter</kbd> で開きます。<a href="#scenes-open">詳しく</a></td></tr>
       <tr><td><span class="ui">シーンを再読み込み</span></td><td></td><td>今のシーンを保存データから読み直します。<strong>未保存の変更は確認なしで捨てられます。</strong></td></tr>
       <tr><td><span class="ui">すべてのシーンと設定を保存し直す…</span></td><td></td><td>全シーンを順に開いて、今のエンジンの形式で保存し直します（エンジンを更新した後に使います）。</td></tr>
       <tr><td><span class="ui">ゲームを書き出す…</span></td><td></td><td>配布できるゲームのフォルダを作ります。<a href="#editor-export">詳しく</a></td></tr>
@@ -3197,7 +3198,7 @@ kbd {
   </table>
   </div>
   <div class="callout tip"><p>ファイルの移動や名前の変更は、<strong>エクスプローラではなく Project で行う</strong>と .meta が一緒に動き、参照が切れません。スクリプトのファイル名を変えたときは、中のクラス名も同じ名前に変えてください。</p></div>
-  <div class="callout note"><p>シーンは File メニューの <span class="ui">シーンを開く</span> で開きます（Project のダブルクリックでは開きません）。スクリプトを VS Code で開くには、Inspector の <span class="ui">スクリプトを開く</span> か Console のリンクを使います。</p></div>
+  <div class="callout note"><p>シーンは File メニューの <span class="ui">シーンを開く</span> か <kbd>Ctrl</kbd>+<kbd>O</kbd> で開きます（Project のダブルクリックでは開きません）。スクリプトを VS Code で開くには、Inspector の <span class="ui">スクリプトを開く</span> か Console のリンクを使います。</p></div>
 </article>
 
 <article class="page" id="editor-console" data-group="エディタ" data-title="Console" data-keywords="コンソール ログ エラー 警告 フィルタ コマンド cvar 例外 コンパイルエラー 行番号">
@@ -3379,7 +3380,7 @@ kbd {
   <p>プレハブと値が違う項目は、インスペクタの左の余白に<strong>青い縦線</strong>が出ます。適用すると、同じシーンのほかのインスタンスも新しい値にそろいます（それぞれが上書きした値は保たれます）。</p>
 </article>
 
-<article class="page" id="editor-scenes" data-group="エディタ" data-title="シーンの作成と保存" data-nav="シーンの作成と保存" data-keywords="シーン 新規 保存 開く 起動シーン 最初 ステージ 画面 undo redo 元に戻す 衝突 git">
+<article class="page" id="editor-scenes" data-group="エディタ" data-title="シーンの作成と保存" data-nav="シーンの作成と保存" data-keywords="シーン 新規 保存 開く 起動シーン 最初 ステージ 画面 undo redo 元に戻す 衝突 git 探す 絞り込み 最近開いた 群 ctrl+o">
   <h1>シーンの作成と保存</h1>
   <p class="lead">シーンはゲームの 1 画面（タイトル・ステージ・リザルトなど）です。<span class="path">Application/Assets/Scenes/&lt;シーン名&gt;/</span> のフォルダに、オブジェクトごとの JSON として保存されます。</p>
 
@@ -3390,6 +3391,15 @@ kbd {
   </ol>
   <p><span class="ui">2D</span> を選ぶと、2D のゲーム向けの MainCamera が入ります。カメラは (0, 0, -10) から正面（+Z）を向く平行投影で、<span class="ui">大きさ</span> 5.4・背景は単色です。1 単位 100 ピクセルの画像が、1920×1080 の画面に等倍で映ります。見た目は指定した色がそのまま出るよう、トーンカーブを「なし」にし、ローカル露出・レンズフレア・雲・床を止めます。スプライトは z = 0 の面に並べます。開くとエディタ視点は <a href="#viewport-2d">2D 表示</a> で始まります。</p>
   <p>名前に <code>\ / : * ? " &lt; &gt; |</code> と、先頭の <code>_</code> は使えません。シーンの名前は <code>Scene::ChangeScene("名前")</code> でそのまま使うので、英数字にしておくと扱いやすくなります。</p>
+  <p>シーンが増えてきたら、<code>Fog_Night</code>・<code>Fog_Forest</code> のように頭をそろえて <code>_</code> でつなぐと、開くメニューで 1 つの群にまとまります。</p>
+
+  <h2 id="scenes-open">開く</h2>
+  <p>開き方は 2 つです。どちらも停止中だけ使え、未保存の変更があれば確認が出ます。</p>
+  <ul>
+    <li><strong>メニューから選ぶ</strong>：<span class="ui">File<span class="arrow">▸</span>シーンを開く</span>。一番上の欄にはすぐ字が打て、打つと当たったシーンだけが並び、<kbd>Enter</kbd> で一番上を開きます。字が空のときは、<span class="ui">最近開いた</span>（3 つ）の下に <span class="ui">すべて</span> が名前順に並びます。名前の最初の <code>_</code> より前が同じシーンが 2 つ以上あれば 1 行の群にまとまり、右に数が出ます。群の中では頭の「群の名前_」を外して見せます。今開いているシーンには印が付き、それを含む群は数の色が変わります。</li>
+    <li><strong>名前を打って開く</strong>：<kbd>Ctrl</kbd>+<kbd>O</kbd>（<span class="ui">File<span class="arrow">▸</span>シーンを探して開く…</span>）で画面の上に欄が出ます。<kbd>↑</kbd><kbd>↓</kbd> で選び、<kbd>Enter</kbd> かクリックで開きます。<kbd>Esc</kbd> は打った字を消し、字が空なら閉じます。字が空のときは最近開いたシーンが先に並ぶので、<kbd>Ctrl</kbd>+<kbd>O</kbd> の後に <kbd>Enter</kbd> だけで前のシーンへ戻れます。行の右には群の名前と、最後に保存した日が出ます。</li>
+  </ul>
+  <p>絞り込みは英字の大文字と小文字を区別せず、空白は無視します。打った字が名前の中で続いていなくても、順に含んでいれば当たります（<code>fogsh</code> で <code>VolumetricFog_Shafts</code>）。続いて当たるもの、語の頭で当たるもの、前のほうで当たるものほど上に並びます。最近開いたシーンは自分の手元だけに控え（<span class="path">Application/Saved/EditorSettings/LastScene.json</span>）、git には入りません。</p>
 
   <h2 id="scenes-save">保存する</h2>
   <ul>
@@ -3706,6 +3716,7 @@ kbd {
     <thead><tr><th class="nowrap">キー</th><th>動作</th></tr></thead>
     <tbody>
       <tr><td class="nowrap"><kbd>Ctrl</kbd>+<kbd>S</kbd></td><td>シーンを保存</td></tr>
+      <tr><td class="nowrap"><kbd>Ctrl</kbd>+<kbd>O</kbd></td><td>シーンを探して開く（停止中だけ）</td></tr>
       <tr><td class="nowrap"><kbd>Ctrl</kbd>+<kbd>Z</kbd> ／ <kbd>Ctrl</kbd>+<kbd>Y</kbd></td><td>元に戻す ／ やり直す</td></tr>
       <tr><td class="nowrap"><kbd>Ctrl</kbd>+<kbd>P</kbd></td><td>再生 ／ 停止</td></tr>
       <tr><td class="nowrap"><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd></td><td>一時停止の切り替え</td></tr>
@@ -12349,6 +12360,14 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-102-0">v0.102.0 <span class="dim">（2026-11-20）</span></h3>
+  <p>シーンが沢山あっても探しやすいよう、シーンの開き方を直した版です（<a href="#scenes-open">開く</a>）。シーンの保存の形とゲームの動きは前の版と同じです。</p>
+  <ul>
+    <li><strong>シーンを開くメニュー</strong>：<span class="ui">File<span class="arrow">▸</span>シーンを開く</span> の一番上に名前を絞り込む欄を足し、その下に最近開いたシーン（3 つ）と、すべてのシーンを並べました。名前の最初の <code>_</code> より前が同じシーンが 2 つ以上あれば 1 行の群にまとめ、右に数を出します。並びは英字の大文字と小文字を区別しない名前順です。</li>
+    <li><strong>名前を打って開く欄</strong>：<kbd>Ctrl</kbd>+<kbd>O</kbd>（<span class="ui">File<span class="arrow">▸</span>シーンを探して開く…</span>）で画面の上に欄を出し、名前の一部を打って <kbd>Enter</kbd> で開けるようにしました。字が続いていなくても当たり、当たった字の色を変えます。行の右に群の名前と最後に保存した日を出します。</li>
+    <li><strong>最近開いたシーン</strong>：エディタで開いたシーンを新しい順に 10 個まで、手元の <span class="path">Application/Saved/EditorSettings/LastScene.json</span> に控えます。</li>
+  </ul>
 
   <h3 id="changelog-v0-101-0">v0.101.0 <span class="dim">（2026-11-20）</span></h3>
   <p>文字を打てる入力欄を足した版です（<a href="#ui-input">文字を入力する</a>）。日本語の変換・コピーと貼り付け・複数行も使えます。入力欄を使わない今の UI の見た目・押せる範囲・保存の形と、キーの読み方は前の版と同じです。</p>

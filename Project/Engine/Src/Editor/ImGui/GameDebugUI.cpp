@@ -218,13 +218,18 @@ namespace CoreEngine
         }
 
         if (sceneManager_ && ImGui::BeginMenu("シーンを開く", editing)) {
-            const std::string current = sceneManager_->GetCurrentSceneName();
-            for (const std::string& name : sceneManager_->GetAllSceneNames()) {
-                if (ImGui::MenuItem(name.c_str(), nullptr, name == current)) {
-                    RequestOpenScene(name);
-                }
-            }
+            const std::string chosen = sceneOpenMenu_.Draw(sceneManager_->GetAllSceneNames(),
+                sceneManager_->GetCurrentSceneName());
             ImGui::EndMenu();
+            if (!chosen.empty()) {
+                RequestOpenScene(chosen);
+            }
+        }
+        if (sceneManager_ && !editing && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::SetTooltip("%s", kStopFirst);
+        }
+        if (ImGui::MenuItem("シーンを探して開く…", "Ctrl+O", false, editing && sceneManager_ != nullptr)) {
+            OpenSceneQuickOpen();
         }
         if (sceneManager_ && !editing && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
             ImGui::SetTooltip("%s", kStopFirst);
@@ -657,6 +662,17 @@ namespace CoreEngine
                 script->RequestReload();
             }
         }
+        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_O, ImGuiInputFlags_RouteGlobal)) {
+            OpenSceneQuickOpen();
+        }
+    }
+
+    void GameDebugUI::OpenSceneQuickOpen()
+    {
+        if (!sceneManager_ || !PlaybackStateManager::GetInstance().IsEditing()) {
+            return;
+        }
+        sceneQuickOpen_.Open(sceneManager_->GetAllSceneNames(), sceneManager_->GetCurrentSceneName());
     }
 
     void GameDebugUI::RefreshEditorStatus()
@@ -1082,6 +1098,9 @@ namespace CoreEngine
         sceneResaveDialog_.Draw(sceneManager_, sceneDebugEditor_,
             engine_ ? engine_->GetSubsystem<EditorSettingsSubsystem>() : nullptr);
         sceneFileDialogs_.Draw(sceneDebugEditor_);
+        if (const std::string chosen = sceneQuickOpen_.Draw(); !chosen.empty()) {
+            RequestOpenScene(chosen);
+        }
         DrawUnsavedChangesDialog();
 
         if (showConsole_) ShowConsoleUI();

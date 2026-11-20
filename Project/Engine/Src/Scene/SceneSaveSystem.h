@@ -2,6 +2,7 @@
 
 #include "Utility/JsonManager/JsonManager.h"
 
+#include <filesystem>
 #include <string>
 #include <functional>
 #include <memory>
@@ -121,6 +122,10 @@ namespace CoreEngine
         /// @brief 保存データを持つシーンの名前（`Application/Assets/Scenes/<名前>/_scene.json` があるフォルダ）
         /// @return 名前順
         static std::vector<std::string> ListSavedScenes();
+
+        /// @brief シーンのフォルダで、いちばん新しく書いたファイルの日時
+        /// @return フォルダかファイルが無ければ値なし
+        static std::optional<std::filesystem::file_time_type> FindLastWriteTime(const std::string& sceneName);
 
         /// @brief 新しいシーンのひな形
         enum class SceneTemplate {
