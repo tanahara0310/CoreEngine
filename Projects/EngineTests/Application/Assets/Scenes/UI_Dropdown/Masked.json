@@ -1,0 +1,116 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchorMax": [
+                    0.0,
+                    0.0
+                ],
+                "anchorMin": [
+                    0.0,
+                    0.0
+                ],
+                "anchoredPosition": [
+                    20.0,
+                    26.0
+                ],
+                "parent": {
+                    "comp": "RectTransform",
+                    "ref": "6f0c5ed3ac3adab1"
+                },
+                "pivot": [
+                    0.0,
+                    0.0
+                ],
+                "rotation": 0.0,
+                "scale": [
+                    1.0,
+                    1.0
+                ],
+                "size": [
+                    320.0,
+                    48.0
+                ],
+                "sortOrder": 0
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "columns": 1,
+                "frame": 0,
+                "material": null,
+                "rows": 1,
+                "texture": null
+            },
+            "type": "UIImage"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "captionText": {
+                    "comp": "UIText",
+                    "ref": "d3ff9ae0e9e9dffe"
+                },
+                "disabledColor": [
+                    0.45,
+                    0.45,
+                    0.45,
+                    0.6
+                ],
+                "hoveredColor": [
+                    0.85,
+                    0.9,
+                    1.0,
+                    1.0
+                ],
+                "interactable": true,
+                "item": {
+                    "comp": "UIDropdownItem",
+                    "ref": "765912e081348acf"
+                },
+                "itemText": {
+                    "comp": "UIText",
+                    "ref": "511ef0a2fc501627"
+                },
+                "normalColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "options": [
+                    "枠 A",
+                    "枠 B",
+                    "枠 C",
+                    "枠 D",
+                    "枠 E"
+                ],
+                "pressedColor": [
+                    0.65,
+                    0.72,
+                    0.85,
+                    1.0
+                ],
+                "template": {
+                    "comp": "RectTransform",
+                    "ref": "bc3f05f2e5bb9745"
+                },
+                "value": 0
+            },
+            "type": "UIDropdown"
+        }
+    ],
+    "id": "fa632f85afaf4f15",
+    "name": "Masked",
+    "order": 51
+}

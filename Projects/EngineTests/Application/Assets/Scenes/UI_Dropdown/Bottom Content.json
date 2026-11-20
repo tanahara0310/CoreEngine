@@ -1,0 +1,82 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchorMax": [
+                    1.0,
+                    0.0
+                ],
+                "anchorMin": [
+                    0.0,
+                    0.0
+                ],
+                "anchoredPosition": [
+                    0.0,
+                    0.0
+                ],
+                "parent": {
+                    "comp": "RectTransform",
+                    "ref": "30657f0004436787"
+                },
+                "pivot": [
+                    0.5,
+                    0.0
+                ],
+                "rotation": 0.0,
+                "scale": [
+                    1.0,
+                    1.0
+                ],
+                "size": [
+                    0.0,
+                    0.0
+                ],
+                "sortOrder": 0
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "cellSize": [
+                    100.0,
+                    100.0
+                ],
+                "childAlignment": 0,
+                "childForceExpandHeight": false,
+                "childForceExpandWidth": true,
+                "constraintCount": 2,
+                "controlChildHeight": false,
+                "controlChildWidth": true,
+                "gridConstraint": 0,
+                "gridSpacing": [
+                    0.0,
+                    0.0
+                ],
+                "layoutType": 0,
+                "padding": [
+                    4.0,
+                    4.0,
+                    20.0,
+                    4.0
+                ],
+                "reverseOrder": false,
+                "spacing": 0.0
+            },
+            "type": "UILayoutGroup"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "horizontalFit": 0,
+                "verticalFit": 2
+            },
+            "type": "UIContentSizeFitter"
+        }
+    ],
+    "id": "c3179816f1c5a2ab",
+    "name": "Bottom Content",
+    "order": 66
+}

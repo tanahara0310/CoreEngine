@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.99.0">
+<meta name="engine-version" content="0.100.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5597,7 +5597,7 @@ kbd {
   </ul>
 </article>
 
-<article class="page" id="script-ui" data-group="スクリプト" data-title="UI を作る" data-nav="UI" data-keywords="ui hud 画面 文字 テキスト uitext 画像 uiimage ボタン uibutton スライダー uislider トグル uitoggle アンカー anchor ピボット pivot recttransform フォーカス focus clearfocus メニュー タイトル スコア フォント font 親子 parent setparent findchild 伸ばす stretch 余白 9 スライス sliced ゲージ fill fillamount マスク uimask 切り抜き パネル 並べる レイアウト layout uilayoutgroup 格子 grid 余白 間隔 uilayoutelement uicontentsizefitter 大きさ合わせ スクロール uiscrollview 一覧 リスト スクロールバー">
+<article class="page" id="script-ui" data-group="スクリプト" data-title="UI を作る" data-nav="UI" data-keywords="ui hud 画面 文字 テキスト uitext 画像 uiimage ボタン uibutton スライダー uislider トグル uitoggle アンカー anchor ピボット pivot recttransform フォーカス focus clearfocus メニュー タイトル スコア フォント font 親子 parent setparent findchild 伸ばす stretch 余白 9 スライス sliced ゲージ fill fillamount マスク uimask 切り抜き パネル 並べる レイアウト layout uilayoutgroup 格子 grid 余白 間隔 uilayoutelement uicontentsizefitter 大きさ合わせ スクロール uiscrollview 一覧 リスト ドロップダウン uidropdown 選択肢 プルダウン スクロールバー">
   <h1>UI を作る</h1>
   <p class="lead">スコアや体力ゲージのような HUD、タイトル画面やポーズメニューのボタンを作ります。UI は 3D の世界とは別の、画面に重ねる平面に置きます。</p>
 
@@ -5835,6 +5835,59 @@ kbd {
     }
   </script>
   <div class="callout warn" data-title="中身は窓の直接の子にする"><p>UI スクロールの <span class="ui">中身</span> には、窓（UI スクロールを持つオブジェクト）の直接の子を繋ぎます。孫や別の所の UI を繋ぐと動きません。中身のアンカーは窓の上の端（横に動かすなら左の端）に付けます。</p></div>
+
+  <h2 id="ui-dropdown">選択肢から選ぶ（UI ドロップダウン）</h2>
+  <p>難易度や画質のように、いくつかの中から 1 つ選ぶ欄は <a href="#api-UIDropdown">UI ドロップダウン</a> で作ります。<span class="ui">GameObject<span class="arrow">▸</span>UI<span class="arrow">▸</span>ドロップダウン</span> で、次の形を一度に作れます（<kbd>Ctrl</kbd>+<kbd>Z</kbd> 1 回で全部消える）。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>オブジェクト</th><th>持つもの</th><th>役目</th></tr></thead>
+    <tbody>
+      <tr><td>Dropdown</td><td>UI 画像・UI ドロップダウン</td><td>押す所。押すと一覧が開く</td></tr>
+      <tr><td>　Label</td><td>UI テキスト</td><td>今の値の選択肢の文字</td></tr>
+      <tr><td>　Arrow</td><td>UI テキスト</td><td>右の端の ▼</td></tr>
+      <tr><td>　Template</td><td>UI 画像・UI マスク・UI スクロール</td><td>一覧のひな形。押す所の下の辺に付ける。ふだんは隠しておく</td></tr>
+      <tr><td>　　Content</td><td>UI を並べる（縦）・UI の大きさを中身に合わせる（縦）</td><td>行を並べる中身</td></tr>
+      <tr><td>　　　Item</td><td>UI 画像・UI ドロップダウンの行</td><td>行のひな形。開くと選択肢の数だけ複製される</td></tr>
+      <tr><td>　　　　Item Checkmark</td><td>UI テキスト</td><td>今の値の行だけに出る ✓</td></tr>
+      <tr><td>　　　　Item Label</td><td>UI テキスト</td><td>選択肢の文字</td></tr>
+      <tr><td>　　Scrollbar</td><td>UI 画像・UI スライダー（上から下）</td><td>行が一覧に入りきらないときだけ出るスクロールバー</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li><strong>選択肢</strong>：Dropdown のインスペクタの <span class="ui">選択肢</span> に文字を並べます。<span class="ui">今の値</span> は選んでいる選択肢の番号（0 から）です。</li>
+    <li><strong>開く</strong>：押す所を押すか、キー・パッドで選んで決定します（キー・パッドの選択は、メニューを開いたときに <code>Focus()</code> したボタンから始まります。<a href="#ui-button">ボタン</a>を参照）。開いた一覧は、描く順に関係なくほかのどの UI よりも上に出て、親の UI マスクにも切られません。開いている一覧は 1 つだけです。</li>
+    <li><strong>一覧の置き方</strong>：押す所の下に開き、画面の下にはみ出すなら上に開きます。行が少なければ一覧を行の分まで縮め、入りきらなければ決めた高さのままスクロールバーを出します。開くと今の値の行が一覧の中ほどに来ます。</li>
+    <li><strong>選ぶ・閉じる</strong>：行を押すと値が変わって閉じます。一覧の外を押す・<kbd>Esc</kbd>（パッドは B）でも閉じます（値は変わりません）。一覧の外を押したときは、その下のボタンなどは押されません。</li>
+    <li><strong>開いている間</strong>：一覧の外の UI は押せず、キー・パッドの上下は一覧の行の中だけを動きます。キー・パッドで開くと今の値の行が選ばれ、閉じると選んでいる所がドロップダウンへ戻ります。</li>
+    <li><strong>押せないとき</strong>：<span class="ui">押せる</span> を外すと開かず、開いている間に外すと閉じます。</li>
+  </ul>
+  <p>形を直すときは、停止中に Template の表示を入れると一覧のひな形が見えます。行の見た目は Item で決め、選択肢の文字は Item Label に書かれます。</p>
+  <p>スクリプトからは、選択肢を <code>options</code> で丸ごと入れ替えたり、<code>AddOption</code>・<code>RemoveOption</code>・<code>ClearOptions</code> で足し引きしたりできます。選ばれた値は、<code>Update</code> で <code>wasChanged</code> を見て受け取ります。</p>
+  <script type="text/x-code" data-lang="as" data-file="DifficultySelect.as">
+    using namespace CoreEngine;
+
+    // 難易度のドロップダウンに選択肢を入れ、選ばれたら知らせる
+    class DifficultySelect : ScriptComponent
+    {
+        [ObjectRef] GameObject@ dropdown;
+
+        void Start()
+        {
+            array<string> names = { "やさしい", "ふつう", "むずかしい" };
+            dropdown.uiDropdown.options = names;
+        }
+
+        void Update()
+        {
+            UIDropdown@ difficulty = dropdown.uiDropdown;
+            if (difficulty.wasChanged) {
+                Log("難易度を " + difficulty.options[difficulty.value] + " にした");
+            }
+        }
+    }
+  </script>
+  <div class="callout warn" data-title="Esc はポーズにも割り当ててある"><p>一覧を閉じる <code>UICancel</code> と、ポーズの <code>Pause</code> は、どちらも <kbd>Esc</kbd> に割り当ててあります。<kbd>Esc</kbd> でポーズを開くゲームは、一覧が開いている間（<code>isOpen</code>）は <code>Pause</code> を無視してください。スクリプトの <code>Update</code> は一覧が閉じる前に走るので、<kbd>Esc</kbd> を押したフレームでも <code>isOpen</code> は true です。</p></div>
 
   <h2 id="ui-text">文字を書き換える（HUD）</h2>
   <p>スクリプトに <code>[ObjectRef]</code> の欄を作り、インスペクタで文字のオブジェクトを繋ぎます。<code>uiText.text</code> に入れた文字列がそのまま表示されます。</p>
@@ -12222,6 +12275,16 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-100-0">v0.100.0 <span class="dim">（2026-11-20）</span></h3>
+  <p>押すと選択肢の一覧が開き、1 つ選ぶドロップダウンを足した版です（<a href="#ui-dropdown">選択肢から選ぶ</a>）。ドロップダウンを使わない今の UI の見た目・押せる範囲・保存の形は、前の版と同じです。</p>
+  <ul>
+    <li><strong>UI ドロップダウン</strong>：<a href="#api-UIDropdown">UI ドロップダウン</a> と、その一覧の行の <a href="#api-UIDropdownItem">UI ドロップダウンの行</a> を足しました。開いた一覧はほかのどの UI よりも上に出て、親の UI マスクにも切られません。画面の下にはみ出すなら上へ開き、行が少なければ一覧を行の分まで縮め、入りきらなければスクロールします。行を選ぶと値が変わって閉じ、一覧の外を押す・<kbd>Esc</kbd>（パッドは B）でも閉じます。</li>
+    <li><strong>開いている間</strong>：一覧の外の UI は押せません。一覧の外を押すと閉じるだけで、その下のボタンは押されません。キー・パッドで開くと今の値の行が選ばれ、上下は一覧の中だけを動き、閉じると選んでいる所がドロップダウンへ戻ります。</li>
+    <li><strong>作るメニュー</strong>：<span class="ui">GameObject<span class="arrow">▸</span>UI</span> に <span class="ui">ドロップダウン</span>（押す所・今の値の文字・矢印・隠した一覧のひな形・行のひな形・スクロールバー）を足しました。</li>
+    <li><strong>スクリプト</strong>：<code>uiDropdown</code>・<code>uiDropdownItem</code> を足しました。UI ドロップダウンは <code>options</code>・<code>value</code>・<code>wasChanged</code>・<code>isOpen</code>・<code>Open</code>・<code>Close</code>・<code>AddOption</code>・<code>RemoveOption</code>・<code>ClearOptions</code> を持ちます。</li>
+    <li><strong>試験のシーン</strong>：<span class="path">Projects/EngineTests</span> に <code>UI_Dropdown</code>（4 つ・30 個・スクリプトで入れ替える・押せない・マスクした枠の中・画面の下の 6 つ）を足しました。結果をコンソールへ出します。</li>
+  </ul>
 
   <h3 id="changelog-v0-99-0">v0.99.0 <span class="dim">（2026-11-19）</span></h3>
   <p>子の UI を縦・横・格子に並べる部品と、大きさを中身に合わせる部品、窓より長い一覧を動かすスクロールを足した版です（<a href="#ui-layout">子を並べる</a>・<a href="#ui-scroll">スクロールする一覧</a>）。新しい部品を使わない今の UI の見た目・押せる範囲・保存の形は、前の版と同じです。</p>
@@ -19406,6 +19469,57 @@ void SetHp(float ratio)   // 0〜1
     ],
     notes: "<ul><li>ドラッグは、押した所から 8px より動くと始まり、押していたボタンは押したことになりません。UI スライダーのつまみはドラッグしてもスクロールになりません。</li><li>端では止まり、跳ね返りません。</li><li>キー・パッドで選んだ UI が中身の子孫なら、窓の中に見えるまで動きます。窓の外の行も選べます。</li><li>窓の UI マスクの外にある UI 画像と UI テキストは描きません。</li></ul>",
     see: [["ui-scroll", "スクロールする一覧"], ["api-UIMask", "UI マスク"], ["api-UISlider", "UI スライダー"]]
+  },
+
+  {
+    id: "UIDropdown", kind: "component", cat: "UI", display: "UI ドロップダウン", type: "UIDropdown",
+    accessor: "owner.uiDropdown", title: "UI ドロップダウン（UIDropdown）", brief: "押すと選択肢の一覧が開き、1 つ選ぶ",
+    keywords: "ドロップダウン 選択肢 一覧 プルダウン コンボボックス 選ぶ 設定 dropdown",
+    summary: "押すと選択肢の一覧が開き、行を選ぶと値が変わって閉じる欄にします。押す所（このコンポーネント）・今の値の文字・子に置いた一覧のひな形で組みます。<span class=\"ui\">GameObject ▸ UI ▸ ドロップダウン</span> で一式を作れます。",
+    requires: "UI トランスフォーム（自動で足します。押せる範囲になる）、見た目の UI 画像、一覧のひな形（子に置いた UI。中に行のひな形を置く）",
+    props: [
+      ["選択肢", "options", "文字の配列", "空", "一覧に並べる文字。"],
+      ["今の値", "value", "int", "0", "選んでいる選択肢の番号（0 から）。選択肢の数に収める。"],
+      ["押せる", "interactable", "bool", "オン", "外すと押せない色になり、開かない。開いている間に外すと閉じる。"],
+      ["今の値を出す文字", "", "UI テキスト", "なし", "今の値の選択肢の文字を書く。"],
+      ["一覧のひな形", "", "UI トランスフォーム", "なし", "開くと出す一覧。再生中ふだんは隠す。同じオブジェクトに UI スクロールを持つと、行が入りきらないときに動かせる。"],
+      ["行のひな形", "", "UI ドロップダウンの行", "なし", "選択肢ごとに複製する行。一覧のひな形の中に置く。"],
+      ["行の文字", "", "UI テキスト", "なし", "行のひな形の中の、選択肢の文字を書く UI テキスト。"],
+      ["通常の色 ／ 乗せたときの色 ／ 押したときの色 ／ 押せないときの色", "normalColor ／ hoveredColor ／ pressedColor ／ disabledColor", "Vector4（色）", "", "同じオブジェクトの UI 画像の色。乗せたときの色は、キー・パッドで選んでいるときもこの色。"]
+    ],
+    sections: [
+      {
+        title: "スクリプトから使えるメンバー", members: [
+          { n: "options", s: "array<string>@ options", t: "rw", d: "選択肢の写し。書くと丸ごと入れ替えます（読んだ配列の中を書き換えても選択肢は変わりません）。" },
+          { n: "value", s: "int value", t: "rw", d: "今の値（選択肢の番号。0 から）。書くと選択肢の数に収めます。" },
+          { n: "wasChanged", s: "bool wasChanged", t: "ro", d: "値が変わった次のフレームだけ true。行を選んだときも、再生中にスクリプトから <code>value</code> を書き換えたときも true になります（同じ値なら変わりません）。" },
+          { n: "isOpen", s: "bool isOpen", t: "ro", d: "一覧が開いているか。" },
+          { n: "interactable", s: "bool interactable", t: "rw", d: "押せるか。" },
+          { n: "Open", s: "void Open()", t: "m", d: "一覧を開きます。ほかのドロップダウンの一覧は閉じます。押せないとき・ひな形が繋がっていないときは開きません。" },
+          { n: "Close", s: "void Close()", t: "m", d: "一覧を閉じます（値は変わりません）。" },
+          { n: "AddOption", s: "void AddOption(const string &in text)", t: "m", d: "末尾に選択肢を足します。" },
+          { n: "RemoveOption", s: "void RemoveOption(int index)", t: "m", d: "<code>index</code> 番目の選択肢を消します。今の値がそれより後ろなら 1 つ前へずらし、同じ選択肢を指したままにします。" },
+          { n: "ClearOptions", s: "void ClearOptions()", t: "m", d: "選択肢を全部消し、今の値を 0 にします。" },
+          { n: "enabled", s: "bool enabled", t: "rw", d: "動かすか。止めると一覧も閉じます。" }
+        ]
+      }
+    ],
+    notes: "<ul><li>開いた一覧は、描く順に関係なくほかのどの UI よりも上に描き、親の UI マスクにも切られません。</li><li>一覧は押す所の下に開き、画面の下にはみ出すなら上へ開きます。行が一覧に入るなら行の分まで縮め、スクロールバーを隠します。</li><li>開いている間は一覧の外の UI を押せません。一覧の外を押すと閉じるだけで、その下の UI は押されません。<code>Esc</code>（パッドは B。<code>UICancel</code>）でも閉じます。</li><li>キー・パッドで開くと今の値の行を選び、上下は一覧の行の中だけを動き、閉じると選んでいる所がドロップダウンへ戻ります。</li><li>行は選択肢が変わったときに作り直します。作った行は保存されません。</li></ul>",
+    see: [["ui-dropdown", "選択肢から選ぶ"], ["api-UIDropdownItem", "UI ドロップダウンの行"], ["api-UIScrollView", "UI スクロール"]]
+  },
+
+  {
+    id: "UIDropdownItem", kind: "component", cat: "UI", display: "UI ドロップダウンの行", type: "UIDropdownItem",
+    accessor: "owner.uiDropdownItem", title: "UI ドロップダウンの行（UIDropdownItem）", brief: "ドロップダウンの一覧の 1 行",
+    keywords: "ドロップダウン 行 選択肢 チェック 印",
+    summary: "<a href=\"#api-UIDropdown\">UI ドロップダウン</a> の行のひな形に付けます。ドロップダウンは開くとき、選択肢ごとにひな形を複製して何番目の行かを教えます。押された行は、その番号をドロップダウンへ伝えます。",
+    requires: "UI トランスフォーム（自動で足します。押せる範囲になる）、見た目の UI 画像",
+    props: [
+      ["選んでいる行に出す印", "", "UI トランスフォーム", "なし", "今の値の行だけで出す（オブジェクトごと出し入れする）。ひな形の印は出したまま。"],
+      ["通常の色 ／ 乗せたときの色 ／ 押したときの色 ／ 押せないときの色", "normalColor ／ hoveredColor ／ pressedColor ／ disabledColor", "Vector4（色）", "", "同じオブジェクトの UI 画像の色。乗せたときの色は、キー・パッドで選んでいるときもこの色。"]
+    ],
+    notes: "<ul><li>行のひな形は再生中は隠れ、複製した行だけが出ます。複製した行は保存されません。</li><li>行の色は UI ボタンと同じく、乗せた・キー・パッドで選んだ・押したで変わります。</li></ul>",
+    see: [["api-UIDropdown", "UI ドロップダウン"]]
   },
 
   {

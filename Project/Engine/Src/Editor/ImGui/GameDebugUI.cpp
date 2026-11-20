@@ -362,6 +362,9 @@ namespace CoreEngine
             if (ImGui::MenuItem("スクロールの一覧")) {
                 sceneDebugEditor_->CreateUIObject(ObjectEditing::UIElementKind::ScrollView);
             }
+            if (ImGui::MenuItem("ドロップダウン")) {
+                sceneDebugEditor_->CreateUIObject(ObjectEditing::UIElementKind::Dropdown);
+            }
             ImGui::EndMenu();
         }
 

@@ -24,6 +24,9 @@ namespace CoreEngine
         /// @brief 親を指している UI トランスフォームの数
         std::atomic<int> gLinkedCount{ 0 };
 
+        /// @brief 手前に描く UI トランスフォームの数
+        std::atomic<int> gOnTopCount{ 0 };
+
         /// @brief 行列で点を移す（行ベクトル）
         Vector2 TransformPoint(const Matrix4x4& matrix, float x, float y)
         {
@@ -77,6 +80,9 @@ namespace CoreEngine
     {
         if (linked_) {
             gLinkedCount.fetch_sub(1, std::memory_order_relaxed);
+        }
+        if (drawnOnTop_) {
+            gOnTopCount.fetch_sub(1, std::memory_order_relaxed);
         }
     }
 
@@ -311,6 +317,24 @@ namespace CoreEngine
         return gLinkedCount.load(std::memory_order_relaxed) > 0;
     }
 
+    void RectTransformComponent::SetDrawnOnTop(bool onTop)
+    {
+        if (drawnOnTop_ == onTop) {
+            return;
+        }
+        drawnOnTop_ = onTop;
+        if (onTop) {
+            gOnTopCount.fetch_add(1, std::memory_order_relaxed);
+        } else {
+            gOnTopCount.fetch_sub(1, std::memory_order_relaxed);
+        }
+    }
+
+    bool RectTransformComponent::AnyDrawnOnTop()
+    {
+        return gOnTopCount.load(std::memory_order_relaxed) > 0;
+    }
+
     void RectTransformComponent::UpdateLinked()
     {
         const bool linked = parent_.GetObjectId().IsValid();
@@ -489,7 +513,8 @@ namespace CoreEngine
 
     bool RectTransformComponent::FindClipRect(const Vector2& canvasSize, UIRect& outClip) const
     {
-        if (!linked_) {
+        // 手前に描く物は、自分より上の親のマスクに切らせない
+        if (!linked_ || drawnOnTop_) {
             return false;
         }
         bool found = false;
@@ -510,6 +535,9 @@ namespace CoreEngine
                     : current->GetCanvasBounds(canvasSize);
                 outClip = found ? outClip.Intersect(bounds) : bounds;
                 found = true;
+            }
+            if (current->drawnOnTop_) {
+                break;
             }
             current = current->GetParent();
         }

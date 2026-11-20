@@ -70,5 +70,25 @@ namespace CoreEngine
             (void)direction;
             return false;
         }
+
+        // ===== 開いている一覧（ドロップダウンなど） =====
+
+        /// @brief 開いている一覧の UI トランスフォーム（開いていなければ nullptr）
+        /// @details 開いている間、ポインタ・スクロール・フォーカスはこの中だけに配る。
+        ///          一覧の外を押す・戻る（`UICancel`）を押すと `ClosePopup()` が呼ばれる。
+        virtual RectTransformComponent* GetOpenPopup() const { return nullptr; }
+
+        /// @brief 一覧を開いたときにフォーカスを置く相手（nullptr なら一覧の中のいちばん左上）
+        virtual IUIInteractable* GetPopupInitialFocus() const { return nullptr; }
+
+        /// @brief 一覧の中で、キー・パッドで選べる相手か（一覧の中のスクロールバーなどを外すときに false）
+        virtual bool IsPopupFocusTarget(const IUIInteractable& candidate) const
+        {
+            (void)candidate;
+            return true;
+        }
+
+        /// @brief 一覧を閉じる（一覧の外を押した・戻るを押した）
+        virtual void ClosePopup() {}
     };
 }

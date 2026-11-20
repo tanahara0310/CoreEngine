@@ -1,0 +1,103 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchorMax": [
+                    1.0,
+                    1.0
+                ],
+                "anchorMin": [
+                    1.0,
+                    0.0
+                ],
+                "anchoredPosition": [
+                    -4.0,
+                    0.0
+                ],
+                "parent": {
+                    "comp": "RectTransform",
+                    "ref": "4661e16200c06109"
+                },
+                "pivot": [
+                    1.0,
+                    0.5
+                ],
+                "rotation": 0.0,
+                "scale": [
+                    1.0,
+                    1.0
+                ],
+                "size": [
+                    12.0,
+                    -44.0
+                ],
+                "sortOrder": 1
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    0.82,
+                    0.83,
+                    0.86,
+                    1.0
+                ],
+                "columns": 1,
+                "frame": 0,
+                "material": null,
+                "rows": 1,
+                "texture": null
+            },
+            "type": "UIImage"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "direction": 2,
+                "disabledColor": [
+                    0.6,
+                    0.6,
+                    0.6,
+                    0.5
+                ],
+                "fill": null,
+                "handle": {
+                    "comp": "RectTransform",
+                    "ref": "16cad112159ec324"
+                },
+                "hoveredColor": [
+                    0.4,
+                    0.42,
+                    0.48,
+                    1.0
+                ],
+                "interactable": true,
+                "maxValue": 1.0,
+                "minValue": 0.0,
+                "navigationStep": 0.0,
+                "normalColor": [
+                    0.5,
+                    0.52,
+                    0.58,
+                    1.0
+                ],
+                "pressedColor": [
+                    0.32,
+                    0.34,
+                    0.4,
+                    1.0
+                ],
+                "value": 0.0,
+                "wholeNumbers": false
+            },
+            "type": "UISlider"
+        }
+    ],
+    "id": "c63db67ea31ec3d6",
+    "name": "Disabled Scrollbar",
+    "order": 47
+}

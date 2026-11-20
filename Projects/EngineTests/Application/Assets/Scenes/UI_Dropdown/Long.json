@@ -1,0 +1,126 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchor": 0,
+                "anchoredPosition": [
+                    520.0,
+                    150.0
+                ],
+                "pivot": [
+                    0.0,
+                    0.0
+                ],
+                "rotation": 0.0,
+                "size": [
+                    320.0,
+                    48.0
+                ],
+                "sortOrder": 0
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "columns": 1,
+                "frame": 0,
+                "material": null,
+                "rows": 1,
+                "texture": null
+            },
+            "type": "UIImage"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "captionText": {
+                    "comp": "UIText",
+                    "ref": "c4313dd27b832b7e"
+                },
+                "disabledColor": [
+                    0.45,
+                    0.45,
+                    0.45,
+                    0.6
+                ],
+                "hoveredColor": [
+                    0.85,
+                    0.9,
+                    1.0,
+                    1.0
+                ],
+                "interactable": true,
+                "item": {
+                    "comp": "UIDropdownItem",
+                    "ref": "77255837f8fa7cea"
+                },
+                "itemText": {
+                    "comp": "UIText",
+                    "ref": "80c34b5f353837d3"
+                },
+                "normalColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "options": [
+                    "項目 01",
+                    "項目 02",
+                    "項目 03",
+                    "項目 04",
+                    "項目 05",
+                    "項目 06",
+                    "項目 07",
+                    "項目 08",
+                    "項目 09",
+                    "項目 10",
+                    "項目 11",
+                    "項目 12",
+                    "項目 13",
+                    "項目 14",
+                    "項目 15",
+                    "項目 16",
+                    "項目 17",
+                    "項目 18",
+                    "項目 19",
+                    "項目 20",
+                    "項目 21",
+                    "項目 22",
+                    "項目 23",
+                    "項目 24",
+                    "項目 25",
+                    "項目 26",
+                    "項目 27",
+                    "項目 28",
+                    "項目 29",
+                    "項目 30"
+                ],
+                "pressedColor": [
+                    0.65,
+                    0.72,
+                    0.85,
+                    1.0
+                ],
+                "template": {
+                    "comp": "RectTransform",
+                    "ref": "081161c944a05880"
+                },
+                "value": 14
+            },
+            "type": "UIDropdown"
+        }
+    ],
+    "id": "052015c915354031",
+    "name": "Long",
+    "order": 17
+}

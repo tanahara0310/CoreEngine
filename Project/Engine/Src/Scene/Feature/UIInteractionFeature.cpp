@@ -30,6 +30,9 @@ namespace CoreEngine
         /// 決定に使うアクションの綴り
         constexpr const char* kConfirmActionId = "UIConfirm";
 
+        /// 開いている一覧を閉じるアクションの綴り
+        constexpr const char* kCancelActionId = "UICancel";
+
         /// 送りに使うアクションの綴り（`UINavigationDirection` と同じ並び）
         constexpr const char* kDirectionActionIds[] = {
             "UINavigateUp",
@@ -114,13 +117,27 @@ namespace CoreEngine
         const bool confirmDown = hasConfirm && query->IsActionTriggered(confirm);
         const bool confirmUp = hasConfirm && query->IsActionReleased(confirm);
 
-        IUIInteractable* const under = ScanAndPick(ctx, canvasSize, onCanvas, pointer.IsOver());
+        PopupScan popup;
+        IUIInteractable* const under = ScanAndPick(ctx, canvasSize, onCanvas, pointer.IsOver(), popup);
+        ChangePopup(ctx, canvasSize, popup);
 
         // ---- 乗った・外れた ----
         if (under != hovered_) {
             if (hovered_) { hovered_->OnPointerExit(); }
             hovered_ = under;
             if (hovered_) { hovered_->OnPointerEnter(); }
+        }
+
+        // ---- 開いている一覧の外を押した・戻るを押した ----
+        // 押した入力は一覧を閉じるだけに使い、下にある UI へは渡さない
+        if (popupOwner_) {
+            const InputAction cancel = query ? InputActionFromString(kCancelActionId) : InputAction::Invalid;
+            const bool cancelDown = cancel != InputAction::Invalid && query->IsActionTriggered(cancel);
+            const bool pressedOutside = pointer.IsPressed() && pointer.IsOver()
+                && (!popupRoot_ || !popupRoot_->ContainsCanvasPoint(onCanvas, canvasSize));
+            if (cancelDown || pressedOutside) {
+                popupOwner_->ClosePopup();
+            }
         }
 
         // ---- 押した ----
@@ -164,11 +181,11 @@ namespace CoreEngine
         }
 
         // ---- 場面 ----
-        // 選んでいる相手がいる間はメニューの操作にする。
+        // 選んでいる相手がいる間・一覧が開いている間はメニューの操作にする。
         // これが無いと、決定ボタンでボタンを押した瞬間にキャラも跳ぶ
         if (input) {
             input->GetQuery().SetActiveContexts(
-                (focused_ ? InputContext::UI : InputContext::Game) | kEditorContext);
+                ((focused_ || popupOwner_) ? InputContext::UI : InputContext::Game) | kEditorContext);
         }
     }
 
@@ -183,18 +200,18 @@ namespace CoreEngine
     }
 
     IUIInteractable* UIInteractionFeature::ScanAndPick(SceneContext& ctx, const Vector2& canvasSize,
-                                                      const Vector2& pointer, bool pointerOver)
+                                                      const Vector2& pointer, bool pointerOver,
+                                                      PopupScan& outPopup)
     {
-        IUIInteractable* best = nullptr;
-        int bestOrder = 0;
         Presence hovered;
         Presence focused;
         Presence pressed;
+        hits_.clear();
 
         ctx.gameObjectManager->ForEachComponent<IUIInteractable>(
             [&](IUIInteractable& candidate) {
                 // 親が隠れている UI は受け付けない
-                const RectTransformComponent* const rect = candidate.GetRectTransform();
+                RectTransformComponent* const rect = candidate.GetRectTransform();
                 const bool accepts = candidate.AcceptsInput() && (!rect || rect->IsActiveInHierarchy());
 
                 // 覚えている相手がまだ居るかをここで確かめる
@@ -208,6 +225,14 @@ namespace CoreEngine
                 mark(hovered_, hovered);
                 mark(focused_, focused);
                 mark(pressed_, pressed);
+                mark(popupOwner_, outPopup.previous);
+
+                if (accepts) {
+                    if (RectTransformComponent* const popupRoot = candidate.GetOpenPopup()) {
+                        outPopup.owner = &candidate;
+                        outPopup.root = popupRoot;
+                    }
+                }
 
                 if (!accepts || !pointerOver) {
                     return;
@@ -215,16 +240,74 @@ namespace CoreEngine
                 if (!rect || !rect->ContainsCanvasPoint(pointer, canvasSize)) {
                     return;
                 }
-                // 描画順が大きいほど手前。同じなら後から見つかった方を手前として扱う
-                const int order = candidate.GetPointerSortOrder();
-                if (!best || order >= bestOrder) {
-                    best = &candidate;
-                    bestOrder = order;
-                }
+                hits_.push_back({ &candidate, rect, candidate.GetPointerSortOrder() });
             });
 
         ReleaseLost(hovered, focused, pressed);
+
+        // 描画順が大きいほど手前。同じなら後から見つかった方を手前として扱う。
+        // 一覧が開いていれば、一覧の中の物だけから選ぶ
+        IUIInteractable* best = nullptr;
+        int bestOrder = 0;
+        for (const PointerHit& hit : hits_) {
+            if (outPopup.root && !outPopup.root->IsSelfOrDescendant(hit.rect)) {
+                continue;
+            }
+            if (!best || hit.order >= bestOrder) {
+                best = hit.target;
+                bestOrder = hit.order;
+            }
+        }
         return best;
+    }
+
+    void UIInteractionFeature::ChangePopup(SceneContext& ctx, const Vector2& canvasSize, const PopupScan& scan)
+    {
+        if (scan.owner == popupOwner_) {
+            popupRoot_ = scan.root;
+            if (popupOwner_ && focused_) {
+                popupKeyboard_ = true;
+            }
+            return;
+        }
+
+        // 閉じた。一覧の中をキー・パッドで選んでいたなら、持ち主へフォーカスを戻す
+        IUIInteractable* const closed = popupOwner_;
+        const bool returnFocus = closed && popupKeyboard_ && scan.previous.found && scan.previous.accepts;
+        popupOwner_ = scan.owner;
+        popupRoot_ = scan.root;
+        popupKeyboard_ = false;
+        if (returnFocus && !popupOwner_) {
+            SetFocus(closed);
+        }
+
+        // 開いた。キー・パッドで選んでいたなら、一覧の最初の相手へ移す
+        if (popupOwner_ && focused_) {
+            popupKeyboard_ = true;
+            SetFocus(FindPopupInitialFocus(ctx, canvasSize));
+        }
+    }
+
+    bool UIInteractionFeature::IsPopupFocusCandidate(const IUIInteractable& candidate) const
+    {
+        if (!popupOwner_) {
+            return true;
+        }
+        const RectTransformComponent* const rect = candidate.GetRectTransform();
+        return popupRoot_ && rect && popupRoot_->IsSelfOrDescendant(rect)
+            && popupOwner_->IsPopupFocusTarget(candidate);
+    }
+
+    IUIInteractable* UIInteractionFeature::FindPopupInitialFocus(SceneContext& ctx, const Vector2& canvasSize) const
+    {
+        if (!popupOwner_) {
+            return nullptr;
+        }
+        IUIInteractable* const preferred = popupOwner_->GetPopupInitialFocus();
+        if (preferred && preferred->AcceptsInput() && IsPopupFocusCandidate(*preferred)) {
+            return preferred;
+        }
+        return FindFirstFocusable(ctx, canvasSize);
     }
 
     void UIInteractionFeature::ReleaseLost(const Presence& hovered, const Presence& focused,
@@ -272,6 +355,10 @@ namespace CoreEngine
             }
             const RectTransformComponent* const rect = view.GetRectTransform();
             if (!rect || !rect->IsActiveInHierarchy() || !rect->ContainsCanvasPoint(pointer, canvasSize)) {
+                return;
+            }
+            // 一覧が開いている間は、一覧の中のスクロールだけを動かす
+            if (popupRoot_ && !popupRoot_->IsSelfOrDescendant(rect)) {
                 return;
             }
             // 中のスクロールほど後に描くので、描く順の大きい方を採る
@@ -428,8 +515,12 @@ namespace CoreEngine
     {
         if (!focused_) {
             // まだどこも選んでいない。最初の入力では置くだけにする
-            // （ポインタが指しているものがあれば、そこから続ける）
-            SetFocus(hovered_ ? hovered_ : FindFirstFocusable(ctx, canvasSize));
+            // （ポインタが指しているものがあれば、そこから続ける。一覧が開いていれば一覧の最初の相手）
+            IUIInteractable* first = hovered_;
+            if (popupOwner_ && (!first || !IsPopupFocusCandidate(*first))) {
+                first = FindPopupInitialFocus(ctx, canvasSize);
+            }
+            SetFocus(first ? first : FindFirstFocusable(ctx, canvasSize));
             return;
         }
 
@@ -455,6 +546,9 @@ namespace CoreEngine
                 }
                 const RectTransformComponent* const candidateRect = candidate.GetRectTransform();
                 if (!candidateRect || !candidateRect->IsActiveInHierarchy()) {
+                    return;
+                }
+                if (!IsPopupFocusCandidate(candidate)) {
                     return;
                 }
                 const Vector2 center =
@@ -485,6 +579,9 @@ namespace CoreEngine
                 }
                 const RectTransformComponent* const rect = candidate.GetRectTransform();
                 if (!rect || !rect->IsActiveInHierarchy()) {
+                    return;
+                }
+                if (!IsPopupFocusCandidate(candidate)) {
                     return;
                 }
                 // 画面の左上にいちばん近いものから始める
@@ -529,6 +626,9 @@ namespace CoreEngine
         // ドラッグの途切れはスクロールの側で気づいて離す
         scrollTarget_ = nullptr;
         scrollDragging_ = false;
+        popupOwner_ = nullptr;
+        popupRoot_ = nullptr;
+        popupKeyboard_ = false;
     }
 
     void UIInteractionFeature::Finalize(SceneContext& ctx)
@@ -542,5 +642,8 @@ namespace CoreEngine
         wasPlaying_ = false;
         scrollTarget_ = nullptr;
         scrollDragging_ = false;
+        popupOwner_ = nullptr;
+        popupRoot_ = nullptr;
+        popupKeyboard_ = false;
     }
 }

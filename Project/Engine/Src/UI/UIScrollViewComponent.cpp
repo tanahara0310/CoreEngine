@@ -77,6 +77,16 @@ namespace CoreEngine
         content_.Set(content);
     }
 
+    UISliderComponent* UIScrollViewComponent::GetVerticalScrollbar() const
+    {
+        return verticalScrollbar_.Get();
+    }
+
+    UISliderComponent* UIScrollViewComponent::GetHorizontalScrollbar() const
+    {
+        return horizontalScrollbar_.Get();
+    }
+
     void UIScrollViewComponent::SetVerticalScrollbar(UISliderComponent* scrollbar)
     {
         verticalScrollbar_.Set(scrollbar);

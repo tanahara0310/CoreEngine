@@ -90,8 +90,13 @@ namespace CoreEngine
         void SetContent(RectTransformComponent* content);
 
         /// @brief 縦・横のスクロールバー（繋がなくてもよい）
+        UISliderComponent* GetVerticalScrollbar() const;
+        UISliderComponent* GetHorizontalScrollbar() const;
         void SetVerticalScrollbar(UISliderComponent* scrollbar);
         void SetHorizontalScrollbar(UISliderComponent* scrollbar);
+
+        /// @brief スクロールバーを動かされたら中身を合わせ、動かされていなければスクロールバーを中身に合わせる
+        void SyncScrollbars();
 
     private:
         /// @brief 窓の四角と中身の四角（どちらも窓の座標・px）
@@ -107,9 +112,6 @@ namespace CoreEngine
 
         /// @brief ホイール 1 目盛りの量（向き 0 = 横・1 = 縦）
         float WheelStep(int axis) const;
-
-        /// @brief スクロールバーを動かされたら中身を合わせ、動かされていなければスクロールバーを中身に合わせる
-        void SyncScrollbars();
 
         ObjectRef<RectTransformComponent> content_;
         bool horizontal_ = false;
