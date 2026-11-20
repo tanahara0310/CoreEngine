@@ -11,6 +11,7 @@
 #include "Editor/Scene/SceneDebugEditor.h"
 #include "Editor/ImGui/GameDebugUI.h"
 #include "Editor/ImGui/GameViewportOverlay.h"
+#include "Input/TextInput.h"
 #include "Launch/AppResource.h"
 #include "WinApp/WinApp.h"
 #include <ImGuizmo.h>
@@ -27,13 +28,32 @@ namespace CoreEngine
     {
         void (*originalCreatePlatformWindow)(ImGuiViewport*) = nullptr;
 
-        /// @brief ImGui が別のウィンドウ（OS のウィンドウ）を作ったあと、エンジンのアイコンを付ける
+        /// ImGui の別のウィンドウのプロシージャ（どの別ウィンドウも同じ）
+        WNDPROC originalPlatformWindowProc = nullptr;
+
+        /// @brief 別のウィンドウへ出した Game ビューでも、ゲームの入力欄へ文字を渡してから ImGui へ回す
+        LRESULT CALLBACK PlatformWindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
+        {
+            LRESULT textResult = 0;
+            if (TextInput::Get().HandleWindowMessage(hwnd, msg, wparam, lparam, textResult)) {
+                return textResult;
+            }
+            return ::CallWindowProcW(originalPlatformWindowProc, hwnd, msg, wparam, lparam);
+        }
+
+        /// @brief ImGui が別のウィンドウ（OS のウィンドウ）を作ったあと、エンジンのアイコンを付け、文字の受け口を挟む
         void CreatePlatformWindowWithIcon(ImGuiViewport* viewport)
         {
             originalCreatePlatformWindow(viewport);
             if (const HWND hwnd = static_cast<HWND>(viewport->PlatformHandleRaw)) {
                 ::SendMessageW(hwnd, WM_SETICON, ICON_BIG, reinterpret_cast<LPARAM>(LoadAppIcon(false)));
                 ::SendMessageW(hwnd, WM_SETICON, ICON_SMALL, reinterpret_cast<LPARAM>(LoadAppIcon(true)));
+
+                const auto previous = reinterpret_cast<WNDPROC>(
+                    ::SetWindowLongPtrW(hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&PlatformWindowProc)));
+                if (previous && previous != &PlatformWindowProc) {
+                    originalPlatformWindowProc = previous;
+                }
             }
         }
     }

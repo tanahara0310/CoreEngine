@@ -1,0 +1,102 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchor": 0,
+                "anchoredPosition": [
+                    640.0,
+                    436.0
+                ],
+                "pivot": [
+                    0.0,
+                    0.0
+                ],
+                "rotation": 0.0,
+                "size": [
+                    440.0,
+                    48.0
+                ],
+                "sortOrder": 0
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "columns": 1,
+                "frame": 0,
+                "material": null,
+                "rows": 1,
+                "texture": null
+            },
+            "type": "UIImage"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "caretColor": [
+                    0.2,
+                    0.2,
+                    0.2,
+                    1.0
+                ],
+                "characterLimit": 0,
+                "contentType": 0,
+                "disabledColor": [
+                    0.8,
+                    0.8,
+                    0.8,
+                    0.6
+                ],
+                "hoveredColor": [
+                    0.93,
+                    0.96,
+                    1.0,
+                    1.0
+                ],
+                "interactable": true,
+                "multiLine": false,
+                "normalColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "placeholder": {
+                    "comp": "UIText",
+                    "ref": "c59bab2be3b61c93"
+                },
+                "pressedColor": [
+                    0.85,
+                    0.9,
+                    1.0,
+                    1.0
+                ],
+                "readOnly": false,
+                "selectionColor": [
+                    0.66,
+                    0.81,
+                    1.0,
+                    0.75
+                ],
+                "text": "とても長い文を入れると、カーソルが欄の中に収まるよう文字が横へずれます。End と Home で端へ",
+                "textComponent": {
+                    "comp": "UIText",
+                    "ref": "3bcc514f905e8f98"
+                }
+            },
+            "type": "UIInputField"
+        }
+    ],
+    "id": "472a9ef695fac854",
+    "name": "Long",
+    "order": 49
+}

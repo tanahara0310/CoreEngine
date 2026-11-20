@@ -1,0 +1,46 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchor": 0,
+                "anchoredPosition": [
+                    640.0,
+                    556.0
+                ],
+                "pivot": [
+                    0.0,
+                    0.0
+                ],
+                "rotation": 0.0,
+                "size": [
+                    600.0,
+                    300.0
+                ],
+                "sortOrder": 0
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    0.12,
+                    0.13,
+                    0.16,
+                    1.0
+                ],
+                "columns": 1,
+                "frame": 0,
+                "material": null,
+                "rows": 1,
+                "texture": null
+            },
+            "type": "UIImage"
+        }
+    ],
+    "id": "5b24dd944a6e21a0",
+    "name": "MoverArea",
+    "order": 54
+}

@@ -46,6 +46,7 @@ namespace CoreEngine
             Panel,  ///< 親いっぱいに伸ばした UI 画像
             ScrollView, ///< マスクした窓と縦に並べる中身・項目・スクロールバー
             Dropdown,   ///< 押す所・今の値の文字・矢印と、隠した一覧のひな形
+            InputField, ///< 枠・文字の場所（マスク）・打った文字・置き文字
         };
 
         /// @brief 作るパーティクルの種類

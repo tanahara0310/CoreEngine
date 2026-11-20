@@ -3,6 +3,7 @@
 #include "KeyboardInput.h"
 #include "MouseInput.h"
 #include "GamepadInput.h"
+#include "TextInput.h"
 #include <cmath>
 
 namespace CoreEngine {
@@ -79,12 +80,16 @@ Vector2 InputQuery::GetAxis2D(InputAction negativeX, InputAction positiveX,
 
 // ─── キーボード直接アクセス ───────────────────────────────────
 
+bool InputQuery::IsKeyboardBlocked() const {
+    return keyboardSuppressed_ || TextInput::Get().IsKeyboardBlocked();
+}
+
 bool InputQuery::IsKeyPressed(uint8_t dikCode) const {
-    return !keyboardSuppressed_ && keyboard_ && keyboard_->IsKeyPressed(dikCode);
+    return !IsKeyboardBlocked() && keyboard_ && keyboard_->IsKeyPressed(dikCode);
 }
 
 bool InputQuery::IsKeyTriggered(uint8_t dikCode) const {
-    return !keyboardSuppressed_ && keyboard_ && keyboard_->IsKeyTriggered(dikCode);
+    return !IsKeyboardBlocked() && keyboard_ && keyboard_->IsKeyTriggered(dikCode);
 }
 
 bool InputQuery::IsKeyReleased(uint8_t dikCode) const {
@@ -268,7 +273,7 @@ bool InputQuery::ModifiersHeld(InputModifier modifiers) const {
     if (modifiers == InputModifier::None) {
         return true;
     }
-    if (!keyboard_ || keyboardSuppressed_) {
+    if (!keyboard_ || IsKeyboardBlocked()) {
         return false;
     }
     if (HasModifier(modifiers, InputModifier::Ctrl)
@@ -308,7 +313,7 @@ bool InputQuery::EvaluatePressed(const InputBinding& b, int player) const {
     switch (b.type) {
     case BindingType::Keyboard:
         // パッドを指名して読むときは、キーボードとマウスを混ぜない（2 人目が巻き込まれる）
-        return player == kAnyGamepad && !keyboardSuppressed_ && keyboard_
+        return player == kAnyGamepad && !IsKeyboardBlocked() && keyboard_
             && keyboard_->IsKeyPressed(static_cast<uint8_t>(b.code));
     case BindingType::MouseButton:
         return player == kAnyGamepad && mouse_
@@ -327,7 +332,7 @@ bool InputQuery::EvaluateTriggered(const InputBinding& b, int player) const {
     if (!ModifiersHeld(b.modifiers)) return false;
     switch (b.type) {
     case BindingType::Keyboard:
-        return player == kAnyGamepad && !keyboardSuppressed_ && keyboard_
+        return player == kAnyGamepad && !IsKeyboardBlocked() && keyboard_
             && keyboard_->IsKeyTriggered(static_cast<uint8_t>(b.code));
     case BindingType::MouseButton:
         return player == kAnyGamepad && mouse_
@@ -369,7 +374,7 @@ float InputQuery::EvaluateAxis(const InputBinding& b, int player) const {
     if (!ModifiersHeld(b.modifiers)) return 0.0f;
     switch (b.type) {
     case BindingType::Keyboard:
-        return (player == kAnyGamepad && !keyboardSuppressed_ && keyboard_
+        return (player == kAnyGamepad && !IsKeyboardBlocked() && keyboard_
                 && keyboard_->IsKeyPressed(static_cast<uint8_t>(b.code))) ? 1.0f : 0.0f;
     case BindingType::MouseButton:
         return (player == kAnyGamepad && mouse_

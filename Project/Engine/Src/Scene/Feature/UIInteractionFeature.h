@@ -65,6 +65,7 @@ namespace CoreEngine
             IUIInteractable* owner = nullptr;      ///< 一覧を開いている UI（無ければ nullptr）
             RectTransformComponent* root = nullptr; ///< その一覧
             Presence previous;                     ///< 前のフレームの持ち主がまだ居るか
+            IUIInteractable* editing = nullptr;    ///< 文字を打っている UI（無ければ nullptr）
         };
 
         /// @brief ポインタの下にあった押せる UI
@@ -159,6 +160,8 @@ namespace CoreEngine
 
         // 一覧を開いている UI と、その一覧（無ければ nullptr）
         IUIInteractable* popupOwner_ = nullptr;
+        // 文字を打っている UI
+        IUIInteractable* editing_ = nullptr;
         RectTransformComponent* popupRoot_ = nullptr;
         // 一覧が開いている間にキー・パッドで選んでいたか（閉じたら持ち主へフォーカスを戻す）
         bool popupKeyboard_ = false;

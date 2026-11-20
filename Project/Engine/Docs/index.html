@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.100.0">
+<meta name="engine-version" content="0.101.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5597,7 +5597,7 @@ kbd {
   </ul>
 </article>
 
-<article class="page" id="script-ui" data-group="スクリプト" data-title="UI を作る" data-nav="UI" data-keywords="ui hud 画面 文字 テキスト uitext 画像 uiimage ボタン uibutton スライダー uislider トグル uitoggle アンカー anchor ピボット pivot recttransform フォーカス focus clearfocus メニュー タイトル スコア フォント font 親子 parent setparent findchild 伸ばす stretch 余白 9 スライス sliced ゲージ fill fillamount マスク uimask 切り抜き パネル 並べる レイアウト layout uilayoutgroup 格子 grid 余白 間隔 uilayoutelement uicontentsizefitter 大きさ合わせ スクロール uiscrollview 一覧 リスト ドロップダウン uidropdown 選択肢 プルダウン スクロールバー">
+<article class="page" id="script-ui" data-group="スクリプト" data-title="UI を作る" data-nav="UI" data-keywords="ui hud 画面 文字 テキスト uitext 画像 uiimage ボタン uibutton スライダー uislider トグル uitoggle アンカー anchor ピボット pivot recttransform フォーカス focus clearfocus メニュー タイトル スコア フォント font 親子 parent setparent findchild 伸ばす stretch 余白 9 スライス sliced ゲージ fill fillamount マスク uimask 切り抜き パネル 並べる レイアウト layout uilayoutgroup 格子 grid 余白 間隔 uilayoutelement uicontentsizefitter 大きさ合わせ スクロール uiscrollview 一覧 リスト ドロップダウン uidropdown 選択肢 プルダウン スクロールバー 入力欄 uiinputfield 文字入力 名前入力 テキストボックス 日本語 ime 変換 パスワード 伏せ字 コピー 貼り付け">
   <h1>UI を作る</h1>
   <p class="lead">スコアや体力ゲージのような HUD、タイトル画面やポーズメニューのボタンを作ります。UI は 3D の世界とは別の、画面に重ねる平面に置きます。</p>
 
@@ -5888,6 +5888,77 @@ kbd {
     }
   </script>
   <div class="callout warn" data-title="Esc はポーズにも割り当ててある"><p>一覧を閉じる <code>UICancel</code> と、ポーズの <code>Pause</code> は、どちらも <kbd>Esc</kbd> に割り当ててあります。<kbd>Esc</kbd> でポーズを開くゲームは、一覧が開いている間（<code>isOpen</code>）は <code>Pause</code> を無視してください。スクリプトの <code>Update</code> は一覧が閉じる前に走るので、<kbd>Esc</kbd> を押したフレームでも <code>isOpen</code> は true です。</p></div>
+
+  <h2 id="ui-input">文字を入力する（UI 入力欄）</h2>
+  <p>名前やメッセージのように、プレイヤーに文字を打ってもらう欄は <a href="#api-UIInputField">UI 入力欄</a> で作ります。日本語の変換（IME）もそのまま使えます。<span class="ui">GameObject<span class="arrow">▸</span>UI<span class="arrow">▸</span>入力欄</span> で、次の形を一度に作れます（<kbd>Ctrl</kbd>+<kbd>Z</kbd> 1 回で全部消える）。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>オブジェクト</th><th>持つもの</th><th>役目</th></tr></thead>
+    <tbody>
+      <tr><td>InputField</td><td>UI 画像・UI 入力欄</td><td>枠。押すと打ち始める</td></tr>
+      <tr><td>　Text Area</td><td>UI マスク</td><td>枠の内側に伸ばした文字の場所。はみ出した文字を切る</td></tr>
+      <tr><td>　　Placeholder</td><td>UI テキスト</td><td>文字が空のときだけ出る置き文字（「文字を入力…」）</td></tr>
+      <tr><td>　　Text</td><td>UI テキスト</td><td>打った文字</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li><strong>打ち始める・終える</strong>：欄を押すか、キー・パッドで選んで決定すると打ち始めます。カーソルが点滅し、枠は <span class="ui">乗せたときの色</span> になります。<kbd>Enter</kbd> で確定して終え、<kbd>Esc</kbd> は打ち始める前の文字に戻して終えます。欄の外を押すと、打った文字のまま終えます。打っている欄は 1 つだけで、別の欄で打ち始めると前の欄は打った文字のまま終えます。</li>
+    <li><strong>カーソルと選ぶ</strong>：<kbd>←</kbd><kbd>→</kbd>（<kbd>Ctrl</kbd> と一緒なら単語ごと）・<kbd>Home</kbd>・<kbd>End</kbd>・押した所でカーソルが動きます。<kbd>Shift</kbd> を押しながらの移動・<kbd>Shift</kbd>＋押す・ドラッグ・<kbd>Ctrl</kbd>+<kbd>A</kbd> で選べ、選んだ所は文字の後ろに <span class="ui">選択の色</span> が付きます。</li>
+    <li><strong>消す・コピー</strong>：<kbd>Backspace</kbd>・<kbd>Delete</kbd>（<kbd>Ctrl</kbd> と一緒なら単語ごと）で消し、<kbd>Ctrl</kbd>+<kbd>C</kbd>・<kbd>Ctrl</kbd>+<kbd>X</kbd>・<kbd>Ctrl</kbd>+<kbd>V</kbd> でコピー・切り取り・貼り付けができます。選んだまま打つと、選んだ文字と入れ替わります。</li>
+    <li><strong>日本語の変換</strong>：変換中の文字は欄の中に下線付きで出て、変換の候補の窓はカーソルの所に出ます。変換中の <kbd>Esc</kbd> は変換中の文字だけを消します。日本語の変換を使えるのは、<span class="ui">中身の種類</span> が なんでも で、読み取りだけでない欄です。書き出したゲームでは、打っていない間は日本語の変換を切ります（キーで遊ぶゲームに変換の窓が出ない）。</li>
+    <li><strong>複数行</strong>：<span class="ui">複数行</span> を入れると、<kbd>Enter</kbd> で改行し、長い文は欄の幅で折り返します。<kbd>↑</kbd><kbd>↓</kbd> で行を移り、確定は <kbd>Ctrl</kbd>+<kbd>Enter</kbd> か欄の外を押したときです。カーソルの行が見えるよう、文字が縦にずれます（1 行の欄は横にずれます）。</li>
+    <li><strong>打っている間のキー</strong>：キーボードは欄だけのものになり、キーとアクションは押されていないことになります（<code>Input::IsKeyPressed</code> も false）。WASD で歩くキャラも、打っている間は動きません。打ち終えた次のフレームから元に戻ります。マウスはそのまま読めます。</li>
+  </ul>
+  <p><span class="ui">中身の種類</span> で、入れられる文字を絞れます。スクリプトの <code>contentType</code> は番号で読み書きします。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>中身の種類</th><th><code>contentType</code></th><th>入れられる文字</th></tr></thead>
+    <tbody>
+      <tr><td>なんでも</td><td>0</td><td>どの文字も。日本語の変換も使える</td></tr>
+      <tr><td>整数</td><td>1</td><td>数字と、先頭の <code>-</code> 1 つ</td></tr>
+      <tr><td>小数</td><td>2</td><td>数字と、先頭の <code>-</code> と <code>.</code> 1 つ</td></tr>
+      <tr><td>英数字</td><td>3</td><td>半角の英字と数字だけ（空白・記号・日本語は入らない）</td></tr>
+      <tr><td>伏せ字</td><td>4</td><td>どの文字も。<code>*</code> で出し、コピー・切り取りはできない</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>合わない文字は、打ったときもスクリプトから <code>text</code> に入れたときも捨て、<span class="ui">最大の文字数</span>（0 なら決めない）で切ります。打った文字は、<code>Update</code> で <code>wasSubmitted</code>（確定した）か <code>wasChanged</code>（変わった）を見て受け取ります。</p>
+  <script type="text/x-code" data-lang="as" data-file="NameEntry.as">
+    using namespace CoreEngine;
+
+    // 名前を 8 文字まで打ってもらい、Enter で決まったら挨拶を出す
+    class NameEntry : ScriptComponent
+    {
+        [ObjectRef] [Tooltip("名前を打つ UI 入力欄")]
+        GameObject@ nameField;
+
+        [ObjectRef] [Tooltip("挨拶を出す UI テキスト")]
+        GameObject@ greeting;
+
+        void Start()
+        {
+            UIInputField@ field = nameField.uiInputField;
+            field.characterLimit = 8;
+            field.Focus();
+        }
+
+        void Update()
+        {
+            UIInputField@ field = nameField.uiInputField;
+            if (!field.wasSubmitted) {
+                return;
+            }
+            if (field.text.isEmpty()) {
+                greeting.uiText.text = "名前を入れてください";
+                field.Focus();
+            } else {
+                greeting.uiText.text = "ようこそ、" + field.text + " さん";
+            }
+        }
+    }
+  </script>
+  <div class="callout warn" data-title="Esc はポーズにも割り当ててある"><p>打つのをやめる <code>UICancel</code> と、ポーズの <code>Pause</code> は、どちらも <kbd>Esc</kbd> に割り当ててあります。打っている間はキーボードのアクションが押されていないことになるので、<kbd>Esc</kbd> で打ち終えたときにポーズは開きません。打ち終えた次のフレームまでは、<kbd>Enter</kbd> と <kbd>Esc</kbd> がほかの UI に届くこともありません。</p></div>
 
   <h2 id="ui-text">文字を書き換える（HUD）</h2>
   <p>スクリプトに <code>[ObjectRef]</code> の欄を作り、インスペクタで文字のオブジェクトを繋ぎます。<code>uiText.text</code> に入れた文字列がそのまま表示されます。</p>
@@ -11877,6 +11948,9 @@ python Tools/OkinawaBeach/bake_araha_walk.py
       <tr><td>UI が表示されない</td><td>オブジェクトが無効・色の不透明度（w）が 0・位置が 1920×1080 の外・ほかの UI の後ろ（描画順）</td></tr>
       <tr><td>ボタンの文字が見えない</td><td>文字のオブジェクトの描画順が、ボタンの画像以下になっている。1 つ大きくする</td></tr>
       <tr><td>UI テキストと UI 画像を同じオブジェクトに付けられない</td><td>描くコンポーネントは 1 つのオブジェクトに 1 つまで。別のオブジェクトにして重ねる</td></tr>
+      <tr><td>入力欄で日本語が打てない</td><td>日本語の変換を使えるのは、<span class="ui">中身の種類</span> が なんでも で、読み取りだけでない欄だけ（整数・小数・英数字・伏せ字では変換しない）。Windows の日本語の変換が切れていたら、欄で打ち始めてから <kbd>半角/全角</kbd> で入れる。書き出したゲームは打っていない間は変換を切るので、先に欄を押す。<a href="#ui-input">文字を入力する</a></td></tr>
+      <tr><td>入力欄を押しても打てない</td><td><span class="ui">文字を出す UI テキスト</span> が繋がっていない（Console に警告が出る）・<span class="ui">押せる</span> が外れている・欄より手前に押せる UI が重なっている</td></tr>
+      <tr><td>キーもキャラも動かなくなった</td><td>入力欄で打っている間は、キーボードがその欄だけのものになる。<kbd>Enter</kbd>・<kbd>Esc</kbd> か欄の外を押して打ち終える。スクリプトからは <code>uiInputField.Unfocus()</code></td></tr>
     </tbody>
   </table>
   </div>
@@ -12275,6 +12349,18 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-101-0">v0.101.0 <span class="dim">（2026-11-20）</span></h3>
+  <p>文字を打てる入力欄を足した版です（<a href="#ui-input">文字を入力する</a>）。日本語の変換・コピーと貼り付け・複数行も使えます。入力欄を使わない今の UI の見た目・押せる範囲・保存の形と、キーの読み方は前の版と同じです。</p>
+  <ul>
+    <li><strong>UI 入力欄</strong>：<a href="#api-UIInputField">UI 入力欄</a> を足しました。押すと打ち始め、<kbd>Enter</kbd> で確定、<kbd>Esc</kbd> で打ち始める前の文字に戻ります。カーソルは <kbd>←</kbd><kbd>→</kbd>・<kbd>Home</kbd>・<kbd>End</kbd>・押した所で動き、<kbd>Shift</kbd>・ドラッグ・<kbd>Ctrl</kbd>+<kbd>A</kbd> で選べ、<kbd>Ctrl</kbd>+<kbd>C</kbd>・<kbd>X</kbd>・<kbd>V</kbd> でコピー・切り取り・貼り付けができます。</li>
+    <li><strong>日本語の変換</strong>：変換中の文字を欄の中に下線付きで出し、変換の候補の窓をカーソルの所に出します。書き出したゲームでは、打っていない間は日本語の変換を切ります。</li>
+    <li><strong>中身の種類</strong>：なんでも・整数・小数・英数字・伏せ字から選べます。最大の文字数・読み取りだけ・複数行（<kbd>Enter</kbd> で改行し、折り返して縦にずれる）も決められます。</li>
+    <li><strong>打っている間のキー</strong>：キーボードのキーとアクションは押されていないことになり、WASD でキャラが動きません。エディタの欄（インスペクタなど）は今まで通り打て、エディタの欄で打った文字はゲームの欄に入りません。</li>
+    <li><strong>作るメニュー</strong>：<span class="ui">GameObject<span class="arrow">▸</span>UI</span> に <span class="ui">入力欄</span>（枠・文字の場所・置き文字・打った文字）を足しました。</li>
+    <li><strong>スクリプト</strong>：<code>uiInputField</code> を足しました。UI 入力欄は <code>text</code>・<code>wasChanged</code>・<code>wasSubmitted</code>・<code>isFocused</code>・<code>contentType</code>・<code>characterLimit</code>・<code>multiLine</code>・<code>readOnly</code>・<code>Focus</code>・<code>Unfocus</code> を持ちます。</li>
+    <li><strong>試験のシーン</strong>：<span class="path">Projects/EngineTests</span> に <code>UI_InputField</code>（なんでも・8 文字まで・整数・小数・英数字・伏せ字・読み取りだけ・押せない・複数行・長い 1 行と、WASD で動く四角）を足しました。結果をコンソールへ出します。</li>
+  </ul>
 
   <h3 id="changelog-v0-100-0">v0.100.0 <span class="dim">（2026-11-20）</span></h3>
   <p>押すと選択肢の一覧が開き、1 つ選ぶドロップダウンを足した版です（<a href="#ui-dropdown">選択肢から選ぶ</a>）。ドロップダウンを使わない今の UI の見た目・押せる範囲・保存の形は、前の版と同じです。</p>
@@ -19520,6 +19606,47 @@ void SetHp(float ratio)   // 0〜1
     ],
     notes: "<ul><li>行のひな形は再生中は隠れ、複製した行だけが出ます。複製した行は保存されません。</li><li>行の色は UI ボタンと同じく、乗せた・キー・パッドで選んだ・押したで変わります。</li></ul>",
     see: [["api-UIDropdown", "UI ドロップダウン"]]
+  },
+
+  {
+    id: "UIInputField", kind: "component", cat: "UI", display: "UI 入力欄", type: "UIInputField",
+    accessor: "owner.uiInputField", title: "UI 入力欄（UIInputField）", brief: "押して文字を打つ欄（日本語の変換・複数行・伏せ字）",
+    keywords: "入力欄 文字入力 テキストボックス 名前入力 日本語 ime 変換 パスワード 伏せ字 数字 コピー 貼り付け 複数行 inputfield textbox",
+    summary: "押すと文字を打てる欄にします。枠（このコンポーネント）・はみ出しを切る文字の場所・打った文字の UI テキスト・置き文字の UI テキストで組みます。<span class=\"ui\">GameObject ▸ UI ▸ 入力欄</span> で一式を作れます。",
+    requires: "UI トランスフォーム（自動で足します。押せる範囲になる）、見た目の UI 画像、打った文字を出す UI テキスト",
+    props: [
+      ["中身の種類", "contentType", "int", "0（なんでも）", "0 = なんでも、1 = 整数、2 = 小数、3 = 英数字、4 = 伏せ字。合わない文字は受け付けない。"],
+      ["最大の文字数", "characterLimit", "int", "0", "これより長い文字は切る。0 なら決めない。"],
+      ["複数行", "multiLine", "bool", "オフ", "<code>Enter</code> で改行し、長い文は欄の幅で折り返す。確定は <code>Ctrl</code>+<code>Enter</code> か欄の外を押したとき。インスペクタで切り替えると、文字と置き文字の UI テキストの置き方（1 行は左の真ん中・複数行は文字の場所いっぱい）も合わせる。"],
+      ["読み取りだけ", "readOnly", "bool", "オフ", "選ぶ・コピーはできるが、文字は変えられない。"],
+      ["文字", "text", "string", "空", "今の文字（UTF-8）。"],
+      ["押せる", "interactable", "bool", "オン", "外すと押せない色になり、打ち始めない。打っている間に外すと打ち終える。"],
+      ["文字を出す UI テキスト", "", "UI テキスト", "なし", "打った文字（伏せ字なら <code>*</code>）を書く。繋がっていないと打てない。"],
+      ["置き文字", "", "UI テキスト", "なし", "文字が空のときだけ出す。"],
+      ["カーソルの色", "caretColor", "Vector4（色）", "(0.2, 0.2, 0.2, 1)", "点滅するカーソルの色。"],
+      ["選択の色", "selectionColor", "Vector4（色）", "(0.66, 0.81, 1, 0.75)", "選んだ所の、文字の後ろに塗る色。"],
+      ["通常の色 ／ 乗せたときの色 ／ 押したときの色 ／ 押せないときの色", "normalColor ／ hoveredColor ／ pressedColor ／ disabledColor", "Vector4（色）", "", "同じオブジェクトの UI 画像の色。乗せたときの色は、キー・パッドで選んでいるとき・打っているときもこの色。"]
+    ],
+    sections: [
+      {
+        title: "スクリプトから使えるメンバー", members: [
+          { n: "text", s: "string text", t: "rw", d: "今の文字（打っている間は打ちかけの文字）。書くと中身の種類に合わない文字を捨て、最大の文字数で切ります。1 行の欄では改行も捨てます。" },
+          { n: "wasChanged", s: "bool wasChanged", t: "ro", d: "文字が変わった次のフレームだけ true。打って変わったときも、再生中にスクリプトから <code>text</code> を書き換えたときも true になります。" },
+          { n: "wasSubmitted", s: "bool wasSubmitted", t: "ro", d: "確定した次のフレームだけ true。1 行の欄は <code>Enter</code>、複数行の欄は <code>Ctrl</code>+<code>Enter</code> か、欄の外を押して打ち終えたとき。<code>Esc</code> で戻したときは false。" },
+          { n: "isFocused", s: "bool isFocused", t: "ro", d: "打っている最中か。" },
+          { n: "contentType", s: "int contentType", t: "rw", d: "中身の種類（0 = なんでも、1 = 整数、2 = 小数、3 = 英数字、4 = 伏せ字）。書くと今の文字も合わない文字を捨てます。" },
+          { n: "characterLimit", s: "int characterLimit", t: "rw", d: "最大の文字数（0 なら決めない）。書くと今の文字も切ります。" },
+          { n: "multiLine", s: "bool multiLine", t: "rw", d: "複数行か。1 行にすると今の文字の改行を捨てます。" },
+          { n: "readOnly", s: "bool readOnly", t: "rw", d: "読み取りだけか。" },
+          { n: "interactable", s: "bool interactable", t: "rw", d: "押せるか。" },
+          { n: "Focus", s: "void Focus()", t: "m", d: "打ち始めます（カーソルは末尾）。ほかの欄で打っていたら、その欄は打った文字のまま終えます。押せないとき・隠れているときは何もしません。" },
+          { n: "Unfocus", s: "void Unfocus()", t: "m", d: "打った文字のまま打ち終えます。" },
+          { n: "enabled", s: "bool enabled", t: "rw", d: "動かすか。止めると打った文字のまま打ち終えます。" }
+        ]
+      }
+    ],
+    notes: "<ul><li>打っている間は、キーボードのキーとアクションは押されていないことになり、入力の場面は UI になります。打ち終えた次のフレームから元に戻ります。マウスはそのまま読めます。</li><li>日本語の変換は、中身の種類が なんでも で、読み取りだけでない欄だけで使います。変換中の文字は欄の中に下線付きで出し、候補の窓はカーソルの所に出します。書き出したゲームでは、打っていない間は日本語の変換を切ります。</li><li>エディタでは、打っている間に打った文字はゲームの欄に入り、エディタの欄（インスペクタなど）には入りません。エディタの欄を押すと、ゲームの欄は打ち終えます。</li><li>1 行の欄はカーソルが見えるよう文字を横に、複数行の欄は縦にずらし、打ち終えると元に戻します。</li><li>カーソル・選んだ所・下線は、再生中に文字の UI テキストの隣に作る UI 画像です。保存されません。</li></ul>",
+    see: [["ui-input", "文字を入力する"], ["api-UIText", "UI テキスト"], ["api-UIMask", "UI マスク"]]
   },
 
   {

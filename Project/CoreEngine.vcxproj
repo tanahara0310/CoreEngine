@@ -577,6 +577,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Input\InputContext.cpp" />
     <ClCompile Include="Engine\Src\Input\InputConfig.cpp" />
     <ClCompile Include="Engine\Src\Input\InputQuery.cpp" />
+    <ClCompile Include="Engine\Src\Input\TextInput.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Core\ComponentFactory.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Core\ComponentHost.cpp" />
     <ClCompile Include="Engine\Src\GameObject\Component\Core\IComponent.cpp" />
@@ -671,6 +672,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\UI\UIScrollViewComponent.cpp" />
     <ClCompile Include="Engine\Src\UI\UIDropdownComponent.cpp" />
     <ClCompile Include="Engine\Src\UI\UIDropdownItemComponent.cpp" />
+    <ClCompile Include="Engine\Src\UI\UIInputFieldComponent.cpp" />
     <ClCompile Include="Engine\Src\UI\UIHierarchyClone.cpp" />
     <ClCompile Include="Engine\Src\Math\Geometry\Distance.cpp" />
     <ClCompile Include="Engine\Src\Math\Geometry\MeshIntersect.cpp" />
@@ -1942,6 +1944,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Input\InputBinding.h" />
     <ClInclude Include="Engine\Src\Input\InputConfig.h" />
     <ClInclude Include="Engine\Src\Input\InputQuery.h" />
+    <ClInclude Include="Engine\Src\Input\TextInput.h" />
     <ClInclude Include="Engine\Src\Math\EulerTransform.h" />
     <ClInclude Include="Engine\Src\Math\Frustum.h" />
     <ClInclude Include="Engine\Src\Math\Matrix\Matrix4x4.h" />
@@ -2056,6 +2059,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\UI\UIScrollViewComponent.h" />
     <ClInclude Include="Engine\Src\UI\UIDropdownComponent.h" />
     <ClInclude Include="Engine\Src\UI\UIDropdownItemComponent.h" />
+    <ClInclude Include="Engine\Src\UI\UIInputFieldComponent.h" />
     <ClInclude Include="Engine\Src\UI\UIHierarchyClone.h" />
     <ClInclude Include="Engine\Src\Math\Geometry\Distance.h" />
     <ClInclude Include="Engine\Src\Math\Geometry\MeshView.h" />

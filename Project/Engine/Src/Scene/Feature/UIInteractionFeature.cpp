@@ -120,6 +120,7 @@ namespace CoreEngine
         PopupScan popup;
         IUIInteractable* const under = ScanAndPick(ctx, canvasSize, onCanvas, pointer.IsOver(), popup);
         ChangePopup(ctx, canvasSize, popup);
+        editing_ = popup.editing;
 
         // ---- 乗った・外れた ----
         if (under != hovered_) {
@@ -137,6 +138,19 @@ namespace CoreEngine
                 && (!popupRoot_ || !popupRoot_->ContainsCanvasPoint(onCanvas, canvasSize));
             if (cancelDown || pressedOutside) {
                 popupOwner_->ClosePopup();
+            }
+        }
+
+        // ---- 打っている欄の外を押した・戻るを押した ----
+        // 欄の外を押したら打った文字のまま終え、戻るなら打ち始める前の文字へ戻す
+        if (editing_) {
+            const InputAction cancel = query ? InputActionFromString(kCancelActionId) : InputAction::Invalid;
+            const bool cancelDown = cancel != InputAction::Invalid && query->IsActionTriggered(cancel);
+            const bool pressedOutside = pointer.IsPressedAnywhere() && !(pointer.IsPressed() && hovered_ == editing_);
+            if (cancelDown) {
+                editing_->EndTextEditing(true);
+            } else if (pressedOutside) {
+                editing_->EndTextEditing(false);
             }
         }
 
@@ -181,11 +195,11 @@ namespace CoreEngine
         }
 
         // ---- 場面 ----
-        // 選んでいる相手がいる間・一覧が開いている間はメニューの操作にする。
+        // 選んでいる相手がいる間・一覧が開いている間・文字を打っている間はメニューの操作にする。
         // これが無いと、決定ボタンでボタンを押した瞬間にキャラも跳ぶ
         if (input) {
-            input->GetQuery().SetActiveContexts(
-                ((focused_ || popupOwner_) ? InputContext::UI : InputContext::Game) | kEditorContext);
+            const bool ui = focused_ || popupOwner_ || (editing_ && editing_->IsEditingText());
+            input->GetQuery().SetActiveContexts((ui ? InputContext::UI : InputContext::Game) | kEditorContext);
         }
     }
 
@@ -231,6 +245,9 @@ namespace CoreEngine
                     if (RectTransformComponent* const popupRoot = candidate.GetOpenPopup()) {
                         outPopup.owner = &candidate;
                         outPopup.root = popupRoot;
+                    }
+                    if (candidate.IsEditingText()) {
+                        outPopup.editing = &candidate;
                     }
                 }
 
@@ -613,6 +630,10 @@ namespace CoreEngine
 
     void UIInteractionFeature::ClearAll()
     {
+        if (editing_) {
+            editing_->EndTextEditing(false);
+            editing_ = nullptr;
+        }
         if (pressed_) {
             pressed_->OnPressEnd(false);
             pressed_ = nullptr;
@@ -645,5 +666,6 @@ namespace CoreEngine
         popupOwner_ = nullptr;
         popupRoot_ = nullptr;
         popupKeyboard_ = false;
+        editing_ = nullptr;
     }
 }

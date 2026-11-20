@@ -1,0 +1,61 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchorMax": [
+                    0.0,
+                    0.0
+                ],
+                "anchorMin": [
+                    0.0,
+                    0.0
+                ],
+                "anchoredPosition": [
+                    280.0,
+                    130.0
+                ],
+                "parent": {
+                    "comp": "RectTransform",
+                    "ref": "5b24dd944a6e21a0"
+                },
+                "pivot": [
+                    0.0,
+                    0.0
+                ],
+                "rotation": 0.0,
+                "scale": [
+                    1.0,
+                    1.0
+                ],
+                "size": [
+                    40.0,
+                    40.0
+                ],
+                "sortOrder": 0
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    0.95,
+                    0.75,
+                    0.3,
+                    1.0
+                ],
+                "columns": 1,
+                "frame": 0,
+                "material": null,
+                "rows": 1,
+                "texture": null
+            },
+            "type": "UIImage"
+        }
+    ],
+    "id": "2c6da9eef51c0cd9",
+    "name": "Mover",
+    "order": 55
+}

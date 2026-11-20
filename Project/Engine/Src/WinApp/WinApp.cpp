@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "WinApp.h"
 
+#include "Input/TextInput.h"
 #include "Launch/AppResource.h"
 #include "Utility/CVar/CVar.h"
 
@@ -64,6 +65,7 @@ void WinApp::Initialize(int32_t width, int32_t height, const wchar_t* title)
     currentClientHeightStatic_ = height;
     RegisterWindowClass();
     CreateAppWindow(title);
+    TextInput::Get().SetMainWindow(hwnd_);
 }
 
 // ウィンドウクラスの登録
@@ -210,6 +212,11 @@ void WinApp::SetFullscreen(bool fullscreen)
 // ウィンドウプロシージャ
 LRESULT CALLBACK WinApp::WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
+    // ゲームの入力欄へ打っている間は、文字とキーをそちらへ渡す（エディタへは流さない）
+    LRESULT textResult = 0;
+    if (TextInput::Get().HandleWindowMessage(hwnd, msg, wparam, lparam, textResult)) {
+        return textResult;
+    }
 
 #ifdef CORE_EDITOR
     // ImGuiの処理を優先する

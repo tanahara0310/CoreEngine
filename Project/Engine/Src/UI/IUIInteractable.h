@@ -90,5 +90,16 @@ namespace CoreEngine
 
         /// @brief 一覧を閉じる（一覧の外を押した・戻るを押した）
         virtual void ClosePopup() {}
+
+        // ===== 文字を打つ欄（入力欄など） =====
+
+        /// @brief 文字を打っている最中か
+        /// @details 打っている間は操作の場面を UI にし、欄の外を押すと `EndTextEditing(false)`、
+        ///          戻る（`UICancel`）を押すと `EndTextEditing(true)` が呼ばれる。
+        virtual bool IsEditingText() const { return false; }
+
+        /// @brief 打ち終える
+        /// @param cancel true なら打ち始める前の文字へ戻す
+        virtual void EndTextEditing(bool cancel) { (void)cancel; }
     };
 }

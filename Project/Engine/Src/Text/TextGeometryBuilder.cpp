@@ -237,4 +237,84 @@ namespace CoreEngine::TextGeometry
         result.glyphCount = outVertices.size() / 4;
         return result;
     }
+
+    void LayoutCarets(MsdfFont& font,
+        const std::string& textUtf8,
+        const BuildParams& params,
+        CaretLayout& outLayout)
+    {
+        outLayout.stops.clear();
+        outLayout.lineHeight = 0.0f;
+        outLayout.lineAdvance = 0.0f;
+        outLayout.lineCount = 0;
+
+        const std::vector<char32_t> codePoints = Utf8ToUtf32(textUtf8);
+        const size_t count = codePoints.size();
+        outLayout.stops.assign(count + 1, CaretStop{});
+        if (!font.IsValid()) { return; }
+
+        font.RequestGlyphs(codePoints);
+        std::vector<MsdfGlyph> glyphs;
+        glyphs.reserve(count);
+        for (char32_t codePoint : codePoints) {
+            glyphs.push_back(font.ResolveGlyph(codePoint));
+        }
+
+        const MsdfFontMetrics& metrics = font.GetMetrics();
+        const float lineAdvance = metrics.lineHeight * params.lineSpacing;
+        const float lineHeight = metrics.ascender - metrics.descender;
+
+        std::vector<LineRange> lines;
+        BuildLines(codePoints, glyphs, params.wrapWidthEm, lines);
+
+        float maxWidth = 0.0f;
+        for (const LineRange& line : lines) {
+            maxWidth = (std::max)(maxWidth, line.width);
+        }
+        const float totalHeight = static_cast<float>(lines.size() - 1) * lineAdvance + lineHeight;
+
+        // 枠・基準点・揃えは Build と同じ式で決める
+        const Vector2 measuredEm = { (params.wrapWidthEm > 0.0f) ? params.wrapWidthEm : maxWidth, totalHeight };
+        const Vector2 fieldEm = params.autoFitField ? measuredEm : params.fieldEm;
+        const float originX = -params.pivot.x * fieldEm.x;
+        const float verticalSlack = fieldEm.y - totalHeight;
+        const float alignOffsetY =
+            (params.alignV == TextAlignV::Middle) ? verticalSlack * 0.5f :
+            (params.alignV == TextAlignV::Bottom) ? verticalSlack : 0.0f;
+        const float originY = -params.pivot.y * fieldEm.y + alignOffsetY;
+        const auto alignOffsetX = [&params, &fieldEm](float lineWidth) {
+            switch (params.alignH) {
+            case TextAlignH::Center: return (fieldEm.x - lineWidth) * 0.5f;
+            case TextAlignH::Right:  return  fieldEm.x - lineWidth;
+            default:                 return 0.0f;
+            }
+            };
+
+        // 行ごとに先頭から置き、行の末尾も置く。折り返した所は次の行の先頭で上書きされる
+        std::vector<bool> placed(count + 1, false);
+        for (size_t lineIndex = 0; lineIndex < lines.size(); ++lineIndex) {
+            const LineRange& line = lines[lineIndex];
+            const float top = originY + static_cast<float>(lineIndex) * lineAdvance;
+            const uint32_t lineNumber = static_cast<uint32_t>(lineIndex);
+            float penX = alignOffsetX(line.width);
+            for (size_t i = line.begin; i < line.end; ++i) {
+                outLayout.stops[i] = { originX + penX, top, lineNumber };
+                placed[i] = true;
+                penX += glyphs[i].advance;
+            }
+            outLayout.stops[line.end] = { originX + penX, top, lineNumber };
+            placed[line.end] = true;
+        }
+
+        // 折り返しで詰めた行頭の空白は、前の位置と同じ所にする
+        for (size_t i = 1; i <= count; ++i) {
+            if (!placed[i]) {
+                outLayout.stops[i] = outLayout.stops[i - 1];
+            }
+        }
+
+        outLayout.lineHeight = lineHeight;
+        outLayout.lineAdvance = lineAdvance;
+        outLayout.lineCount = static_cast<uint32_t>(lines.size());
+    }
 }
