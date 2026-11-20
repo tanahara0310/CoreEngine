@@ -58,10 +58,10 @@ cbuffer WaterSurfaceData : register(b1)
     // 水の波紋の格子（WaterRippleGrid.hlsli。面はシェーダー可視ヒープから番号で引く）
     float4 gSurfaceRippleOriginsXZ01;      // 段 0・段 1 の XZ の最小の角 [m]（xy = 段 0・zw = 段 1）
     float2 gSurfaceRippleOrigin2XZ;        // 段 2 の XZ の最小の角 [m]
-    float gSurfaceRippleStrength;          // 波紋の傾きに掛ける倍率
+    float gSurfaceRippleStrength;          // 波紋の高さと傾きに掛ける倍率
     uint gSurfaceRippleSrvIndex;           // 面の SRV のヒープの中の番号
     float3 gSurfaceRippleInvSizes;         // 段ごとの一辺の長さの逆数 [1/m]（0 の段は読まない）
-    uint gSurfaceRippleEnabled;            // 1 = 波紋を法線へ足す
+    uint gSurfaceRippleEnabled;            // 1 = 波紋を水面の形と法線へ足す
 };
 
 static const uint kWaterSurfaceModelTypeGerstner = 0;
@@ -272,9 +272,9 @@ float3 EvaluateWaterOffset(Texture2DArray<float4> displacementTex, float2 worldX
     return SampleFFTOceanCascadeDisplacement(displacementTex, worldXZ, gSurfaceFFTOceanResolution);
 }
 
-/// @brief 水面メッシュの頂点 1 点の変位（FFTWater.VS と同じ式: 格子の間隔で解像できるカスケード＋波群エンベロープ）
+/// @brief 水面メッシュの頂点 1 点の波の変位（格子の間隔で解像できるカスケード＋波群エンベロープ。波紋は含めない）
 /// @param vertexSpacing 頂点の格子の間隔 [m]（ComputeFFTGeometryCascadeWeight）
-float3 SampleMeshVertexDisplacement(Texture2DArray<float4> displacementTex, float2 baseXZ, float vertexSpacing)
+float3 SampleMeshVertexWaveDisplacement(Texture2DArray<float4> displacementTex, float2 baseXZ, float vertexSpacing)
 {
     float3 disp = 0.0f.xxx;
     [unroll]
@@ -294,6 +294,30 @@ float3 SampleMeshVertexDisplacement(Texture2DArray<float4> displacementTex, floa
     const bool conservative = UseConservativeWaterSeaMap(vertexSpacing, gSurfaceSeaMapTexelsPerMeter);
     return disp * ComputeFFTWaveGroupEnvelope(baseXZ, gSurfaceWaveGroupPhase)
         * EvaluateSurfaceSeaMapWaveScale(baseXZ, conservative);
+}
+
+/// @brief 水面の頂点に足す波紋の高さ [m]（FFTWater.VS・Water.VS と同じ式）
+/// @param drawnXZ 頂点が描かれる位置のワールド XZ [m]
+/// @param vertexSpacing 頂点の格子の間隔 [m]（ComputeRippleGeometryLevelWeight）
+float EvaluateSurfaceRippleVertexHeight(float2 drawnXZ, float vertexSpacing)
+{
+    if (gSurfaceRippleEnabled == 0)
+    {
+        return 0.0f;
+    }
+    Texture2DArray<float4> ripple = ResourceDescriptorHeap[gSurfaceRippleSrvIndex];
+    return EvaluateRippleVertexHeight(
+        ripple, drawnXZ, vertexSpacing,
+        gSurfaceRippleOriginsXZ01, gSurfaceRippleOrigin2XZ, gSurfaceRippleInvSizes, gSurfaceRippleStrength);
+}
+
+/// @brief 水面メッシュの頂点 1 点の変位（FFTWater.VS の SampleVertexDisplacement と同じ式: 波の変位＋描かれる位置の波紋の高さ）
+/// @param vertexSpacing 頂点の格子の間隔 [m]
+float3 SampleMeshVertexDisplacement(Texture2DArray<float4> displacementTex, float2 baseXZ, float vertexSpacing)
+{
+    float3 disp = SampleMeshVertexWaveDisplacement(displacementTex, baseXZ, vertexSpacing);
+    disp.y += EvaluateSurfaceRippleVertexHeight(baseXZ + disp.xz, vertexSpacing);
+    return disp;
 }
 
 /// @brief 粗い格子（水面メッシュの PlaneMeshGenerator の部分）の XZ の最小の角と 1 マスの幅
@@ -396,14 +420,15 @@ float3 InterpolateShoreMeshDisplacement(Texture2D<float4> shoreDisplacement, flo
 
 /// @brief ラスタライザが実際に描く水面の高さ（基準面からのオフセット）を返す
 /// @details 水面メッシュの頂点（WaterSurfaceMeshGenerator の格子）でだけ変位を評価し、
-///          ラスタライザと同じ三角形で補間する。岸の格子の範囲の中は岸の格子、外は粗い格子の三角形
+///          ラスタライザと同じ三角形で補間する。岸の格子の範囲の中は岸の格子、外は粗い格子の三角形。
+///          Gerstner は波と波紋の高さをその点で評価する
 float EvaluateDrawnSurfaceHeight(Texture2DArray<float4> displacementTex, float2 worldXZ)
 {
+    const float coarseSpacing = GetCoarseMeshVertexSpacing();
     if (!UseFFTOceanSurface())
     {
-        return EvaluateWaterOffsetGerstner(worldXZ).y;
+        return EvaluateWaterOffsetGerstner(worldXZ).y + EvaluateSurfaceRippleVertexHeight(worldXZ, coarseSpacing);
     }
-    const float coarseSpacing = GetCoarseMeshVertexSpacing();
     if (gSurfaceRegionValid == 0)
     {
         // 格子が分からないときは頂点の変位をその点で評価する
@@ -411,7 +436,7 @@ float EvaluateDrawnSurfaceHeight(Texture2DArray<float4> displacementTex, float2 
     }
 
     // 粗い格子の水平変位を 1 回だけ逆にたどって、変位前の格子上の位置を求める
-    float2 baseXZ = worldXZ - SampleMeshVertexDisplacement(displacementTex, worldXZ, coarseSpacing).xz;
+    float2 baseXZ = worldXZ - SampleMeshVertexWaveDisplacement(displacementTex, worldXZ, coarseSpacing).xz;
 
     if (gSurfaceShoreMeshEnabled != 0
         && IsInsideShoreMesh(baseXZ, gSurfaceShoreMeshOriginXZ, gSurfaceShoreMeshSize))

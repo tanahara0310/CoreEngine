@@ -1,0 +1,95 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    0.5,
+                    1.0
+                ],
+                "translate": [
+                    -1.5,
+                    0.1,
+                    8.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "model": {
+                    "guid": "e8a79191-50ea-0673-1816-c257f280ba64",
+                    "path": "Engine/Assets/Models/Primitives/Box/cube.obj"
+                },
+                "materials": [
+                    {
+                        "color": [
+                            0.85,
+                            0.45,
+                            0.2,
+                            1.0
+                        ],
+                        "roughness": 0.6,
+                        "metallic": 0.0,
+                        "lighting": true
+                    }
+                ]
+            },
+            "type": "MeshRenderer"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "shapes": [
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "static": false,
+                        "trigger": false,
+                        "type": "Box",
+                        "size": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ]
+                    }
+                ]
+            },
+            "type": "Collider"
+        },
+        {
+            "enabled": true,
+            "version": 2,
+            "parameters": {
+                "bodyType": 0,
+                "mass": 150.0,
+                "useGravity": true,
+                "linearDamping": 0.0,
+                "angularDamping": 0.05
+            },
+            "type": "Rigidbody"
+        },
+        {
+            "enabled": true,
+            "parameters": {},
+            "type": "Buoyancy"
+        }
+    ],
+    "id": "4e8a1c63f95b0d27",
+    "name": "FloatBox",
+    "order": 6
+}

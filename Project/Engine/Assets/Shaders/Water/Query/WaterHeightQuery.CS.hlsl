@@ -34,14 +34,16 @@ float EvaluateQuerySurfaceOffset(float2 worldXZ)
         return EvaluateDrawnSurfaceHeight(gQueryDisplacement, worldXZ);
     }
 
-    // Gerstner の水面：描かれた位置から水平の変位をたどり直して変位前の位置を求め、その高さを取る
+    // Gerstner の水面：描かれた位置から水平の変位をたどり直して変位前の位置を求め、その高さを取る。
+    // 波紋は描かれた位置で読む
     float2 baseXZ = worldXZ;
     [unroll]
     for (int iteration = 0; iteration < kGerstnerInverseIterations; ++iteration)
     {
         baseXZ = worldXZ - EvaluateWaterOffsetGerstner(baseXZ).xz;
     }
-    return EvaluateWaterOffsetGerstner(baseXZ).y;
+    return EvaluateWaterOffsetGerstner(baseXZ).y
+        + EvaluateSurfaceRippleVertexHeight(worldXZ, GetCoarseMeshVertexSpacing());
 }
 
 /// @brief 点が水面メッシュの範囲の中か

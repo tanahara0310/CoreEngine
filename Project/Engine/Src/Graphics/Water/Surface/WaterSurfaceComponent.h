@@ -124,7 +124,7 @@ namespace CoreEngine
 
             // ---- 波紋 ----
             REFLECT_PROPERTY(profile_.rippleStrength, "波紋の強さ", p.range = Range(0.0f, 4.0f),
-                p.tooltip = "波紋の傾きに掛ける倍率（0 でこの水には波紋を描かない）")
+                p.tooltip = "波紋の高さと傾きに掛ける倍率（0 でこの水には波紋を起こさない）")
 
             REFLECT_METHOD("SetTideHeight", "潮位を指定する", SetTideHeight,
                 m.tooltip = "月と太陽の代わりに、この高さ [m] を潮位にする。ClearTideHeight で戻す")

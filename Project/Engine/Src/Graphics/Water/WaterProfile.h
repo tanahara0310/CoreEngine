@@ -52,7 +52,7 @@ namespace CoreEngine
         float foamDecaySeconds = WaterFoamDefaults::kDecaySeconds;   ///< 泡が e^-1 まで減る時間 [s]
 
         // ---- 波紋 ----
-        float rippleStrength = 1.0f; ///< 波紋の傾きに掛ける倍率（0 = この水には波紋を描かない）
+        float rippleStrength = 1.0f; ///< 波紋の高さと傾きに掛ける倍率（0 = この水には波紋を起こさない）
 
         /// @brief 実効吸収係数（ベース値＋濁りの分）
         Vector3 EffectiveAbsorption() const;

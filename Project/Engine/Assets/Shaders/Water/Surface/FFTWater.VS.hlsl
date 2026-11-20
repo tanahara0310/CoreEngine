@@ -12,9 +12,12 @@ SamplerState gSampler : register(s0);
 #include "../Common/WaterFrameConstants.hlsli"
 #include "../Common/WaterShoreMesh.hlsli"
 #include "../Common/WaterSeaMap.hlsli"
+#include "../Common/WaterRippleGrid.hlsli"
 
 // 海の範囲マップ（水深と上の物までの高さ。gSeaMapEnabled = 0 のときは読まない）
 Texture2D<float4> gWaterSeaMap : register(t29);
+// 水の波紋の面（gRippleEnabled = 0 のときは読まない。Water.PS と同じレジスタ）
+Texture2DArray<float4> gWaterRipple : register(t30);
 
 struct FFTWaterVSOutput
 {
@@ -53,12 +56,26 @@ float GetSeaMapWaveScale(float2 baseXZ, float vertexSpacing)
     return ComputeWaterSeaMapWaveScale(value, conservative, gSeaMapDepthOffset, gSeaMapInvWaveHeight);
 }
 
-/// @brief 頂点の変位（格子の間隔で解像できるカスケード＋波群エンベロープ＋海の範囲マップ）
+/// @brief 頂点が描かれる位置の波紋の高さ [m]（RTWaterSurfaceCommon.hlsli の EvaluateSurfaceRippleVertexHeight と同じ式）
+/// @param vertexSpacing 頂点の格子の間隔 [m]（ComputeRippleGeometryLevelWeight）
+float GetRippleVertexHeight(float2 drawnXZ, float vertexSpacing)
+{
+    if (gRippleEnabled == 0)
+    {
+        return 0.0f;
+    }
+    return EvaluateRippleVertexHeight(
+        gWaterRipple, drawnXZ, vertexSpacing, gRippleOriginsXZ01, gRippleOrigin2XZ, gRippleInvSizes, gRippleStrength);
+}
+
+/// @brief 頂点の変位（格子の間隔で解像できるカスケード＋波群エンベロープ＋海の範囲マップ＋描かれる位置の波紋の高さ）
 /// @param vertexSpacing 頂点の格子の間隔 [m]（ComputeFFTGeometryCascadeWeight）
 float3 SampleVertexDisplacement(float2 baseXZ, float vertexSpacing)
 {
-    return SampleFFTVertexDisplacement(gFFTOceanDisplacement, gSampler, baseXZ, vertexSpacing, gWaveGroupPhase)
+    float3 displacement = SampleFFTVertexDisplacement(gFFTOceanDisplacement, gSampler, baseXZ, vertexSpacing, gWaveGroupPhase)
         * GetSeaMapWaveScale(baseXZ, vertexSpacing);
+    displacement.y += GetRippleVertexHeight(baseXZ + displacement.xz, vertexSpacing);
+    return displacement;
 }
 
 /// @brief 粗い格子の頂点の間隔 [m]

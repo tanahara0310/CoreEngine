@@ -171,7 +171,7 @@ struct WaterFrameConstants {
 	// ---- 水の波紋の格子（gWaterRipple。WaterRippleBinding の同名の値）----
 	float rippleOriginsXZ01[4] = { 0.0f, 0.0f, 0.0f, 0.0f }; // 段 0・段 1 の XZ の最小の角 [m]（xy = 段 0・zw = 段 1）
 	float rippleOrigin2XZ[2] = { 0.0f, 0.0f };               // 段 2 の XZ の最小の角 [m]
-	float rippleStrength = 0.0f;                             // 波紋の傾きに掛ける倍率
+	float rippleStrength = 0.0f;                             // 波紋の高さと傾きに掛ける倍率
 	int rippleEnabled = 0;                                   // 1 = gWaterRipple を読む
 	float rippleInvSizes[3] = { 0.0f, 0.0f, 0.0f };          // 段ごとの一辺の長さの逆数 [1/m]（0 の段は読まない）
 	float ripplePad = 0.0f;
