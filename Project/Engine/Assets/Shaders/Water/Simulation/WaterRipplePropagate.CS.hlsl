@@ -5,7 +5,8 @@
 // K の周波数の応答は波長 2.5〜16 マスで |k| と ±1% で一致し、どの波数でも 0 以上 4.24 以下。
 // 格子の最小の角を動かした歩は、古い状態を gShiftCells だけずらして読む（範囲の外は 0）。
 // 端から kRippleSpongeCells マスの帯では h_{n+1} と h_n を弱めて、外へ出る波を吸い込む。
-// 水面が読む面へは h_n とその傾きを書く。
+// グループの Z が場の番号で、場ごとに同じ式で進める。
+// 水面が読む面へは、場 0 のグループが場 0 の h_n とその傾きと、場 1 の h_n を書く。
 // ============================================================
 
 #include "../Common/WaterRippleGrid.hlsli"
@@ -44,8 +45,9 @@ float LoadState(int2 cell, uint slice)
 [numthreads(16, 16, 1)]
 void main(uint3 groupId : SV_GroupID, uint3 groupThreadId : SV_GroupThreadID, uint3 dispatchThreadId : SV_DispatchThreadID)
 {
-    const uint readHeight = RippleStateSlice(gPropagateLevel, gReadPair, 0);
-    const uint readPrevious = RippleStateSlice(gPropagateLevel, gReadPair, 1);
+    const uint field = groupId.z;
+    const uint readHeight = RippleStateSlice(gPropagateLevel, field, gReadPair, 0);
+    const uint readPrevious = RippleStateSlice(gPropagateLevel, field, gReadPair, 1);
     const uint writePair = 1 - gReadPair;
 
     // 16×16 のマスと周り 8 マスの h_n を共有メモリへ読む
@@ -59,14 +61,17 @@ void main(uint3 groupId : SV_GroupID, uint3 groupThreadId : SV_GroupThreadID, ui
     GroupMemoryBarrierWithGroupSync();
 
     const int2 cell = int2(dispatchThreadId.xy);
-    const uint3 writeHeightTexel = uint3(cell, RippleStateSlice(gPropagateLevel, writePair, 0));
-    const uint3 writePreviousTexel = uint3(cell, RippleStateSlice(gPropagateLevel, writePair, 1));
+    const uint3 writeHeightTexel = uint3(cell, RippleStateSlice(gPropagateLevel, field, writePair, 0));
+    const uint3 writePreviousTexel = uint3(cell, RippleStateSlice(gPropagateLevel, field, writePair, 1));
     const uint3 surfaceTexel = uint3(cell, gPropagateLevel);
     if (gClear != 0)
     {
         gRippleState[writeHeightTexel] = 0.0f;
         gRippleState[writePreviousTexel] = 0.0f;
-        gRippleSurface[surfaceTexel] = float4(0.0f, 0.0f, 0.0f, 0.0f);
+        if (field == 0)
+        {
+            gRippleSurface[surfaceTexel] = float4(0.0f, 0.0f, 0.0f, 0.0f);
+        }
         return;
     }
 
@@ -118,5 +123,9 @@ void main(uint3 groupId : SV_GroupID, uint3 groupThreadId : SV_GroupThreadID, ui
 
     gRippleState[writeHeightTexel] = next * absorb;
     gRippleState[writePreviousTexel] = height * absorb;
-    gRippleSurface[surfaceTexel] = float4(height, gradient, 0.0f);
+    if (field == 0)
+    {
+        const float objectHeight = LoadState(cell + gShiftCells, RippleStateSlice(gPropagateLevel, 1, gReadPair, 0));
+        gRippleSurface[surfaceTexel] = float4(height, gradient, objectHeight);
+    }
 }

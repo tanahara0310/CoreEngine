@@ -4,6 +4,7 @@
 // 段 L はくぼみを幅 s_L でぼかしたものから幅 s_{L+1} でぼかしたものを引いた帯を受け持ち、
 // 全部の段を足すと元のくぼみに戻る（いちばん粗い段は引かない）。
 // くぼみは h_n と h_{n-1} の両方へ足し、止まった水面を押し下げて放した状態から波を進める。
+// グループの Z が場の番号で、場 0 へは全部の源を、場 1 へは gInjectObjectSourceBegin から後ろの源を入れる。
 // ============================================================
 
 #include "../Common/WaterRippleGrid.hlsli"
@@ -21,6 +22,8 @@ cbuffer WaterRippleInjectConstants : register(b0)
     float gInjectUpperBlur;    // この段の帯の粗い側のぼかしの幅 [m]（0 なら引かない）
     int2 gInjectRectMin;       // 書くマスの範囲の最小の角
     uint2 gInjectRectSize;     // 書くマスの範囲の大きさ
+    uint gInjectObjectSourceBegin; // これより後ろの源は物が起こした波紋の場へも入れる
+    uint3 gInjectPadding;
     float4 gInjectSources[kRippleMaxSourceCount]; // (x, z, σ [m], 深さ [m])
 };
 
@@ -42,9 +45,10 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     }
     const int2 cell = gInjectRectMin + int2(dispatchThreadId.xy);
     const float2 positionXZ = gInjectOriginXZ + (float2(cell) + 0.5f) * gInjectCellSize;
+    const uint field = dispatchThreadId.z;
 
     float delta = 0.0f;
-    for (uint i = 0; i < gInjectSourceCount; ++i)
+    for (uint i = (field == 0) ? 0 : gInjectObjectSourceBegin; i < gInjectSourceCount; ++i)
     {
         const float4 source = gInjectSources[i];
         const float2 offset = positionXZ - source.xy;
@@ -62,8 +66,12 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
         }
     }
 
-    const uint3 heightTexel = uint3(cell, RippleStateSlice(gInjectLevel, gInjectPair, 0));
-    const uint3 previousTexel = uint3(cell, RippleStateSlice(gInjectLevel, gInjectPair, 1));
+    if (delta == 0.0f)
+    {
+        return;
+    }
+    const uint3 heightTexel = uint3(cell, RippleStateSlice(gInjectLevel, field, gInjectPair, 0));
+    const uint3 previousTexel = uint3(cell, RippleStateSlice(gInjectLevel, field, gInjectPair, 1));
     gRippleState[heightTexel] = gRippleState[heightTexel] + delta;
     gRippleState[previousTexel] = gRippleState[previousTexel] + delta;
 }

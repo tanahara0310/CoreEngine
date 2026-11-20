@@ -15,6 +15,8 @@ namespace CoreEngine
     struct WaterSample {
         bool inWater = false;               ///< 点の真上か真下に水面がある（結果が届いていて、水面の範囲の中）
         float surfaceHeight = 0.0f;         ///< 水面の高さ（ワールド Y）[m]
+        float rippleHeight = 0.0f;          ///< surfaceHeight に入っている波紋の高さ [m]
+        float objectRippleHeight = 0.0f;    ///< rippleHeight のうち物が起こした波紋の高さ [m]
         Vector3 normal{ 0.0f, 1.0f, 0.0f }; ///< 水面の法線
     };
 
@@ -41,8 +43,15 @@ namespace CoreEngine
             float slopeX = 0.0f; ///< X へ 1 m 進んだときの水面の高さの変化
             float slopeZ = 0.0f; ///< Z へ 1 m 進んだときの水面の高さの変化
             uint32_t flags = 0;  ///< kGpuResultInWater
+            float rippleHeight = 0.0f; ///< height に入っている波紋の高さ [m]
+            float rippleSlopeX = 0.0f; ///< X へ 1 m 進んだときの波紋の高さの変化
+            float rippleSlopeZ = 0.0f; ///< Z へ 1 m 進んだときの波紋の高さの変化
+            float objectRippleHeight = 0.0f; ///< rippleHeight のうち物が起こした波紋の高さ [m]
+            float objectRippleSlopeX = 0.0f; ///< X へ 1 m 進んだときの物が起こした波紋の高さの変化
+            float objectRippleSlopeZ = 0.0f; ///< Z へ 1 m 進んだときの物が起こした波紋の高さの変化
+            float padding[2] = {};
         };
-        static_assert(sizeof(GpuResult) == 16, "WaterHeightQuery.CS.hlsl の出力の 1 点分と同じ大きさにする");
+        static_assert(sizeof(GpuResult) == 48, "WaterHeightQuery.CS.hlsl の出力の 1 点分と同じ大きさにする");
 
         /// @brief GpuResult::flags の印：水面の範囲の中
         static constexpr uint32_t kGpuResultInWater = 1u;

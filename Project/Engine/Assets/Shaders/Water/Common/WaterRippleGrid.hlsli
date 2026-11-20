@@ -1,22 +1,24 @@
 // ============================================================
 // 水の波紋の格子（WaterRippleSimulation）
 // カメラの前に大きさの違う 3 段の格子を置き、段ごとに分散のある波を進める。
-// 状態は R32_FLOAT の配列で、段 L・組 p（0/1 を交互に使う）の高さ h_n と h_{n-1} を
-// スライス L*4 + p*2 + 0 と L*4 + p*2 + 1 に置く。
-// 水面が読む面は RGBA16F の配列で、スライス L に (高さ, ∂h/∂x, ∂h/∂z, 0) を置く。
+// 段ごとに場が 2 つあり、場 0 は全部の波紋、場 1 は物が起こした波紋だけを持つ。
+// 状態は R32_FLOAT の配列で、段 L・場 f・組 p（0/1 を交互に使う）の高さ h_n と h_{n-1} を
+// スライス (L*2 + f)*4 + p*2 + 0 と (L*2 + f)*4 + p*2 + 1 に置く。
+// 水面が読む面は RGBA16F の配列で、スライス L に (場 0 の高さ, ∂h/∂x, ∂h/∂z, 場 1 の高さ) を置く。
 // テクセル (i, j) は XZ = 段の最小の角 + ((i, j) + 0.5) × 1 マスの幅 の点の値。
 // ============================================================
 #ifndef WATER_RIPPLE_GRID_INCLUDED
 #define WATER_RIPPLE_GRID_INCLUDED
 
 static const uint kRippleLevelCount = 3;
+static const uint kRippleFieldCount = 2;
 static const uint kRippleResolution = 512;
 // 端から内側へ、波を吸い込む帯の幅 [マス]
 static const float kRippleSpongeCells = 16.0f;
 
-uint RippleStateSlice(uint level, uint pair, uint component)
+uint RippleStateSlice(uint level, uint field, uint pair, uint component)
 {
-    return level * 4 + pair * 2 + component;
+    return (level * kRippleFieldCount + field) * 4 + pair * 2 + component;
 }
 
 /// @brief 段の面を双線形で読む（範囲の外は 0）
@@ -105,10 +107,11 @@ float ComputeRippleGeometryLevelWeight(float cellSize, float vertexSpacing)
     return smoothstep(kRippleGeometryMinVerticesPerWave, kRippleGeometryFullVerticesPerWave, verticesPerWave);
 }
 
-/// @brief 水面の頂点に足す波紋の高さ [m]（頂点の格子で表せる段の和に strength を掛けた値）
+/// @brief 水面の頂点に足す波紋の高さと、そのうち物が起こした波紋の高さ [m]
+///        （頂点の格子で表せる段の和に strength を掛けた値。x = 全部・y = 物が起こした分）
 /// @param worldXZ 頂点が描かれる位置のワールド XZ [m]
 /// @param vertexSpacing 頂点の格子の間隔 [m]（ComputeRippleGeometryLevelWeight）
-float EvaluateRippleVertexHeight(
+float2 EvaluateRippleVertexHeights(
     Texture2DArray<float4> surface,
     float2 worldXZ,
     float vertexSpacing,
@@ -117,7 +120,7 @@ float EvaluateRippleVertexHeight(
     float3 invSizes,
     float strength)
 {
-    float height = 0.0f;
+    float2 height = float2(0.0f, 0.0f);
     [unroll]
     for (uint level = 0; level < kRippleLevelCount; ++level)
     {
@@ -140,9 +143,25 @@ float EvaluateRippleVertexHeight(
         {
             continue;
         }
-        height += LoadRippleSurfaceBilinear(surface, cellCoord, level).x * (weight * edgeFade);
+        height += LoadRippleSurfaceBilinear(surface, cellCoord, level).xw * (weight * edgeFade);
     }
     return height * strength;
+}
+
+/// @brief 水面の頂点に足す波紋の高さ [m]（頂点の格子で表せる段の和に strength を掛けた値）
+/// @param worldXZ 頂点が描かれる位置のワールド XZ [m]
+/// @param vertexSpacing 頂点の格子の間隔 [m]（ComputeRippleGeometryLevelWeight）
+float EvaluateRippleVertexHeight(
+    Texture2DArray<float4> surface,
+    float2 worldXZ,
+    float vertexSpacing,
+    float4 originsXZ01,
+    float2 origin2XZ,
+    float3 invSizes,
+    float strength)
+{
+    return EvaluateRippleVertexHeights(
+        surface, worldXZ, vertexSpacing, originsXZ01, origin2XZ, invSizes, strength).x;
 }
 
 /// @brief デバッグ表示用に、全部の段の高さの和と段ごとの傾きの大きさを返す（strength を掛けた値）

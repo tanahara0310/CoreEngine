@@ -532,6 +532,12 @@
     <ClCompile Include="Engine\Src\Graphics\Water\Ripple\WaterRippleSimulation.cpp">
       <Filter>Engine\Src\Graphics\Water\Ripple</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\Ripple\WaterRippleFootprint.cpp">
+      <Filter>Engine\Src\Graphics\Water\Ripple</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\Ripple\WaterRippleEmitterComponent.cpp">
+      <Filter>Engine\Src\Graphics\Water\Ripple</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Camera\CameraManager.cpp">
       <Filter>Engine\Src\Camera</Filter>
     </ClCompile>
@@ -635,6 +641,9 @@
       <Filter>Engine\Src\Physics</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Physics\BuoyancyComponent.cpp">
+      <Filter>Engine\Src\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Physics\DisplacementCells.cpp">
       <Filter>Engine\Src\Physics</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Physics\PhysicsMaterialComponent.cpp">
@@ -2598,6 +2607,12 @@
     <ClInclude Include="Engine\Src\Graphics\Water\Ripple\WaterRippleSimulation.h">
       <Filter>Engine\Src\Graphics\Water\Ripple</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\Ripple\WaterRippleFootprint.h">
+      <Filter>Engine\Src\Graphics\Water\Ripple</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\Ripple\WaterRippleEmitterComponent.h">
+      <Filter>Engine\Src\Graphics\Water\Ripple</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterRenderResources.h">
       <Filter>Engine\Src\Graphics\Water\Surface</Filter>
     </ClInclude>
@@ -2731,6 +2746,9 @@
       <Filter>Engine\Src\Physics</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Physics\BuoyancyComponent.h">
+      <Filter>Engine\Src\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Physics\DisplacementCells.h">
       <Filter>Engine\Src\Physics</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Physics\PhysicsMaterialComponent.h">

@@ -93,6 +93,9 @@ namespace CoreEngine
             }
             sample.inWater = true;
             sample.surfaceHeight = result.height + result.slopeX * deltaX + result.slopeZ * deltaZ;
+            sample.rippleHeight = result.rippleHeight + result.rippleSlopeX * deltaX + result.rippleSlopeZ * deltaZ;
+            sample.objectRippleHeight =
+                result.objectRippleHeight + result.objectRippleSlopeX * deltaX + result.objectRippleSlopeZ * deltaZ;
             sample.normal = Normalize(Vector3{ -result.slopeX, 1.0f, -result.slopeZ });
             break;
         }

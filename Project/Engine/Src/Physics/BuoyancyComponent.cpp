@@ -7,7 +7,7 @@
 #include "Collision/ColliderComponent.h"
 #include "GameObject/Component/Core/ComponentFactory.h"
 #include "GameObject/GameObject.h"
-#include "Math/MathCore.h"
+#include "Graphics/Water/Ripple/WaterRippleSimulation.h"
 #include "Physics/RigidbodyComponent.h"
 
 REFLECT_REGISTER(CoreEngine::BuoyancyComponent)
@@ -24,6 +24,7 @@ namespace CoreEngine
     {
         points_.fill(WaterQuery::kInvalidPoint);
         submergedRatio_ = 0.0f;
+        footprint_.Reset();
         query_ = FindWaterQuery(GetOwner());
         if (!query_ || !GetOwner()) {
             return;
@@ -44,59 +45,42 @@ namespace CoreEngine
         query_ = nullptr;
         points_.fill(WaterQuery::kInvalidPoint);
         submergedRatio_ = 0.0f;
+        footprint_.Reset();
     }
 
-    float BuoyancyComponent::BuildCells(std::array<Cell, kSampleCount>& cells) const
+    float BuoyancyComponent::BuildCells(DisplacementCells& cells) const
     {
-        using MathCore::Constants::kPi;
-
         const GameObject* const owner = GetOwner();
-        const Vector3 scale = owner ? owner->GetWorldScale() : Vector3{ 1.0f, 1.0f, 1.0f };
-        const Vector3 absScale{ std::abs(scale.x), std::abs(scale.y), std::abs(scale.z) };
-        const float maxScale = MaxAbsScale(scale);
+        if (!owner) {
+            return 0.0f;
+        }
         const auto* const colliders = Sibling<ColliderComponent>();
         const Collider* const collider = colliders ? colliders->GetFirst() : nullptr;
+        return BuildDisplacementCells(*owner, collider, DisplacementFallbackShape::Sphere, cells);
+    }
 
-        // 形を囲む箱（オーナーの軸に沿った 3 辺）と、形全体の体積
-        Vector3 extent{};
-        float volume = 0.0f;
-        if (collider && (collider->GetShapeType() == ColliderShapeType::Box
-                      || collider->GetShapeType() == ColliderShapeType::Mesh)) {
-            const Vector3 size = collider->GetLocalBoxSize();
-            extent = { size.x * absScale.x, size.y * absScale.y, size.z * absScale.z };
-            volume = extent.x * extent.y * extent.z;
-        } else if (collider && collider->GetShapeType() == ColliderShapeType::Capsule) {
-            const CollisionShape& shape = collider->GetShape();
-            const float radius = WorldCapsuleRadius(shape, scale);
-            const float height = (std::max)(shape.height * absScale.y, 2.0f * radius);
-            extent = { 2.0f * radius, height, 2.0f * radius };
-            volume = kPi * radius * radius * (height - 2.0f * radius) + (4.0f / 3.0f) * kPi * radius * radius * radius;
-        } else {
-            const float radius = (collider ? collider->GetShape().radius : 0.5f) * maxScale;
-            extent = { 2.0f * radius, 2.0f * radius, 2.0f * radius };
-            volume = (4.0f / 3.0f) * kPi * radius * radius * radius;
+    void BuoyancyComponent::LateUpdate()
+    {
+        GameObject* const owner = GetOwner();
+        WaterRippleSimulation* const ripple = (query_ && owner && rippleStrength_ > 0.0f)
+            ? FindWaterRippleSimulation(owner->GetEngineSystem())
+            : nullptr;
+        if (!ripple) {
+            footprint_.Reset();
+            return;
         }
 
-        Vector3 center{};
-        if (collider) {
-            const Vector3& offset = collider->GetShape().offset;
-            center = { offset.x * scale.x, offset.y * scale.y, offset.z * scale.z };
-        }
-
-        // 箱を縦横高さ 2 つずつに分ける
-        const Vector3 cellSize{ extent.x * 0.5f, extent.y * 0.5f, extent.z * 0.5f };
+        DisplacementCells cells{};
+        BuildCells(cells);
+        PlacedDisplacementCells placed{};
+        PlaceDisplacementCells(*owner, cells, placed);
+        std::array<WaterRippleFootprint::CellState, kSampleCount> states{};
         for (uint32_t i = 0; i < kSampleCount; ++i) {
-            const float signX = (i & 1u) ? 0.5f : -0.5f;
-            const float signY = (i & 2u) ? 0.5f : -0.5f;
-            const float signZ = (i & 4u) ? 0.5f : -0.5f;
-            cells[i].localCenter = {
-                center.x + signX * cellSize.x,
-                center.y + signY * cellSize.y,
-                center.z + signZ * cellSize.z,
-            };
-            cells[i].size = cellSize;
+            query_->SetPosition(points_[i], placed[i].center);
+            states[i].placed = placed[i];
+            states[i].water = query_->Sample(points_[i], placed[i].center);
         }
-        return volume;
+        footprint_.Emit(*ripple, states, rippleStrength_);
     }
 
     void BuoyancyComponent::ApplyForces(PhysicsKey, float deltaTime, const Vector3& gravity)
@@ -108,7 +92,7 @@ namespace CoreEngine
             return;
         }
 
-        std::array<Cell, kSampleCount> cells{};
+        DisplacementCells cells{};
         const float shapeVolume = BuildCells(cells);
         const float totalVolume = volume_ > 0.0f ? volume_ : shapeVolume;
         if (totalVolume <= 0.0f) {
@@ -121,30 +105,34 @@ namespace CoreEngine
         Vector3 axisY;
         Vector3 axisZ;
         owner->GetWorldAxes(axisX, axisY, axisZ);
-        const Vector3 position = owner->GetWorldPosition();
+        PlacedDisplacementCells placed{};
+        PlaceDisplacementCells(*owner, cells, placed);
 
         // 浮力は重力の逆向き。重力を受けない剛体には浮力を加えない（抵抗だけ）
         const float gravityLength = Length(gravity);
         const bool buoyant = body->UsesGravity() && gravityLength > 0.0f;
         const Vector3 up = gravityLength > 0.0f ? gravity * (-1.0f / gravityLength) : Vector3{ 0.0f, 1.0f, 0.0f };
 
+        // 波紋を起こす間は、物が起こした波紋を除いた水面に浮かべる
+        const bool excludeObjectRipples = rippleStrength_ > 0.0f;
+
         float submergedSum = 0.0f;
         for (uint32_t i = 0; i < kSampleCount; ++i) {
-            const Cell& cell = cells[i];
-            const Vector3 lever = axisX * cell.localCenter.x + axisY * cell.localCenter.y + axisZ * cell.localCenter.z;
-            const Vector3 point = position + lever;
+            const DisplacementCell& cell = cells[i];
+            const Vector3& lever = placed[i].lever;
+            const Vector3& point = placed[i].center;
             query_->SetPosition(points_[i], point);
             const WaterSample sample = query_->Sample(points_[i], point);
             if (!sample.inWater) {
                 continue;
             }
+            const float surfaceHeight =
+                excludeObjectRipples ? sample.surfaceHeight - sample.objectRippleHeight : sample.surfaceHeight;
 
             // 回った塊を囲む箱の上下の幅のうち、水面より下にある割合
-            const float cellHeight = (std::max)(
-                std::abs(axisX.y) * cell.size.x + std::abs(axisY.y) * cell.size.y + std::abs(axisZ.y) * cell.size.z,
-                1.0e-4f);
+            const float cellHeight = placed[i].height;
             const float bottom = point.y - 0.5f * cellHeight;
-            const float submerged = std::clamp((sample.surfaceHeight - bottom) / cellHeight, 0.0f, 1.0f);
+            const float submerged = std::clamp((surfaceHeight - bottom) / cellHeight, 0.0f, 1.0f);
             if (submerged <= 0.0f) {
                 continue;
             }
