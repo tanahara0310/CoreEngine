@@ -15,6 +15,7 @@ namespace CoreEngine
     /// @details 形を分けた 8 つの塊を上下の 2 つずつ組にした 4 本の柱で表す。柱ごとに、波紋を除いた水面より下にある高さ
     ///          （押しのけている深さ）を求め、柱の広さと同じ体積の盛り上がりにして、前に入れた盛り上がりを引いて今の盛り上がりを足す。
     ///          止まって浮いている物は何も入れず、進む・揺れる・沈む・浮き上がる分だけが波紋になる。
+    ///          柱ごとに、そのフレームで水面を上下させた量を求めて、かき回した水の泡の源（AddObjectFoam）としても入れる。
     ///          水面の結果が届いていない塊がある間と、大きく飛んだフレームは、形を覚え直すだけで何も入れない。
     class WaterRippleFootprint {
     public:
@@ -30,8 +31,11 @@ namespace CoreEngine
         };
 
         /// @brief 塊から柱の押しのけを求め、前に入れた形との差を源として足す（フレームに 1 回）
-        /// @param strength 押しのけに掛ける倍率（0 なら覚えた形を捨てる）
-        void Emit(WaterRippleSimulation& simulation, std::span<const CellState, kDisplacementCellCount> cells, float strength);
+        /// @param strength     押しのけを波紋にする倍率（0 なら波紋を入れない）
+        /// @param foamStrength 水面を上下させた量を泡の源にする倍率（0 なら泡を入れない。両方 0 なら覚えた形を捨てる）
+        void Emit(
+            WaterRippleSimulation& simulation, std::span<const CellState, kDisplacementCellCount> cells,
+            float strength, float foamStrength);
 
         /// @brief 覚えた形を捨てる（次の Emit は形を覚えるだけで何も入れない）
         void Reset() { hasPrevious_ = false; }
@@ -44,8 +48,9 @@ namespace CoreEngine
             float x = 0.0f;
             float y = 0.0f;      ///< 柱の中心の高さ [m]
             float z = 0.0f;
-            float radius = 0.0f; ///< 盛り上がりの半径 [m]（ガウスの σ の 2 倍）
-            float depth = 0.0f;  ///< 押しのけている深さ [m]（倍率込み）
+            float radius = 0.0f;    ///< 盛り上がりの半径 [m]（ガウスの σ の 2 倍）
+            float depth = 0.0f;     ///< 押しのけている深さ [m]（波紋の倍率込み）
+            float submerged = 0.0f; ///< 押しのけている深さ [m]（倍率を掛ける前）
         };
 
         std::array<Column, kColumnCount> previous_{};

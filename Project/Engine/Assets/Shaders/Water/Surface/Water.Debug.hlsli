@@ -100,7 +100,7 @@ struct WaterDebugContext
     // ヤコビアンは VS 経由の補間値ではなく、PS が gFFTOceanJacobian を
     // ここから直接サンプルして全カスケード合成で評価する。
     float2 worldXZ;
-    // 泡マスク（モード 23）。本体の合成と同じ値（白波と岸の泡の大きい方）
+    // 泡マスク（モード 23）。本体の合成と同じ値（白波・物がかき回した所・岸の泡のいちばん大きいもの）
     float foamMask;
     // 泡の内訳（モード 24）
     float foamWhitecapInstant;
@@ -299,7 +299,7 @@ float3 ResolveWaterDebugColor(WaterDebugContext ctx)
         return VisualizeDepthValue(ctx.foamMask);
     }
 
-    // 24: 泡の内訳。R = いま砕けている白波・G = 砕けた後に残っている白波・B = 岸の泡（被覆率）
+    // 24: 泡の内訳。R = いま砕けている白波・G = 砕けた後に残っている白波と物がかき回した所の泡・B = 岸の泡（被覆率）
     if (gDepthDebugViewMode == 24)
     {
         return float3(ctx.foamWhitecapInstant, ctx.foamWhitecapResidue, ctx.foamShoreCoverage);

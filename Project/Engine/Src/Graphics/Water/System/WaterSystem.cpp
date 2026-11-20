@@ -252,6 +252,7 @@ namespace CoreEngine
             appearance_.ApplySettings(frame);
             foam_.ApplySettings(frame, waveCapabilities, wave_.GetFFTOceanTime());
             ripple_.Advance(frame, Time::DeltaTime());
+            foam_.PassWakeSources(*domain);
             caustics_.ApplySettings(frame);
             rayTracing_.ApplySettings(frame);
             shore_.UpdateWindow(frame, waveCapabilities);

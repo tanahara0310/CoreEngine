@@ -25,11 +25,14 @@ struct WhitecapFoamCoverage
     float instant;      ///< いま砕けている泡 [0,1]
     float residue;      ///< 砕けた後に残っている泡 [0,1]
     float residueFresh; ///< 残っている泡のうち、砕けた直後の厚い泡の量 [0,residue]
+    float wake;         ///< 物がかき回した所に残っている泡 [0,1]
+    float wakeFresh;    ///< 物がかき回した所の泡のうち、厚い泡の量 [0,wake]
 };
 
 /// @brief 白波の被覆率を、いま砕けている泡と残っている泡に分けて求める（FFTOcean 専用）
 /// @details いま砕けている泡は合成ヤコビアン detJ < gFoamBias（波頭の圧縮）。
 ///          残っている泡は FFTOceanFoamAccumulate.CS が同じ判定で溜めて減らした格子を読む。
+///          物がかき回した所の泡も同じ格子の別のチャンネルから読む。
 ///          Gerstner 経路はヤコビアンを持たないため常に 0
 ///          （gUseFFTOceanNormalMap は FFT 使用フラグと同値で更新される）。
 WhitecapFoamCoverage ComputeWhitecapFoamCoverage(float2 worldXZ)
@@ -38,6 +41,8 @@ WhitecapFoamCoverage ComputeWhitecapFoamCoverage(float2 worldXZ)
     coverage.instant = 0.0f;
     coverage.residue = 0.0f;
     coverage.residueFresh = 0.0f;
+    coverage.wake = 0.0f;
+    coverage.wakeFresh = 0.0f;
     if (gFoamEnabled == 0 || gUseFFTOceanNormalMap == 0)
     {
         return coverage;
@@ -49,10 +54,12 @@ WhitecapFoamCoverage ComputeWhitecapFoamCoverage(float2 worldXZ)
     WhitecapResidueWindows windows;
     windows.originsXZ = gFoamResidueOriginsXZ;
     windows.invSizes = gFoamResidueInvSizes;
-    const float2 residue = SampleWhitecapResidue(
+    const float4 residue = SampleWhitecapResidue(
         worldXZ, gFFTOceanFoam, gLinearClamp, gFoamDriftOffsetXZ, windows, gFoamResidueMeanCoverage);
     coverage.residue = residue.x;
     coverage.residueFresh = residue.y;
+    coverage.wake = residue.z;
+    coverage.wakeFresh = residue.w;
     return coverage;
 }
 

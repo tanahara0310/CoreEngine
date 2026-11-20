@@ -18,6 +18,9 @@ namespace CoreEngine
         /// @brief 泡を出さない水面（ほかの水）へ、泡を切った値を渡す（白波と岸の泡には触れない）
         void ApplyWithoutFoam(const WaterFrameContext& frame) const;
 
+        /// @brief 物が水をかき回した所の泡の源を、波紋の格子から白波の泡へ渡す（波紋の Advance の後・フレームに 1 回）
+        void PassWakeSources(RenderDomainContext& domain) const;
+
         /// @brief 溜まった白波の泡の SRV を結線へ書く
         void Bind(RenderDomainContext& domain, WaterFrameBinding& binding) const;
     };

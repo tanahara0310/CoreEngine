@@ -20,7 +20,8 @@ class RigidbodyComponent;
 ///          沈んだ体積の分だけ上向きの力をその位置へ加える。力は塊ごとの位置へ加わり、傾いた物を起こす回転も生む。
 ///          水の抵抗は塊ごとに、速さに比例する分と、動く向きから見た面積で速さの 2 乗に比例する分を加える。
 ///          水面の高さは描かれる水面と同じで、1〜2 フレーム遅れて届く（WaterQuery）。
-///          動く・揺れる・沈む・浮き上がるときは、押しのけた水の変化を水の波紋として入れる（WaterRippleFootprint）。
+///          動く・揺れる・沈む・浮き上がるときは、押しのけた水の変化を水の波紋として入れ、
+///          水面を速く上下させた所に泡を残す（WaterRippleFootprint）。
 class BuoyancyComponent : public IComponent {
 public:
     /// @brief 形を分ける塊の数
@@ -42,6 +43,8 @@ public:
             p.tooltip = "1/s。沈んでいる分だけ回転を落とす")
         REFLECT_PROPERTY(rippleStrength_, "波紋の強さ", p.range = Range(0.0f, 10.0f, 0.01f),
             p.tooltip = "進む・揺れる・沈む・浮き上がるときに押しのけた水の変化を、水の波紋にする倍率。0 で波紋を起こさない")
+        REFLECT_PROPERTY(foamStrength_, "泡の強さ", p.range = Range(0.0f, 10.0f, 0.01f),
+            p.tooltip = "速く進む・勢いよく水に入るときに、かき回した水に白い泡を残す倍率。0 で泡を残さない。泡は主の水を FFT の海で描き、泡を入れているときに出る")
         REFLECT_READONLY_ACCESSOR("submergedRatio", "沈んでいる割合", GetSubmergedRatio)
         REFLECT_READONLY_ACCESSOR("inWater", "水に触れている", IsInWater)
     REFLECT_END()
@@ -55,7 +58,7 @@ public:
     /// @brief 水面の高さを調べる点を外す
     void OnDisable() override;
 
-    /// @brief 押しのけた水の変化を水の波紋として入れる
+    /// @brief 押しのけた水の変化を水の波紋と泡の源として入れる
     void LateUpdate() override;
 
     /// @brief 物理の 1 ステップの前に、浮力と水の抵抗を剛体へ加える（PhysicsFeature が呼ぶ）
@@ -78,6 +81,9 @@ public:
     float GetRippleStrength() const { return rippleStrength_; }
     void SetRippleStrength(float strength) { rippleStrength_ = strength; }
 
+    float GetFoamStrength() const { return foamStrength_; }
+    void SetFoamStrength(float strength) { foamStrength_ = strength; }
+
 private:
     /// @brief 兄弟のコライダーの形とオーナーのスケールから塊を作り直す
     /// @return 形全体の体積 [m³]
@@ -88,6 +94,7 @@ private:
     float waterDrag_ = 1.0f;
     float waterAngularDrag_ = 1.0f;
     float rippleStrength_ = 1.0f;
+    float foamStrength_ = 1.0f;
 
     WaterQuery* query_ = nullptr;
     std::array<uint32_t, kSampleCount> points_{};

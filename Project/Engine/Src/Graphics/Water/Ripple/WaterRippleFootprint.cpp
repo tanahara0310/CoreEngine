@@ -17,6 +17,16 @@ namespace CoreEngine
         /// これより小さい変化は覚えている形に溜めて、次に動いたときにまとめて入れる
         constexpr float kStillMeters = 1.0e-4f;
         constexpr float kStillDepth = 1.0e-5f;
+        /// ガウス exp(-r²/2σ²) の傾きの最大 × σ（e^(-1/2)）
+        constexpr float kGaussianMaxSlopeSigma = 0.60653066f;
+
+        /// @brief 柱が前の形から今の形へ移る間に、水面を上下させた量の最大の目安 [m]
+        /// @details 横へ動いた分（深さ × 傾きの最大 × 動いた距離。深さで頭打ち）と、深さが変わった分を合わせる
+        float ComputeColumnChurn(float distance, float sigma, float meanSubmerged, float submergedChange)
+        {
+            const float moved = meanSubmerged * (std::min)(kGaussianMaxSlopeSigma * distance / (std::max)(sigma, 1.0e-4f), 1.0f);
+            return std::hypot(moved, submergedChange);
+        }
 
         float CellBottom(const PlacedDisplacementCell& cell) { return cell.center.y - 0.5f * cell.height; }
         float CellTop(const PlacedDisplacementCell& cell) { return cell.center.y + 0.5f * cell.height; }
@@ -35,11 +45,14 @@ namespace CoreEngine
     }
 
     void WaterRippleFootprint::Emit(
-        WaterRippleSimulation& simulation, std::span<const CellState, kDisplacementCellCount> cells, float strength)
+        WaterRippleSimulation& simulation, std::span<const CellState, kDisplacementCellCount> cells,
+        float strength, float foamStrength)
     {
         using MathCore::Constants::kPi;
 
-        if (!(strength > 0.0f) || !std::isfinite(strength) || !simulation.IsInitialized()) {
+        strength = (std::isfinite(strength) && strength > 0.0f) ? strength : 0.0f;
+        foamStrength = (std::isfinite(foamStrength) && foamStrength > 0.0f) ? foamStrength : 0.0f;
+        if ((strength <= 0.0f && foamStrength <= 0.0f) || !simulation.IsInitialized()) {
             Reset();
             return;
         }
@@ -71,6 +84,7 @@ namespace CoreEngine
             column.z = 0.5f * (lower.placed.center.z + upper.placed.center.z);
             column.radius = 2.0f * std::sqrt(area / (2.0f * kPi));
             column.depth = depth * strength;
+            column.submerged = depth;
         }
         displacedVolume_ = volume;
 
@@ -91,7 +105,8 @@ namespace CoreEngine
                 return;
             }
             if (distance > kStillMeters || std::abs(now.radius - before.radius) > kStillMeters
-                || std::abs(now.depth - before.depth) > kStillDepth) {
+                || std::abs(now.depth - before.depth) > kStillDepth
+                || std::abs(now.submerged - before.submerged) > kStillDepth) {
                 still = false;
             }
             sourceCount += (before.depth != 0.0f ? 1u : 0u) + (now.depth != 0.0f ? 1u : 0u);
@@ -100,7 +115,8 @@ namespace CoreEngine
             return;
         }
 
-        // 前の盛り上がりを引いて今の盛り上がりを足す（AddRipple の深さはマイナスで盛り上げる）
+        // 前の盛り上がりを引いて今の盛り上がりを足す（AddRipple の深さはマイナスで盛り上げる）。
+        // 柱が水面を上下させた量を、今の柱の位置の泡の源にする
         for (uint32_t c = 0; c < kColumnCount; ++c) {
             const Column& before = previous_[c];
             const Column& now = current[c];
@@ -109,6 +125,12 @@ namespace CoreEngine
             }
             if (now.depth != 0.0f) {
                 simulation.AddObjectRipple(Vector3{ now.x, 0.0f, now.z }, now.radius, -now.depth);
+            }
+            if (foamStrength > 0.0f) {
+                const float churn = ComputeColumnChurn(
+                    std::hypot(now.x - before.x, now.z - before.z), 0.25f * (before.radius + now.radius),
+                    0.5f * (before.submerged + now.submerged), std::abs(now.submerged - before.submerged));
+                simulation.AddObjectFoam(Vector3{ now.x, 0.0f, now.z }, now.radius, churn * foamStrength);
             }
         }
         previous_ = current;

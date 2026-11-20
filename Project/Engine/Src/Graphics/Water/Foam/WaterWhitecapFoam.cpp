@@ -36,10 +36,11 @@ namespace CoreEngine
 
         /// @brief FFTOceanFoamAccumulate.CS.hlsl の契約
         namespace WhitecapFoamBind {
-            enum Slot : size_t { gJacobian, gFoamPrev, gFoamOutput, FFTOceanFoamConstants, Count };
+            enum Slot : size_t { gJacobian, gFoamPrev, gDisplacement, gFoamOutput, FFTOceanFoamConstants, Count };
             inline constexpr ShaderBindingDecl kDecls[] = {
                 { "gJacobian",             ShaderBindingType::SRV, BindingUsage::Required },
                 { "gFoamPrev",             ShaderBindingType::SRV, BindingUsage::Required },
+                { "gDisplacement",         ShaderBindingType::SRV, BindingUsage::Required },
                 { "gFoamOutput",           ShaderBindingType::UAV, BindingUsage::Required },
                 { "FFTOceanFoamConstants", ShaderBindingType::CBV, BindingUsage::Required },
             };
@@ -95,6 +96,21 @@ namespace CoreEngine
         calibrated_ = false;
         measuredResidueCoverage_ = 0.0f;
         ++calibrationEpoch_;
+    }
+
+    void WaterWhitecapFoam::SetWakeSources(std::span<const Vector4> sources)
+    {
+        wakeSourceCount_ = 0;
+        for (const Vector4& source : sources) {
+            if (wakeSourceCount_ >= kMaxWakeSources) {
+                break;
+            }
+            if (!(source.z > 0.0f) || !(source.w > 0.0f) || !std::isfinite(source.x) || !std::isfinite(source.y)
+                || !std::isfinite(source.w)) {
+                continue;
+            }
+            wakeSources_[wakeSourceCount_++] = source;
+        }
     }
 
     std::array<float, 2> WaterWhitecapFoam::ComputeDriftOffset(float timeSeconds) const
@@ -180,8 +196,8 @@ namespace CoreEngine
     bool WaterWhitecapFoam::CreateFoamResources()
     {
         Microsoft::WRL::ComPtr<ID3D12Device> device = dxCommon_->GetDevice();
-        // 被覆率と砕けた直後の厚い泡の量の 2 チャンネル
-        const DXGI_FORMAT format = DXGI_FORMAT_R16G16_FLOAT;
+        // 白波の被覆率・白波の厚い泡の量・物がかき回した所の被覆率・その厚い泡の量の 4 チャンネル
+        const DXGI_FORMAT format = DXGI_FORMAT_R16G16B16A16_FLOAT;
 
         D3D12_RESOURCE_DESC desc = UavTexture::MakeDesc(kResolution, kResolution, 1, format);
         desc.DepthOrArraySize = static_cast<UINT16>(kLevelCount);
@@ -261,14 +277,57 @@ namespace CoreEngine
         return true;
     }
 
+    void WaterWhitecapFoam::FillWakeSources(FoamConstants& constants) const
+    {
+        constants.wakeSourceCount = 0;
+        for (uint32_t level = 0; level < kLevelCount; ++level) {
+            constants.wakeMinSigmas[level] = kWakeMinSigmaTexels * kLevelTexelSizes[level];
+            int32_t* const rect = &constants.wakeRects[level * 4];
+            rect[0] = rect[1] = static_cast<int32_t>(kResolution);
+            rect[2] = rect[3] = 0;
+        }
+        if (wakeSourceCount_ == 0) {
+            return;
+        }
+
+        // 泡の格子は風下へ流した座標なので、源の位置から流れた距離を引いた所を囲む
+        for (uint32_t i = 0; i < wakeSourceCount_; ++i) {
+            const Vector4& source = wakeSources_[i];
+            constants.wakeSources[i] = source;
+            for (uint32_t level = 0; level < kLevelCount; ++level) {
+                const float texelSize = kLevelTexelSizes[level];
+                const float sigma = (std::max)(source.z, constants.wakeMinSigmas[level]);
+                const float reach = kWakeReachSigmas * sigma + kWakeDisplacementMargin;
+                const float localX = source.x - driftOffset_[0] - levelOrigins_[level * 2 + 0];
+                const float localZ = source.y - driftOffset_[1] - levelOrigins_[level * 2 + 1];
+                const int32_t resolution = static_cast<int32_t>(kResolution);
+                const int32_t minX = (std::max)(static_cast<int32_t>(std::floor((localX - reach) / texelSize)), 0);
+                const int32_t minZ = (std::max)(static_cast<int32_t>(std::floor((localZ - reach) / texelSize)), 0);
+                const int32_t maxX = (std::min)(static_cast<int32_t>(std::floor((localX + reach) / texelSize)) + 1, resolution);
+                const int32_t maxZ = (std::min)(static_cast<int32_t>(std::floor((localZ + reach) / texelSize)) + 1, resolution);
+                if (minX >= maxX || minZ >= maxZ) {
+                    continue;
+                }
+                int32_t* const rect = &constants.wakeRects[level * 4];
+                rect[0] = (std::min)(rect[0], minX);
+                rect[1] = (std::min)(rect[1], minZ);
+                rect[2] = (std::max)(rect[2], maxX);
+                rect[3] = (std::max)(rect[3], maxZ);
+            }
+        }
+        constants.wakeSourceCount = wakeSourceCount_;
+    }
+
     void WaterWhitecapFoam::Dispatch(
         ID3D12GraphicsCommandList* cmdList,
         D3D12_GPU_DESCRIPTOR_HANDLE jacobianSRV,
+        D3D12_GPU_DESCRIPTOR_HANDLE displacementSRV,
         float timeSeconds,
         uint32_t spectrumRevision,
         const std::array<float, 3>& waveGroupPhase)
     {
-        if (!isInitialized_ || !cmdList || jacobianSRV.ptr == 0) {
+        if (!isInitialized_ || !cmdList || jacobianSRV.ptr == 0 || displacementSRV.ptr == 0) {
+            wakeSourceCount_ = 0;
             return;
         }
 
@@ -281,6 +340,7 @@ namespace CoreEngine
         // 無効の間はパスを飛ばす（水面のシェーダーも gFoamEnabled = 0 で読まない）
         if (!settings_.enabled) {
             previousTimeSeconds_ = timeSeconds;
+            wakeSourceCount_ = 0;
             return;
         }
 
@@ -318,6 +378,8 @@ namespace CoreEngine
         driftOffset_ = ComputeDriftOffset(timeSeconds);
         constants.driftOffsetXZ[0] = driftOffset_[0];
         constants.driftOffsetXZ[1] = driftOffset_[1];
+        FillWakeSources(constants);
+        wakeSourceCount_ = 0;
 
         // 書き込み先はフレームの偶奇で決める。読む側は前のフレームの結果で、
         // 同じフレームの水面のピクセルシェーダーも読む
@@ -334,6 +396,7 @@ namespace CoreEngine
         ShaderBinder binder(cmdList, ShaderBinder::Pipeline::Compute);
         binder.Set(foamBindings_[WhitecapFoamBind::gJacobian], jacobianSRV);
         binder.Set(foamBindings_[WhitecapFoamBind::gFoamPrev], readFoam.srv.gpuHandle);
+        binder.Set(foamBindings_[WhitecapFoamBind::gDisplacement], displacementSRV);
         binder.Set(foamBindings_[WhitecapFoamBind::gFoamOutput], writeFoam.uav.gpuHandle);
         binder.Set(foamBindings_[WhitecapFoamBind::FFTOceanFoamConstants],
             dxCommon_->GetUploadRing().AllocateConstants(constants));

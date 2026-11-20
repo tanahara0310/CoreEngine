@@ -6,6 +6,7 @@
 #include <array>
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <vector>
 
 #include "Graphics/RHI/Descriptor/DescriptorHandle.h"
@@ -13,6 +14,7 @@
 #include "Graphics/RootSignature/RootSignatureManager.h"
 #include "Graphics/Shader/ShaderBindingContract.h"
 #include "Math/Vector/Vector3.h"
+#include "Math/Vector/Vector4.h"
 
 namespace CoreEngine
 {
@@ -46,6 +48,8 @@ namespace CoreEngine
         static constexpr uint32_t kFieldCount = 2;
         static constexpr uint32_t kResolution = 512;
         static constexpr uint32_t kMaxSourcesPerFrame = 256;
+        /// @brief 1 フレームに足せる泡の源の数
+        static constexpr uint32_t kMaxFoamSourcesPerFrame = 64;
         static constexpr uint32_t kMaxStepsPerFrame = 4;
         /// @brief 段ごとの 1 マスの幅 [m]（一辺は 32 m・128 m・512 m）
         static constexpr float kCellSizes[kLevelCount] = { 0.0625f, 0.25f, 1.0f };
@@ -77,6 +81,15 @@ namespace CoreEngine
         /// @brief 物が起こした波紋の源を足す（形は AddRipple と同じ。物が起こした波紋の場へも入れる）
         void AddObjectRipple(const Vector3& position, float radius, float depth);
 
+        /// @brief 物が水をかき回した所の泡の源を足す（次の Advance で、そのフレームの泡の源になる）
+        /// @param position    中心（Y は使わない）
+        /// @param radius      半径 [m]（泡を広げるガウスの σ）
+        /// @param churnMeters このフレームに水面を上下させた量 [m]
+        void AddObjectFoam(const Vector3& position, float radius, float churnMeters);
+
+        /// @brief 前の Advance で決めた泡の源（x, z, σ [m], 水面を上下させた速さ [m/s]）
+        std::span<const Vector4> GetFoamSources() const { return foamSources_; }
+
         /// @brief このフレームにまだ足せる源の数（AddRipple と AddObjectRipple で共通）
         uint32_t GetFreeSourceCount() const
         {
@@ -86,7 +99,8 @@ namespace CoreEngine
         /// @brief 時刻を進め、段ごとにこのフレームで進める歩数と格子の置き場所を決める（フレームに 1 回）
         /// @param cameraX, cameraZ カメラの XZ [m]
         /// @param viewX, viewZ カメラが見ている向きの水平の成分（長さ 1 以下。真下を見ると 0）
-        /// @details 格子の中心は、カメラから見ている向きへ格子の一辺の kForwardShare 倍だけ進めた所に置く
+        /// @details 格子の中心は、カメラから見ている向きへ格子の一辺の kForwardShare 倍だけ進めた所に置く。
+        ///          足された泡の源を deltaSeconds で割った速さにして、GetFoamSources の中身と入れ替える（波紋を切っていても）
         void Advance(float deltaSeconds, float cameraX, float cameraZ, float viewX, float viewZ, const Settings& settings);
 
         /// @brief 岸と物に使う海の範囲マップを決める（std::nullopt なら岸と物を扱わない。次の Dispatch から効く）
@@ -112,6 +126,13 @@ namespace CoreEngine
             float sigma = 0.0f; ///< ガウスの幅 [m]
             float depth = 0.0f; ///< くぼみの深さ [m]
             bool fromObject = false; ///< 物が起こした波紋の場へも入れる
+        };
+
+        struct FoamSource {
+            float x = 0.0f;
+            float z = 0.0f;
+            float sigma = 0.0f;       ///< ガウスの幅 [m]
+            float churnMeters = 0.0f; ///< このフレームに水面を上下させた量 [m]
         };
 
         struct Level {
@@ -152,6 +173,8 @@ namespace CoreEngine
         DescriptorHandle surfaceUav_{};
 
         std::vector<Source> pendingSources_;
+        std::vector<FoamSource> pendingFoamSources_;
+        std::vector<Vector4> foamSources_;
         std::array<Level, kLevelCount> levels_{};
         std::optional<ShoreMap> shoreMap_;
         float dampingPerSecond_ = 0.4f;
