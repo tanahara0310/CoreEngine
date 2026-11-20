@@ -28,6 +28,7 @@ namespace CoreEngine
         // ---- 波紋 ----
         extern CVar<bool>    RippleEnabled;
         extern CVar<float>   RippleDamping;
+        extern CVar<bool>    RippleShore;
 
         // ---- コースティクス ----
         extern CVar<int>     CausticsBackend; // 0=RT / 1=ScreenSpace（コンボは水面パネル。NoUI）

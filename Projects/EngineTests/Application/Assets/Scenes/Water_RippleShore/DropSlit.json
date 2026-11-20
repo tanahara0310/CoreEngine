@@ -1,0 +1,41 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    4.0,
+                    0.0,
+                    5.8
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "dropDepth": 0.12,
+                "dropInterval": 6.0,
+                "dropRadius": 0.5,
+                "firstDropDelay": 4.0,
+                "moverSpeed": 0.0
+            },
+            "type": "RippleProbe"
+        }
+    ],
+    "id": "a59fd7f5bd88a091",
+    "name": "DropSlit",
+    "order": 12
+}

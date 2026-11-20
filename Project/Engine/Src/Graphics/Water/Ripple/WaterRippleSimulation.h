@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <optional>
 #include <vector>
 
 #include "Graphics/RHI/Descriptor/DescriptorHandle.h"
@@ -27,9 +28,19 @@ namespace CoreEngine
     ///          （WaterRippleInject.CS.hlsl）。水面は全部の段の傾きを足して法線へ加える。
     ///          場は段ごとに 2 つあり、全部の波紋の場と、物が起こした波紋（AddObjectRipple）だけの場を同じ式で進める。
     ///          格子は段の 1 歩ごとにカメラの真下へマス単位で寄せる。
+    ///          海の範囲マップ（SetShoreMap）があれば、陸と水の中の物の下のマスを壁にし、浅瀬で波を弱める。
     ///          しばらく源が無い段は止め、次の源で 0 から始め直す。
     class WaterRippleSimulation {
     public:
+        /// @brief 波紋の岸と物に使う海の範囲マップ（WaterSeaMap.hlsli）
+        struct ShoreMap {
+            D3D12_GPU_DESCRIPTOR_HANDLE srv{};  ///< 地図の SRV
+            uint32_t resolution[2] = { 0, 0 };  ///< X・Z のテクセル数
+            float originXZ[2] = { 0.0f, 0.0f }; ///< 地図の範囲の XZ の最小の角 [m]
+            float texelsPerMeter = 0.0f;        ///< 1 m あたりのテクセル数
+            float depthOffset = 0.0f;           ///< 今の水面の高さ − 測ったときの水面の高さ [m]
+        };
+
         static constexpr uint32_t kLevelCount = 3;
         /// @brief 段ごとの場の数（0 = 全部の波紋・1 = 物が起こした波紋）
         static constexpr uint32_t kFieldCount = 2;
@@ -77,6 +88,9 @@ namespace CoreEngine
         /// @param viewX, viewZ カメラが見ている向きの水平の成分（長さ 1 以下。真下を見ると 0）
         /// @details 格子の中心は、カメラから見ている向きへ格子の一辺の kForwardShare 倍だけ進めた所に置く
         void Advance(float deltaSeconds, float cameraX, float cameraZ, float viewX, float viewZ, const Settings& settings);
+
+        /// @brief 岸と物に使う海の範囲マップを決める（std::nullopt なら岸と物を扱わない。次の Dispatch から効く）
+        void SetShoreMap(const std::optional<ShoreMap>& shoreMap) { shoreMap_ = shoreMap; }
 
         /// @brief 源を入れて波を進める（Advance の後、水面を描くパスより前に呼ぶ）
         /// @param frameNumber 同じフレームで 2 回進めないための番号
@@ -139,6 +153,7 @@ namespace CoreEngine
 
         std::vector<Source> pendingSources_;
         std::array<Level, kLevelCount> levels_{};
+        std::optional<ShoreMap> shoreMap_;
         float dampingPerSecond_ = 0.4f;
         uint64_t lastFrameNumber_ = UINT64_MAX;
     };

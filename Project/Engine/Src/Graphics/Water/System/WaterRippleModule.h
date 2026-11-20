@@ -20,6 +20,12 @@ namespace CoreEngine
         /// @brief RT の水面へ渡す状態へ、格子の範囲と水の倍率を書く（水面ごと）
         void Capture(RenderDomainContext& domain, const WaterSurfaceComponent& waterPlane, WaterSurfaceData& out) const;
 
+        /// @brief 主の水の海の範囲マップを、波紋の岸と物として格子へ渡す（地図が無ければ外す。フレームに 1 回）
+        void CaptureShore(RenderDomainContext& domain, const WaterSurfaceData& snapshot) const;
+
+        /// @brief 格子から岸と物の地図を外す
+        static void ClearShore(RenderDomainContext& domain);
+
     private:
         float cameraXZ_[2] = { 0.0f, 0.0f }; ///< 最後のカメラの XZ [m]
         float viewXZ_[2] = { 0.0f, 0.0f };   ///< 最後のカメラが見ている向きの水平の成分

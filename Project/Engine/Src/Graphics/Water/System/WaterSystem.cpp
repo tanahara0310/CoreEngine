@@ -232,6 +232,7 @@ namespace CoreEngine
             if (!waterPlane) {
                 VertexAnimationParams::SetSwellDirection(std::nullopt);
                 CaptureSnapshot(*domain, settings, Time::DeltaTime());
+                ripple_.CaptureShore(*domain, snapshot_);
                 secondarySurfaceStates_.clear();
                 domain->PublishWaterFrame(nullptr, {}, wave_.GetFFTOceanTime());
                 break;
@@ -256,6 +257,7 @@ namespace CoreEngine
             shore_.UpdateWindow(frame, waveCapabilities);
 
             CaptureSnapshot(*domain, settings, Time::DeltaTime());
+            ripple_.CaptureShore(*domain, snapshot_);
 
             // 大気散乱の更新後なので、LUT・SH・キューブマップの準備完了はこの時点で確定している
             const WaterFrameBinding binding = BuildFrameBinding(frame);
@@ -291,6 +293,7 @@ namespace CoreEngine
         // snapshot_ はこの Feature の持ち物なので、受け渡しを取り消さないと次のシーンの描画が消えた実体を読む
         if (publishTarget_) {
             publishTarget_->PublishWaterFrame(nullptr, {}, 0.0f);
+            WaterRippleModule::ClearShore(*publishTarget_);
             publishTarget_ = nullptr;
         }
     }

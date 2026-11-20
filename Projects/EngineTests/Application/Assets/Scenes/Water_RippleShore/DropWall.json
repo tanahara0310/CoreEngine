@@ -1,0 +1,41 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    -7.5,
+                    0.0,
+                    0.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "dropDepth": 0.12,
+                "dropInterval": 6.0,
+                "dropRadius": 0.5,
+                "firstDropDelay": 1.0,
+                "moverSpeed": 0.0
+            },
+            "type": "RippleProbe"
+        }
+    ],
+    "id": "ae2719ec11780147",
+    "name": "DropWall",
+    "order": 9
+}

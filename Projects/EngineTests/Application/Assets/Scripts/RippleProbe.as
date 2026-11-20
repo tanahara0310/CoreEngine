@@ -7,6 +7,9 @@ class RippleProbe : ScriptComponent
     [Tooltip("石を落とす間隔 [s]（0 で落とさない）")]
     float dropInterval = 2.0f;
 
+    [Tooltip("最初の石を落とすまでの時間 [s]（負なら落とす間隔と同じ）")]
+    float firstDropDelay = -1.0f;
+
     [Tooltip("石が水面を押し下げるくぼみの半径 [m]")]
     float dropRadius = 0.3f;
 
@@ -26,6 +29,7 @@ class RippleProbe : ScriptComponent
     float moverDepthPerSecond = 0.1f;
 
     private float dropTimer_ = 0.0f;
+    private bool firstDropDone_ = false;
     private float moverAngle_ = 0.0f;
 
     void Update()
@@ -35,8 +39,10 @@ class RippleProbe : ScriptComponent
 
         if (dropInterval > 0.0f) {
             dropTimer_ += dt;
-            if (dropTimer_ >= dropInterval) {
-                dropTimer_ -= dropInterval;
+            const float wait = (!firstDropDone_ && firstDropDelay >= 0.0f) ? firstDropDelay : dropInterval;
+            if (dropTimer_ >= wait) {
+                dropTimer_ -= wait;
+                firstDropDone_ = true;
                 Water::AddRipple(center, dropRadius, dropDepth);
             }
         }

@@ -2,8 +2,8 @@
 // 海の範囲マップ（WaterSeaMapRayTracingManager が水面の範囲全体を測った地図）
 // テクセル (i, j) はワールド XZ = 範囲の最小の角 + (i + 0.5, j + 0.5) / texelsPerMeter の点。
 // 中身は (水深, 上の物までの高さ, 粗い格子用の水深, 粗い格子用の上の物までの高さ) [m]。
-//   - 水深: 測ったときの水面から海底までの深さ。陸の下は負（陸の上の面の高さの符号反転）、
-//           海とつながっていない水たまりも負
+//   - 水深: 測ったときの水面から海底までの深さ。陸の下は負（陸の上の面の高さの符号反転・-63 まで）、
+//           海とつながっていない水たまりは -64
 //   - 上の物までの高さ: 測ったときの水面から、真上で最初に当たる物（桟橋の床など）までの高さ
 //   - 粗い格子用: 粗い格子の 1 マスより広い窓の中の最小値（三角形が陸や物の下へまたがらない）
 // FFTWater.VS / Water.VS / RTWaterSurfaceCommon.hlsli が同じ式で波の変位を弱める。
@@ -17,6 +17,14 @@
 static const float kWaterSeaMapCrestRatio = 1.5f;
 /// @brief 範囲の外として返す水深・上の物までの高さ [m]（波を弱めない）
 static const float kWaterSeaMapOutsideValue = 64.0f;
+/// @brief 海とつながっていない水たまりの水深 [m]（WaterSeaMapBuilder::kBasinDepth と同じ値）
+static const float kWaterSeaMapBasinDepth = -64.0f;
+
+/// @brief 地図の水深（x）が、海とつながっていない水たまりのテクセルか
+bool IsWaterSeaMapBasin(float depth)
+{
+    return depth < kWaterSeaMapBasinDepth + 0.5f;
+}
 
 /// @brief 地図をワールド XZ でバイリニアに読む（範囲の外は弱めない値を返す）
 float4 SampleWaterSeaMap(
