@@ -10,6 +10,7 @@
 #include "Editor/Launcher/ProjectBrowser.h"
 #include "Editor/Launcher/ProjectThumbnails.h"
 #include "Editor/Scene/SceneFileDialogs.h"
+#include "Editor/Scene/SceneOpenUI.h"
 #include "Editor/Scene/SceneResaveDialog.h"
 #endif
 #include "Editor/Panel/EditorPanelRegistry.h"
@@ -156,6 +157,8 @@ namespace CoreEngine
         Editor::GameExportDialog gameExportDialog_;              ///< 「ゲームを書き出す」の窓
         Editor::SceneResaveDialog sceneResaveDialog_;            ///< 「すべてのシーンと設定を保存し直す」の窓
         Editor::SceneFileDialogs sceneFileDialogs_;              ///< シーンのファイルが外で変わったときの窓
+        Editor::SceneOpenMenu sceneOpenMenu_;                    ///< File > シーンを開く の中身
+        Editor::SceneQuickOpen sceneQuickOpen_;                  ///< 名前を打ってシーンを開く欄（Ctrl+O）
 #endif
 
         static constexpr const char* consoleWindow = "Console";
@@ -175,7 +178,7 @@ namespace CoreEngine
         /// @brief メニューバー右端の再生モード・プロジェクト名・シーン名・ビルド構成
         void DrawMenuBarChips();
 
-        /// @brief グローバルなショートカット（再生・一時停止・コマ送り・レイアウト）
+        /// @brief グローバルなショートカット（再生・一時停止・コマ送り・レイアウト・シーンを開く欄）
         void HandleShortcuts();
 
         /// @brief バージョン情報のウィンドウ
@@ -189,6 +192,9 @@ namespace CoreEngine
 
         /// @brief シーンを開く（保存していない変更があれば先に確認する）
         void RequestOpenScene(const std::string& name);
+
+        /// @brief 名前を打ってシーンを開く欄を出す（停止中だけ）
+        void OpenSceneQuickOpen();
 
         /// @brief 新しいシーンを作って開く（保存していない変更があれば先に確認する）
         void RequestCreateScene(const std::string& name, int templateIndex);
