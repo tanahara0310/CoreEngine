@@ -113,5 +113,40 @@ namespace CoreEngine
             const std::string& textUtf8,
             const BuildParams& params,
             std::vector<TextGlyphVertex>& outVertices);
+
+        /// @brief 文字の間の 1 か所（カーソルを置ける所。長さは em 単位・Y 下正）
+        struct CaretStop
+        {
+            /// @brief 左端の x
+            float x = 0.0f;
+            /// @brief 行の上端の y
+            float top = 0.0f;
+            /// @brief 何行目か（0 から）
+            uint32_t line = 0;
+        };
+
+        /// @brief 文字の間ごとの位置と行の大きさ（長さは em 単位）
+        struct CaretLayout
+        {
+            /// @brief コードポイントの数 + 1 個。i 番目は i 番目の文字の前、最後は末尾
+            /// @note 折り返した所は次の行の先頭、改行の前は前の行の末尾になる。
+            std::vector<CaretStop> stops;
+            /// @brief 1 行の上端から下端まで
+            float lineHeight = 0.0f;
+            /// @brief 行送り
+            float lineAdvance = 0.0f;
+            /// @brief 行数（空の文字列でも 1）
+            uint32_t lineCount = 0;
+        };
+
+        /// @brief 文字の間ごとの位置を、`Build` と同じ折り返し・揃え・基準点で求める
+        /// @param font 使用フォント（アトラスに無い文字はここでベイクを要求する）
+        /// @param textUtf8 文字列（UTF-8。改行 \n に対応）
+        /// @param params 組版の指定（`yAxisDown` と `maxGlyphs` は見ない）
+        /// @param outLayout 出力先
+        void LayoutCarets(MsdfFont& font,
+            const std::string& textUtf8,
+            const BuildParams& params,
+            CaretLayout& outLayout);
     }
 }

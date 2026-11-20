@@ -9,6 +9,7 @@
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
 #include "Graphics/PostEffect/Effect/PostEffectNames.h"
 #include "Graphics/PostEffect/FullScreen.h"
+#include "Input/TextInput.h"
 #include "Launch/AppResource.h"
 #include "Utility/Logger/Logger.h"
 #include "WinApp/WinApp.h"
@@ -52,6 +53,12 @@ namespace CoreEngine
 
     LRESULT CALLBACK GameOutputWindow::WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam){
         auto* self = reinterpret_cast<GameOutputWindow*>(::GetWindowLongPtrW(hwnd, GWLP_USERDATA));
+
+        // ゲームの入力欄へ打っている間は、文字とキーをそちらへ渡す
+        LRESULT textResult = 0;
+        if (TextInput::Get().HandleWindowMessage(hwnd, msg, wparam, lparam, textResult)) {
+            return textResult;
+        }
 
         switch (msg) {
         case WM_NCCREATE: {

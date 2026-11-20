@@ -1,0 +1,57 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchor": 0,
+                "anchoredPosition": [
+                    100.0,
+                    36.0
+                ],
+                "pivot": [
+                    0.0,
+                    0.0
+                ],
+                "rotation": 0.0,
+                "size": [
+                    10.0,
+                    10.0
+                ],
+                "sortOrder": 0
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "alignH": 0,
+                "alignV": 0,
+                "color": [
+                    0.75,
+                    0.8,
+                    0.9,
+                    1.0
+                ],
+                "fieldAutoFit": true,
+                "font": "Default",
+                "fontSize": 28.0,
+                "lineSpacing": 1.0,
+                "outlineColor": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "outlineWidth": 0.0,
+                "text": "入力欄：押して打つ・Enter で確定・Esc で戻す・欄の外を押すと打った文字のまま終える",
+                "weight": 0.0,
+                "wrapWidth": 0.0
+            },
+            "type": "UIText"
+        }
+    ],
+    "id": "f2e539a84390b7a8",
+    "name": "Title",
+    "order": 2
+}

@@ -1,0 +1,72 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "anchorMax": [
+                    1.0,
+                    1.0
+                ],
+                "anchorMin": [
+                    0.0,
+                    0.0
+                ],
+                "anchoredPosition": [
+                    0.0,
+                    0.0
+                ],
+                "parent": {
+                    "comp": "RectTransform",
+                    "ref": "98f65d4e78617a32"
+                },
+                "pivot": [
+                    0.5,
+                    0.5
+                ],
+                "rotation": 0.0,
+                "scale": [
+                    1.0,
+                    1.0
+                ],
+                "size": [
+                    0.0,
+                    0.0
+                ],
+                "sortOrder": 0
+            },
+            "type": "RectTransform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "alignH": 0,
+                "alignV": 0,
+                "color": [
+                    0.55,
+                    0.55,
+                    0.58,
+                    1.0
+                ],
+                "fieldAutoFit": false,
+                "font": "Default",
+                "fontSize": 24.0,
+                "lineSpacing": 1.0,
+                "outlineColor": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "outlineWidth": 0.0,
+                "text": "複数行の文を入力…",
+                "weight": 0.0,
+                "wrapWidth": 0.0
+            },
+            "type": "UIText"
+        }
+    ],
+    "id": "526c5e5cf91a314e",
+    "name": "Multi Placeholder",
+    "order": 46
+}

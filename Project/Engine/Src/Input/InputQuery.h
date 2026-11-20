@@ -203,6 +203,9 @@ namespace CoreEngine {
         bool  EvaluateReleased (const InputBinding& b, int player) const;
         float EvaluateAxis     (const InputBinding& b, int player) const;
 
+        /// @brief キーボードを読まないか（エディタの入力欄か、ゲームの入力欄へ打っている間）
+        bool IsKeyboardBlocked() const;
+
         InputConfig    config_;
 
         // いま入力を受け付ける場面。エディタの操作はエディタのビルドでだけ効く

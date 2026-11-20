@@ -43,6 +43,16 @@ namespace CoreEngine
         return instance;
     }
 
+    bool UIPointer::CanvasToScreen(const Vector2& canvasPoint, const Vector2& canvasSize, Vector2& outScreen) const
+    {
+        if (!hasLastView_ || canvasSize.x <= 0.0f || canvasSize.y <= 0.0f) {
+            return false;
+        }
+        outScreen = { lastOrigin_.x + canvasPoint.x / canvasSize.x * lastSize_.x,
+                      lastOrigin_.y + canvasPoint.y / canvasSize.y * lastSize_.y };
+        return true;
+    }
+
     void UIPointer::SetViewRect(const Vector2& origin, const Vector2& size, bool acceptsPointer)
     {
         viewOrigin_ = origin;
@@ -72,11 +82,14 @@ namespace CoreEngine
         pressed_ = false;
         held_ = false;
         released_ = false;
+        pressedAnywhere_ = false;
 
         if (!input) {
             return;
         }
         const InputQuery& query = input->GetQuery();
+        pressedAnywhere_ = query.IsMouseButtonTriggered(MouseButton::Left)
+                        || query.IsMouseButtonTriggered(MouseButton::Right);
 
         Vector2 origin{};
         Vector2 size{};
@@ -107,6 +120,9 @@ namespace CoreEngine
         if (size.x <= 0.0f || size.y <= 0.0f) {
             return;
         }
+        lastOrigin_ = origin;
+        lastSize_ = size;
+        hasLastView_ = true;
 
         const POINT cursor = query.GetCursorPosition();
         const Vector2 local{ static_cast<float>(cursor.x) - origin.x,

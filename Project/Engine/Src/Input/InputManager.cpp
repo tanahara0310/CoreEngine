@@ -5,6 +5,7 @@
 #include "GamepadInput.h"
 #include "KeyboardInput.h"
 #include "MouseInput.h"
+#include "TextInput.h"
 #include "EngineSystem/PlaybackState.h"
 #include "Utility/Logger/Logger.h"
 #include "WinApp/WinApp.h"
@@ -90,6 +91,9 @@ void InputManager::Initialize(HINSTANCE hInstance, HWND hwnd)
 
 void InputManager::Update()
 {
+    // 前のフレームで打ち終えた入力欄があれば、ここからキーボードのアクションを戻す
+    TextInput::Get().BeginFrame();
+
     PollGamepadEvents();
     UpdateVibration();
 

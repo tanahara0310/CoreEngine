@@ -21,6 +21,7 @@
 #include "UI/UIDropdownComponent.h"
 #include "UI/UIDropdownItemComponent.h"
 #include "UI/UIImageComponent.h"
+#include "UI/UIInputFieldComponent.h"
 #include "UI/UILayoutGroupComponent.h"
 #include "UI/UIMaskComponent.h"
 #include "UI/UIScrollViewComponent.h"
@@ -136,6 +137,23 @@ namespace CoreEngine::ObjectEditing
         const Vector4 kNewDropdownHandleColor = { 0.5f, 0.52f, 0.58f, 1.0f };
         const Vector4 kNewDropdownHandleHoveredColor = { 0.4f, 0.42f, 0.48f, 1.0f };
         const Vector4 kNewDropdownHandlePressedColor = { 0.32f, 0.34f, 0.4f, 1.0f };
+
+        /// 入力欄の各オブジェクトの名前
+        constexpr const char* kInputFieldObjectName = "InputField";
+        constexpr const char* kInputTextAreaObjectName = "Text Area";
+        constexpr const char* kInputPlaceholderObjectName = "Placeholder";
+        constexpr const char* kInputTextObjectName = "Text";
+
+        /// 作った入力欄の置き文字
+        constexpr const char* kNewInputPlaceholder = "文字を入力…";
+
+        /// 作った入力欄の大きさ・文字の場所の枠からの間（左・上・右・下）・文字の大きさ（px）
+        const Vector2 kNewInputFieldSize = { 320.0f, 48.0f };
+        const Vector4 kNewInputTextInset = { 12.0f, 6.0f, 12.0f, 6.0f };
+        constexpr float kNewInputFontSize = 24.0f;
+
+        /// 作った入力欄の置き文字の色
+        const Vector4 kNewInputPlaceholderColor = { 0.55f, 0.55f, 0.58f, 1.0f };
 
         /// 子孫をたどる深さの上限
         constexpr int kMaxHierarchyDepth = 64;
@@ -731,6 +749,66 @@ namespace CoreEngine::ObjectEditing
             return dropdown;
         }
 
+        /// @brief 枠・文字の場所（マスク）・打った文字・置き文字を作る（1 回の Undo で全部消える）
+        GameObject* CreateInputField(const Context& context)
+        {
+            const std::string name = MakeUniqueName(*context.manager, kInputFieldObjectName);
+            Editor::BatchScope batch(name + " を作る");
+
+            GameObject* const field = CreateObject(context, name, [](GameObject& created) {
+                if (RectTransformComponent* const rect = created.AddComponent<RectTransformComponent>()) {
+                    rect->SetSize(kNewInputFieldSize);
+                }
+                created.AddComponent<UIImageComponent>();
+                created.AddComponent<UIInputFieldComponent>();
+            });
+            if (!field) {
+                return nullptr;
+            }
+            RectTransformComponent* const fieldRect = field->GetComponent<RectTransformComponent>();
+
+            // 文字の場所は枠の内側に伸ばし、はみ出した文字を切る
+            GameObject* const area = CreateObject(context, MakeUniqueName(*context.manager, kInputTextAreaObjectName),
+                [fieldRect](GameObject& created) {
+                    if (RectTransformComponent* const rect = created.AddComponent<RectTransformComponent>()) {
+                        rect->SetParent(fieldRect, false);
+                        StretchWithInset(*rect, kNewInputTextInset);
+                    }
+                    created.AddComponent<UIMaskComponent>();
+                });
+            RectTransformComponent* const areaRect = area ? area->GetComponent<RectTransformComponent>() : nullptr;
+
+            // 置き文字と打った文字は、文字の場所の左の真ん中から右へ伸ばす
+            const auto createLabel = [&](const char* baseName, const std::string& label, const Vector4& color) {
+                return CreateObject(context, MakeUniqueName(*context.manager, baseName),
+                    [&](GameObject& created) {
+                        if (RectTransformComponent* const rect = created.AddComponent<RectTransformComponent>()) {
+                            rect->SetParent(areaRect, false);
+                            rect->SetAnchors({ 0.0f, 0.5f }, { 0.0f, 0.5f });
+                            rect->SetPivot({ 0.0f, 0.5f });
+                            rect->SetAnchoredPosition({ 0.0f, 0.0f });
+                        }
+                        if (UITextComponent* const text = created.AddComponent<UITextComponent>()) {
+                            text->SetText(label);
+                            text->SetFontSize(kNewInputFontSize);
+                            text->SetAlign(TextAlignH::Left, TextAlignV::Middle);
+                            text->SetColor(color);
+                        }
+                    });
+                };
+            GameObject* const placeholder = areaRect
+                ? createLabel(kInputPlaceholderObjectName, kNewInputPlaceholder, kNewInputPlaceholderColor) : nullptr;
+            GameObject* const text = areaRect
+                ? createLabel(kInputTextObjectName, std::string(), kNewButtonTextColor) : nullptr;
+
+            if (UIInputFieldComponent* const component = field->GetComponent<UIInputFieldComponent>()) {
+                component->SetTextComponent(text ? text->GetComponent<UITextComponent>() : nullptr);
+                component->SetPlaceholder(placeholder ? placeholder->GetComponent<UITextComponent>() : nullptr);
+            }
+            LogCreated("UI の入力欄", *field);
+            return field;
+        }
+
         /// @brief 親いっぱいに伸ばした半透明の画像を持つオブジェクトを作る
         GameObject* CreatePanel(const Context& context)
         {
@@ -891,6 +969,9 @@ namespace CoreEngine::ObjectEditing
         }
         if (kind == UIElementKind::Dropdown) {
             return CreateDropdown(context);
+        }
+        if (kind == UIElementKind::InputField) {
+            return CreateInputField(context);
         }
 
         const char* const baseName = (kind == UIElementKind::Text) ? kTextObjectName : kImageObjectName;

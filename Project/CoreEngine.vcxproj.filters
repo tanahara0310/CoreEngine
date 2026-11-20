@@ -1123,6 +1123,9 @@
     <ClCompile Include="Engine\Src\Input\InputQuery.cpp">
       <Filter>Engine\Src\Input</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Input\TextInput.cpp">
+      <Filter>Engine\Src\Input</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\GameObject\Component\Core\ComponentFactory.cpp">
       <Filter>Engine\Src\GameObject\Component\Core</Filter>
     </ClCompile>
@@ -1403,6 +1406,9 @@
       <Filter>Engine\Src\UI</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\UI\UIDropdownItemComponent.cpp">
+      <Filter>Engine\Src\UI</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\UI\UIInputFieldComponent.cpp">
       <Filter>Engine\Src\UI</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\UI\UIHierarchyClone.cpp">
@@ -3618,6 +3624,9 @@
     <ClInclude Include="Engine\Src\Input\InputQuery.h">
       <Filter>Engine\Src\Input</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Input\TextInput.h">
+      <Filter>Engine\Src\Input</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Math\EulerTransform.h">
       <Filter>Engine\Src\Math</Filter>
     </ClInclude>
@@ -3958,6 +3967,9 @@
       <Filter>Engine\Src\UI</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\UI\UIDropdownItemComponent.h">
+      <Filter>Engine\Src\UI</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\UI\UIInputFieldComponent.h">
       <Filter>Engine\Src\UI</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\UI\UIHierarchyClone.h">

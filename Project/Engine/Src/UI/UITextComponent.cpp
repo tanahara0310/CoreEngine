@@ -261,24 +261,9 @@ namespace CoreEngine
 
         if (!font_ || !font_->IsValid()) { return; }
 
-        // 折り返し幅と枠は px なので em へ直す。枠を固定しているならその幅で折る
         const Vector2 fieldSize = rect.GetRectSize(canvasSize);
         builtFieldSize_ = fieldSize;
-        const float wrapWidth = fieldAutoFit_ ? wrapWidth_ : fieldSize.x;
-
-        TextGeometry::BuildParams params{};
-        params.lineSpacing = lineSpacing_;
-        params.wrapWidthEm = (wrapWidth > 0.0f && fontSize_ > 0.0f) ? wrapWidth / fontSize_ : 0.0f;
-        params.autoFitField = fieldAutoFit_;
-        params.fieldEm = (fieldAutoFit_ || fontSize_ <= 0.0f)
-            ? Vector2{ 0.0f, 0.0f }
-            : Vector2{ fieldSize.x / fontSize_, fieldSize.y / fontSize_ };
-        params.alignH = alignH_;
-        params.alignV = alignV_;
-        params.pivot = rect.GetPivot();
-        // UI の画面座標は Y 下正
-        params.yAxisDown = true;
-        params.maxGlyphs = TextRenderer::kMaxGlyphsPerText;
+        const TextGeometry::BuildParams params = MakeBuildParams(rect, fieldSize);
 
         const TextGeometry::BuildResult result = TextGeometry::Build(*font_, text_, params, glyphVertices_);
         measuredSizeEm_ = result.measuredSizeEm;
@@ -298,6 +283,54 @@ namespace CoreEngine
                 owner ? owner->GetName() : std::string{}, TextRenderer::kMaxGlyphsPerText,
                 result.requestedGlyphCount);
         }
+    }
+
+    TextGeometry::BuildParams UITextComponent::MakeBuildParams(const RectTransformComponent& rect,
+                                                               const Vector2& fieldSize) const
+    {
+        // 折り返し幅と枠は px なので em へ直す。枠を固定しているならその幅で折る
+        const float wrapWidth = fieldAutoFit_ ? wrapWidth_ : fieldSize.x;
+
+        TextGeometry::BuildParams params{};
+        params.lineSpacing = lineSpacing_;
+        params.wrapWidthEm = (wrapWidth > 0.0f && fontSize_ > 0.0f) ? wrapWidth / fontSize_ : 0.0f;
+        params.autoFitField = fieldAutoFit_;
+        params.fieldEm = (fieldAutoFit_ || fontSize_ <= 0.0f)
+            ? Vector2{ 0.0f, 0.0f }
+            : Vector2{ fieldSize.x / fontSize_, fieldSize.y / fontSize_ };
+        params.alignH = alignH_;
+        params.alignV = alignV_;
+        params.pivot = rect.GetPivot();
+        // UI の画面座標は Y 下正
+        params.yAxisDown = true;
+        params.maxGlyphs = TextRenderer::kMaxGlyphsPerText;
+        return params;
+    }
+
+    bool UITextComponent::MeasureCarets(const std::string& textUtf8, UITextCaretLayout& outLayout)
+    {
+        outLayout = {};
+        if (!font_ && !fontResolveFailed_) {
+            ResolveFont();
+        }
+        RectTransformComponent* const rect = GetRectTransform();
+        if (!rect || !font_ || !font_->IsValid()) {
+            return false;
+        }
+
+        const Vector2 canvasSize = renderer_ ? renderer_->GetScreenSize() : rect->FindCanvasSize();
+        const TextGeometry::BuildParams params = MakeBuildParams(*rect, rect->GetRectSize(canvasSize));
+        TextGeometry::CaretLayout layout;
+        TextGeometry::LayoutCarets(*font_, textUtf8, params, layout);
+
+        outLayout.stops.reserve(layout.stops.size());
+        for (const TextGeometry::CaretStop& stop : layout.stops) {
+            outLayout.stops.push_back({ { stop.x * fontSize_, stop.top * fontSize_ }, stop.line });
+        }
+        outLayout.lineHeight = layout.lineHeight * fontSize_;
+        outLayout.lineAdvance = layout.lineAdvance * fontSize_;
+        outLayout.lineCount = layout.lineCount;
+        return true;
     }
 
     void UITextComponent::FitRect(RectTransformComponent& rect)

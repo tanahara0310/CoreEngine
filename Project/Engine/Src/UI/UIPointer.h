@@ -56,6 +56,13 @@ namespace CoreEngine
         /// @brief 左ボタンをこのフレームに離したか
         bool IsReleased() const { return released_; }
 
+        /// @brief 左か右のボタンを、どこかでこのフレームに押したか（ゲーム画面の外でも true）
+        bool IsPressedAnywhere() const { return pressedAnywhere_; }
+
+        /// @brief キャンバス座標を画面のピクセルへ直す（最後に分かったゲーム画面の位置で直す）
+        /// @return ゲーム画面の位置がまだ分からなければ false
+        bool CanvasToScreen(const Vector2& canvasPoint, const Vector2& canvasSize, Vector2& outScreen) const;
+
     private:
         UIPointer() = default;
         ~UIPointer() = default;
@@ -76,5 +83,11 @@ namespace CoreEngine
         bool pressed_ = false;
         bool held_ = false;
         bool released_ = false;
+        bool pressedAnywhere_ = false;
+
+        // 最後に分かったゲーム画面の位置（画面のピクセル）
+        Vector2 lastOrigin_{};
+        Vector2 lastSize_{};
+        bool hasLastView_ = false;
     };
 }

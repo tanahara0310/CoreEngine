@@ -365,6 +365,9 @@ namespace CoreEngine
             if (ImGui::MenuItem("ドロップダウン")) {
                 sceneDebugEditor_->CreateUIObject(ObjectEditing::UIElementKind::Dropdown);
             }
+            if (ImGui::MenuItem("入力欄")) {
+                sceneDebugEditor_->CreateUIObject(ObjectEditing::UIElementKind::InputField);
+            }
             ImGui::EndMenu();
         }
 

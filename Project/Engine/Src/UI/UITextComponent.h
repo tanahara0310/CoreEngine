@@ -16,6 +16,28 @@ namespace CoreEngine
     class MsdfFont;
     class RectTransformComponent;
 
+    /// @brief 文字の間の 1 か所（UI テキストの座標の px。基準点が原点・Y 下正）
+    struct UITextCaretStop
+    {
+        /// @brief 行の上端の左の位置
+        Vector2 position = { 0.0f, 0.0f };
+        /// @brief 何行目か（0 から）
+        uint32_t line = 0;
+    };
+
+    /// @brief 文字の間ごとの位置と行の大きさ（px）
+    struct UITextCaretLayout
+    {
+        /// @brief コードポイントの数 + 1 個。i 番目は i 番目の文字の前、最後は末尾
+        std::vector<UITextCaretStop> stops;
+        /// @brief 1 行の上端から下端まで
+        float lineHeight = 0.0f;
+        /// @brief 行送り
+        float lineAdvance = 0.0f;
+        /// @brief 行数（空の文字列でも 1）
+        uint32_t lineCount = 0;
+    };
+
     /// @brief MSDF フォントで文字列を UI パスへ描くコンポーネント
     /// @details 位置・基準点・枠の大きさ・回転は兄弟の `RectTransformComponent` から取る（無ければ Awake で足す）。
     ///          頂点は em 単位（フォントサイズ 1 のときの大きさ）で組み、フォントサイズ・位置・回転は描画時に掛ける。
@@ -141,7 +163,17 @@ namespace CoreEngine
         /// @brief 兄弟の UI トランスフォーム（配置の出どころ）
         RectTransformComponent* GetRectTransform() const;
 
+        /// @brief 文字の間ごとの位置を、描くときと同じフォント・折り返し・揃えで測る
+        /// @param textUtf8 測る文字列（描いている文字列でなくてよい）
+        /// @param outLayout 出力先（UI テキストの座標の px。基準点が原点）
+        /// @return フォントか UI トランスフォームが無ければ false
+        bool MeasureCarets(const std::string& textUtf8, UITextCaretLayout& outLayout);
+
     private:
+        /// @brief 組版の指定を今の設定から作る
+        /// @param fieldSize 枠の実際の大きさ（px）
+        TextGeometry::BuildParams MakeBuildParams(const RectTransformComponent& rect, const Vector2& fieldSize) const;
+
         /// @brief 名前で指したフォントを引く
         void ResolveFont();
 

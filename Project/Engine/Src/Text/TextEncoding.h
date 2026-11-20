@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace CoreEngine
@@ -60,6 +61,35 @@ namespace CoreEngine
             p += extraBytes + 1;
         }
 
+        return result;
+    }
+
+    /// @brief コードポイント列を UTF-8 文字列へ組み立てる
+    /// @param codePoints コードポイント列。範囲外とサロゲートは U+FFFD へ置換する
+    inline std::string Utf32ToUtf8(std::u32string_view codePoints)
+    {
+        std::string result;
+        result.reserve(codePoints.size());
+        for (char32_t codePoint : codePoints) {
+            if (codePoint > 0x10FFFF || (codePoint >= 0xD800 && codePoint <= 0xDFFF)) {
+                codePoint = 0xFFFD;
+            }
+            if (codePoint < 0x80) {
+                result.push_back(static_cast<char>(codePoint));
+            } else if (codePoint < 0x800) {
+                result.push_back(static_cast<char>(0xC0 | (codePoint >> 6)));
+                result.push_back(static_cast<char>(0x80 | (codePoint & 0x3F)));
+            } else if (codePoint < 0x10000) {
+                result.push_back(static_cast<char>(0xE0 | (codePoint >> 12)));
+                result.push_back(static_cast<char>(0x80 | ((codePoint >> 6) & 0x3F)));
+                result.push_back(static_cast<char>(0x80 | (codePoint & 0x3F)));
+            } else {
+                result.push_back(static_cast<char>(0xF0 | (codePoint >> 18)));
+                result.push_back(static_cast<char>(0x80 | ((codePoint >> 12) & 0x3F)));
+                result.push_back(static_cast<char>(0x80 | ((codePoint >> 6) & 0x3F)));
+                result.push_back(static_cast<char>(0x80 | (codePoint & 0x3F)));
+            }
+        }
         return result;
     }
 }
