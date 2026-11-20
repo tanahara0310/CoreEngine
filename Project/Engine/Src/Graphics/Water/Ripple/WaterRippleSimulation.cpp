@@ -39,6 +39,8 @@ namespace CoreEngine
             float upperBlur = 0.0f;
             int32_t rectMin[2] = { 0, 0 };
             uint32_t rectSize[2] = { 0, 0 };
+            uint32_t objectSourceBegin = 0; ///< これより後ろの源は物が起こした波紋の場へも入れる
+            uint32_t padding[3] = { 0, 0, 0 };
             Vector4 sources[WaterRippleSimulation::kMaxSourcesPerFrame]{};
         };
         static constexpr Cb::Field kWaterRippleInjectConstantsFields[] = {
@@ -46,7 +48,8 @@ namespace CoreEngine
             CB_FIELD(WaterRippleInjectConstants, level), CB_FIELD(WaterRippleInjectConstants, pair),
             CB_FIELD(WaterRippleInjectConstants, sourceCount), CB_FIELD(WaterRippleInjectConstants, lowerBlur),
             CB_FIELD(WaterRippleInjectConstants, upperBlur), CB_FIELD(WaterRippleInjectConstants, rectMin),
-            CB_FIELD(WaterRippleInjectConstants, rectSize), CB_FIELD(WaterRippleInjectConstants, sources),
+            CB_FIELD(WaterRippleInjectConstants, rectSize), CB_FIELD(WaterRippleInjectConstants, objectSourceBegin),
+            CB_FIELD(WaterRippleInjectConstants, padding), CB_FIELD(WaterRippleInjectConstants, sources),
         };
         CB_VERIFY_LAYOUT(WaterRippleInjectConstants, kWaterRippleInjectConstantsFields);
         CB_BIND_HLSL(WaterRippleInjectConstants, kWaterRippleInjectConstantsFields, "WaterRippleInjectConstants");
@@ -90,7 +93,7 @@ namespace CoreEngine
 
         constexpr DXGI_FORMAT kStateFormat = DXGI_FORMAT_R32_FLOAT;
         constexpr DXGI_FORMAT kSurfaceFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
-        constexpr uint32_t kStateSliceCount = WaterRippleSimulation::kLevelCount * 4;
+        constexpr uint32_t kStateSliceCount = WaterRippleSimulation::kLevelCount * WaterRippleSimulation::kFieldCount * 4;
         constexpr uint32_t kInjectGroupSize = 8;
         constexpr uint32_t kPropagateGroupSize = 16;
         constexpr float kGravity = 9.81f;
@@ -226,6 +229,16 @@ namespace CoreEngine
 
     void WaterRippleSimulation::AddRipple(const Vector3& position, float radius, float depth)
     {
+        AddSource(position, radius, depth, false);
+    }
+
+    void WaterRippleSimulation::AddObjectRipple(const Vector3& position, float radius, float depth)
+    {
+        AddSource(position, radius, depth, true);
+    }
+
+    void WaterRippleSimulation::AddSource(const Vector3& position, float radius, float depth, bool fromObject)
+    {
         if (!isInitialized_ || !(radius > 0.0f) || depth == 0.0f || !std::isfinite(depth)
             || !std::isfinite(position.x) || !std::isfinite(position.z)) {
             return;
@@ -238,7 +251,7 @@ namespace CoreEngine
         const float requestedSigma = 0.5f * radius;
         const float sigma = (std::max)(requestedSigma, kMinSigmaCells * kCellSizes[0]);
         const float volumeScale = (requestedSigma * requestedSigma) / (sigma * sigma);
-        pendingSources_.push_back(Source{ position.x, position.z, sigma, depth * volumeScale });
+        pendingSources_.push_back(Source{ position.x, position.z, sigma, depth * volumeScale, fromObject });
     }
 
     void WaterRippleSimulation::Advance(
@@ -370,21 +383,30 @@ namespace CoreEngine
         WaterRippleInjectConstants constants{};
         int32_t rectMin[2] = { static_cast<int32_t>(kResolution), static_cast<int32_t>(kResolution) };
         int32_t rectMax[2] = { 0, 0 };
-        for (const Source& source : pendingSources_) {
-            const float reach = kSourceReachSigmas * std::sqrt(source.sigma * source.sigma + widestBlur * widestBlur);
-            const int32_t minX = FloorToCell(source.x - reach - originX, cellSize);
-            const int32_t minZ = FloorToCell(source.z - reach - originZ, cellSize);
-            const int32_t maxX = FloorToCell(source.x + reach - originX, cellSize) + 1;
-            const int32_t maxZ = FloorToCell(source.z + reach - originZ, cellSize) + 1;
-            if (maxX <= 0 || maxZ <= 0
-                || minX >= static_cast<int32_t>(kResolution) || minZ >= static_cast<int32_t>(kResolution)) {
-                continue;
+        // 物が起こした波紋の源を後ろへ並べる
+        for (const bool fromObject : { false, true }) {
+            if (fromObject) {
+                constants.objectSourceBegin = constants.sourceCount;
             }
-            rectMin[0] = (std::min)(rectMin[0], (std::max)(minX, 0));
-            rectMin[1] = (std::min)(rectMin[1], (std::max)(minZ, 0));
-            rectMax[0] = (std::max)(rectMax[0], (std::min)(maxX, static_cast<int32_t>(kResolution)));
-            rectMax[1] = (std::max)(rectMax[1], (std::min)(maxZ, static_cast<int32_t>(kResolution)));
-            constants.sources[constants.sourceCount++] = Vector4{ source.x, source.z, source.sigma, source.depth };
+            for (const Source& source : pendingSources_) {
+                if (source.fromObject != fromObject) {
+                    continue;
+                }
+                const float reach = kSourceReachSigmas * std::sqrt(source.sigma * source.sigma + widestBlur * widestBlur);
+                const int32_t minX = FloorToCell(source.x - reach - originX, cellSize);
+                const int32_t minZ = FloorToCell(source.z - reach - originZ, cellSize);
+                const int32_t maxX = FloorToCell(source.x + reach - originX, cellSize) + 1;
+                const int32_t maxZ = FloorToCell(source.z + reach - originZ, cellSize) + 1;
+                if (maxX <= 0 || maxZ <= 0
+                    || minX >= static_cast<int32_t>(kResolution) || minZ >= static_cast<int32_t>(kResolution)) {
+                    continue;
+                }
+                rectMin[0] = (std::min)(rectMin[0], (std::max)(minX, 0));
+                rectMin[1] = (std::min)(rectMin[1], (std::max)(minZ, 0));
+                rectMax[0] = (std::max)(rectMax[0], (std::min)(maxX, static_cast<int32_t>(kResolution)));
+                rectMax[1] = (std::max)(rectMax[1], (std::min)(maxZ, static_cast<int32_t>(kResolution)));
+                constants.sources[constants.sourceCount++] = Vector4{ source.x, source.z, source.sigma, source.depth };
+            }
         }
         if (constants.sourceCount == 0 || rectMax[0] <= rectMin[0] || rectMax[1] <= rectMin[1]) {
             return;
@@ -410,7 +432,8 @@ namespace CoreEngine
         binder.Set(injectBindings_[InjectBind::gRippleState], stateUav_.gpuHandle);
         binder.ValidateBeforeDraw(injectBindings_);
         cmdList->Dispatch(
-            DivRoundUp(constants.rectSize[0], kInjectGroupSize), DivRoundUp(constants.rectSize[1], kInjectGroupSize), 1);
+            DivRoundUp(constants.rectSize[0], kInjectGroupSize), DivRoundUp(constants.rectSize[1], kInjectGroupSize),
+            kFieldCount);
         Barrier::UAV(cmdList, state_);
     }
 
@@ -440,7 +463,7 @@ namespace CoreEngine
         binder.Set(propagateBindings_[PropagateBind::gRippleSurface], surfaceUav_.gpuHandle);
         binder.ValidateBeforeDraw(propagateBindings_);
         const UINT groups = DivRoundUp(kResolution, kPropagateGroupSize);
-        cmdList->Dispatch(groups, groups, 1);
+        cmdList->Dispatch(groups, groups, kFieldCount);
 
         BarrierBatch barriers(cmdList);
         barriers.UAV(state_);

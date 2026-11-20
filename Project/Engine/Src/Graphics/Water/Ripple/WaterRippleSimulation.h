@@ -2,6 +2,7 @@
 
 #include <d3d12.h>
 #include <wrl.h>
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <vector>
@@ -24,11 +25,14 @@ namespace CoreEngine
     /// @details 段ごとに 512×512 マスの高さの場を持ち、深い水の重力波の分散（ω² = g|k|）で進める
     ///          （WaterRipplePropagate.CS.hlsl）。源はくぼみで、段ごとに受け持つ波長の帯へ分けて入れる
     ///          （WaterRippleInject.CS.hlsl）。水面は全部の段の傾きを足して法線へ加える。
+    ///          場は段ごとに 2 つあり、全部の波紋の場と、物が起こした波紋（AddObjectRipple）だけの場を同じ式で進める。
     ///          格子は段の 1 歩ごとにカメラの真下へマス単位で寄せる。
     ///          しばらく源が無い段は止め、次の源で 0 から始め直す。
     class WaterRippleSimulation {
     public:
         static constexpr uint32_t kLevelCount = 3;
+        /// @brief 段ごとの場の数（0 = 全部の波紋・1 = 物が起こした波紋）
+        static constexpr uint32_t kFieldCount = 2;
         static constexpr uint32_t kResolution = 512;
         static constexpr uint32_t kMaxSourcesPerFrame = 256;
         static constexpr uint32_t kMaxStepsPerFrame = 4;
@@ -59,6 +63,15 @@ namespace CoreEngine
         /// @details 次の Dispatch で格子へ入れる。1 フレームに kMaxSourcesPerFrame 個まで
         void AddRipple(const Vector3& position, float radius, float depth);
 
+        /// @brief 物が起こした波紋の源を足す（形は AddRipple と同じ。物が起こした波紋の場へも入れる）
+        void AddObjectRipple(const Vector3& position, float radius, float depth);
+
+        /// @brief このフレームにまだ足せる源の数（AddRipple と AddObjectRipple で共通）
+        uint32_t GetFreeSourceCount() const
+        {
+            return kMaxSourcesPerFrame - (std::min)(static_cast<uint32_t>(pendingSources_.size()), kMaxSourcesPerFrame);
+        }
+
         /// @brief 時刻を進め、段ごとにこのフレームで進める歩数と格子の置き場所を決める（フレームに 1 回）
         /// @param cameraX, cameraZ カメラの XZ [m]
         /// @param viewX, viewZ カメラが見ている向きの水平の成分（長さ 1 以下。真下を見ると 0）
@@ -72,7 +85,7 @@ namespace CoreEngine
         /// @brief このフレームの歩の後の格子の範囲と面の SRV の番号を書く（strength には触れない）
         void FillBinding(WaterRippleBinding& out) const;
 
-        /// @brief 水面が読む面（段ごとの高さと傾き）の SRV
+        /// @brief 水面が読む面（段ごとの高さと傾きと、物が起こした波紋の高さ）の SRV
         D3D12_GPU_DESCRIPTOR_HANDLE GetSurfaceSrvHandle() const { return surfaceSrv_.gpuHandle; }
 
         /// @brief 波紋を進めている段があるか
@@ -84,6 +97,7 @@ namespace CoreEngine
             float z = 0.0f;
             float sigma = 0.0f; ///< ガウスの幅 [m]
             float depth = 0.0f; ///< くぼみの深さ [m]
+            bool fromObject = false; ///< 物が起こした波紋の場へも入れる
         };
 
         struct Level {
@@ -99,6 +113,7 @@ namespace CoreEngine
 
         bool CreatePipelines();
         bool CreateTextures();
+        void AddSource(const Vector3& position, float radius, float depth, bool fromObject);
         void InjectSources(ID3D12GraphicsCommandList* cmdList, uint32_t levelIndex);
         void Step(ID3D12GraphicsCommandList* cmdList, uint32_t levelIndex, const int32_t shiftCells[2], bool clear);
 
@@ -114,10 +129,10 @@ namespace CoreEngine
         Microsoft::WRL::ComPtr<ID3D12PipelineState> propagatePipeline_;
         BindingTable propagateBindings_;
 
-        /// @brief 段ごとに 2 組の (h_n, h_{n-1})（R32_FLOAT・12 枚）
+        /// @brief 段と場ごとに 2 組の (h_n, h_{n-1})（R32_FLOAT・24 枚）
         GpuResource state_{};
         DescriptorHandle stateUav_{};
-        /// @brief 段ごとの (高さ, ∂h/∂x, ∂h/∂z, 0)（RGBA16F・3 枚）
+        /// @brief 段ごとの (全部の波紋の高さ, ∂h/∂x, ∂h/∂z, 物が起こした波紋の高さ)（RGBA16F・3 枚）
         GpuResource surface_{};
         DescriptorHandle surfaceSrv_{};
         DescriptorHandle surfaceUav_{};

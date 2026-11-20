@@ -1,0 +1,66 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    0.6,
+                    0.4,
+                    1.6
+                ],
+                "translate": [
+                    8.0,
+                    0.0,
+                    -4.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "model": {
+                    "guid": "e8a79191-50ea-0673-1816-c257f280ba64",
+                    "path": "Engine/Assets/Models/Primitives/Box/cube.obj"
+                },
+                "materials": [
+                    {
+                        "color": [
+                            0.92,
+                            0.92,
+                            0.88,
+                            1.0
+                        ],
+                        "roughness": 0.6,
+                        "metallic": 0.0,
+                        "lighting": true
+                    }
+                ]
+            },
+            "type": "MeshRenderer"
+        },
+        {
+            "enabled": true,
+            "parameters": {},
+            "type": "WaterRippleEmitter"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "speed": 3.0,
+                "distance": 30.0
+            },
+            "type": "RippleBoatProbe"
+        }
+    ],
+    "id": "5c91e07d3ab6f248",
+    "name": "WakeBoat",
+    "order": 8
+}

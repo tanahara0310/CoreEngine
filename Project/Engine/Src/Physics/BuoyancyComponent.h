@@ -5,7 +5,9 @@
 
 #include "GameObject/Component/Core/IComponent.h"
 #include "Graphics/Water/Query/WaterQuery.h"
+#include "Graphics/Water/Ripple/WaterRippleFootprint.h"
 #include "Math/Vector/Vector3.h"
+#include "Physics/DisplacementCells.h"
 #include "Physics/PhysicsKey.h"
 #include "Reflection/Reflect.h"
 
@@ -18,10 +20,11 @@ class RigidbodyComponent;
 ///          沈んだ体積の分だけ上向きの力をその位置へ加える。力は塊ごとの位置へ加わり、傾いた物を起こす回転も生む。
 ///          水の抵抗は塊ごとに、速さに比例する分と、動く向きから見た面積で速さの 2 乗に比例する分を加える。
 ///          水面の高さは描かれる水面と同じで、1〜2 フレーム遅れて届く（WaterQuery）。
+///          動く・揺れる・沈む・浮き上がるときは、押しのけた水の変化を水の波紋として入れる（WaterRippleFootprint）。
 class BuoyancyComponent : public IComponent {
 public:
     /// @brief 形を分ける塊の数
-    static constexpr uint32_t kSampleCount = 8;
+    static constexpr uint32_t kSampleCount = kDisplacementCellCount;
 
     /// @brief 水の中を速く動くときの抵抗の係数（形の抵抗係数）
     static constexpr float kDragCoefficient = 1.0f;
@@ -37,6 +40,8 @@ public:
             p.tooltip = "1/s。沈んでいる分だけ、水の中を動く速さを落とす。速く動くときの抵抗は形の大きさから求めて足す")
         REFLECT_PROPERTY(waterAngularDrag_, "水の回転の抵抗", p.range = Range(0.0f, 20.0f, 0.01f),
             p.tooltip = "1/s。沈んでいる分だけ回転を落とす")
+        REFLECT_PROPERTY(rippleStrength_, "波紋の強さ", p.range = Range(0.0f, 10.0f, 0.01f),
+            p.tooltip = "進む・揺れる・沈む・浮き上がるときに押しのけた水の変化を、水の波紋にする倍率。0 で波紋を起こさない")
         REFLECT_READONLY_ACCESSOR("submergedRatio", "沈んでいる割合", GetSubmergedRatio)
         REFLECT_READONLY_ACCESSOR("inWater", "水に触れている", IsInWater)
     REFLECT_END()
@@ -49,6 +54,9 @@ public:
 
     /// @brief 水面の高さを調べる点を外す
     void OnDisable() override;
+
+    /// @brief 押しのけた水の変化を水の波紋として入れる
+    void LateUpdate() override;
 
     /// @brief 物理の 1 ステップの前に、浮力と水の抵抗を剛体へ加える（PhysicsFeature が呼ぶ）
     /// @param deltaTime このステップの秒数
@@ -67,24 +75,23 @@ public:
     float GetVolume() const { return volume_; }
     void SetVolume(float volume) { volume_ = volume; }
 
-private:
-    /// @brief 形を分けた塊 1 つ（オーナーの軸に沿った、スケール込みの大きさ）
-    struct Cell {
-        Vector3 localCenter{}; ///< オーナーの位置から塊の中心まで（オーナーの軸の成分）
-        Vector3 size{};        ///< 塊の 3 辺の長さ
-    };
+    float GetRippleStrength() const { return rippleStrength_; }
+    void SetRippleStrength(float strength) { rippleStrength_ = strength; }
 
+private:
     /// @brief 兄弟のコライダーの形とオーナーのスケールから塊を作り直す
     /// @return 形全体の体積 [m³]
-    float BuildCells(std::array<Cell, kSampleCount>& cells) const;
+    float BuildCells(DisplacementCells& cells) const;
 
     float waterDensity_ = 1025.0f;
     float volume_ = 0.0f;
     float waterDrag_ = 1.0f;
     float waterAngularDrag_ = 1.0f;
+    float rippleStrength_ = 1.0f;
 
     WaterQuery* query_ = nullptr;
     std::array<uint32_t, kSampleCount> points_{};
     float submergedRatio_ = 0.0f;
+    WaterRippleFootprint footprint_{};
 };
 }

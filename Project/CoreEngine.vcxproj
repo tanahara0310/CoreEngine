@@ -380,6 +380,8 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterSurfaceMeshGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterShoreMeshDisplacement.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Ripple\WaterRippleSimulation.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\Ripple\WaterRippleFootprint.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\Ripple\WaterRippleEmitterComponent.cpp" />
     <ClCompile Include="Engine\Src\Camera\CameraManager.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\Module\CameraClipPlayerModule.cpp" />
     <ClCompile Include="Engine\Src\Editor\Camera\CameraDebugUI.cpp" />
@@ -415,6 +417,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Physics\PhysicsWorld.cpp" />
     <ClCompile Include="Engine\Src\Physics\RigidbodyComponent.cpp" />
     <ClCompile Include="Engine\Src\Physics\BuoyancyComponent.cpp" />
+    <ClCompile Include="Engine\Src\Physics\DisplacementCells.cpp" />
     <ClCompile Include="Engine\Src\Physics\PhysicsMaterialComponent.cpp" />
     <ClCompile Include="Engine\Src\Physics\CharacterControllerComponent.cpp" />
     <ClCompile Include="Engine\Src\Physics\ContactSolver.cpp" />
@@ -1602,6 +1605,8 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterSurfaceMeshGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterShoreMeshDisplacement.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Ripple\WaterRippleSimulation.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\Ripple\WaterRippleFootprint.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\Ripple\WaterRippleEmitterComponent.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterRenderResources.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterWetnessHistory.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterShaderResourceBinder.h" />
@@ -1647,6 +1652,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Physics\PhysicsWorld.h" />
     <ClInclude Include="Engine\Src\Physics\RigidbodyComponent.h" />
     <ClInclude Include="Engine\Src\Physics\BuoyancyComponent.h" />
+    <ClInclude Include="Engine\Src\Physics\DisplacementCells.h" />
     <ClInclude Include="Engine\Src\Physics\PhysicsMaterialComponent.h" />
     <ClInclude Include="Engine\Src\Physics\CharacterControllerComponent.h" />
     <ClInclude Include="Engine\Src\Physics\ContactSolver.h" />

@@ -471,6 +471,7 @@ class GameObject {
 	CoreEngine::UISlider@ get_uiSlider() property;
 	CoreEngine::UIToggle@ get_uiToggle() property;
 	CoreEngine::WaterProbe@ get_waterProbe() property;
+	CoreEngine::WaterRippleEmitter@ get_waterRippleEmitter() property;
 	CoreEngine::WaterSurface@ get_waterSurface() property;
 }
 class Transform {
@@ -884,6 +885,8 @@ class Buoyancy {
 	void set_waterDrag(float) property;
 	float get_waterAngularDrag() const property;
 	void set_waterAngularDrag(float) property;
+	float get_rippleStrength() const property;
+	void set_rippleStrength(float) property;
 	float get_submergedRatio() const property;
 	bool get_inWater() const property;
 }
@@ -1527,6 +1530,16 @@ class WaterProbe {
 	float get_surfaceHeight() const property;
 	float get_depth() const property;
 	CoreEngine::Vector3 get_surfaceNormal() const property;
+}
+class WaterRippleEmitter {
+	bool get_exists() const property;
+	bool get_enabled() const property;
+	void set_enabled(bool) property;
+	CoreEngine::GameObject@ get_gameObject() const property;
+	float get_strength() const property;
+	void set_strength(float) property;
+	bool get_inWater() const property;
+	float get_displacedVolume() const property;
 }
 class WaterSurface {
 	bool get_exists() const property;
