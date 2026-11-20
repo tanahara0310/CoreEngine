@@ -62,12 +62,26 @@ namespace CoreEngine
             float keep = 1.0f;
             float invTwoCellSize = 0.0f;
             uint32_t clear = 0;
+            float levelOriginXZ[2] = { 0.0f, 0.0f };
+            float cellSize = 0.0f;
+            float shoreAbsorbDepth = 0.0f;
+            float shoreMapOriginXZ[2] = { 0.0f, 0.0f };
+            float shoreMapTexelsPerMeter = 0.0f;
+            float shoreDepthOffset = 0.0f;
+            uint32_t shoreMapResolution[2] = { 0, 0 }; ///< 0 = 地図なし
+            float shorePad[2] = { 0.0f, 0.0f };
         };
         static constexpr Cb::Field kWaterRipplePropagateConstantsFields[] = {
             CB_FIELD(WaterRipplePropagateConstants, shiftCells), CB_FIELD(WaterRipplePropagateConstants, level),
             CB_FIELD(WaterRipplePropagateConstants, readPair), CB_FIELD(WaterRipplePropagateConstants, courant),
             CB_FIELD(WaterRipplePropagateConstants, keep), CB_FIELD(WaterRipplePropagateConstants, invTwoCellSize),
-            CB_FIELD(WaterRipplePropagateConstants, clear),
+            CB_FIELD(WaterRipplePropagateConstants, clear), CB_FIELD(WaterRipplePropagateConstants, levelOriginXZ),
+            CB_FIELD(WaterRipplePropagateConstants, cellSize), CB_FIELD(WaterRipplePropagateConstants, shoreAbsorbDepth),
+            CB_FIELD(WaterRipplePropagateConstants, shoreMapOriginXZ),
+            CB_FIELD(WaterRipplePropagateConstants, shoreMapTexelsPerMeter),
+            CB_FIELD(WaterRipplePropagateConstants, shoreDepthOffset),
+            CB_FIELD(WaterRipplePropagateConstants, shoreMapResolution),
+            CB_FIELD(WaterRipplePropagateConstants, shorePad),
         };
         CB_VERIFY_LAYOUT(WaterRipplePropagateConstants, kWaterRipplePropagateConstantsFields);
         CB_BIND_HLSL(WaterRipplePropagateConstants, kWaterRipplePropagateConstantsFields, "WaterRipplePropagateConstants");
@@ -82,11 +96,12 @@ namespace CoreEngine
         }
 
         namespace PropagateBind {
-            enum Slot : size_t { WaterRipplePropagateConstants, gRippleState, gRippleSurface, Count };
+            enum Slot : size_t { WaterRipplePropagateConstants, gRippleState, gRippleSurface, gShoreMap, Count };
             inline constexpr ShaderBindingDecl kDecls[] = {
                 { "WaterRipplePropagateConstants", ShaderBindingType::CBV, BindingUsage::Required },
                 { "gRippleState",                  ShaderBindingType::UAV, BindingUsage::Required },
                 { "gRippleSurface",                ShaderBindingType::UAV, BindingUsage::Required },
+                { "gShoreMap",                     ShaderBindingType::SRV, BindingUsage::Optional },
             };
             static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
         }
@@ -105,6 +120,10 @@ namespace CoreEngine
         constexpr float kIdleAmplitude = 1.0e-3f;
         constexpr float kMinIdleSeconds = 5.0f;
         constexpr float kMaxIdleSeconds = 60.0f;
+        // 浅瀬で波を弱め始める水深を決める浜の傾き（この傾きの浜で、弱める帯の幅が端の吸い込みの帯と同じになる）
+        constexpr float kShoreAbsorbSlope = 0.1f;
+        // 端の吸い込みの帯の幅 [マス]（WaterRippleGrid.hlsli の kRippleSpongeCells）
+        constexpr float kSpongeCells = 16.0f;
 
         int32_t FloorToCell(float meters, float cellSize)
         {
@@ -453,6 +472,18 @@ namespace CoreEngine
         constants.keep = std::exp(-2.0f * dampingPerSecond_ * stepSeconds);
         constants.invTwoCellSize = 0.5f / cellSize;
         constants.clear = clear ? 1u : 0u;
+        constants.levelOriginXZ[0] = static_cast<float>(level.originCell[0] + shiftCells[0]) * cellSize;
+        constants.levelOriginXZ[1] = static_cast<float>(level.originCell[1] + shiftCells[1]) * cellSize;
+        constants.cellSize = cellSize;
+        constants.shoreAbsorbDepth = kShoreAbsorbSlope * kSpongeCells * cellSize;
+        if (shoreMap_.has_value()) {
+            constants.shoreMapOriginXZ[0] = shoreMap_->originXZ[0];
+            constants.shoreMapOriginXZ[1] = shoreMap_->originXZ[1];
+            constants.shoreMapTexelsPerMeter = shoreMap_->texelsPerMeter;
+            constants.shoreDepthOffset = shoreMap_->depthOffset;
+            constants.shoreMapResolution[0] = shoreMap_->resolution[0];
+            constants.shoreMapResolution[1] = shoreMap_->resolution[1];
+        }
 
         const D3D12_GPU_VIRTUAL_ADDRESS address = dxCommon_->GetUploadRing().AllocateConstants(constants);
         cmdList->SetPipelineState(propagatePipeline_.Get());
@@ -461,6 +492,9 @@ namespace CoreEngine
         binder.Set(propagateBindings_[PropagateBind::WaterRipplePropagateConstants], address);
         binder.Set(propagateBindings_[PropagateBind::gRippleState], stateUav_.gpuHandle);
         binder.Set(propagateBindings_[PropagateBind::gRippleSurface], surfaceUav_.gpuHandle);
+        if (shoreMap_.has_value()) {
+            binder.Set(propagateBindings_[PropagateBind::gShoreMap], shoreMap_->srv);
+        }
         binder.ValidateBeforeDraw(propagateBindings_);
         const UINT groups = DivRoundUp(kResolution, kPropagateGroupSize);
         cmdList->Dispatch(groups, groups, kFieldCount);

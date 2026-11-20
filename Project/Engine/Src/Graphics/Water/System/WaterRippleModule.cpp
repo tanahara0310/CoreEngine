@@ -3,6 +3,7 @@
 
 #include "Camera/Camera.h"
 #include "Graphics/Render/RenderDomainContext.h"
+#include "Graphics/Water/RayTracing/WaterSeaMapRayTracingManager.h"
 #include "Graphics/Water/Ripple/WaterRippleSimulation.h"
 #include "Graphics/Water/Surface/WaterRenderResources.h"
 #include "Graphics/Water/Surface/WaterSurfaceComponent.h"
@@ -58,6 +59,37 @@ namespace CoreEngine
         out.ripple.strength = waterPlane.GetProfile().rippleStrength;
         if (out.ripple.strength <= 0.0f) {
             out.ripple.enabled = 0;
+        }
+    }
+
+    void WaterRippleModule::CaptureShore(RenderDomainContext& domain, const WaterSurfaceData& snapshot) const
+    {
+        WaterRippleSimulation* const simulation = domain.GetWaterRippleSimulation();
+        if (!simulation) {
+            return;
+        }
+        const WaterSeaMapBinding& seaMap = snapshot.seaMap;
+        const WaterSeaMapRayTracingManager* const seaMapManager = domain.GetRTEffects().Find<WaterSeaMapRayTracingManager>();
+        if (!WaterCVars::RippleShore.Get() || seaMap.resolution[0] == 0 || seaMap.resolution[1] == 0 || !seaMapManager) {
+            simulation->SetShoreMap(std::nullopt);
+            return;
+        }
+
+        WaterRippleSimulation::ShoreMap shoreMap{};
+        shoreMap.srv = seaMapManager->GetView().srvHandle;
+        shoreMap.resolution[0] = seaMap.resolution[0];
+        shoreMap.resolution[1] = seaMap.resolution[1];
+        shoreMap.originXZ[0] = seaMap.originXZ[0];
+        shoreMap.originXZ[1] = seaMap.originXZ[1];
+        shoreMap.texelsPerMeter = seaMap.texelsPerMeter;
+        shoreMap.depthOffset = seaMap.depthOffset;
+        simulation->SetShoreMap(shoreMap);
+    }
+
+    void WaterRippleModule::ClearShore(RenderDomainContext& domain)
+    {
+        if (WaterRippleSimulation* const simulation = domain.GetWaterRippleSimulation()) {
+            simulation->SetShoreMap(std::nullopt);
         }
     }
 }

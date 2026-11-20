@@ -5,11 +5,14 @@
 // K の周波数の応答は波長 2.5〜16 マスで |k| と ±1% で一致し、どの波数でも 0 以上 4.24 以下。
 // 格子の最小の角を動かした歩は、古い状態を gShiftCells だけずらして読む（範囲の外は 0）。
 // 端から kRippleSpongeCells マスの帯では h_{n+1} と h_n を弱めて、外へ出る波を吸い込む。
+// 海の範囲マップがあるときは、陸と水の中の物の下のマスを 0 に保つ壁にし（波は跳ね返る）、
+// 水深が gShoreAbsorbDepth より浅いマスでは端の帯と同じ式で弱める（緩い浜では吸い込まれる）。
 // グループの Z が場の番号で、場ごとに同じ式で進める。
 // 水面が読む面へは、場 0 のグループが場 0 の h_n とその傾きと、場 1 の h_n を書く。
 // ============================================================
 
 #include "../Common/WaterRippleGrid.hlsli"
+#include "../Common/WaterSeaMap.hlsli"
 
 cbuffer WaterRipplePropagateConstants : register(b0)
 {
@@ -20,10 +23,19 @@ cbuffer WaterRipplePropagateConstants : register(b0)
     float gKeep;             // 1 歩で速さを残す割合
     float gInvTwoCellSize;   // 1 / (2 × 1 マスの幅) [1/m]
     uint gClear;             // 1 = 書く組と面を 0 にする
+    float2 gLevelOriginXZ;   // この歩の後の格子の最小の角 [m]
+    float gCellSize;         // 1 マスの幅 [m]
+    float gShoreAbsorbDepth; // これより浅いマスで波を弱める水深 [m]
+    float2 gShoreMapOriginXZ;      // 海の範囲マップの最小の角 [m]
+    float gShoreMapTexelsPerMeter; // 海の範囲マップの 1 m あたりのテクセル数
+    float gShoreDepthOffset;       // 今の水面の高さ − 地図を測ったときの水面の高さ [m]
+    uint2 gShoreMapResolution;     // 海の範囲マップのテクセル数（0 = 地図なし。岸と物を扱わない）
+    float2 gShorePad;
 };
 
 RWTexture2DArray<float> gRippleState : register(u0);
 RWTexture2DArray<float4> gRippleSurface : register(u1);
+Texture2D<float4> gShoreMap : register(t0);
 
 static const int kKernelRadius = 8;
 static const int kTileSize = 16;
@@ -40,6 +52,49 @@ float LoadState(int2 cell, uint slice)
         return 0.0f;
     }
     return gRippleState[uint3(cell, slice)];
+}
+
+/// @brief 海の範囲マップのテクセルの、今の水面からの水深 [m]（水たまりは深い水として返す）
+float LoadShoreDepth(int2 texel)
+{
+    const float depth = gShoreMap.Load(int3(texel, 0)).x;
+    return IsWaterSeaMapBasin(depth) ? kWaterSeaMapOutsideValue : depth + gShoreDepthOffset;
+}
+
+/// @brief ワールド XZ の今の水面からの水深を、地図のテクセルの間で双一次に補間する [m]（地図の外は深い水）
+float SampleShoreDepth(float2 worldXZ)
+{
+    const float2 texelPos = (worldXZ - gShoreMapOriginXZ) * gShoreMapTexelsPerMeter - 0.5f;
+    if (any(texelPos < -0.5f) || any(texelPos > float2(gShoreMapResolution) - 0.5f))
+    {
+        return kWaterSeaMapOutsideValue;
+    }
+    const int2 maxCoord = int2(gShoreMapResolution) - 1;
+    const int2 baseCoord = int2(floor(texelPos));
+    const float2 f = texelPos - float2(baseCoord);
+    const int2 p00 = clamp(baseCoord, 0, maxCoord);
+    const int2 p11 = clamp(baseCoord + 1, 0, maxCoord);
+    const float d00 = LoadShoreDepth(p00);
+    const float d10 = LoadShoreDepth(int2(p11.x, p00.y));
+    const float d01 = LoadShoreDepth(int2(p00.x, p11.y));
+    const float d11 = LoadShoreDepth(p11);
+    return lerp(lerp(d00, d10, f.x), lerp(d01, d11, f.x), f.y);
+}
+
+/// @brief マスの h に毎歩掛ける、岸と物による割合（0 = 壁 / 1 = そのまま）
+float EvaluateShoreFactor(int2 cell)
+{
+    if (gShoreMapResolution.x == 0)
+    {
+        return 1.0f;
+    }
+    const float depth = SampleShoreDepth(gLevelOriginXZ + (float2(cell) + 0.5f) * gCellSize);
+    if (depth <= 0.0f)
+    {
+        return 0.0f;
+    }
+    const float shallow = saturate(1.0f - depth / gShoreAbsorbDepth);
+    return 1.0f - kSpongeStrength * shallow * shallow;
 }
 
 [numthreads(16, 16, 1)]
@@ -119,7 +174,7 @@ void main(uint3 groupId : SV_GroupID, uint3 groupThreadId : SV_GroupThreadID, ui
 
     const int edgeCells = min(min(cell.x, cell.y), min(int(kRippleResolution) - 1 - cell.x, int(kRippleResolution) - 1 - cell.y));
     const float inside = saturate(1.0f - (float)edgeCells / kRippleSpongeCells);
-    const float absorb = 1.0f - kSpongeStrength * inside * inside;
+    const float absorb = (1.0f - kSpongeStrength * inside * inside) * EvaluateShoreFactor(cell);
 
     gRippleState[writeHeightTexel] = next * absorb;
     gRippleState[writePreviousTexel] = height * absorb;

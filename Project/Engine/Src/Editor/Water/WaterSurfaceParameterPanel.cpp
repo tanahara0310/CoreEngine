@@ -549,6 +549,7 @@ bool WaterSurfaceParameterPanel::DrawRippleSection(const Target& target) {
 	CVarUI::DrawRow(&WaterCVars::RippleEnabled, "波紋を進める（プロジェクト）");
 	ImGui::BeginDisabled(!WaterCVars::RippleEnabled.Get());
 	CVarUI::DrawRow(&WaterCVars::RippleDamping, "消える速さ（プロジェクト）", "%.2f /s");
+	CVarUI::DrawRow(&WaterCVars::RippleShore, "岸と物で跳ね返す（プロジェクト）");
 
 	const GameObject* const owner = target.water.GetOwner();
 	WaterRippleSimulation* const ripple = FindWaterRippleSimulation(owner ? owner->GetEngineSystem() : nullptr);
@@ -562,7 +563,8 @@ bool WaterSurfaceParameterPanel::DrawRippleSection(const Target& target) {
 	ImGui::EndDisabled();
 	ImGui::EndDisabled();
 	InspectorLayout::Hint("スクリプトからは Water::AddRipple(位置, 半径, 深さ) で起こす。波紋はカメラの前に置いた 3 段の格子"
-		"（32 m・128 m・512 m）で進み、カメラに近いほど細かい波まで出る。停止中は水の時間が止まっているので、ボタンは再生中だけ押せる。");
+		"（32 m・128 m・512 m）で進み、カメラに近いほど細かい波まで出る。停止中は水の時間が止まっているので、ボタンは再生中だけ押せる。"
+		"海の範囲マップ（レイトレーシング）があると、陸と水の中の止まった物で跳ね返り、緩い浜では吸い込まれる。");
 	return changed;
 }
 

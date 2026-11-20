@@ -77,7 +77,7 @@ namespace CoreEngine
         std::vector<float> depth(texelCount);
         std::vector<float> clearance(texelCount);
         for (size_t i = 0; i < texelCount; ++i) {
-            depth[i] = std::clamp(input.measured[2 * i], -kMaxValue, kMaxValue);
+            depth[i] = std::clamp(input.measured[2 * i], -kMaxLandHeight, kMaxValue);
             clearance[i] = std::clamp(input.measured[2 * i + 1], 0.0f, kMaxValue);
         }
 
@@ -134,7 +134,7 @@ namespace CoreEngine
                 ++stats.seaTexels;
             } else {
                 ++stats.basinTexels;
-                depth[i] = -kMaxValue;
+                depth[i] = kBasinDepth;
                 clearance[i] = 0.0f;
             }
         }

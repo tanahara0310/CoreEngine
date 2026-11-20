@@ -40,6 +40,8 @@ namespace CoreEngine
             "物が落ちた所や水を進む物の周りに、カメラの前に置いた格子で波紋を広げる" };
         CVar<float> RippleDamping{ "r.Water.Ripple.Damping", 0.4f,
             "波紋の振幅が 1/e になるまでの時間の逆数 [1/s]（大きいほど早く消える）", CVarRange{ 0.0f, 5.0f } };
+        CVar<bool> RippleShore{ "r.Water.Ripple.Shore", true,
+            "海の範囲マップで陸と水の中の物を壁にし、波紋を跳ね返す（緩い浜では吸い込む）。地図はレイトレーシングで測る" };
 
         // ---- コースティクス ----
         CVar<int> CausticsBackend{ "r.Water.Caustics.Backend", 0,
