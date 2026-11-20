@@ -12,6 +12,7 @@
 #include "Graphics/Water/Foam/WaterShoreFoam.h"
 #include "Graphics/Water/Foam/WaterWhitecapFoam.h"
 #include "Graphics/Water/Query/WaterHeightQueryManager.h"
+#include "Graphics/Water/Ripple/WaterRippleSimulation.h"
 #include "Graphics/Water/Surface/WaterShoreMeshDisplacement.h"
 #include "Graphics/Water/Query/WaterQuery.h"
 #include "Graphics/Atmosphere/AtmosphereManager.h"
@@ -152,6 +153,12 @@ namespace CoreEngine
                 "RenderDomainContext: WaterShoreMeshDisplacement 初期化完了\n");
         }
 
+        waterRippleSimulation_ = std::make_unique<WaterRippleSimulation>();
+        if (waterRippleSimulation_->Initialize(dxCommon, descriptorAllocator, shaderProgramCache)) {
+            Logger::GetInstance().Infof(LogCategory::Graphics,
+                "RenderDomainContext: WaterRippleSimulation 初期化完了\n");
+        }
+
         waterHeightQueryManager_ = std::make_unique<WaterHeightQueryManager>();
         if (waterHeightQueryManager_->Initialize(dxCommon, descriptorAllocator, shaderProgramCache, waterQuery_.get())) {
             Logger::GetInstance().Infof(LogCategory::Graphics,
@@ -183,6 +190,7 @@ namespace CoreEngine
 #endif
         rtEffects_.Shutdown();
         waterHeightQueryManager_.reset();
+        waterRippleSimulation_.reset();
         waterShoreMeshDisplacement_.reset();
         waterShoreFoam_.reset();
         waterWhitecapFoam_.reset();
@@ -226,6 +234,7 @@ namespace CoreEngine
         context.waterWhitecapFoam = waterWhitecapFoam_.get();
         context.waterShoreFoam = waterShoreFoam_.get();
         context.waterShoreMeshDisplacement = waterShoreMeshDisplacement_.get();
+        context.waterRippleSimulation = waterRippleSimulation_.get();
         context.waterHeightQueryManager = waterHeightQueryManager_.get();
         context.atmosphereManager = atmosphereManager_.get();
         context.volumetricCloudManager = volumetricCloudManager_.get();

@@ -15,6 +15,7 @@
 #include "Script/Binding/GizmosBinding.h"
 #include "Script/Binding/RandomBinding.h"
 #include "Script/Binding/RenderingBinding.h"
+#include "Script/Binding/WaterBinding.h"
 #include "Script/Binding/SceneBinding.h"
 #include "Script/Binding/ScriptInputBinding.h"
 #include "Script/Binding/SessionBinding.h"
@@ -394,8 +395,9 @@ namespace CoreEngine
         configured = Script::RegisterCameraRigBinding(engine_) && configured;
         configured = Script::RegisterSceneBinding(engine_, services.engine) && configured;
         configured = Script::RegisterRenderingBinding(engine_, services.engine) && configured;
+        configured = Script::RegisterWaterBinding(engine_, services.engine) && configured;
         if (!services.engine) {
-            logger.Logf(LogLevel::Warn, LogCategory::Script, "エンジンが見つからないので、スクリプトの Scene・Rendering・Font・Physics は何もしません");
+            logger.Logf(LogLevel::Warn, LogCategory::Script, "エンジンが見つからないので、スクリプトの Scene・Rendering・Font・Physics・Water は何もしません");
         }
         configured = Script::RegisterSessionBinding(engine_) && configured;
         configured = Script::RegisterRandomBinding(engine_) && configured;

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.102.0">
+<meta name="engine-version" content="0.103.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5363,6 +5363,65 @@ kbd {
   </div>
   <div class="callout note" data-title="高さは 1〜2 フレーム遅れて届きます"><p>水面の高さは GPU で、水面を描くのと同じ式で求め、1〜2 フレーム後に受け取ります。その間にオブジェクトが動いた分は、水面の傾きで補います。付けた直後の数フレームと、1 フレームで 10 m より大きく動かした（置き直した）直後は <code>inWater</code> が false です。同時に調べられる点はシーン全体で 1024 個までです（浮力は 1 つで 8 個使います）。</p></div>
   <p>波を含まない水の高さ（潮を足した基準の高さ）だけでよいときは、水面の <code>waterLevel</code> を読みます（<a href="#api-WaterSurface">水面</a>）。</p>
+
+  <h3 id="physics-water-ripple">水面に波紋を起こす</h3>
+  <p>物が水に落ちた所や、水を進む船の後ろに波紋を広げるときは、<code>Water::AddRipple</code> を呼びます。指定した場所の水面を、半径と深さで決めたくぼみの形に押し下げて離し、そこから輪が広がります。短い波ほど遅く進む水の波と同じ伝わり方で、輪は外へ広がりながら細かい波に分かれ、だんだん消えます。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>引数</th><th>中身</th></tr></thead>
+    <tbody>
+      <tr><td><code>position</code></td><td>波紋の真ん中（ワールドの位置。Y は使いません）</td></tr>
+      <tr><td><code>radius</code></td><td>くぼみの半径（m）。大きいほど長い波が出て、遠くまで届きます</td></tr>
+      <tr><td><code>depth</code></td><td>くぼみの深さ（m）。マイナスにすると盛り上げます</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>1 回呼ぶと 1 つの輪が広がります。進む物の位置へ毎フレーム少しずつ（深さを 1 フレームの分だけにして）呼ぶと、後ろに航跡が引きます。</p>
+  <script type="text/x-code" data-lang="as" data-file="SplashOnWater.as">
+    using namespace CoreEngine;
+
+    // 水に落ちたときに波紋を 1 つ起こし、水の上を進む間は後ろに航跡を引く（浮力を付けた物に付ける）
+    class SplashOnWater : ScriptComponent
+    {
+        [Tooltip("落ちたときのくぼみの半径（m）")]
+        float splashRadius = 0.4f;
+
+        [Tooltip("落ちたときのくぼみの深さ（m）")]
+        float splashDepth = 0.06f;
+
+        [Tooltip("1m 進むごとに押し下げる深さ（m）")]
+        float wakeDepthPerMeter = 0.02f;
+
+        private bool wasInWater_ = false;
+        private Vector3 lastPosition_;
+
+        void Start()
+        {
+            lastPosition_ = owner.transform.position;
+        }
+
+        void Update()
+        {
+            const Vector3 position = owner.transform.position;
+            const bool inWater = owner.buoyancy.inWater;
+
+            if (inWater && !wasInWater_) {
+                Water::AddRipple(position, splashRadius, splashDepth);
+            }
+            if (inWater) {
+                const Vector3 moved = position - lastPosition_;
+                const float distance = Length(Vector3(moved.x, 0.0f, moved.z));
+                Water::AddRipple(position, splashRadius * 0.5f, wakeDepthPerMeter * distance);
+            }
+
+            wasInWater_ = inWater;
+            lastPosition_ = position;
+        }
+    }
+  </script>
+  <div class="callout note" data-title="波紋はカメラの前にだけ広がります"><p>波紋は、ゲームのカメラの前に置いた 3 枚の格子（32m 四方を 6.25cm 刻み・128m 四方を 25cm 刻み・512m 四方を 1m 刻み）で進めます。格子の真ん中は、カメラから見ている向きへ一辺の 1/4 だけ進めた所です（水平に見ているとき、512m の格子なら前へ 384m・後ろへ 128m まで。真下を見るとカメラの真下が真ん中）。格子はカメラと一緒に動き、格子の端に近づいた波紋は跳ね返らずに消えます。格子の外で起こした波紋は出ません。1 フレームに起こせる波紋は 256 個までです。</p></div>
+  <div class="callout warn" data-title="この版の波紋は陰影だけです"><p>波紋は水面の陰影（光の当たり方・映り込み・屈折・コースティクス）に足します。水面の形（頂点の高さ）と、<a href="#api-WaterProbe">水面の高さを調べる</a>・<a href="#api-Buoyancy">浮力</a> の高さには、まだ入りません。</p></div>
+  <p>水面ごとの波紋の濃さは水面の「波紋の強さ」（0 で描かない）、消える速さはプロジェクトの CVar <code>r.Water.Ripple.Damping</code>（波紋の振幅が 1/e になるまでの時間の逆数。既定 0.4）で決めます。<code>r.Water.Ripple.Enabled</code> を切ると波紋を進めません。インスペクタの水面の「波紋」に並び、再生中は「水面の真ん中に波紋を起こす」ボタンで試せます（停止中は水の時間が止まっているので押せません）。</p>
 
   <h2 id="physics-character">キャラクタコントローラで歩かせる</h2>
   <p>プレイヤーのように歩いて跳ぶキャラクターには、キャラクタコントローラを使います。坂を上り、小さな段差を越え、壁に沿って滑り、押されて倒れることはありません。</p>
@@ -12361,6 +12420,16 @@ python Tools/OkinawaBeach/bake_araha_walk.py
 
   <h2 id="changelog-history">更新履歴</h2>
 
+  <h3 id="changelog-v0-103-0">v0.103.0 <span class="dim">（2026-11-20）</span></h3>
+  <p>水面に波紋を起こせるようにした版です（<a href="#physics-water-ripple">水面に波紋を起こす</a>）。波紋を起こさない水面の見た目と、シーンの保存の形は前の版と同じです。</p>
+  <ul>
+    <li><strong>波紋</strong>：スクリプトの <code>Water::AddRipple</code>（位置・半径・深さ）で、その場所の水面を押し下げて離した波紋が広がります。短い波ほど遅く進む水の波と同じ伝わり方で、輪は外へ広がりながら細かい波に分かれ、だんだん消えます。進む物の位置へ毎フレーム少しずつ起こすと、後ろに航跡が引きます。</li>
+    <li><strong>広がる範囲</strong>：ゲームのカメラの前に置いた 3 枚の格子（32m 四方を 6.25cm 刻み・128m 四方を 25cm 刻み・512m 四方を 1m 刻み）で波を進めます。格子はカメラが見ている向きへ一辺の 1/4 だけ寄せて置き、カメラと一緒に動きます。格子の端に近づいた波紋は跳ね返らずに消えます。</li>
+    <li><strong>描き方</strong>：波紋はどの水面にも、陰影（光の当たり方・映り込み・屈折）として足します。主の水ではレイトレーシングの映り込みとコースティクスも波紋で揺れます。水面の形（頂点の高さ）と、水面の高さを調べる・浮力の高さには、まだ入りません。</li>
+    <li><strong>設定</strong>：水面に「波紋の強さ」（0 で描かない）を、プロジェクトの CVar に <code>r.Water.Ripple.Enabled</code>・<code>r.Water.Ripple.Damping</code>（消える速さ）を足しました。インスペクタの水面の「波紋」に並び、再生中は「水面の真ん中に波紋を起こす」ボタンで試せます。水面の可視化に「波紋の高さ」「波紋の段ごとの傾き」を足しました。</li>
+    <li><strong>試験のシーン</strong>：<span class="path">Projects/EngineTests</span> に <code>Water_Ripple</code>（2 秒ごとに真ん中へ石を落とし、半径 6m の円を回る点が航跡を引く）を足しました。</li>
+  </ul>
+
   <h3 id="changelog-v0-102-0">v0.102.0 <span class="dim">（2026-11-20）</span></h3>
   <p>シーンが沢山あっても探しやすいよう、シーンの開き方を直した版です（<a href="#scenes-open">開く</a>）。シーンの保存の形とゲームの動きは前の版と同じです。</p>
   <ul>
@@ -15132,6 +15201,32 @@ void Change()
       }
     ],
     see: [["script-scenes", "シーン遷移"]]
+  },
+
+  {
+    id: "Water", kind: "namespace", cat: "環境", brief: "水面に波紋を起こす",
+    keywords: "水 水面 波紋 波 落ちる 落とす 石 しぶき 航跡 船 ボート ripple wake",
+    summary: "水面の操作です。",
+    sections: [
+      {
+        title: "関数", members: [
+          { n: "AddRipple", s: "void AddRipple(const Vector3 &in position, float radius, float depth)", t: "f", d: "<code>position</code> の水面を、半径 <code>radius</code>（m）・深さ <code>depth</code>（m）のくぼみの形に押し下げて離し、波紋を広げます（深さがマイナスなら盛り上げる）。進む物の位置へ毎フレーム少しずつ呼ぶと航跡になります。ゲームのカメラの前の格子（水平に見ているとき、前へ 384m・後ろへ 128m まで）の外では何も起きません。1 フレームに 256 個まで。" }
+        ]
+      }
+    ],
+    examples: [
+      {
+        title: "例：ジャンプを押したら、この物の真下の水面に石を落とす",
+        code: `
+void Update()
+{
+    if (Input::IsActionTriggered(InputAction::Jump)) {
+        Water::AddRipple(owner.transform.position, 0.3f, 0.05f);
+    }
+}`
+      }
+    ],
+    see: [["physics-water-ripple", "水面に波紋を起こす"], ["api-WaterSurface", "水面"]]
   },
 
   {
@@ -18769,7 +18864,8 @@ void LateUpdate()   // 追いかける相手が動いた後に動かす
       ["白波の量", "foamWhitecapScale", "float", "1", "白波の割合の倍率（1 = 風速からの観測式）。"],
       ["泡の不透明度", "foamOpacity", "float", "0.9", "泡の不透明度。"],
       ["泡が消えるまでの時間", "foamDecaySeconds", "float", "3", "泡が e<sup>-1</sup> まで減る時間（秒）の平均。場所ごとに 0.45〜1.55 倍にばらつきます。"],
-      ["波の大きさごとの重み", "foamCascadeWeights", "Vector3", "(1, 0.5, 0.2)", "白波を立てる傾きの寄与（大・中・小のカスケード）。"]
+      ["波の大きさごとの重み", "foamCascadeWeights", "Vector3", "(1, 0.5, 0.2)", "白波を立てる傾きの寄与（大・中・小のカスケード）。"],
+      ["波紋の強さ", "rippleStrength", "float", "1", "<code>Water::AddRipple</code> で起こした波紋の傾きに掛ける倍率（0 でこの水面には波紋を描かない）。"]
     ],
     sections: [
       {

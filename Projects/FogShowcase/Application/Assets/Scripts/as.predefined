@@ -1595,6 +1595,8 @@ class WaterSurface {
 	void set_foamDecaySeconds(float) property;
 	CoreEngine::Vector3 get_foamCascadeWeights() const property;
 	void set_foamCascadeWeights(const CoreEngine::Vector3&in) property;
+	float get_rippleStrength() const property;
+	void set_rippleStrength(float) property;
 	void SetTideHeight(float);
 	void ClearTideHeight();
 }
@@ -1794,6 +1796,9 @@ namespace CoreEngine::PostEffect {
 void SetEnabled(const string&in name, bool enabled);
 bool IsEnabled(const string&in name);
 CoreEngine::ShaderMaterial@ GetMaterial(const string&in name);
+}
+namespace CoreEngine::Water {
+void AddRipple(const CoreEngine::Vector3&in position, float radius, float depth);
 }
 namespace CoreEngine::Session {
 void SetInt(const string&in key, int value);

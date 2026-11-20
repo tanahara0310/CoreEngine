@@ -116,6 +116,14 @@ cbuffer WaterFrameConstants : register(b5)
     // ---- 水面メッシュの範囲（岸の細かい格子の頂点をこの範囲へ寄せる。WaterShoreMesh.hlsli）----
     float2 gMeshGridSizeXZ;   // 粗い格子の XZ の一辺の長さ [m]（最小の角は gMeshGridOriginXZ）
     float2 gMeshGridPad;
+
+    // ---- 水の波紋の格子（gWaterRipple。WaterRippleGrid.hlsli）----
+    float4 gRippleOriginsXZ01;   // 段 0・段 1 の XZ の最小の角 [m]（xy = 段 0・zw = 段 1）
+    float2 gRippleOrigin2XZ;     // 段 2 の XZ の最小の角 [m]
+    float gRippleStrength;       // 波紋の傾きに掛ける倍率
+    int gRippleEnabled;          // 1 = gWaterRipple を読む
+    float3 gRippleInvSizes;      // 段ごとの一辺の長さの逆数 [1/m]（0 の段は読まない）
+    float gRipplePad;
 };
 
 #endif // WATER_FRAME_CONSTANTS_INCLUDED

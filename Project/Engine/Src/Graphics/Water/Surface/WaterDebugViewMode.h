@@ -30,6 +30,8 @@ enum class WaterDebugViewMode : uint32_t {
     ReflectionMinusTransmission = 22, // |反射 - 透過| ×3（斑を生む輝度差の分布）
     FFTOceanFoam = 23, // 泡マスク（グレースケール）
     FoamBreakdown = 24, // 泡の内訳（R = 砕けている白波・G = 残りの白波・B = 岸の泡）
+    RippleHeight = 25, // 波紋の高さ（R = 上がった所・B = 下がった所）
+    RippleLevelSlope = 26, // 波紋の段ごとの傾き（R = 近く・G = 中・B = 遠く）
 
     Count, // 末尾に追加すること（名前テーブルの static_assert が個数一致を検証する）
 };
@@ -65,6 +67,8 @@ inline const char* const kWaterDebugViewModeNames[] = {
     "反射-透過の差分",
     "FFT 泡マスク",
     "泡の内訳（赤 砕けている白波・緑 残りの白波・青 岸）",
+    "波紋の高さ（赤 上がる・青 下がる）",
+    "波紋の段ごとの傾き（赤 近く・緑 中・青 遠く）",
 };
 
 static_assert(

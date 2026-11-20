@@ -1,0 +1,63 @@
+#include "pch.h"
+#include "WaterRippleModule.h"
+
+#include "Camera/Camera.h"
+#include "Graphics/Render/RenderDomainContext.h"
+#include "Graphics/Water/Ripple/WaterRippleSimulation.h"
+#include "Graphics/Water/Surface/WaterRenderResources.h"
+#include "Graphics/Water/Surface/WaterSurfaceComponent.h"
+#include "Graphics/Water/System/WaterFrameContext.h"
+#include "Graphics/Water/WaterCVars.h"
+#include "Graphics/Water/WaterSurfaceData.h"
+#include "Scene/Feature/ISceneFeature.h"
+
+namespace CoreEngine
+{
+    void WaterRippleModule::Advance(const WaterFrameContext& frame, float deltaSeconds)
+    {
+        WaterRippleSimulation* const simulation = frame.domain.GetWaterRippleSimulation();
+        if (!simulation || !simulation->IsInitialized()) {
+            return;
+        }
+        if (const Camera* camera = frame.scene.gameViewCamera3D) {
+            const Vector3 cameraPosition = camera->GetPosition();
+            const Vector3 backward = camera->GetForward();
+            cameraXZ_[0] = cameraPosition.x;
+            cameraXZ_[1] = cameraPosition.z;
+            viewXZ_[0] = -backward.x;
+            viewXZ_[1] = -backward.z;
+        }
+
+        WaterRippleSimulation::Settings settings{};
+        settings.enabled = WaterCVars::RippleEnabled.Get();
+        settings.dampingPerSecond = WaterCVars::RippleDamping.Get();
+        simulation->Advance(deltaSeconds, cameraXZ_[0], cameraXZ_[1], viewXZ_[0], viewXZ_[1], settings);
+    }
+
+    void WaterRippleModule::Bind(RenderDomainContext& domain, WaterFrameBinding& binding) const
+    {
+        const WaterRippleSimulation* const simulation = domain.GetWaterRippleSimulation();
+        if (!simulation || !simulation->IsInitialized()) {
+            return;
+        }
+        simulation->FillBinding(binding.ripple);
+        if (binding.ripple.enabled != 0) {
+            binding.resources.rippleSRV = simulation->GetSurfaceSrvHandle();
+        }
+    }
+
+    void WaterRippleModule::Capture(
+        RenderDomainContext& domain, const WaterSurfaceComponent& waterPlane, WaterSurfaceData& out) const
+    {
+        out.ripple = {};
+        const WaterRippleSimulation* const simulation = domain.GetWaterRippleSimulation();
+        if (!simulation || !simulation->IsInitialized()) {
+            return;
+        }
+        simulation->FillBinding(out.ripple);
+        out.ripple.strength = waterPlane.GetProfile().rippleStrength;
+        if (out.ripple.strength <= 0.0f) {
+            out.ripple.enabled = 0;
+        }
+    }
+}

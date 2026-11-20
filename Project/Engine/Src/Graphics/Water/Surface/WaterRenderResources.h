@@ -45,6 +45,9 @@ namespace CoreEngine
         // ---- 海の範囲マップ（水面の範囲全体。(水深, 上の物までの高さ, 粗い格子用の 2 つ)）----
         D3D12_GPU_DESCRIPTOR_HANDLE seaMapSRV = { 0 };
 
+        // ---- 水の波紋（段ごとの (高さ, ∂h/∂x, ∂h/∂z, 0)）----
+        D3D12_GPU_DESCRIPTOR_HANDLE rippleSRV = { 0 };
+
         /// @brief 反射テクスチャが接続済みか返す
         bool HasReflectionTexture() const;
 
@@ -59,6 +62,9 @@ namespace CoreEngine
 
         /// @brief 海の範囲マップが接続済みか返す
         bool HasSeaMap() const;
+
+        /// @brief 水の波紋の面が接続済みか返す
+        bool HasRipple() const;
 
         /// @brief シーン深度テクスチャが接続済みか返す
         bool HasSceneDepth() const;
@@ -121,5 +127,8 @@ namespace CoreEngine
 
         /// @brief 海の範囲マップの範囲と波を弱める係数（地図が無ければ resolution が 0）
         WaterSeaMapBinding seaMap{};
+
+        /// @brief 水の波紋の格子の範囲（波紋が無ければ enabled が 0）
+        WaterRippleBinding ripple{};
     };
 }

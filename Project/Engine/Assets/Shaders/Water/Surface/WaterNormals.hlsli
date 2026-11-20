@@ -7,6 +7,25 @@
 #define WATER_NORMALS_INCLUDED
 
 #include "WaterSurfaceResources.hlsli"
+#include "../Common/WaterRippleGrid.hlsli"
+
+/// @brief 波紋の傾きを法線へ足し、画素より細かくて外した分を平均二乗傾斜へ足す
+/// @details 波紋は描かれた水面に乗る波なので、変位した後の worldPosition.xz で読む
+float3 ApplyRippleToNormal(WaterPSInput input, float3 normal, inout float unresolvedMeanSquareSlope)
+{
+    const float2 worldXZ = input.worldPosition.xz;
+    const float footprintMeters = max(length(ddx(worldXZ)), length(ddy(worldXZ)));
+    if (gRippleEnabled == 0)
+    {
+        return normal;
+    }
+    float rippleUnresolved;
+    const float2 rippleSlope = EvaluateRippleSlope(
+        gWaterRipple, worldXZ, footprintMeters,
+        gRippleOriginsXZ01, gRippleOrigin2XZ, gRippleInvSizes, gRippleStrength, rippleUnresolved);
+    unresolvedMeanSquareSlope += rippleUnresolved;
+    return AddRippleSlopeToNormal(normal, rippleSlope);
+}
 
 /// @brief ピクセル単位の法線を解決する
 /// @details Gerstner Wave は頂点シェーダーで解析的に計算した法線をそのまま補間して使えるが、
@@ -28,7 +47,7 @@ float3 ResolveSurfaceNormal(WaterPSInput input, out float unresolvedMeanSquareSl
     float3 vertexNormal = normalize(input.normal);
     if (gUseFFTOceanNormalMap == 0)
     {
-        return vertexNormal;
+        return ApplyRippleToNormal(input, vertexNormal, unresolvedMeanSquareSlope);
     }
 
     float3 tangent = normalize(input.tangent);
@@ -74,7 +93,9 @@ float3 ResolveSurfaceNormal(WaterPSInput input, out float unresolvedMeanSquareSl
     unresolvedMeanSquareSlope *= waveGroupEnvelope * waveGroupEnvelope;
 
     float3 combinedLocal = normalize(float3(slope.x, 1.0f, slope.y));
-    return normalize(combinedLocal.x * tangent + combinedLocal.y * vertexNormal + combinedLocal.z * bitangent);
+    const float3 waveNormal =
+        normalize(combinedLocal.x * tangent + combinedLocal.y * vertexNormal + combinedLocal.z * bitangent);
+    return ApplyRippleToNormal(input, waveNormal, unresolvedMeanSquareSlope);
 }
 
 #endif // WATER_NORMALS_INCLUDED

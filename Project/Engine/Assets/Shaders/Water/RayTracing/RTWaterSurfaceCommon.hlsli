@@ -14,6 +14,7 @@
 #include "../Common/FFTOceanCascade.hlsli"
 #include "../Common/WaterShoreMesh.hlsli"
 #include "../Common/WaterSeaMap.hlsli"
+#include "../Common/WaterRippleGrid.hlsli"
 // ピクセルフットプリントの算出（ScreenUVToNDC / ReconstructWorldPosition）
 #include "../../Include/Common/DepthReconstruction.hlsli"
 
@@ -54,6 +55,13 @@ cbuffer WaterSurfaceData : register(b1)
     uint2 gSurfaceSeaMapResolution;        // 地図の X・Z のテクセル数（0 なら地図なし）
     float gSurfaceSeaMapDepthOffset;       // 今の水面の高さ − 測ったときの水面の高さ [m]
     float gSurfaceSeaMapInvWaveHeight;     // 波の高さ（有義波高）の逆数 [1/m]
+    // 水の波紋の格子（WaterRippleGrid.hlsli。面はシェーダー可視ヒープから番号で引く）
+    float4 gSurfaceRippleOriginsXZ01;      // 段 0・段 1 の XZ の最小の角 [m]（xy = 段 0・zw = 段 1）
+    float2 gSurfaceRippleOrigin2XZ;        // 段 2 の XZ の最小の角 [m]
+    float gSurfaceRippleStrength;          // 波紋の傾きに掛ける倍率
+    uint gSurfaceRippleSrvIndex;           // 面の SRV のヒープの中の番号
+    float3 gSurfaceRippleInvSizes;         // 段ごとの一辺の長さの逆数 [1/m]（0 の段は読まない）
+    uint gSurfaceRippleEnabled;            // 1 = 波紋を法線へ足す
 };
 
 static const uint kWaterSurfaceModelTypeGerstner = 0;
@@ -427,25 +435,46 @@ float EvaluateDrawnSurfaceHeight(Texture2DArray<float4> displacementTex, float2 
         + SampleMeshVertexDisplacement(displacementTex, tri.corner2, coarseSpacing).y * tri.weights.z;
 }
 
-/// @brief 波面のワールド法線を評価する
-/// @param footprintMeters このレイが水面上で覆う幅 [m]（カスケードの縮小フィルタに使う）
+/// @brief 波紋の傾き（n.xz / n.y）と、フットプリントで傾きから外した分の平均二乗傾斜
+float2 EvaluateSurfaceRippleSlope(float2 worldXZ, float footprintMeters, out float unresolvedMeanSquareSlope)
+{
+    unresolvedMeanSquareSlope = 0.0f;
+    if (gSurfaceRippleEnabled == 0)
+    {
+        return float2(0.0f, 0.0f);
+    }
+    Texture2DArray<float4> ripple = ResourceDescriptorHeap[gSurfaceRippleSrvIndex];
+    return EvaluateRippleSlope(
+        ripple, worldXZ, footprintMeters,
+        gSurfaceRippleOriginsXZ01, gSurfaceRippleOrigin2XZ, gSurfaceRippleInvSizes, gSurfaceRippleStrength,
+        unresolvedMeanSquareSlope);
+}
+
+/// @brief 波面のワールド法線を評価する（波紋は描かれた水面の XZ で足す）
+/// @param footprintMeters このレイが水面上で覆う幅 [m]（カスケードと波紋の段の縮小フィルタに使う）
 float3 EvaluateWaterNormal(Texture2DArray<float4> normalTex, float2 worldXZ, float footprintMeters)
 {
-    if (!UseFFTOceanSurface())
+    const float3 waveNormal = UseFFTOceanSurface()
+        ? SampleFFTOceanCascadeNormal(normalTex, worldXZ, gSurfaceFFTOceanResolution, footprintMeters)
+        : EvaluateWaterNormalGerstner(worldXZ);
+    if (gSurfaceRippleEnabled == 0)
     {
-        return EvaluateWaterNormalGerstner(worldXZ);
+        return waveNormal;
     }
-    return SampleFFTOceanCascadeNormal(
-        normalTex, worldXZ, gSurfaceFFTOceanResolution, footprintMeters);
+    float rippleUnresolved;
+    const float2 rippleSlope = EvaluateSurfaceRippleSlope(worldXZ, footprintMeters, rippleUnresolved);
+    return AddRippleSlopeToNormal(waveNormal, rippleSlope);
 }
 
 /// @brief EvaluateWaterNormal がフットプリントで法線から外した分の平均二乗傾斜を返す
-/// @details Gerstner の波面では 0
+/// @details Gerstner の波面は波紋の分だけ
 float EvaluateExcludedMeanSquareSlope(float2 worldXZ, float footprintMeters)
 {
+    float rippleUnresolved;
+    EvaluateSurfaceRippleSlope(worldXZ, footprintMeters, rippleUnresolved);
     if (!UseFFTOceanSurface())
     {
-        return 0.0f;
+        return rippleUnresolved;
     }
     float excluded = 0.0f;
     [unroll]
@@ -456,7 +485,7 @@ float EvaluateExcludedMeanSquareSlope(float2 worldXZ, float footprintMeters)
         excluded += (1.0f - fade * fade) * gSurfaceCascadeMeanSquareSlope[c];
     }
     const float envelope = ComputeFFTWaveGroupEnvelope(worldXZ, gSurfaceWaveGroupPhase);
-    return excluded * envelope * envelope;
+    return excluded * envelope * envelope + rippleUnresolved;
 }
 
 /// @brief カスケードより細かい波（さざ波）の平均二乗傾斜を返す

@@ -62,6 +62,10 @@ Texture2D<float> gWaterSeabedHeight : register(t27);
 // gShoreFoamEnabled が 1 のフレームだけ読む。
 Texture2D<float4> gWaterShoreFoam : register(t28);
 
+// ===== 水の波紋（WaterRipplePropagate.CS の出力。段ごとの (高さ, ∂h/∂x, ∂h/∂z, 0)）=====
+// gRippleEnabled が 1 のフレームだけ読む。
+Texture2DArray<float4> gWaterRipple : register(t30);
+
 struct WaterPSInput
 {
     float4 position : SV_POSITION;

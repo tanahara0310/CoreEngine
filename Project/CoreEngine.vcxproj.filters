@@ -217,6 +217,9 @@
     <ClCompile Include="Engine\Src\Script\Binding\RenderingBinding.cpp">
       <Filter>Engine\Src\Script\Binding</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Script\Binding\WaterBinding.cpp">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Script\Metadata\MetadataParser.cpp">
       <Filter>Engine\Src\Script\Metadata</Filter>
     </ClCompile>
@@ -269,6 +272,9 @@
       <Filter>Engine\Src\Graphics\Water\System</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\System\WaterSeaMapModule.cpp">
+      <Filter>Engine\Src\Graphics\Water\System</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\System\WaterRippleModule.cpp">
       <Filter>Engine\Src\Graphics\Water\System</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\System\WaterSettings.cpp">
@@ -430,6 +436,9 @@
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\WaterShoreMeshDisplacementPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\WaterRipplePass.cpp">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.cpp">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClCompile>
@@ -519,6 +528,9 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\Surface\WaterShoreMeshDisplacement.cpp">
       <Filter>Engine\Src\Graphics\Water\Surface</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\Ripple\WaterRippleSimulation.cpp">
+      <Filter>Engine\Src\Graphics\Water\Ripple</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Camera\CameraManager.cpp">
       <Filter>Engine\Src\Camera</Filter>
@@ -2481,6 +2493,9 @@
     <ClInclude Include="Engine\Src\Script\Binding\RenderingBinding.h">
       <Filter>Engine\Src\Script\Binding</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Script\Binding\WaterBinding.h">
+      <Filter>Engine\Src\Script\Binding</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Script\Metadata\MetadataParser.h">
       <Filter>Engine\Src\Script\Metadata</Filter>
     </ClInclude>
@@ -2547,6 +2562,9 @@
     <ClInclude Include="Engine\Src\Graphics\Water\System\WaterSeaMapModule.h">
       <Filter>Engine\Src\Graphics\Water\System</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\System\WaterRippleModule.h">
+      <Filter>Engine\Src\Graphics\Water\System</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\System\WaterSettings.h">
       <Filter>Engine\Src\Graphics\Water\System</Filter>
     </ClInclude>
@@ -2576,6 +2594,9 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterShoreMeshDisplacement.h">
       <Filter>Engine\Src\Graphics\Water\Surface</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\Ripple\WaterRippleSimulation.h">
+      <Filter>Engine\Src\Graphics\Water\Ripple</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\Surface\WaterRenderResources.h">
       <Filter>Engine\Src\Graphics\Water\Surface</Filter>
@@ -3259,6 +3280,9 @@
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\WaterShoreMeshDisplacementPass.h">
+      <Filter>Engine\Src\Graphics\Render\Pass</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\WaterRipplePass.h">
       <Filter>Engine\Src\Graphics\Render\Pass</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.h">
@@ -5350,6 +5374,9 @@
     </Filter>
     <Filter Include="Engine\Src\Graphics\Water\RayTracing">
       <UniqueIdentifier>{01A8FFFF-937C-46E3-98EF-476A65F5EEAC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Graphics\Water\Ripple">
+      <UniqueIdentifier>{95F28416-9CDE-4AC6-BFD5-C6A866A8C8A5}</UniqueIdentifier>
     </Filter>
     <Filter Include="Engine\Src\Graphics\Water\Surface">
       <UniqueIdentifier>{DC70B5CC-F394-41D8-AE69-0F79ED80E885}</UniqueIdentifier>

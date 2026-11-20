@@ -24,6 +24,10 @@ namespace CoreEngine
         return seaMapSRV.ptr != 0;
     }
 
+    bool WaterRenderResources::HasRipple() const {
+        return rippleSRV.ptr != 0;
+    }
+
     bool WaterRenderResources::HasSceneDepth() const {
         return sceneDepthSRV.ptr != 0;
     }

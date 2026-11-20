@@ -204,6 +204,14 @@ WaterPixelOutput main(WaterPSInput input)
         debugContext.foamWhitecapInstant = foam.whitecapInstant;
         debugContext.foamWhitecapResidue = foam.whitecapResidue;
         debugContext.foamShoreCoverage = foam.shoreCoverage;
+        debugContext.rippleHeight = 0.0f;
+        debugContext.rippleLevelSlope = float3(0.0f, 0.0f, 0.0f);
+        if (gRippleEnabled != 0)
+        {
+            EvaluateRippleDebug(gWaterRipple, input.worldPosition.xz,
+                gRippleOriginsXZ01, gRippleOrigin2XZ, gRippleInvSizes, gRippleStrength,
+                debugContext.rippleHeight, debugContext.rippleLevelSlope);
+        }
 
         waterOutput.color = float4(ResolveWaterDebugColor(debugContext), 1.0f);
         return waterOutput;
