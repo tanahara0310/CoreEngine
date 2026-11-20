@@ -6,6 +6,7 @@
 #include "Graphics/Water/FFT/FFTOceanManager.h"
 #include "Graphics/Water/Foam/WaterShoreFoam.h"
 #include "Graphics/Water/Foam/WaterWhitecapFoam.h"
+#include "Graphics/Water/Ripple/WaterRippleSimulation.h"
 #include "Graphics/Water/Surface/WaterRenderResources.h"
 #include "Graphics/Water/Surface/WaterSurfaceComponent.h"
 #include "Graphics/Water/System/WaterFrameContext.h"
@@ -78,6 +79,17 @@ namespace CoreEngine
         frame.waterPlane.SetFoamParameters(
             false, WaterFoamDefaults::kBias, WaterFoamDefaults::kGain,
             settings.opacity, settings.cascadeWeights, settings.decaySeconds);
+    }
+
+    void WaterFoamModule::PassWakeSources(RenderDomainContext& domain) const
+    {
+        WaterWhitecapFoam* const whitecap = domain.GetWaterWhitecapFoam();
+        if (!whitecap) {
+            return;
+        }
+        const WaterRippleSimulation* const ripple = domain.GetWaterRippleSimulation();
+        whitecap->SetWakeSources(
+            (ripple && ripple->IsInitialized()) ? ripple->GetFoamSources() : std::span<const Vector4>{});
     }
 
     void WaterFoamModule::Bind(RenderDomainContext& domain, WaterFrameBinding& binding) const

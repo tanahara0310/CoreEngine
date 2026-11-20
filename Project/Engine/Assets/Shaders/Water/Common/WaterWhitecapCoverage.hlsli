@@ -66,23 +66,24 @@ float ComputeWhitecapResidueInside(float2 foamXZ, float2 originXZ, float invSize
     return saturate(min(edgeDistance.x, edgeDistance.y) / kWhitecapResidueEdgeFade);
 }
 
-/// @brief 砕けた後に残っている白波（FFTOceanFoamAccumulate.CS が進めたもの）
+/// @brief 砕けた後に残っている白波と、物がかき回した所の泡（FFTOceanFoamAccumulate.CS が進めたもの）
 /// @param baseWorldXZ    変位前の参照格子座標
-/// @param residue        残りの泡の格子（段ごとのスライス。x = 被覆率・y = 砕けた直後の厚い泡の量）
+/// @param residue        残りの泡の格子（段ごとのスライス。x = 白波の被覆率・y = 砕けた直後の厚い泡の量・
+///                       z = 物がかき回した所の被覆率・w = そのうち厚い泡の量）
 /// @param driftOffsetXZ  泡が風下へ流れた距離 [m]（格子はこの距離だけ流れる座標に置いてある）
-/// @param meanCoverage   遠くの段より外で使う、残りの泡の被覆率の平均
-/// @return x = 被覆率 [0,1]・y = そのうち砕けた直後の厚い泡の量 [0,x]
-/// @details 近くの段の中は近くの段、その外は遠くの段、さらに外は平均（厚い泡は 0）を使い、
+/// @param meanCoverage   遠くの段より外で使う、残りの白波の被覆率の平均
+/// @return x = 白波の被覆率 [0,1]・y = そのうち厚い泡の量 [0,x]・z = 物がかき回した所の被覆率 [0,1]・w = そのうち厚い泡の量 [0,z]
+/// @details 近くの段の中は近くの段、その外は遠くの段、さらに外は平均（厚い泡と物がかき回した所は 0）を使い、
 ///          境目は端の幅でなだらかに移す
-float2 SampleWhitecapResidue(
-    float2 baseWorldXZ, Texture2DArray<float2> residue, SamplerState linearSampler,
+float4 SampleWhitecapResidue(
+    float2 baseWorldXZ, Texture2DArray<float4> residue, SamplerState linearSampler,
     float2 driftOffsetXZ, WhitecapResidueWindows windows, float meanCoverage)
 {
     const float2 foamXZ = baseWorldXZ - driftOffsetXZ;
 
     float2 farUV;
     const float farInside = ComputeWhitecapResidueInside(foamXZ, windows.originsXZ.zw, windows.invSizes.y, farUV);
-    float2 foam = float2(meanCoverage, 0.0f);
+    float4 foam = float4(meanCoverage, 0.0f, 0.0f, 0.0f);
     [branch]
     if (farInside > 0.0f)
     {

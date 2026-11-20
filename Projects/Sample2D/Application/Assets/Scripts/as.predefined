@@ -883,6 +883,8 @@ class Buoyancy {
 	void set_waterAngularDrag(float) property;
 	float get_rippleStrength() const property;
 	void set_rippleStrength(float) property;
+	float get_foamStrength() const property;
+	void set_foamStrength(float) property;
 	float get_submergedRatio() const property;
 	bool get_inWater() const property;
 }
@@ -1534,6 +1536,8 @@ class WaterRippleEmitter {
 	CoreEngine::GameObject@ get_gameObject() const property;
 	float get_strength() const property;
 	void set_strength(float) property;
+	float get_foamStrength() const property;
+	void set_foamStrength(float) property;
 	bool get_inWater() const property;
 	float get_displacedVolume() const property;
 }

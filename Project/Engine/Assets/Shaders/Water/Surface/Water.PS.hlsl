@@ -202,7 +202,7 @@ WaterPixelOutput main(WaterPSInput input)
         debugContext.worldXZ = input.baseWorldXZ;
         debugContext.foamMask = foam.mask;
         debugContext.foamWhitecapInstant = foam.whitecapInstant;
-        debugContext.foamWhitecapResidue = foam.whitecapResidue;
+        debugContext.foamWhitecapResidue = max(foam.whitecapResidue, foam.wakeCoverage);
         debugContext.foamShoreCoverage = foam.shoreCoverage;
         debugContext.rippleHeight = 0.0f;
         debugContext.rippleLevelSlope = float3(0.0f, 0.0f, 0.0f);

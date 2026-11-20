@@ -195,6 +195,8 @@ namespace CoreEngine
             return false;
         }
         pendingSources_.reserve(kMaxSourcesPerFrame);
+        pendingFoamSources_.reserve(kMaxFoamSourcesPerFrame);
+        foamSources_.reserve(kMaxFoamSourcesPerFrame);
         isInitialized_ = CreatePipelines() && CreateTextures();
         return isInitialized_;
     }
@@ -273,12 +275,34 @@ namespace CoreEngine
         pendingSources_.push_back(Source{ position.x, position.z, sigma, depth * volumeScale, fromObject });
     }
 
+    void WaterRippleSimulation::AddObjectFoam(const Vector3& position, float radius, float churnMeters)
+    {
+        if (!isInitialized_ || !(radius > 0.0f) || !(churnMeters > 0.0f) || !std::isfinite(churnMeters)
+            || !std::isfinite(position.x) || !std::isfinite(position.z)) {
+            return;
+        }
+        if (pendingFoamSources_.size() >= kMaxFoamSourcesPerFrame) {
+            return;
+        }
+        pendingFoamSources_.push_back(FoamSource{ position.x, position.z, radius, churnMeters });
+    }
+
     void WaterRippleSimulation::Advance(
         float deltaSeconds, float cameraX, float cameraZ, float viewX, float viewZ, const Settings& settings)
     {
         if (!isInitialized_) {
             return;
         }
+
+        foamSources_.clear();
+        if (deltaSeconds > 0.0f) {
+            const float invSeconds = 1.0f / deltaSeconds;
+            for (const FoamSource& source : pendingFoamSources_) {
+                foamSources_.push_back(Vector4{ source.x, source.z, source.sigma, source.churnMeters * invSeconds });
+            }
+        }
+        pendingFoamSources_.clear();
+
         if (!settings.enabled) {
             pendingSources_.clear();
             for (Level& level : levels_) {

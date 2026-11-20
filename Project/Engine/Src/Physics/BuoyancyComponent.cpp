@@ -62,7 +62,7 @@ namespace CoreEngine
     void BuoyancyComponent::LateUpdate()
     {
         GameObject* const owner = GetOwner();
-        WaterRippleSimulation* const ripple = (query_ && owner && rippleStrength_ > 0.0f)
+        WaterRippleSimulation* const ripple = (query_ && owner && (rippleStrength_ > 0.0f || foamStrength_ > 0.0f))
             ? FindWaterRippleSimulation(owner->GetEngineSystem())
             : nullptr;
         if (!ripple) {
@@ -80,7 +80,7 @@ namespace CoreEngine
             states[i].placed = placed[i];
             states[i].water = query_->Sample(points_[i], placed[i].center);
         }
-        footprint_.Emit(*ripple, states, rippleStrength_);
+        footprint_.Emit(*ripple, states, rippleStrength_, foamStrength_);
     }
 
     void BuoyancyComponent::ApplyForces(PhysicsKey, float deltaTime, const Vector3& gravity)
