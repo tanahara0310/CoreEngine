@@ -130,7 +130,8 @@ namespace CoreEngine
                 const float churn = ComputeColumnChurn(
                     std::hypot(now.x - before.x, now.z - before.z), 0.25f * (before.radius + now.radius),
                     0.5f * (before.submerged + now.submerged), std::abs(now.submerged - before.submerged));
-                simulation.AddObjectFoam(Vector3{ now.x, 0.0f, now.z }, now.radius, churn * foamStrength);
+                simulation.AddObjectFoam(Vector3{ now.x, 0.0f, now.z }, now.radius, churn,
+                    Vector3{ now.x - before.x, 0.0f, now.z - before.z }, foamStrength);
             }
         }
         previous_ = current;

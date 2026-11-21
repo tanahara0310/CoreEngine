@@ -48,6 +48,8 @@ namespace CoreEngine
         float decaySeconds = 0.0f;
         float bubbleSeconds = 0.0f;
         float riseSeconds = 0.0f;
+        float objectFlow = 0.0f;      ///< 物が起こす水の流れの強さ（0 = 物の泡を流れで運ばない）
+        float whitecapSpread = 0.0f;  ///< 白波の残りの泡がにじむ速さ [m²/s]
     };
 
     /// @brief コースティクスの設定

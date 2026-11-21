@@ -111,7 +111,22 @@ struct WaterDebugContext
     // 波紋（モード 25・26）。全部の段の高さの和 [m] と段ごとの傾きの大きさ
     float rippleHeight;
     float3 rippleLevelSlope;
+    // 物が起こした水の流れ（モード 28）[m/s]
+    float2 foamFlow;
 };
+
+/// @brief 向きを色相、速さを明るさにした色（速さ 1 m/s で最も明るい）
+float3 VisualizeFlow(float2 flow)
+{
+    const float speed = length(flow);
+    if (speed <= 1.0e-4f)
+    {
+        return float3(0.0f, 0.0f, 0.0f);
+    }
+    const float hue = atan2(flow.y, flow.x) / (2.0f * PI) + 0.5f;
+    const float3 rgb = saturate(abs(frac(hue + float3(0.0f, 2.0f / 3.0f, 1.0f / 3.0f)) * 6.0f - 3.0f) - 1.0f);
+    return rgb * saturate(speed);
+}
 
 /// @brief 現在のデバッグ表示モードに対応する色を返す
 /// @return 表示色（アルファは呼び出し側で 1.0 にする）
@@ -324,6 +339,12 @@ float3 ResolveWaterDebugColor(WaterDebugContext ctx)
     if (gDepthDebugViewMode == 27)
     {
         return float3(ctx.foamMask, ctx.foamMask, max(ctx.foamMask, ctx.foamBubbles));
+    }
+
+    // 28: 物が起こした水の流れ。向きを色相、速さを明るさで出す（1 m/s で最も明るい）
+    if (gDepthDebugViewMode == 28)
+    {
+        return VisualizeFlow(ctx.foamFlow);
     }
 
     // 未知のモード（黄色）

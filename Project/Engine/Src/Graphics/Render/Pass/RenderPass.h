@@ -39,6 +39,7 @@ namespace CoreEngine
     class WaterShoreFoam;
     class WaterShoreMeshDisplacement;
     class WaterRippleSimulation;
+    class WaterObjectFoam;
     class WaterWhitecapFoam;
     class WaterHeightQueryManager;
     class AtmosphereManager;
@@ -75,6 +76,7 @@ namespace CoreEngine
         WaterShoreFoam* waterShoreFoam = nullptr; ///< 岸の泡（カメラの周りの範囲）
         WaterShoreMeshDisplacement* waterShoreMeshDisplacement = nullptr; ///< 岸の細かい格子の頂点の変位
         WaterRippleSimulation* waterRippleSimulation = nullptr; ///< 水の波紋（カメラの前に置いた 3 段の格子）
+        WaterObjectFoam* waterObjectFoam = nullptr; ///< 物がかき回した所の泡と流れ（カメラの前に置いた格子）
         WaterHeightQueryManager* waterHeightQueryManager = nullptr; ///< 水面の高さの問い合わせ（GPU で評価して読み戻す）
         AtmosphereManager* atmosphereManager = nullptr; ///< 大気散乱管理（LUT生成・太陽情報）
         VolumetricCloudManager* volumetricCloudManager = nullptr; ///< ボリューメトリック雲管理（ノイズ生成・雲合成）

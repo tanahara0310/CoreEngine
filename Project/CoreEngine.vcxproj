@@ -345,6 +345,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterSeaMapPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\WaterShoreFoamPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\WaterShoreMeshDisplacementPass.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Render\Pass\WaterObjectFoamPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\WaterRipplePass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\Pass\RTWaterReflectionPass.cpp" />
@@ -365,6 +366,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Graphics\Water\FFT\FFTOceanDispatchHelper.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\FFT\FFTOceanManager.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Foam\WaterShoreFoam.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Water\Foam\WaterObjectFoam.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\Foam\WaterWhitecapFoam.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\FFT\FFTOceanReadbackHelper.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Water\FFT\FFTOceanResourceFactory.cpp" />
@@ -1836,6 +1838,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterSeaMapPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\WaterShoreFoamPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\WaterShoreMeshDisplacementPass.h" />
+    <ClInclude Include="Engine\Src\Graphics\Render\Pass\WaterObjectFoamPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\WaterRipplePass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterRefractionPass.h" />
     <ClInclude Include="Engine\Src\Graphics\Render\Pass\RTWaterReflectionPass.h" />
@@ -1940,6 +1943,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\Water\FFT\FFTOceanGpuResources.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFT\FFTOceanManager.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Foam\WaterShoreFoam.h" />
+    <ClInclude Include="Engine\Src\Graphics\Water\Foam\WaterObjectFoam.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\Foam\WaterWhitecapFoam.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFT\FFTOceanReadbackHelper.h" />
     <ClInclude Include="Engine\Src\Graphics\Water\FFT\FFTOceanResourceFactory.h" />

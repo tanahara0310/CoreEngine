@@ -5,7 +5,7 @@
 #include "../Common/WaterWhitecapCoverage.hlsli"
 
 Texture2DArray<float4> gJacobian : register(t0);
-Texture2DArray<float4> gWhitecapFoam : register(t1);
+Texture2DArray<float2> gWhitecapFoam : register(t1);
 RWByteAddressBuffer gStatistics : register(u0);
 SamplerState gLinearWrap : register(s0);
 

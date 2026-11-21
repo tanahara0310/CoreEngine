@@ -1,0 +1,102 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.2,
+                    0.0,
+                    0.15
+                ],
+                "scale": [
+                    0.6,
+                    0.6,
+                    0.6
+                ],
+                "translate": [
+                    -8.0,
+                    1.5,
+                    -4.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "model": {
+                    "guid": "e8a79191-50ea-0673-1816-c257f280ba64",
+                    "path": "Engine/Assets/Models/Primitives/Box/cube.obj"
+                },
+                "materials": [
+                    {
+                        "color": [
+                            0.2,
+                            0.65,
+                            0.6,
+                            1.0
+                        ],
+                        "roughness": 0.6,
+                        "metallic": 0.0,
+                        "lighting": true
+                    }
+                ]
+            },
+            "type": "MeshRenderer"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "shapes": [
+                    {
+                        "enabled": true,
+                        "layer": "Default",
+                        "offset": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "static": false,
+                        "trigger": false,
+                        "type": "Box",
+                        "size": [
+                            1.0,
+                            1.0,
+                            1.0
+                        ]
+                    }
+                ]
+            },
+            "type": "Collider"
+        },
+        {
+            "enabled": true,
+            "version": 2,
+            "parameters": {
+                "bodyType": 0,
+                "mass": 60.0,
+                "useGravity": true,
+                "linearDamping": 0.0,
+                "angularDamping": 0.05
+            },
+            "type": "Rigidbody"
+        },
+        {
+            "enabled": true,
+            "parameters": {},
+            "type": "Buoyancy"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "interval": 6.0
+            },
+            "type": "RippleDropBoxProbe"
+        }
+    ],
+    "id": "f3c7a58e1d2b4096",
+    "name": "WallDropBox",
+    "order": 50
+}

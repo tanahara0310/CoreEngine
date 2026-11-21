@@ -16,6 +16,7 @@
 #include "Graphics/Render/Pass/WaterShoreFoamPass.h"
 #include "Graphics/Render/Pass/FFTOceanPass.h"
 #include "Graphics/Render/Pass/WaterHeightQueryPass.h"
+#include "Graphics/Render/Pass/WaterObjectFoamPass.h"
 #include "Graphics/Render/Pass/WaterRipplePass.h"
 #include "Graphics/Render/Pass/WaterShoreMeshDisplacementPass.h"
 #include "Graphics/Render/Pass/AtmosphereLUTPass.h"
@@ -71,6 +72,11 @@ namespace CoreEngine
         // フレーム前処理: 水の波紋の源を入れて波を進める。水面と RT の水面パスが読む
         pipeline.AddPass(
             std::make_unique<WaterRipplePass>(), RenderPassPhase::FrameSetup, 41,
+            GpuTimingCategory::Water);
+
+        // フレーム前処理: 物がかき回した所の泡と、物が起こした水の流れを進める。水面が読む
+        pipeline.AddPass(
+            std::make_unique<WaterObjectFoamPass>(), RenderPassPhase::FrameSetup, 43,
             GpuTimingCategory::Water);
 
         // フレーム前処理: 岸の細かい格子の頂点の変位を書く。RT の水面パスと水面の高さの問い合わせが読む
