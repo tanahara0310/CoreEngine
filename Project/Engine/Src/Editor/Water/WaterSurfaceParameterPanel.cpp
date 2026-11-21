@@ -535,7 +535,8 @@ bool WaterSurfaceParameterPanel::DrawFoamSection(const Target& target, WaterSyst
 		InfoRow("実測の内訳", std::format("砕けている最中 {:.2f}% ／ 残り {:.2f}%",
 			foam->GetMeasuredInstantCoverage() * 100.0f, foam->GetMeasuredResidueCoverage() * 100.0f));
 	}
-	changed = target.Rows({ "foamOpacity", "foamDecaySeconds", "foamCascadeWeights" }) || changed;
+	changed = target.Rows({ "foamOpacity", "foamDecaySeconds", "foamBubbleSeconds", "foamRiseSeconds",
+		"foamCascadeWeights" }) || changed;
 	ImGui::EndDisabled();
 	InspectorLayout::Hint("白波の割合はシーンの風速から観測式で決まる。白波の量はその倍率。");
 	return changed;

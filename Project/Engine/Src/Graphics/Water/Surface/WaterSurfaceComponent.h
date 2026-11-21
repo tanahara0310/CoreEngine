@@ -119,6 +119,10 @@ namespace CoreEngine
             REFLECT_PROPERTY(profile_.foamOpacity, "泡の不透明度", p.range = Range(0.0f, 1.0f))
             REFLECT_PROPERTY(profile_.foamDecaySeconds, "泡が消えるまでの時間 [s]", p.range = Range(0.2f, 10.0f),
                 p.tooltip = "泡が e^-1 まで減る時間の平均（場所ごとに 0.45〜1.55 倍にばらつく）")
+            REFLECT_PROPERTY(profile_.foamBubbleSeconds, "気泡が浮き切るまでの時間 [s]", p.range = Range(0.05f, 3.0f),
+                p.tooltip = "砕けた波や物がかき回した所の水の中の気泡（青白い濁り）が e^-1 まで減る時間")
+            REFLECT_PROPERTY(profile_.foamRiseSeconds, "泡が浮いてくる時間 [s]", p.range = Range(0.0f, 2.0f),
+                p.tooltip = "物がかき回した所の気泡が水面の白い泡になるまでの時間。0 で気泡と同時に白い泡を出す")
             REFLECT_PROPERTY(profile_.foamCascadeWeights, "波の大きさごとの重み", p.range = Range(0.0f, 1.0f),
                 p.tooltip = "白波を立てる傾きの寄与（大・中・小のカスケード）")
 

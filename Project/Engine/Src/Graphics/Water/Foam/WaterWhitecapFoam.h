@@ -41,6 +41,10 @@ namespace CoreEngine
                 WaterFoamDefaults::kCascadeWeights[2],
             };
             float decaySeconds = WaterFoamDefaults::kDecaySeconds;
+            /// @brief 水の中の気泡が浮き切るまでの時間 [s]
+            float bubbleSeconds = WaterFoamDefaults::kBubbleSeconds;
+            /// @brief 物がかき回した所の気泡が水面の泡になる時間 [s]（0 = 気泡と同時に泡を入れる）
+            float riseSeconds = WaterFoamDefaults::kRiseSeconds;
         };
 
         /// @brief 残りの泡の格子の段の数（0 = カメラの近く・1 = 遠く）
@@ -68,13 +72,14 @@ namespace CoreEngine
         /// @param timeSeconds FFT のシミュレーション時刻 [s]（泡が風下へ流れた距離を求める）
         void UpdateWindows(float cameraX, float cameraZ, float timeSeconds);
 
-        /// @brief 物が水をかき回した所の泡の源を決める（フレームに 1 回。次の Dispatch で両方の段の zw へ入れて捨てる）
+        /// @brief 物が水をかき回した所の泡の源を決める（フレームに 1 回。次の Dispatch で両方の段の w の気泡へ入れて捨てる）
         /// @param sources (x, z, σ [m], 水面を上下させた速さ [m/s])。x, z は描かれた水面の位置。kMaxWakeSources 個まで
         void SetWakeSources(std::span<const Vector4> sources);
 
         /// @brief 白波の泡を 1 フレーム進める（FFT のヤコビアンと変位が読み取り状態になった後に呼ぶ）
         /// @details 段を 1 フレームに 1 つずつ順に進め、ほかの段は前のフレームの値を写す。
-        ///          SetWakeSources の源は、両方の段の、白波とは別のチャンネル（zw）へ足す
+        ///          SetWakeSources の源は、両方の段の、白波とは別のチャンネル（w の気泡）へ足し、
+        ///          z の水面の泡は気泡が浮いてくるのに合わせて増やす
         /// @param jacobianSRV      FFT のヤコビアン（カスケードの配列）
         /// @param displacementSRV  FFT の変位（カスケードの配列。泡の格子の点が描かれる位置を求める）
         /// @param timeSeconds      FFT のシミュレーション時刻 [s]
@@ -179,6 +184,9 @@ namespace CoreEngine
             uint32_t activeLevel = 0;
             uint32_t wakeSourceCount = 0;
             float wakeMinSigmas[2] = { 0.0f, 0.0f };          ///< 段ごとの泡の源の幅の下限 [m]
+            float bubbleSeconds = WaterFoamDefaults::kBubbleSeconds;
+            float riseSeconds = WaterFoamDefaults::kRiseSeconds;
+            float pad[2] = { 0.0f, 0.0f };
             int32_t wakeRects[kLevelCount * 4] = {};          ///< 段ごとの泡の源を入れるテクセルの範囲（最小 x, z・最大 x, z。最大は含まない）
             Vector4 wakeSources[kMaxWakeSources]{};           ///< (x, z, σ [m], 水面を上下させた速さ [m/s])
         };
@@ -191,7 +199,9 @@ namespace CoreEngine
             CB_FIELD(FoamConstants, foamGain), CB_FIELD(FoamConstants, driftOffsetXZ),
             CB_FIELD(FoamConstants, decaySeconds), CB_FIELD(FoamConstants, resetFoam),
             CB_FIELD(FoamConstants, activeLevel), CB_FIELD(FoamConstants, wakeSourceCount),
-            CB_FIELD(FoamConstants, wakeMinSigmas), CB_FIELD_AS(FoamConstants, wakeRects, Cb::Array(Cb::Int4, kLevelCount)),
+            CB_FIELD(FoamConstants, wakeMinSigmas), CB_FIELD(FoamConstants, bubbleSeconds),
+            CB_FIELD(FoamConstants, riseSeconds), CB_FIELD(FoamConstants, pad),
+            CB_FIELD_AS(FoamConstants, wakeRects, Cb::Array(Cb::Int4, kLevelCount)),
             CB_FIELD(FoamConstants, wakeSources),
         };
         CB_VERIFY_LAYOUT(FoamConstants, kFoamConstantsFields);
@@ -301,7 +311,7 @@ namespace CoreEngine
         CustomShaderPipeline foamPipeline_{};
         BindingTable foamBindings_{};
         /// @brief 書き込み先は Dispatch ごとに入れ替える（frameIndex_ & 1 と同じ側）。SRV / UAV とも全段を 1 ビューで見せる
-        ///        （x = 白波の被覆率・y = 砕けた直後の厚い泡の量・z = 物がかき回した所の被覆率・w = そのうち厚い泡の量）
+        ///        （x = 白波の水面の泡の被覆率・y = 白波の水の中の気泡・z = 物がかき回した所の水面の泡の被覆率・w = その気泡）
         FFTOceanPingPong foam_{};
         uint32_t frameIndex_ = 0;
         bool resetPending_ = true;

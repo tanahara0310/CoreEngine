@@ -46,6 +46,8 @@ namespace CoreEngine
         float opacity = 1.0f;
         Vector3 cascadeWeights{};
         float decaySeconds = 0.0f;
+        float bubbleSeconds = 0.0f;
+        float riseSeconds = 0.0f;
     };
 
     /// @brief コースティクスの設定

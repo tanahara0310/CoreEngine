@@ -50,6 +50,8 @@ namespace CoreEngine
             WaterFoamDefaults::kCascadeWeights[1],
             WaterFoamDefaults::kCascadeWeights[2] };                 ///< カスケード別の勾配の重み（大・中・小）
         float foamDecaySeconds = WaterFoamDefaults::kDecaySeconds;   ///< 泡が e^-1 まで減る時間 [s]
+        float foamBubbleSeconds = WaterFoamDefaults::kBubbleSeconds; ///< 水の中の気泡が e^-1 まで減る時間 [s]
+        float foamRiseSeconds = WaterFoamDefaults::kRiseSeconds;     ///< 物がかき回した所の気泡が水面の泡になる時間 [s]（0 = 気泡と同時）
 
         // ---- 波紋 ----
         float rippleStrength = 1.0f; ///< 波紋の高さと傾きに掛ける倍率（0 = この水には波紋を起こさない）

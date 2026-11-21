@@ -32,6 +32,7 @@ enum class WaterDebugViewMode : uint32_t {
     FoamBreakdown = 24, // 泡の内訳（R = 砕けている白波・G = 残りの白波と物がかき回した所の泡・B = 岸の泡）
     RippleHeight = 25, // 波紋の高さ（R = 上がった所・B = 下がった所）
     RippleLevelSlope = 26, // 波紋の段ごとの傾き（R = 近く・G = 中・B = 遠く）
+    FoamBubbles = 27, // 水面の泡と水の中の気泡（白 = 水面の泡・青 = 気泡）
 
     Count, // 末尾に追加すること（名前テーブルの static_assert が個数一致を検証する）
 };
@@ -69,6 +70,7 @@ inline const char* const kWaterDebugViewModeNames[] = {
     "泡の内訳（赤 砕けている白波・緑 残りの泡と物がかき回した泡・青 岸）",
     "波紋の高さ（赤 上がる・青 下がる）",
     "波紋の段ごとの傾き（赤 近く・緑 中・青 遠く）",
+    "泡と気泡（白 水面の泡・青 水の中の気泡）",
 };
 
 static_assert(

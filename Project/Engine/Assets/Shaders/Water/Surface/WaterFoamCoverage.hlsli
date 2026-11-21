@@ -22,17 +22,17 @@ static const float kSeabedWindowEdgeFade = 0.1f;
 /// @brief 白波の被覆率の内訳
 struct WhitecapFoamCoverage
 {
-    float instant;      ///< いま砕けている泡 [0,1]
-    float residue;      ///< 砕けた後に残っている泡 [0,1]
-    float residueFresh; ///< 残っている泡のうち、砕けた直後の厚い泡の量 [0,residue]
-    float wake;         ///< 物がかき回した所に残っている泡 [0,1]
-    float wakeFresh;    ///< 物がかき回した所の泡のうち、厚い泡の量 [0,wake]
+    float instant;        ///< いま砕けている泡 [0,1]
+    float residue;        ///< 砕けた後に残っている水面の泡 [0,1]
+    float residueBubbles; ///< 砕けた後に残っている水の中の気泡 [0,1]
+    float wake;           ///< 物がかき回した所の水面の泡 [0,1]
+    float wakeBubbles;    ///< 物がかき回した所の水の中の気泡 [0,1]
 };
 
 /// @brief 白波の被覆率を、いま砕けている泡と残っている泡に分けて求める（FFTOcean 専用）
 /// @details いま砕けている泡は合成ヤコビアン detJ < gFoamBias（波頭の圧縮）。
-///          残っている泡は FFTOceanFoamAccumulate.CS が同じ判定で溜めて減らした格子を読む。
-///          物がかき回した所の泡も同じ格子の別のチャンネルから読む。
+///          残っている泡と気泡は FFTOceanFoamAccumulate.CS が同じ判定で溜めて減らした格子を読む。
+///          物がかき回した所の泡と気泡も同じ格子の別のチャンネルから読む。
 ///          Gerstner 経路はヤコビアンを持たないため常に 0
 ///          （gUseFFTOceanNormalMap は FFT 使用フラグと同値で更新される）。
 WhitecapFoamCoverage ComputeWhitecapFoamCoverage(float2 worldXZ)
@@ -40,9 +40,9 @@ WhitecapFoamCoverage ComputeWhitecapFoamCoverage(float2 worldXZ)
     WhitecapFoamCoverage coverage;
     coverage.instant = 0.0f;
     coverage.residue = 0.0f;
-    coverage.residueFresh = 0.0f;
+    coverage.residueBubbles = 0.0f;
     coverage.wake = 0.0f;
-    coverage.wakeFresh = 0.0f;
+    coverage.wakeBubbles = 0.0f;
     if (gFoamEnabled == 0 || gUseFFTOceanNormalMap == 0)
     {
         return coverage;
@@ -57,9 +57,9 @@ WhitecapFoamCoverage ComputeWhitecapFoamCoverage(float2 worldXZ)
     const float4 residue = SampleWhitecapResidue(
         worldXZ, gFFTOceanFoam, gLinearClamp, gFoamDriftOffsetXZ, windows, gFoamResidueMeanCoverage);
     coverage.residue = residue.x;
-    coverage.residueFresh = residue.y;
+    coverage.residueBubbles = residue.y;
     coverage.wake = residue.z;
-    coverage.wakeFresh = residue.w;
+    coverage.wakeBubbles = residue.w;
     return coverage;
 }
 
