@@ -4,6 +4,7 @@
 #include "Camera/Camera.h"
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Water/FFT/FFTOceanManager.h"
+#include "Graphics/Water/Foam/WaterFoamPattern.h"
 #include "Graphics/Water/Foam/WaterObjectFoam.h"
 #include "Graphics/Water/Foam/WaterShoreFoam.h"
 #include "Graphics/Water/Foam/WaterWhitecapFoam.h"
@@ -12,6 +13,7 @@
 #include "Graphics/Water/Surface/WaterSurfaceComponent.h"
 #include "Graphics/Water/System/WaterFrameContext.h"
 #include "Graphics/Water/System/WaterSettings.h"
+#include "Graphics/Water/WaterCVars.h"
 #include "Graphics/Water/Wave/WaterWaveModel.h"
 #include "Scene/Feature/ISceneFeature.h"
 
@@ -125,6 +127,11 @@ namespace CoreEngine
     void WaterFoamModule::Bind(RenderDomainContext& domain, WaterFrameBinding& binding) const
     {
         BindObjectFoam(domain, binding);
+        if (const WaterFoamPattern* pattern = domain.GetWaterFoamPattern();
+            pattern && pattern->IsInitialized() && WaterCVars::FoamPatternTexture.Get()) {
+            binding.resources.foamNetSRV = pattern->GetNetSRV();
+            binding.resources.foamGrainSRV = pattern->GetGrainSRV();
+        }
         if (!domain.GetFFTOceanManager()) {
             return;
         }

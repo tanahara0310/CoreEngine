@@ -32,6 +32,10 @@ namespace CoreEngine
         return objectFoamSRV.ptr != 0 && objectFoamFlowSRV.ptr != 0;
     }
 
+    bool WaterRenderResources::HasFoamPattern() const {
+        return foamNetSRV.ptr != 0 && foamGrainSRV.ptr != 0;
+    }
+
     bool WaterRenderResources::HasSceneDepth() const {
         return sceneDepthSRV.ptr != 0;
     }

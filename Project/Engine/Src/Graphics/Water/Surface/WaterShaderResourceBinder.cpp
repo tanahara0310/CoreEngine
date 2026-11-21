@@ -130,5 +130,12 @@ void WaterShaderResourceBinder::Bind(
         binder.Set(table_[WaterBind::gWaterObjectFoam], renderResources.objectFoamSRV);
         binder.Set(table_[WaterBind::gWaterObjectFoamFlow], renderResources.objectFoamFlowSRV);
     }
+
+    // 泡の模様の画像
+    // （未接続のフレームはシェーダー側フラグ gFoamPatternMode=0 で参照されない）
+    if (renderResources.HasFoamPattern()) {
+        binder.Set(table_[WaterBind::gWaterFoamNet], renderResources.foamNetSRV);
+        binder.Set(table_[WaterBind::gWaterFoamGrain], renderResources.foamGrainSRV);
+    }
 }
 }

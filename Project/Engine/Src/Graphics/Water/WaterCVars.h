@@ -25,6 +25,9 @@ namespace CoreEngine
         extern CVar<bool>    WetnessEnabled;
         extern CVar<float>   WetnessDrySeconds;
 
+        // ---- 泡 ----
+        extern CVar<bool>    FoamPatternTexture;
+
         // ---- 波紋 ----
         extern CVar<bool>    RippleEnabled;
         extern CVar<float>   RippleDamping;

@@ -181,7 +181,7 @@ struct WaterFrameConstants {
 	int objectFoamEnabled = 0;                          // 1 = gWaterObjectFoam を読む
 	float objectFoamDriftOffsetXZ[2] = { 0.0f, 0.0f }; // 物の泡が風下へ流れた距離 [m]
 	float objectFoamFlowTime = 0.0f;                    // 物の泡の模様を流れでずらす時刻 [s]
-	float objectFoamPad = 0.0f;
+	int foamPatternMode = 0;                            // 泡の模様: 0 = ボロノイの網目・1 = 泡の模様の画像
 };
 
 // 全フィールドのオフセットを HLSL packing 規則から機械的に導出して検証する。
@@ -225,7 +225,7 @@ static constexpr Cb::Field kWaterFrameConstantsFields[] = {
     CB_FIELD(WaterFrameConstants, rippleInvSizes), CB_FIELD(WaterFrameConstants, ripplePad),
     CB_FIELD(WaterFrameConstants, objectFoamOriginXZ), CB_FIELD(WaterFrameConstants, objectFoamInvSize),
     CB_FIELD(WaterFrameConstants, objectFoamEnabled), CB_FIELD(WaterFrameConstants, objectFoamDriftOffsetXZ),
-    CB_FIELD(WaterFrameConstants, objectFoamFlowTime), CB_FIELD(WaterFrameConstants, objectFoamPad),
+    CB_FIELD(WaterFrameConstants, objectFoamFlowTime), CB_FIELD(WaterFrameConstants, foamPatternMode),
 };
 CB_VERIFY_LAYOUT(WaterFrameConstants, kWaterFrameConstantsFields);
 CB_BIND_HLSL(WaterFrameConstants, kWaterFrameConstantsFields, "WaterFrameConstants");

@@ -298,6 +298,7 @@ namespace CoreEngine
         const WaterObjectFoamBinding& objectFoam = binding.objectFoam;
         frameCB_.objectFoamEnabled =
             (renderResources_.HasObjectFoam() && objectFoam.enabled != 0 && profile_.foamEnabled) ? 1 : 0;
+        frameCB_.foamPatternMode = renderResources_.HasFoamPattern() ? 1 : 0;
         for (int c = 0; c < 2; ++c) {
             frameCB_.objectFoamOriginXZ[c] = objectFoam.originXZ[c];
             frameCB_.objectFoamDriftOffsetXZ[c] = objectFoam.driftOffsetXZ[c];

@@ -52,6 +52,10 @@ namespace CoreEngine
         D3D12_GPU_DESCRIPTOR_HANDLE objectFoamSRV = { 0 };
         D3D12_GPU_DESCRIPTOR_HANDLE objectFoamFlowSRV = { 0 };
 
+        // ---- 泡の模様の画像（網目と気泡の粒。(泡になる順, 明るさ)）----
+        D3D12_GPU_DESCRIPTOR_HANDLE foamNetSRV = { 0 };
+        D3D12_GPU_DESCRIPTOR_HANDLE foamGrainSRV = { 0 };
+
         /// @brief 反射テクスチャが接続済みか返す
         bool HasReflectionTexture() const;
 
@@ -72,6 +76,9 @@ namespace CoreEngine
 
         /// @brief 物がかき回した所の泡と流れが接続済みか返す
         bool HasObjectFoam() const;
+
+        /// @brief 泡の模様の画像が接続済みか返す
+        bool HasFoamPattern() const;
 
         /// @brief シーン深度テクスチャが接続済みか返す
         bool HasSceneDepth() const;

@@ -9,6 +9,7 @@
 #include "Graphics/RayTracing/VertexAnimationDeformer.h"
 #include "Graphics/Water/RayTracing/WaterRayTracingPassBase.h"
 #include "Graphics/Water/FFT/FFTOceanManager.h"
+#include "Graphics/Water/Foam/WaterFoamPattern.h"
 #include "Graphics/Water/Foam/WaterObjectFoam.h"
 #include "Graphics/Water/Foam/WaterShoreFoam.h"
 #include "Graphics/Water/Foam/WaterWhitecapFoam.h"
@@ -166,6 +167,12 @@ namespace CoreEngine
                 "RenderDomainContext: WaterObjectFoam 初期化完了\n");
         }
 
+        waterFoamPattern_ = std::make_unique<WaterFoamPattern>();
+        if (waterFoamPattern_->Initialize()) {
+            Logger::GetInstance().Infof(LogCategory::Graphics,
+                "RenderDomainContext: WaterFoamPattern 初期化完了\n");
+        }
+
         waterHeightQueryManager_ = std::make_unique<WaterHeightQueryManager>();
         if (waterHeightQueryManager_->Initialize(dxCommon, descriptorAllocator, shaderProgramCache, waterQuery_.get())) {
             Logger::GetInstance().Infof(LogCategory::Graphics,
@@ -197,6 +204,7 @@ namespace CoreEngine
 #endif
         rtEffects_.Shutdown();
         waterHeightQueryManager_.reset();
+        waterFoamPattern_.reset();
         waterObjectFoam_.reset();
         waterRippleSimulation_.reset();
         waterShoreMeshDisplacement_.reset();
