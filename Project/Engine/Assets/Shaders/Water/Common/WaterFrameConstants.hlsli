@@ -124,6 +124,14 @@ cbuffer WaterFrameConstants : register(b5)
     int gRippleEnabled;          // 1 = gWaterRipple を読む
     float3 gRippleInvSizes;      // 段ごとの一辺の長さの逆数 [1/m]（0 の段は読まない）
     float gRipplePad;
+
+    // ---- 物がかき回した所の泡の格子（gWaterObjectFoam・gWaterObjectFoamFlow）----
+    float2 gObjectFoamOriginXZ;      // 格子の XZ の最小の角 [m]（FFT の水なら参照格子の座標）
+    float gObjectFoamInvSize;        // 格子の一辺の長さの逆数 [1/m]
+    int gObjectFoamEnabled;          // 1 = gWaterObjectFoam を読む
+    float2 gObjectFoamDriftOffsetXZ; // 物の泡が風下へ流れた距離 [m]（模様を泡と一緒に動かす）
+    float gObjectFoamFlowTime;       // 物の泡の模様を流れでずらす時刻 [s]（kObjectFoamFlowTimePeriod で巻き戻す）
+    float gObjectFoamPad;
 };
 
 #endif // WATER_FRAME_CONSTANTS_INCLUDED

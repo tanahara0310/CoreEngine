@@ -48,6 +48,10 @@ namespace CoreEngine
         // ---- 水の波紋（段ごとの (高さ, ∂h/∂x, ∂h/∂z, 0)）----
         D3D12_GPU_DESCRIPTOR_HANDLE rippleSRV = { 0 };
 
+        // ---- 物がかき回した所の泡 (F, B, vx, vz) と流れ (ux, uz) ----
+        D3D12_GPU_DESCRIPTOR_HANDLE objectFoamSRV = { 0 };
+        D3D12_GPU_DESCRIPTOR_HANDLE objectFoamFlowSRV = { 0 };
+
         /// @brief 反射テクスチャが接続済みか返す
         bool HasReflectionTexture() const;
 
@@ -65,6 +69,9 @@ namespace CoreEngine
 
         /// @brief 水の波紋の面が接続済みか返す
         bool HasRipple() const;
+
+        /// @brief 物がかき回した所の泡と流れが接続済みか返す
+        bool HasObjectFoam() const;
 
         /// @brief シーン深度テクスチャが接続済みか返す
         bool HasSceneDepth() const;
@@ -130,5 +137,8 @@ namespace CoreEngine
 
         /// @brief 水の波紋の格子の範囲（波紋が無ければ enabled が 0）
         WaterRippleBinding ripple{};
+
+        /// @brief 物がかき回した所の泡の格子の範囲（泡が無ければ enabled が 0）
+        WaterObjectFoamBinding objectFoam{};
     };
 }

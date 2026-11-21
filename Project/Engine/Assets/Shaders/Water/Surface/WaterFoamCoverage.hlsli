@@ -19,20 +19,23 @@ static const float kShoreFoamEdgeMeters = 0.15f;
 // 海底の高さの範囲の端で、視線の延長で測った水深へ移す幅（範囲の一辺に対する割合）
 static const float kSeabedWindowEdgeFade = 0.1f;
 
+// ---- 物がかき回した所の泡 ----
+// 格子の一辺のマス数（WaterObjectFoam::kResolution と同じ値）
+static const float kObjectFoamResolution = 1024.0f;
+// 格子の端から内側へ薄める幅 [マス]
+static const float kObjectFoamEdgeCells = 16.0f;
+
 /// @brief 白波の被覆率の内訳
 struct WhitecapFoamCoverage
 {
     float instant;        ///< いま砕けている泡 [0,1]
     float residue;        ///< 砕けた後に残っている水面の泡 [0,1]
     float residueBubbles; ///< 砕けた後に残っている水の中の気泡 [0,1]
-    float wake;           ///< 物がかき回した所の水面の泡 [0,1]
-    float wakeBubbles;    ///< 物がかき回した所の水の中の気泡 [0,1]
 };
 
 /// @brief 白波の被覆率を、いま砕けている泡と残っている泡に分けて求める（FFTOcean 専用）
 /// @details いま砕けている泡は合成ヤコビアン detJ < gFoamBias（波頭の圧縮）。
 ///          残っている泡と気泡は FFTOceanFoamAccumulate.CS が同じ判定で溜めて減らした格子を読む。
-///          物がかき回した所の泡と気泡も同じ格子の別のチャンネルから読む。
 ///          Gerstner 経路はヤコビアンを持たないため常に 0
 ///          （gUseFFTOceanNormalMap は FFT 使用フラグと同値で更新される）。
 WhitecapFoamCoverage ComputeWhitecapFoamCoverage(float2 worldXZ)
@@ -41,8 +44,6 @@ WhitecapFoamCoverage ComputeWhitecapFoamCoverage(float2 worldXZ)
     coverage.instant = 0.0f;
     coverage.residue = 0.0f;
     coverage.residueBubbles = 0.0f;
-    coverage.wake = 0.0f;
-    coverage.wakeBubbles = 0.0f;
     if (gFoamEnabled == 0 || gUseFFTOceanNormalMap == 0)
     {
         return coverage;
@@ -54,13 +55,67 @@ WhitecapFoamCoverage ComputeWhitecapFoamCoverage(float2 worldXZ)
     WhitecapResidueWindows windows;
     windows.originsXZ = gFoamResidueOriginsXZ;
     windows.invSizes = gFoamResidueInvSizes;
-    const float4 residue = SampleWhitecapResidue(
+    const float2 residue = SampleWhitecapResidue(
         worldXZ, gFFTOceanFoam, gLinearClamp, gFoamDriftOffsetXZ, windows, gFoamResidueMeanCoverage);
     coverage.residue = residue.x;
     coverage.residueBubbles = residue.y;
-    coverage.wake = residue.z;
-    coverage.wakeBubbles = residue.w;
     return coverage;
+}
+
+/// @brief 物がかき回した所の泡
+struct ObjectFoamSample
+{
+    float foam;             ///< 水面の泡の被覆率 [0,1]
+    float bubbles;          ///< 水の中の気泡の量 [0,1]
+    float2 patternVelocity; ///< 模様を動かす速さ [m/s]
+};
+
+/// @brief 物の泡の格子の中の位置と、格子の端からの近さ
+/// @param uv 格子の中の位置 [0,1]
+/// @return 格子の端の kObjectFoamEdgeCells マスで 0 から 1 へ上がる値（格子の外と止まっている間は 0）
+float ComputeObjectFoamInside(float2 baseWorldXZ, out float2 uv)
+{
+    uv = (baseWorldXZ - gObjectFoamOriginXZ) * gObjectFoamInvSize;
+    if (gObjectFoamEnabled == 0)
+    {
+        return 0.0f;
+    }
+    const float2 edgeCells = min(uv, 1.0f - uv) * kObjectFoamResolution;
+    return saturate(min(edgeCells.x, edgeCells.y) / kObjectFoamEdgeCells);
+}
+
+/// @brief 物がかき回した所の泡と気泡を読む（WaterObjectFoamAdvance.CS が進めたもの）
+/// @param baseWorldXZ 変位前の参照格子座標（FFT でない水は世界の XZ）
+ObjectFoamSample SampleObjectFoam(float2 baseWorldXZ)
+{
+    ObjectFoamSample sample;
+    sample.foam = 0.0f;
+    sample.bubbles = 0.0f;
+    sample.patternVelocity = float2(0.0f, 0.0f);
+    float2 uv;
+    const float inside = ComputeObjectFoamInside(baseWorldXZ, uv);
+    [branch]
+    if (inside > 0.0f)
+    {
+        const float4 state = gWaterObjectFoam.SampleLevel(gLinearClamp, uv, 0.0f);
+        sample.foam = saturate(state.x) * inside;
+        sample.bubbles = saturate(state.y) * inside;
+        sample.patternVelocity = state.zw;
+    }
+    return sample;
+}
+
+/// @brief 物が起こした水の流れ [m/s]（格子の外と止まっている間は 0）
+float2 SampleObjectFoamFlow(float2 baseWorldXZ)
+{
+    float2 uv;
+    const float inside = ComputeObjectFoamInside(baseWorldXZ, uv);
+    [branch]
+    if (inside > 0.0f)
+    {
+        return gWaterObjectFoamFlow.SampleLevel(gLinearClamp, uv, 0.0f) * inside;
+    }
+    return float2(0.0f, 0.0f);
 }
 
 /// @brief 海底の高さの範囲の中での位置と、範囲の端からの近さ

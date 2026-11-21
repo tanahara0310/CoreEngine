@@ -59,7 +59,6 @@ namespace CoreEngine
             foam->Dispatch(
                 cmdList,
                 context.fftOceanManager->GetJacobianSRVHandle(),
-                context.fftOceanManager->GetDisplacementSRVHandle(),
                 context.fftOceanSimulationTime,
                 context.fftOceanManager->GetSpectrumRevision(),
                 waveGroupPhase);

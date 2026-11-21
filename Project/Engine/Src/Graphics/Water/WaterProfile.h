@@ -52,6 +52,8 @@ namespace CoreEngine
         float foamDecaySeconds = WaterFoamDefaults::kDecaySeconds;   ///< 泡が e^-1 まで減る時間 [s]
         float foamBubbleSeconds = WaterFoamDefaults::kBubbleSeconds; ///< 水の中の気泡が e^-1 まで減る時間 [s]
         float foamRiseSeconds = WaterFoamDefaults::kRiseSeconds;     ///< 物がかき回した所の気泡が水面の泡になる時間 [s]（0 = 気泡と同時）
+        float foamObjectFlow = WaterFoamDefaults::kObjectFlow;       ///< 物が起こす水の流れの強さ（0 = 物の泡を流れで運ばない）
+        float foamWhitecapSpread = WaterFoamDefaults::kWhitecapSpread; ///< 白波の残りの泡がにじむ速さ [m²/s]（0 = にじまない）
 
         // ---- 波紋 ----
         float rippleStrength = 1.0f; ///< 波紋の高さと傾きに掛ける倍率（0 = この水には波紋を起こさない）

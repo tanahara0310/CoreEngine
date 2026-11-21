@@ -40,8 +40,8 @@ Texture2DArray<float4> gFFTOceanNormal : register(t19);
 Texture2DArray<float4> gFFTOceanJacobian : register(t20);
 
 // ===== FFT の蓄積泡（FFTOceanFoamAccumulate.CS の出力。前のフレームで書き終わった側。
-//       x = 白波の被覆率・y = 厚い泡の量・z = 物がかき回した所の被覆率・w = その厚い泡の量）=====
-Texture2DArray<float4> gFFTOceanFoam : register(t21);
+//       x = 白波の水面の泡の被覆率・y = 水の中の気泡の量）=====
+Texture2DArray<float2> gFFTOceanFoam : register(t21);
 
 // ===== 空の放射照度の SH9 係数（SkyIrradianceSH.CS の出力）=====
 // Σ c_i・Y_i(N) が「法線 N に対する空からの放射照度 / π」（DeferredLighting と同じ）。
@@ -66,6 +66,12 @@ Texture2D<float4> gWaterShoreFoam : register(t28);
 // ===== 水の波紋（WaterRipplePropagate.CS の出力。段ごとの (高さ, ∂h/∂x, ∂h/∂z, 0)）=====
 // gRippleEnabled が 1 のフレームだけ読む。
 Texture2DArray<float4> gWaterRipple : register(t30);
+
+// ===== 物がかき回した所の泡（WaterObjectFoamAdvance.CS の出力）=====
+// 泡は (水面の泡 F, 水の中の気泡 B, 模様を動かす速さ vx, vz [m/s])、流れは (ux, uz) [m/s]。
+// gObjectFoamEnabled が 1 のフレームだけ読む。
+Texture2D<float4> gWaterObjectFoam : register(t31);
+Texture2D<float2> gWaterObjectFoamFlow : register(t32);
 
 struct WaterPSInput
 {

@@ -523,7 +523,7 @@ bool WaterSurfaceParameterPanel::DrawFoamSection(const Target& target, WaterSyst
 	}
 	const WaterProfile& profile = target.water.GetProfile();
 	if (!profile.fftEnabled) {
-		InspectorLayout::HelpBox("泡は FFT の海のときだけ出ます。");
+		InspectorLayout::HelpBox("白波と岸の泡は FFT の海のときだけ出ます。物がかき回した所の泡はどの水面にも出ます。");
 	}
 
 	bool changed = target.Rows({ "foamEnabled" });
@@ -536,7 +536,7 @@ bool WaterSurfaceParameterPanel::DrawFoamSection(const Target& target, WaterSyst
 			foam->GetMeasuredInstantCoverage() * 100.0f, foam->GetMeasuredResidueCoverage() * 100.0f));
 	}
 	changed = target.Rows({ "foamOpacity", "foamDecaySeconds", "foamBubbleSeconds", "foamRiseSeconds",
-		"foamCascadeWeights" }) || changed;
+		"foamObjectFlow", "foamWhitecapSpread", "foamCascadeWeights" }) || changed;
 	ImGui::EndDisabled();
 	InspectorLayout::Hint("白波の割合はシーンの風速から観測式で決まる。白波の量はその倍率。");
 	return changed;

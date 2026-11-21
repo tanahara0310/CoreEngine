@@ -40,6 +40,33 @@ float FoamValueNoise(float2 p)
     return lerp(lerp(a, b, f.x), lerp(c, d, f.x), f.y);
 }
 
+/// @brief 位置ごとの泡の寿命の倍率の範囲
+static const float kWhitecapLifetimeScaleMin = 0.45f;
+static const float kWhitecapLifetimeScaleMax = 1.55f;
+/// @brief 寿命の倍率を変える乱数の細かさ [1/m]
+static const float kWhitecapLifetimeNoiseFrequency = 0.11f;
+
+/// @brief 泡と一緒に流れる位置での、泡の寿命の倍率
+float ComputeWhitecapLifetimeScale(float2 foamXZ)
+{
+    const float noise = FoamValueNoise(foamXZ * kWhitecapLifetimeNoiseFrequency + float2(41.7f, -12.3f));
+    return lerp(kWhitecapLifetimeScaleMin, kWhitecapLifetimeScaleMax, noise);
+}
+
+/// @brief 物がかき回した所の泡の模様を、流れでずらす 1 周期の時間 [s]（WaterObjectFoam::kFlowTimePeriodSeconds を割り切る）
+static const float kObjectFoamFlowPeriodSeconds = 0.5f;
+/// @brief 1 周期のうちに模様が伸び縮みしてよい割合の上限
+static const float kObjectFoamMaxPatternStrain = 0.5f;
+
+/// @brief 模様を動かす速さ [m/s]（その場の流れを、1 周期の伸び縮みが上限に収まるまで遅くしたもの）
+/// @param flow         その場の流れ [m/s]
+/// @param gradientNorm 流れの勾配の大きさ |∇u| [1/s]
+float2 ComputeObjectFoamPatternVelocity(float2 flow, float gradientNorm)
+{
+    const float strain = gradientNorm * kObjectFoamFlowPeriodSeconds;
+    return flow * (kObjectFoamMaxPatternStrain / max(strain, kObjectFoamMaxPatternStrain));
+}
+
 /// @brief いま砕けている白波の被覆率 [0,1]
 /// @param detJ 合成ヤコビアン（ComputeFFTCombinedDetJ）
 /// @param bias 砕けるしきい値（detJ がこれを下回ると砕ける）
@@ -66,24 +93,23 @@ float ComputeWhitecapResidueInside(float2 foamXZ, float2 originXZ, float invSize
     return saturate(min(edgeDistance.x, edgeDistance.y) / kWhitecapResidueEdgeFade);
 }
 
-/// @brief 砕けた後に残っている白波と、物がかき回した所の泡（FFTOceanFoamAccumulate.CS が進めたもの）
+/// @brief 砕けた後に残っている白波の泡と気泡（FFTOceanFoamAccumulate.CS が進めたもの）
 /// @param baseWorldXZ    変位前の参照格子座標
-/// @param residue        残りの泡の格子（段ごとのスライス。x = 白波の被覆率・y = 砕けた直後の厚い泡の量・
-///                       z = 物がかき回した所の被覆率・w = そのうち厚い泡の量）
+/// @param residue        残りの泡の格子（段ごとのスライス。x = 水面の泡の被覆率・y = 水の中の気泡の量）
 /// @param driftOffsetXZ  泡が風下へ流れた距離 [m]（格子はこの距離だけ流れる座標に置いてある）
 /// @param meanCoverage   遠くの段より外で使う、残りの白波の被覆率の平均
-/// @return x = 白波の被覆率 [0,1]・y = そのうち厚い泡の量 [0,x]・z = 物がかき回した所の被覆率 [0,1]・w = そのうち厚い泡の量 [0,z]
-/// @details 近くの段の中は近くの段、その外は遠くの段、さらに外は平均（厚い泡と物がかき回した所は 0）を使い、
+/// @return x = 水面の泡の被覆率 [0,1]・y = 水の中の気泡の量 [0,1]
+/// @details 近くの段の中は近くの段、その外は遠くの段、さらに外は平均（気泡は 0）を使い、
 ///          境目は端の幅でなだらかに移す
-float4 SampleWhitecapResidue(
-    float2 baseWorldXZ, Texture2DArray<float4> residue, SamplerState linearSampler,
+float2 SampleWhitecapResidue(
+    float2 baseWorldXZ, Texture2DArray<float2> residue, SamplerState linearSampler,
     float2 driftOffsetXZ, WhitecapResidueWindows windows, float meanCoverage)
 {
     const float2 foamXZ = baseWorldXZ - driftOffsetXZ;
 
     float2 farUV;
     const float farInside = ComputeWhitecapResidueInside(foamXZ, windows.originsXZ.zw, windows.invSizes.y, farUV);
-    float4 foam = float4(meanCoverage, 0.0f, 0.0f, 0.0f);
+    float2 foam = float2(meanCoverage, 0.0f);
     [branch]
     if (farInside > 0.0f)
     {

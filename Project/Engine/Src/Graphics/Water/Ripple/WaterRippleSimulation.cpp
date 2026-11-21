@@ -196,7 +196,7 @@ namespace CoreEngine
         }
         pendingSources_.reserve(kMaxSourcesPerFrame);
         pendingFoamSources_.reserve(kMaxFoamSourcesPerFrame);
-        foamSources_.reserve(kMaxFoamSourcesPerFrame);
+        foamSources_.reserve(kMaxFoamSourcesPerFrame * 2);
         isInitialized_ = CreatePipelines() && CreateTextures();
         return isInitialized_;
     }
@@ -275,16 +275,20 @@ namespace CoreEngine
         pendingSources_.push_back(Source{ position.x, position.z, sigma, depth * volumeScale, fromObject });
     }
 
-    void WaterRippleSimulation::AddObjectFoam(const Vector3& position, float radius, float churnMeters)
+    void WaterRippleSimulation::AddObjectFoam(
+        const Vector3& position, float radius, float churnMeters, const Vector3& movement, float foamStrength)
     {
         if (!isInitialized_ || !(radius > 0.0f) || !(churnMeters > 0.0f) || !std::isfinite(churnMeters)
-            || !std::isfinite(position.x) || !std::isfinite(position.z)) {
+            || !(foamStrength > 0.0f) || !std::isfinite(foamStrength)
+            || !std::isfinite(position.x) || !std::isfinite(position.z)
+            || !std::isfinite(movement.x) || !std::isfinite(movement.z)) {
             return;
         }
         if (pendingFoamSources_.size() >= kMaxFoamSourcesPerFrame) {
             return;
         }
-        pendingFoamSources_.push_back(FoamSource{ position.x, position.z, radius, churnMeters });
+        pendingFoamSources_.push_back(
+            FoamSource{ position.x, position.z, radius, churnMeters, movement.x, movement.z, foamStrength });
     }
 
     void WaterRippleSimulation::Advance(
@@ -298,7 +302,10 @@ namespace CoreEngine
         if (deltaSeconds > 0.0f) {
             const float invSeconds = 1.0f / deltaSeconds;
             for (const FoamSource& source : pendingFoamSources_) {
-                foamSources_.push_back(Vector4{ source.x, source.z, source.sigma, source.churnMeters * invSeconds });
+                const float churnRate = source.churnMeters * invSeconds;
+                foamSources_.push_back(Vector4{ source.x, source.z, source.sigma, churnRate * source.foamStrength });
+                foamSources_.push_back(
+                    Vector4{ source.movementX * invSeconds, source.movementZ * invSeconds, churnRate, 0.0f });
             }
         }
         pendingFoamSources_.clear();

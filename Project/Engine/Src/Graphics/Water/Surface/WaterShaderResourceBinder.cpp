@@ -123,5 +123,12 @@ void WaterShaderResourceBinder::Bind(
     if (renderResources.HasRipple()) {
         binder.Set(table_[WaterBind::gWaterRipple], renderResources.rippleSRV);
     }
+
+    // 物がかき回した所の泡と流れ
+    // （未接続のフレームはシェーダー側フラグ gObjectFoamEnabled=0 で参照されない）
+    if (renderResources.HasObjectFoam()) {
+        binder.Set(table_[WaterBind::gWaterObjectFoam], renderResources.objectFoamSRV);
+        binder.Set(table_[WaterBind::gWaterObjectFoamFlow], renderResources.objectFoamFlowSRV);
+    }
 }
 }
