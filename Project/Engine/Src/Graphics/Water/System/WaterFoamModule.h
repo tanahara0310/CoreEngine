@@ -18,10 +18,18 @@ namespace CoreEngine
         /// @brief 泡を出さない水面（ほかの水）へ、泡を切った値を渡す（白波と岸の泡には触れない）
         void ApplyWithoutFoam(const WaterFrameContext& frame) const;
 
-        /// @brief 物が水をかき回した所の泡の源を、波紋の格子から白波の泡へ渡す（波紋の Advance の後・フレームに 1 回）
-        void PassWakeSources(RenderDomainContext& domain) const;
+        /// @brief 物が水をかき回した所の泡の源を波紋の格子から受け取り、物の泡の格子を進める支度をする
+        /// @details 波紋の Advance の後・フレームに 1 回。格子をゲームのカメラの前へ寄せる
+        void AdvanceObjectFoam(const WaterFrameContext& frame, float deltaSeconds);
 
-        /// @brief 溜まった白波の泡の SRV を結線へ書く
+        /// @brief 溜まった白波の泡と、物の泡の SRV と範囲を結線へ書く（主の水）
         void Bind(RenderDomainContext& domain, WaterFrameBinding& binding) const;
+
+        /// @brief 物の泡の SRV と範囲を結線へ書く（ほかの水）
+        void BindObjectFoam(RenderDomainContext& domain, WaterFrameBinding& binding) const;
+
+    private:
+        float cameraXZ_[2] = { 0.0f, 0.0f }; ///< 最後のカメラの XZ [m]
+        float viewXZ_[2] = { 0.0f, 0.0f };   ///< 最後のカメラが見ている向きの水平の成分
     };
 }

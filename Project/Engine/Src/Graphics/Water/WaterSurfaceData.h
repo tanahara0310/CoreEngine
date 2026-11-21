@@ -35,6 +35,18 @@ namespace CoreEngine
         float strength = 0.0f;                 ///< 傾きに掛ける倍率（水面の値）
     };
 
+    /// @brief 物がかき回した所の泡の格子（WaterObjectFoam）の結線
+    /// @details 泡は (水面の泡 F, 水の中の気泡 B, 模様を動かす速さ vx, vz [m/s])、流れは (ux, uz) [m/s]
+    struct WaterObjectFoamBinding {
+        D3D12_GPU_DESCRIPTOR_HANDLE foamSRV{}; ///< 泡の SRV（直近に書き終わった側）
+        D3D12_GPU_DESCRIPTOR_HANDLE flowSRV{}; ///< 流れの SRV（直近に書き終わった側）
+        uint32_t enabled = 0;                  ///< 1 = 格子に泡か流れがある
+        float originXZ[2] = { 0.0f, 0.0f };    ///< 格子の XZ の最小の角 [m]（FFT の水なら参照格子の座標）
+        float invSize = 0.0f;                  ///< 格子の一辺の長さの逆数 [1/m]
+        float driftOffsetXZ[2] = { 0.0f, 0.0f }; ///< 泡が風下へ流れた距離 [m]（模様を泡と一緒に動かす）
+        float flowTime = 0.0f;                   ///< 模様を流れでずらす時刻 [s]（WaterObjectFoam::kFlowTimePeriodSeconds で巻き戻す）
+    };
+
     /// @brief FFT の海の波面のテクスチャと傾きの大きさ（FFTOceanWaveModel が書く）
     /// @details FFT の海で描いていないときは enabled = 0 のまま
     struct WaterFFTOceanInput {

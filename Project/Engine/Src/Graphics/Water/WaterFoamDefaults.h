@@ -43,5 +43,11 @@ namespace CoreEngine
 
         /// @brief 物がかき回した所の気泡が水面の泡になる時間 τrise [s]（0 = 気泡と同時に泡を入れる）
         inline constexpr float kRiseSeconds = 0.25f;
+
+        /// @brief 物が起こす水の流れの強さ（外へ押す・引きずるの倍率。0 = 物の泡を流れで運ばない）
+        inline constexpr float kObjectFlow = 1.0f;
+
+        /// @brief 白波の残りの泡と気泡がにじむ速さ κ [m²/s]（0 = にじまない）
+        inline constexpr float kWhitecapSpread = 0.05f;
     }
 }

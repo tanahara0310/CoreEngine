@@ -82,12 +82,17 @@ namespace CoreEngine
         void AddObjectRipple(const Vector3& position, float radius, float depth);
 
         /// @brief 物が水をかき回した所の泡の源を足す（次の Advance で、そのフレームの泡の源になる）
-        /// @param position    中心（Y は使わない）
-        /// @param radius      半径 [m]（泡を広げるガウスの σ）
-        /// @param churnMeters このフレームに水面を上下させた量 [m]
-        void AddObjectFoam(const Vector3& position, float radius, float churnMeters);
+        /// @param position     中心（Y は使わない）
+        /// @param radius       半径 [m]（泡を広げるガウスの σ）
+        /// @param churnMeters  このフレームに水面を上下させた量 [m]（流れを押す強さ）
+        /// @param movement     このフレームに横へ動いた量（X・Z を使う）[m]（流れを引きずる速さ）
+        /// @param foamStrength 泡の量に掛ける倍率（0 以下なら源を足さない）
+        void AddObjectFoam(
+            const Vector3& position, float radius, float churnMeters, const Vector3& movement, float foamStrength);
 
-        /// @brief 前の Advance で決めた泡の源（x, z, σ [m], 水面を上下させた速さ [m/s]）
+        /// @brief 前の Advance で決めた泡の源（源ごとに 2 つ）
+        /// @details (x, z, σ [m], 泡を入れる速さ = 水面を上下させた速さ × 泡の倍率 [m/s]) と
+        ///          (横へ動く速さ vx, vz [m/s], 水面を上下させた速さ [m/s], 0)
         std::span<const Vector4> GetFoamSources() const { return foamSources_; }
 
         /// @brief このフレームにまだ足せる源の数（AddRipple と AddObjectRipple で共通）
@@ -131,8 +136,11 @@ namespace CoreEngine
         struct FoamSource {
             float x = 0.0f;
             float z = 0.0f;
-            float sigma = 0.0f;       ///< ガウスの幅 [m]
-            float churnMeters = 0.0f; ///< このフレームに水面を上下させた量 [m]
+            float sigma = 0.0f;        ///< ガウスの幅 [m]
+            float churnMeters = 0.0f;  ///< このフレームに水面を上下させた量 [m]
+            float movementX = 0.0f;    ///< このフレームに横へ動いた量 [m]
+            float movementZ = 0.0f;
+            float foamStrength = 0.0f; ///< 泡の量に掛ける倍率
         };
 
         struct Level {

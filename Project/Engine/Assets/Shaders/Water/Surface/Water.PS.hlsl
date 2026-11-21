@@ -205,6 +205,7 @@ WaterPixelOutput main(WaterPSInput input)
         debugContext.foamWhitecapResidue = max(foam.whitecapResidue, foam.wakeCoverage);
         debugContext.foamShoreCoverage = foam.shoreCoverage;
         debugContext.foamBubbles = foam.bubbles;
+        debugContext.foamFlow = SampleObjectFoamFlow(input.baseWorldXZ);
         debugContext.rippleHeight = 0.0f;
         debugContext.rippleLevelSlope = float3(0.0f, 0.0f, 0.0f);
         if (gRippleEnabled != 0)

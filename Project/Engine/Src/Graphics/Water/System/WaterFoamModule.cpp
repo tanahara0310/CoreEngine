@@ -4,6 +4,7 @@
 #include "Camera/Camera.h"
 #include "Graphics/Render/RenderDomainContext.h"
 #include "Graphics/Water/FFT/FFTOceanManager.h"
+#include "Graphics/Water/Foam/WaterObjectFoam.h"
 #include "Graphics/Water/Foam/WaterShoreFoam.h"
 #include "Graphics/Water/Foam/WaterWhitecapFoam.h"
 #include "Graphics/Water/Ripple/WaterRippleSimulation.h"
@@ -58,7 +59,7 @@ namespace CoreEngine
         whitecapSettings.cascadeWeights[2] = settings.cascadeWeights.z;
         whitecapSettings.decaySeconds = settings.decaySeconds;
         whitecapSettings.bubbleSeconds = settings.bubbleSeconds;
-        whitecapSettings.riseSeconds = settings.riseSeconds;
+        whitecapSettings.spreadCoefficient = settings.whitecapSpread;
         whitecap->SetSettings(whitecapSettings);
 
         // 白波の泡が FFT の時刻までに風下へ流れた距離と、模様を風の向きに伸ばす軸と、模様を動かす時刻
@@ -83,24 +84,65 @@ namespace CoreEngine
             settings.opacity, settings.cascadeWeights, settings.decaySeconds);
     }
 
-    void WaterFoamModule::PassWakeSources(RenderDomainContext& domain) const
+    void WaterFoamModule::AdvanceObjectFoam(const WaterFrameContext& frame, float deltaSeconds)
     {
-        WaterWhitecapFoam* const whitecap = domain.GetWaterWhitecapFoam();
-        if (!whitecap) {
+        WaterObjectFoam* const objectFoam = frame.domain.GetWaterObjectFoam();
+        if (!objectFoam || !objectFoam->IsInitialized()) {
             return;
         }
-        const WaterRippleSimulation* const ripple = domain.GetWaterRippleSimulation();
-        whitecap->SetWakeSources(
-            (ripple && ripple->IsInitialized()) ? ripple->GetFoamSources() : std::span<const Vector4>{});
+        if (const Camera* camera = frame.scene.gameViewCamera3D) {
+            const Vector3 cameraPosition = camera->GetPosition();
+            const Vector3 backward = camera->GetForward();
+            cameraXZ_[0] = cameraPosition.x;
+            cameraXZ_[1] = cameraPosition.z;
+            viewXZ_[0] = -backward.x;
+            viewXZ_[1] = -backward.z;
+        }
+
+        const WaterFoamSettings& foam = frame.settings.foam;
+        WaterObjectFoam::Settings settings{};
+        settings.enabled = foam.enabled;
+        settings.flowStrength = foam.objectFlow;
+        settings.decaySeconds = foam.decaySeconds;
+        settings.bubbleSeconds = foam.bubbleSeconds;
+        settings.riseSeconds = foam.riseSeconds;
+        // 白波の泡と同じ速さで風下へ流す
+        float windDirection[2] = { 1.0f, 0.0f };
+        if (const FFTOceanManager* fftOcean = frame.domain.GetFFTOceanManager()) {
+            windDirection[0] = fftOcean->GetSettings().windDirection[0];
+            windDirection[1] = fftOcean->GetSettings().windDirection[1];
+        }
+        const float driftSpeed = WaterWhitecapFoam::kWindDriftFactor * (std::max)(frame.settings.waves.windSpeed, 0.0f);
+        settings.windDriftVelocity[0] = windDirection[0] * driftSpeed;
+        settings.windDriftVelocity[1] = windDirection[1] * driftSpeed;
+
+        const WaterRippleSimulation* const ripple = frame.domain.GetWaterRippleSimulation();
+        objectFoam->Advance(
+            (ripple && ripple->IsInitialized()) ? ripple->GetFoamSources() : std::span<const Vector4>{},
+            deltaSeconds, cameraXZ_[0], cameraXZ_[1], viewXZ_[0], viewXZ_[1], settings);
     }
 
     void WaterFoamModule::Bind(RenderDomainContext& domain, WaterFrameBinding& binding) const
     {
+        BindObjectFoam(domain, binding);
         if (!domain.GetFFTOceanManager()) {
             return;
         }
         if (const WaterWhitecapFoam* whitecap = domain.GetWaterWhitecapFoam(); whitecap && whitecap->IsInitialized()) {
             binding.resources.fftFoamSRV = whitecap->GetSRVHandle();
+        }
+    }
+
+    void WaterFoamModule::BindObjectFoam(RenderDomainContext& domain, WaterFrameBinding& binding) const
+    {
+        const WaterObjectFoam* const objectFoam = domain.GetWaterObjectFoam();
+        if (!objectFoam || !objectFoam->IsInitialized()) {
+            return;
+        }
+        objectFoam->FillBinding(binding.objectFoam);
+        if (binding.objectFoam.enabled != 0) {
+            binding.resources.objectFoamSRV = binding.objectFoam.foamSRV;
+            binding.resources.objectFoamFlowSRV = binding.objectFoam.flowSRV;
         }
     }
 }

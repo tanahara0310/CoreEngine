@@ -113,7 +113,7 @@ namespace CoreEngine
 
             // ---- 泡 ----
             REFLECT_PROPERTY(profile_.foamEnabled, "泡を出す",
-                p.tooltip = "白波と岸の泡を出す（主の水の FFT の海だけ）")
+                p.tooltip = "白波・岸の泡・物がかき回した所の泡を出す（白波と岸の泡は主の水の FFT の海だけ）")
             REFLECT_PROPERTY(profile_.foamWhitecapScale, "白波の量", p.range = Range(0.0f, 4.0f),
                 p.tooltip = "白波の割合の倍率（1 = 風速からの観測式 W = 3.84e-6·U^3.41）")
             REFLECT_PROPERTY(profile_.foamOpacity, "泡の不透明度", p.range = Range(0.0f, 1.0f))
@@ -123,6 +123,10 @@ namespace CoreEngine
                 p.tooltip = "砕けた波や物がかき回した所の水の中の気泡（青白い濁り）が e^-1 まで減る時間")
             REFLECT_PROPERTY(profile_.foamRiseSeconds, "泡が浮いてくる時間 [s]", p.range = Range(0.0f, 2.0f),
                 p.tooltip = "物がかき回した所の気泡が水面の白い泡になるまでの時間。0 で気泡と同時に白い泡を出す")
+            REFLECT_PROPERTY(profile_.foamObjectFlow, "物が起こす流れの強さ", p.range = Range(0.0f, 3.0f),
+                p.tooltip = "物が水を外へ押す流れと引きずる流れの倍率。物の泡はこの流れで広がって運ばれる。0 で運ばない")
+            REFLECT_PROPERTY(profile_.foamWhitecapSpread, "白波の泡がにじむ速さ [m²/s]", p.range = Range(0.0f, 0.5f),
+                p.tooltip = "砕けた後に残っている白波の泡がにじんで薄くなる速さ。0 でにじまない")
             REFLECT_PROPERTY(profile_.foamCascadeWeights, "波の大きさごとの重み", p.range = Range(0.0f, 1.0f),
                 p.tooltip = "白波を立てる傾きの寄与（大・中・小のカスケード）")
 

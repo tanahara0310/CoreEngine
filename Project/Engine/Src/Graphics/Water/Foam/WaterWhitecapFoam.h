@@ -43,8 +43,8 @@ namespace CoreEngine
             float decaySeconds = WaterFoamDefaults::kDecaySeconds;
             /// @brief 水の中の気泡が浮き切るまでの時間 [s]
             float bubbleSeconds = WaterFoamDefaults::kBubbleSeconds;
-            /// @brief 物がかき回した所の気泡が水面の泡になる時間 [s]（0 = 気泡と同時に泡を入れる）
-            float riseSeconds = WaterFoamDefaults::kRiseSeconds;
+            /// @brief 残りの泡と気泡がにじむ速さ κ [m²/s]（0 = にじまない）
+            float spreadCoefficient = WaterFoamDefaults::kWhitecapSpread;
         };
 
         /// @brief 残りの泡の格子の段の数（0 = カメラの近く・1 = 遠く）
@@ -53,8 +53,8 @@ namespace CoreEngine
         static constexpr uint32_t kResolution = 1024;
         /// @brief 段ごとの 1 テクセルの幅 [m]
         static constexpr std::array<float, kLevelCount> kLevelTexelSizes = { 0.25f, 1.0f };
-        /// @brief 1 フレームに入れられる、物がかき回した所の泡の源の数
-        static constexpr uint32_t kMaxWakeSources = 64;
+        /// @brief 泡が風下へ流れる速さ ÷ 風速（海面の吹送流とストークスドリフトの和）
+        static constexpr float kWindDriftFactor = 0.03f;
 
         /// @brief GPU 資源と計算パイプラインを作る
         bool Initialize(GraphicsCore* dxCommon, DescriptorAllocator* descriptorAllocator);
@@ -72,23 +72,15 @@ namespace CoreEngine
         /// @param timeSeconds FFT のシミュレーション時刻 [s]（泡が風下へ流れた距離を求める）
         void UpdateWindows(float cameraX, float cameraZ, float timeSeconds);
 
-        /// @brief 物が水をかき回した所の泡の源を決める（フレームに 1 回。次の Dispatch で両方の段の w の気泡へ入れて捨てる）
-        /// @param sources (x, z, σ [m], 水面を上下させた速さ [m/s])。x, z は描かれた水面の位置。kMaxWakeSources 個まで
-        void SetWakeSources(std::span<const Vector4> sources);
-
-        /// @brief 白波の泡を 1 フレーム進める（FFT のヤコビアンと変位が読み取り状態になった後に呼ぶ）
-        /// @details 段を 1 フレームに 1 つずつ順に進め、ほかの段は前のフレームの値を写す。
-        ///          SetWakeSources の源は、両方の段の、白波とは別のチャンネル（w の気泡）へ足し、
-        ///          z の水面の泡は気泡が浮いてくるのに合わせて増やす
+        /// @brief 白波の泡を 1 フレーム進める（FFT のヤコビアンが読み取り状態になった後に呼ぶ）
+        /// @details 段を 1 フレームに 1 つずつ順に進め、ほかの段は前のフレームの値を写す
         /// @param jacobianSRV      FFT のヤコビアン（カスケードの配列）
-        /// @param displacementSRV  FFT の変位（カスケードの配列。泡の格子の点が描かれる位置を求める）
         /// @param timeSeconds      FFT のシミュレーション時刻 [s]
         /// @param spectrumRevision FFT のスペクトルの版。変わったフレームは蓄積を捨てる
         /// @param waveGroupPhase   波群エンベロープの位相のずれ [rad]（FFTOceanSpectrum::ComputeWaveGroupPhase）
         void Dispatch(
             ID3D12GraphicsCommandList* cmdList,
             D3D12_GPU_DESCRIPTOR_HANDLE jacobianSRV,
-            D3D12_GPU_DESCRIPTOR_HANDLE displacementSRV,
             float timeSeconds,
             uint32_t spectrumRevision,
             const std::array<float, 3>& waveGroupPhase);
@@ -147,8 +139,6 @@ namespace CoreEngine
         float GetGain() const { return gain_; }
 
     private:
-        /// @brief 泡が風下へ流れる速さ ÷ 風速（海面の吹送流とストークスドリフトの和）
-        static constexpr float kWindDriftFactor = 0.03f;
         /// @brief 模様を風の向きに伸ばし始める風速と、伸び率が最大になる風速 [m/s]
         static constexpr float kStretchStartWindSpeed = 8.0f;
         static constexpr float kStretchFullWindSpeed = 18.0f;
@@ -156,12 +146,6 @@ namespace CoreEngine
         static constexpr float kMaxFoamStretch = 3.0f;
         /// @brief 泡の模様を動かす時刻の周期 [s]（WaterFoamAppearance.hlsli の kFoamPatternPeriodSeconds と同じ値）
         static constexpr float kPatternPeriodSeconds = 600.0f;
-        /// @brief かき回した所の泡の源の幅の下限（段の 1 テクセルの幅に対する比）
-        static constexpr float kWakeMinSigmaTexels = 0.75f;
-        /// @brief かき回した所の泡を入れる範囲（源の幅に対する比。FFTOceanFoamAccumulate.CS.hlsl の kWakeReachSigmas と同じ値）
-        static constexpr float kWakeReachSigmas = 3.0f;
-        /// @brief かき回した所の泡を入れる範囲に足す、波の水平の変位の余裕 [m]
-        static constexpr float kWakeDisplacementMargin = 8.0f;
 
         /// @brief 白波の蓄積パスの定数（FFTOceanFoamAccumulate.CS.hlsl の FFTOceanFoamConstants）
         struct FoamConstants {
@@ -182,13 +166,9 @@ namespace CoreEngine
             float decaySeconds = WaterFoamDefaults::kDecaySeconds;
             uint32_t resetFoam = 0;
             uint32_t activeLevel = 0;
-            uint32_t wakeSourceCount = 0;
-            float wakeMinSigmas[2] = { 0.0f, 0.0f };          ///< 段ごとの泡の源の幅の下限 [m]
             float bubbleSeconds = WaterFoamDefaults::kBubbleSeconds;
-            float riseSeconds = WaterFoamDefaults::kRiseSeconds;
-            float pad[2] = { 0.0f, 0.0f };
-            int32_t wakeRects[kLevelCount * 4] = {};          ///< 段ごとの泡の源を入れるテクセルの範囲（最小 x, z・最大 x, z。最大は含まない）
-            Vector4 wakeSources[kMaxWakeSources]{};           ///< (x, z, σ [m], 水面を上下させた速さ [m/s])
+            float spreadCoefficient = WaterFoamDefaults::kWhitecapSpread;
+            float pad = 0.0f;
         };
 
         static constexpr Cb::Field kFoamConstantsFields[] = {
@@ -198,11 +178,8 @@ namespace CoreEngine
             CB_FIELD(FoamConstants, foamBias), CB_FIELD(FoamConstants, waveGroupPhase),
             CB_FIELD(FoamConstants, foamGain), CB_FIELD(FoamConstants, driftOffsetXZ),
             CB_FIELD(FoamConstants, decaySeconds), CB_FIELD(FoamConstants, resetFoam),
-            CB_FIELD(FoamConstants, activeLevel), CB_FIELD(FoamConstants, wakeSourceCount),
-            CB_FIELD(FoamConstants, wakeMinSigmas), CB_FIELD(FoamConstants, bubbleSeconds),
-            CB_FIELD(FoamConstants, riseSeconds), CB_FIELD(FoamConstants, pad),
-            CB_FIELD_AS(FoamConstants, wakeRects, Cb::Array(Cb::Int4, kLevelCount)),
-            CB_FIELD(FoamConstants, wakeSources),
+            CB_FIELD(FoamConstants, activeLevel), CB_FIELD(FoamConstants, bubbleSeconds),
+            CB_FIELD(FoamConstants, spreadCoefficient), CB_FIELD(FoamConstants, pad),
         };
         CB_VERIFY_LAYOUT(FoamConstants, kFoamConstantsFields);
         CB_BIND_HLSL(FoamConstants, kFoamConstantsFields, "FFTOceanFoamConstants");
@@ -289,8 +266,6 @@ namespace CoreEngine
 
         bool CreatePipelines();
         bool CreateFoamResources();
-        /// @brief SetWakeSources の源と、段ごとに源を入れるテクセルの範囲を定数へ書く（levelOrigins_ と driftOffset_ を決めた後）
-        void FillWakeSources(FoamConstants& constants) const;
         bool CreateStatisticsResources();
         /// @brief 蓄積と較正をやり直す（波面か白波の目標が変わったとき）
         void RequestReset();
@@ -311,7 +286,7 @@ namespace CoreEngine
         CustomShaderPipeline foamPipeline_{};
         BindingTable foamBindings_{};
         /// @brief 書き込み先は Dispatch ごとに入れ替える（frameIndex_ & 1 と同じ側）。SRV / UAV とも全段を 1 ビューで見せる
-        ///        （x = 白波の水面の泡の被覆率・y = 白波の水の中の気泡・z = 物がかき回した所の水面の泡の被覆率・w = その気泡）
+        ///        （x = 白波の水面の泡の被覆率・y = 白波の水の中の気泡）
         FFTOceanPingPong foam_{};
         uint32_t frameIndex_ = 0;
         bool resetPending_ = true;
@@ -325,9 +300,6 @@ namespace CoreEngine
         std::array<float, 4> prevLevelOrigins_{};
         /// @brief 段ごとの、最後に進めてから経ったシミュレーション時間 [s]
         std::array<float, kLevelCount> pendingSeconds_{};
-        /// @brief 次の Dispatch で入れる、物がかき回した所の泡の源
-        std::array<Vector4, kMaxWakeSources> wakeSources_{};
-        uint32_t wakeSourceCount_ = 0;
 
         // ---- 沖の白波の統計（フレームの枠ごとに読み戻す）----
         CustomShaderPipeline statisticsPipeline_{};

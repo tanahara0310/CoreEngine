@@ -294,6 +294,17 @@ namespace CoreEngine
             frameCB_.rippleInvSizes[c] = ripple.invSizes[c];
         }
 
+        // 物がかき回した所の泡（どの水面も、泡を出す水面なら同じ格子を読む）
+        const WaterObjectFoamBinding& objectFoam = binding.objectFoam;
+        frameCB_.objectFoamEnabled =
+            (renderResources_.HasObjectFoam() && objectFoam.enabled != 0 && profile_.foamEnabled) ? 1 : 0;
+        for (int c = 0; c < 2; ++c) {
+            frameCB_.objectFoamOriginXZ[c] = objectFoam.originXZ[c];
+            frameCB_.objectFoamDriftOffsetXZ[c] = objectFoam.driftOffsetXZ[c];
+        }
+        frameCB_.objectFoamInvSize = objectFoam.invSize;
+        frameCB_.objectFoamFlowTime = objectFoam.flowTime;
+
         frameCB_.skyAmbientScale = binding.skyAmbientScale;
         for (int c = 0; c < 3; ++c) {
             frameCB_.fftCascadeMeanSquareSlope[c] = binding.fftCascadeMeanSquareSlope[c];

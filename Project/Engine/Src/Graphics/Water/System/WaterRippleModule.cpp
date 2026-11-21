@@ -3,6 +3,7 @@
 
 #include "Camera/Camera.h"
 #include "Graphics/Render/RenderDomainContext.h"
+#include "Graphics/Water/Foam/WaterObjectFoam.h"
 #include "Graphics/Water/RayTracing/WaterSeaMapRayTracingManager.h"
 #include "Graphics/Water/Ripple/WaterRippleSimulation.h"
 #include "Graphics/Water/Surface/WaterRenderResources.h"
@@ -65,31 +66,37 @@ namespace CoreEngine
     void WaterRippleModule::CaptureShore(RenderDomainContext& domain, const WaterSurfaceData& snapshot) const
     {
         WaterRippleSimulation* const simulation = domain.GetWaterRippleSimulation();
-        if (!simulation) {
-            return;
-        }
+        WaterObjectFoam* const objectFoam = domain.GetWaterObjectFoam();
         const WaterSeaMapBinding& seaMap = snapshot.seaMap;
         const WaterSeaMapRayTracingManager* const seaMapManager = domain.GetRTEffects().Find<WaterSeaMapRayTracingManager>();
-        if (!WaterCVars::RippleShore.Get() || seaMap.resolution[0] == 0 || seaMap.resolution[1] == 0 || !seaMapManager) {
-            simulation->SetShoreMap(std::nullopt);
-            return;
+        std::optional<WaterRippleSimulation::ShoreMap> shoreMap;
+        if (seaMap.resolution[0] != 0 && seaMap.resolution[1] != 0 && seaMapManager) {
+            WaterRippleSimulation::ShoreMap& map = shoreMap.emplace();
+            map.srv = seaMapManager->GetView().srvHandle;
+            map.resolution[0] = seaMap.resolution[0];
+            map.resolution[1] = seaMap.resolution[1];
+            map.originXZ[0] = seaMap.originXZ[0];
+            map.originXZ[1] = seaMap.originXZ[1];
+            map.texelsPerMeter = seaMap.texelsPerMeter;
+            map.depthOffset = seaMap.depthOffset;
         }
 
-        WaterRippleSimulation::ShoreMap shoreMap{};
-        shoreMap.srv = seaMapManager->GetView().srvHandle;
-        shoreMap.resolution[0] = seaMap.resolution[0];
-        shoreMap.resolution[1] = seaMap.resolution[1];
-        shoreMap.originXZ[0] = seaMap.originXZ[0];
-        shoreMap.originXZ[1] = seaMap.originXZ[1];
-        shoreMap.texelsPerMeter = seaMap.texelsPerMeter;
-        shoreMap.depthOffset = seaMap.depthOffset;
-        simulation->SetShoreMap(shoreMap);
+        // 物の泡の流れはいつも陸で止める。波紋の岸は CVar で切り替える
+        if (objectFoam) {
+            objectFoam->SetShoreMap(shoreMap);
+        }
+        if (simulation) {
+            simulation->SetShoreMap(WaterCVars::RippleShore.Get() ? shoreMap : std::nullopt);
+        }
     }
 
     void WaterRippleModule::ClearShore(RenderDomainContext& domain)
     {
         if (WaterRippleSimulation* const simulation = domain.GetWaterRippleSimulation()) {
             simulation->SetShoreMap(std::nullopt);
+        }
+        if (WaterObjectFoam* const objectFoam = domain.GetWaterObjectFoam()) {
+            objectFoam->SetShoreMap(std::nullopt);
         }
     }
 }

@@ -175,6 +175,13 @@ struct WaterFrameConstants {
 	int rippleEnabled = 0;                                   // 1 = gWaterRipple を読む
 	float rippleInvSizes[3] = { 0.0f, 0.0f, 0.0f };          // 段ごとの一辺の長さの逆数 [1/m]（0 の段は読まない）
 	float ripplePad = 0.0f;
+	// ---- 物がかき回した所の泡の格子（gWaterObjectFoam。WaterObjectFoamBinding の同名の値）----
+	float objectFoamOriginXZ[2] = { 0.0f, 0.0f };      // 格子の XZ の最小の角 [m]
+	float objectFoamInvSize = 0.0f;                     // 格子の一辺の長さの逆数 [1/m]
+	int objectFoamEnabled = 0;                          // 1 = gWaterObjectFoam を読む
+	float objectFoamDriftOffsetXZ[2] = { 0.0f, 0.0f }; // 物の泡が風下へ流れた距離 [m]
+	float objectFoamFlowTime = 0.0f;                    // 物の泡の模様を流れでずらす時刻 [s]
+	float objectFoamPad = 0.0f;
 };
 
 // 全フィールドのオフセットを HLSL packing 規則から機械的に導出して検証する。
@@ -182,7 +189,7 @@ struct WaterFrameConstants {
 // （RTシャドウの cbuffer 配列ずれ事故と同型）。
 // 以前はここに「absorptionCoeff は 16B 境界」「cameraNearZ は 80」といった個別 assert を
 // 人手で並べていたが、下の表が全フィールドを検査するので不要になった。
-static_assert(sizeof(WaterFrameConstants) == 352, "WaterFrameConstants size mismatch with HLSL cbuffer");
+static_assert(sizeof(WaterFrameConstants) == 384, "WaterFrameConstants size mismatch with HLSL cbuffer");
 static constexpr Cb::Field kWaterFrameConstantsFields[] = {
     CB_FIELD(WaterFrameConstants, reflectionEnabled), CB_FIELD(WaterFrameConstants, fresnelReflectanceScale),
     CB_FIELD(WaterFrameConstants, fresnelBaseReflectance), CB_FIELD(WaterFrameConstants, depthFadeEnabled),
@@ -216,6 +223,9 @@ static constexpr Cb::Field kWaterFrameConstantsFields[] = {
     CB_FIELD(WaterFrameConstants, rippleOriginsXZ01), CB_FIELD(WaterFrameConstants, rippleOrigin2XZ),
     CB_FIELD(WaterFrameConstants, rippleStrength), CB_FIELD(WaterFrameConstants, rippleEnabled),
     CB_FIELD(WaterFrameConstants, rippleInvSizes), CB_FIELD(WaterFrameConstants, ripplePad),
+    CB_FIELD(WaterFrameConstants, objectFoamOriginXZ), CB_FIELD(WaterFrameConstants, objectFoamInvSize),
+    CB_FIELD(WaterFrameConstants, objectFoamEnabled), CB_FIELD(WaterFrameConstants, objectFoamDriftOffsetXZ),
+    CB_FIELD(WaterFrameConstants, objectFoamFlowTime), CB_FIELD(WaterFrameConstants, objectFoamPad),
 };
 CB_VERIFY_LAYOUT(WaterFrameConstants, kWaterFrameConstantsFields);
 CB_BIND_HLSL(WaterFrameConstants, kWaterFrameConstantsFields, "WaterFrameConstants");

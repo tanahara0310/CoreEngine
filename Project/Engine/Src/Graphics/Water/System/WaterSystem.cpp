@@ -10,6 +10,7 @@
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Render/Model/VertexAnimation.h"
 #include "Graphics/Render/RenderDomainContext.h"
+#include "Graphics/Water/Foam/WaterObjectFoam.h"
 #include "Graphics/Water/Query/WaterHeightQueryManager.h"
 #include "Graphics/Water/Surface/WaterRenderResources.h"
 #include "Graphics/Water/Surface/WaterSurfaceComponent.h"
@@ -193,6 +194,7 @@ namespace CoreEngine
             appearance_.Bind(frame, binding);
             wave_.Bind(domain, binding);
             ripple_.Bind(domain, binding);
+            foam_.BindObjectFoam(domain, binding);
             waterPlane->ApplyFrameBinding(binding);
 
             CaptureSurface(domain, *waterPlane, secondarySurfaceStates_.emplace_back());
@@ -252,7 +254,7 @@ namespace CoreEngine
             appearance_.ApplySettings(frame);
             foam_.ApplySettings(frame, waveCapabilities, wave_.GetFFTOceanTime());
             ripple_.Advance(frame, Time::DeltaTime());
-            foam_.PassWakeSources(*domain);
+            foam_.AdvanceObjectFoam(frame, Time::DeltaTime());
             caustics_.ApplySettings(frame);
             rayTracing_.ApplySettings(frame);
             shore_.UpdateWindow(frame, waveCapabilities);
@@ -295,6 +297,9 @@ namespace CoreEngine
         if (publishTarget_) {
             publishTarget_->PublishWaterFrame(nullptr, {}, 0.0f);
             WaterRippleModule::ClearShore(*publishTarget_);
+            if (WaterObjectFoam* const objectFoam = publishTarget_->GetWaterObjectFoam()) {
+                objectFoam->Stop();
+            }
             publishTarget_ = nullptr;
         }
     }
