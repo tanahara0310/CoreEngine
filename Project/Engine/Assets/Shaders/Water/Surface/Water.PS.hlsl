@@ -162,8 +162,8 @@ WaterPixelOutput main(WaterPSInput input)
     // ---- 8. 透過（水面越しに見える水中の色）----
     float3 transmissionColor = ResolveWaterTransmission(
         pixelCoord, screenUV, transmittance, sigmaS, sigmaT, sunVisibility);
-    // 水面下の気泡は、その奥から透過してくる光を遮り、自分が散乱した光に置き換える
-    transmissionColor = lerp(transmissionColor, foam.color * kFoamHazeTint, foam.bubbleHaze);
+    // 水の中の気泡は、その奥から透過してくる光を遮り、自分が散乱した光に置き換える
+    transmissionColor = lerp(transmissionColor, foam.bubbleColor, foam.bubbleHaze);
     // 水中の放射輝度は、水面から空気へ出るときに屈折で立体角が広がって 1/n² になる
     transmissionColor *= WaterRadianceExitScale();
 
@@ -204,6 +204,7 @@ WaterPixelOutput main(WaterPSInput input)
         debugContext.foamWhitecapInstant = foam.whitecapInstant;
         debugContext.foamWhitecapResidue = max(foam.whitecapResidue, foam.wakeCoverage);
         debugContext.foamShoreCoverage = foam.shoreCoverage;
+        debugContext.foamBubbles = foam.bubbles;
         debugContext.rippleHeight = 0.0f;
         debugContext.rippleLevelSlope = float3(0.0f, 0.0f, 0.0f);
         if (gRippleEnabled != 0)

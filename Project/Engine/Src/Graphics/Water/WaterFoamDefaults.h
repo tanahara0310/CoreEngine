@@ -37,5 +37,11 @@ namespace CoreEngine
 
         /// @brief 泡の寿命 τ [s]（e^-1 減衰時間）
         inline constexpr float kDecaySeconds = 3.0f;
+
+        /// @brief 水の中の気泡が浮き切るまでの時間 τB [s]（e^-1 減衰時間）
+        inline constexpr float kBubbleSeconds = 0.6f;
+
+        /// @brief 物がかき回した所の気泡が水面の泡になる時間 τrise [s]（0 = 気泡と同時に泡を入れる）
+        inline constexpr float kRiseSeconds = 0.25f;
     }
 }

@@ -57,6 +57,8 @@ namespace CoreEngine
         whitecapSettings.cascadeWeights[1] = settings.cascadeWeights.y;
         whitecapSettings.cascadeWeights[2] = settings.cascadeWeights.z;
         whitecapSettings.decaySeconds = settings.decaySeconds;
+        whitecapSettings.bubbleSeconds = settings.bubbleSeconds;
+        whitecapSettings.riseSeconds = settings.riseSeconds;
         whitecap->SetSettings(whitecapSettings);
 
         // 白波の泡が FFT の時刻までに風下へ流れた距離と、模様を風の向きに伸ばす軸と、模様を動かす時刻

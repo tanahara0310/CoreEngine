@@ -1610,6 +1610,10 @@ class WaterSurface {
 	void set_foamOpacity(float) property;
 	float get_foamDecaySeconds() const property;
 	void set_foamDecaySeconds(float) property;
+	float get_foamBubbleSeconds() const property;
+	void set_foamBubbleSeconds(float) property;
+	float get_foamRiseSeconds() const property;
+	void set_foamRiseSeconds(float) property;
 	CoreEngine::Vector3 get_foamCascadeWeights() const property;
 	void set_foamCascadeWeights(const CoreEngine::Vector3&in) property;
 	float get_rippleStrength() const property;

@@ -1,7 +1,7 @@
 // ============================================================
 // 泡の見た目（模様・形・色）（Water.PS.hlsl 専用）
 // ------------------------------------------------------------
-// 被覆率（WaterFoamCoverage.hlsli）を、レース状の泡の形・水面下の白濁・泡の色へ変える。
+// 被覆率（WaterFoamCoverage.hlsli）を、レース状の泡の形・水の中の気泡の濁り・泡の色へ変える。
 // 泡は水そのものの色ではなく、砕波で空気が混入した「白い散乱層」。ほぼ Lambert な
 // 拡散面として扱い、フレネル反射・鏡面はほぼ持たないため、合成時に
 // reflectanceWeight とサングリッターを (1 - 泡被覆) 倍へ抑制する。
@@ -21,11 +21,15 @@ static const float3 kFoamAlbedo = float3(0.90f, 0.93f, 0.95f);
 // しきい値カットを掛けて「泡がある/ない」のレース状の形へ変換する。
 // dissolve のしきい値の柔らかさ（しきい値の前後に半分ずつ）
 static const float kFoamLaceSoftness = 0.08f;
-// 白濁（haze）: 砕けた直後の泡の穴の間と縁の外側に出る気泡層。パターンで粒状に変調し、
-// 「均一な白いもや」に見えないようにする
-static const float kFoamHazeTint = 0.55f;      // 泡色に対する輝度比（水越しの気泡層）
-static const float kFoamHazeOpacity = 0.35f;   // 最大ブレンド率
-static const float kFoamHazePatternMin = 0.25f; // パターン変調の下限（0=完全に粒状）
+// ---- 水の中の気泡（気泡の量 B から描く青白い濁り）----
+// 網目の穴をあけず、ゆるいまだらだけを掛けて、透過してくる光に √B の割合で混ぜる。
+// 色は泡の色に、気泡の雲の中で散乱しながら進む道のりの分の水の吸収を掛けたもの
+static const float kFoamBubbleOpacity = 0.5f;          // 気泡の量 1 のときに透過の光へ混ぜる割合
+static const float kFoamBubbleBrightness = 0.6f;       // 泡の色に対する明るさの比
+static const float kFoamBubblePathMeters = 1.2f;       // 吸収を掛ける道のり [m]
+static const float kFoamBubbleMottleFrequencies[2] = { 2.0f, 4.7f }; // まだらの細かさ [1/m]
+static const float kFoamBubbleMottleWeights[2] = { 0.65f, 0.35f };
+static const float kFoamBubbleMottleMin = 0.45f;       // まだらの薄い所の割合
 // 砕けてから時間が経った薄い泡の、レースの不透明度の割合（砕けた直後を 1 とする）
 static const float kFoamAgedOpacity = 0.6f;
 // 泡内部の粒状の明度変調（気泡の粒感。周期 ≈ 8cm）
@@ -66,8 +70,6 @@ static const float kFoamPatternMinCoverage = 0.004f;
 
 // 段ごとの値の平均（遠くでその段を平均へ移すときに使う）
 static const float kFoamEdgeMeans[3] = { 0.1870f, 0.2643f, 0.3673f };
-// 模様の値の平均（模様を評価しない遠くで、白濁の変調に使う）
-static const float kFoamPatternMean = 0.2786f;
 /// @brief 被覆率 c に対する dissolve のマスク。レースの面積の期待値がちょうど c になる
 /// @details 行は平均へ移した段の数の 0.25 刻み（0 行目 = どの段も模様のまま・12 行目 = 3 段とも平均）。
 ///          列は √c の等間隔（c = (k / 32)²）
@@ -314,6 +316,7 @@ struct FoamPatternFilter
     float edgeWidth;   ///< dissolve のしきい値の前後の幅
     float flatten;     ///< 模様をやめて被覆率の平均へ移す割合
     float grainFade;   ///< 粒の明度変調を平均へ移す割合
+    float2 mottleFade; ///< 気泡のまだらの段ごとに平均へ移す割合
 };
 
 /// @brief 水面の 1 画素の大きさから、泡の模様のぼかし方を求める
@@ -337,6 +340,12 @@ FoamPatternFilter ComputeFoamPatternFilter(float2 baseWorldXZ)
     filter.flatten = saturate((footprint - kFoamFlattenStart) / (kFoamFlattenEnd - kFoamFlattenStart));
     filter.grainFade = saturate(
         (footprint * kFoamGrainScale - kFoamEdgeFadeStart) / (kFoamEdgeFadeEnd - kFoamEdgeFadeStart));
+    [unroll]
+    for (uint mottle = 0; mottle < 2; ++mottle)
+    {
+        filter.mottleFade[mottle] = saturate(
+            (footprint * kFoamBubbleMottleFrequencies[mottle] - kFoamEdgeFadeStart) / (kFoamEdgeFadeEnd - kFoamEdgeFadeStart));
+    }
     return filter;
 }
 
@@ -364,48 +373,51 @@ float FoamLaceMaskForCoverage(float coverage, float tableLevel)
     return lerp(a, b, rowT);
 }
 
-/// @brief 水面の 1 点の泡の見た目の割合
-struct WaterFoamLayer
-{
-    float lace;    ///< 水面の上の白い泡（レース）[0,1]
-    float haze;    ///< レースの穴の間と縁の外側の白濁 [0,1]
-    float pattern; ///< 泡の内部パターン [0,1]
-};
-
-/// @brief 被覆率から、その点の泡のレースと白濁の割合を求める
+/// @brief 被覆率から、その点の水面の上の白い泡（レース）の割合を求める [0,1]
 /// @param mask      泡の被覆率 [0,1]（水面のうち泡のレースが占める面積の割合）
 /// @param patternXZ 模様を評価する位置（泡の塊と一緒に運ばれる座標）
 /// @param freshness 砕けた直後の厚い泡の割合 [0,1]（1 = 砕けた直後・0 = 時間が経った薄い泡）
 /// @param filter    1 画素の大きさに合わせた模様のぼかし方
 /// @param clustered true = 塊の場で濃く出る所と抜ける所を分け、面積の表で被覆率をしきい値へ直す。
 ///                  false = 塊の場を掛けず（どこも塊の場 1 として）被覆率をそのまま網目のしきい値に使う
-/// @details 古い泡ほどレースを薄く（水面が透けるように）し、白濁は砕けた直後の泡にだけ出す。
+/// @details 古い泡ほどレースを薄く（水面が透けるように）する。
 ///          被覆率が kFoamPatternMinCoverage 以下の所と 1 画素が大きい所は、模様を使わず被覆率で塗る
-WaterFoamLayer EvaluateFoamLayer(float mask, float2 patternXZ, float freshness, FoamPatternFilter filter, bool clustered)
+float EvaluateFoamLace(float mask, float2 patternXZ, float freshness, FoamPatternFilter filter, bool clustered)
 {
-    WaterFoamLayer layer;
     float lace = mask;
-    layer.pattern = kFoamPatternMean;
     [branch]
     if (filter.flatten < 1.0f && mask > kFoamPatternMinCoverage)
     {
         float laceMask = mask;
+        float pattern;
         if (clustered)
         {
-            layer.pattern = FoamPattern(patternXZ, gFoamPatternTime, filter.octaveFade);
+            pattern = FoamPattern(patternXZ, gFoamPatternTime, filter.octaveFade);
             laceMask = FoamLaceMaskForCoverage(mask, filter.tableLevel);
         }
         else
         {
-            layer.pattern = CombineFoamPattern(FoamNet(patternXZ, gFoamPatternTime, filter.octaveFade), 1.0f);
+            pattern = CombineFoamPattern(FoamNet(patternXZ, gFoamPatternTime, filter.octaveFade), 1.0f);
         }
-        const float sharpLace = ComputeFoamLace(laceMask, layer.pattern, filter.edgeWidth);
+        const float sharpLace = ComputeFoamLace(laceMask, pattern, filter.edgeWidth);
         lace = lerp(sharpLace, mask, filter.flatten);
     }
-    layer.lace = lace * lerp(kFoamAgedOpacity, 1.0f, freshness);
-    layer.haze = saturate(mask * 1.2f) * freshness * (1.0f - lace)
-        * lerp(kFoamHazePatternMin, 1.0f, layer.pattern);
-    return layer;
+    return lace * lerp(kFoamAgedOpacity, 1.0f, freshness);
+}
+
+/// @brief 水の中の気泡のゆるいまだら [kFoamBubbleMottleMin, 1]
+/// @param patternXZ 気泡と一緒に運ばれる座標 [m]
+float FoamBubbleMottle(float2 patternXZ, FoamPatternFilter filter)
+{
+    float mottle = 0.0f;
+    [unroll]
+    for (uint octave = 0; octave < 2; ++octave)
+    {
+        const float noise = FoamValueNoise(
+            patternXZ * kFoamBubbleMottleFrequencies[octave] + float2(23.9f, -7.1f) * (float)(octave + 1u));
+        mottle += kFoamBubbleMottleWeights[octave] * lerp(noise, 0.5f, filter.mottleFade[octave]);
+    }
+    return lerp(kFoamBubbleMottleMin, 1.0f, mottle);
 }
 
 /// @brief 白波の泡の模様を評価する位置（泡と一緒に風下へ流し、風の向きに伸ばす）
@@ -418,14 +430,10 @@ float2 ComputeWhitecapPatternXZ(float2 baseWorldXZ)
     return driftedXZ - gFoamStretchAxis * dot(gFoamStretchAxis, driftedXZ);
 }
 
-/// @brief 2 つの泡の層を重ねる（レースは和集合。白濁は相手のレースの下に隠れる）
-WaterFoamLayer CombineFoamLayers(WaterFoamLayer a, WaterFoamLayer b)
+/// @brief 2 つのレースを重ねる（和集合）
+float CombineFoamLace(float a, float b)
 {
-    WaterFoamLayer layer;
-    layer.lace = 1.0f - (1.0f - a.lace) * (1.0f - b.lace);
-    layer.haze = max(a.haze * (1.0f - b.lace), b.haze * (1.0f - a.lace));
-    layer.pattern = max(a.pattern, b.pattern);
-    return layer;
+    return 1.0f - (1.0f - a) * (1.0f - b);
 }
 
 /// @brief 泡の内部の粒状の明度変調 [kFoamGrainMin, 1]
@@ -472,8 +480,10 @@ struct WaterFoamResult
 {
     float mask;        ///< 被覆率（白波の泡・物がかき回した所の泡・岸の泡のいちばん大きいもの）
     float surfaceFoam; ///< 水面の上の泡（レース）の割合。反射・グリッター・波頭の透過をこの割合だけ遮る
-    float bubbleHaze;  ///< 水面下の気泡（白濁）の割合。透過してくる光にだけ混ざる
+    float bubbles;     ///< 水の中の気泡の量（白波・物がかき回した所・岸のいちばん大きいもの）[0,1]
+    float bubbleHaze;  ///< 水の中の気泡の濁りの割合。透過してくる光にだけ混ざる
     float3 color;      ///< 泡の色
+    float3 bubbleColor; ///< 水の中の気泡の色
     float whitecapInstant; ///< 白波のうち、いま砕けている泡の被覆率
     float whitecapResidue; ///< 白波のうち、砕けた後に残っている泡の被覆率
     float wakeCoverage;    ///< 物がかき回した所に残っている泡の被覆率
@@ -489,8 +499,10 @@ struct WaterFoamResult
 /// @details 白波の泡は FFT の参照格子座標で評価し、模様は泡と一緒に風下へ流す。
 ///          物がかき回した所の泡は白波と同じ座標で読み、塊の場を掛けない模様で、細い帯でも途切れずに描く。
 ///          岸の泡は水の粒の静止位置で読み、模様もそこで評価する（寄せ・引きと一緒に動く）。
-///          それぞれ別々にレース（lace）と白濁（haze）を作って重ねる。
-///          白波と物がかき回した所の泡は、厚い泡の割合で見た目を変える（岸の泡はいつも砕けた直後として扱う）。
+///          それぞれ別々にレース（lace）を作って重ねる。
+///          白波と物がかき回した所の泡は、気泡が多い（新しい）ほどレースを不透明にする（岸の泡はいつも新しい泡として扱う）。
+///          水の中の気泡は、白波（いま砕けている泡と残りの気泡）・物がかき回した所の気泡・岸の泡の量から、
+///          網目の穴をあけずにゆるいまだらだけを掛けて描く
 WaterFoamResult ResolveWaterFoam(
     float2 baseWorldXZ, float3 surfacePosition, float fallbackDepth, float3 normal, float mainLightVisibility)
 {
@@ -499,51 +511,72 @@ WaterFoamResult ResolveWaterFoam(
 
     const WhitecapFoamCoverage whitecapCoverage = ComputeWhitecapFoamCoverage(baseWorldXZ);
     const float whitecapFoam = saturate(max(whitecapCoverage.instant, whitecapCoverage.residue));
-    const float whitecapFreshness = saturate(
-        max(whitecapCoverage.instant, whitecapCoverage.residueFresh) / max(whitecapFoam, 1.0e-4f));
+    const float whitecapBubbles = saturate(max(whitecapCoverage.instant, whitecapCoverage.residueBubbles));
+    const float whitecapFreshness = saturate(whitecapBubbles / max(whitecapFoam, 1.0e-4f));
     const float wakeFoam = saturate(whitecapCoverage.wake);
-    const float wakeFreshness = saturate(whitecapCoverage.wakeFresh / max(wakeFoam, 1.0e-4f));
+    const float wakeBubbles = saturate(whitecapCoverage.wakeBubbles);
+    const float wakeFreshness = saturate(wakeBubbles / max(wakeFoam, 1.0e-4f));
     const ShoreFoamResult shoreFoam = ResolveShoreFoam(surfacePosition, fallbackDepth);
     const float2 whitecapPatternXZ = ComputeWhitecapPatternXZ(baseWorldXZ);
     const float2 shorePatternXZ = baseWorldXZ + shoreFoam.patternShift;
-    WaterFoamLayer whitecapLayer = (WaterFoamLayer)0;
+    float whitecapLace = 0.0f;
     [branch]
     if (whitecapFoam > 0.0f)
     {
-        whitecapLayer = EvaluateFoamLayer(whitecapFoam, whitecapPatternXZ, whitecapFreshness, filter, true);
+        whitecapLace = EvaluateFoamLace(whitecapFoam, whitecapPatternXZ, whitecapFreshness, filter, true);
     }
-    WaterFoamLayer wakeLayer = (WaterFoamLayer)0;
+    float wakeLace = 0.0f;
     [branch]
     if (wakeFoam > 0.0f)
     {
-        wakeLayer = EvaluateFoamLayer(wakeFoam, whitecapPatternXZ, wakeFreshness, filter, false);
+        wakeLace = EvaluateFoamLace(wakeFoam, whitecapPatternXZ, wakeFreshness, filter, false);
     }
-    WaterFoamLayer shoreLayer = (WaterFoamLayer)0;
+    float shoreLace = 0.0f;
     [branch]
     if (shoreFoam.coverage > 0.0f)
     {
-        shoreLayer = EvaluateFoamLayer(shoreFoam.coverage, shorePatternXZ, 1.0f, filter, true);
+        shoreLace = EvaluateFoamLace(shoreFoam.coverage, shorePatternXZ, 1.0f, filter, true);
     }
-    const WaterFoamLayer foamLayer = CombineFoamLayers(CombineFoamLayers(whitecapLayer, wakeLayer), shoreLayer);
+    const float lace = CombineFoamLace(CombineFoamLace(whitecapLace, wakeLace), shoreLace);
+
+    // 水の中の気泡。沖の気泡は泡と一緒に風下へ流れる座標、岸の気泡は水の粒の静止位置でまだらを付ける
+    const float openBubbles = max(whitecapBubbles, wakeBubbles);
+    float bubbleHaze = 0.0f;
+    [branch]
+    if (openBubbles > 0.0f)
+    {
+        bubbleHaze = sqrt(openBubbles) * FoamBubbleMottle(whitecapPatternXZ, filter);
+    }
+    [branch]
+    if (shoreFoam.coverage > 0.0f)
+    {
+        bubbleHaze = max(bubbleHaze, sqrt(shoreFoam.coverage) * FoamBubbleMottle(shorePatternXZ, filter));
+    }
 
     WaterFoamResult result;
     const float openFoam = max(whitecapFoam, wakeFoam);
     result.mask = max(openFoam, shoreFoam.coverage);
+    result.bubbles = max(openBubbles, shoreFoam.coverage);
     result.whitecapInstant = whitecapCoverage.instant;
     result.whitecapResidue = whitecapCoverage.residue;
     result.wakeCoverage = wakeFoam;
     result.shoreCoverage = shoreFoam.coverage;
-    result.surfaceFoam = foamLayer.lace * saturate(gFoamOpacity);
-    result.bubbleHaze = foamLayer.haze * saturate(gFoamOpacity) * kFoamHazeOpacity;
+    result.surfaceFoam = lace * saturate(gFoamOpacity);
+    result.bubbleHaze = bubbleHaze * saturate(gFoamOpacity) * kFoamBubbleOpacity;
 
-    // 泡の色（Lambert 白 × 太陽直達 + 天空光）。気泡の粒感として明度を高周波ノイズで揺らす
+    // 泡の色（Lambert 白 × 太陽直達 + 天空光）。気泡の粒感として明度を高周波ノイズで揺らす。
+    // 水の中の気泡は、同じ光を気泡の雲の中を進む道のりの分だけ水の吸収で減らした色
     result.color = float3(0.0f, 0.0f, 0.0f);
-    if (result.mask > 0.0f)
+    result.bubbleColor = float3(0.0f, 0.0f, 0.0f);
+    if (result.mask > 0.0f || result.bubbles > 0.0f)
     {
+        const float3 foamLight = ComputeFoamColor(normal, mainLightVisibility);
         const float shoreFoamShare = shoreFoam.coverage / max(openFoam + shoreFoam.coverage, 1.0e-4f);
         const float foamGrain = lerp(
             FoamGrain(whitecapPatternXZ, filter.grainFade), FoamGrain(shorePatternXZ, filter.grainFade), shoreFoamShare);
-        result.color = ComputeFoamColor(normal, mainLightVisibility) * foamGrain;
+        result.color = foamLight * foamGrain;
+        result.bubbleColor = foamLight * kFoamBubbleBrightness
+            * exp(-max(gAbsorptionCoeff, 0.0f) * kFoamBubblePathMeters);
     }
     return result;
 }

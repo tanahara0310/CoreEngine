@@ -240,7 +240,6 @@ def main():
     cluster = cluster_field(x, z)
     patterns = [combine(lines, means, fades_for_level(level), cluster) for level in ROW_LEVELS]
     rows = np.array([inverse_table(p, a.entries) for p in patterns])
-    pattern_mean = float(patterns[0].mean())
 
     # Accuracy checks (printed as comments)
     print("// pattern percentiles 1/50/99%%: %.3f / %.3f / %.3f" % tuple(np.percentile(patterns[0], [1, 50, 99])))
@@ -262,8 +261,6 @@ def main():
 
     print("// 段ごとの値の平均（遠くでその段を平均へ移すときに使う）")
     print("static const float kFoamEdgeMeans[3] = { %s };" % ", ".join("%.4ff" % v for v in means))
-    print("// 模様の値の平均（模様を評価しない遠くで、白濁の変調に使う）")
-    print("static const float kFoamPatternMean = %.4ff;" % pattern_mean)
     print("/// @brief 被覆率 c に対する dissolve のマスク。レースの面積の期待値がちょうど c になる")
     print("/// @details 行は平均へ移した段の数の 0.25 刻み（0 行目 = どの段も模様のまま・12 行目 = 3 段とも平均）。")
     print("///          列は √c の等間隔（c = (k / 32)²）")

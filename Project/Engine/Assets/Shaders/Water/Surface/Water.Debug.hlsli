@@ -106,6 +106,8 @@ struct WaterDebugContext
     float foamWhitecapInstant;
     float foamWhitecapResidue;
     float foamShoreCoverage;
+    // 水面の泡と水の中の気泡（モード 27）。気泡の量（白波・物がかき回した所・岸のいちばん大きいもの）
+    float foamBubbles;
     // 波紋（モード 25・26）。全部の段の高さの和 [m] と段ごとの傾きの大きさ
     float rippleHeight;
     float3 rippleLevelSlope;
@@ -316,6 +318,12 @@ float3 ResolveWaterDebugColor(WaterDebugContext ctx)
     if (gDepthDebugViewMode == 26)
     {
         return saturate(ctx.rippleLevelSlope / 0.2f);
+    }
+
+    // 27: 水面の泡と水の中の気泡。白 = 水面の泡の被覆率・青 = 水の中の気泡の量
+    if (gDepthDebugViewMode == 27)
+    {
+        return float3(ctx.foamMask, ctx.foamMask, max(ctx.foamMask, ctx.foamBubbles));
     }
 
     // 未知のモード（黄色）

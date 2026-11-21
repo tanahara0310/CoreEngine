@@ -44,6 +44,8 @@ namespace CoreEngine
         foam.opacity = profile.foamOpacity;
         foam.cascadeWeights = profile.foamCascadeWeights;
         foam.decaySeconds = profile.foamDecaySeconds;
+        foam.bubbleSeconds = profile.foamBubbleSeconds;
+        foam.riseSeconds = profile.foamRiseSeconds;
 
         WaterCausticsSettings& caustics = settings.caustics;
         caustics.screenSpace = WaterCVars::CausticsBackend.Get() == 1;

@@ -196,7 +196,7 @@ namespace CoreEngine
     bool WaterWhitecapFoam::CreateFoamResources()
     {
         Microsoft::WRL::ComPtr<ID3D12Device> device = dxCommon_->GetDevice();
-        // 白波の被覆率・白波の厚い泡の量・物がかき回した所の被覆率・その厚い泡の量の 4 チャンネル
+        // 白波の水面の泡と気泡・物がかき回した所の水面の泡と気泡の 4 チャンネル
         const DXGI_FORMAT format = DXGI_FORMAT_R16G16B16A16_FLOAT;
 
         D3D12_RESOURCE_DESC desc = UavTexture::MakeDesc(kResolution, kResolution, 1, format);
@@ -373,6 +373,8 @@ namespace CoreEngine
             constants.waveGroupPhase[c] = waveGroupPhase[c];
         }
         constants.decaySeconds = settings_.decaySeconds;
+        constants.bubbleSeconds = settings_.bubbleSeconds;
+        constants.riseSeconds = settings_.riseSeconds;
         constants.resetFoam = resetPending_ ? 1u : 0u;
         resetPending_ = false;
         driftOffset_ = ComputeDriftOffset(timeSeconds);
