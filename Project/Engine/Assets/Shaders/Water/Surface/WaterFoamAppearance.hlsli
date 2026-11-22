@@ -42,7 +42,7 @@ static const float kFoamGlintRoughness = 0.45f;
 // 位相は場所ごとにゆっくり変わるノイズでずらす
 static const float kObjectFoamFlowPhaseFrequency = 0.35f; // 位相をずらすノイズの細かさ [1/m]
 
-// ---- 泡の模様（泡の膜が割れて残る網目）----
+// ---- 泡の模様（泡の膜が割れて残る網目。gFoamPatternMode が 0 のとき）----
 // 大きさの違う 3 段のボロノイの境目（0 = 大きい網目・1 = 中・2 = 細かい）を重ね、
 // 数 m の大きさの塊の場で濃く出る所と抜ける所を分ける。網目の点は時間でゆっくり動く。
 // Tools/Water/generate_foam_coverage_table.py が同じ式で面積の表と平均を作る（値を変えたら作り直す）
@@ -71,6 +71,57 @@ static const float kFoamFlattenStart = 0.6f;
 static const float kFoamFlattenEnd = 1.6f;
 // これより薄い泡は模様を使わず被覆率で塗る
 static const float kFoamPatternMinCoverage = 0.004f;
+// 泡の明るさの変調の平均（遠くでその値へ移す）
+static const float kFoamGrainMean = 0.5f * (kFoamGrainMin + 1.0f);
+
+// ---- 泡の模様の画像（gFoamPatternMode が 1 のとき）----
+// 網目の画像を 2 つの大きさ（4m と 1.3m。1.3m は向きを変え、時間でずらす）で読んで重みを付けて足し、
+// 近くでは気泡の粒の画像も足す。どの画像の R も [0,1] に一様なので、足した値を台形の分布の式で一様へ戻す。
+// 一様なので、被覆率 c の泡は「値が 1 - c より大きい所」になる。
+// Tools/Water/generate_foam_textures.py が画像と、ミップの散らばりの表・塊の場を掛けたときの表を作る
+static const float kFoamNetTileMeters = 4.0f;    // 網目の画像 1 枚の範囲 [m]
+static const float kFoamNetTexels = 1024.0f;     // 網目の画像の一辺の画素数
+static const float kFoamDetailTileMeters = 1.3f; // 2 つ目の大きさで読む網目の画像 1 枚の範囲 [m]
+static const float kFoamDetailAngle = 0.9f;      // 2 つ目の網目の回転 [rad]
+static const float kFoamDetailWeight = 0.4f;     // 2 つ目の網目の重み
+// 模様を動かす時刻の 1 周期（kFoamPatternPeriodSeconds）に 2 つ目の網目をずらす量（画像の枚数。整数にして周期の継ぎ目でつなぐ）
+static const float2 kFoamDetailSlideTiles = float2(7.0f, 4.0f);
+static const float kFoamDetailFadeStart = 0.12f; // 2 つ目の網目をやめ始める・やめ終える 1 画素の幅 [m]
+static const float kFoamDetailFadeEnd = 0.25f;
+static const float kFoamGrainTileMeters = 0.5f;  // 気泡の粒の画像 1 枚の範囲 [m]
+static const float kFoamGrainTexels = 512.0f;    // 気泡の粒の画像の一辺の画素数
+static const float kFoamGrainWeight = 0.25f;     // 気泡の粒の重み
+static const float kFoamGrainLodFadeStart = 2.0f; // 気泡の粒をやめ始める・やめ終えるミップ
+static const float kFoamGrainLodFadeEnd = 4.0f;
+static const float kFoamTextureFlattenStart = 0.4f; // 模様をやめて被覆率の平均へ移し始める・移し終える 1 画素の幅 [m]
+static const float kFoamTextureFlattenEnd = 1.2f;
+/// @brief 泡の模様の画像のミップごとの、双一次で読んだ R の分散と次のミップとの共分散（一様な値の分散 1/12 を 1 とする）
+/// @details [0] = 網目・[1] = 気泡の粒。足りない段は最後の段と同じ
+static const float2 kFoamTextureMipSpread[2][11] = {
+    {
+        float2(0.9596f, 0.8857f), float2(0.9858f, 0.9227f), float2(0.9831f, 0.9071f), float2(0.9795f, 0.8776f),
+        float2(0.9705f, 0.8357f), float2(0.9719f, 0.8155f), float2(0.9535f, 0.7690f), float2(0.8748f, 0.6760f),
+        float2(0.7459f, 0.4525f), float2(0.3316f, 0.0000f), float2(0.0000f, 0.0000f),
+    },
+    {
+        float2(0.9366f, 0.8366f), float2(0.9839f, 0.9058f), float2(0.9803f, 0.8911f), float2(0.9737f, 0.8583f),
+        float2(0.9613f, 0.7884f), float2(0.9252f, 0.6433f), float2(0.9217f, 0.7862f), float2(0.7532f, 0.3945f),
+        float2(0.3324f, 0.0000f), float2(0.0000f, 0.0000f), float2(0.0000f, 0.0000f),
+    },
+};
+/// @brief 泡の模様の画像のミップごとの、隣の画素との R の差の平均
+static const float kFoamTextureMipChange[2][11] = {
+    { 0.065f, 0.047f, 0.054f, 0.064f, 0.074f, 0.084f, 0.102f, 0.148f, 0.251f, 0.375f, 0.000f },
+    { 0.089f, 0.054f, 0.060f, 0.070f, 0.089f, 0.119f, 0.127f, 0.234f, 0.375f, 0.000f, 0.000f },
+};
+/// @brief 塊の場を掛けた泡の画像の模様で、被覆率 c に対する dissolve のマスク（列は √c の等間隔・c = (k / 32)²）
+static const float kFoamTextureClusterMask[33] = {
+    0.0000f, 0.0145f, 0.0303f, 0.0486f, 0.0738f, 0.1170f, 0.1573f, 0.1947f,
+    0.2299f, 0.2633f, 0.2954f, 0.3264f, 0.3563f, 0.3853f, 0.4139f, 0.4419f,
+    0.4695f, 0.4968f, 0.5237f, 0.5503f, 0.5769f, 0.6036f, 0.6303f, 0.6571f,
+    0.6840f, 0.7113f, 0.7390f, 0.7672f, 0.7967f, 0.8286f, 0.8645f, 0.9112f,
+    1.1210f,
+};
 
 // 段ごとの値の平均（遠くでその段を平均へ移すときに使う）
 static const float kFoamEdgeMeans[3] = { 0.1870f, 0.2643f, 0.3673f };
@@ -321,6 +372,8 @@ struct FoamPatternFilter
     float flatten;     ///< 模様をやめて被覆率の平均へ移す割合
     float grainFade;   ///< 粒の明度変調を平均へ移す割合
     float2 mottleFade; ///< 気泡のまだらの段ごとに平均へ移す割合
+    float footprint;   ///< 1 画素の幅 [m]
+    float textureFlatten; ///< 泡の模様の画像をやめて被覆率の平均へ移す割合
 };
 
 /// @brief 水面の 1 画素の大きさから、泡の模様のぼかし方を求める
@@ -350,7 +403,140 @@ FoamPatternFilter ComputeFoamPatternFilter(float2 baseWorldXZ)
         filter.mottleFade[mottle] = saturate(
             (footprint * kFoamBubbleMottleFrequencies[mottle] - kFoamEdgeFadeStart) / (kFoamEdgeFadeEnd - kFoamEdgeFadeStart));
     }
+    filter.footprint = footprint;
+    filter.textureFlatten = saturate(
+        (footprint - kFoamTextureFlattenStart) / (kFoamTextureFlattenEnd - kFoamTextureFlattenStart));
     return filter;
+}
+
+/// @brief 重み a・b（a + b = 1）で足した 2 つの一様な値 [0,1] の和を、[0,1] の一様な値へ戻す
+/// @details 和の分布は台形なので、その累積分布を返す
+float EqualizeUniformSum(float x, float a, float b)
+{
+    const float lo = min(a, b);
+    const float hi = max(a, b);
+    if (lo < 1.0e-3f)
+    {
+        return x;
+    }
+    if (x < lo)
+    {
+        return x * x / (2.0f * a * b);
+    }
+    if (x > hi)
+    {
+        const float y = 1.0f - x;
+        return 1.0f - y * y / (2.0f * a * b);
+    }
+    return (x - 0.5f * lo) / hi;
+}
+
+/// @brief 1 画素の幅から、泡の模様の画像のミップを求める [0,10]
+/// @param texelMeters ミップ 0 の 1 画素の大きさ [m]
+float FoamTextureLod(float footprint, float texelMeters)
+{
+    return clamp(log2(max(footprint, 1.0e-6f) / texelMeters), 0.0f, 10.0f);
+}
+
+/// @brief 三線形で読んだ泡の模様の画像の R を、[0,1] の一様な値へ戻す
+/// @param textureIndex 0 = 網目・1 = 気泡の粒
+/// @details 双一次の補間とミップの混ぜ合わせで値が 0.5 へ寄った分を、同じ分散の台形の分布
+///          （重み 1 - b と b の 2 つの一様な値の和）とみなして戻す
+float EqualizeFoamMipRead(float value, float lod, uint textureIndex)
+{
+    const uint level = min((uint)lod, 9u);
+    const float f = saturate(lod - (float)level);
+    const float2 spread = kFoamTextureMipSpread[textureIndex][level];
+    const float nextVariance = kFoamTextureMipSpread[textureIndex][level + 1u].x;
+    const float variance = (1.0f - f) * (1.0f - f) * spread.x + f * f * nextVariance
+        + 2.0f * f * (1.0f - f) * spread.y;
+    const float b = 0.5f * (1.0f - sqrt(max(2.0f * variance - 1.0f, 0.0f)));
+    return EqualizeUniformSum(value, 1.0f - b, b);
+}
+
+/// @brief 泡の模様の画像の 1 画素の間の R の変化の大きさ（dissolve の幅の目安）
+/// @param texelMeters ミップ 0 の 1 画素の大きさ [m]
+/// @param textureIndex 0 = 網目・1 = 気泡の粒
+float FoamTextureChange(float footprint, float texelMeters, float lod, uint textureIndex)
+{
+    const uint level = min((uint)lod, 9u);
+    const float f = saturate(lod - (float)level);
+    const float change = lerp(
+        kFoamTextureMipChange[textureIndex][level], kFoamTextureMipChange[textureIndex][level + 1u], f);
+    return change * min(footprint / texelMeters, 1.0f);
+}
+
+/// @brief 泡の模様の画像から読んだ値
+struct FoamTextureSample
+{
+    float order;      ///< 泡になる順 [0,1]（一様に散らばる。大きい所から泡になる）
+    float brightness; ///< 泡の明るさ [0,1]
+    float change;     ///< 1 画素の間の order の変化の大きさ
+};
+
+/// @brief 泡の模様の画像の値に、もう 1 つの一様な値を重み weight で混ぜて一様へ戻す
+void BlendFoamTextureSample(inout FoamTextureSample foamSample, float order, float brightness, float change, float weight)
+{
+    const float keep = 1.0f - weight;
+    foamSample.order = EqualizeUniformSum(keep * foamSample.order + weight * order, keep, weight);
+    foamSample.brightness = lerp(foamSample.brightness, brightness, weight);
+    foamSample.change = (keep * foamSample.change + weight * change) / max(keep, weight);
+}
+
+/// @brief 泡の模様の画像を読む
+/// @param xz        模様を評価する位置 [m]
+/// @param footprint 1 画素の幅 [m]
+/// @details 網目を 4m と 1.3m（向きを変え、模様を動かす時刻でずらす）で読んで混ぜ、近くでは気泡の粒も混ぜる。
+///          2 つ目の網目は 1 画素が kFoamDetailFadeStart〜End の間で、気泡の粒はミップ
+///          kFoamGrainLodFadeStart〜End の間で重みを 0 へ下げる
+FoamTextureSample SampleFoamTexture(float2 xz, float footprint)
+{
+    const float netTexel = kFoamNetTileMeters / kFoamNetTexels;
+    const float netLod = FoamTextureLod(footprint, netTexel);
+    const float2 net = gWaterFoamNet.SampleLevel(gSampler, xz / kFoamNetTileMeters, netLod);
+    FoamTextureSample foamSample;
+    foamSample.order = EqualizeFoamMipRead(net.x, netLod, 0u);
+    foamSample.brightness = net.y;
+    foamSample.change = FoamTextureChange(footprint, netTexel, netLod, 0u);
+
+    const float detailWeight = kFoamDetailWeight
+        * (1.0f - saturate((footprint - kFoamDetailFadeStart) / (kFoamDetailFadeEnd - kFoamDetailFadeStart)));
+    [branch]
+    if (detailWeight > 0.0f)
+    {
+        float s;
+        float c;
+        sincos(kFoamDetailAngle, s, c);
+        const float2 rotated = float2(c * xz.x - s * xz.y, s * xz.x + c * xz.y);
+        const float2 uv = rotated / kFoamDetailTileMeters
+            + kFoamDetailSlideTiles * (gFoamPatternTime / kFoamPatternPeriodSeconds);
+        const float detailTexel = kFoamDetailTileMeters / kFoamNetTexels;
+        const float detailLod = FoamTextureLod(footprint, detailTexel);
+        const float2 detail = gWaterFoamNet.SampleLevel(gSampler, uv, detailLod);
+        BlendFoamTextureSample(foamSample, EqualizeFoamMipRead(detail.x, detailLod, 0u), detail.y,
+            FoamTextureChange(footprint, detailTexel, detailLod, 0u), detailWeight);
+    }
+
+    const float grainTexel = kFoamGrainTileMeters / kFoamGrainTexels;
+    const float grainLod = FoamTextureLod(footprint, grainTexel);
+    const float grainWeight = kFoamGrainWeight
+        * (1.0f - saturate((grainLod - kFoamGrainLodFadeStart) / (kFoamGrainLodFadeEnd - kFoamGrainLodFadeStart)));
+    [branch]
+    if (grainWeight > 0.0f)
+    {
+        const float2 grain = gWaterFoamGrain.SampleLevel(gSampler, xz / kFoamGrainTileMeters, grainLod);
+        BlendFoamTextureSample(foamSample, EqualizeFoamMipRead(grain.x, grainLod, 1u), grain.y,
+            FoamTextureChange(footprint, grainTexel, grainLod, 1u), grainWeight);
+    }
+    return foamSample;
+}
+
+/// @brief 塊の場を掛けた泡の模様の画像で、被覆率 [0,1] をレースの面積がその割合になる dissolve のマスクへ変える
+float FoamTextureClusterMask(float coverage)
+{
+    const float x = sqrt(saturate(coverage)) * 32.0f;
+    const uint i = min((uint)x, 31u);
+    return lerp(kFoamTextureClusterMask[i], kFoamTextureClusterMask[i + 1u], x - (float)i);
 }
 
 /// @brief 被覆率マスク → レース状の泡形状 [0,1]（dissolve カット）
@@ -377,6 +563,43 @@ float FoamLaceMaskForCoverage(float coverage, float tableLevel)
     return lerp(a, b, rowT);
 }
 
+/// @brief 泡の内部の粒状の明度変調 [kFoamGrainMin, 1]
+/// @param grainFade 平均へ移す割合（FoamPatternFilter::grainFade）
+float FoamGrain(float2 baseWorldXZ, float grainFade)
+{
+    const float grain = lerp(kFoamGrainMin, 1.0f, FoamValueNoise(baseWorldXZ * kFoamGrainScale));
+    return lerp(grain, 0.5f * (kFoamGrainMin + 1.0f), grainFade);
+}
+
+/// @brief 泡の模様の画像で、被覆率からレース状の泡の形を求める [0,1]
+/// @param brightness 泡の明るさの変調 [kFoamGrainMin, 1]
+/// @details 画像の R は一様なので、塊の場を掛けないときは被覆率をそのまましきい値に使う。
+///          塊の場を掛けるときは、掛けた後の分布の表（kFoamTextureClusterMask）でしきい値へ直す
+float EvaluateFoamTextureLace(float mask, float2 patternXZ, FoamPatternFilter filter, bool clustered, out float brightness)
+{
+    float lace = mask;
+    brightness = kFoamGrainMean;
+    [branch]
+    if (filter.textureFlatten < 1.0f && mask > kFoamPatternMinCoverage)
+    {
+        const FoamTextureSample foamSample = SampleFoamTexture(patternXZ, filter.footprint);
+        float pattern = foamSample.order;
+        float laceMask = mask + 0.5f * kFoamLaceSoftness;
+        float slope = 1.0f;
+        if (clustered)
+        {
+            const float cluster = FoamClusterField(patternXZ);
+            pattern = CombineFoamPattern(foamSample.order, cluster);
+            laceMask = FoamTextureClusterMask(mask);
+            slope = 0.7f * cluster + 0.2f;
+        }
+        const float edgeWidth = clamp(0.5f * slope * foamSample.change, 0.5f * kFoamLaceSoftness, kFoamMaxEdgeWidth);
+        lace = lerp(ComputeFoamLace(laceMask, pattern, edgeWidth), mask, filter.textureFlatten);
+        brightness = lerp(lerp(kFoamGrainMin, 1.0f, foamSample.brightness), kFoamGrainMean, filter.textureFlatten);
+    }
+    return lace;
+}
+
 /// @brief 被覆率から、その点の水面の上の白い泡（レース）の割合を求める [0,1]
 /// @param mask      泡の被覆率 [0,1]（水面のうち泡のレースが占める面積の割合）
 /// @param patternXZ 模様を評価する位置（泡の塊と一緒に運ばれる座標）
@@ -384,27 +607,39 @@ float FoamLaceMaskForCoverage(float coverage, float tableLevel)
 /// @param filter    1 画素の大きさに合わせた模様のぼかし方
 /// @param clustered true = 塊の場で濃く出る所と抜ける所を分け、面積の表で被覆率をしきい値へ直す。
 ///                  false = 塊の場を掛けず（どこも塊の場 1 として）被覆率をそのまま網目のしきい値に使う
-/// @details 古い泡ほどレースを薄く（水面が透けるように）する。
+/// @param brightness 泡の明るさの変調 [kFoamGrainMin, 1]
+/// @details 模様は gFoamPatternMode で選ぶ（0 = ボロノイの網目・1 = 泡の模様の画像）。
+///          古い泡ほどレースを薄く（水面が透けるように）する。
 ///          被覆率が kFoamPatternMinCoverage 以下の所と 1 画素が大きい所は、模様を使わず被覆率で塗る
-float EvaluateFoamLace(float mask, float2 patternXZ, float freshness, FoamPatternFilter filter, bool clustered)
+float EvaluateFoamLace(
+    float mask, float2 patternXZ, float freshness, FoamPatternFilter filter, bool clustered, out float brightness)
 {
     float lace = mask;
     [branch]
-    if (filter.flatten < 1.0f && mask > kFoamPatternMinCoverage)
+    if (gFoamPatternMode != 0)
     {
-        float laceMask = mask;
-        float pattern;
-        if (clustered)
+        lace = EvaluateFoamTextureLace(mask, patternXZ, filter, clustered, brightness);
+    }
+    else
+    {
+        brightness = FoamGrain(patternXZ, filter.grainFade);
+        [branch]
+        if (filter.flatten < 1.0f && mask > kFoamPatternMinCoverage)
         {
-            pattern = FoamPattern(patternXZ, gFoamPatternTime, filter.octaveFade);
-            laceMask = FoamLaceMaskForCoverage(mask, filter.tableLevel);
+            float laceMask = mask;
+            float pattern;
+            if (clustered)
+            {
+                pattern = FoamPattern(patternXZ, gFoamPatternTime, filter.octaveFade);
+                laceMask = FoamLaceMaskForCoverage(mask, filter.tableLevel);
+            }
+            else
+            {
+                pattern = CombineFoamPattern(FoamNet(patternXZ, gFoamPatternTime, filter.octaveFade), 1.0f);
+            }
+            const float sharpLace = ComputeFoamLace(laceMask, pattern, filter.edgeWidth);
+            lace = lerp(sharpLace, mask, filter.flatten);
         }
-        else
-        {
-            pattern = CombineFoamPattern(FoamNet(patternXZ, gFoamPatternTime, filter.octaveFade), 1.0f);
-        }
-        const float sharpLace = ComputeFoamLace(laceMask, pattern, filter.edgeWidth);
-        lace = lerp(sharpLace, mask, filter.flatten);
     }
     return lace * lerp(kFoamAgedOpacity, 1.0f, freshness);
 }
@@ -465,14 +700,6 @@ ObjectFoamPattern ComputeObjectFoamPattern(float2 baseWorldXZ, float2 patternVel
 float CombineFoamLace(float a, float b)
 {
     return 1.0f - (1.0f - a) * (1.0f - b);
-}
-
-/// @brief 泡の内部の粒状の明度変調 [kFoamGrainMin, 1]
-/// @param grainFade 平均へ移す割合（FoamPatternFilter::grainFade）
-float FoamGrain(float2 baseWorldXZ, float grainFade)
-{
-    const float grain = lerp(kFoamGrainMin, 1.0f, FoamValueNoise(baseWorldXZ * kFoamGrainScale));
-    return lerp(grain, 0.5f * (kFoamGrainMin + 1.0f), grainFade);
 }
 
 /// @brief 泡レイヤの表面色（Lambert 白 × 太陽直達 + 天空光）
@@ -555,27 +782,33 @@ WaterFoamResult ResolveWaterFoam(
     const ObjectFoamPattern wakePattern = ComputeObjectFoamPattern(baseWorldXZ, objectFoam.patternVelocity);
     const float2 shorePatternXZ = baseWorldXZ + shoreFoam.patternShift;
     float whitecapLace = 0.0f;
+    float whitecapGrain = kFoamGrainMean;
     [branch]
     if (whitecapFoam > 0.0f)
     {
-        whitecapLace = EvaluateFoamLace(whitecapFoam, whitecapPatternXZ, whitecapFreshness, filter, true);
+        whitecapLace = EvaluateFoamLace(whitecapFoam, whitecapPatternXZ, whitecapFreshness, filter, true, whitecapGrain);
     }
     float wakeLace = 0.0f;
+    float wakeGrain = kFoamGrainMean;
     [branch]
     if (wakeFoam > 0.0f)
     {
+        wakeGrain = 0.0f;
         [unroll]
         for (uint phase = 0; phase < 2; ++phase)
         {
+            float phaseGrain;
             wakeLace += wakePattern.weight[phase]
-                * EvaluateFoamLace(wakeFoam, wakePattern.patternXZ[phase], wakeFreshness, filter, false);
+                * EvaluateFoamLace(wakeFoam, wakePattern.patternXZ[phase], wakeFreshness, filter, false, phaseGrain);
+            wakeGrain += wakePattern.weight[phase] * phaseGrain;
         }
     }
     float shoreLace = 0.0f;
+    float shoreGrain = kFoamGrainMean;
     [branch]
     if (shoreFoam.coverage > 0.0f)
     {
-        shoreLace = EvaluateFoamLace(shoreFoam.coverage, shorePatternXZ, 1.0f, filter, true);
+        shoreLace = EvaluateFoamLace(shoreFoam.coverage, shorePatternXZ, 1.0f, filter, true, shoreGrain);
     }
     const float lace = CombineFoamLace(CombineFoamLace(whitecapLace, wakeLace), shoreLace);
 
@@ -611,7 +844,7 @@ WaterFoamResult ResolveWaterFoam(
     result.surfaceFoam = lace * saturate(gFoamOpacity);
     result.bubbleHaze = bubbleHaze * saturate(gFoamOpacity) * kFoamBubbleOpacity;
 
-    // 泡の色（Lambert 白 × 太陽直達 + 天空光）。気泡の粒感として明度を高周波ノイズで揺らす。
+    // 泡の色（Lambert 白 × 太陽直達 + 天空光）。明るさは泡の模様と同じ所で揺らす（ボロノイの網目なら高周波ノイズ・画像なら G）。
     // 水の中の気泡は、同じ光を気泡の雲の中を進む道のりの分だけ水の吸収で減らした色
     result.color = float3(0.0f, 0.0f, 0.0f);
     result.bubbleColor = float3(0.0f, 0.0f, 0.0f);
@@ -620,10 +853,8 @@ WaterFoamResult ResolveWaterFoam(
         const float3 foamLight = ComputeFoamColor(normal, mainLightVisibility);
         const float shoreFoamShare = shoreFoam.coverage / max(openFoam + shoreFoam.coverage, 1.0e-4f);
         const float wakeFoamShare = wakeFoam / max(whitecapFoam + wakeFoam, 1.0e-4f);
-        const float wakeGrain = wakePattern.weight[0] * FoamGrain(wakePattern.patternXZ[0], filter.grainFade)
-            + wakePattern.weight[1] * FoamGrain(wakePattern.patternXZ[1], filter.grainFade);
-        const float openGrain = lerp(FoamGrain(whitecapPatternXZ, filter.grainFade), wakeGrain, wakeFoamShare);
-        const float foamGrain = lerp(openGrain, FoamGrain(shorePatternXZ, filter.grainFade), shoreFoamShare);
+        const float openGrain = lerp(whitecapGrain, wakeGrain, wakeFoamShare);
+        const float foamGrain = lerp(openGrain, shoreGrain, shoreFoamShare);
         result.color = foamLight * foamGrain;
         result.bubbleColor = foamLight * kFoamBubbleBrightness
             * exp(-max(gAbsorptionCoeff, 0.0f) * kFoamBubblePathMeters);

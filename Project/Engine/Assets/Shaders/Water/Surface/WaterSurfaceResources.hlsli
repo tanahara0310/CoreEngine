@@ -73,6 +73,12 @@ Texture2DArray<float4> gWaterRipple : register(t30);
 Texture2D<float4> gWaterObjectFoam : register(t31);
 Texture2D<float2> gWaterObjectFoamFlow : register(t32);
 
+// ===== 泡の模様の画像（Tools/Water/generate_foam_textures.py が作る。ミップも画像の中）=====
+// R = 泡になる順（どのミップも [0,1] に一様）・G = 泡の明るさ。網目は 1 枚 4m 四方、気泡の粒は 1 枚 0.5m 四方。
+// gFoamPatternMode が 1 のフレームだけ読む。
+Texture2D<float2> gWaterFoamNet : register(t33);
+Texture2D<float2> gWaterFoamGrain : register(t34);
+
 struct WaterPSInput
 {
     float4 position : SV_POSITION;

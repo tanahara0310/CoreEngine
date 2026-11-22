@@ -35,6 +35,10 @@ namespace CoreEngine
         CVar<float> WetnessDrySeconds{ "r.Water.Wetness.DrySeconds", 60.0f,
             "水から出た面の濡れ具合が 1/e になるまでの時間 [s]", CVarRange{ 1.0f, 3600.0f } };
 
+        // ---- 泡 ----
+        CVar<bool> FoamPatternTexture{ "r.Water.Foam.PatternTexture", true,
+            "泡の網目を泡の模様の画像（大小の穴と膜が残る網目）で描く（切るとボロノイの網目）" };
+
         // ---- 波紋 ----
         CVar<bool> RippleEnabled{ "r.Water.Ripple.Enabled", true,
             "物が落ちた所や水を進む物の周りに、カメラの前に置いた格子で波紋を広げる" };

@@ -499,6 +499,9 @@
     <ClCompile Include="Engine\Src\Graphics\Water\Foam\WaterShoreFoam.cpp">
       <Filter>Engine\Src\Graphics\Water\Foam</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Water\Foam\WaterFoamPattern.cpp">
+      <Filter>Engine\Src\Graphics\Water\Foam</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Water\Foam\WaterObjectFoam.cpp">
       <Filter>Engine\Src\Graphics\Water\Foam</Filter>
     </ClCompile>
@@ -3619,6 +3622,9 @@
       <Filter>Engine\Src\Graphics\Water\FFT</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\Foam\WaterShoreFoam.h">
+      <Filter>Engine\Src\Graphics\Water\Foam</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Water\Foam\WaterFoamPattern.h">
       <Filter>Engine\Src\Graphics\Water\Foam</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Water\Foam\WaterObjectFoam.h">

@@ -24,6 +24,7 @@ namespace CoreEngine
     class WaterShoreMeshDisplacement;
     class WaterRippleSimulation;
     class WaterObjectFoam;
+    class WaterFoamPattern;
     class WaterWhitecapFoam;
     class WaterHeightQueryManager;
     class WaterQuery;
@@ -103,6 +104,8 @@ namespace CoreEngine
         WaterShoreMeshDisplacement* GetWaterShoreMeshDisplacement() { return waterShoreMeshDisplacement_.get(); }
         WaterRippleSimulation* GetWaterRippleSimulation() { return waterRippleSimulation_.get(); }
         WaterObjectFoam* GetWaterObjectFoam() { return waterObjectFoam_.get(); }
+        /// @brief 泡の模様の画像（読めなかったら IsInitialized が false）
+        const WaterFoamPattern* GetWaterFoamPattern() const { return waterFoamPattern_.get(); }
         /// @brief 水面の高さを聞く点の集まり（いつでもある。水面のマネージャを作るまでは結果が届かない）
         WaterQuery* GetWaterQuery() { return waterQuery_.get(); }
         WaterHeightQueryManager* GetWaterHeightQueryManager() { return waterHeightQueryManager_.get(); }
@@ -145,6 +148,7 @@ namespace CoreEngine
         std::unique_ptr<WaterShoreMeshDisplacement> waterShoreMeshDisplacement_;
         std::unique_ptr<WaterRippleSimulation> waterRippleSimulation_;
         std::unique_ptr<WaterObjectFoam> waterObjectFoam_;
+        std::unique_ptr<WaterFoamPattern> waterFoamPattern_;
         std::unique_ptr<WaterQuery> waterQuery_;
         std::unique_ptr<WaterHeightQueryManager> waterHeightQueryManager_;
         std::unique_ptr<AtmosphereManager> atmosphereManager_;

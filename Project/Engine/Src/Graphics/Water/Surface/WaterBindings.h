@@ -30,6 +30,8 @@ namespace CoreEngine::WaterBind
         gWaterRipple,
         gWaterObjectFoam,
         gWaterObjectFoamFlow,
+        gWaterFoamNet,
+        gWaterFoamGrain,
         Count
     };
 
@@ -85,6 +87,10 @@ namespace CoreEngine::WaterBind
         // 物がかき回した所の泡と流れ（カメラの前に置いた格子。ピクセルシェーダーが読む）
         { "gWaterObjectFoam",        kSRV, kCond },
         { "gWaterObjectFoamFlow",    kSRV, kCond },
+
+        // 泡の模様の画像（網目と気泡の粒。ピクセルシェーダーが読む）
+        { "gWaterFoamNet",           kSRV, kCond },
+        { "gWaterFoamGrain",         kSRV, kCond },
     };
 
     static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");

@@ -131,7 +131,7 @@ cbuffer WaterFrameConstants : register(b5)
     int gObjectFoamEnabled;          // 1 = gWaterObjectFoam を読む
     float2 gObjectFoamDriftOffsetXZ; // 物の泡が風下へ流れた距離 [m]（模様を泡と一緒に動かす）
     float gObjectFoamFlowTime;       // 物の泡の模様を流れでずらす時刻 [s]（kObjectFoamFlowTimePeriod で巻き戻す）
-    float gObjectFoamPad;
+    int gFoamPatternMode;            // 泡の模様: 0 = ボロノイの網目・1 = 泡の模様の画像（gWaterFoamNet・gWaterFoamGrain）
 };
 
 #endif // WATER_FRAME_CONSTANTS_INCLUDED
