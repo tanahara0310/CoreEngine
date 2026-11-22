@@ -27,6 +27,7 @@ namespace CoreEngine
 
         // ---- 泡 ----
         extern CVar<bool>    FoamPatternTexture;
+        extern CVar<bool>    FoamThickness;
 
         // ---- 波紋 ----
         extern CVar<bool>    RippleEnabled;

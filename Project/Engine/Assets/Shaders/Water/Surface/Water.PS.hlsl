@@ -176,7 +176,7 @@ WaterPixelOutput main(WaterPSInput input)
     // 透過像（吸収・散乱を通した色）と反射像をフレネルで合成する
     float3 finalWaterComposite = lerp(transmissionColor, reflectColor, reflectanceWeight);
 
-    // 水面の上の泡（レース）を重ねる（白ベタ禁止: gFoamOpacity < 1 で水面下の情報を残す）
+    // 水面の上の泡（レース）を重ねる（薄い泡と網目の穴では水面が透ける）
     finalWaterComposite = lerp(finalWaterComposite, foam.color, foam.surfaceFoam);
 
     if (gDepthFadeDebugEnabled != 0)

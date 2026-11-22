@@ -38,6 +38,8 @@ namespace CoreEngine
         // ---- 泡 ----
         CVar<bool> FoamPatternTexture{ "r.Water.Foam.PatternTexture", true,
             "泡の網目を泡の模様の画像（大小の穴と膜が残る網目）で描く（切るとボロノイの網目）" };
+        CVar<bool> FoamThickness{ "r.Water.Foam.Thickness", true,
+            "泡を厚みで描く（新しく厚い泡は不透明で縁がはっきり・古い泡は透けて縁が柔らかい・泡に空の光をそのまま当てる）" };
 
         // ---- 波紋 ----
         CVar<bool> RippleEnabled{ "r.Water.Ripple.Enabled", true,

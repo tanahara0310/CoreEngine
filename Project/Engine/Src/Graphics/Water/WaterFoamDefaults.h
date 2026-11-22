@@ -27,8 +27,8 @@ namespace CoreEngine
         /// @brief 白波の被覆率の目標に掛ける倍率（1.0 = Monahan の観測式 W = 3.84e-6·U^3.41）
         inline constexpr float kWhitecapScale = 1.0f;
 
-        /// @brief 泡レイヤの不透明度（1.0 の白ベタは禁止・水面下の情報を残す）
-        inline constexpr float kOpacity = 0.9f;
+        /// @brief 泡レイヤの全体の濃さ（1 = 新しく厚い泡は水面を隠す。古い泡の薄さは厚みと穴で出す）
+        inline constexpr float kOpacity = 1.0f;
 
         /// @brief カスケード別の勾配寄与の重み (大 / 中 / 小)
         /// @details 飽和対策の較正値。勾配は波数 k に比例するため、無重みだと最小カスケード

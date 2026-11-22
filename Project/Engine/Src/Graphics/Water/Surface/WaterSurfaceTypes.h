@@ -72,6 +72,14 @@ static constexpr Cb::Field kWaterConstantsFields[] = {
 CB_VERIFY_LAYOUT(WaterConstants, kWaterConstantsFields);
 CB_BIND_HLSL(WaterConstants, kWaterConstantsFields, "WaterConstants");
 
+/// @brief 泡の見た目の当て方の項目（WaterFrameConstants::foamLookFlags のビット。シェーダーの kFoamLook* と同じ値）
+namespace WaterFoamLook {
+	inline constexpr int kOpacity = 1; // 泡の厚みで不透明度を決める（新しく厚い泡は不透明）
+	inline constexpr int kEdge = 2;    // 泡の厚みで縁の柔らかさを変える（古い泡ほど柔らかい）
+	inline constexpr int kLight = 4;   // 泡と水の中の気泡に空の光をそのまま当て、太陽の光を回り込ませる
+	inline constexpr int kAll = kOpacity | kEdge | kLight;
+}
+
 /// @brief 毎フレーム更新する水面用フレーム定数バッファ
 /// @note HLSL 側の WaterFrameConstants（Water.PS / Water.VS / FFTWater.VS の 3 本）と
 ///       一致させること。末尾の static_assert がサイズと float3 の 16B 境界を検証する。
@@ -182,6 +190,9 @@ struct WaterFrameConstants {
 	float objectFoamDriftOffsetXZ[2] = { 0.0f, 0.0f }; // 物の泡が風下へ流れた距離 [m]
 	float objectFoamFlowTime = 0.0f;                    // 物の泡の模様を流れでずらす時刻 [s]
 	int foamPatternMode = 0;                            // 泡の模様: 0 = ボロノイの網目・1 = 泡の模様の画像
+	// ---- 泡の見た目の当て方 ----
+	int foamLookFlags = 0;                              // WaterFoamLook の項目のビット（0 = 厚みを使わない当て方）
+	float foamLookPad[3] = { 0.0f, 0.0f, 0.0f };
 };
 
 // 全フィールドのオフセットを HLSL packing 規則から機械的に導出して検証する。
@@ -189,7 +200,7 @@ struct WaterFrameConstants {
 // （RTシャドウの cbuffer 配列ずれ事故と同型）。
 // 以前はここに「absorptionCoeff は 16B 境界」「cameraNearZ は 80」といった個別 assert を
 // 人手で並べていたが、下の表が全フィールドを検査するので不要になった。
-static_assert(sizeof(WaterFrameConstants) == 384, "WaterFrameConstants size mismatch with HLSL cbuffer");
+static_assert(sizeof(WaterFrameConstants) == 400, "WaterFrameConstants size mismatch with HLSL cbuffer");
 static constexpr Cb::Field kWaterFrameConstantsFields[] = {
     CB_FIELD(WaterFrameConstants, reflectionEnabled), CB_FIELD(WaterFrameConstants, fresnelReflectanceScale),
     CB_FIELD(WaterFrameConstants, fresnelBaseReflectance), CB_FIELD(WaterFrameConstants, depthFadeEnabled),
@@ -226,6 +237,7 @@ static constexpr Cb::Field kWaterFrameConstantsFields[] = {
     CB_FIELD(WaterFrameConstants, objectFoamOriginXZ), CB_FIELD(WaterFrameConstants, objectFoamInvSize),
     CB_FIELD(WaterFrameConstants, objectFoamEnabled), CB_FIELD(WaterFrameConstants, objectFoamDriftOffsetXZ),
     CB_FIELD(WaterFrameConstants, objectFoamFlowTime), CB_FIELD(WaterFrameConstants, foamPatternMode),
+    CB_FIELD(WaterFrameConstants, foamLookFlags), CB_FIELD(WaterFrameConstants, foamLookPad),
 };
 CB_VERIFY_LAYOUT(WaterFrameConstants, kWaterFrameConstantsFields);
 CB_BIND_HLSL(WaterFrameConstants, kWaterFrameConstantsFields, "WaterFrameConstants");

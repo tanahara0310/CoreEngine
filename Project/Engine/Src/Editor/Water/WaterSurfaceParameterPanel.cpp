@@ -538,6 +538,7 @@ bool WaterSurfaceParameterPanel::DrawFoamSection(const Target& target, WaterSyst
 	changed = target.Rows({ "foamOpacity", "foamDecaySeconds", "foamBubbleSeconds", "foamRiseSeconds",
 		"foamObjectFlow", "foamWhitecapSpread", "foamCascadeWeights" }) || changed;
 	CVarUI::DrawRow(&WaterCVars::FoamPatternTexture, "泡の模様に画像を使う（プロジェクト）");
+	CVarUI::DrawRow(&WaterCVars::FoamThickness, "泡を厚みで描く（プロジェクト）");
 	ImGui::EndDisabled();
 	InspectorLayout::Hint("白波の割合はシーンの風速から観測式で決まる。白波の量はその倍率。");
 	return changed;
