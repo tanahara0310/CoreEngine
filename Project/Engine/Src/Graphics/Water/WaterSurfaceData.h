@@ -23,6 +23,7 @@ namespace CoreEngine
         float texelsPerMeter = 0.0f;        ///< 1 m あたりのテクセル数
         float depthOffset = 0.0f;           ///< 今の水面の高さ − 測ったときの水面の高さ [m]
         float invWaveHeight = 0.0f;         ///< 波の高さ（有義波高）の逆数 [1/m]
+        uint32_t hasOpenSea = 0;            ///< 1 = 沖（水深 12m 以上の海）がある
     };
 
     /// @brief 水の波紋の格子（WaterRippleSimulation）の結線
@@ -111,6 +112,9 @@ namespace CoreEngine
         float shoreMeshBlendWidth = 0.0f;            ///< 範囲の端から内側へ、粗い格子の形から移す幅 [m]
         float shoreRunupHeight = 0.0f;               ///< 水際が上がる高さの平均 [m]（0 = 遡上なし。WaterShoreRunup.hlsli）
         uint32_t shoreMeshDisplacementSrvIndex = 0;  ///< 岸の格子の頂点の変位（WaterShoreMeshDisplacement）の SRV のヒープの中の番号
+
+        /// 沖から岸へ寄せる波の、水深 12m での高さの平均 [m]（0 = 寄せる波なし。WaterShoreRunup.hlsli の EvaluateShoreWave）
+        float shoreWaveHeight = 0.0f;
 
         // 海の範囲マップ。水深と上の物までの高さで波の変位を弱める
         WaterSeaMapBinding seaMap{};

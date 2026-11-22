@@ -2,6 +2,7 @@
 #include "WaterSystem.h"
 
 #include <algorithm>
+#include <cmath>
 
 #include "EngineSystem/EngineSystem.h"
 #include "GameObject/GameObjectManager.h"
@@ -32,7 +33,26 @@ namespace CoreEngine
         constexpr uint32_t kDiagnosticsLogInterval = 120u;
 
         /// @brief 水際が上がる高さの、平均に対する上限の倍率（WaterShoreRunup.hlsli の kRunupMaxHeightScale と同じ）
-        constexpr float kShoreRunupMaxHeightScale = 1.6f;
+        constexpr float kShoreRunupMaxHeightScale = 2.2f;
+
+        /// @brief 沖から寄せる波の、高さの倍率の上限（WaterShoreRunup.hlsli の kShoreWaveMaxHeightScale と同じ）
+        constexpr float kShoreWaveMaxHeightScale = 2.42f;
+        /// @brief 波の高さ ÷ 水深がこれに届くと砕ける（WaterPhysics.hlsli の kWaterBreakingIndex と同じ）
+        constexpr float kShoreWaveBreakingIndex = 0.78f;
+        /// @brief 沖から寄せる波を描く水深の上限 [m]（WaterShoreRunup.hlsli の kShoreWaveMaxDepth と同じ）
+        constexpr float kShoreWaveMaxDepth = 12.0f;
+
+        /// @brief 沖から寄せる波の峰のいちばん高い所 [m]
+        /// @details いちばん高い波の高さ s·H·(水深上限 / d)^(1/4) が、砕ける高さ γ·d に届く水深での高さ
+        float ComputeShoreWaveMaxCrestHeight(float meanHeight)
+        {
+            const float offshoreHeight = kShoreWaveMaxHeightScale * meanHeight;
+            return std::pow(kShoreWaveBreakingIndex, 0.2f) * std::pow(offshoreHeight, 0.8f) * std::pow(kShoreWaveMaxDepth, 0.2f);
+        }
+
+        /// @brief 沖から寄せる波があるときの、砕けて進む段のいちばん高い所 [m]
+        ///        （WaterShoreRunup.hlsli の kRunupBoreHeightRatio × kRunupBoreDepthWithShoreWaves）
+        constexpr float kShoreWaveBoreMaxHeight = 1.2f;
 
         /// @brief 水面を描いているか（コンポーネントとオブジェクトの両方が有効）
         bool IsWaterActive(const WaterSurfaceComponent& waterPlane)
@@ -411,6 +431,17 @@ namespace CoreEngine
                 snapshot_.maxCrestHeight += kShoreRunupMaxHeightScale * snapshot_.shoreRunupHeight;
             }
         }
+
+        // 沖から寄せる波は海の範囲マップ（岸へ着く時刻の場）に沖があるときだけ。波の山の上限へ寄せる波と段の分を足す
+        if (snapshot_.seaMap.resolution[0] > 0 && snapshot_.seaMap.hasOpenSea != 0 && settings.shoreWaveHeight > 0.0f) {
+            snapshot_.shoreWaveHeight = settings.shoreWaveHeight;
+            if (snapshot_.maxCrestHeight > 0.0f) {
+                snapshot_.maxCrestHeight += ComputeShoreWaveMaxCrestHeight(snapshot_.shoreWaveHeight);
+                if (snapshot_.shoreRunupHeight > 0.0f) {
+                    snapshot_.maxCrestHeight += kShoreWaveBoreMaxHeight;
+                }
+            }
+        }
     }
 
     void WaterSystem::CaptureSurface(
@@ -446,6 +477,7 @@ namespace CoreEngine
         shore_.Bind(binding);
         binding.shoreRunupHeight = snapshot_.shoreRunupHeight;
         binding.shoreRunupTime = snapshot_.time;
+        binding.shoreWaveHeight = snapshot_.shoreWaveHeight;
         seaMap_.Bind(frame.domain, snapshot_, binding);
         wave_.Bind(frame.domain, binding);
         foam_.Bind(frame.domain, binding);

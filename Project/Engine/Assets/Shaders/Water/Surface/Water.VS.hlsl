@@ -43,6 +43,8 @@ struct WaterVSOutput
     float4 clipPosPrev      : POSITION3;
     // PS の入力レイアウトを FFTWater.VS と揃える（Gerstner 経路は粗い格子だけを描くので常に 0）
     nointerpolation float shoreMeshVertex : TEXCOORD3;
+    // PS の入力レイアウトを FFTWater.VS と揃える（Gerstner 経路は沖から寄せる波を描かないので常に 0）
+    float2 shoreWaveSlope : TEXCOORD4;
 };
 
 WaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
@@ -133,6 +135,7 @@ WaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     float4 offsetPrevClip = mul(float4(offsetLS, 0.0f), mtx.PrevWVP);
     output.clipPosPrev = basePrevClip + offsetPrevClip;
     output.shoreMeshVertex = 0.0f;
+    output.shoreWaveSlope = float2(0.0f, 0.0f);
 
     return output;
 }

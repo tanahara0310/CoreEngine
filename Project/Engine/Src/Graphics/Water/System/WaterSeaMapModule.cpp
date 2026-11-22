@@ -40,6 +40,7 @@ namespace CoreEngine
         seaMap.texelsPerMeter = view.texelsPerMeter;
         seaMap.depthOffset = snapshot.waterHeight - view.waterHeight;
         seaMap.invWaveHeight = 1.0f / (std::max)(waveHeight, kSeaMapMinWaveHeight);
+        seaMap.hasOpenSea = view.hasOpenSea ? 1u : 0u;
     }
 
     void WaterSeaMapModule::Bind(

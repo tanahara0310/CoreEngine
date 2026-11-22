@@ -41,12 +41,18 @@ struct FFTWaterVSOutput
     float4 clipPosPrev : POSITION3;
     // 1 = 岸の細かい格子の頂点（Water.PS は粗い格子の範囲の中の画素を描かない）
     nointerpolation float shoreMeshVertex : TEXCOORD3;
+    // 沖から寄せる波の傾き（∂高さ/∂x, ∂高さ/∂z。Water.PS が FFT の傾きへ足す）
+    float2 shoreWaveSlope : TEXCOORD4;
 };
 
-/// @brief 海の範囲マップから、頂点の変位に掛ける倍率を返す（RTWaterSurfaceCommon.hlsli の EvaluateSurfaceSeaMapWaveScale と同じ式）
+/// @brief 海の範囲マップから、頂点の変位に掛ける倍率と沖から寄せる波を返す
+/// @details 倍率は RTWaterSurfaceCommon.hlsli の EvaluateSurfaceSeaMapWaveScale、寄せる波は
+///          SampleMeshVertexWaveDisplacement と同じ式
 /// @param vertexSpacing 頂点の格子の間隔 [m]（地図のテクセルより広ければ粗い格子用の値を使う）
-float GetSeaMapWaveScale(float2 baseXZ, float vertexSpacing)
+/// @param shoreWave 沖から寄せる波の (高さ [m], ∂高さ/∂x, ∂高さ/∂z)
+float GetSeaMapWaveScale(float2 baseXZ, float vertexSpacing, out float3 shoreWave)
 {
+    shoreWave = float3(0.0f, 0.0f, 0.0f);
     if (gSeaMapEnabled == 0)
     {
         return 1.0f;
@@ -54,6 +60,14 @@ float GetSeaMapWaveScale(float2 baseXZ, float vertexSpacing)
     const float4 value = SampleWaterSeaMap(
         gWaterSeaMap, baseXZ, gSeaMapOriginXZ, gSeaMapTexelsPerMeter, gSeaMapResolution);
     const bool conservative = UseConservativeWaterSeaMap(vertexSpacing, gSeaMapTexelsPerMeter);
+    if (gShoreWaveHeight > 0.0f && !IsWaterSeaMapBasin(value.x))
+    {
+        const float4 field = SampleShoreWaveField(
+            gWaterSeaMap, baseXZ, gSeaMapOriginXZ, gSeaMapTexelsPerMeter, gSeaMapResolution);
+        const float clearance = (conservative ? value.w : value.y) - gSeaMapDepthOffset;
+        shoreWave = EvaluateShoreWave(
+            value.x + gSeaMapDepthOffset, clearance, field, gShoreRunupTime, gShoreWaveHeight, vertexSpacing);
+    }
     return ComputeWaterSeaMapWaveScale(value, conservative, gSeaMapDepthOffset, gSeaMapInvWaveHeight);
 }
 
@@ -69,14 +83,26 @@ float GetRippleVertexHeight(float2 drawnXZ, float vertexSpacing)
         gWaterRipple, drawnXZ, vertexSpacing, gRippleOriginsXZ01, gRippleOrigin2XZ, gRippleInvSizes, gRippleStrength);
 }
 
-/// @brief 頂点の変位（格子の間隔で解像できるカスケード＋波群エンベロープ＋海の範囲マップ＋描かれる位置の波紋の高さ）
+/// @brief 頂点の変位（格子の間隔で解像できるカスケード＋波群エンベロープ＋海の範囲マップ＋沖から寄せる波＋
+///        描かれる位置の波紋の高さ）
 /// @param vertexSpacing 頂点の格子の間隔 [m]（ComputeFFTGeometryCascadeWeight）
-float3 SampleVertexDisplacement(float2 baseXZ, float vertexSpacing)
+/// @param shoreWaveSlope 沖から寄せる波の傾き（∂高さ/∂x, ∂高さ/∂z）
+float3 SampleVertexDisplacement(float2 baseXZ, float vertexSpacing, out float2 shoreWaveSlope)
 {
+    float3 shoreWave;
     float3 displacement = SampleFFTVertexDisplacement(gFFTOceanDisplacement, gSampler, baseXZ, vertexSpacing, gWaveGroupPhase)
-        * GetSeaMapWaveScale(baseXZ, vertexSpacing);
+        * GetSeaMapWaveScale(baseXZ, vertexSpacing, shoreWave);
+    displacement.y += shoreWave.x;
+    shoreWaveSlope = shoreWave.yz;
     displacement.y += GetRippleVertexHeight(baseXZ + displacement.xz, vertexSpacing);
     return displacement;
+}
+
+/// @brief 頂点の変位（傾きを使わない呼び出し用）
+float3 SampleVertexDisplacement(float2 baseXZ, float vertexSpacing)
+{
+    float2 unusedSlope;
+    return SampleVertexDisplacement(baseXZ, vertexSpacing, unusedSlope);
 }
 
 /// @brief 粗い格子の頂点の間隔 [m]
@@ -87,13 +113,14 @@ float GetCoarseMeshVertexSpacing()
 
 /// @brief 岸の格子の頂点の変位（範囲の端ほど、粗い格子の三角形で補間した変位へ寄せる）
 /// @details RTWaterSurfaceCommon.hlsli の SampleShoreMeshVertexDisplacement と同じ式
-float3 SampleShoreMeshVertexDisplacement(float2 baseXZ)
+/// @param shoreWaveSlope 沖から寄せる波の傾き（岸の格子の頂点の値）
+float3 SampleShoreMeshVertexDisplacement(float2 baseXZ, out float2 shoreWaveSlope)
 {
-    float3 fine = SampleVertexDisplacement(baseXZ, gShoreMeshCellSize);
+    float3 fine = SampleVertexDisplacement(baseXZ, gShoreMeshCellSize, shoreWaveSlope);
     if (gSeaMapEnabled != 0)
     {
         fine.y += EvaluateShoreRunupLift(gWaterSeaMap, baseXZ, gSeaMapOriginXZ, gSeaMapTexelsPerMeter,
-            gSeaMapResolution, gSeaMapDepthOffset, gShoreRunupTime, gShoreRunupHeight);
+            gSeaMapResolution, gSeaMapDepthOffset, gShoreRunupTime, gShoreRunupHeight, gShoreWaveHeight);
     }
     const float blend = ComputeShoreMeshBlend(baseXZ, gSeabedOriginXZ, 1.0f / gSeabedInvSize, gShoreMeshBlendWidth);
     if (blend >= 1.0f)
@@ -136,9 +163,10 @@ FFTWaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
         baseWorldPos = mul(input.position, mtx.World).xyz;
     }
 
+    float2 shoreWaveSlope;
     float3 displacement = shoreMeshVertex
-        ? SampleShoreMeshVertexDisplacement(baseWorldPos.xz)
-        : SampleVertexDisplacement(baseWorldPos.xz, GetCoarseMeshVertexSpacing());
+        ? SampleShoreMeshVertexDisplacement(baseWorldPos.xz, shoreWaveSlope)
+        : SampleVertexDisplacement(baseWorldPos.xz, GetCoarseMeshVertexSpacing(), shoreWaveSlope);
 
     // 潮の分だけ水面全体を上下させる（静止水面からの波の高さ waveHeight には含めない）
     const float3 tideOffset = float3(0.0f, gTideHeight, 0.0f);
@@ -181,5 +209,6 @@ FFTWaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     float4 offsetPrevClip = mul(float4(offsetLS, 0.0f), mtx.PrevWVP);
     output.clipPosPrev = basePrevClip + offsetPrevClip;
     output.shoreMeshVertex = shoreMeshVertex ? 1.0f : 0.0f;
+    output.shoreWaveSlope = shoreWaveSlope;
     return output;
 }

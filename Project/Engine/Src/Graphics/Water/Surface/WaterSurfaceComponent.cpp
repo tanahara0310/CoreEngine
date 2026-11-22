@@ -280,6 +280,7 @@ namespace CoreEngine
         frameCB_.seaMapTexelsPerMeter = seaMap.texelsPerMeter;
         frameCB_.seaMapDepthOffset = seaMap.depthOffset;
         frameCB_.seaMapInvWaveHeight = seaMap.invWaveHeight;
+        frameCB_.shoreWaveHeight = (frameCB_.seaMapEnabled != 0) ? binding.shoreWaveHeight : 0.0f;
 
         // 水の波紋
         const WaterRippleBinding& ripple = binding.ripple;

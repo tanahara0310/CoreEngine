@@ -22,6 +22,8 @@ cbuffer WaterSeaMapConstants : register(b0)
 static const float kStartAboveSurface = 0.02f;
 /// @brief 水面の位置が物の中で上の面が見つからないとき、陸の高さとして書く水面からの高さ [m]
 static const float kOccupiedHeightAboveSurface = 0.5f;
+/// @brief 陸の上の面から上の物を探すレイの出発点の、上の面からの高さ [m]
+static const float kStartAboveLandTop = 0.01f;
 /// @brief 物の中かを調べる水平のレイのうち、裏から当たればそう見なす本数
 static const uint kInsideSolidMinBackHits = 3;
 
@@ -53,11 +55,28 @@ bool IsInsideSolid(float3 origin)
     return backHits >= kInsideSolidMinBackHits;
 }
 
+/// @brief 陸の上の面のすぐ上から真上へレイを撃ち、水面から上の物までの高さ [m] を返す
+/// @param origin        波の無い水面のすぐ上の点
+/// @param landTopDistance origin から陸の上の面までの距離 [m]
+/// @return 表から当たれば当たった面までの高さ、当たらなければ gMaxValue、裏から当たれば（別の物の中）0
+float TraceClearanceAboveLand(float3 origin, float landTopDistance)
+{
+    const float startDistance = landTopDistance + kStartAboveLandTop;
+    const RTTraceHit hit = TraceSeaMapRay(
+        origin + float3(0.0f, startDistance, 0.0f), float3(0.0f, 1.0f, 0.0f), gUpProbeDistance);
+    if (!hit.hit)
+    {
+        return gMaxValue;
+    }
+    return hit.frontFace ? min(kStartAboveSurface + startDistance + hit.hitT, gMaxValue) : 0.0f;
+}
+
 /// @brief テクセルごとに、波の無い水面のすぐ上から真下と真上へレイを撃ち、(水深, 上の物までの高さ) を書く
 /// @details 真下で表から当たった面を海底とする（RTWaterSeabed と同じ決め方）。
 ///          ただし真上で裏から当たり、水平のレイでも閉じた物の中と分かったときは、海底に刺さった物（柱・壁・岩）の中として陸の下にする。
 ///          真下で海底が見つからず真上で裏から当たったときも陸の下として、水深に陸の上の面の高さの符号反転を書く。
-///          上の物までの高さは、真上で最初に当たった面（桟橋の床や陸の上の面）までの距離
+///          上の物までの高さは、水の上では真上で最初に当たった面（桟橋の床など）までの距離、
+///          陸の下では陸の上の面より上で最初に当たった面までの距離（TraceClearanceAboveLand）
 [shader("raygeneration")]
 void RTWaterSeaMapRayGen()
 {
@@ -83,7 +102,7 @@ void RTWaterSeaMapRayGen()
     else if (closedAbove)
     {
         depth = -min(up.hitT + kStartAboveSurface, gMaxValue);
-        clearance = 0.0f;
+        clearance = TraceClearanceAboveLand(origin, up.hitT);
     }
     else if (down.hit && !down.frontFace)
     {

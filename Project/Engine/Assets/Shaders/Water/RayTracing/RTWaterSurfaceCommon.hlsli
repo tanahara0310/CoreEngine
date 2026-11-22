@@ -63,6 +63,8 @@ cbuffer WaterSurfaceData : register(b1)
     uint gSurfaceRippleSrvIndex;           // 面の SRV のヒープの中の番号
     float3 gSurfaceRippleInvSizes;         // 段ごとの一辺の長さの逆数 [1/m]（0 の段は読まない）
     uint gSurfaceRippleEnabled;            // 1 = 波紋を水面の形と法線へ足す
+    float gSurfaceShoreWaveHeight;        // 沖から寄せる波の高さの平均 [m]（0 = 寄せる波なし。時刻は gSurfaceTime）
+    float3 gSurfacePad4;
 };
 
 static const uint kWaterSurfaceModelTypeGerstner = 0;
@@ -293,8 +295,24 @@ float3 SampleMeshVertexWaveDisplacement(Texture2DArray<float4> displacementTex, 
         disp += float3(horizontal.x, d.y, horizontal.y) * weight;
     }
     const bool conservative = UseConservativeWaterSeaMap(vertexSpacing, gSurfaceSeaMapTexelsPerMeter);
-    return disp * ComputeFFTWaveGroupEnvelope(baseXZ, gSurfaceWaveGroupPhase)
+    disp *= ComputeFFTWaveGroupEnvelope(baseXZ, gSurfaceWaveGroupPhase)
         * EvaluateSurfaceSeaMapWaveScale(baseXZ, conservative);
+    // 沖から寄せる波（FFTWater.VS の GetSeaMapWaveScale と同じ式）
+    if (gSurfaceSeaMapResolution.x != 0 && gSurfaceShoreWaveHeight > 0.0f)
+    {
+        Texture2D<float4> seaMap = ResourceDescriptorHeap[gSurfaceSeaMapSrvIndex];
+        const float4 value = SampleWaterSeaMap(
+            seaMap, baseXZ, gSurfaceSeaMapOriginXZ, gSurfaceSeaMapTexelsPerMeter, gSurfaceSeaMapResolution);
+        if (!IsWaterSeaMapBasin(value.x))
+        {
+            const float4 field = SampleShoreWaveField(
+                seaMap, baseXZ, gSurfaceSeaMapOriginXZ, gSurfaceSeaMapTexelsPerMeter, gSurfaceSeaMapResolution);
+            const float clearance = (conservative ? value.w : value.y) - gSurfaceSeaMapDepthOffset;
+            disp.y += EvaluateShoreWave(value.x + gSurfaceSeaMapDepthOffset, clearance, field,
+                gSurfaceTime, gSurfaceShoreWaveHeight, vertexSpacing).x;
+        }
+    }
+    return disp;
 }
 
 /// @brief 水面の頂点に足す波紋の高さ [m]（FFTWater.VS・Water.VS と同じ式）
@@ -371,7 +389,8 @@ float4 SampleShoreMeshVertexDisplacementAndObjectRipple(Texture2DArray<float4> d
     {
         Texture2D<float4> seaMap = ResourceDescriptorHeap[gSurfaceSeaMapSrvIndex];
         fine.y += EvaluateShoreRunupLift(seaMap, baseXZ, gSurfaceSeaMapOriginXZ, gSurfaceSeaMapTexelsPerMeter,
-            gSurfaceSeaMapResolution, gSurfaceSeaMapDepthOffset, gSurfaceTime, gSurfaceShoreRunupHeight);
+            gSurfaceSeaMapResolution, gSurfaceSeaMapDepthOffset, gSurfaceTime, gSurfaceShoreRunupHeight,
+            gSurfaceShoreWaveHeight);
     }
     const float blend = ComputeShoreMeshBlend(
         baseXZ, gSurfaceShoreMeshOriginXZ, gSurfaceShoreMeshSize, gSurfaceShoreMeshBlendWidth);

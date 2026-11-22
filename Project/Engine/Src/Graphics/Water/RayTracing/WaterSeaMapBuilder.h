@@ -15,12 +15,17 @@ namespace CoreEngine
         /// @brief 海とつながっていない水たまりのテクセルに書く水深 [m]（WaterSeaMap.hlsli の kWaterSeaMapBasinDepth）
         inline constexpr float kBasinDepth = -kMaxValue;
 
+        /// @brief 沖から着くまでの時間を地図へ書くとき、割った余りをとる時間 [s]
+        ///        （WaterSeaMap.hlsli の kShoreWaveFieldCycleSeconds。WaterShoreRunup.hlsli の波の列ごとの、波の間隔 × 波ごとのばらつきがくり返す波の数）
+        inline constexpr float kShoreWaveCycleSeconds = 144.0f;
+
         /// @brief 地図づくりの入力
         struct Input {
             const float* measured = nullptr; ///< テクセルごとの (水深, 上の物までの高さ) [m]。行が Z・列が X
             uint32_t width = 0;              ///< X のテクセル数
             uint32_t height = 0;             ///< Z のテクセル数
             uint32_t conservativeRadius = 0; ///< 粗い格子用の最小値を取る正方形の窓の半径 [テクセル]
+            float texelSize = 1.0f;          ///< 1 テクセルの幅 [m]
         };
 
         /// @brief 地図づくりの集計（ログ用）
@@ -29,14 +34,19 @@ namespace CoreEngine
             uint32_t landTexels = 0;  ///< 陸や物の下のテクセル数
             uint32_t basinTexels = 0; ///< 海とつながっていない水たまりのテクセル数
             uint32_t waterBodies = 0; ///< 水のテクセルのつながった塊の数
+            bool hasOpenSea = false;  ///< 沖（水深 12m 以上の海）のテクセルがあるか
         };
 
         /// @brief 地図を作る
         /// @details 水深が正のテクセルを上下左右のつながりで塊に分け、範囲の端に触れる塊と一番大きい塊を海とする。
         ///          ほかの塊（海とつながっていない水たまり）は水深を kBasinDepth・上の物までの高さを 0 にする。
         ///          陸の下の水深は -kMaxLandHeight より下げない。
-        ///          粗い格子用の 2 つは、半径 conservativeRadius の正方形の窓の中の最小値
-        /// @return テクセルごとの (水深, 上の物までの高さ, 粗い格子用の水深, 粗い格子用の上の物までの高さ) を半精度で並べたもの
+        ///          粗い格子用の 2 つは、半径 conservativeRadius の正方形の窓の中の最小値（上の物までの高さは、陸の下を 0 として取る）。
+        ///          続く height 行には、岸へ寄せる波が沖（無ければ海のいちばん深い所）から着くまでの時間の場を書く（BuildShoreWaveField）
+        /// @return 2 × height 行のテクセルを半精度の 4 成分で並べたもの。
+        ///         行 [0, height) は (水深, 上の物までの高さ, 粗い格子用の水深, 粗い格子用の上の物までの高さ)、
+        ///         行 [height, 2 × height) は (沖から着くまでの時間を kShoreWaveCycleSeconds で割った余り − kShoreWaveCycleSeconds / 2,
+        ///         その X の傾き, Z の傾き, 波を運んできた沖の点の峰に沿った位置 [m])
         std::vector<uint16_t> Build(const Input& input, Stats* outStats = nullptr);
     }
 }

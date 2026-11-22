@@ -228,6 +228,7 @@ namespace CoreEngine
             input.width = key.width;
             input.height = key.height;
             input.conservativeRadius = key.conservativeRadius;
+            input.texelSize = key.texelSize;
             result.texels = WaterSeaMapBuilder::Build(input, &result.stats);
             result.key = key;
             result.generation = generation;
@@ -243,10 +244,12 @@ namespace CoreEngine
         ID3D12Device* device = dxCommon_->GetDevice();
         const BakeKey& key = result.key;
 
+        // 行 [0, height) が地図、行 [height, 2 × height) が岸へ寄せる波の到着時刻の場（WaterSeaMapBuilder::Build）
+        const uint32_t textureRows = key.height * 2;
         D3D12_RESOURCE_DESC textureDesc{};
         textureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
         textureDesc.Width = key.width;
-        textureDesc.Height = key.height;
+        textureDesc.Height = textureRows;
         textureDesc.DepthOrArraySize = 1;
         textureDesc.MipLevels = 1;
         textureDesc.Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
@@ -268,7 +271,7 @@ namespace CoreEngine
             return;
         }
         auto* rows = static_cast<uint8_t*>(mapped) + layout.Offset;
-        for (uint32_t z = 0; z < key.height; ++z) {
+        for (uint32_t z = 0; z < textureRows; ++z) {
             std::memcpy(
                 rows + static_cast<size_t>(z) * layout.Footprint.RowPitch,
                 result.texels.data() + static_cast<size_t>(z) * key.width * 4,
@@ -323,15 +326,16 @@ namespace CoreEngine
         view_.originXZ[1] = key.originXZ[1];
         view_.texelsPerMeter = 1.0f / key.texelSize;
         view_.waterHeight = key.waterHeight;
+        view_.hasOpenSea = result.stats.hasOpenSea;
         view_.valid = true;
 
         Logger::GetInstance().Infof(
             LogCategory::Graphics,
             LogSubCategory::Pipeline,
-            "WaterSeaMap: built {}x{} texel={:.2f}m radius={} sea={} land={} basin={} bodies={} cpu={:.1f}ms",
+            "WaterSeaMap: built {}x{} texel={:.2f}m radius={} sea={} land={} basin={} bodies={} openSea={} cpu={:.1f}ms",
             key.width, key.height, key.texelSize, key.conservativeRadius,
             result.stats.seaTexels, result.stats.landTexels, result.stats.basinTexels,
-            result.stats.waterBodies, result.milliseconds);
+            result.stats.waterBodies, result.stats.hasOpenSea ? 1 : 0, result.milliseconds);
     }
 
     void WaterSeaMapRayTracingManager::Discard()
