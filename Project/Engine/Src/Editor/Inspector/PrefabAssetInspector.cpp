@@ -22,10 +22,12 @@
 #include "Graphics/Asset/AssetInfo.h"
 #include "Graphics/Asset/AssetRef.h"
 #include "Reflection/TypeDescriptor.h"
+#include "Reflection/PropertySerializer.h"
 #include "Scene/PrefabSystem.h"
 #include "Utility/Logger/Logger.h"
 
 #include <memory>
+#include <format>
 #include <optional>
 #include <string>
 #include <utility>
@@ -76,20 +78,24 @@ namespace CoreEngine::Editor::PrefabAssetInspector
             }
         }
 
-        /// @brief 今のタグとコンポーネントを中身の形にする（シーン内の別オブジェクトへの参照は null にする）
+        /// @brief 今のタグと根のコンポーネントを中身の形にする（子は読み込んだときのまま残す）
+        /// @note プレハブの中の番号を指す参照は残し、ほかの参照は null にする。
         PrefabSystem::PrefabContents MakeContents(const State& state)
         {
             PrefabSystem::PrefabContents contents;
             contents.tag = state.tag;
+            contents.children = state.source.children;
+
+            // プレハブの中の番号（根と子）
+            PrefabSystem::NodeIdMap nodes;
+            nodes.emplace(PrefabSystem::kRootNode, PrefabSystem::kRootNode);
+            for (const PrefabSystem::PrefabChild& child : contents.children) {
+                nodes.emplace(child.node, child.node);
+            }
+
             for (const auto& component : state.components) {
                 json entry = ComponentHost::SerializeComponent(*component);
-                if (entry.contains("parameters") && entry["parameters"].is_object()) {
-                    for (auto& value : entry["parameters"]) {
-                        if (value.is_object() && value.contains("ref")) {
-                            value = nullptr;
-                        }
-                    }
-                }
+                Reflection::PropertySerializer::RemapObjectRefs(entry, nodes, true);
                 contents.components.push_back(std::move(entry));
             }
             return contents;
@@ -243,12 +249,17 @@ namespace CoreEngine::Editor::PrefabAssetInspector
 
         // 別のプレハブを選んだ・外で書き換わったときは作り直す（編集の途中は作り直さない）
         State& state = GetState();
-        const bool changedOutside = contents->tag != state.source.tag || contents->components != state.source.components;
+        const bool changedOutside = contents->tag != state.source.tag ||
+            contents->components != state.source.components || contents->children != state.source.children;
         if (state.guid != guid || (!state.editing && changedOutside)) {
             Rebuild(state, *contents);
             state.guid = guid;
         }
         UI::Hint("変えた値はすぐプレハブに保存し、置いた物にも反映します");
+        if (!state.source.children.empty()) {
+            UI::Hint(std::format("子が {} 体あります。ここで直せるのは根だけで、子はプレハブモードで直します",
+                state.source.children.size()).c_str());
+        }
 
         // 欄が積む Undo（シーンからコンポーネントを探すもの）は捨て、プレハブ全体の書き換えを 1 件として積む
         bool changed = false;

@@ -1,0 +1,360 @@
+{
+    "children": [
+        {
+            "components": [
+                {
+                    "enabled": true,
+                    "parameters": {
+                        "parent": {
+                            "comp": "Transform",
+                            "ref": "0000000000000001"
+                        },
+                        "rotate": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "scale": [
+                            0.5,
+                            0.5,
+                            0.5
+                        ],
+                        "translate": [
+                            0.0,
+                            1.0,
+                            0.0
+                        ]
+                    },
+                    "type": "Transform"
+                },
+                {
+                    "enabled": true,
+                    "parameters": {
+                        "blendMode": 0,
+                        "boundsPadding": 0.0,
+                        "castShadows": 0,
+                        "material": null,
+                        "materials": [
+                            {
+                                "alphaCutoff": 0.5,
+                                "color": [
+                                    0.25,
+                                    0.5,
+                                    0.95,
+                                    1.0
+                                ],
+                                "dithering": true,
+                                "ditheringScale": 1.0,
+                                "emissive": [
+                                    0.0,
+                                    0.0,
+                                    0.0
+                                ],
+                                "lighting": true,
+                                "metallic": 0.0,
+                                "normalMap": false,
+                                "occlusionStrength": 1.0,
+                                "roughness": 0.9,
+                                "vertexAnimSpeed": 1.0,
+                                "vertexAnimStrength": 1.0,
+                                "vertexAnimation": 0
+                            }
+                        ],
+                        "model": {
+                            "guid": "e16552a6-c74d-f458-71fe-2810a97c3777",
+                            "path": "Engine/Assets/Models/Primitives/Sphere/sphere.obj"
+                        },
+                        "rayTracing": true,
+                        "texture": null,
+                        "visibleInReflections": 0
+                    },
+                    "type": "MeshRenderer"
+                },
+                {
+                    "enabled": true,
+                    "parameters": {
+                        "color": [
+                            0.25,
+                            0.5,
+                            0.95,
+                            1.0
+                        ],
+                        "dithering": true,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0,
+                            1.0
+                        ],
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.9,
+                        "vertexAnimSpeed": 1.0,
+                        "vertexAnimStrength": 1.0,
+                        "vertexAnimation": 0
+                    },
+                    "type": "Material"
+                }
+            ],
+            "name": "Body",
+            "node": "8f6d53452c7bc2ba"
+        },
+        {
+            "components": [
+                {
+                    "enabled": true,
+                    "parameters": {
+                        "parent": {
+                            "comp": "Transform",
+                            "ref": "8f6d53452c7bc2ba"
+                        },
+                        "rotate": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "scale": [
+                            0.6,
+                            0.6,
+                            0.6
+                        ],
+                        "translate": [
+                            0.0,
+                            1.4,
+                            0.0
+                        ]
+                    },
+                    "type": "Transform"
+                },
+                {
+                    "enabled": true,
+                    "parameters": {
+                        "blendMode": 0,
+                        "boundsPadding": 0.0,
+                        "castShadows": 0,
+                        "material": null,
+                        "materials": [
+                            {
+                                "alphaCutoff": 0.5,
+                                "color": [
+                                    0.95,
+                                    0.85,
+                                    0.2,
+                                    1.0
+                                ],
+                                "dithering": true,
+                                "ditheringScale": 1.0,
+                                "emissive": [
+                                    0.0,
+                                    0.0,
+                                    0.0
+                                ],
+                                "lighting": true,
+                                "metallic": 0.0,
+                                "normalMap": false,
+                                "occlusionStrength": 1.0,
+                                "roughness": 0.9,
+                                "vertexAnimSpeed": 1.0,
+                                "vertexAnimStrength": 1.0,
+                                "vertexAnimation": 0
+                            },
+                            {
+                                "alphaCutoff": 0.5,
+                                "color": [
+                                    0.95,
+                                    0.85,
+                                    0.2,
+                                    1.0
+                                ],
+                                "dithering": true,
+                                "ditheringScale": 1.0,
+                                "emissive": [
+                                    0.0,
+                                    0.0,
+                                    0.0
+                                ],
+                                "lighting": true,
+                                "metallic": 0.0,
+                                "normalMap": false,
+                                "occlusionStrength": 1.0,
+                                "roughness": 0.9,
+                                "vertexAnimSpeed": 1.0,
+                                "vertexAnimStrength": 1.0,
+                                "vertexAnimation": 0
+                            }
+                        ],
+                        "model": {
+                            "guid": "e8a79191-50ea-0673-1816-c257f280ba64",
+                            "path": "Engine/Assets/Models/Primitives/Box/cube.obj"
+                        },
+                        "rayTracing": true,
+                        "texture": null,
+                        "visibleInReflections": 0
+                    },
+                    "type": "MeshRenderer"
+                },
+                {
+                    "enabled": true,
+                    "parameters": {
+                        "color": [
+                            0.95,
+                            0.85,
+                            0.2,
+                            1.0
+                        ],
+                        "dithering": true,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0,
+                            1.0
+                        ],
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.9,
+                        "vertexAnimSpeed": 1.0,
+                        "vertexAnimStrength": 1.0,
+                        "vertexAnimation": 0
+                    },
+                    "type": "Material"
+                }
+            ],
+            "name": "Hat",
+            "node": "cffdc3676043b43c"
+        }
+    ],
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": null,
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    -3.0,
+                    0.5,
+                    2.0
+                ]
+            },
+            "type": "Transform"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "blendMode": 0,
+                "boundsPadding": 0.0,
+                "castShadows": 0,
+                "material": null,
+                "materials": [
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            0.85,
+                            0.35,
+                            0.15,
+                            1.0
+                        ],
+                        "dithering": true,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.9,
+                        "vertexAnimSpeed": 1.0,
+                        "vertexAnimStrength": 1.0,
+                        "vertexAnimation": 0
+                    },
+                    {
+                        "alphaCutoff": 0.5,
+                        "color": [
+                            0.85,
+                            0.35,
+                            0.15,
+                            1.0
+                        ],
+                        "dithering": true,
+                        "ditheringScale": 1.0,
+                        "emissive": [
+                            0.0,
+                            0.0,
+                            0.0
+                        ],
+                        "lighting": true,
+                        "metallic": 0.0,
+                        "normalMap": false,
+                        "occlusionStrength": 1.0,
+                        "roughness": 0.9,
+                        "vertexAnimSpeed": 1.0,
+                        "vertexAnimStrength": 1.0,
+                        "vertexAnimation": 0
+                    }
+                ],
+                "model": {
+                    "guid": "e8a79191-50ea-0673-1816-c257f280ba64",
+                    "path": "Engine/Assets/Models/Primitives/Box/cube.obj"
+                },
+                "rayTracing": true,
+                "texture": null,
+                "visibleInReflections": 0
+            },
+            "type": "MeshRenderer"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "color": [
+                    0.85,
+                    0.35,
+                    0.15,
+                    1.0
+                ],
+                "dithering": true,
+                "ditheringScale": 1.0,
+                "emissive": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "lighting": true,
+                "metallic": 0.0,
+                "normalMap": false,
+                "occlusionStrength": 1.0,
+                "roughness": 0.9,
+                "vertexAnimSpeed": 1.0,
+                "vertexAnimStrength": 1.0,
+                "vertexAnimation": 0
+            },
+            "type": "Material"
+        },
+        {
+            "enabled": true,
+            "parameters": {
+                "body": {
+                    "ref": "8f6d53452c7bc2ba"
+                }
+            },
+            "type": "PrefabRobotBrain"
+        }
+    ]
+}

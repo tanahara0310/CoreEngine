@@ -3,6 +3,7 @@
 
 #include "GameObject/GameObject.h"
 #include "GameObject/GameObjectManager.h"
+#include "Reflection/PropertySerializer.h"
 #include "UI/RectTransformComponent.h"
 
 #include <memory>
@@ -11,30 +12,6 @@
 
 namespace CoreEngine
 {
-    namespace
-    {
-        /// @brief 保存した値の中の参照（`{"ref": ID, ...}`）を、対応のある ID へ付け替える
-        void RemapReferences(json& node, const std::unordered_map<std::string, std::string>& ids)
-        {
-            if (node.is_object()) {
-                const auto ref = node.find("ref");
-                if (ref != node.end() && ref->is_string()) {
-                    const auto found = ids.find(ref->get<std::string>());
-                    if (found != ids.end()) {
-                        *ref = found->second;
-                    }
-                }
-                for (auto& item : node.items()) {
-                    RemapReferences(item.value(), ids);
-                }
-            } else if (node.is_array()) {
-                for (json& element : node) {
-                    RemapReferences(element, ids);
-                }
-            }
-        }
-    }
-
     GameObject* CloneUIHierarchy(GameObjectManager& manager, const GameObject& root,
                                  std::unordered_map<ObjectId, GameObject*>* outCopies)
     {
@@ -73,7 +50,7 @@ namespace CoreEngine
 
         for (std::size_t i = 0; i < sources.size(); ++i) {
             json state = sources[i]->Serialize();
-            RemapReferences(state, ids);
+            Reflection::PropertySerializer::RemapObjectRefs(state, ids);
             copies[i]->Deserialize(state);
         }
         manager.InvalidateReferences();

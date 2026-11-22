@@ -631,6 +631,28 @@ DXR 1.1 に対応していない GPU では、物の影は霧に落ちません�
 4. Project の Prefabs/TaggedEnemy を選ぶと、インスペクタの「プレハブの中身」に Tag が出る。TaggedEnemy をシーンへ置いて Tag を Player に変えると、Tag の行の左端に青い線が出る。Tag のラベルを右クリックして「プレハブの値に戻す」で Enemy に戻る（置いた物は消してから保存する）。
 5. Edit ▸ Project Settings… の Tags でタグを足して「適用」すると、Tags.json に書かれ、インスペクタの Tag の欄にすぐ出る（確かめたら外して適用する）。
 
+## Prefab_Hierarchy
+
+親子つきのプレハブ（子と孫を 1 つのプレハブに保存し、置く・出す・消す）を確かめます。
+
+プレハブ `Application/Assets/Prefabs/Robot.prefab` は、橙の立方体（根 Robot）の上に青い球（子 Body）、その上に黄色の小さな立方体（孫 Hat）が載った組です。根のスクリプト PrefabRobotBrain の body の欄が、組の中の Body を指しています。
+
+| 物 | 見るところ |
+|---|---|
+| Robot_A | Robot をそのまま置いた物 |
+| Robot_B | Robot を右へずらして置き、Hat の大きさを 2 倍（0.6 → 1.2）に上書きし、空のオブジェクト Antenna を子に足した物 |
+| Probe | 試験のスクリプト（PrefabHierarchyProbe）。再生すると 2 組を確かめ、同じプレハブから 100 組を出して確かめてから消す |
+
+確かめ方:
+
+1. 再生すると、奥に 100 組が並んですぐ消える。コンソールに PrefabHierarchyProbe の OK の行が並び、最後に「PrefabHierarchyProbe: 全部合う」が出る。NG の行が出たら、その行が違う項目。
+2. 停止中の Hierarchy で Robot_A を開くと Body、その下に Hat が並び、3 行とも ◈ が付く（根だけ色が付く）。Body を選ぶと Inspector の Prefab の行に「Robot_A の子」と出る。
+3. Robot_A の Body を選んで Delete を押しても消えず、「プレハブの子は消せません」と出る。Body の Transform の「親」の欄は灰色で変えられず、マウスを載せると理由が出る。Robot_B の Antenna はプレハブの外の子なので、ふつうに消せる・親を変えられる。
+4. Robot_A を選んで Delete を押すと Body と Hat も消え、Ctrl+Z で 3 つとも戻る。Ctrl+D で複製すると子と孫も一緒に複製され、複製の body の欄は複製の Body を指す（確かめたら Ctrl+Z で複製を消す）。
+5. Robot_B の Hat を選ぶと、Transform の大きさの行の左端に青い線が出る（プレハブと違う値）。
+6. Project の Prefabs/Robot を選ぶと、インスペクタに「子が 2 体あります」と出る。「◈ プレハブモードで開く」を押すと 3 つだけが並ぶ。Hat の回転の Y を 45 にして「◀ シーンへ戻る」を押すと、Robot_A と Robot_B の Hat も 45° 回っている。シーンで Ctrl+Z を 1 回押すと、プレハブの変更がまとめて戻る。
+7. プレハブモードで Hat の「親」をプレハブの外の物に変えると、コンソールに「組から外れているので、プレハブへ書き戻しません」と出て、プレハブのファイルは変わらない。Ctrl+Z で親を戻す。
+
 ## Animator_StateMachine
 
 アニメーター設定（`.animator` の状態・遷移・パラメータ）と、設定を指さない Animator を確かめます。空の環境光は入れています。

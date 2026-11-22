@@ -14,7 +14,9 @@
 #include "GameObject/GameObjectManager.h"
 #include "Particle/Gpu/GpuParticleSystemComponent.h"
 #include "Particle/ParticleSystemComponent.h"
+#include "Reflection/PropertySerializer.h"
 #include "Scene/PrefabSystem.h"
+#include "Scene/SceneHierarchy.h"
 #include "UI/RectTransformComponent.h"
 #include "UI/UIButtonComponent.h"
 #include "UI/UIContentSizeFitterComponent.h"
@@ -36,6 +38,10 @@
 #include <memory>
 #include <optional>
 #include <random>
+#include <algorithm>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -155,9 +161,6 @@ namespace CoreEngine::ObjectEditing
         /// 作った入力欄の置き文字の色
         const Vector4 kNewInputPlaceholderColor = { 0.55f, 0.55f, 0.58f, 1.0f };
 
-        /// 子孫をたどる深さの上限
-        constexpr int kMaxHierarchyDepth = 64;
-
         /// UI を複製したときにずらす量（px）
         constexpr float kUIDuplicateOffset = 10.0f;
 
@@ -169,6 +172,8 @@ namespace CoreEngine::ObjectEditing
             ObjectId id;
             json state;
             Reflection::AssetRefValue prefab;
+            ObjectId prefabRoot;     ///< プレハブの子が属する根の ID
+            std::string prefabNode;  ///< プレハブの子の、プレハブの中の番号
         };
 
         /// @brief 今の状態を控える
@@ -181,6 +186,10 @@ namespace CoreEngine::ObjectEditing
             snapshot.state = object.Serialize();
             if (object.IsPrefabInstance()) {
                 snapshot.prefab = object.GetPrefab().GetValue();
+            }
+            if (object.IsPrefabChild()) {
+                snapshot.prefabRoot = object.GetPrefabRootId();
+                snapshot.prefabNode = object.GetPrefabNode();
             }
             return snapshot;
         }
@@ -231,21 +240,10 @@ namespace CoreEngine::ObjectEditing
         GameObject* Recreate(GameObjectManager& manager, const Snapshot& snapshot, const std::string& name,
                              bool keepIdentity)
         {
-            const std::string key = keepIdentity ? snapshot.serializeKey : MakeNewObjectKey(name);
-            GameObject* object = nullptr;
-            if (!snapshot.prefab.guid.empty() || !snapshot.prefab.path.empty()) {
-                object = PrefabSystem::Instantiate(manager, snapshot.prefab, name, key);
-            } else {
-                auto owned = std::make_unique<GameObject>();
-                owned->SetSerializeKey(key);
-                owned->SetName(name);
-                object = manager.AddObject(std::move(owned));
-            }
-            if (!object) {
-                Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System,
-                    "ObjectEditing: \"{}\" を作り直せませんでした", name);
-                return nullptr;
-            }
+            auto owned = std::make_unique<GameObject>();
+            owned->SetSerializeKey(keepIdentity ? snapshot.serializeKey : MakeNewObjectKey(name));
+            owned->SetName(name);
+            GameObject* const object = manager.AddObject(std::move(owned));
 
             if (keepIdentity) {
                 object->SetSerializeKey(snapshot.serializeKey);
@@ -253,6 +251,14 @@ namespace CoreEngine::ObjectEditing
             }
             object->Deserialize(snapshot.state);
             object->SetName(name);
+
+            // プレハブとのつながりを戻す（プレハブの子は、同じ ID と保存キーで戻すときだけ）
+            if (!snapshot.prefab.guid.empty() || !snapshot.prefab.path.empty()) {
+                object->SetPrefab(snapshot.prefab);
+            }
+            if (keepIdentity && snapshot.prefabRoot.IsValid()) {
+                object->SetPrefabChild(snapshot.prefabRoot, snapshot.prefabNode);
+            }
             manager.InvalidateReferences();
             return object;
         }
@@ -325,28 +331,12 @@ namespace CoreEngine::ObjectEditing
                 true, true));
         }
 
-        /// @brief オブジェクトの子孫（Transform と UI トランスフォームの子）を、子から先の順に集める
-        void CollectDescendants(const GameObjectManager& manager, const GameObject& object,
-                                std::vector<GameObject*>& out, int depth = 0)
+        /// @brief オブジェクトが、生きている置いた物の中のプレハブの子か
+        bool IsLivePrefabChild(const GameObject& object)
         {
-            const TransformComponent* const transform = object.GetComponent<TransformComponent>();
-            const RectTransformComponent* const rect = object.GetComponent<RectTransformComponent>();
-            if ((!transform && !rect) || depth >= kMaxHierarchyDepth) {
-                return;
-            }
-            for (const auto& candidate : manager.GetAllObjects()) {
-                if (!candidate || candidate->IsMarkedForDestroy() || candidate.get() == &object) {
-                    continue;
-                }
-                const TransformComponent* const child = candidate->GetComponent<TransformComponent>();
-                const RectTransformComponent* const childRect = candidate->GetComponent<RectTransformComponent>();
-                const bool isChild = (transform && child && child->GetParent() == transform)
-                    || (rect && childRect && childRect->GetParent() == rect);
-                if (isChild) {
-                    CollectDescendants(manager, *candidate, out, depth + 1);
-                    out.push_back(candidate.get());
-                }
-            }
+            const GameObjectManager* const manager = object.GetObjectManager();
+            return manager && object.IsPrefabChild() && !object.IsPrefabInstance() &&
+                PrefabSystem::FindInstanceRoot(*manager, object) != nullptr;
         }
 
         /// @brief 同じ名前があれば「名前 (n)」に、無ければそのままの名前を返す
@@ -866,6 +856,21 @@ namespace CoreEngine::ObjectEditing
         return true;
     }
 
+    std::vector<GameObject*> CollectRestorableDescendants(const GameObjectManager& manager, const GameObject& root)
+    {
+        // 親が先に並ぶので、親を入れなかった物は続けて外れる
+        std::vector<GameObject*> descendants;
+        std::unordered_set<const GameObject*> included = { &root };
+        for (GameObject* const descendant : SceneHierarchy::CollectDescendants(manager, root)) {
+            if (!included.contains(SceneHierarchy::FindParent(*descendant)) || !CanDuplicateOrDelete(*descendant)) {
+                continue;
+            }
+            descendants.push_back(descendant);
+            included.insert(descendant);
+        }
+        return descendants;
+    }
+
     GameObject* CreateEmpty(const Context& context, const Vector3& position)
     {
         GameObject* const object = CreateObject(context, MakeUniqueName(*context.manager, kEmptyObjectName),
@@ -883,17 +888,33 @@ namespace CoreEngine::ObjectEditing
 
     GameObject* InstantiatePrefab(const Context& context, const std::string& prefabPath, const std::string& name)
     {
+        return InstantiatePrefab(context, Reflection::AssetRefValue{ std::string(), prefabPath }, name);
+    }
+
+    GameObject* InstantiatePrefab(const Context& context, const Reflection::AssetRefValue& prefab,
+                                  const std::string& name)
+    {
         GameObjectManager& manager = *context.manager;
-        GameObject* const object = PrefabSystem::Instantiate(
-            manager, Reflection::AssetRefValue{ std::string(), prefabPath }, name, MakeNewObjectKey(name));
+        std::vector<GameObject*> children;
+        GameObject* const object = PrefabSystem::Instantiate(manager, prefab, name, MakeNewObjectKey(name), &children);
         if (!object) {
             Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
-                "ObjectEditing: プレハブ {} を読めないので、\"{}\" を作れませんでした", prefabPath, name);
+                "ObjectEditing: プレハブ {} を読めないので、\"{}\" を作れませんでした", prefab.path, name);
             return nullptr;
         }
         manager.InvalidateReferences();
 
-        PushCreateCommand(*object, name + " を作る");
+        // 根と子をまとめて 1 回の Undo にする
+        const std::string label = name + " を作る";
+        if (children.empty()) {
+            PushCreateCommand(*object, label);
+        } else {
+            Editor::BatchScope batch(label);
+            PushCreateCommand(*object, label);
+            for (const GameObject* const child : children) {
+                PushCreateCommand(*child, child->GetName() + " を作る");
+            }
+        }
         return object;
     }
 
@@ -1000,6 +1021,10 @@ namespace CoreEngine::ObjectEditing
         if (!rect || child.IsMarkedForDestroy()) {
             return false;
         }
+        // プレハブの中の親子は、置いた物では付け替えない
+        if (IsLivePrefabChild(child)) {
+            return false;
+        }
         if (!parent) {
             return rect->GetParent() != nullptr;
         }
@@ -1060,13 +1085,52 @@ namespace CoreEngine::ObjectEditing
         }
 
         GameObjectManager& manager = *context.manager;
-        const Snapshot snapshot = Capture(source);
-        GameObject* const copy = Recreate(manager, snapshot, MakeCopyName(manager, source.GetName()), false);
-        if (!copy) {
-            return nullptr;
+
+        // 元を先頭に、複製できる子孫を親が先の順に集める
+        std::vector<const GameObject*> sources = { &source };
+        for (const GameObject* const descendant : CollectRestorableDescendants(manager, source)) {
+            sources.push_back(descendant);
         }
 
+        // 先に全部の器を作って新しい ID を決め、それから互いを指す参照を新しい ID へ付け替えて値を流す
+        std::unordered_map<std::string, std::string> ids;
+        std::vector<GameObject*> copies;
+        copies.reserve(sources.size());
+        for (const GameObject* const original : sources) {
+            const std::string name = (original == &source)
+                ? MakeCopyName(manager, original->GetName()) : original->GetName();
+            auto owned = std::make_unique<GameObject>();
+            owned->SetSerializeKey(MakeNewObjectKey(name));
+            owned->SetName(name);
+            GameObject* const copy = manager.AddObject(std::move(owned));
+            ids.emplace(original->GetObjectId().ToString(), copy->GetObjectId().ToString());
+            copies.push_back(copy);
+        }
+
+        for (std::size_t i = 0; i < sources.size(); ++i) {
+            const GameObject& original = *sources[i];
+            GameObject& copy = *copies[i];
+            const std::string name = copy.GetName();
+
+            json state = original.Serialize();
+            Reflection::PropertySerializer::RemapObjectRefs(state, ids);
+            copy.Deserialize(state);
+            copy.SetName(name);
+
+            // プレハブの根は同じプレハブの根に、プレハブの子は根も一緒に複製したときだけ複製の根の子にする
+            if (original.IsPrefabInstance()) {
+                copy.SetPrefab(original.GetPrefab().GetValue());
+            } else if (original.IsPrefabChild()) {
+                const auto root = ids.find(original.GetPrefabRootId().ToString());
+                if (root != ids.end()) {
+                    copy.SetPrefabChild(ObjectId::FromString(root->second), original.GetPrefabNode());
+                }
+            }
+        }
+        manager.InvalidateReferences();
+
         // 元と重ならないよう少しずらす
+        GameObject* const copy = copies.front();
         if (ITransformSource* const transform = copy->GetComponent<ITransformSource>()) {
             Vector3 translate = transform->GetTranslate();
             translate.x += 1.0f;
@@ -1076,43 +1140,48 @@ namespace CoreEngine::ObjectEditing
             rect->SetAnchoredPosition({ position.x + kUIDuplicateOffset, position.y + kUIDuplicateOffset });
         }
 
-        PushCreateCommand(*copy, source.GetName() + " を複製");
+        // 複製した全部をまとめて 1 回の Undo にする
+        const std::string label = source.GetName() + " を複製";
+        if (copies.size() == 1) {
+            PushCreateCommand(*copy, label);
+        } else {
+            Editor::BatchScope batch(label);
+            for (const GameObject* const created : copies) {
+                PushCreateCommand(*created, created->GetName() + " を複製");
+            }
+        }
         Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
-            "ObjectEditing: \"{}\" を \"{}\" として複製しました", source.GetName(), copy->GetName());
+            "ObjectEditing: \"{}\" を \"{}\" として複製しました（子孫 {} 個）",
+            source.GetName(), copy->GetName(), copies.size() - 1);
         return copy;
     }
 
-    bool Delete(const Context& context, GameObject& object)
+    bool CanDelete(const GameObject& object, std::string* reason)
     {
-        std::string reason;
-        if (!CanDuplicateOrDelete(object, &reason)) {
-            Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
-                "ObjectEditing: \"{}\" を削除できません: {}", object.GetName(), reason);
+        if (!CanDuplicateOrDelete(object, reason)) {
             return false;
         }
-
-        const std::string name = object.GetName();
-        PushDeleteCommand(context, object);
-
-        Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
-            "ObjectEditing: \"{}\" を削除しました", name);
+        if (IsLivePrefabChild(object)) {
+            return FailWith(reason, "プレハブの子は消せません。つながりを外すか、プレハブモードで直します");
+        }
         return true;
     }
 
     bool DeleteWithDescendants(const Context& context, GameObject& object)
     {
-        std::vector<GameObject*> targets;
-        CollectDescendants(*context.manager, object, targets);
-        targets.push_back(&object);
-
-        for (const GameObject* const target : targets) {
-            std::string reason;
-            if (!CanDuplicateOrDelete(*target, &reason)) {
-                Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
-                    "ObjectEditing: \"{}\" を削除できません（\"{}\": {}）", object.GetName(), target->GetName(), reason);
-                return false;
-            }
+        std::string reason;
+        if (!CanDelete(object, &reason)) {
+            Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
+                "ObjectEditing: \"{}\" を削除できません: {}", object.GetName(), reason);
+            return false;
         }
+
+        // 作り直せる子孫を、子が先の順に集める（作り直せない子孫と、その下の子孫は、控えを取らずに親と一緒に消える）
+        std::vector<GameObject*> targets = CollectRestorableDescendants(*context.manager, object);
+        const std::size_t unrestorable =
+            SceneHierarchy::CollectDescendants(*context.manager, object).size() - targets.size();
+        std::reverse(targets.begin(), targets.end());
+        targets.push_back(&object);
 
         const std::string name = object.GetName();
         {
@@ -1123,7 +1192,11 @@ namespace CoreEngine::ObjectEditing
         }
 
         Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
-            "ObjectEditing: \"{}\" を子孫 {} 個と一緒に削除しました", name, targets.size() - 1);
+            "ObjectEditing: \"{}\" を子孫 {} 個と一緒に削除しました", name, targets.size() - 1 + unrestorable);
+        if (unrestorable > 0) {
+            Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System,
+                "ObjectEditing: \"{}\" の子孫のうち {} 個は作り直せないので、Undo では戻りません", name, unrestorable);
+        }
         return true;
     }
 

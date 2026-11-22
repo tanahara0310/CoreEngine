@@ -1,0 +1,10 @@
+{
+    "active": true,
+    "id": "5a0b7c1e2d3f4061",
+    "name": "Robot_A",
+    "order": 3,
+    "prefab": {
+        "guid": "d95217ac-c1ce-950d-4dad-73e7b7713711",
+        "path": "Application/Assets/Prefabs/Robot.prefab"
+    }
+}

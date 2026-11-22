@@ -1,0 +1,13 @@
+{
+    "id": "5e63fded618a3449",
+    "order": 9,
+    "overrides": {
+        "Transform.scale": [
+            1.2,
+            1.2,
+            1.2
+        ]
+    },
+    "prefabNode": "cffdc3676043b43c",
+    "prefabRoot": "5583eac0eb3b238b"
+}

@@ -1360,6 +1360,9 @@
     <ClCompile Include="Engine\Src\Scene\PrefabSystem.cpp">
       <Filter>Engine\Src\Scene</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Scene\SceneHierarchy.cpp">
+      <Filter>Engine\Src\Scene</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Scene\SceneEnvironmentIO.cpp">
       <Filter>Engine\Src\Scene</Filter>
     </ClCompile>
@@ -3943,6 +3946,9 @@
       <Filter>Engine\Src\Editor\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Scene\PrefabSystem.h">
+      <Filter>Engine\Src\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Scene\SceneHierarchy.h">
       <Filter>Engine\Src\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Scene\SceneEnvironmentIO.h">

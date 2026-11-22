@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "SceneManager.h"
 #include "Scene/Scene.h"
+#include "Scene/SceneHierarchy.h"
 #include "Scene/SceneSaveSystem.h"
 #include "EngineSystem/EngineSystem.h"
 #include "EngineSystem/Settings/ProjectSettings.h"
@@ -150,6 +151,8 @@ namespace CoreEngine
         }
 
         if (auto* objMgr = currentScene_->GetGameObjectManager()) {
+            // 親を消したら子孫も消す
+            SceneHierarchy::MarkDescendantsOfDestroyed(*objMgr);
             objMgr->CleanupDestroyed();
         }
     }
