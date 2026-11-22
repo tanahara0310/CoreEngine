@@ -71,6 +71,7 @@ namespace CoreEngine
         WaterCausticsSettings caustics{};
         float refractionMaxOffsetPixels = 0.0f;
         bool shoreFineMeshEnabled = true;
+        float shoreRunupHeight = 0.8f;
         bool seaMapEnabled = true;
         bool wetnessEnabled = true;
         float wetnessDrySeconds = 60.0f;

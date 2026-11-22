@@ -13,6 +13,7 @@ SamplerState gSampler : register(s0);
 #include "../Common/WaterShoreMesh.hlsli"
 #include "../Common/WaterSeaMap.hlsli"
 #include "../Common/WaterRippleGrid.hlsli"
+#include "../Common/WaterShoreRunup.hlsli"
 
 // 海の範囲マップ（水深と上の物までの高さ。gSeaMapEnabled = 0 のときは読まない）
 Texture2D<float4> gWaterSeaMap : register(t29);
@@ -88,7 +89,12 @@ float GetCoarseMeshVertexSpacing()
 /// @details RTWaterSurfaceCommon.hlsli の SampleShoreMeshVertexDisplacement と同じ式
 float3 SampleShoreMeshVertexDisplacement(float2 baseXZ)
 {
-    const float3 fine = SampleVertexDisplacement(baseXZ, gShoreMeshCellSize);
+    float3 fine = SampleVertexDisplacement(baseXZ, gShoreMeshCellSize);
+    if (gSeaMapEnabled != 0)
+    {
+        fine.y += EvaluateShoreRunupLift(gWaterSeaMap, baseXZ, gSeaMapOriginXZ, gSeaMapTexelsPerMeter,
+            gSeaMapResolution, gSeaMapDepthOffset, gShoreRunupTime, gShoreRunupHeight);
+    }
     const float blend = ComputeShoreMeshBlend(baseXZ, gSeabedOriginXZ, 1.0f / gSeabedInvSize, gShoreMeshBlendWidth);
     if (blend >= 1.0f)
     {

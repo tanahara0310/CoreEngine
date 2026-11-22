@@ -31,6 +31,9 @@ namespace CoreEngine
         /// @brief 診断ログの出力間隔（フレーム）
         constexpr uint32_t kDiagnosticsLogInterval = 120u;
 
+        /// @brief 水際が上がる高さの、平均に対する上限の倍率（WaterShoreRunup.hlsli の kRunupMaxHeightScale と同じ）
+        constexpr float kShoreRunupMaxHeightScale = 1.6f;
+
         /// @brief 水面を描いているか（コンポーネントとオブジェクトの両方が有効）
         bool IsWaterActive(const WaterSurfaceComponent& waterPlane)
         {
@@ -400,6 +403,14 @@ namespace CoreEngine
 
         // レイトレの水面も、ラスタと同じ岸の細かい格子で描く
         shore_.Capture(*waterPlane, snapshot_);
+
+        // 浜の遡上は岸の細かい格子と海の範囲マップがあるときだけ。波の山の上限へ遡上の分を足す
+        if (snapshot_.shoreMeshEnabled != 0 && snapshot_.seaMap.resolution[0] > 0) {
+            snapshot_.shoreRunupHeight = settings.shoreRunupHeight;
+            if (snapshot_.maxCrestHeight > 0.0f) {
+                snapshot_.maxCrestHeight += kShoreRunupMaxHeightScale * snapshot_.shoreRunupHeight;
+            }
+        }
     }
 
     void WaterSystem::CaptureSurface(
@@ -433,6 +444,8 @@ namespace CoreEngine
         appearance_.Bind(frame, binding);
         rayTracing_.Bind(frame.domain, binding);
         shore_.Bind(binding);
+        binding.shoreRunupHeight = snapshot_.shoreRunupHeight;
+        binding.shoreRunupTime = snapshot_.time;
         seaMap_.Bind(frame.domain, snapshot_, binding);
         wave_.Bind(frame.domain, binding);
         foam_.Bind(frame.domain, binding);

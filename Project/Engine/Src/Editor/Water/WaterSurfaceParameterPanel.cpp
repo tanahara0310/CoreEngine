@@ -317,6 +317,9 @@ bool WaterSurfaceParameterPanel::DrawWaveSection(const Target& target, WaterEdit
 	ImGui::SeparatorText("形（プロジェクトの設定）");
 	CVarUI::DrawRow(&WaterCVars::ShoreFineMesh, "カメラの近くを細かく描く");
 	CVarUI::DrawRow(&WaterCVars::SeaMapEnabled, "陸と浅瀬で波を弱める");
+	ImGui::BeginDisabled(!WaterCVars::ShoreFineMesh.Get() || !WaterCVars::SeaMapEnabled.Get());
+	CVarUI::DrawRow(&WaterCVars::ShoreRunupHeight, "浜を駆け上がる高さ", "%.2f m");
+	ImGui::EndDisabled();
 	ImGui::BeginDisabled(!WaterCVars::SeaMapEnabled.Get());
 	CVarUI::DrawRow(&WaterCVars::SeaMapResolution, "海の範囲の細かさ");
 	ImGui::EndDisabled();

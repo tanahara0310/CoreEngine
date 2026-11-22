@@ -13,6 +13,7 @@ namespace CoreEngine
 
         // ---- 岸 ----
         extern CVar<bool>    ShoreFineMesh;
+        extern CVar<float>   ShoreRunupHeight;
 
         // ---- 海底の高さ ----
         extern CVar<int>     SeabedRefreshFrames;
