@@ -1,5 +1,5 @@
 // ============================================================
-// 岸の波（沖から寄せる波・砕けて岸へ進む段・浜を駆け上がって引く水の膜）
+// 岸の波（沖から寄せる波・砕けて岸へ進む段・浜を駆け上がって引く水の膜・砕けた波の泡）
 // ------------------------------------------------------------
 // 海の範囲マップ（WaterSeaMap.hlsli）の水深と、岸へ寄せる波が沖から着くまでの時間の場（SampleShoreWaveField）から、
 // 水面の頂点を持ち上げる高さを返す。n 番目の波は、場所 x を時刻 (n 番目の波が沖を出る時刻 + 沖から x まで着く時間) に通る。
@@ -13,6 +13,9 @@
 //   - 波は 2 つの列で寄せる。主なうねりと、少し斜めから来る低いうねり（峰に沿って進むほど遅れて着く）
 //   - 波ごとの沖を出る時刻と高さを、波を運んできた沖の点の峰に沿った位置で変える（峰が曲がり、ところどころ低く途切れる）。
 //     主なうねりは、大きい波と小さい波が組になって来る。ばらつきは列ごとに決まった数の波でくり返す
+//   - 波の高さは、ワールド XZ の位置でも波ごとに変える（同じ峰でも場所ごとに砕ける水深が変わる）
+//   - 砕けた波の泡: 沖から寄せる波があるとき、砕ける直前の峰の頂・段の前の面が通った直後（時間とともに減る）・
+//                   浜を上がる水の上がり始めに出す。段の泡の出始めの遅れ・減る早さ・量の上限は、ワールド XZ のノイズで変える
 // 利用側: FFTWater.VS / RTWaterSurfaceCommon.hlsli（同じ式で形をそろえる）
 // ============================================================
 #ifndef WATER_SHORE_RUNUP_HLSLI
@@ -58,6 +61,39 @@ static const float kRunupBoreRiseSeconds = 1.2f;
 static const float kRunupGradientStep = 3.0f;
 /// @brief 傾きの下限
 static const float kRunupMinSlope = 0.01f;
+/// @brief 砕けた波の泡が、段の前の面が通ってから満量になるまでの時間 [s]
+static const float kShoreBreakFoamRiseSeconds = 0.25f;
+/// @brief 砕けた波の泡が、段の前の面が通ってから 1/e に減るまでの時間 [s]
+static const float kShoreBreakFoamDecaySeconds = 1.8f;
+/// @brief 砕けた波の泡の量 ÷ 波の高さの倍率（1 で頭打ち）
+static const float kShoreBreakFoamHeightGain = 1.6f;
+/// @brief 砕けた波の泡の、段の前の面が通った直後の量（kShoreBreakFoamMax を超えた分は頭打ち）
+static const float kShoreBreakFoamFront = 1.6f;
+/// @brief 砕けた波の泡の量の上限（場所ごとに、この間で変える）
+static const float2 kShoreBreakFoamMax = float2(0.55f, 0.9f);
+/// @brief 砕けた波の泡の出始めの遅れと、減る早さ・量の上限を場所で変えるノイズの長さ [m]
+static const float2 kShoreBreakFoamNoiseMeters = float2(9.0f, 6.0f);
+/// @brief 砕けた波の泡が、段の前の面が通ってから出始めるまでの遅れの上限 [s]（場所ごとに 0 からこの値まで）
+static const float kShoreBreakFoamDelaySeconds = 0.7f;
+/// @brief 砕けた波の泡が 1/e に減るまでの時間の倍率の幅（場所ごとに、この間で変える）
+static const float2 kShoreBreakFoamDecayScale = float2(0.45f, 1.55f);
+/// @brief 砕けた波の泡のノイズの乱数の列の始まり（GetShoreWave・GetRunupEdge・GetShoreWaveLocalScale の列と重ならない）
+static const float kShoreBreakFoamHashRow = 448.0f;
+/// @brief 砕ける直前の峰の頂の泡が出始める・出そろう、波の高さ ÷ 砕ける高さ
+static const float2 kShoreCrestFoamRatio = float2(0.9f, 1.1f);
+/// @brief 砕ける直前の峰の頂の泡の量
+static const float kShoreCrestFoamAmount = 0.8f;
+/// @brief 波の高さをワールドの位置で変えるノイズの長さ [m]
+static const float kShoreWaveLocalNoiseMeters = 26.0f;
+/// @brief 波の高さをワールドの位置で変える倍率の最小と最大
+static const float2 kShoreWaveLocalScale = float2(0.5f, 1.0f);
+/// @brief 波の高さをワールドの位置で変えるノイズの値がこの間で、倍率が最小から最大へ移る
+static const float2 kShoreWaveLocalNoiseRange = float2(0.2f, 0.5f);
+/// @brief 波の高さをワールドの位置で変えるノイズの乱数の列の始まり（GetShoreWave・GetRunupEdge の列と重ならない）
+static const float kShoreWaveLocalHashRow = 320.0f;
+/// @brief 浜を上がる水の泡の量（上がり始めと、引き終わり）
+static const float kShoreSwashFoamStart = 1.0f;
+static const float kShoreSwashFoamEnd = 0.3f;
 /// @brief 重力加速度 [m/s²]
 static const float kRunupGravity = 9.81f;
 /// @brief 2π
@@ -176,6 +212,31 @@ void GetShoreWave(int train, int waveIndex, float crestMeters, out float departu
     heightScale = w.heightRatio * set * perWave * section;
 }
 
+/// @brief 乱数の列 row の、2 次元のなめらかな値のノイズ [0, 1)
+float RunupValueNoise2D(float2 p, float row)
+{
+    const float2 cell = floor(p);
+    const float2 f = p - cell;
+    const float2 u = f * f * (3.0f - 2.0f * f);
+    const float2 c = cell + float2(row * 41.0f, row * 29.0f);
+    const float c00 = RunupHash(c);
+    const float c10 = RunupHash(c + float2(1.0f, 0.0f));
+    const float c01 = RunupHash(c + float2(0.0f, 1.0f));
+    const float c11 = RunupHash(c + float2(1.0f, 1.0f));
+    return lerp(lerp(c00, c10, u.x), lerp(c01, c11, u.x), u.y);
+}
+
+/// @brief 波の列 train の n 番目の波の、ワールド XZ での高さの倍率（同じ峰でも場所ごとに砕ける水深が変わる）
+float GetShoreWaveLocalScale(int train, int waveIndex, float2 worldXZ)
+{
+    const ShoreWaveTrain w = GetShoreWaveTrain(train);
+    const int cycleIndex = ((waveIndex % w.cycle) + w.cycle) % w.cycle;
+    const float row = kShoreWaveLocalHashRow + w.hashRow + (float)cycleIndex;
+    const float noise = RunupValueNoise2D(worldXZ / kShoreWaveLocalNoiseMeters, row);
+    return lerp(kShoreWaveLocalScale.x, kShoreWaveLocalScale.y,
+        smoothstep(kShoreWaveLocalNoiseRange.x, kShoreWaveLocalNoiseRange.y, noise));
+}
+
 /// @brief 格子の点 cell の、乱数で決めた向きと、点からのずれ offset の内積
 float RunupGradientCorner(float2 cell, float2 offset)
 {
@@ -275,10 +336,14 @@ float RunupBoreShape(float ageSeconds, float lifetime)
 /// @param timeSeconds   波の時刻 [s]
 /// @param shoreWaveHeight   水深 kShoreWaveMaxDepth での波の高さの平均 [m]（0 なら寄せる波なし）
 /// @param vertexSpacing 頂点の格子の間隔 [m]
+/// @param worldXZ       頂点の変位前のワールド XZ [m]
+/// @param crestFoam     砕ける直前から峰の頂に出る泡の被覆率 [0,1]
 /// @return (高さ [m], ∂高さ/∂x, ∂高さ/∂z)
 float3 EvaluateShoreWave(
-    float depth, float clearance, float4 field, float timeSeconds, float shoreWaveHeight, float vertexSpacing)
+    float depth, float clearance, float4 field, float timeSeconds, float shoreWaveHeight, float vertexSpacing,
+    float2 worldXZ, out float crestFoam)
 {
+    crestFoam = 0.0f;
     if (shoreWaveHeight <= 0.0f || depth <= 0.0f || depth >= kShoreWaveMaxDepth)
     {
         return float3(0.0f, 0.0f, 0.0f);
@@ -304,6 +369,7 @@ float3 EvaluateShoreWave(
             float departure;
             float heightScale;
             GetShoreWave(train, wave + i, field.w, departure, heightScale);
+            heightScale *= GetShoreWaveLocalScale(train, wave + i, worldXZ);
             const float breakingRatio = ComputeShoreWaveBreakingRatio(shoreWaveHeight, heightScale, depth);
             const float unbroken = 1.0f - smoothstep(kShoreWaveBreakStartRatio, kShoreWaveBreakEndRatio, breakingRatio);
             const float crestHeight = min(breakingRatio, 1.0f) * kWaterBreakingIndex * depth * unbroken * offshoreWeight;
@@ -321,6 +387,11 @@ float3 EvaluateShoreWave(
             height += crestHeight * shape;
             slopeAlongTravel += crestHeight * shape * (-2.0f * x / sideWidth);
             meanHeight += crestHeight * 0.5f * (frontWidth + backWidth) * kShoreWaveSqrtPi / (3.0f * w.periodSeconds);
+
+            // 砕ける直前から、峰の頂に泡を出す
+            const float crestTip = shape * shape * shape * shape;
+            crestFoam = max(crestFoam, kShoreCrestFoamAmount
+                * smoothstep(kShoreCrestFoamRatio.x, kShoreCrestFoamRatio.y, breakingRatio) * crestTip * offshoreWeight);
         }
     }
     // 1 周期の平均が静水面になるよう、峰の分の平均を引く
@@ -345,10 +416,13 @@ float3 EvaluateShoreWave(
 /// @param timeSeconds     波の時刻 [s]
 /// @param meanHeight      水際が上がる高さの平均 [m]（0 なら持ち上げない）
 /// @param shoreWaveHeight     沖から寄せる波の高さの平均 [m]（0 なら、どの波も水深 kRunupBoreDepth から段になる）
+/// @param breakFoam       砕けた波の泡の被覆率 [0,1]（沖から寄せる波があるときだけ。段の前の面が通った直後に多く、時間とともに減る。
+///                        浜を上がる水は上がり始めに多い。出始めの遅れ・減る早さ・量の上限は場所ごとに変わる）
 float EvaluateShoreRunupLift(
     Texture2D<float4> seaMap, float2 worldXZ, float2 originXZ, float texelsPerMeter, uint2 resolution,
-    float depthOffset, float timeSeconds, float meanHeight, float shoreWaveHeight)
+    float depthOffset, float timeSeconds, float meanHeight, float shoreWaveHeight, out float breakFoam)
 {
+    breakFoam = 0.0f;
     if (meanHeight <= 0.0f || resolution.x == 0)
     {
         return 0.0f;
@@ -387,9 +461,25 @@ float EvaluateShoreRunupLift(
     const float offshoreSeconds = field.x;
 
     const float lensWeight = saturate(1.0f - wetDepth / kRunupLensDepth);
-    const float boreWeight = (1.0f - smoothstep(0.6f * boreDepth, boreDepth, wetDepth)) * slopeScale;
+    const float boreDepthWeight = 1.0f - smoothstep(0.6f * boreDepth, boreDepth, wetDepth);
+    const float boreWeight = boreDepthWeight * slopeScale;
+
+    // 砕けた波の泡の、場所ごとの出始めの遅れ・減る早さ・量の上限
+    float foamDelaySeconds = 0.0f;
+    float foamDecaySeconds = kShoreBreakFoamDecaySeconds;
+    float foamMax = kShoreBreakFoamMax.y;
+    if (withShoreWaves)
+    {
+        const float delayNoise = saturate(0.5f + 0.7f
+            * RunupGradientNoise2D(worldXZ / kShoreBreakFoamNoiseMeters.x, kShoreBreakFoamHashRow));
+        const float amountNoise = RunupValueNoise2D(worldXZ / kShoreBreakFoamNoiseMeters.y, kShoreBreakFoamHashRow + 1.0f);
+        foamDelaySeconds = kShoreBreakFoamDelaySeconds * delayNoise;
+        foamDecaySeconds *= lerp(kShoreBreakFoamDecayScale.x, kShoreBreakFoamDecayScale.y, amountNoise);
+        foamMax = lerp(kShoreBreakFoamMax.x, kShoreBreakFoamMax.y, amountNoise);
+    }
 
     float lift = 0.0f;
+    float foam = 0.0f;
     [unroll]
     for (int train = 0; train < kShoreWaveTrainCount; ++train)
     {
@@ -406,25 +496,52 @@ float EvaluateShoreRunupLift(
             GetShoreWave(train, wave + i, field.w, departure, heightScale);
             const float age = timeSeconds - (departure + arrivalSeconds);
 
-            // 浅瀬を進む段（沖から寄せる波があるときは、その場所で砕けている波だけ）
+            // 浅瀬を進む段（沖から寄せる波があるときは、その場所で砕けている波だけ。高さは寄せる波と同じ場所ごとの倍率を掛ける）
+            const float boreScale = withShoreWaves ? heightScale * GetShoreWaveLocalScale(train, wave + i, worldXZ) : heightScale;
             const float broken = withShoreWaves
-                ? smoothstep(kShoreWaveBreakStartRatio, kShoreWaveBreakEndRatio, ComputeShoreWaveBreakingRatio(shoreWaveHeight, heightScale, wetDepth))
+                ? smoothstep(kShoreWaveBreakStartRatio, kShoreWaveBreakEndRatio, ComputeShoreWaveBreakingRatio(shoreWaveHeight, boreScale, wetDepth))
                 : 1.0f;
-            const float boreHeight = kRunupBoreHeightRatio * wetDepth * min(heightScale, 1.0f) * boreWeight * broken;
+            const float boreHeight = kRunupBoreHeightRatio * wetDepth * min(boreScale, 1.0f) * boreWeight * broken;
             lift = max(lift, boreHeight * RunupBoreShape(age, duration));
 
             // 水際の上がり下がり（高さは波の高さの平方根で増え、水際に沿った位置と波ごとに変わる。沖へ lensWeight で薄める）
             float reachScale;
             float delayRatio;
             GetRunupEdge(train, wave + i, edgeXZ, reachScale, delayRatio);
-            const float shoreline =
-                shoreHeight * sqrt(heightScale) * reachScale * RunupShorelineShape(age / duration - delayRatio);
+            const float swashPhase = age / duration - delayRatio;
+            const float shoreline = shoreHeight * sqrt(heightScale) * reachScale * RunupShorelineShape(swashPhase);
             lift = max(lift, shoreline * lensWeight);
+
+            if (withShoreWaves)
+            {
+                // 砕けた波の泡（段の前の面が通った直後に多く、時間とともに減る）
+                const float foamAge = age - foamDelaySeconds;
+                const float boreFoam = broken * boreDepthWeight * saturate(kShoreBreakFoamHeightGain * boreScale)
+                    * min(kShoreBreakFoamFront * smoothstep(0.0f, kShoreBreakFoamRiseSeconds, foamAge)
+                        * exp(-max(foamAge, 0.0f) / foamDecaySeconds), foamMax);
+                foam = max(foam, boreFoam);
+                // 浜を上がる水の泡（上がり始めに多く、引くにつれて減る）
+                if (swashPhase > 0.0f && swashPhase < 1.0f)
+                {
+                    foam = max(foam, lerp(kShoreSwashFoamStart, kShoreSwashFoamEnd, swashPhase) * lensWeight);
+                }
+            }
         }
     }
+    breakFoam = saturate(foam);
 
     // 桟橋の床などの上の物より上へは上げない
     return min(lift, max(clearance - 0.05f, 0.0f));
+}
+
+/// @brief 岸の格子の頂点を持ち上げる高さ [m]（砕けた波の泡を使わない呼び出し用）
+float EvaluateShoreRunupLift(
+    Texture2D<float4> seaMap, float2 worldXZ, float2 originXZ, float texelsPerMeter, uint2 resolution,
+    float depthOffset, float timeSeconds, float meanHeight, float shoreWaveHeight)
+{
+    float unusedFoam;
+    return EvaluateShoreRunupLift(seaMap, worldXZ, originXZ, texelsPerMeter, resolution,
+        depthOffset, timeSeconds, meanHeight, shoreWaveHeight, unusedFoam);
 }
 
 #endif // WATER_SHORE_RUNUP_HLSLI

@@ -18,6 +18,8 @@ static const float kShoreFoamDepthMeters = 0.6f;
 static const float kShoreFoamEdgeMeters = 0.15f;
 // 海底の高さの範囲の端で、視線の延長で測った水深へ移す幅（範囲の一辺に対する割合）
 static const float kSeabedWindowEdgeFade = 0.1f;
+// 砕けた波の泡を描く所で、WaterShoreFoamPass が進めた岸の泡に掛ける倍率
+static const float kShoreFoamWithBreakFoamScale = 0.35f;
 
 // ---- 物がかき回した所の泡 ----
 // 格子の一辺のマス数（WaterObjectFoam::kResolution と同じ値）
@@ -191,10 +193,11 @@ float3 SampleShoreFoamState(float2 worldXZ)
 /// @brief 岸の泡の被覆率を求める
 /// @param surfacePosition 水面の点（頂点変位後のワールド座標）
 /// @param fallbackDepth   範囲の外で使う水深（視線の延長で測った鉛直水深）
+/// @param simulatedScale  WaterShoreFoamPass が進めた泡に掛ける倍率
 /// @details 範囲の中は WaterShoreFoamPass が進めた泡を、この点に今いる水の粒の静止位置
 ///          （静止位置＋寄せ・引きのずれ＝今の位置 を反復で解く）で読む。水深 kShoreFoamEdgeMeters より
 ///          浅い水際はその瞬間の水深で満量にする。範囲の外と範囲の端は ComputeShoreFoamMask へ移す
-ShoreFoamResult ResolveShoreFoam(float3 surfacePosition, float fallbackDepth)
+ShoreFoamResult ResolveShoreFoam(float3 surfacePosition, float fallbackDepth, float simulatedScale)
 {
     ShoreFoamResult result;
     result.coverage = 0.0f;
@@ -226,7 +229,7 @@ ShoreFoamResult ResolveShoreFoam(float3 surfacePosition, float fallbackDepth)
     {
         restXZ = surfacePosition.xz - SampleShoreFoamState(restXZ).yz;
     }
-    const float simulated = SampleShoreFoamState(restXZ).x;
+    const float simulated = SampleShoreFoamState(restXZ).x * simulatedScale;
     const float edge = ComputeShoreFoamEdge(verticalDepth);
 
     result.coverage = lerp(depthOnly, max(simulated, edge), inside);

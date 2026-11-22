@@ -98,6 +98,8 @@ struct WaterPSInput
     nointerpolation float shoreMeshVertex : TEXCOORD3;
     // 沖から寄せる波の傾き（∂高さ/∂x, ∂高さ/∂z。WaterShoreRunup.hlsli の EvaluateShoreWave）
     float2 shoreWaveSlope : TEXCOORD4;
+    // 砕けた波の泡（x = 被覆率 [0,1]・y = 段と浜を上がる水の泡を描く度合い [0,1]。FFTWater.VS の SampleShoreMeshVertexDisplacement）
+    float2 shoreBreakFoam : TEXCOORD5;
 };
 
 // フレーム定数（b5。頂点シェーダーと共有）

@@ -754,6 +754,8 @@ struct WaterFoamResult
 /// @param fallbackDepth       海底の高さの範囲の外で使う水深（視線の延長で測った鉛直水深）
 /// @param normal              水面の法線
 /// @param mainLightVisibility メインライト（0 番）の日向率（0=影 / 1=日向）
+/// @param shoreBreakFoam      砕けた波の泡（x = 被覆率 [0,1]・y = 段と浜を上がる水の泡を描く度合い [0,1]）。
+///                            描く度合いの分だけ進めた岸の泡を弱め、被覆率を岸の泡へ重ねる
 /// @details 白波の泡は FFT の参照格子座標で評価し、模様は泡と一緒に風下へ流す。
 ///          物がかき回した所の泡は物の泡の格子から同じ座標で読み、模様は泡と一緒に風下へ流し、
 ///          模様を動かす速さでずらした 2 つの位相の模様を重ねる（ComputeObjectFoamPattern）。
@@ -764,7 +766,8 @@ struct WaterFoamResult
 ///          水の中の気泡は、白波（いま砕けている泡と残りの気泡）・物がかき回した所の気泡・岸の泡の量から、
 ///          網目の穴をあけずにゆるいまだらだけを掛けて描く
 WaterFoamResult ResolveWaterFoam(
-    float2 baseWorldXZ, float3 surfacePosition, float fallbackDepth, float3 normal, float mainLightVisibility)
+    float2 baseWorldXZ, float3 surfacePosition, float fallbackDepth, float3 normal, float mainLightVisibility,
+    float2 shoreBreakFoam)
 {
     // 画素ごとの差分を使うので、分岐より前で求める
     const FoamPatternFilter filter = ComputeFoamPatternFilter(baseWorldXZ);
@@ -777,7 +780,13 @@ WaterFoamResult ResolveWaterFoam(
     const float wakeFoam = objectFoam.foam;
     const float wakeBubbles = objectFoam.bubbles;
     const float wakeFreshness = saturate(wakeBubbles / max(wakeFoam, 1.0e-4f));
-    const ShoreFoamResult shoreFoam = ResolveShoreFoam(surfacePosition, fallbackDepth);
+    // 段と浜を上がる水の泡を描く所は、進めた岸の泡を弱めて、砕けた波の泡を重ねる
+    ShoreFoamResult shoreFoam = ResolveShoreFoam(surfacePosition, fallbackDepth,
+        lerp(1.0f, kShoreFoamWithBreakFoamScale, saturate(shoreBreakFoam.y)));
+    if (gFoamEnabled != 0 && gUseFFTOceanNormalMap != 0)
+    {
+        shoreFoam.coverage = max(shoreFoam.coverage, saturate(shoreBreakFoam.x));
+    }
     const float2 whitecapPatternXZ = ComputeWhitecapPatternXZ(baseWorldXZ);
     const ObjectFoamPattern wakePattern = ComputeObjectFoamPattern(baseWorldXZ, objectFoam.patternVelocity);
     const float2 shorePatternXZ = baseWorldXZ + shoreFoam.patternShift;

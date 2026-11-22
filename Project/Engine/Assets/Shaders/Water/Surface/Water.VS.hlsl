@@ -45,6 +45,8 @@ struct WaterVSOutput
     nointerpolation float shoreMeshVertex : TEXCOORD3;
     // PS の入力レイアウトを FFTWater.VS と揃える（Gerstner 経路は沖から寄せる波を描かないので常に 0）
     float2 shoreWaveSlope : TEXCOORD4;
+    // PS の入力レイアウトを FFTWater.VS と揃える（Gerstner 経路は砕けた波の泡を描かないので常に 0）
+    float2 shoreBreakFoam : TEXCOORD5;
 };
 
 WaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
@@ -136,6 +138,7 @@ WaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     output.clipPosPrev = basePrevClip + offsetPrevClip;
     output.shoreMeshVertex = 0.0f;
     output.shoreWaveSlope = float2(0.0f, 0.0f);
+    output.shoreBreakFoam = float2(0.0f, 0.0f);
 
     return output;
 }

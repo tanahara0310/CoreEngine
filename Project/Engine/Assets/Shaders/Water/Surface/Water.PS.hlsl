@@ -159,7 +159,7 @@ WaterPixelOutput main(WaterPSInput input)
     // ---- 7. 泡（水面の上のレースと、水面下の白濁）----
     WaterFoamResult foam = ResolveWaterFoam(
         input.baseWorldXZ, input.worldPosition, waterColumnResult.viewRayVerticalDepth,
-        surfaceNormal, sunVisibility);
+        surfaceNormal, sunVisibility, input.shoreBreakFoam);
     // 沖から寄せる波の急な面は泡を薄くする
     const float shoreWaveFaceFoamScale = 1.0f / (1.0f + kShoreWaveFaceFoamFade * dot(input.shoreWaveSlope, input.shoreWaveSlope));
     foam.surfaceFoam *= shoreWaveFaceFoamScale;
