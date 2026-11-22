@@ -1,0 +1,14 @@
+{
+    "collision": {
+        "pairs": [
+            [
+                "Default",
+                "Default"
+            ]
+        ]
+    },
+    "defaultGround": false,
+    "features": [
+        "WaterRender"
+    ]
+}

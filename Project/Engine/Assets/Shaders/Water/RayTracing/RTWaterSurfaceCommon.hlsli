@@ -15,6 +15,7 @@
 #include "../Common/WaterShoreMesh.hlsli"
 #include "../Common/WaterSeaMap.hlsli"
 #include "../Common/WaterRippleGrid.hlsli"
+#include "../Common/WaterShoreRunup.hlsli"
 // ピクセルフットプリントの算出（ScreenUVToNDC / ReconstructWorldPosition）
 #include "../../Include/Common/DepthReconstruction.hlsli"
 
@@ -47,7 +48,7 @@ cbuffer WaterSurfaceData : register(b1)
     float gSurfaceShoreMeshCellSize;       // 岸の格子の 1 マスの幅 [m]
     float gSurfaceShoreMeshBlendWidth;     // 範囲の端から内側へ、粗い格子の形から移す幅 [m]
     uint gSurfaceShoreMeshDisplacementSrvIndex; // 岸の格子の頂点の変位（WaterShoreMeshDisplacement.CS）の SRV のヒープの中の番号
-    float gSurfacePad3;
+    float gSurfaceShoreRunupHeight;        // 水際が上がる高さの平均 [m]（0 = 遡上なし。時刻は gSurfaceTime）
     // 海の範囲マップ（WaterSeaMap.hlsli。地図はシェーダー可視ヒープから番号で引く）
     float2 gSurfaceSeaMapOriginXZ;         // 地図の範囲の XZ の最小の角 [m]
     float gSurfaceSeaMapTexelsPerMeter;    // 1 m あたりのテクセル数
@@ -365,7 +366,13 @@ float GetCoarseMeshVertexSpacing()
 /// @details 範囲の端ほど、粗い格子の三角形で補間した値へ寄せる
 float4 SampleShoreMeshVertexDisplacementAndObjectRipple(Texture2DArray<float4> displacementTex, float2 baseXZ)
 {
-    const float4 fine = SampleMeshVertexDisplacementAndObjectRipple(displacementTex, baseXZ, gSurfaceShoreMeshCellSize);
+    float4 fine = SampleMeshVertexDisplacementAndObjectRipple(displacementTex, baseXZ, gSurfaceShoreMeshCellSize);
+    if (gSurfaceSeaMapResolution.x != 0)
+    {
+        Texture2D<float4> seaMap = ResourceDescriptorHeap[gSurfaceSeaMapSrvIndex];
+        fine.y += EvaluateShoreRunupLift(seaMap, baseXZ, gSurfaceSeaMapOriginXZ, gSurfaceSeaMapTexelsPerMeter,
+            gSurfaceSeaMapResolution, gSurfaceSeaMapDepthOffset, gSurfaceTime, gSurfaceShoreRunupHeight);
+    }
     const float blend = ComputeShoreMeshBlend(
         baseXZ, gSurfaceShoreMeshOriginXZ, gSurfaceShoreMeshSize, gSurfaceShoreMeshBlendWidth);
     if (blend >= 1.0f || gSurfaceRegionValid == 0)

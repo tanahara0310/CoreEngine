@@ -109,6 +109,7 @@ namespace CoreEngine
         float shoreMeshSize = 0.0f;                  ///< 範囲の一辺の長さ [m]
         float shoreMeshCellSize = 0.0f;              ///< 1 マスの幅 [m]
         float shoreMeshBlendWidth = 0.0f;            ///< 範囲の端から内側へ、粗い格子の形から移す幅 [m]
+        float shoreRunupHeight = 0.0f;               ///< 水際が上がる高さの平均 [m]（0 = 遡上なし。WaterShoreRunup.hlsli）
         uint32_t shoreMeshDisplacementSrvIndex = 0;  ///< 岸の格子の頂点の変位（WaterShoreMeshDisplacement）の SRV のヒープの中の番号
 
         // 海の範囲マップ。水深と上の物までの高さで波の変位を弱める

@@ -139,6 +139,10 @@ namespace CoreEngine
         /// @brief 海底の高さの範囲を岸の細かい格子で描くか
         bool shoreMeshEnabled = false;
 
+        /// @brief 水際が上がる高さの平均 [m]（0 = 遡上なし）と、その時刻 [s]
+        float shoreRunupHeight = 0.0f;
+        float shoreRunupTime = 0.0f;
+
         /// @brief 海の範囲マップの範囲と波を弱める係数（地図が無ければ resolution が 0）
         WaterSeaMapBinding seaMap{};
 

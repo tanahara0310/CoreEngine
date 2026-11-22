@@ -167,7 +167,8 @@ struct WaterFrameConstants {
 	float foamPatternTime = 0.0f;                                // 泡の模様を動かす時刻 [s]（WaterWhitecapFoam::ComputePatternTime）
 	// ---- 水面メッシュの範囲（岸の細かい格子の頂点をこの範囲へ寄せる）----
 	float meshGridSizeXZ[2] = { 0.0f, 0.0f }; // 粗い格子の XZ の一辺の長さ [m]（最小の角は meshGridOriginXZ）
-	float meshGridPad[2] = { 0.0f, 0.0f };
+	float shoreRunupTime = 0.0f;   // 浜の遡上の時刻 [s]（WaterShoreRunup.hlsli）
+	float shoreRunupHeight = 0.0f; // 水際が上がる高さの平均 [m]（0 = 遡上なし）
 	// ---- 水の波紋の格子（gWaterRipple。WaterRippleBinding の同名の値）----
 	float rippleOriginsXZ01[4] = { 0.0f, 0.0f, 0.0f, 0.0f }; // 段 0・段 1 の XZ の最小の角 [m]（xy = 段 0・zw = 段 1）
 	float rippleOrigin2XZ[2] = { 0.0f, 0.0f };               // 段 2 の XZ の最小の角 [m]
@@ -219,7 +220,8 @@ static constexpr Cb::Field kWaterFrameConstantsFields[] = {
     CB_FIELD(WaterFrameConstants, seaMapDepthOffset), CB_FIELD(WaterFrameConstants, seaMapInvWaveHeight),
     CB_FIELD(WaterFrameConstants, foamResidueOriginsXZ), CB_FIELD(WaterFrameConstants, foamResidueInvSizes),
     CB_FIELD(WaterFrameConstants, foamResidueMeanCoverage), CB_FIELD(WaterFrameConstants, foamPatternTime),
-    CB_FIELD(WaterFrameConstants, meshGridSizeXZ), CB_FIELD(WaterFrameConstants, meshGridPad),
+    CB_FIELD(WaterFrameConstants, meshGridSizeXZ), CB_FIELD(WaterFrameConstants, shoreRunupTime),
+    CB_FIELD(WaterFrameConstants, shoreRunupHeight),
     CB_FIELD(WaterFrameConstants, rippleOriginsXZ01), CB_FIELD(WaterFrameConstants, rippleOrigin2XZ),
     CB_FIELD(WaterFrameConstants, rippleStrength), CB_FIELD(WaterFrameConstants, rippleEnabled),
     CB_FIELD(WaterFrameConstants, rippleInvSizes), CB_FIELD(WaterFrameConstants, ripplePad),
