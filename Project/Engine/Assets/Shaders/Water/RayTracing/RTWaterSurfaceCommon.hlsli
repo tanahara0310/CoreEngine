@@ -308,8 +308,9 @@ float3 SampleMeshVertexWaveDisplacement(Texture2DArray<float4> displacementTex, 
             const float4 field = SampleShoreWaveField(
                 seaMap, baseXZ, gSurfaceSeaMapOriginXZ, gSurfaceSeaMapTexelsPerMeter, gSurfaceSeaMapResolution);
             const float clearance = (conservative ? value.w : value.y) - gSurfaceSeaMapDepthOffset;
+            float unusedCrestFoam;
             disp.y += EvaluateShoreWave(value.x + gSurfaceSeaMapDepthOffset, clearance, field,
-                gSurfaceTime, gSurfaceShoreWaveHeight, vertexSpacing).x;
+                gSurfaceTime, gSurfaceShoreWaveHeight, vertexSpacing, baseXZ, unusedCrestFoam).x;
         }
     }
     return disp;
