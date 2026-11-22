@@ -96,6 +96,8 @@ struct WaterPSInput
     float4 clipPosPrev : POSITION3;
     // 1 = 岸の細かい格子の画素（WaterShoreMesh.hlsli）
     nointerpolation float shoreMeshVertex : TEXCOORD3;
+    // 沖から寄せる波の傾き（∂高さ/∂x, ∂高さ/∂z。WaterShoreRunup.hlsli の EvaluateShoreWave）
+    float2 shoreWaveSlope : TEXCOORD4;
 };
 
 // フレーム定数（b5。頂点シェーダーと共有）

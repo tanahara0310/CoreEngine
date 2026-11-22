@@ -14,6 +14,9 @@
 #include "WaterSubsurface.hlsli"
 #include "Water.Debug.hlsli"
 
+/// @brief 沖から寄せる波の面の傾きの二乗に掛けて、泡を薄くする強さ（泡 × 1 / (1 + 強さ × 傾き²)）
+static const float kShoreWaveFaceFoamFade = 4.0f;
+
 /// @brief 水面専用フォワードパス処理（ForwardMain の discard 処理を削除したバージョン）
 /// 水面は常に描画され、alpha 値で透明度を制御する
 VertexShaderOutput ToVertexShaderOutput(WaterPSInput input)
@@ -154,9 +157,13 @@ WaterPixelOutput main(WaterPSInput input)
     float reflectanceWeight = saturate(fresnel * gFresnelReflectanceScale);
 
     // ---- 7. 泡（水面の上のレースと、水面下の白濁）----
-    const WaterFoamResult foam = ResolveWaterFoam(
+    WaterFoamResult foam = ResolveWaterFoam(
         input.baseWorldXZ, input.worldPosition, waterColumnResult.viewRayVerticalDepth,
         surfaceNormal, sunVisibility);
+    // 沖から寄せる波の急な面は泡を薄くする
+    const float shoreWaveFaceFoamScale = 1.0f / (1.0f + kShoreWaveFaceFoamFade * dot(input.shoreWaveSlope, input.shoreWaveSlope));
+    foam.surfaceFoam *= shoreWaveFaceFoamScale;
+    foam.bubbleHaze *= shoreWaveFaceFoamScale;
     reflectanceWeight *= (1.0f - foam.surfaceFoam);
 
     // ---- 8. 透過（水面越しに見える水中の色）----

@@ -93,9 +93,11 @@ namespace CoreEngine
             uint32_t rippleSrvIndex = 0;
             float rippleInvSizes[3] = { 0.0f, 0.0f, 0.0f };
             uint32_t rippleEnabled = 0;
+            float shoreWaveHeight = 0.0f;                ///< 沖から寄せる波の高さの平均 [m]（0 = 寄せる波なし。時刻は time）
+            float pad4[3] = { 0.0f, 0.0f, 0.0f };
         };
 
-        static_assert(sizeof(WaterSurfaceConstants) == 16 + 32 * kMaxWaterSurfaceWaveCount + 176,
+        static_assert(sizeof(WaterSurfaceConstants) == 16 + 32 * kMaxWaterSurfaceWaveCount + 192,
             "WaterSurfaceConstants layout mismatch with RTWaterSurfaceCommon.hlsli cbuffer");
 
         static constexpr Cb::Field kWaterSurfaceConstantsFields[] = {
@@ -117,6 +119,7 @@ namespace CoreEngine
             CB_FIELD(WaterSurfaceConstants, rippleOriginsXZ01), CB_FIELD(WaterSurfaceConstants, rippleOrigin2XZ),
             CB_FIELD(WaterSurfaceConstants, rippleStrength), CB_FIELD(WaterSurfaceConstants, rippleSrvIndex),
             CB_FIELD(WaterSurfaceConstants, rippleInvSizes), CB_FIELD(WaterSurfaceConstants, rippleEnabled),
+            CB_FIELD(WaterSurfaceConstants, shoreWaveHeight), CB_FIELD(WaterSurfaceConstants, pad4),
         };
         CB_VERIFY_LAYOUT(WaterSurfaceConstants, kWaterSurfaceConstantsFields);
         CB_BIND_HLSL(WaterSurfaceConstants, kWaterSurfaceConstantsFields, "WaterSurfaceData");

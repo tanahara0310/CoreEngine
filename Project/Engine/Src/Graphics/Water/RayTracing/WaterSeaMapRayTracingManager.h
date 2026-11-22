@@ -26,6 +26,7 @@ namespace CoreEngine
         float originXZ[2] = { 0.0f, 0.0f };      ///< 範囲の XZ の最小の角 [m]
         float texelsPerMeter = 0.0f;             ///< 1 m あたりのテクセル数
         float waterHeight = 0.0f;                ///< 測ったときの水面の高さ [m]
+        bool hasOpenSea = false;                 ///< 沖（水深 12m 以上の海）があるか
         bool valid = false;
     };
 

@@ -175,7 +175,7 @@ struct WaterFrameConstants {
 	float rippleStrength = 0.0f;                             // 波紋の高さと傾きに掛ける倍率
 	int rippleEnabled = 0;                                   // 1 = gWaterRipple を読む
 	float rippleInvSizes[3] = { 0.0f, 0.0f, 0.0f };          // 段ごとの一辺の長さの逆数 [1/m]（0 の段は読まない）
-	float ripplePad = 0.0f;
+	float shoreWaveHeight = 0.0f;                           // 沖から寄せる波の、水深 12m での高さの平均 [m]（0 = 寄せる波なし）
 	// ---- 物がかき回した所の泡の格子（gWaterObjectFoam。WaterObjectFoamBinding の同名の値）----
 	float objectFoamOriginXZ[2] = { 0.0f, 0.0f };      // 格子の XZ の最小の角 [m]
 	float objectFoamInvSize = 0.0f;                     // 格子の一辺の長さの逆数 [1/m]
@@ -224,7 +224,7 @@ static constexpr Cb::Field kWaterFrameConstantsFields[] = {
     CB_FIELD(WaterFrameConstants, shoreRunupHeight),
     CB_FIELD(WaterFrameConstants, rippleOriginsXZ01), CB_FIELD(WaterFrameConstants, rippleOrigin2XZ),
     CB_FIELD(WaterFrameConstants, rippleStrength), CB_FIELD(WaterFrameConstants, rippleEnabled),
-    CB_FIELD(WaterFrameConstants, rippleInvSizes), CB_FIELD(WaterFrameConstants, ripplePad),
+    CB_FIELD(WaterFrameConstants, rippleInvSizes), CB_FIELD(WaterFrameConstants, shoreWaveHeight),
     CB_FIELD(WaterFrameConstants, objectFoamOriginXZ), CB_FIELD(WaterFrameConstants, objectFoamInvSize),
     CB_FIELD(WaterFrameConstants, objectFoamEnabled), CB_FIELD(WaterFrameConstants, objectFoamDriftOffsetXZ),
     CB_FIELD(WaterFrameConstants, objectFoamFlowTime), CB_FIELD(WaterFrameConstants, foamPatternMode),

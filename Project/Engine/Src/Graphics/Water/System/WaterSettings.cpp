@@ -61,6 +61,7 @@ namespace CoreEngine
         settings.refractionMaxOffsetPixels = WaterCVars::RefractionMaxOffsetPixels.Get();
         settings.shoreFineMeshEnabled = WaterCVars::ShoreFineMesh.Get();
         settings.shoreRunupHeight = WaterCVars::ShoreRunupHeight.Get();
+        settings.shoreWaveHeight = WaterCVars::ShoreWaveHeight.Get();
         settings.seaMapEnabled = WaterCVars::SeaMapEnabled.Get();
         settings.wetnessEnabled = WaterCVars::WetnessEnabled.Get();
         settings.wetnessDrySeconds = WaterCVars::WetnessDrySeconds.Get();

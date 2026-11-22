@@ -321,6 +321,7 @@ bool WaterSurfaceParameterPanel::DrawWaveSection(const Target& target, WaterEdit
 	CVarUI::DrawRow(&WaterCVars::ShoreRunupHeight, "浜を駆け上がる高さ", "%.2f m");
 	ImGui::EndDisabled();
 	ImGui::BeginDisabled(!WaterCVars::SeaMapEnabled.Get());
+	CVarUI::DrawRow(&WaterCVars::ShoreWaveHeight, "岸へ寄せる波の高さ", "%.2f m");
 	CVarUI::DrawRow(&WaterCVars::SeaMapResolution, "海の範囲の細かさ");
 	ImGui::EndDisabled();
 	return changed;

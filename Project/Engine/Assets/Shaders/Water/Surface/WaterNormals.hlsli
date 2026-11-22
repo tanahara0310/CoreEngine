@@ -91,6 +91,8 @@ float3 ResolveSurfaceNormal(WaterPSInput input, out float unresolvedMeanSquareSl
     const float waveGroupEnvelope = ComputeFFTWaveGroupEnvelope(input.baseWorldXZ, gWaveGroupPhase);
     slope *= waveGroupEnvelope;
     unresolvedMeanSquareSlope *= waveGroupEnvelope * waveGroupEnvelope;
+    // 沖から寄せる波（頂点で求めて補間した傾き）
+    slope += input.shoreWaveSlope;
 
     float3 combinedLocal = normalize(float3(slope.x, 1.0f, slope.y));
     const float3 waveNormal =

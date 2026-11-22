@@ -124,7 +124,7 @@ cbuffer WaterFrameConstants : register(b5)
     float gRippleStrength;       // 波紋の高さと傾きに掛ける倍率
     int gRippleEnabled;          // 1 = gWaterRipple を読む
     float3 gRippleInvSizes;      // 段ごとの一辺の長さの逆数 [1/m]（0 の段は読まない）
-    float gRipplePad;
+    float gShoreWaveHeight;     // 沖から寄せる波の、水深 12m での高さの平均 [m]（0 = 寄せる波なし。WaterShoreRunup.hlsli）
 
     // ---- 物がかき回した所の泡の格子（gWaterObjectFoam・gWaterObjectFoamFlow）----
     float2 gObjectFoamOriginXZ;      // 格子の XZ の最小の角 [m]（FFT の水なら参照格子の座標）
