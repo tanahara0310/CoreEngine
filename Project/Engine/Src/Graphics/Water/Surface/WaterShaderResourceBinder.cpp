@@ -112,6 +112,13 @@ void WaterShaderResourceBinder::Bind(
         binder.Set(table_[WaterBind::gWaterShoreFoam], renderResources.shoreFoamSRV);
     }
 
+    // 岸の格子の頂点の値
+    // （未接続のフレームはシェーダー側フラグ gShoreMeshEnabled=0 で参照されない）
+    if (renderResources.HasShoreMeshDisplacement()) {
+        binder.Set(table_[WaterBind::gWaterShoreMeshDisplacement], renderResources.shoreMeshDisplacementSRV);
+        binder.Set(table_[WaterBind::gWaterShoreMeshSurface], renderResources.shoreMeshSurfaceSRV);
+    }
+
     // 海の範囲マップ
     // （未接続のフレームはシェーダー側フラグ gSeaMapEnabled=0 で参照されない）
     if (renderResources.HasSeaMap()) {

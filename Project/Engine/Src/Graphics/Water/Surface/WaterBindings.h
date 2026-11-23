@@ -32,6 +32,8 @@ namespace CoreEngine::WaterBind
         gWaterObjectFoamFlow,
         gWaterFoamNet,
         gWaterFoamGrain,
+        gWaterShoreMeshDisplacement,
+        gWaterShoreMeshSurface,
         Count
     };
 
@@ -91,6 +93,11 @@ namespace CoreEngine::WaterBind
         // 泡の模様の画像（網目と気泡の粒。ピクセルシェーダーが読む）
         { "gWaterFoamNet",           kSRV, kCond },
         { "gWaterFoamGrain",         kSRV, kCond },
+
+        // 岸の格子の頂点の変位と、沖から寄せる波の傾き・砕けた波の泡（WaterShoreMeshDisplacement.CS の出力。
+        // FFTWater.VS だけが読む）
+        { "gWaterShoreMeshDisplacement", kSRV, kOpt },
+        { "gWaterShoreMeshSurface",      kSRV, kOpt },
     };
 
     static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");

@@ -65,6 +65,8 @@ namespace CoreEngine
             displacement && displacement->IsInitialized()) {
             window_.shoreMeshDisplacementReady = true;
             window_.shoreMeshDisplacementSrvIndex = displacement->GetSrvHeapIndex();
+            window_.shoreMeshDisplacementSRV = displacement->GetDisplacementSRV();
+            window_.shoreMeshSurfaceSRV = displacement->GetSurfaceSRV();
         }
     }
 
@@ -92,7 +94,12 @@ namespace CoreEngine
         binding.seabedOriginXZ[0] = window_.originXZ[0];
         binding.seabedOriginXZ[1] = window_.originXZ[1];
         binding.seabedSize = window_.size;
-        binding.shoreMeshEnabled = window_.shoreMeshEnabled;
+        // 岸の格子の頂点は WaterShoreMeshDisplacementPass が書いた値で動かすので、書けないときは描かない
+        binding.shoreMeshEnabled = window_.shoreMeshEnabled && window_.shoreMeshDisplacementReady;
         binding.resources.shoreFoamSRV = window_.shoreFoamSRV;
+        if (binding.shoreMeshEnabled) {
+            binding.resources.shoreMeshDisplacementSRV = window_.shoreMeshDisplacementSRV;
+            binding.resources.shoreMeshSurfaceSRV = window_.shoreMeshSurfaceSRV;
+        }
     }
 }

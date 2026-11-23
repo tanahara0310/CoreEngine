@@ -14,6 +14,7 @@
 #include "Graphics/Water/Foam/WaterObjectFoam.h"
 #include "Graphics/Water/Query/WaterHeightQueryManager.h"
 #include "Graphics/Water/Surface/WaterRenderResources.h"
+#include "Graphics/Water/Surface/WaterShoreMeshDisplacement.h"
 #include "Graphics/Water/Surface/WaterSurfaceComponent.h"
 #include "Graphics/Water/System/WaterFrameContext.h"
 #include "Graphics/Water/WaterProfile.h"
@@ -464,6 +465,13 @@ namespace CoreEngine
         }
         // 被覆の判定をメッシュと同じ基準にするための頂点の分割数
         out.meshSubdivisions = static_cast<float>(waterPlane.GetResolution());
+
+        // 粗い格子の頂点の変位。同じフレームの WaterShoreMeshDisplacementPass が同じ分割数で書く
+        if (WaterShoreMeshDisplacement* const displacement = domain.GetWaterShoreMeshDisplacement();
+            displacement && displacement->EnsureCoarseMesh(waterPlane.GetResolution())) {
+            out.coarseMeshDisplacementSrvIndex = displacement->GetCoarseSrvHeapIndex();
+            out.coarseMeshVertexCount = displacement->GetCoarseVertexCount();
+        }
 
         // RT の水面と高さの問い合わせへ足す波紋
         ripple_.Capture(domain, waterPlane, out);

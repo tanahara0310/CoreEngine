@@ -103,6 +103,10 @@ namespace CoreEngine
         // ハードコードされ、シーン側のメッシュ変更で静かに壊れる構造だった。
         float meshSubdivisions = 256.0f;
 
+        // 粗い格子の頂点の変位（WaterShoreMeshDisplacement が頂点ごとに書く。RT と高さの問い合わせは三角形補間で読む）
+        uint32_t coarseMeshDisplacementSrvIndex = 0; ///< SRV のヒープの中の番号
+        uint32_t coarseMeshVertexCount = 0;          ///< 一辺の頂点の数（0 = テクスチャなし）
+
         // 岸の細かい格子（WaterSurfaceMeshGenerator）。範囲は海底の高さと同じで、
         // 範囲の中はこの格子の三角形で、範囲の外は粗い格子の三角形で水面を描く
         uint32_t shoreMeshEnabled = 0;

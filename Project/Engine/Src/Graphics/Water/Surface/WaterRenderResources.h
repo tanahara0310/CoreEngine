@@ -42,6 +42,11 @@ namespace CoreEngine
         // ---- 岸の泡（海底の高さと同じ範囲。(被覆率, 寄せ・引きのずれ x, z, 0)）----
         D3D12_GPU_DESCRIPTOR_HANDLE shoreFoamSRV = { 0 };
 
+        // ---- 岸の格子の頂点の値（WaterShoreMeshDisplacement が書く。(変位 xyz, 物が起こした波紋の高さ) と
+        //      (沖から寄せる波の傾き xy, 砕けた波の泡 zw)）----
+        D3D12_GPU_DESCRIPTOR_HANDLE shoreMeshDisplacementSRV = { 0 };
+        D3D12_GPU_DESCRIPTOR_HANDLE shoreMeshSurfaceSRV = { 0 };
+
         // ---- 海の範囲マップ（水面の範囲全体。(水深, 上の物までの高さ, 粗い格子用の 2 つ)）----
         D3D12_GPU_DESCRIPTOR_HANDLE seaMapSRV = { 0 };
 
@@ -67,6 +72,9 @@ namespace CoreEngine
 
         /// @brief 岸の泡テクスチャが接続済みか返す
         bool HasShoreFoam() const;
+
+        /// @brief 岸の格子の頂点の値が接続済みか返す
+        bool HasShoreMeshDisplacement() const;
 
         /// @brief 海の範囲マップが接続済みか返す
         bool HasSeaMap() const;

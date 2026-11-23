@@ -35,6 +35,8 @@ namespace CoreEngine
             uint32_t shoreMeshDisplacementSrvIndex = 0;  ///< 岸の格子の頂点の変位の SRV のヒープの中の番号
             D3D12_GPU_DESCRIPTOR_HANDLE seabedSRV{};
             D3D12_GPU_DESCRIPTOR_HANDLE shoreFoamSRV{};
+            D3D12_GPU_DESCRIPTOR_HANDLE shoreMeshDisplacementSRV{}; ///< 岸の格子の頂点の変位（頂点シェーダーが読む）
+            D3D12_GPU_DESCRIPTOR_HANDLE shoreMeshSurfaceSRV{};      ///< 岸の格子の頂点の寄せる波の傾きと泡（頂点シェーダーが読む）
         };
 
         Window window_{};

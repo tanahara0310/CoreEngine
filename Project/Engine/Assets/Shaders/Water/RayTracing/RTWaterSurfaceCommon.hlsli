@@ -64,7 +64,10 @@ cbuffer WaterSurfaceData : register(b1)
     float3 gSurfaceRippleInvSizes;         // 段ごとの一辺の長さの逆数 [1/m]（0 の段は読まない）
     uint gSurfaceRippleEnabled;            // 1 = 波紋を水面の形と法線へ足す
     float gSurfaceShoreWaveHeight;        // 沖から寄せる波の高さの平均 [m]（0 = 寄せる波なし。時刻は gSurfaceTime）
-    float3 gSurfacePad4;
+    // 粗い格子の頂点の変位（WaterCoarseMeshDisplacement.CS。頂点の数が gSurfaceMeshSubdivisions + 1 のときだけ読む）
+    uint gSurfaceCoarseMeshDisplacementSrvIndex; // SRV のヒープの中の番号
+    uint gSurfaceCoarseMeshVertexCount;    // 一辺の頂点の数（0 = 書いていない）
+    float gSurfacePad4;
 };
 
 static const uint kWaterSurfaceModelTypeGerstner = 0;
@@ -275,9 +278,10 @@ float3 EvaluateWaterOffset(Texture2DArray<float4> displacementTex, float2 worldX
     return SampleFFTOceanCascadeDisplacement(displacementTex, worldXZ, gSurfaceFFTOceanResolution);
 }
 
-/// @brief 水面メッシュの頂点 1 点の波の変位（格子の間隔で解像できるカスケード＋波群エンベロープ。波紋は含めない）
+/// @brief 水面メッシュの頂点 1 点の FFT の波の変位（格子の間隔で解像できるカスケード＋波群エンベロープ＋海の範囲マップの倍率。
+///        沖から寄せる波と波紋は含めない）
 /// @param vertexSpacing 頂点の格子の間隔 [m]（ComputeFFTGeometryCascadeWeight）
-float3 SampleMeshVertexWaveDisplacement(Texture2DArray<float4> displacementTex, float2 baseXZ, float vertexSpacing)
+float3 SampleMeshVertexFFTDisplacement(Texture2DArray<float4> displacementTex, float2 baseXZ, float vertexSpacing)
 {
     float3 disp = 0.0f.xxx;
     [unroll]
@@ -297,6 +301,20 @@ float3 SampleMeshVertexWaveDisplacement(Texture2DArray<float4> displacementTex, 
     const bool conservative = UseConservativeWaterSeaMap(vertexSpacing, gSurfaceSeaMapTexelsPerMeter);
     disp *= ComputeFFTWaveGroupEnvelope(baseXZ, gSurfaceWaveGroupPhase)
         * EvaluateSurfaceSeaMapWaveScale(baseXZ, conservative);
+    return disp;
+}
+
+/// @brief 水面メッシュの頂点 1 点の波の変位（FFT の波＋沖から寄せる波。波紋は含めない）
+/// @param vertexSpacing  頂点の格子の間隔 [m]（ComputeFFTGeometryCascadeWeight）
+/// @param shoreWaveSlope 沖から寄せる波の傾き（∂高さ/∂x, ∂高さ/∂z）
+/// @param crestFoam      砕ける直前から峰の頂に出る泡の被覆率
+float3 SampleMeshVertexWaveDisplacement(
+    Texture2DArray<float4> displacementTex, float2 baseXZ, float vertexSpacing,
+    out float2 shoreWaveSlope, out float crestFoam)
+{
+    float3 disp = SampleMeshVertexFFTDisplacement(displacementTex, baseXZ, vertexSpacing);
+    shoreWaveSlope = float2(0.0f, 0.0f);
+    crestFoam = 0.0f;
     // 沖から寄せる波（FFTWater.VS の GetSeaMapWaveScale と同じ式）
     if (gSurfaceSeaMapResolution.x != 0 && gSurfaceShoreWaveHeight > 0.0f)
     {
@@ -305,15 +323,28 @@ float3 SampleMeshVertexWaveDisplacement(Texture2DArray<float4> displacementTex, 
             seaMap, baseXZ, gSurfaceSeaMapOriginXZ, gSurfaceSeaMapTexelsPerMeter, gSurfaceSeaMapResolution);
         if (!IsWaterSeaMapBasin(value.x))
         {
+            const bool conservative = UseConservativeWaterSeaMap(vertexSpacing, gSurfaceSeaMapTexelsPerMeter);
             const float4 field = SampleShoreWaveField(
                 seaMap, baseXZ, gSurfaceSeaMapOriginXZ, gSurfaceSeaMapTexelsPerMeter, gSurfaceSeaMapResolution);
             const float clearance = (conservative ? value.w : value.y) - gSurfaceSeaMapDepthOffset;
-            float unusedCrestFoam;
-            disp.y += EvaluateShoreWave(value.x + gSurfaceSeaMapDepthOffset, clearance, field,
-                gSurfaceTime, gSurfaceShoreWaveHeight, vertexSpacing, baseXZ, unusedCrestFoam).x;
+            float2 shoreWaveOffset;
+            const float3 shoreWave = EvaluateShoreWave(
+                seaMap, gSurfaceSeaMapOriginXZ, gSurfaceSeaMapTexelsPerMeter, gSurfaceSeaMapResolution, gSurfaceSeaMapDepthOffset,
+                value.x + gSurfaceSeaMapDepthOffset, clearance, field,
+                gSurfaceTime, gSurfaceShoreWaveHeight, vertexSpacing, baseXZ, crestFoam, shoreWaveOffset);
+            disp += float3(shoreWaveOffset.x, shoreWave.x, shoreWaveOffset.y);
+            shoreWaveSlope = shoreWave.yz;
         }
     }
     return disp;
+}
+
+/// @brief 水面メッシュの頂点 1 点の波の変位（傾きと泡を使わない呼び出し用）
+float3 SampleMeshVertexWaveDisplacement(Texture2DArray<float4> displacementTex, float2 baseXZ, float vertexSpacing)
+{
+    float2 unusedSlope;
+    float unusedFoam;
+    return SampleMeshVertexWaveDisplacement(displacementTex, baseXZ, vertexSpacing, unusedSlope, unusedFoam);
 }
 
 /// @brief 水面の頂点に足す波紋の高さ [m]（FFTWater.VS・Water.VS と同じ式）
@@ -348,13 +379,25 @@ float2 EvaluateSurfaceRippleVertexHeights(float2 drawnXZ, float vertexSpacing)
 
 /// @brief 水面メッシュの頂点 1 点の変位（xyz）と、その高さに入っている物が起こした波紋の高さ（w）
 /// @details 変位は FFTWater.VS の SampleVertexDisplacement と同じ式（波の変位＋描かれる位置の波紋の高さ）
-/// @param vertexSpacing 頂点の格子の間隔 [m]
-float4 SampleMeshVertexDisplacementAndObjectRipple(Texture2DArray<float4> displacementTex, float2 baseXZ, float vertexSpacing)
+/// @param vertexSpacing  頂点の格子の間隔 [m]
+/// @param shoreWaveSlope 沖から寄せる波の傾き（∂高さ/∂x, ∂高さ/∂z）
+/// @param crestFoam      砕ける直前から峰の頂に出る泡の被覆率
+float4 SampleMeshVertexDisplacementAndObjectRipple(
+    Texture2DArray<float4> displacementTex, float2 baseXZ, float vertexSpacing,
+    out float2 shoreWaveSlope, out float crestFoam)
 {
-    float3 disp = SampleMeshVertexWaveDisplacement(displacementTex, baseXZ, vertexSpacing);
+    float3 disp = SampleMeshVertexWaveDisplacement(displacementTex, baseXZ, vertexSpacing, shoreWaveSlope, crestFoam);
     const float2 ripple = EvaluateSurfaceRippleVertexHeights(baseXZ + disp.xz, vertexSpacing);
     disp.y += ripple.x;
     return float4(disp, ripple.y);
+}
+
+/// @brief 水面メッシュの頂点 1 点の変位（xyz）と、その高さに入っている物が起こした波紋の高さ（w）（傾きと泡を使わない呼び出し用）
+float4 SampleMeshVertexDisplacementAndObjectRipple(Texture2DArray<float4> displacementTex, float2 baseXZ, float vertexSpacing)
+{
+    float2 unusedSlope;
+    float unusedFoam;
+    return SampleMeshVertexDisplacementAndObjectRipple(displacementTex, baseXZ, vertexSpacing, unusedSlope, unusedFoam);
 }
 
 /// @brief 水面メッシュの頂点 1 点の変位（FFTWater.VS の SampleVertexDisplacement と同じ式: 波の変位＋描かれる位置の波紋の高さ）
@@ -380,35 +423,95 @@ float GetCoarseMeshVertexSpacing()
     return max(cellSize.x, cellSize.y);
 }
 
-/// @brief 岸の格子の頂点 1 点の変位（xyz。FFTWater.VS の SampleShoreMeshVertexDisplacement と同じ式）と、
-///        その高さに入っている物が起こした波紋の高さ（w）
-/// @details 範囲の端ほど、粗い格子の三角形で補間した値へ寄せる
-float4 SampleShoreMeshVertexDisplacementAndObjectRipple(Texture2DArray<float4> displacementTex, float2 baseXZ)
+/// @brief 粗い格子の頂点 (i, j) の変位前の位置
+float2 GetCoarseMeshVertexBaseXZ(uint2 vertexIndex)
 {
-    float4 fine = SampleMeshVertexDisplacementAndObjectRipple(displacementTex, baseXZ, gSurfaceShoreMeshCellSize);
-    if (gSurfaceSeaMapResolution.x != 0)
+    float2 gridOrigin;
+    float2 cellSize;
+    GetCoarseMeshGrid(gridOrigin, cellSize);
+    return gridOrigin + float2(vertexIndex) * cellSize;
+}
+
+/// @brief 粗い格子の頂点の値を書いたテクスチャ（WaterCoarseMeshDisplacement.CS）を今の格子に使えるか
+bool UseCoarseMeshVertexTexture()
+{
+    return gSurfaceCoarseMeshVertexCount != 0
+        && gSurfaceCoarseMeshVertexCount == (uint)round(gSurfaceMeshSubdivisions) + 1u;
+}
+
+/// @brief 粗い格子の頂点の値を書いたテクスチャから、変位前の位置の値を三角形で補間して返す
+/// @param coarseDisplacement テクセル (i, j) が粗い格子の頂点 (i, j) の変位と物が起こした波紋の高さ
+/// @details 三角形の分け方は FindWaterGridTriangle と同じ（各マスの対角は (1,0)-(0,1)）。格子の外は端のマスを延ばす
+float4 InterpolateCoarseMeshVertex(Texture2D<float4> coarseDisplacement, float2 baseXZ)
+{
+    float2 gridOrigin;
+    float2 cellSize;
+    GetCoarseMeshGrid(gridOrigin, cellSize);
+    const float cellCount = (float)(gSurfaceCoarseMeshVertexCount - 1u);
+    const float2 gridCoord = (baseXZ - gridOrigin) / cellSize;
+    const float2 cellIndex = clamp(floor(gridCoord), 0.0f, cellCount - 1.0f);
+    const float2 f = gridCoord - cellIndex;
+    const int2 cell = int2(cellIndex);
+
+    const float4 d10 = coarseDisplacement.Load(int3(cell + int2(1, 0), 0));
+    const float4 d01 = coarseDisplacement.Load(int3(cell + int2(0, 1), 0));
+    if (f.x + f.y <= 1.0f)
     {
-        Texture2D<float4> seaMap = ResourceDescriptorHeap[gSurfaceSeaMapSrvIndex];
-        fine.y += EvaluateShoreRunupLift(seaMap, baseXZ, gSurfaceSeaMapOriginXZ, gSurfaceSeaMapTexelsPerMeter,
-            gSurfaceSeaMapResolution, gSurfaceSeaMapDepthOffset, gSurfaceTime, gSurfaceShoreRunupHeight,
-            gSurfaceShoreWaveHeight);
+        const float4 d00 = coarseDisplacement.Load(int3(cell, 0));
+        return d00 * (1.0f - f.x - f.y) + d10 * f.x + d01 * f.y;
     }
-    const float blend = ComputeShoreMeshBlend(
-        baseXZ, gSurfaceShoreMeshOriginXZ, gSurfaceShoreMeshSize, gSurfaceShoreMeshBlendWidth);
-    if (blend >= 1.0f || gSurfaceRegionValid == 0)
+    const float4 d11 = coarseDisplacement.Load(int3(cell + int2(1, 1), 0));
+    return d11 * (f.x + f.y - 1.0f) + d10 * (1.0f - f.y) + d01 * (1.0f - f.x);
+}
+
+/// @brief 粗い格子の三角形で補間した、変位前の位置の変位（xyz）と物が起こした波紋の高さ（w）
+/// @details 頂点の値を書いたテクスチャがあれば読み、無ければ 3 頂点で評価する
+float4 SampleCoarseMeshTriangle(Texture2DArray<float4> displacementTex, float2 baseXZ)
+{
+    if (UseCoarseMeshVertexTexture())
     {
-        return fine;
+        Texture2D<float4> coarseDisplacement = ResourceDescriptorHeap[gSurfaceCoarseMeshDisplacementSrvIndex];
+        return InterpolateCoarseMeshVertex(coarseDisplacement, baseXZ);
     }
     float2 gridOrigin;
     float2 cellSize;
     GetCoarseMeshGrid(gridOrigin, cellSize);
     const float coarseSpacing = max(cellSize.x, cellSize.y);
     const WaterGridTriangle tri = FindWaterGridTriangle(baseXZ, gridOrigin, cellSize);
-    const float4 coarse =
-        SampleMeshVertexDisplacementAndObjectRipple(displacementTex, tri.corner0, coarseSpacing) * tri.weights.x
+    return SampleMeshVertexDisplacementAndObjectRipple(displacementTex, tri.corner0, coarseSpacing) * tri.weights.x
         + SampleMeshVertexDisplacementAndObjectRipple(displacementTex, tri.corner1, coarseSpacing) * tri.weights.y
         + SampleMeshVertexDisplacementAndObjectRipple(displacementTex, tri.corner2, coarseSpacing) * tri.weights.z;
-    return lerp(coarse, fine, blend);
+}
+
+/// @brief 岸の格子の頂点 1 点の変位（xyz）と、その高さに入っている物が起こした波紋の高さ（w）
+/// @details 範囲の端ほど、粗い格子の三角形で補間した値へ寄せる
+/// @param shoreWaveSlope 沖から寄せる波の傾き（岸の格子の頂点の値）
+/// @param shoreBreakFoam x = 砕けた波の泡の被覆率（峰の頂の泡と、段と浜を上がる水の泡の大きい方）、
+///                       y = 段と浜を上がる水の泡を描く度合い（沖から寄せる波と浜を駆け上がる水があるとき、範囲の中で 1・端ほど 0）
+float4 SampleShoreMeshVertexDisplacementAndObjectRipple(
+    Texture2DArray<float4> displacementTex, float2 baseXZ, out float2 shoreWaveSlope, out float2 shoreBreakFoam)
+{
+    float crestFoam;
+    float4 fine = SampleMeshVertexDisplacementAndObjectRipple(
+        displacementTex, baseXZ, gSurfaceShoreMeshCellSize, shoreWaveSlope, crestFoam);
+    float runupFoam = 0.0f;
+    if (gSurfaceSeaMapResolution.x != 0)
+    {
+        Texture2D<float4> seaMap = ResourceDescriptorHeap[gSurfaceSeaMapSrvIndex];
+        fine.y += EvaluateShoreRunupLift(seaMap, baseXZ, gSurfaceSeaMapOriginXZ, gSurfaceSeaMapTexelsPerMeter,
+            gSurfaceSeaMapResolution, gSurfaceSeaMapDepthOffset, gSurfaceTime, gSurfaceShoreRunupHeight,
+            gSurfaceShoreWaveHeight, runupFoam);
+    }
+    const float blend = ComputeShoreMeshBlend(
+        baseXZ, gSurfaceShoreMeshOriginXZ, gSurfaceShoreMeshSize, gSurfaceShoreMeshBlendWidth);
+    const float runupFoamWeight =
+        (gSurfaceShoreWaveHeight > 0.0f && gSurfaceShoreRunupHeight > 0.0f) ? saturate(blend) : 0.0f;
+    shoreBreakFoam = float2(max(crestFoam, runupFoam * runupFoamWeight), runupFoamWeight);
+    if (blend >= 1.0f || gSurfaceRegionValid == 0)
+    {
+        return fine;
+    }
+    return lerp(SampleCoarseMeshTriangle(displacementTex, baseXZ), fine, blend);
 }
 
 /// @brief 岸の格子の頂点を寄せる水面メッシュの範囲（FFTWater.VS の ClampShoreMeshVertexToSurface に渡す範囲と同じ）
@@ -495,8 +598,8 @@ float2 EvaluateDrawnSurfaceHeightAndObjectRipple(Texture2DArray<float4> displace
         return SampleMeshVertexDisplacementAndObjectRipple(displacementTex, worldXZ, coarseSpacing).yw;
     }
 
-    // 粗い格子の水平変位を 1 回だけ逆にたどって、変位前の格子上の位置を求める
-    float2 baseXZ = worldXZ - SampleMeshVertexWaveDisplacement(displacementTex, worldXZ, coarseSpacing).xz;
+    // 粗い格子の FFT の波の水平変位を 1 回だけ逆にたどって、変位前の格子上の位置を求める（沖から寄せる波の前へのずれはたどらない）
+    float2 baseXZ = worldXZ - SampleMeshVertexFFTDisplacement(displacementTex, worldXZ, coarseSpacing).xz;
 
     if (gSurfaceShoreMeshEnabled != 0
         && IsInsideShoreMesh(baseXZ, gSurfaceShoreMeshOriginXZ, gSurfaceShoreMeshSize))
@@ -510,14 +613,7 @@ float2 EvaluateDrawnSurfaceHeightAndObjectRipple(Texture2DArray<float4> displace
         }
         return InterpolateShoreMeshVertex(shoreDisplacement, baseXZ).yw;
     }
-
-    float2 gridOrigin;
-    float2 cellSize;
-    GetCoarseMeshGrid(gridOrigin, cellSize);
-    const WaterGridTriangle tri = FindWaterGridTriangle(baseXZ, gridOrigin, cellSize);
-    return SampleMeshVertexDisplacementAndObjectRipple(displacementTex, tri.corner0, coarseSpacing).yw * tri.weights.x
-        + SampleMeshVertexDisplacementAndObjectRipple(displacementTex, tri.corner1, coarseSpacing).yw * tri.weights.y
-        + SampleMeshVertexDisplacementAndObjectRipple(displacementTex, tri.corner2, coarseSpacing).yw * tri.weights.z;
+    return SampleCoarseMeshTriangle(displacementTex, baseXZ).yw;
 }
 
 /// @brief ラスタライザが実際に描く水面の高さ（基準面からのオフセット）を返す（EvaluateDrawnSurfaceHeightAndObjectRipple の x）
