@@ -5,7 +5,8 @@
 // 水面の頂点を持ち上げる高さを返す。n 番目の波は、場所 x を時刻 (n 番目の波が沖を出る時刻 + 沖から x まで着く時間) に通る。
 // 波は同じ番号どうしで、沖・浅瀬・水際がつながる。
 //   - 沖から寄せる波: 水深 kShoreWaveMaxDepth より浅い所で、峰が着く時間の等しい線に沿って岸へ進む。
-//                     浅くなるほど遅く（浜と平行に向きをそろえる）、高く（水深の -1/4 乗）、峰が細く、前の面が急になる
+//                     浅くなるほど遅く（浜と平行に向きをそろえる）、高く（水深の -1/4 乗）、峰が細く、前の面が急になる。
+//                     砕ける直前から、峰の上ほど前へずれて前の面が縦に近づき、そのまま崩れて段へ移る
 //   - 砕けて進む段: 波の高さが水深の kWaterBreakingIndex 倍に届いた所から、段（ボア）になって岸へ進む
 //   - 水際: 波が着くと、水際の高さが投げ上げの形で上がって下がる。水面が浜の砂より高い所だけ水に見える。
 //           届く高さと上がり始める時刻は、水際に沿った位置の長さの違うノイズで波ごとに変わる（水際が弧の形に出入りする）。
@@ -113,6 +114,16 @@ static const float kShoreWaveBreakStartRatio = 0.85f;
 static const float kShoreWaveBreakEndRatio = 1.15f;
 /// @brief 峰の幅を、頂点の格子の間隔の何倍より細くしないか
 static const float kShoreWaveMinCrestWidthSpacings = 1.5f;
+/// @brief 波の高さ ÷ (水深 × kWaterBreakingIndex) がこの値から 1 までの間で、峰が前へ倒れ始める
+static const float kShoreWaveLeanStartRatio = 0.7f;
+/// @brief 峰の頂を前へずらす長さ ÷ 峰の高さ
+static const float kShoreWaveLeanHeightRatio = 1.2f;
+/// @brief 前の面を縮める割合の下限（前へずらした後の前の面の長さ ÷ 元の長さ。0 で面が縦に立つ）
+static const float kShoreWaveMinFrontStretch = 0.12f;
+/// @brief 峰の頂を L だけ前へずらしたとき、前の面がいちばん縮む所の縮み方 ÷ (L ÷ 前の面の幅)（2 / √e）
+static const float kShoreWaveLeanCompression = 1.2130613f;
+/// @brief 峰が通ってからの時間がこの値 × 波の間隔より離れた頂点はずらさない
+static const float kShoreWaveLeanReachPeriods = 0.6f;
 /// @brief √π
 static const float kShoreWaveSqrtPi = 1.7724539f;
 
@@ -329,7 +340,57 @@ float RunupBoreShape(float ageSeconds, float lifetime)
     return smoothstep(0.0f, kRunupBoreRiseSeconds, ageSeconds) * (1.0f - ageSeconds / lifetime);
 }
 
-/// @brief 沖から寄せる波（砕ける前）の、静水面からの高さと傾き
+/// @brief 峰の頂がいる所の値から決める、峰の頂を前へずらす長さと、ずらす形の前後の幅
+/// @param crestSeaMap   峰の頂がいる所の海の範囲マップの値（SampleWaterSeaMap）
+/// @param depthOffset   今の水面の高さ − 測ったときの水面の高さ [m]
+/// @param heightScale   波の高さの倍率
+/// @param periodSeconds 波の間隔 [s]
+/// @param vertexSpacing 頂点の格子の間隔 [m]
+/// @return (峰の頂を前へずらす長さ [m], 前の幅 [m], 後ろの幅 [m], その所で波が 1m 進むのにかかる時間 [s/m])。ずらさないときは x = 0
+float4 EvaluateShoreWaveCrestLean(
+    float4 crestSeaMap, float depthOffset, float shoreWaveHeight, float heightScale, float periodSeconds, float vertexSpacing)
+{
+    if (IsWaterSeaMapBasin(crestSeaMap.x))
+    {
+        return float4(0.0f, 0.0f, 0.0f, 0.0f);
+    }
+    const float depth = crestSeaMap.x + depthOffset;
+    if (depth <= 0.0f || depth >= kShoreWaveMaxDepth)
+    {
+        return float4(0.0f, 0.0f, 0.0f, 0.0f);
+    }
+    const float breakingRatio = ComputeShoreWaveBreakingRatio(shoreWaveHeight, heightScale, depth);
+    const float leanWeight = smoothstep(kShoreWaveLeanStartRatio, 1.0f, breakingRatio);
+    if (leanWeight <= 0.0f)
+    {
+        return float4(0.0f, 0.0f, 0.0f, 0.0f);
+    }
+    const float unbroken = 1.0f - smoothstep(kShoreWaveBreakStartRatio, kShoreWaveBreakEndRatio, breakingRatio);
+    const float offshoreWeight = 1.0f - smoothstep(kShoreWaveFullDepth, kShoreWaveMaxDepth, depth);
+    const float crestHeight = min(breakingRatio, 1.0f) * kWaterBreakingIndex * depth * unbroken * offshoreWeight;
+
+    // 峰の幅は EvaluateShoreWave と同じ式（秒をその所の波の速さで長さにする）
+    const float speed = sqrt(kRunupGravity * depth);
+    const float steepness = saturate(breakingRatio);
+    const float widthMeters = max(
+        periodSeconds * lerp(kShoreWaveCrestWidthOffshore, kShoreWaveCrestWidthBreaking, steepness) * speed,
+        kShoreWaveMinCrestWidthSpacings * vertexSpacing);
+    const float frontMeters = widthMeters * (1.0f - kShoreWaveCrestSkew * steepness);
+    const float backMeters = widthMeters * (1.0f + kShoreWaveCrestSkew * steepness);
+    const float leanMeters = min(kShoreWaveLeanHeightRatio * crestHeight * leanWeight,
+        (1.0f - kShoreWaveMinFrontStretch) * frontMeters / kShoreWaveLeanCompression);
+    return float4(leanMeters, frontMeters, backMeters, 1.0f / speed);
+}
+
+/// @brief 沖から寄せる波（砕ける前）の、静水面からの高さと傾きと水平のずれ
+/// @details 砕ける直前から、峰の上ほど前（波の進む向き）へずらす。前の面は上ほど急に立ち、峰が崩れるまで縦に近づく。
+///          ずらす長さと形の幅は峰の頂がいる所の値で決める（峰の前後の頂点が同じ形を使い、面が折れ重ならない）。
+///          傾きは、ずらした後の頂点の位置での値
+/// @param seaMap          海の範囲マップ
+/// @param originXZ        地図の範囲の XZ の最小の角 [m]
+/// @param texelsPerMeter  地図の 1m あたりのテクセル数
+/// @param resolution      地図の X・Z のテクセル数
+/// @param depthOffset     今の水面の高さ − 測ったときの水面の高さ [m]
 /// @param depth         今の水面からの水深 [m]
 /// @param clearance     今の水面から上の物までの高さ [m]（これより上へは上げない）
 /// @param field         SampleShoreWaveField の値
@@ -338,12 +399,15 @@ float RunupBoreShape(float ageSeconds, float lifetime)
 /// @param vertexSpacing 頂点の格子の間隔 [m]
 /// @param worldXZ       頂点の変位前のワールド XZ [m]
 /// @param crestFoam     砕ける直前から峰の頂に出る泡の被覆率 [0,1]
+/// @param horizontalOffset 頂点を前へずらす水平の変位 [m]
 /// @return (高さ [m], ∂高さ/∂x, ∂高さ/∂z)
 float3 EvaluateShoreWave(
+    Texture2D<float4> seaMap, float2 originXZ, float texelsPerMeter, uint2 resolution, float depthOffset,
     float depth, float clearance, float4 field, float timeSeconds, float shoreWaveHeight, float vertexSpacing,
-    float2 worldXZ, out float crestFoam)
+    float2 worldXZ, out float crestFoam, out float2 horizontalOffset)
 {
     crestFoam = 0.0f;
+    horizontalOffset = float2(0.0f, 0.0f);
     if (shoreWaveHeight <= 0.0f || depth <= 0.0f || depth >= kShoreWaveMaxDepth)
     {
         return float3(0.0f, 0.0f, 0.0f);
@@ -352,10 +416,15 @@ float3 EvaluateShoreWave(
     const float offshoreWeight = 1.0f - smoothstep(kShoreWaveFullDepth, kShoreWaveMaxDepth, depth);
     const float speed = sqrt(kRunupGravity * depth);
     const float minWidthSeconds = kShoreWaveMinCrestWidthSpacings * vertexSpacing / speed;
+    // 沖から着く時間の傾きの大きさ（波の進む向きに 1m 進むと着く時間が何秒遅れるか）と、波の進む向き
+    const float travelSlowness = length(field.yz);
+    const float2 travelDirection = (travelSlowness > 1.0e-6f) ? field.yz / travelSlowness : float2(0.0f, 0.0f);
 
     float height = 0.0f;
     float slopeAlongTravel = 0.0f;
     float meanHeight = 0.0f;
+    float lean = 0.0f;
+    float leanRate = 0.0f;
     [unroll]
     for (int train = 0; train < kShoreWaveTrainCount; ++train)
     {
@@ -388,6 +457,25 @@ float3 EvaluateShoreWave(
             slopeAlongTravel += crestHeight * shape * (-2.0f * x / sideWidth);
             meanHeight += crestHeight * 0.5f * (frontWidth + backWidth) * kShoreWaveSqrtPi / (3.0f * w.periodSeconds);
 
+            // 砕ける直前から、峰の上ほど前へずらす。峰の頂は (峰が通ってからの時間 ÷ 着く時間の傾き) だけ沖にいる
+            if (abs(age) < kShoreWaveLeanReachPeriods * w.periodSeconds && travelSlowness > 1.0e-6f)
+            {
+                const float2 crestXZ = worldXZ + travelDirection * (age / travelSlowness);
+                const float4 crestLean = EvaluateShoreWaveCrestLean(
+                    SampleWaterSeaMap(seaMap, crestXZ, originXZ, texelsPerMeter, resolution),
+                    depthOffset, shoreWaveHeight, heightScale, w.periodSeconds, vertexSpacing);
+                if (crestLean.x > 0.0f)
+                {
+                    // 峰の頂から進む向きへの距離（着く時間の差 ÷ 頂点と峰の頂の、1m 進むのにかかる時間の平均）
+                    const float aheadMeters = -age / (0.5f * (travelSlowness + crestLean.w));
+                    const float leanWidth = (aheadMeters > 0.0f) ? crestLean.y : crestLean.z;
+                    const float u = aheadMeters / leanWidth;
+                    const float leanShape = exp(-2.0f * u * u);
+                    lean += crestLean.x * leanShape;
+                    leanRate += crestLean.x * leanShape * (-4.0f * u / leanWidth);
+                }
+            }
+
             // 砕ける直前から、峰の頂に泡を出す
             const float crestTip = shape * shape * shape * shape;
             crestFoam = max(crestFoam, kShoreCrestFoamAmount
@@ -402,8 +490,11 @@ float3 EvaluateShoreWave(
     {
         return float3(ceiling, 0.0f, 0.0f);
     }
-    // 峰が通ってからの時間は (時刻 − 沖から着く時間) で進むので、場所での傾きは沖から着く時間の傾きの逆向き
-    return float3(height, -slopeAlongTravel * field.yz);
+    horizontalOffset = lean * travelDirection;
+    // 峰が通ってからの時間は (時刻 − 沖から着く時間) で進むので、場所での傾きは沖から着く時間の傾きの逆向き。
+    // 前へずらすと進む向きの長さが (1 + leanRate) 倍になるので、進む向きの傾きをその分だけ急にする
+    const float stretch = max(1.0f + leanRate, kShoreWaveMinFrontStretch);
+    return float3(height, -slopeAlongTravel * field.yz / stretch);
 }
 
 /// @brief 岸の格子の頂点を持ち上げる高さ [m]（砕けて進む段と水際の上がり下がり）

@@ -58,10 +58,12 @@ struct FFTWaterVSOutput
 /// @param vertexSpacing 頂点の格子の間隔 [m]（地図のテクセルより広ければ粗い格子用の値を使う）
 /// @param shoreWave 沖から寄せる波の (高さ [m], ∂高さ/∂x, ∂高さ/∂z)
 /// @param crestFoam 砕ける直前から峰の頂に出る泡の被覆率
-float GetSeaMapWaveScale(float2 baseXZ, float vertexSpacing, out float3 shoreWave, out float crestFoam)
+/// @param shoreWaveOffset 沖から寄せる波が頂点を前へずらす水平の変位 [m]
+float GetSeaMapWaveScale(float2 baseXZ, float vertexSpacing, out float3 shoreWave, out float crestFoam, out float2 shoreWaveOffset)
 {
     shoreWave = float3(0.0f, 0.0f, 0.0f);
     crestFoam = 0.0f;
+    shoreWaveOffset = float2(0.0f, 0.0f);
     if (gSeaMapEnabled == 0)
     {
         return 1.0f;
@@ -75,8 +77,9 @@ float GetSeaMapWaveScale(float2 baseXZ, float vertexSpacing, out float3 shoreWav
             gWaterSeaMap, baseXZ, gSeaMapOriginXZ, gSeaMapTexelsPerMeter, gSeaMapResolution);
         const float clearance = (conservative ? value.w : value.y) - gSeaMapDepthOffset;
         shoreWave = EvaluateShoreWave(
+            gWaterSeaMap, gSeaMapOriginXZ, gSeaMapTexelsPerMeter, gSeaMapResolution, gSeaMapDepthOffset,
             value.x + gSeaMapDepthOffset, clearance, field, gShoreRunupTime, gShoreWaveHeight, vertexSpacing,
-            baseXZ, crestFoam);
+            baseXZ, crestFoam, shoreWaveOffset);
     }
     return ComputeWaterSeaMapWaveScale(value, conservative, gSeaMapDepthOffset, gSeaMapInvWaveHeight);
 }
@@ -101,9 +104,10 @@ float GetRippleVertexHeight(float2 drawnXZ, float vertexSpacing)
 float3 SampleVertexDisplacement(float2 baseXZ, float vertexSpacing, out float2 shoreWaveSlope, out float crestFoam)
 {
     float3 shoreWave;
+    float2 shoreWaveOffset;
     float3 displacement = SampleFFTVertexDisplacement(gFFTOceanDisplacement, gSampler, baseXZ, vertexSpacing, gWaveGroupPhase)
-        * GetSeaMapWaveScale(baseXZ, vertexSpacing, shoreWave, crestFoam);
-    displacement.y += shoreWave.x;
+        * GetSeaMapWaveScale(baseXZ, vertexSpacing, shoreWave, crestFoam, shoreWaveOffset);
+    displacement += float3(shoreWaveOffset.x, shoreWave.x, shoreWaveOffset.y);
     shoreWaveSlope = shoreWave.yz;
     displacement.y += GetRippleVertexHeight(baseXZ + displacement.xz, vertexSpacing);
     return displacement;

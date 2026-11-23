@@ -327,9 +327,12 @@ float3 SampleMeshVertexWaveDisplacement(
             const float4 field = SampleShoreWaveField(
                 seaMap, baseXZ, gSurfaceSeaMapOriginXZ, gSurfaceSeaMapTexelsPerMeter, gSurfaceSeaMapResolution);
             const float clearance = (conservative ? value.w : value.y) - gSurfaceSeaMapDepthOffset;
-            const float3 shoreWave = EvaluateShoreWave(value.x + gSurfaceSeaMapDepthOffset, clearance, field,
-                gSurfaceTime, gSurfaceShoreWaveHeight, vertexSpacing, baseXZ, crestFoam);
-            disp.y += shoreWave.x;
+            float2 shoreWaveOffset;
+            const float3 shoreWave = EvaluateShoreWave(
+                seaMap, gSurfaceSeaMapOriginXZ, gSurfaceSeaMapTexelsPerMeter, gSurfaceSeaMapResolution, gSurfaceSeaMapDepthOffset,
+                value.x + gSurfaceSeaMapDepthOffset, clearance, field,
+                gSurfaceTime, gSurfaceShoreWaveHeight, vertexSpacing, baseXZ, crestFoam, shoreWaveOffset);
+            disp += float3(shoreWaveOffset.x, shoreWave.x, shoreWaveOffset.y);
             shoreWaveSlope = shoreWave.yz;
         }
     }
@@ -595,7 +598,7 @@ float2 EvaluateDrawnSurfaceHeightAndObjectRipple(Texture2DArray<float4> displace
         return SampleMeshVertexDisplacementAndObjectRipple(displacementTex, worldXZ, coarseSpacing).yw;
     }
 
-    // 粗い格子の水平変位を 1 回だけ逆にたどって、変位前の格子上の位置を求める（沖から寄せる波は高さだけを変える）
+    // 粗い格子の FFT の波の水平変位を 1 回だけ逆にたどって、変位前の格子上の位置を求める（沖から寄せる波の前へのずれはたどらない）
     float2 baseXZ = worldXZ - SampleMeshVertexFFTDisplacement(displacementTex, worldXZ, coarseSpacing).xz;
 
     if (gSurfaceShoreMeshEnabled != 0
