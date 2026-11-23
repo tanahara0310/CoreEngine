@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.114.0">
+<meta name="engine-version" content="0.115.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12491,6 +12491,14 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-115-0">v0.115.0 <span class="dim">（2026-11-23）</span></h3>
+  <p>沖から寄せる波と浜を駆け上がる水（v0.111.0〜v0.113.0）で重くなっていた水面の描画を軽くした版です（<a href="#api-WaterSurface">水面</a>）。見た目は変わりません。設定は増えていません。アラハビーチの海を見渡す構図（RTX 4060 Laptop・1920×1080）では、GPU が 23.0ms から 15.5ms、そのうち水の処理が 16.4ms から 9.1ms になりました。</p>
+  <ul>
+    <li><strong>岸の細かい格子の頂点</strong>：水面を描くたびに、カメラの周り 256m 四方の細かい格子（約 26 万頂点）の頂点ごとに、寄せる波と浜を駆け上がる水の式を計算し直していました。頂点ごとの値をフレームの初めに 1 回だけ計算してテクスチャへ書き、水面の描画はそれを読むだけにしました。プロファイラの <code>WaterSurface</code> は 4.8ms から 1.7ms になりました。</li>
+    <li><strong>粗い格子の頂点</strong>：映り込みと屈折は、細かい格子の外で水面の高さを求めるたびに、粗い格子の三角形の 3 頂点で波の変位を計算していました。粗い格子の頂点の変位もフレームの初めに 1 回だけテクスチャへ書き、それを三角形で補間するようにしました。屈折は 4.8ms から 1.7ms、映り込みは 3.2ms から 1.8ms になりました。<a href="#api-WaterProbe">水面の高さを調べる</a> と <a href="#api-Buoyancy">浮力</a> も同じテクスチャを読みます。</li>
+    <li><strong>増えた分</strong>：頂点の値を書く処理（<code>WaterShoreMeshDisplacementPass</code>）は 0.6ms から 0.8ms になります。テクスチャは、粗い格子の分が水面の「分割数」+1 の四方（256 分割で約 1MB）、細かい格子の寄せる波の傾きと泡の分が約 4MB 増えます。</li>
+  </ul>
 
   <h3 id="changelog-v0-114-0">v0.114.0 <span class="dim">（2026-11-23）</span></h3>
   <p>親と子・孫を 1 つのプレハブに保存し、まとめて置く・出す・消せるようにした版です（<a href="#prefab-children">親子つきのプレハブ</a>）。子の無いプレハブのファイルと、それを置いたシーンの保存の形は前の版と同じです。</p>

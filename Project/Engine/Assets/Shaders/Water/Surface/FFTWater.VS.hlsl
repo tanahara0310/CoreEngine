@@ -19,6 +19,11 @@ SamplerState gSampler : register(s0);
 Texture2D<float4> gWaterSeaMap : register(t29);
 // 水の波紋の面（gRippleEnabled = 0 のときは読まない。Water.PS と同じレジスタ）
 Texture2DArray<float4> gWaterRipple : register(t30);
+// 岸の格子の頂点の値（WaterShoreMeshDisplacement.CS。gShoreMeshEnabled = 0 のときは読まない）
+// 変位（xyz）と物が起こした波紋の高さ（w）
+Texture2D<float4> gWaterShoreMeshDisplacement : register(t35);
+// 沖から寄せる波の傾き（xy）と砕けた波の泡（zw）
+Texture2D<float4> gWaterShoreMeshSurface : register(t36);
 
 struct FFTWaterVSOutput
 {
@@ -104,48 +109,27 @@ float3 SampleVertexDisplacement(float2 baseXZ, float vertexSpacing, out float2 s
     return displacement;
 }
 
-/// @brief 頂点の変位（傾きと泡を使わない呼び出し用）
-float3 SampleVertexDisplacement(float2 baseXZ, float vertexSpacing)
-{
-    float2 unusedSlope;
-    float unusedFoam;
-    return SampleVertexDisplacement(baseXZ, vertexSpacing, unusedSlope, unusedFoam);
-}
-
 /// @brief 粗い格子の頂点の間隔 [m]
 float GetCoarseMeshVertexSpacing()
 {
     return max(gMeshCellSizeXZ.x, gMeshCellSizeXZ.y);
 }
 
-/// @brief 岸の格子の頂点の変位（範囲の端ほど、粗い格子の三角形で補間した変位へ寄せる）
-/// @details RTWaterSurfaceCommon.hlsli の SampleShoreMeshVertexDisplacement と同じ式
+/// @brief 岸の格子の頂点の変位（WaterShoreMeshDisplacement.CS が頂点ごとに書いた値。範囲の端ほど粗い格子の形へ寄せてある）
+/// @param gridUV         岸の格子の中の頂点の位置（animData.xy。0..1）
 /// @param shoreWaveSlope 沖から寄せる波の傾き（岸の格子の頂点の値）
 /// @param shoreBreakFoam x = 砕けた波の泡の被覆率（峰の頂の泡と、段と浜を上がる水の泡の大きい方）、
 ///                       y = 段と浜を上がる水の泡を描く度合い（沖から寄せる波と浜を駆け上がる水があるとき、範囲の中で 1・端ほど 0）
-float3 SampleShoreMeshVertexDisplacement(float2 baseXZ, out float2 shoreWaveSlope, out float2 shoreBreakFoam)
+float3 LoadShoreMeshVertexDisplacement(float2 gridUV, out float2 shoreWaveSlope, out float2 shoreBreakFoam)
 {
-    float crestFoam;
-    float3 fine = SampleVertexDisplacement(baseXZ, gShoreMeshCellSize, shoreWaveSlope, crestFoam);
-    float runupFoam = 0.0f;
-    if (gSeaMapEnabled != 0)
-    {
-        fine.y += EvaluateShoreRunupLift(gWaterSeaMap, baseXZ, gSeaMapOriginXZ, gSeaMapTexelsPerMeter,
-            gSeaMapResolution, gSeaMapDepthOffset, gShoreRunupTime, gShoreRunupHeight, gShoreWaveHeight, runupFoam);
-    }
-    const float blend = ComputeShoreMeshBlend(baseXZ, gSeabedOriginXZ, 1.0f / gSeabedInvSize, gShoreMeshBlendWidth);
-    const float runupFoamWeight = (gShoreWaveHeight > 0.0f && gShoreRunupHeight > 0.0f) ? saturate(blend) : 0.0f;
-    shoreBreakFoam = float2(max(crestFoam, runupFoam * runupFoamWeight), runupFoamWeight);
-    if (blend >= 1.0f)
-    {
-        return fine;
-    }
-    const float coarseSpacing = GetCoarseMeshVertexSpacing();
-    const WaterGridTriangle tri = FindWaterGridTriangle(baseXZ, gMeshGridOriginXZ, gMeshCellSizeXZ);
-    const float3 coarse = SampleVertexDisplacement(tri.corner0, coarseSpacing) * tri.weights.x
-        + SampleVertexDisplacement(tri.corner1, coarseSpacing) * tri.weights.y
-        + SampleVertexDisplacement(tri.corner2, coarseSpacing) * tri.weights.z;
-    return lerp(coarse, fine, blend);
+    uint width;
+    uint height;
+    gWaterShoreMeshDisplacement.GetDimensions(width, height);
+    const int2 texel = int2(round(gridUV * float2(width - 1u, height - 1u)));
+    const float4 surface = gWaterShoreMeshSurface.Load(int3(texel, 0));
+    shoreWaveSlope = surface.xy;
+    shoreBreakFoam = surface.zw;
+    return gWaterShoreMeshDisplacement.Load(int3(texel, 0)).xyz;
 }
 
 FFTWaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
@@ -181,7 +165,7 @@ FFTWaterVSOutput main(VertexShaderInput input, uint instanceID : SV_InstanceID)
     float3 displacement;
     if (shoreMeshVertex)
     {
-        displacement = SampleShoreMeshVertexDisplacement(baseWorldPos.xz, shoreWaveSlope, shoreBreakFoam);
+        displacement = LoadShoreMeshVertexDisplacement(input.animData.xy, shoreWaveSlope, shoreBreakFoam);
     }
     else
     {

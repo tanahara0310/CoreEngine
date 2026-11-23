@@ -239,6 +239,8 @@ namespace CoreEngine
         surfaceConstants.fftOceanEnabled = fftOceanInput.enabled;
         surfaceConstants.fftOceanResolution = fftOceanInput.resolution;
         surfaceConstants.meshSubdivisions = surfaceData.meshSubdivisions;
+        surfaceConstants.coarseMeshDisplacementSrvIndex = surfaceData.coarseMeshDisplacementSrvIndex;
+        surfaceConstants.coarseMeshVertexCount = surfaceData.coarseMeshVertexCount;
         for (int c = 0; c < 3; ++c) {
             surfaceConstants.cascadeMeanSquareSlope[c] = fftOceanInput.cascadeMeanSquareSlope[c];
             surfaceConstants.waveGroupPhase[c] = fftOceanInput.waveGroupPhase[c];

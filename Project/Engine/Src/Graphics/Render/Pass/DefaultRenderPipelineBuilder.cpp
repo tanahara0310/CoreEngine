@@ -79,7 +79,7 @@ namespace CoreEngine
             std::make_unique<WaterObjectFoamPass>(), RenderPassPhase::FrameSetup, 43,
             GpuTimingCategory::Water);
 
-        // フレーム前処理: 岸の細かい格子の頂点の変位を書く。RT の水面パスと水面の高さの問い合わせが読む
+        // フレーム前処理: 粗い格子と岸の細かい格子の頂点の変位を書く。水面の描画・RT の水面パス・水面の高さの問い合わせが読む
         pipeline.AddPass(
             std::make_unique<WaterShoreMeshDisplacementPass>(), RenderPassPhase::FrameSetup, 42,
             GpuTimingCategory::Water);
