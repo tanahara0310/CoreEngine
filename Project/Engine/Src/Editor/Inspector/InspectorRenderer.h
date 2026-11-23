@@ -56,6 +56,12 @@ namespace CoreEngine
             /// @brief 新しく作ったときの値（保存形。分からなければ nullptr）
             /// @note 既定値と違うプロパティのラベルを橙にし、右クリックで既定値に戻せるようにする。
             const json* defaultParameters = nullptr;
+
+            /// @brief 欄は出すが変えさせないプロパティか（空ならどれも変えられる）
+            std::function<bool(const Reflection::PropertyDescriptor&)> isLocked;
+
+            /// @brief 変えさせないプロパティの行に出す説明
+            std::string lockedReason;
         };
 
         /// @brief 記述子のプロパティを、左にラベル・右に欄の行で順に描く

@@ -2,11 +2,13 @@
 
 #include "Utility/JsonManager/JsonManager.h"
 
+#include <deque>
 #include <filesystem>
 #include <string>
 #include <functional>
 #include <memory>
 #include <optional>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -214,5 +216,14 @@ namespace CoreEngine
 
         /// @brief 復元する値の元（保存ファイルから読むときは、読み始めにフォルダの中身から作る）
         std::shared_ptr<const SceneSnapshot> restoreSnapshot_;
+
+        /// @brief 読み込み中のプレハブの根（保存された ID → 控えの 1 体分）
+        std::unordered_map<std::string, const SceneSnapshot::Object*> loadRootData_;
+
+        /// @brief 読み込み中の置いた物の、根の ID →（プレハブの中の番号 → ID）
+        std::unordered_map<std::string, std::unordered_map<std::string, std::string>> loadNodeIds_;
+
+        /// @brief 読み込みで足した、プレハブにあって保存データに無い子の復元する値
+        std::deque<SceneSnapshot::Object> loadAddedChildren_;
     };
 }

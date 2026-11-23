@@ -4,6 +4,8 @@
 #include "Utility/JsonManager/JsonManager.h"
 
 #include <cstdint>
+#include <string>
+#include <unordered_map>
 
 namespace CoreEngine::Reflection
 {
@@ -53,5 +55,15 @@ namespace CoreEngine::Reflection
         /// @brief コンポーネントの保存形の `parameters` を型の今の版の形へ書き換え、`version` を今の版にする
         /// @return 保存した版が型の版より新しければ false（何も変えない）
         bool UpgradeComponentEntry(const TypeDescriptor& type, json& entry);
+
+        /// @brief 保存形の中の ObjectRef（`{"ref": ID, …}`）の ID を、対応のあるものへ付け替える
+        /// @param node 保存形（オブジェクト・コンポーネントの並び・`parameters` のどれでもよい）
+        /// @param ids 付け替える前の ID → 後の ID（どちらも `ObjectId::ToString()` の形）
+        /// @param clearUnmapped 対応の無い参照を null にするか（false ならそのまま残す）
+        void RemapObjectRefs(json& node, const std::unordered_map<std::string, std::string>& ids,
+                             bool clearUnmapped = false);
+
+        /// @brief 保存形の中に ObjectRef（`{"ref": ID, …}`）が 1 つでもあるか
+        bool ContainsObjectRef(const json& node);
     }
 }

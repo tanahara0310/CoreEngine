@@ -836,6 +836,24 @@ namespace CoreEngine
                 return changed;
             }
 
+            // 持ち主が止めたプロパティは、欄を出すだけで値を書き戻さない
+            if (context.isLocked && context.isLocked(p)) {
+                const bool labelHovered = InspectorLayout::BeginRow(p.displayName, Theme::kTextDim);
+                ImGui::BeginDisabled();
+                if (p.type == Reflection::PropertyType::ObjectRef) {
+                    DrawObjectRef(p, *static_cast<Reflection::ObjectRefValue*>(value), context.objects);
+                } else {
+                    DrawValueWidget(p, p.type, "##value", value);
+                }
+                ImGui::EndDisabled();
+                const bool hovered = labelHovered || ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled);
+                if (hovered && !context.lockedReason.empty()) {
+                    ImGui::SetTooltip("%s", context.lockedReason.c_str());
+                }
+                ImGui::PopID();
+                return changed;
+            }
+
             const PropertyState state = InspectState(p, instance, context);
 
             // 一覧から選ぶ欄（ObjectRef / AssetRef / 名前付きの整数）は選んだその場で履歴へ積む
@@ -1023,7 +1041,7 @@ namespace CoreEngine
         const std::string ownerLabel = OwnerLabelOf(type, context);
         auto composite = std::make_unique<Editor::CompositeCommand>(ownerLabel + " を既定値へ戻す");
         for (const auto& p : type.properties) {
-            if (!p.IsVisible() || !p.IsValid() || !p.IsEditable()) {
+            if (!p.IsVisible() || !p.IsValid() || !p.IsEditable() || (context.isLocked && context.isLocked(p))) {
                 continue;
             }
             const PropertyState state = InspectState(p, instance, context);

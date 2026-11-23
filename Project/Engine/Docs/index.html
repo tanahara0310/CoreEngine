@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.113.0">
+<meta name="engine-version" content="0.114.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -3019,7 +3019,8 @@ kbd {
     <tbody>
       <tr><td>いちばん上の行</td><td>シーンの名前。未保存の変更があると末尾に <code>*</code></td></tr>
       <tr><td>◆</td><td>ふつうのオブジェクト</td></tr>
-      <tr><td>◈ と札 <span class="ui">Prefab</span></td><td>プレハブから作ったオブジェクト</td></tr>
+      <tr><td>◈ と札 <span class="ui">Prefab</span></td><td>プレハブから作ったオブジェクト（根）</td></tr>
+      <tr><td>色の付かない ◈</td><td>プレハブの子（<a href="#prefab-children">子を持つプレハブ</a>）</td></tr>
       <tr><td>札 <span class="ui">AS</span></td><td>スクリプトのコンポーネントを持つオブジェクト</td></tr>
       <tr><td>淡い文字</td><td>無効（active が false）のオブジェクト</td></tr>
       <tr><td>赤い文字</td><td>破棄を待っているオブジェクト</td></tr>
@@ -3035,8 +3036,8 @@ kbd {
       <tr><td>選ぶ</td><td>行をクリック（矢印のクリックは開閉だけ）</td></tr>
       <tr><td>作る</td><td><span class="ui">GameObject</span> メニュー、または Project からモデル・プレハブを Game ビューへドラッグ</td></tr>
       <tr><td>名前を変える</td><td><strong>Inspector の一番上の名前欄</strong>で変えます</td></tr>
-      <tr><td>複製</td><td><kbd>Ctrl</kbd>+<kbd>D</kbd>（Hierarchy か Game を選んでいるとき）</td></tr>
-      <tr><td>削除</td><td><kbd>Delete</kbd>、または <span class="ui">GameObject<span class="arrow">▸</span>削除</span></td></tr>
+      <tr><td>複製</td><td><kbd>Ctrl</kbd>+<kbd>D</kbd>（Hierarchy か Game を選んでいるとき）。子と孫も一緒に複製し、複製の中で互いを指す欄は複製どうしへ付け替えます</td></tr>
+      <tr><td>削除</td><td><kbd>Delete</kbd>、または <span class="ui">GameObject<span class="arrow">▸</span>削除</span>。子と孫も一緒に消え、<kbd>Ctrl</kbd>+<kbd>Z</kbd> 1 回でまとめて戻ります。置いた物の中のプレハブの子は消せません</td></tr>
       <tr><td>親子にする</td><td>子にしたいものを選び、Inspector の <span class="ui">トランスフォーム</span> の <span class="ui">親</span> 欄で親を選ぶ（Hierarchy の行を <span class="ui">親</span> 欄へドラッグしても設定できます）。UI は、子にしたい行を親の行へドラッグしても親子にでき、シーンの名前の行へ落とすと親を外します（<a href="#ui-parent">UI の親子</a>）</td></tr>
       <tr><td>プレハブにする</td><td>行を右クリック <span class="ui">プレハブとして保存</span>。<a href="#editor-prefab">詳しく</a></td></tr>
     </tbody>
@@ -3324,15 +3325,21 @@ kbd {
 
 <article class="page" id="editor-prefab" data-group="エディタ" data-title="プレハブ" data-keywords="プレハブ prefab 雛形 再利用 複製 生成 適用 上書き オーバーライド つながり">
   <h1>プレハブ</h1>
-  <p class="lead">プレハブは、コンポーネントと値の組み合わせを持ったオブジェクトの雛形です。弾や敵のように何度も出すものをプレハブにしておき、エディタで置いたり、スクリプトの <code>InstantiatePrefab</code> で出したりします。</p>
+  <p class="lead">プレハブは、オブジェクトと、その子や孫の、コンポーネントと値の組み合わせを持った雛形です。弾や敵のように何度も出すものをプレハブにしておき、エディタで置いたり、スクリプトの <code>InstantiatePrefab</code> で出したりします。</p>
 
   <h2 id="prefab-create">プレハブを作る</h2>
   <ol class="steps">
-    <li><strong>オブジェクトを組む</strong>シーンでオブジェクトを作り、コンポーネントと値を整えます。</li>
-    <li><strong>保存する</strong>Hierarchy でそのオブジェクトの行を右クリックし、<span class="ui">プレハブとして保存</span> を選びます。</li>
-    <li><strong>できたファイルを確かめる</strong><span class="path">Application/Assets/Prefabs/&lt;オブジェクト名&gt;.prefab</span> ができ、元のオブジェクトはそのプレハブに繋がります（Hierarchy に ◈ と <span class="ui">Prefab</span> が付きます）。</li>
+    <li><strong>オブジェクトを組む</strong>シーンでオブジェクトを作り、コンポーネントと値を整えます。本体の子に見た目を置くような親子も、そのまま組みます。</li>
+    <li><strong>保存する</strong>Hierarchy でいちばん上のオブジェクトの行を右クリックし、<span class="ui">プレハブとして保存</span> を選びます。<strong>子と孫も同じプレハブに入ります</strong>。</li>
+    <li><strong>できたファイルを確かめる</strong><span class="path">Application/Assets/Prefabs/&lt;オブジェクト名&gt;.prefab</span> ができ、元のオブジェクトはそのプレハブに繋がります（Hierarchy に ◈ と <span class="ui">Prefab</span> が付きます。子には色の付かない ◈ が付きます）。</li>
   </ol>
   <p>同じ名前があれば <code>_1</code>・<code>_2</code> … が付きます。作った後は Project で好きなフォルダへ移してかまいません（見本の倉庫番は <span class="path">Prefabs/</span> の直下に置いています）。</p>
+  <ul>
+    <li>プレハブの中の物どうしを指す欄（子の <span class="ui">親</span>、本体のスクリプトが見た目の子を指す <code>[ObjectRef]</code> など）は、そのまま保存されます。置いた物ごとに、自分の子を指します。</li>
+    <li>プレハブの外のオブジェクトを指す欄は、プレハブには保存されません。</li>
+    <li>子や孫の中に、別のプレハブから置いた物があれば、そのつながりを外して中身として取り込みます（プレハブの中に別のプレハブは入れられません）。</li>
+    <li>シーンに保存しないオブジェクトと、コードが作ったオブジェクトは入りません。</li>
+  </ul>
 
   <h2 id="prefab-place">プレハブを置く・出す</h2>
   <ul>
@@ -3340,6 +3347,39 @@ kbd {
     <li><strong>スクリプトで出す</strong>：<code>owner.InstantiatePrefab("Application/Assets/Prefabs/Bullet.prefab", "Bullet")</code>。<a href="#script-spawn">詳しく</a></li>
     <li><strong>スクリプトの欄で選ばせる</strong>：<code>[Asset("Prefab")] string bulletPrefab;</code> と書くと、インスペクタでプレハブを選べます。</li>
   </ul>
+  <p>子を持つプレハブは、置いても出しても、根と子がまとめてできます。エディタで置いた分は <kbd>Ctrl</kbd>+<kbd>Z</kbd> 1 回でまとめて消えます。</p>
+
+  <h2 id="prefab-children">子を持つプレハブ</h2>
+  <p>置いた物の中で、プレハブに入っているオブジェクトは次のように見分けます。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Hierarchy の表示</th><th>意味</th></tr></thead>
+    <tbody>
+      <tr><td>青い ◈ と札 <span class="ui">Prefab</span></td><td>根（プレハブのいちばん上の 1 体）</td></tr>
+      <tr><td>色の付かない ◈</td><td>プレハブの子（プレハブに入っている子や孫）</td></tr>
+      <tr><td>◆</td><td>足した子（置いた後で子にした、プレハブに入っていないオブジェクト）</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>置いた物の中でしたいこと</th><th>できるか</th></tr></thead>
+    <tbody>
+      <tr><td>プレハブの子の値を変える・コンポーネントを足す・外す</td><td>できます。プレハブとの違いとしてシーンに保存され、インスペクタに青い縦線が出ます</td></tr>
+      <tr><td>子を足す</td><td>できます。足した子は、ふつうのオブジェクトとしてシーンに保存されます</td></tr>
+      <tr><td>根を動かす・別のオブジェクトの子にする</td><td>できます</td></tr>
+      <tr><td>プレハブの子を消す</td><td>できません</td></tr>
+      <tr><td>プレハブの子の <span class="ui">親</span> を変える</td><td>できません（欄は読むだけになります）</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li>プレハブの子を選んでいても、右クリックの <span class="ui">プレハブを開く</span>・<span class="ui">プレハブへ適用</span>・<span class="ui">プレハブとのつながりを外す</span> は、根に対して働きます。つながりを外すと、根と子の全部がふつうの親子になります。</li>
+    <li>プレハブの子の値は、<a href="#prefab-mode">プレハブモード</a> で子を選んで直します。置いた物の子にも反映します（それぞれが上書きした値は保たれます）。</li>
+    <li>根を消す・複製すると、子も一緒に消え、複製されます。</li>
+  </ul>
+  <div class="callout note"><p>この版では、プレハブの子を足す・消す・親を付け替えることはできません。子の構成を変えるときは、<span class="ui">プレハブとのつながりを外す</span> → 組み直す → <span class="ui">プレハブとして保存</span> で、新しいプレハブを作ります。</p></div>
+  <p>シーンには、プレハブの子も 1 オブジェクト 1 ファイルで、プレハブとの違いだけを保存します（<code>prefabRoot</code> に根の ID、<code>prefabNode</code> にプレハブの中の番号）。ほかの人がプレハブに子を足した後でシーンを開くと、置いた物にもその子が増えます。プレハブから消えた子は読み込まず、次に保存するときにそのファイルを消します。</p>
 
   <h2 id="prefab-edit">プレハブを直す</h2>
   <p>プレハブは、<strong>プレハブモードで開いて直す</strong>・<strong>Project で選んで Inspector で直す</strong>・<strong>置いたオブジェクトを直してからプレハブへ書き戻す</strong>のどれかで直します。</p>
@@ -3349,6 +3389,7 @@ kbd {
   <ul>
     <li><strong>開く</strong>：Project でプレハブをダブルクリックするか、プレハブを選んで Inspector の <span class="ui">◈ プレハブモードで開く</span>。シーンに置いたものなら、Hierarchy の行を右クリック <span class="ui">プレハブを開く</span>。</li>
     <li><strong>見分け方</strong>：Hierarchy の上に青い帯、Game ビューの外周に青い枠と <span class="ui">PREFAB</span> の札、上のバーに青い <span class="ui">◈ プレハブモード</span> が出ます。シーンのほかのオブジェクトは表示されず、選べません。</li>
+    <li><strong>子</strong>：プレハブの根と子が Hierarchy に並びます。子を選ぶと、その子の値とコンポーネントを直せます。</li>
     <li><strong>保存</strong>：直した値は、ドラッグを離した・入力欄を離れたたびにプレハブへ保存し、シーンに置いた同じプレハブのオブジェクトにも反映します（自動保存）。</li>
     <li><strong>戻る</strong>：Hierarchy の帯か上のバーの <span class="ui">◀ シーンへ戻る</span>。カメラも開く前の視点に戻ります。▶ で再生したときも、シーンへ戻ってから再生します。</li>
     <li><strong>Undo</strong>：開いている間の <kbd>Ctrl</kbd>+<kbd>Z</kbd> は、プレハブモードの中の操作を戻します。戻った後は、開いてから戻るまでの変更が <span class="ui">○○.prefab を編集</span> の 1 件になります。</li>
@@ -3361,7 +3402,8 @@ kbd {
     <li><kbd>Ctrl</kbd>+<kbd>Z</kbd> で、プレハブを編集する前の中身に戻せます。</li>
     <li>コンポーネントの <span class="ui">⋮</span> から <span class="ui">既定値へ戻す</span>・<span class="ui">外す</span> が使えます。</li>
     <li>部品を足す・コライダーの形のように専用の欄で直す部品は、プレハブモードで直してください。</li>
-    <li>シーンの別のオブジェクトを指す欄（<code>[ObjectRef]</code>）は、プレハブには保存されません。</li>
+    <li>子を持つプレハブで直せるのは根だけです。子の数が出るので、子はプレハブモードで直してください。</li>
+    <li>プレハブの外のオブジェクトを指す欄（<code>[ObjectRef]</code>）は、プレハブには保存されません。</li>
   </ul>
 
   <h3 id="prefab-edit-instance">置いたオブジェクトから書き戻す</h3>
@@ -3369,7 +3411,7 @@ kbd {
   <table>
     <thead><tr><th>したいこと</th><th>やり方</th></tr></thead>
     <tbody>
-      <tr><td>全部を書き戻す</td><td>Hierarchy の行か Inspector の <span class="ui">Prefab</span> の行を右クリック <span class="ui">プレハブへ適用</span>（いちばん上の Transform の位置と回転はプレハブの値のまま）</td></tr>
+      <tr><td>全部を書き戻す</td><td>Hierarchy の行か Inspector の <span class="ui">Prefab</span> の行を右クリック <span class="ui">プレハブへ適用</span>（根の Transform の位置と回転はプレハブの値のまま。プレハブの子の値も書き戻します。足した子は書き戻しません）</td></tr>
       <tr><td>1 つの値だけ書き戻す</td><td>その値を右クリック <span class="ui">この値をプレハブへ適用</span></td></tr>
       <tr><td>1 つの値をプレハブに戻す</td><td>その値を右クリック <span class="ui">プレハブの値に戻す</span></td></tr>
       <tr><td>再生中に調整した値を書き戻す</td><td>ツールバーの <span class="ui">◈ 変更をプレハブへ適用</span>（停止しても残ります）</td></tr>
@@ -4595,12 +4637,26 @@ kbd {
     <li>生成したオブジェクトの Start と Update は<strong>次のフレーム</strong>から呼ばれます。位置や初期値は、生成した側がすぐに入れます。</li>
     <li>2 つ目の引数はオブジェクトの名前です。<code>FindObject</code> で探すときに使います。</li>
     <li>生成したオブジェクトはシーンには保存されません（再生を止めると消えます）。</li>
+    <li><a href="#prefab-children">子を持つプレハブ</a> は、子と孫もまとめて生成します。返ってくるのは根で、子は <code>FindChild("名前")</code> か <code>GetChildren()</code> で引きます。子の名前は、プレハブを作ったときの名前のままです。</li>
   </ul>
+  <script type="text/x-code" data-lang="as" data-file="EnemySpawner.as">
+    // 本体の子に見た目（Model）を持つプレハブを出す
+    GameObject@ enemy = owner.InstantiatePrefab(enemyPrefab, "Enemy");
+    enemy.transform.position = Vector3(4.0f, 0.0f, 2.0f);   // 子は根に付いて動く
+
+    GameObject@ model = enemy.FindChild("Model");
+    if (model !is null) {
+        model.active = false;   // 見た目だけ隠す
+    }
+
+    enemy.Destroy();   // 子と孫も一緒に消える
+  </script>
 
   <h2 id="spawn-destroy">破棄する</h2>
   <p><code>owner.Destroy()</code> で自分を、<code>other.gameObject.Destroy()</code> で相手を破棄できます。破棄は予約で、OnDestroy が呼ばれた後、フレームの終わりに取り除かれます。</p>
   <ul>
     <li>予約した後は <code>isAlive</code> が <code>false</code> になります。</li>
+    <li><strong>親を破棄すると、子と孫も一緒に破棄されます</strong>（トランスフォームの子と UI の子）。子と孫はフレームの終わりにまとめて破棄されるので、そのフレームの間は <code>isAlive</code> が <code>true</code> のままです。子を残したいときは、先に <code>transform.SetParent(null)</code> で親を外します。</li>
     <li>当たり判定の通知が同じフレームに何度も来ることがあります。上の <code>Vanish()</code> のように、1 回だけ消す印を持っておくと安全です。</li>
     <li>一時的に隠すだけなら、破棄せずに <code>owner.active = false</code> にします（<code>true</code> に戻せば再び動きます）。</li>
   </ul>
@@ -11073,7 +11129,7 @@ kbd {
     }
   </script>
   <p>設定の遷移は、たとえば Idle → Walk を <code>Speed &gt; 0.2</code>、Walk → Run を <code>Speed &gt; 4.5</code>、「どこからでも」→ Fall を <code>Grounded</code> が false、にします。パラメータは毎フレーム書いてかまいません（同じ値なら何も起きません）。</p>
-  <p>設定を使わずに、スクリプトから名前でクリップを切り替えることもできます。Animator の <span class="ui">設定</span> を空にして、クリップの一覧（名前とモデルの中のアニメーション名の対応）をシーンやプレハブの JSON の <code>clips</code> に書きます（サンプル TestBed の <span class="path">Prefabs/Physics/HumanModel.prefab</span> が見本）。</p>
+  <p>設定を使わずに、スクリプトから名前でクリップを切り替えることもできます。Animator の <span class="ui">設定</span> を空にして、クリップの一覧（名前とモデルの中のアニメーション名の対応）をシーンやプレハブの JSON の <code>clips</code> に書きます（サンプル TestBed の <span class="path">Prefabs/Physics/Character.prefab</span> の子 Model が見本）。</p>
   <script type="text/x-code" data-lang="as" data-file="LocomotionClips3D.as">
     using namespace CoreEngine;
 
@@ -12435,6 +12491,21 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-114-0">v0.114.0 <span class="dim">（2026-11-23）</span></h3>
+  <p>親と子・孫を 1 つのプレハブに保存し、まとめて置く・出す・消せるようにした版です（<a href="#prefab-children">親子つきのプレハブ</a>）。子の無いプレハブのファイルと、それを置いたシーンの保存の形は前の版と同じです。</p>
+  <ul>
+    <li><strong>親子つきのプレハブ</strong>：子を持つオブジェクトを「プレハブとして保存」すると、子と孫も同じプレハブのファイルに入ります（<code>children</code>）。前の版は子が保存されず、子をプレハブにすると「親」の欄が空になっていました。中の物どうしを指す欄（スクリプトの <code>[ObjectRef]</code> や「親」）は、置いた先・出した先でその組の物を指します。組の外を指す欄は空になります。</li>
+    <li><strong>置く・出す</strong>：Project からシーンへ置いても、スクリプトの <code>InstantiatePrefab</code>（<a href="#api-GameObject">GameObject</a>） で出しても、子と孫が一緒に出ます。戻り値は根で、子は <code>FindChild("Body")</code>・<code>FindChild("Body/Hat")</code> で引けます。</li>
+    <li><strong>シーンの保存</strong>：置いた物の子も 1 オブジェクト 1 ファイルで、根の ID（<code>prefabRoot</code>）・プレハブの中の番号（<code>prefabNode</code>）と、プレハブと違う値だけを書きます。後からプレハブに足した子は、次にシーンを開くと出ます。プレハブから消えた子は、ログに警告を出して読み込みません。</li>
+    <li><strong>消すと子孫も消える（ゲーム側で直すこと）</strong>：スクリプトの <code>Destroy</code> と、エディタの削除（<kbd>Delete</kbd>）は、子と孫もまとめて消します。前の版は消した物だけが消え、子は親を失って残っていました。子を残したいときは、先に <code>transform.SetParent(null)</code> で外してから消します。エディタの削除は Undo で子孫ごと戻ります。</li>
+    <li><strong>置いた物の中の子</strong>：プレハブの子は、置いた物の中では消せず、親（Transform の「親」の欄・UI の Hierarchy で別の親へ移す）も変えられません。変えるときは、根の右クリックの「つながりを外す」か、プレハブモードで直します。子の値を変える・置いた物に子を足すことはできます（足した子は、プレハブへの適用ではまだ入りません）。</li>
+    <li><strong>複製</strong>：<kbd>Ctrl</kbd>+<kbd>D</kbd> は子孫ごと複製します。複製の中の欄は、複製の組の物を指します。</li>
+    <li><strong>Hierarchy と Inspector</strong>：プレハブの子の行にも ◈ が付きます（色は付きません）。子を選ぶと Inspector の Prefab の行に、根のプレハブと「（根の名前）の子」が出ます。プレハブと違う値の印・「プレハブの値に戻す」・「プレハブへ適用」は子でも使えます。</li>
+    <li><strong>プレハブモード</strong>：開くと子と孫も並び、それぞれの値を直せます。子を足す・消す・組から外すのは、まだできません（外している間は書き戻しません）。Project でプレハブを選んだときの「プレハブの中身」は根だけを見せ、子があればその数を出します。</li>
+    <li><strong>試験のシーン</strong>：<span class="path">Projects/EngineTests</span> に <code>Prefab_Hierarchy</code>（根・子・孫のプレハブ Robot を 2 つ置き、100 組を出して消す）を足し、README に確かめ方を書きました。</li>
+    <li><strong>サンプル</strong>：TestBed の CharacterLab は、当たりを持つ本体と見た目の人型を 1 つのプレハブ（<span class="path">Prefabs/Physics/Character.prefab</span> の子 Model）で出すようにしました。HumanModel.prefab は消しました。</li>
+  </ul>
 
   <h3 id="changelog-v0-113-0">v0.113.0 <span class="dim">（2026-11-23）</span></h3>
   <p>沖から寄せる波が砕けた所に白い泡が出て、泡の前線が岸へ進むようにした版です（<a href="#api-WaterSurface">水面</a>）。前線の後ろの泡は薄れて、浅瀬の水の色が見えます。設定は増えていません。シーンの保存の形は前の版と同じです。</p>
@@ -14037,13 +14108,13 @@ class Rotator : ScriptComponent
       },
       {
         title: "メソッド", members: [
-          { n: "Destroy", s: "void Destroy()", t: "m", d: "破棄を予約します。付いているコンポーネントの OnDestroy が呼ばれ、実体はフレームの終わりに取り除かれます。同じフレームのうちは <code>isAlive</code> が <code>false</code> を返します。" },
+          { n: "Destroy", s: "void Destroy()", t: "m", d: "破棄を予約します。付いているコンポーネントの OnDestroy が呼ばれ、実体はフレームの終わりに取り除かれます。同じフレームのうちは <code>isAlive</code> が <code>false</code> を返します。子と孫（トランスフォームの子と UI の子）も、フレームの終わりに一緒に破棄されます。" },
           { n: "FindObject", s: "GameObject@ FindObject(const string&in name) const", t: "m", d: "同じシーンから名前でオブジェクトを探します（破棄を予約したものは除く）。見つからなければ <code>null</code>。同じ名前が複数あるときは最初に見つかったもの。毎フレーム呼ぶより、Start で探して控えるほうが軽くなります。" },
           { n: "CompareTag", s: "bool CompareTag(const string&in tag) const", t: "m", d: "このタグが付いているか。プロジェクト設定の Tags に無い名前で比べると、その名前ごとに 1 回だけ警告を出します（結果は <code>false</code>）。" },
           { n: "FindObjectWithTag", s: "GameObject@ FindObjectWithTag(const string&in tag) const", t: "m", d: "同じシーンからこのタグを持つオブジェクトを 1 つ探します。止めている物も含み、破棄を予約したものは除きます。見つからなければ <code>null</code>。いくつもあるときにどれが返るかは決まっていません。" },
           { n: "FindObjectsWithTag", s: "GameObject@[]@ FindObjectsWithTag(const string&in tag) const", t: "m", d: "同じシーンからこのタグを持つオブジェクトを全部集めます（止めている物を含み、破棄を予約したものは除く）。無ければ空の配列。シーンのオブジェクトを順に調べるので、毎フレームより必要なときに呼びます。" },
           { n: "GetComponent", s: "bool GetComponent(?&out component) const", t: "m", d: "付いているコンポーネントを型で探します。受け取る変数を <code>@</code> を付けて渡します（例：<code>owner.GetComponent(@player)</code>）。スクリプトのクラスでも、エンジンのコンポーネント型（<code>Rigidbody</code> など）でも使えます。見つかれば <code>true</code>。スクリプトのクラスは継いだクラスも一致します。" },
-          { n: "InstantiatePrefab", s: "GameObject@ InstantiatePrefab(const string&in prefabPath, const string&in name) const", t: "m", d: "プレハブから 1 体作り、同じシーンに置きます。パスはプロジェクトの根からの相対（例：<code>\"Application/Assets/Prefabs/Rock.prefab\"</code>）。読めなければ <code>null</code>。作ったオブジェクトの Start は次のフレームの更新で呼ばれます。" },
+          { n: "InstantiatePrefab", s: "GameObject@ InstantiatePrefab(const string&in prefabPath, const string&in name) const", t: "m", d: "プレハブからオブジェクトを作り、同じシーンに置きます。子を持つプレハブは子と孫もまとめて作り、根を返します。パスはプロジェクトの根からの相対（例：<code>\"Application/Assets/Prefabs/Rock.prefab\"</code>）。読めなければ <code>null</code>。作ったオブジェクトの Start は次のフレームの更新で呼ばれます。" },
           { n: "AddComponent", s: "bool AddComponent(const string&in typeName)", t: "m", d: "型名（<code>\"Rigidbody\"</code> やスクリプトのクラス名）のコンポーネントを足します。足せたら <code>true</code>。同じ型が付いていれば <code>false</code>、知らない型名は例外。エディタの道具（EditorWindow とメニューの関数）から呼ぶと <kbd>Ctrl</kbd>+<kbd>Z</kbd> で戻せます。" },
           { n: "RemoveComponent", s: "bool RemoveComponent(const string&in typeName)", t: "m", d: "型名のコンポーネントを外します。付いていない・ほかのコンポーネントが使っている（メッシュ描画が使う Transform など）なら <code>false</code>。" },
           { n: "HasComponent", s: "bool HasComponent(const string&in typeName) const", t: "m", d: "型名のコンポーネントが付いているか。" },
@@ -19373,7 +19444,7 @@ class PlayerWalker : ScriptComponent
         ]
       }
     ],
-    notes: "<ul><li>状態と遷移の作り方は <a href=\"#script-animator\">アニメーター</a> にあります。値で何本かを混ぜる状態は <a href=\"#anim-blend\">ブレンドツリー</a>、決まったコマでスクリプトを呼ぶのは <a href=\"#anim-events\">アニメーションのイベント</a>（<code>OnAnimationEvent</code>・<a href=\"#api-AnimationEvent\">AnimationEvent</a>）、体の一部だけ別の動きにするのは <a href=\"#anim-layers\">レイヤー</a>、クリップの中の移動でオブジェクトを動かすのは <a href=\"#anim-rootmotion\">クリップの移動</a>、2D のスプライトのコマを切り替えるのは <a href=\"#anim-sprite\">スプライトを動かす</a> です。</li><li>設定を使わないときのクリップの一覧（名前とモデル内のアニメーション名の対応）はインスペクタでは編集できず、保存データ（シーンやプレハブの JSON）の <code>clips</code> に書きます。サンプル TestBed の <span class=\"path\">Prefabs/Physics/HumanModel.prefab</span> が見本です。</li><li>停止中（編集中）は、最初の状態のクリップの最初のコマの姿勢で見えます。</li><li>クリップの中に動きの無い骨は、骨の初期の姿勢になります。</li></ul>",
+    notes: "<ul><li>状態と遷移の作り方は <a href=\"#script-animator\">アニメーター</a> にあります。値で何本かを混ぜる状態は <a href=\"#anim-blend\">ブレンドツリー</a>、決まったコマでスクリプトを呼ぶのは <a href=\"#anim-events\">アニメーションのイベント</a>（<code>OnAnimationEvent</code>・<a href=\"#api-AnimationEvent\">AnimationEvent</a>）、体の一部だけ別の動きにするのは <a href=\"#anim-layers\">レイヤー</a>、クリップの中の移動でオブジェクトを動かすのは <a href=\"#anim-rootmotion\">クリップの移動</a>、2D のスプライトのコマを切り替えるのは <a href=\"#anim-sprite\">スプライトを動かす</a> です。</li><li>設定を使わないときのクリップの一覧（名前とモデル内のアニメーション名の対応）はインスペクタでは編集できず、保存データ（シーンやプレハブの JSON）の <code>clips</code> に書きます。サンプル TestBed の <span class=\"path\">Prefabs/Physics/Character.prefab</span> の子 Model が見本です。</li><li>停止中（編集中）は、最初の状態のクリップの最初のコマの姿勢で見えます。</li><li>クリップの中に動きの無い骨は、骨の初期の姿勢になります。</li></ul>",
     examples: [
       {
         title: "例：速さと攻撃のボタンをパラメータへ書く",

@@ -390,8 +390,72 @@ namespace CoreEngine
             }
         }
 
+        /// @brief プレハブの根の保存 JSON を、プレハブとの差分の形にする
+        void MakeRootInstanceJson(json& data, const GameObject& object, const PrefabSystem::InstanceIndex* index)
+        {
+            const Reflection::AssetRefValue prefab = object.GetPrefab().GetValue();
+            // 中に参照を持つプレハブは、その組の ID へ付け替えたものと比べる。読んだ中身の指し先は ResolveBase の後で取る
+            const GameObjectManager* const manager = object.GetObjectManager();
+            const std::optional<PrefabSystem::PrefabContents> base =
+                (manager && PrefabSystem::HasReferences(prefab))
+                    ? PrefabSystem::ResolveBase(*manager, object, index) : std::nullopt;
+            if (base) {
+                data = PrefabSystem::MakeInstanceJson(data, *base);
+            } else if (const PrefabSystem::PrefabContents* contents = PrefabSystem::Load(prefab)) {
+                data = PrefabSystem::MakeInstanceJson(data, *contents);
+            } else {
+                Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource,
+                    "SceneSaveSystem: \"{}\" のプレハブ（GUID \"{}\" / パス \"{}\"）を読めないので、構成をそのまま保存します",
+                    object.GetSerializeKey(), prefab.guid, prefab.path);
+            }
+            data["prefab"] = Reflection::PropertySerializer::AssetRefToJson(prefab);
+        }
+
+        /// @brief プレハブの子の保存 JSON を、プレハブの子との差分の形にする
+        /// @note 根が無い・プレハブにその番号が無いものは、プレハブの子の印を書かずにそのまま残す。
+        void MakeChildInstanceJson(json& data, const GameObject& object, const PrefabSystem::InstanceIndex* index)
+        {
+            const GameObjectManager* const manager = object.GetObjectManager();
+            const GameObject* const root = manager ? PrefabSystem::FindInstanceRoot(*manager, object) : nullptr;
+            if (!root) {
+                return;
+            }
+
+            const Reflection::AssetRefValue prefab = root->GetPrefab().GetValue();
+            if (const PrefabSystem::PrefabContents* contents = PrefabSystem::Load(prefab)) {
+                // 子の名前と有効・無効は ResolveBase の前に写す（ResolveBase はプレハブを読み直しうる）
+                const PrefabSystem::PrefabChild* const child = PrefabSystem::FindChild(*contents, object.GetPrefabNode());
+                const std::string childName = child ? child->name : std::string{};
+                const bool childActive = child ? child->active : true;
+                const std::optional<PrefabSystem::PrefabContents> base =
+                    child ? PrefabSystem::ResolveBase(*manager, object, index) : std::nullopt;
+                if (!base) {
+                    Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource,
+                        "SceneSaveSystem: \"{}\" はプレハブ \"{}\" に無い子（番号 {}）なので、構成をそのまま保存します",
+                        object.GetSerializeKey(), prefab.path, object.GetPrefabNode());
+                    return;
+                }
+                data = PrefabSystem::MakeInstanceJson(data, *base);
+
+                // 名前と有効・無効は、プレハブと違うときだけ書く
+                if (object.GetName() == childName) {
+                    data.erase("name");
+                }
+                if (object.IsActive() == childActive) {
+                    data.erase("active");
+                }
+            } else {
+                Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource,
+                    "SceneSaveSystem: \"{}\" のプレハブ（GUID \"{}\" / パス \"{}\"）を読めないので、構成をそのまま保存します",
+                    object.GetSerializeKey(), prefab.guid, prefab.path);
+            }
+            data[PrefabSystem::kPrefabRootKey] = root->GetObjectId().ToString();
+            data[PrefabSystem::kPrefabNodeKey] = object.GetPrefabNode();
+        }
+
         /// @brief オブジェクト 1 体の保存 JSON を作る（プレハブから作ったものは差分の形にする）
-        json BuildObjectJson(const GameObject& object)
+        /// @param index シーンの置いた物の索引（無ければその組だけを調べる）
+        json BuildObjectJson(const GameObject& object, const PrefabSystem::InstanceIndex* index = nullptr)
         {
             json data = object.Serialize();
             if (data.empty()) {
@@ -401,21 +465,17 @@ namespace CoreEngine
             data["id"] = object.GetObjectId().ToString();
 
             if (object.IsPrefabInstance()) {
-                const Reflection::AssetRefValue prefab = object.GetPrefab().GetValue();
-                if (const PrefabSystem::PrefabContents* contents = PrefabSystem::Load(prefab)) {
-                    data = PrefabSystem::MakeInstanceJson(data, *contents);
-                } else {
-                    Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource,
-                        "SceneSaveSystem: \"{}\" のプレハブ（GUID \"{}\" / パス \"{}\"）を読めないので、構成をそのまま保存します",
-                        object.GetSerializeKey(), prefab.guid, prefab.path);
-                }
-                data["prefab"] = Reflection::PropertySerializer::AssetRefToJson(prefab);
+                MakeRootInstanceJson(data, object, index);
+            } else if (object.IsPrefabChild()) {
+                MakeChildInstanceJson(data, object, index);
             }
             return data;
         }
 
         /// @brief プレハブの値に保存された差分を重ねて、オブジェクトへ戻す
-        void RestorePrefabInstance(const std::string& sceneName, GameObject& object, const json& data)
+        /// @param ids その置いた物の、プレハブの中の番号 → ID（子を持たなければ nullptr）
+        void RestorePrefabInstance(const std::string& sceneName, GameObject& object, const json& data,
+                                   const PrefabSystem::NodeIdMap* ids)
         {
             const Reflection::AssetRefValue prefab = PrefabSystem::ReadPrefabRef(data);
             const PrefabSystem::PrefabContents* contents = PrefabSystem::Load(prefab);
@@ -425,9 +485,71 @@ namespace CoreEngine
                     sceneName, object.GetSerializeKey(), prefab.guid, prefab.path);
             }
 
+            // 中に参照を持つプレハブは、その組の ID へ付け替えた値に差分を重ねる
+            std::optional<PrefabSystem::PrefabContents> base;
+            if (contents && PrefabSystem::HasReferences(prefab)) {
+                PrefabSystem::NodeIdMap own;
+                if (!ids) {
+                    own.emplace(PrefabSystem::kRootNode, object.GetObjectId().ToString());
+                }
+                base = PrefabSystem::ResolveNode(*contents, PrefabSystem::kRootNode, ids ? *ids : own);
+            }
+
             std::vector<std::string> problems;
             object.SetPrefab(prefab);
-            object.Deserialize(PrefabSystem::ExpandInstanceJson(data, contents, &problems));
+            object.Deserialize(PrefabSystem::ExpandInstanceJson(data, base ? &*base : contents, &problems));
+            for (const std::string& problem : problems) {
+                Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource,
+                    "SceneSaveSystem: \"{}\" の {}: {}", sceneName, object.GetSerializeKey(), problem);
+            }
+        }
+
+        /// @brief 保存 JSON から文字列の値を読む（無い・文字列でなければ空）
+        std::string ReadString(const json& data, const char* key)
+        {
+            const auto found = data.find(key);
+            return (found != data.end() && found->is_string()) ? found->get<std::string>() : std::string();
+        }
+
+        /// @brief プレハブの子の値に保存された差分を重ねて、オブジェクトへ戻す
+        /// @param rootData 根の保存 JSON（見つからなければ nullptr）
+        /// @param ids その置いた物の、プレハブの中の番号 → ID（見つからなければ nullptr）
+        void RestorePrefabChild(const std::string& sceneName, GameObject& object, const json& data,
+                                const json* rootData, const PrefabSystem::NodeIdMap* ids)
+        {
+            const std::string rootId = ReadString(data, PrefabSystem::kPrefabRootKey);
+            const std::string node = ReadString(data, PrefabSystem::kPrefabNodeKey);
+
+            const Reflection::AssetRefValue prefab =
+                rootData ? PrefabSystem::ReadPrefabRef(*rootData) : Reflection::AssetRefValue{};
+            const PrefabSystem::PrefabContents* contents = PrefabSystem::Load(prefab);
+            const PrefabSystem::PrefabChild* const child = contents ? PrefabSystem::FindChild(*contents, node) : nullptr;
+            const std::optional<PrefabSystem::PrefabContents> base =
+                (child && ids) ? PrefabSystem::ResolveNode(*contents, node, *ids) : std::nullopt;
+            if (!base && !data.contains("components")) {
+                Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource,
+                    "SceneSaveSystem: \"{}\" の {} が属するプレハブの子（根 {} / 番号 {}）が見つからないので、足したコンポーネントだけで組みます",
+                    sceneName, object.GetSerializeKey(), rootId, node);
+            }
+
+            std::vector<std::string> problems;
+            json full = PrefabSystem::ExpandInstanceJson(data, base ? &*base : nullptr, &problems);
+
+            // 名前と有効・無効は、書いていなければプレハブの値
+            if (child) {
+                if (!full.contains("name")) {
+                    full["name"] = child->name;
+                }
+                if (!full.contains("active")) {
+                    full["active"] = child->active;
+                }
+            }
+
+            // 根のデータがあれば、プレハブを読めなくてもプレハブの子として扱う
+            if (rootData) {
+                object.SetPrefabChild(ObjectId::FromString(rootId), node);
+            }
+            object.Deserialize(full);
             for (const std::string& problem : problems) {
                 Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource,
                     "SceneSaveSystem: \"{}\" の {}: {}", sceneName, object.GetSerializeKey(), problem);
@@ -504,10 +626,22 @@ namespace CoreEngine
         /// @brief オブジェクト 1 体の保存 JSON からモデルを指す参照を探し、そのパスを重ならないように足す
         void CollectObjectModelRefs(const json& data, std::vector<std::string>& modelPaths)
         {
-            // プレハブから作るものはプレハブの値を重ねてから探す
+            // プレハブから作るものはプレハブの値を重ねてから探し、プレハブの子の分も足す
             if (data.contains("prefab")) {
-                const json expanded = PrefabSystem::ExpandInstanceJson(
-                    data, PrefabSystem::Load(PrefabSystem::ReadPrefabRef(data)));
+                const PrefabSystem::PrefabContents* const contents =
+                    PrefabSystem::Load(PrefabSystem::ReadPrefabRef(data));
+                const json expanded = PrefabSystem::ExpandInstanceJson(data, contents);
+                if (expanded.contains("components")) {
+                    CollectModelRefs(expanded.at("components"), modelPaths);
+                }
+                if (contents) {
+                    for (const PrefabSystem::PrefabChild& child : contents->children) {
+                        CollectModelRefs(child.components, modelPaths);
+                    }
+                }
+            } else if (data.contains(PrefabSystem::kPrefabRootKey)) {
+                // プレハブの子は、足したコンポーネントの分だけ探す
+                const json expanded = PrefabSystem::ExpandInstanceJson(data, nullptr);
                 if (expanded.contains("components")) {
                     CollectModelRefs(expanded.at("components"), modelPaths);
                 }
@@ -522,12 +656,13 @@ namespace CoreEngine
         void ForEachSavedObject(const GameObjectManager& mgr,
                                 const std::function<void(const std::string& key, json data)>& visitor)
         {
+            const PrefabSystem::InstanceIndex index = PrefabSystem::BuildInstanceIndex(mgr);
             for (const auto& obj : mgr.GetAllObjects()) {
                 if (!obj || obj->IsMarkedForDestroy() || !obj->IsSerializeEnabled()) continue;
                 const std::string& key = obj->GetSerializeKey();
                 if (key.empty()) continue;
 
-                json data = BuildObjectJson(*obj);
+                json data = BuildObjectJson(*obj, &index);
                 if (!data.empty()) {
                     visitor(key, std::move(data));
                 }
@@ -754,7 +889,16 @@ namespace CoreEngine
                     RestoreObjectId(*loadManager_, *pending.object, *data);
                 }
                 if (data->contains("prefab")) {
-                    RestorePrefabInstance(sceneName_, *pending.object, *data);
+                    const auto ids = loadNodeIds_.find(ReadString(*data, "id"));
+                    RestorePrefabInstance(sceneName_, *pending.object, *data,
+                        ids != loadNodeIds_.end() ? &ids->second : nullptr);
+                } else if (data->contains(PrefabSystem::kPrefabRootKey)) {
+                    const std::string rootId = ReadString(*data, PrefabSystem::kPrefabRootKey);
+                    const auto rootData = loadRootData_.find(rootId);
+                    const auto ids = loadNodeIds_.find(rootId);
+                    RestorePrefabChild(sceneName_, *pending.object, *data,
+                        rootData != loadRootData_.end() ? &rootData->second->data : nullptr,
+                        ids != loadNodeIds_.end() ? &ids->second : nullptr);
                 } else {
                     pending.object->Deserialize(*data);
                 }
@@ -777,6 +921,9 @@ namespace CoreEngine
         pendingObjects_.clear();
         loadIndex_ = 0;
         restoreSnapshot_.reset();
+        loadRootData_.clear();
+        loadNodeIds_.clear();
+        loadAddedChildren_.clear();
         return true;
     }
 
@@ -1125,6 +1272,9 @@ namespace CoreEngine
         restoredKeys_.clear();
         loadIndex_ = 0;
         loadManager_ = mgr;
+        loadRootData_.clear();
+        loadNodeIds_.clear();
+        loadAddedChildren_.clear();
 
         if (!mgr || (sceneName_.empty() && !restoreSnapshot_)) return;
 
@@ -1142,28 +1292,107 @@ namespace CoreEngine
             return nullptr;
         };
 
+        // プレハブの根と子を先に調べ、根の ID ごとに「プレハブの中の番号 → ID」をまとめる
+        for (const SceneSnapshot::Object& entry : restoreSnapshot_->objects) {
+            const json& data = entry.data;
+            const std::string id = ReadString(data, "id");
+            if (id.empty()) {
+                continue;
+            }
+            if (data.contains("prefab")) {
+                loadRootData_.emplace(id, &entry);
+                loadNodeIds_[id].emplace(PrefabSystem::kRootNode, id);
+            } else if (data.contains(PrefabSystem::kPrefabRootKey)) {
+                const std::string rootId = ReadString(data, PrefabSystem::kPrefabRootKey);
+                const std::string node = ReadString(data, PrefabSystem::kPrefabNodeKey);
+                if (!rootId.empty() && !node.empty()) {
+                    loadNodeIds_[rootId].emplace(node, id);
+                }
+            }
+        }
+
+        // 根のプレハブを読めて、その番号の子がプレハブに無いか
+        const auto isRemovedPrefabChild = [this](const json& data) {
+            const auto root = loadRootData_.find(ReadString(data, PrefabSystem::kPrefabRootKey));
+            if (root == loadRootData_.end()) {
+                return false;
+            }
+            const PrefabSystem::PrefabContents* const contents =
+                PrefabSystem::Load(PrefabSystem::ReadPrefabRef(root->second->data));
+            return contents && !PrefabSystem::FindChild(*contents, ReadString(data, PrefabSystem::kPrefabNodeKey));
+        };
+
+        // 控えの 1 件を置く（プレハブから消えた子で、読み込まないものは false）
         const auto placeDataObject =
-            [mgr, &findObjectBySerializeKey](const std::string& key, const json& data) {
+            [this, mgr, &findObjectBySerializeKey, &isRemovedPrefabChild](const std::string& key, const json& data) {
                 // 既にシーン側が同じキーで生成済みなら保存データからは作らない
                 if (findObjectBySerializeKey(key)) {
-                    return;
+                    return true;
+                }
+
+                const bool hasComponents = data.contains("components") && data["components"].is_array();
+                const bool isPrefabChild = data.contains(PrefabSystem::kPrefabRootKey);
+
+                // プレハブから消えた子は置かない（構成を持つものは残す）
+                if (isPrefabChild && !hasComponents && isRemovedPrefabChild(data)) {
+                    Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::Resource,
+                        "SceneSaveSystem: \"{}\" の {} は、プレハブから消えた子（番号 {}）なので読み込みません（次に保存するときに消します）",
+                        sceneName_, key, ReadString(data, PrefabSystem::kPrefabNodeKey));
+                    return false;
                 }
 
                 // プレハブから作るものと、コンポーネントの構成を持つものは空のオブジェクトだけを置き、
                 // 構成は復元時に組む
-                if (data.contains("prefab") ||
-                    (data.contains("components") && data["components"].is_array())) {
+                if (data.contains("prefab") || isPrefabChild || hasComponents) {
                     auto obj = std::make_unique<GameObject>();
                     obj->SetName(key);
                     mgr->AddObject(std::move(obj));
                 }
+                return true;
             };
 
-        // キーから控えの値を引けるようにし、控えの並びどおりにオブジェクトを置く
+        // キーから控えの値を引けるようにし、控えの並びどおりにオブジェクトを置く（読み込まない子は引けなくする）
         std::unordered_map<std::string, const json*> snapshotData;
         for (const SceneSnapshot::Object& entry : restoreSnapshot_->objects) {
-            snapshotData.emplace(entry.key, &entry.data);
-            placeDataObject(entry.key, entry.data);
+            if (placeDataObject(entry.key, entry.data)) {
+                snapshotData.emplace(entry.key, &entry.data);
+            }
+        }
+
+        // プレハブにあるのに保存データに無い子を、根の並びの順に足す
+        for (const SceneSnapshot::Object& entry : restoreSnapshot_->objects) {
+            const std::string rootId = ReadString(entry.data, "id");
+            if (rootId.empty() || !entry.data.contains("prefab")) {
+                continue;
+            }
+            const PrefabSystem::PrefabContents* const contents =
+                PrefabSystem::Load(PrefabSystem::ReadPrefabRef(entry.data));
+            if (!contents) {
+                continue;
+            }
+
+            auto& ids = loadNodeIds_[rootId];
+            for (const PrefabSystem::PrefabChild& child : contents->children) {
+                if (ids.contains(child.node)) {
+                    continue;
+                }
+                auto obj = std::make_unique<GameObject>();
+                obj->SetSerializeKey(entry.key + "_" + child.name);
+                obj->SetName(child.name);
+                const GameObject* const added = mgr->AddObject(std::move(obj));
+                ids.emplace(child.node, added->GetObjectId().ToString());
+
+                json data = json::object();
+                data[PrefabSystem::kPrefabRootKey] = rootId;
+                data[PrefabSystem::kPrefabNodeKey] = child.node;
+                const SceneSnapshot::Object& addedEntry = loadAddedChildren_.emplace_back(
+                    SceneSnapshot::Object{ added->GetSerializeKey(), std::move(data) });
+                snapshotData.emplace(addedEntry.key, &addedEntry.data);
+
+                Logger::GetInstance().Logf(LogLevel::Info, LogCategory::Resource,
+                    "SceneSaveSystem: \"{}\" の {} に、プレハブへ足された子 \"{}\" を置きました",
+                    sceneName_, entry.key, child.name);
+            }
         }
 
         // 復元対象を確定させる（実際のデシリアライズは StepLoad が 1 体ずつ行う）

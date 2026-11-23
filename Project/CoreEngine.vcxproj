@@ -656,6 +656,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Editor\Scene\SceneNameList.cpp" />
     <ClCompile Include="Engine\Src\Editor\Scene\SceneOpenUI.cpp" />
     <ClCompile Include="Engine\Src\Scene\PrefabSystem.cpp" />
+    <ClCompile Include="Engine\Src\Scene\SceneHierarchy.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneEnvironmentIO.cpp" />
     <ClCompile Include="Engine\Src\Scene\Environment\WindCVars.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneSaveSystem.cpp" />
@@ -2051,6 +2052,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Editor\Scene\SceneNameList.h" />
     <ClInclude Include="Engine\Src\Editor\Scene\SceneOpenUI.h" />
     <ClInclude Include="Engine\Src\Scene\PrefabSystem.h" />
+    <ClInclude Include="Engine\Src\Scene\SceneHierarchy.h" />
     <ClInclude Include="Engine\Src\Scene\SceneEnvironmentIO.h" />
     <ClInclude Include="Engine\Src\Scene\Environment\WindCVars.h" />
     <ClInclude Include="Engine\Src\Scene\SceneSaveSystem.h" />

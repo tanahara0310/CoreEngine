@@ -12,6 +12,8 @@
 #include <string_view>
 #include <type_traits>
 #include <unordered_map>
+#include <unordered_set>
+#include <utility>
 
 // Forward declaration
 namespace CoreEngine {
@@ -58,16 +60,13 @@ namespace CoreEngine
 
         /// @brief 全オブジェクトをRenderManagerに登録して描画
         /// @param renderManager レンダーマネージャー
-        /// @note 1 体だけを見せている間は、その 1 体と空（SkyBox）だけを登録する。
+        /// @note 一部だけを見せている間は、そのオブジェクトと空（SkyBox）だけを登録する。
         void RegisterAllToRender(CoreEngine::RenderManager* renderManager);
 
-        /// @brief この 1 体だけを描き、エディタで選べるようにする（無効な ID を渡すと元に戻す）
-        void SetIsolatedObject(ObjectId id) noexcept { isolatedObject_ = id; }
+        /// @brief このオブジェクトだけを描き、エディタで選べるようにする（空を渡すと元に戻す）
+        void SetIsolatedObjects(std::unordered_set<ObjectId> ids) { isolatedObjects_ = std::move(ids); }
 
-        /// @brief 1 体だけを見せているときのその ID（見せていなければ無効な ID）
-        ObjectId GetIsolatedObject() const noexcept { return isolatedObject_; }
-
-        /// @brief 1 体だけを見せている間も見せるオブジェクトか（見せていなければ全部 true）
+        /// @brief 一部だけを見せている間も見せるオブジェクトか（見せていなければ全部 true）
         bool IsShownInIsolation(const GameObject& object) const;
 
         /// @brief フレーム終了時に削除マークされたオブジェクトを破棄
@@ -196,8 +195,8 @@ namespace CoreEngine
         /// @brief `GetReferenceEpoch()` の実体
         std::uint64_t referenceEpoch_ = 1;
 
-        /// @brief 1 体だけを見せているときのその ID
-        ObjectId isolatedObject_{};
+        /// @brief 一部だけを見せているときの、見せるオブジェクトの ID（空なら全部見せる）
+        std::unordered_set<ObjectId> isolatedObjects_;
 
         /// @brief 保存キーが既出なら連番を足して重複を解く
         /// @note 同じ名前で作られたオブジェクト（`CreateObject("Sphere")` を 49 回など）は

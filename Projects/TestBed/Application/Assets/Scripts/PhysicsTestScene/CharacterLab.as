@@ -5,11 +5,8 @@ using namespace CoreEngine;
 [DisplayName("物理テスト：歩行")]
 class CharacterLab : ScriptComponent
 {
-    [Asset("Prefab")] [Tooltip("当たりと操作を持つキャラ本体")]
+    [Asset("Prefab")] [Tooltip("当たりと操作を持つキャラ本体。見た目の人型は子の Model")]
     string characterPrefab = "Application/Assets/Prefabs/Physics/Character.prefab";
-
-    [Asset("Prefab")] [Tooltip("見た目の人型（キャラの子にする）")]
-    string humanPrefab = "Application/Assets/Prefabs/Physics/HumanModel.prefab";
 
     [Asset("Prefab")] [Tooltip("床・段差・壁に使う板")]
     string platformPrefab = "Application/Assets/Prefabs/Physics/PhysicsPlatform.prefab";
@@ -27,7 +24,6 @@ class CharacterLab : ScriptComponent
     Vector3 areaCenter = Vector3(34.0f, 0.0f, 0.0f);
 
     private GameObject@ character_;
-    private GameObject@ model_;
     private CharacterController@ controller_;
     private array<GameObject@> mapParts_;
     private Text3DRenderer@ statusText_;
@@ -129,6 +125,7 @@ class CharacterLab : ScriptComponent
 
     // ===== キャラ =====
 
+    // 当たりは根のカプセルだけが持ち、見た目の人型はプレハブの子 Model として一緒に出る
     private void SpawnCharacter()
     {
         @character_ = owner.InstantiatePrefab(characterPrefab, "Player");
@@ -139,13 +136,6 @@ class CharacterLab : ScriptComponent
         character_.transform.position = areaCenter + Vector3(0.0f, 1.0f, 0.0f);
         character_.transform.rotation = Vector3(0.0f, cameraYaw_, 0.0f);   // カメラへ背を向ける
         character_.GetComponent(@controller_);
-
-        // 見た目は子にする。当たりは親のカプセルだけが持つ
-        @model_ = owner.InstantiatePrefab(humanPrefab, "PlayerModel");
-        if (model_ !is null) {
-            model_.transform.SetParent(character_.transform);
-            model_.transform.position = Vector3(0.0f, -0.9f, 0.0f);
-        }
     }
 
     // ===== 操作 =====

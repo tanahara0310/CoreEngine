@@ -22,6 +22,7 @@
 #include "GameObject/Component/Transform/ITransformSource.h"
 #include "Scene/Scene.h"
 #include "Scene/PrefabSystem.h"
+#include "Scene/SceneHierarchy.h"
 #include "Scene/SceneManager.h"
 #include "Scene/SceneSaveSystem.h"
 #include "UI/RectTransformComponent.h"
@@ -687,15 +688,7 @@ namespace CoreEngine
 
     GameObject* SceneDebugEditor::FindHierarchyParent(const GameObject& object)
     {
-        if (const TransformComponent* const transform = object.GetComponent<TransformComponent>()) {
-            const TransformComponent* const parent = transform->GetParent();
-            return parent ? parent->GetOwner() : nullptr;
-        }
-        if (const RectTransformComponent* const rect = object.GetComponent<RectTransformComponent>()) {
-            const RectTransformComponent* const parent = rect->GetParent();
-            return parent ? parent->GetOwner() : nullptr;
-        }
-        return nullptr;
+        return SceneHierarchy::FindParent(object);
     }
 
     bool SceneDebugEditor::IsAncestorOf(const GameObject& object, const GameObject& descendant) const
@@ -747,6 +740,8 @@ namespace CoreEngine
 
         const bool isSelected = objectSelector_.GetSelectedObject() == &object;
         const bool isPrefab = object.IsPrefabInstance();
+        const bool isPrefabChild = !isPrefab && object.IsPrefabChild() && gameObjectManager_ &&
+            PrefabSystem::FindInstanceRoot(*gameObjectManager_, object) != nullptr;
         const ComponentFactory& factory = ComponentFactory::Get();
         const bool hasScript = std::any_of(object.GetAllComponents().begin(), object.GetAllComponents().end(),
             [&factory](const auto& component) {
@@ -806,9 +801,9 @@ namespace CoreEngine
             textColor = glyphColor = Theme::kTextMute;
         }
 
-        // 種類の記号（プレハブから作ったものは ◈）
+        // 種類の記号（プレハブから作ったものは ◈。プレハブの子は色を付けない ◈）
         ImDrawList* const drawList = ImGui::GetWindowDrawList();
-        const char* const glyph = isPrefab ? "◈" : "◆";
+        const char* const glyph = (isPrefab || isPrefabChild) ? "◈" : "◆";
         // 矢印の分だけ右へずらす（子の有無で名前の頭がずれないように）
         const ImVec2 glyphPos(rowMin.x + ImGui::GetTreeNodeToLabelSpacing(), rowMin.y);
         drawList->AddText(glyphPos, ImGui::GetColorU32(glyphColor), glyph);
@@ -1099,7 +1094,12 @@ namespace CoreEngine
         if (!gameObjectManager_ || !selected) {
             return false;
         }
-        return ObjectEditing::Delete(MakeObjectEditingContext(), *selected);
+        std::string reason;
+        if (!ObjectEditing::CanDelete(*selected, &reason)) {
+            ShowSaveNotification(reason);
+            return false;
+        }
+        return ObjectEditing::DeleteWithDescendants(MakeObjectEditingContext(), *selected);
     }
 
     void SceneDebugEditor::HandleSelectionShortcuts()
@@ -1218,9 +1218,9 @@ namespace CoreEngine
             return;
         }
 
+        // 根と子を置く（戻すと消し、やり直すと同じ ID と状態で置き直す）
         const Reflection::AssetRefValue prefab{ info->guid, ToAssetPath(*info) };
-        GameObject* placed = PrefabSystem::Instantiate(*gameObjectManager_, prefab, info->name,
-            ObjectEditing::MakeNewObjectKey(info->name));
+        GameObject* const placed = ObjectEditing::InstantiatePrefab(MakeObjectEditingContext(), prefab, info->name);
         if (!placed) {
             Logger::GetInstance().Logf(LogLevel::Error, LogCategory::System,
                 "プレハブからオブジェクトを作れませんでした: {}", prefab.path);
@@ -1232,34 +1232,8 @@ namespace CoreEngine
         }
         objectSelector_.SelectObject(placed);
 
-        // 置いた操作を Undo 履歴に記録する（戻すと消し、やり直すと同じ ID と状態で置き直す）
-        const ObjectId id = placed->GetObjectId();
-        const std::string name = placed->GetName();
-        const std::string key = placed->GetSerializeKey();
-        const json state = placed->Serialize();
-        Editor::EditorCommandStack::Get().Push(std::make_unique<Editor::FunctionCommand>(
-            name + " の配置",
-            [id] {
-                GameObjectManager* const manager = Editor::SceneAccess::Objects();
-                if (GameObject* const target = manager ? manager->FindObject(id) : nullptr) {
-                    Editor::SceneAccess::Deselect(*target);
-                    target->Destroy();
-                    manager->InvalidateReferences();
-                }
-            },
-            [prefab, name, key, state, id] {
-                GameObjectManager* const manager = Editor::SceneAccess::Objects();
-                if (GameObject* const target = manager ? PrefabSystem::Instantiate(*manager, prefab, name) : nullptr) {
-                    target->SetSerializeKey(key);
-                    manager->AssignObjectId(*target, id);
-                    target->Deserialize(state);
-                    manager->InvalidateReferences();
-                }
-            },
-            true, true));
-
         Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,
-            "プレハブを置きました: {}（{}）", name, prefab.path);
+            "プレハブを置きました: {}（{}）", placed->GetName(), prefab.path);
     }
 
     Vector3 SceneDebugEditor::ComputeDropPosition(const Vector2* normalizedDropPos) const
@@ -1321,18 +1295,25 @@ namespace CoreEngine
             return;
         }
 
-        if (object.IsPrefabInstance()) {
-            ImGui::TextDisabled("%s", object.GetPrefab().GetPath().c_str());
+        // プレハブの子を選んでいても、プレハブの操作は根に対して働く
+        GameObject* const instanceRoot = gameObjectManager_
+            ? PrefabSystem::FindInstanceRoot(*gameObjectManager_, object) : nullptr;
+        if (instanceRoot) {
+            ImGui::TextDisabled("%s", instanceRoot->GetPrefab().GetPath().c_str());
+            if (instanceRoot != &object) {
+                ImGui::TextDisabled("%s の子", instanceRoot->GetDisplayName());
+            }
             ImGui::Separator();
-            const AssetInfo* const prefabInfo = AssetDatabase::GetInstance().FindAssetByGUID(object.GetPrefab().GetGuid());
+            const AssetInfo* const prefabInfo =
+                AssetDatabase::GetInstance().FindAssetByGUID(instanceRoot->GetPrefab().GetGuid());
             if (ImGui::MenuItem("プレハブを開く", nullptr, false, prefabInfo != nullptr)) {
                 OpenPrefabMode(*prefabInfo);
             }
             if (ImGui::MenuItem("プレハブへ適用")) {
-                ApplyToPrefab(object);
+                ApplyToPrefab(*instanceRoot);
             }
             if (ImGui::MenuItem("プレハブとのつながりを外す")) {
-                PrefabEditing::Unlink(object);
+                PrefabEditing::Unlink(*instanceRoot);
             }
         } else {
             if (ImGui::MenuItem("プレハブとして保存")) {

@@ -1,0 +1,33 @@
+{
+    "active": true,
+    "components": [
+        {
+            "enabled": true,
+            "parameters": {
+                "parent": {
+                    "comp": "Transform",
+                    "ref": "5583eac0eb3b238b"
+                },
+                "rotate": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0.0,
+                    0.0,
+                    1.3508329
+                ]
+            },
+            "type": "Transform"
+        }
+    ],
+    "id": "36d451c2164c28a7",
+    "name": "Antenna",
+    "order": 10
+}

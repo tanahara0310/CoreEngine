@@ -233,7 +233,7 @@ namespace CoreEngine
     }
 
     bool GameObjectManager::IsShownInIsolation(const GameObject& object) const {
-        return !isolatedObject_.IsValid() || object.GetObjectId() == isolatedObject_;
+        return isolatedObjects_.empty() || isolatedObjects_.contains(object.GetObjectId());
     }
 
     void GameObjectManager::CleanupDestroyed() {

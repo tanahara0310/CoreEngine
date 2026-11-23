@@ -9,6 +9,7 @@
 #include "Scene/PrefabSystem.h"
 
 #include <string>
+#include <unordered_map>
 
 namespace CoreEngine
 {
@@ -21,8 +22,8 @@ namespace CoreEngine
 namespace CoreEngine::Editor
 {
     /// @brief プレハブだけを開いて直すモード
-    /// @details シーンにプレハブの中身を 1 体置き、ほかのオブジェクトを描かず選べなくして、その 1 体だけを直す。
-    ///          置いた 1 体はシーンに保存しない。直した値は編集が止まるたびにプレハブへ書き戻す（自動保存）。
+    /// @details シーンにプレハブの根と子を置き、ほかのオブジェクトを描かず選べなくして、その組だけを直す。
+    ///          置いた組はシーンに保存しない。直した値は編集が止まるたびにプレハブへ書き戻す（自動保存）。
     ///          開いている間の Undo は別の履歴に積み、閉じるとシーンの履歴へ戻して「プレハブを編集」を 1 件足す。
     class PrefabMode
     {
@@ -31,28 +32,31 @@ namespace CoreEngine::Editor
         bool IsOpen() const noexcept { return objectId_.IsValid(); }
 
         /// @brief プレハブを開く
-        /// @return 開いたら、置いた 1 体（開けなければ nullptr）
+        /// @return 開いたら、置いた根（開けなければ nullptr）
         GameObject* Open(GameObjectManager& manager, CameraManager* cameras, const AssetInfo& prefab);
 
         /// @brief 書き戻してから閉じ、シーンの表示・カメラ・履歴を開く前へ戻す
         void Close(GameObjectManager& manager, CameraManager* cameras);
 
         /// @brief 編集が止まっていて中身が変わっていれば、プレハブへ書き戻す
-        /// @return 置いた 1 体が無くなっていれば false（呼ぶ側が閉じる）
+        /// @return 置いた根が無くなっていれば false（呼ぶ側が閉じる）
         bool Update(GameObjectManager& manager);
 
-        /// @brief 置いた 1 体（開いていなければ nullptr）
+        /// @brief 置いた根（開いていなければ nullptr）
         GameObject* GetObject(const GameObjectManager& manager) const;
 
         /// @brief 開いているプレハブのファイル名（例 "Box.prefab"）
         const std::string& GetFileName() const noexcept { return fileName_; }
 
     private:
-        /// @brief 置いた 1 体の今の中身をプレハブへ書き戻す（変わっていなければ書かない）
+        /// @brief 置いた根と子の今の中身をプレハブへ書き戻す（変わっていなければ書かない）
         void Flush(GameObjectManager& manager, const GameObject& object);
 
-        /// 置いた 1 体の ID
+        /// 置いた根の ID
         ObjectId objectId_{};
+
+        /// 置いた子の ID → プレハブの中の番号
+        std::unordered_map<ObjectId, std::string> nodes_;
 
         /// 開いているプレハブ
         Reflection::AssetRefValue prefab_{};
@@ -64,6 +68,9 @@ namespace CoreEngine::Editor
 
         /// 開いてから 1 回でも書き戻したか
         bool edited_ = false;
+
+        /// 子が組から外れていて書き戻さないことを、ログに出したか
+        bool detachedWarned_ = false;
 
         /// 開く前のシーンの履歴
         EditorCommandStack::History sceneHistory_;

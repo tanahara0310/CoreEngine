@@ -7,11 +7,17 @@
 #include <functional>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace CoreEngine
 {
     class GameObject;
     class GameObjectManager;
+
+    namespace Reflection
+    {
+        struct AssetRefValue;
+    }
 
     /// @brief エディタからオブジェクトを作る・複製する・消す・名前と有効を変える操作（どれも Undo に積む）
     namespace ObjectEditing
@@ -36,6 +42,10 @@ namespace CoreEngine
         /// @note 保存形から作り直せるものだけを扱う。コードが付けたコンポーネントを持つものは、
         ///       コードが作ったオブジェクトとみなして扱わない。
         bool CanDuplicateOrDelete(const GameObject& object, std::string* reason = nullptr);
+
+        /// @brief 複製・プレハブへの保存の対象になる子孫を集める（root は含めない。親が子より先）
+        /// @note 複製・削除できない物と、その子孫は入れない。
+        std::vector<GameObject*> CollectRestorableDescendants(const GameObjectManager& manager, const GameObject& root);
 
         /// @brief 作る UI の種類
         enum class UIElementKind
@@ -69,6 +79,11 @@ namespace CoreEngine
         /// @return 作ったオブジェクト（プレハブを読めなければ nullptr）
         GameObject* InstantiatePrefab(const Context& context, const std::string& prefabPath, const std::string& name);
 
+        /// @brief プレハブから根と子を作り、まとめて 1 回の Undo にする
+        /// @return 作った根（プレハブを読めなければ nullptr）
+        GameObject* InstantiatePrefab(const Context& context, const Reflection::AssetRefValue& prefab,
+                                      const std::string& name);
+
         /// @brief Transform とパーティクルを持つオブジェクトを作る
         /// @return 作ったオブジェクト（作れなければ nullptr）
         GameObject* CreateParticle(const Context& context, ParticleKind kind, const Vector3& position);
@@ -100,18 +115,22 @@ namespace CoreEngine
         /// @return 付け替えたら true
         bool SetUIParent(GameObject& child, GameObject* parent);
 
-        /// @brief オブジェクトを複製する
+        /// @brief オブジェクトを、Transform と UI トランスフォームの子孫ごと複製する（1 回の Undo で消える）
         /// @details 名前は「名前 (1)」にし、位置は 3D なら X へ 1、UI なら右下へ 10px ずらす。
+        ///          複製の中で互いを指す参照は複製どうしへ付け替える。プレハブの根は同じプレハブの根として、
+        ///          プレハブの子は根も一緒に複製したときだけプレハブの子として複製する。
         /// @return 複製したオブジェクト（複製できなければ nullptr）
         GameObject* Duplicate(const Context& context, const GameObject& source);
 
-        /// @brief オブジェクトを消す
-        /// @return 消したら true
-        /// @note Undo で、同じ ID・保存キー・値のオブジェクトを作り直す。
-        bool Delete(const Context& context, GameObject& object);
+        /// @brief 削除できるか
+        /// @param reason できないときの理由を書く先（要らなければ nullptr）
+        /// @note `CanDuplicateOrDelete` に加えて、置いた物の中のプレハブの子は消せない。
+        bool CanDelete(const GameObject& object, std::string* reason = nullptr);
 
         /// @brief オブジェクトを、Transform と UI トランスフォームの子孫ごと消す（1 回の Undo で戻る）
-        /// @return 消したら true（消せないものが 1 つでもあれば何も消さない）
+        /// @return 消したら true
+        /// @note Undo で、同じ ID・保存キー・値のオブジェクトを作り直す。
+        ///       作り直せない子孫（保存しないもの・コードが作ったもの）は、Undo で戻らない。
         bool DeleteWithDescendants(const Context& context, GameObject& object);
 
         /// @brief 名前を after にし、before からの変更として Undo に積む

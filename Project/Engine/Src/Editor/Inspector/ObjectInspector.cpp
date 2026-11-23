@@ -64,12 +64,43 @@ namespace CoreEngine::Editor::ObjectInspector
             return name;
         }
 
+        /// @brief 置いた物の 1 体が見比べる相手（プレハブの根か子）
+        struct PrefabBase
+        {
+            /// 属する置いた物の根（プレハブの根でも子でもなければ nullptr）
+            GameObject* root = nullptr;
+
+            /// 見比べるタグと構成（プレハブを読めない・その番号がプレハブに無ければ nullptr）
+            const PrefabSystem::PrefabContents* contents = nullptr;
+
+            /// 中の参照をその組の ID へ付け替えた中身の置き場
+            std::optional<PrefabSystem::PrefabContents> resolved;
+        };
+
+        /// @brief オブジェクトが見比べる相手を探す
+        void FindPrefabBase(const GameObject& object, PrefabBase& base)
+        {
+            const GameObjectManager* const manager = object.GetObjectManager();
+            base.root = manager ? PrefabSystem::FindInstanceRoot(*manager, object) : nullptr;
+            if (!base.root) {
+                return;
+            }
+
+            // 中に参照を持たないプレハブの根は、読み込んだ中身をそのまま見比べる
+            const Reflection::AssetRefValue prefab = base.root->GetPrefab().GetValue();
+            if (base.root == &object && !PrefabSystem::HasReferences(prefab)) {
+                base.contents = PrefabSystem::Load(prefab);
+                return;
+            }
+            base.resolved = PrefabSystem::ResolveBase(*manager, object);
+            base.contents = base.resolved ? &*base.resolved : nullptr;
+        }
+
         /// @brief タグの行を描く（プレハブから作ったもので、プレハブと違えば左端に線を引く）
         /// @return 値が変更されたら true
-        bool DrawTagRow(GameObject& object)
+        bool DrawTagRow(GameObject& object, const PrefabBase& base)
         {
-            const PrefabSystem::PrefabContents* const prefab = object.IsPrefabInstance()
-                ? PrefabSystem::Load(object.GetPrefab().GetValue()) : nullptr;
+            const PrefabSystem::PrefabContents* const prefab = base.contents;
             const bool overridden = prefab && prefab->tag != object.GetTag();
 
             const ImVec2 rowStart = ImGui::GetCursorScreenPos();
@@ -104,7 +135,7 @@ namespace CoreEngine::Editor::ObjectInspector
 
         /// @brief 先頭の行（種類の記号・有効・名前・⋮）と、タグとプレハブの行を描く
         /// @return 値が変更されたら true
-        bool DrawHeader(GameObject& object, const Callbacks& callbacks)
+        bool DrawHeader(GameObject& object, const Callbacks& callbacks, const PrefabBase& base)
         {
             bool changed = false;
             const ImGuiStyle& style = ImGui::GetStyle();
@@ -163,28 +194,32 @@ namespace CoreEngine::Editor::ObjectInspector
                 ImGui::EndPopup();
             }
 
-            changed |= DrawTagRow(object);
+            changed |= DrawTagRow(object, base);
 
-            // プレハブから作ったものは、元のプレハブを参照の欄で出す
-            if (object.IsPrefabInstance()) {
-                const std::string path = object.GetPrefab().GetPath();
+            // プレハブから作ったものは、元のプレハブを参照の欄で出す（プレハブの子は、根のプレハブと根の名前）
+            if (GameObject* const root = base.root) {
+                const bool isChild = root != &object;
+                const std::string path = root->GetPrefab().GetPath();
+                const std::string detail = isChild
+                    ? std::string(root->GetDisplayName()) + " の子"
+                    : InspectorLayout::ShortId(root->GetPrefab().GetGuid());
                 const bool labelHovered = InspectorLayout::BeginRow("Prefab", Theme::kTextDim, kPrefabMenuId);
                 const bool fieldHovered = InspectorLayout::ReferenceField(
-                    InspectorLayout::AssetGlyph(AssetType::Prefab), StemOf(path).c_str(),
-                    InspectorLayout::ShortId(object.GetPrefab().GetGuid()).c_str());
+                    InspectorLayout::AssetGlyph(AssetType::Prefab), StemOf(path).c_str(), detail.c_str());
                 ImGui::OpenPopupOnItemClick(kPrefabMenuId, ImGuiPopupFlags_MouseButtonRight);
                 if (labelHovered || fieldHovered) {
-                    ImGui::SetTooltip("%s\n右クリックでプレハブの操作", path.c_str());
+                    ImGui::SetTooltip(isChild ? "%s\n右クリックでプレハブの操作（根に対して働きます）"
+                                              : "%s\n右クリックでプレハブの操作", path.c_str());
                 }
                 if (ImGui::BeginPopup(kPrefabMenuId)) {
                     ImGui::TextDisabled("%s", path.c_str());
                     ImGui::Separator();
                     GameObjectManager* const manager = object.GetObjectManager();
                     if (ImGui::MenuItem("プレハブへ適用", nullptr, false, manager != nullptr)) {
-                        PrefabEditing::ApplyObject(*manager, object);
+                        PrefabEditing::ApplyObject(*manager, *root);
                     }
                     if (ImGui::MenuItem("プレハブとのつながりを外す")) {
-                        PrefabEditing::Unlink(object);
+                        PrefabEditing::Unlink(*root);
                     }
                     ImGui::EndPopup();
                 }
@@ -195,7 +230,8 @@ namespace CoreEngine::Editor::ObjectInspector
         /// @brief コンポーネント 1 個のセクション（見出しと中身）を描く
         /// @param removeRequest 「外す」が選ばれたら、そのコンポーネントを書く先（選ばれなければ書かない）
         /// @return 値が変更されたら true
-        bool DrawComponentSection(GameObject& object, IComponent& component, IComponent*& removeRequest)
+        bool DrawComponentSection(GameObject& object, IComponent& component, IComponent*& removeRequest,
+                                  const PrefabBase& base)
         {
             bool changed = false;
             ImGui::PushID(&component);
@@ -242,11 +278,19 @@ namespace CoreEngine::Editor::ObjectInspector
                     };
                 context.defaultParameters = factory.GetDefaultParameters(typeName);
 
+                // プレハブの中の親子は、置いた物では付け替えさせない
+                if (base.root && base.root != &object) {
+                    context.isLocked = [](const Reflection::PropertyDescriptor& property) {
+                        return property.type == Reflection::PropertyType::ObjectRef && property.name == "parent";
+                        };
+                    context.lockedReason = "プレハブの中の親子は、置いた物では変えられません。\nつながりを外すか、プレハブモードで直します";
+                }
+
                 // プレハブから作ったオブジェクトは、プレハブでのこのコンポーネントの値と見比べる
-                if (object.IsPrefabInstance()) {
-                    const json* const prefabComponents = PrefabSystem::LoadComponents(object.GetPrefab().GetValue());
-                    const std::optional<std::size_t> prefabIndex = prefabComponents
-                        ? PrefabSystem::FindComponentIndex(*prefabComponents, object, *raw) : std::nullopt;
+                if (base.contents) {
+                    const json* const prefabComponents = &base.contents->components;
+                    const std::optional<std::size_t> prefabIndex =
+                        PrefabSystem::FindComponentIndex(*prefabComponents, object, *raw);
                     if (prefabIndex) {
                         const json& entry = (*prefabComponents)[*prefabIndex];
                         prefabParameters = (entry.contains("parameters") && entry.at("parameters").is_object())
@@ -343,7 +387,11 @@ namespace CoreEngine::Editor::ObjectInspector
             ImGui::PushStyleColor(ImGuiCol_Text, Theme::kError);
         }
 
-        changed |= DrawHeader(object, callbacks);
+        // プレハブの根か子なら、見比べる相手を 1 回だけ探す
+        PrefabBase prefabBase;
+        FindPrefabBase(object, prefabBase);
+
+        changed |= DrawHeader(object, callbacks, prefabBase);
         ImGui::Spacing();
 
         // コンポーネントのセクション（トランスフォーム系を先頭に並べる。外すのは全部を描き終えてから行う）
@@ -354,7 +402,7 @@ namespace CoreEngine::Editor::ObjectInspector
                     continue;
                 }
                 if (ComponentInspectors::IsShownFirst(*component) == firstPass) {
-                    changed |= DrawComponentSection(object, *component, removeRequest);
+                    changed |= DrawComponentSection(object, *component, removeRequest, prefabBase);
                 }
             }
         }

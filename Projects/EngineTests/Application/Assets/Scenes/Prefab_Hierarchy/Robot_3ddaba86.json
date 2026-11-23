@@ -1,0 +1,17 @@
+{
+    "active": true,
+    "id": "5583eac0eb3b238b",
+    "name": "Robot_B",
+    "order": 7,
+    "overrides": {
+        "Transform.translate": [
+            1.6782044,
+            0.0,
+            0.7404909
+        ]
+    },
+    "prefab": {
+        "guid": "d95217ac-c1ce-950d-4dad-73e7b7713711",
+        "path": "Application/Assets/Prefabs/Robot.prefab"
+    }
+}

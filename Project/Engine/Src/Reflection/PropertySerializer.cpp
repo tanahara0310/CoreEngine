@@ -345,4 +345,50 @@ namespace CoreEngine::Reflection
         WriteComponentVersion(entry, type.version);
         return true;
     }
+
+    void PropertySerializer::RemapObjectRefs(json& node, const std::unordered_map<std::string, std::string>& ids,
+                                             bool clearUnmapped)
+    {
+        if (node.is_object()) {
+            const auto ref = node.find("ref");
+            if (ref != node.end() && ref->is_string()) {
+                const auto found = ids.find(ref->get_ref<const std::string&>());
+                if (found != ids.end()) {
+                    *ref = found->second;
+                } else if (clearUnmapped) {
+                    node = nullptr;
+                }
+                return;
+            }
+            for (auto& item : node.items()) {
+                RemapObjectRefs(item.value(), ids, clearUnmapped);
+            }
+        } else if (node.is_array()) {
+            for (json& element : node) {
+                RemapObjectRefs(element, ids, clearUnmapped);
+            }
+        }
+    }
+
+    bool PropertySerializer::ContainsObjectRef(const json& node)
+    {
+        if (node.is_object()) {
+            const auto ref = node.find("ref");
+            if (ref != node.end() && ref->is_string()) {
+                return true;
+            }
+            for (const auto& item : node.items()) {
+                if (ContainsObjectRef(item.value())) {
+                    return true;
+                }
+            }
+        } else if (node.is_array()) {
+            for (const json& element : node) {
+                if (ContainsObjectRef(element)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 }

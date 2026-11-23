@@ -13,6 +13,7 @@
 #include "GameObject/Component/Core/ComponentFactory.h"
 #include "GameObject/GameObject.h"
 #include "GameObject/GameObjectManager.h"
+#include "Scene/PrefabSystem.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/String/ContainsIgnoreCase.h"
 #include "Utility/String/FailWith.h"
@@ -326,6 +327,17 @@ namespace CoreEngine::ComponentEditing
         if (component.IsAttachedByCode()) {
             if (reason) {
                 *reason = "コードが付けたコンポーネントは外せません（外して保存しても、次の起動でコードが付け直します）";
+            }
+            return false;
+        }
+
+        // 置いた物の中のプレハブの子は、親を持つトランスフォームを外させない
+        const std::string_view typeName = component.GetTypeName();
+        const GameObjectManager* const manager = object.GetObjectManager();
+        if ((typeName == "Transform" || typeName == "RectTransform") &&
+            manager && object.IsPrefabChild() && PrefabSystem::FindInstanceRoot(*manager, object)) {
+            if (reason) {
+                *reason = "プレハブの子の親はこのコンポーネントが持つので外せません。つながりを外すか、プレハブモードで直します";
             }
             return false;
         }

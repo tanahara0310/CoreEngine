@@ -148,6 +148,22 @@ namespace CoreEngine
         /// @brief プレハブから作ったオブジェクトか
         bool IsPrefabInstance() const { return prefab_.IsSet(); }
 
+        /// @brief プレハブの子として、属する根の ID とプレハブの中の番号を設定する
+        /// @note 設定したオブジェクトは、シーンへプレハブの子との差分だけが保存される。
+        void SetPrefabChild(ObjectId root, const std::string& node) { prefabRoot_ = root; prefabNode_ = node; }
+
+        /// @brief プレハブの子の印を外す
+        void ClearPrefabChild() { prefabRoot_ = ObjectId{}; prefabNode_.clear(); }
+
+        /// @brief プレハブの子の印を持つか
+        bool IsPrefabChild() const { return prefabRoot_.IsValid(); }
+
+        /// @brief プレハブの子が属する根の ID（プレハブの子でなければ無効な ID）
+        ObjectId GetPrefabRootId() const { return prefabRoot_; }
+
+        /// @brief プレハブの子の、プレハブの中の番号（プレハブの子でなければ空）
+        const std::string& GetPrefabNode() const { return prefabNode_; }
+
         // ===== 名前 =====
 
         /// @brief オブジェクト識別名を設定する
@@ -220,6 +236,8 @@ namespace CoreEngine
         GameObjectManager* objectManager_ = nullptr;  ///< 登録先（AddObject 時に注入される）
         ObjectId objectId_{};  ///< シーン内の ID（登録時に GameObjectManager が決める）
         AssetRef<PrefabAsset> prefab_;  ///< 元になったプレハブ
+        ObjectId prefabRoot_{};         ///< プレハブの子が属する根の ID
+        std::string prefabNode_;        ///< プレハブの子の、プレハブの中の番号
 
         mutable const Matrix4x4* worldMatrix_ = nullptr;  ///< FindWorldMatrix が見つけた行列
         mutable uint64_t worldMatrixLayout_ = 0;          ///< 見つけたときのコンポーネントの並びの番号
