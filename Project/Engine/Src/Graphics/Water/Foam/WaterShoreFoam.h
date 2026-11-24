@@ -38,6 +38,10 @@ namespace CoreEngine
             uint32_t spectrumRevision = 0;                 ///< FFT のスペクトルの版。変わったフレームは泡を捨てる
             uint64_t frameNumber = 0;                      ///< 同じフレームで 2 回進めないための番号
             float waveGroupPhase[3] = { 0.0f, 0.0f, 0.0f }; ///< 波群エンベロープの位相のずれ [rad]
+            /// @brief 浜を上がる膜が運ぶ水の粒のずれ（岸の格子の頂点ごと。WaterShoreMeshDisplacement::GetFlowSRV。無ければ 0）
+            D3D12_GPU_DESCRIPTOR_HANDLE runupFlowSRV{};
+            float runupFlowOriginXZ[2] = { 0.0f, 0.0f };   ///< 岸の格子の頂点 (0, 0) のワールド XZ [m]
+            float runupFlowTexelsPerMeter = 0.0f;          ///< 岸の格子の 1m あたりの頂点の数（1 マスの幅の逆数）
         };
 
         /// @brief 岸の泡の設定（WaterSystem が毎フレーム渡す）
@@ -89,6 +93,9 @@ namespace CoreEngine
             float padding = 0.0f;
             float waveGroupPhase[3] = { 0.0f, 0.0f, 0.0f };
             float padding2 = 0.0f;
+            float runupFlowOriginXZ[2] = { 0.0f, 0.0f };
+            float runupFlowTexelsPerMeter = 0.0f;
+            uint32_t runupFlowEnabled = 0;
         };
 
         static constexpr Cb::Field kFoamConstantsFields[] = {
@@ -98,6 +105,8 @@ namespace CoreEngine
             CB_FIELD(FoamConstants, deltaSeconds), CB_FIELD(FoamConstants, decaySeconds),
             CB_FIELD(FoamConstants, resetFoam), CB_FIELD(FoamConstants, padding),
             CB_FIELD(FoamConstants, waveGroupPhase), CB_FIELD(FoamConstants, padding2),
+            CB_FIELD(FoamConstants, runupFlowOriginXZ), CB_FIELD(FoamConstants, runupFlowTexelsPerMeter),
+            CB_FIELD(FoamConstants, runupFlowEnabled),
         };
         CB_VERIFY_LAYOUT(FoamConstants, kFoamConstantsFields);
         CB_BIND_HLSL(FoamConstants, kFoamConstantsFields, "WaterShoreFoamConstants");

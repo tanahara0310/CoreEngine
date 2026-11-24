@@ -48,7 +48,7 @@ cbuffer WaterSurfaceData : register(b1)
     float gSurfaceShoreMeshCellSize;       // 岸の格子の 1 マスの幅 [m]
     float gSurfaceShoreMeshBlendWidth;     // 範囲の端から内側へ、粗い格子の形から移す幅 [m]
     uint gSurfaceShoreMeshDisplacementSrvIndex; // 岸の格子の頂点の変位（WaterShoreMeshDisplacement.CS）の SRV のヒープの中の番号
-    float gSurfaceShoreRunupHeight;        // 水際が上がる高さの平均 [m]（0 = 遡上なし。時刻は gSurfaceTime）
+    float gSurfaceShoreRunupHeight;        // 浜を駆け上がる勢いの高さの平均 [m]（急な浜で届く高さ。0 = 遡上なし。時刻は gSurfaceTime）
     // 海の範囲マップ（WaterSeaMap.hlsli。地図はシェーダー可視ヒープから番号で引く）
     float2 gSurfaceSeaMapOriginXZ;         // 地図の範囲の XZ の最小の角 [m]
     float gSurfaceSeaMapTexelsPerMeter;    // 1 m あたりのテクセル数
@@ -488,30 +488,53 @@ float4 SampleCoarseMeshTriangle(Texture2DArray<float4> displacementTex, float2 b
 /// @param shoreWaveSlope 沖から寄せる波の傾き（岸の格子の頂点の値）
 /// @param shoreBreakFoam x = 砕けた波の泡の被覆率（峰の頂の泡と、段と浜を上がる水の泡の大きい方）、
 ///                       y = 段と浜を上がる水の泡を描く度合い（沖から寄せる波と浜を駆け上がる水があるとき、範囲の中で 1・端ほど 0）
+/// @param runupFlow      浜を上がる膜が運ぶ水の粒の水平のずれ [m]（EvaluateShoreRunupLift。範囲の端ほど 0 へ寄せる）
 float4 SampleShoreMeshVertexDisplacementAndObjectRipple(
-    Texture2DArray<float4> displacementTex, float2 baseXZ, out float2 shoreWaveSlope, out float2 shoreBreakFoam)
+    Texture2DArray<float4> displacementTex, float2 baseXZ, out float2 shoreWaveSlope, out float2 shoreBreakFoam,
+    out float2 runupFlow)
 {
     float crestFoam;
     float4 fine = SampleMeshVertexDisplacementAndObjectRipple(
         displacementTex, baseXZ, gSurfaceShoreMeshCellSize, shoreWaveSlope, crestFoam);
     float runupFoam = 0.0f;
+    runupFlow = float2(0.0f, 0.0f);
     if (gSurfaceSeaMapResolution.x != 0)
     {
         Texture2D<float4> seaMap = ResourceDescriptorHeap[gSurfaceSeaMapSrvIndex];
         fine.y += EvaluateShoreRunupLift(seaMap, baseXZ, gSurfaceSeaMapOriginXZ, gSurfaceSeaMapTexelsPerMeter,
             gSurfaceSeaMapResolution, gSurfaceSeaMapDepthOffset, gSurfaceTime, gSurfaceShoreRunupHeight,
-            gSurfaceShoreWaveHeight, runupFoam);
+            gSurfaceShoreWaveHeight, runupFoam, runupFlow);
     }
     const float blend = ComputeShoreMeshBlend(
         baseXZ, gSurfaceShoreMeshOriginXZ, gSurfaceShoreMeshSize, gSurfaceShoreMeshBlendWidth);
     const float runupFoamWeight =
         (gSurfaceShoreWaveHeight > 0.0f && gSurfaceShoreRunupHeight > 0.0f) ? saturate(blend) : 0.0f;
     shoreBreakFoam = float2(max(crestFoam, runupFoam * runupFoamWeight), runupFoamWeight);
+    runupFlow *= saturate(blend);
     if (blend >= 1.0f || gSurfaceRegionValid == 0)
     {
         return fine;
     }
     return lerp(SampleCoarseMeshTriangle(displacementTex, baseXZ), fine, blend);
+}
+
+/// @brief 岸の格子の頂点 1 点の、浜を上がった膜の濡れ跡（x = 砂の暗さ・y = 砂のつや [0,1]、z = 今の静水面からの砂の高さ [m]）
+/// @details 範囲の端ほど暗さとつやを 0 へ寄せる（SampleShoreMeshVertexDisplacementAndObjectRipple が粗い格子の形へ移す幅）
+float3 SampleShoreMeshVertexSwashWetness(float2 baseXZ)
+{
+    if (gSurfaceSeaMapResolution.x == 0)
+    {
+        return float3(0.0f, 0.0f, 0.0f);
+    }
+    Texture2D<float4> seaMap = ResourceDescriptorHeap[gSurfaceSeaMapSrvIndex];
+    float3 wetness = EvaluateSwashWetness(seaMap, baseXZ, gSurfaceSeaMapOriginXZ, gSurfaceSeaMapTexelsPerMeter,
+        gSurfaceSeaMapResolution, gSurfaceSeaMapDepthOffset, gSurfaceTime, gSurfaceShoreRunupHeight);
+    if (gSurfaceRegionValid != 0)
+    {
+        wetness.xy *= saturate(ComputeShoreMeshBlend(
+            baseXZ, gSurfaceShoreMeshOriginXZ, gSurfaceShoreMeshSize, gSurfaceShoreMeshBlendWidth));
+    }
+    return wetness;
 }
 
 /// @brief 岸の格子の頂点を寄せる水面メッシュの範囲（FFTWater.VS の ClampShoreMeshVertexToSurface に渡す範囲と同じ）

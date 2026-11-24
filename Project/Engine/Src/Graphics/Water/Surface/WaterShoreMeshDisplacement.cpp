@@ -26,12 +26,14 @@ namespace CoreEngine
         namespace DisplacementBind {
             enum Slot : size_t {
                 WaterSurfaceData, gShoreMeshDisplacementSource, gShoreMeshDisplacementOutput, gShoreMeshSurfaceOutput,
-                Count };
+                gShoreMeshWetnessOutput, gShoreMeshFlowOutput, Count };
             inline constexpr ShaderBindingDecl kDecls[] = {
                 { "WaterSurfaceData",               ShaderBindingType::CBV, BindingUsage::Required },
                 { "gShoreMeshDisplacementSource",   ShaderBindingType::SRV, BindingUsage::Required },
                 { "gShoreMeshDisplacementOutput",   ShaderBindingType::UAV, BindingUsage::Required },
                 { "gShoreMeshSurfaceOutput",        ShaderBindingType::UAV, BindingUsage::Required },
+                { "gShoreMeshWetnessOutput",        ShaderBindingType::UAV, BindingUsage::Required },
+                { "gShoreMeshFlowOutput",           ShaderBindingType::UAV, BindingUsage::Required },
             };
             static_assert(std::size(kDecls) == Slot::Count, "kDecls と Slot の並びがずれている");
         }
@@ -48,6 +50,8 @@ namespace CoreEngine
         }
 
         constexpr DXGI_FORMAT kFormat = DXGI_FORMAT_R32G32B32A32_FLOAT;
+        constexpr DXGI_FORMAT kWetnessFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
+        constexpr DXGI_FORMAT kFlowFormat = DXGI_FORMAT_R16G16_FLOAT;
         constexpr uint32_t kThreadGroupSize = 8;
 
         /// @brief 計算シェーダーのルートシグネチャ・結線表・パイプラインを作る（海の範囲マップなどをヒープから番号で引く cs_6_6）
@@ -120,16 +124,26 @@ namespace CoreEngine
     bool WaterShoreMeshDisplacement::CreateTextures()
     {
         const D3D12_RESOURCE_DESC desc = UavTexture::MakeDesc(kVertexCount, kVertexCount, 1, kFormat);
+        const D3D12_RESOURCE_DESC wetnessDesc = UavTexture::MakeDesc(kVertexCount, kVertexCount, 1, kWetnessFormat);
+        const D3D12_RESOURCE_DESC flowDesc = UavTexture::MakeDesc(kVertexCount, kVertexCount, 1, kFlowFormat);
         if (!UavTexture::CreateResource(
                 dxCommon_->GetDevice(), texture_, desc, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE)
             || !UavTexture::CreateResource(
-                dxCommon_->GetDevice(), surfaceTexture_, desc, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE)) {
+                dxCommon_->GetDevice(), surfaceTexture_, desc, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE)
+            || !UavTexture::CreateResource(
+                dxCommon_->GetDevice(), wetnessTexture_, wetnessDesc, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE)
+            || !UavTexture::CreateResource(
+                dxCommon_->GetDevice(), flowTexture_, flowDesc, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE)) {
             return false;
         }
         UavTexture::EnsureViews(*descriptorAllocator_, texture_.Get(), desc,
             srv_, "WaterShoreMeshDisplacementSRV", uav_, "WaterShoreMeshDisplacementUAV");
         UavTexture::EnsureViews(*descriptorAllocator_, surfaceTexture_.Get(), desc,
             surfaceSrv_, "WaterShoreMeshSurfaceSRV", surfaceUav_, "WaterShoreMeshSurfaceUAV");
+        UavTexture::EnsureViews(*descriptorAllocator_, wetnessTexture_.Get(), wetnessDesc,
+            wetnessSrv_, "WaterShoreMeshWetnessSRV", wetnessUav_, "WaterShoreMeshWetnessUAV");
+        UavTexture::EnsureViews(*descriptorAllocator_, flowTexture_.Get(), flowDesc,
+            flowSrv_, "WaterShoreMeshFlowSRV", flowUav_, "WaterShoreMeshFlowUAV");
         return true;
     }
 
@@ -201,6 +215,8 @@ namespace CoreEngine
             BarrierBatch toWrite(cmdList);
             toWrite.Transition(texture_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
             toWrite.Transition(surfaceTexture_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            toWrite.Transition(wetnessTexture_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            toWrite.Transition(flowTexture_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         }
         cmdList->SetPipelineState(pipelineState_.Get());
         cmdList->SetComputeRootSignature(rootSignature_.GetRootSignature());
@@ -209,6 +225,8 @@ namespace CoreEngine
         binder.Set(bindings_[DisplacementBind::gShoreMeshDisplacementSource], surface.fftOcean.displacementSRV);
         binder.Set(bindings_[DisplacementBind::gShoreMeshDisplacementOutput], uav_.gpuHandle);
         binder.Set(bindings_[DisplacementBind::gShoreMeshSurfaceOutput], surfaceUav_.gpuHandle);
+        binder.Set(bindings_[DisplacementBind::gShoreMeshWetnessOutput], wetnessUav_.gpuHandle);
+        binder.Set(bindings_[DisplacementBind::gShoreMeshFlowOutput], flowUav_.gpuHandle);
         binder.ValidateBeforeDraw(bindings_);
 
         const UINT groups = DivRoundUp(kVertexCount, kThreadGroupSize);
@@ -216,5 +234,7 @@ namespace CoreEngine
         BarrierBatch toRead(cmdList);
         toRead.Transition(texture_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         toRead.Transition(surfaceTexture_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        toRead.Transition(wetnessTexture_, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+        toRead.Transition(flowTexture_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     }
 }

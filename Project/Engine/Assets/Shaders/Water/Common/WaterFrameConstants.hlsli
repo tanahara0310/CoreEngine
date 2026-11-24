@@ -116,7 +116,7 @@ cbuffer WaterFrameConstants : register(b5)
     // ---- 水面メッシュの範囲（岸の細かい格子の頂点をこの範囲へ寄せる。WaterShoreMesh.hlsli）----
     float2 gMeshGridSizeXZ;   // 粗い格子の XZ の一辺の長さ [m]（最小の角は gMeshGridOriginXZ）
     float gShoreRunupTime;    // 浜の遡上の時刻 [s]（WaterShoreRunup.hlsli）
-    float gShoreRunupHeight;  // 水際が上がる高さの平均 [m]（0 = 遡上なし）
+    float gShoreRunupHeight;  // 浜を駆け上がる勢いの高さの平均 [m]（急な浜で届く高さ。0 = 遡上なし）
 
     // ---- 水の波紋の格子（gWaterRipple。WaterRippleGrid.hlsli）----
     float4 gRippleOriginsXZ01;   // 段 0・段 1 の XZ の最小の角 [m]（xy = 段 0・zw = 段 1）

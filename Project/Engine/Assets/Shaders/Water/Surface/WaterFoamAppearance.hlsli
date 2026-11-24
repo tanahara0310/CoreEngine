@@ -780,9 +780,10 @@ WaterFoamResult ResolveWaterFoam(
     const float wakeFoam = objectFoam.foam;
     const float wakeBubbles = objectFoam.bubbles;
     const float wakeFreshness = saturate(wakeBubbles / max(wakeFoam, 1.0e-4f));
-    // 段と浜を上がる水の泡を描く所は、進めた岸の泡を弱めて、砕けた波の泡を重ねる
+    // 段と浜を上がる水の泡を描く所は、進めた岸の泡を弱め、浅い水際を満量にせず、砕けた波の泡を重ねる
+    const float breakFoamWeight = saturate(shoreBreakFoam.y);
     ShoreFoamResult shoreFoam = ResolveShoreFoam(surfacePosition, fallbackDepth,
-        lerp(1.0f, kShoreFoamWithBreakFoamScale, saturate(shoreBreakFoam.y)));
+        lerp(1.0f, kShoreFoamWithBreakFoamScale, breakFoamWeight), 1.0f - breakFoamWeight);
     if (gFoamEnabled != 0 && gUseFFTOceanNormalMap != 0)
     {
         shoreFoam.coverage = max(shoreFoam.coverage, saturate(shoreBreakFoam.x));
@@ -839,7 +840,10 @@ WaterFoamResult ResolveWaterFoam(
     [branch]
     if (shoreFoam.coverage > 0.0f)
     {
-        bubbleHaze = max(bubbleHaze, sqrt(shoreFoam.coverage) * FoamBubbleMottle(shorePatternXZ, filter));
+        // 砕けた波の泡を描く所は、薄い膜ほど気泡の濁りを減らす
+        const float filmBubbleScale = lerp(1.0f, saturate(shoreFoam.depth / kSwashFilmBubbleDepthMeters), breakFoamWeight);
+        bubbleHaze = max(bubbleHaze,
+            sqrt(shoreFoam.coverage) * FoamBubbleMottle(shorePatternXZ, filter) * filmBubbleScale);
     }
 
     WaterFoamResult result;

@@ -19,6 +19,7 @@
 #include "Graphics/Render/Pass/RTShadowPass.h"
 #include "Graphics/Render/RenderingTechnique/Lighting/WaterCausticsTechnique.h"
 #include "Graphics/Water/RayTracing/WaterCausticsRayTracingManager.h"
+#include "Graphics/Water/Surface/WaterShoreMeshDisplacement.h"
 #include "Utility/Logger/Logger.h"
 #include "Graphics/Render/RenderGraph.h"
 
@@ -265,6 +266,7 @@ namespace CoreEngine
         // ===== 濡れ跡（水が引いたあとの濡れた面） =====
         {
             DeferredLightingTechnique::WetSurfaceConstants wetSurface{};
+            D3D12_GPU_DESCRIPTOR_HANDLE swashWetness{};
             const WaterSurfaceData* surface = context.waterSurfaceState;
             if (surface && surface->regionValid != 0 && surface->wetness.enabled != 0) {
                 wetSurface.enabled = 1;
@@ -277,8 +279,22 @@ namespace CoreEngine
                 static_assert(sizeof(wetSurface.wetness) == sizeof(surface->wetness.wetness),
                     "濡れ跡の表の標本数を C++ と HLSL でそろえる");
                 std::memcpy(wetSurface.wetness, surface->wetness.wetness, sizeof(wetSurface.wetness));
+
+                // 浜を上がった膜の濡れ跡（岸の格子の頂点の変位と同じフレームに書いたもの）
+                const WaterShoreMeshDisplacement* displacement = context.waterShoreMeshDisplacement;
+                if (surface->shoreMeshEnabled != 0 && surface->shoreRunupHeight > 0.0f
+                    && surface->shoreMeshCellSize > 0.0f && surface->fftOcean.displacementSRV.ptr != 0
+                    && displacement && displacement->IsInitialized()) {
+                    wetSurface.swashEnabled = 1;
+                    wetSurface.swashOriginXZ[0] = surface->shoreMeshOriginXZ[0];
+                    wetSurface.swashOriginXZ[1] = surface->shoreMeshOriginXZ[1];
+                    wetSurface.swashTexelsPerMeter = 1.0f / surface->shoreMeshCellSize;
+                    wetSurface.swashRestHeight = surface->waterHeight;
+                    swashWetness = displacement->GetWetnessSRV();
+                }
             }
             deferredLighting->SetWetSurfaceConstants(wetSurface);
+            deferredLighting->SetSwashWetnessHandle(swashWetness);
         }
 
         if (caustics && caustics->GetParams().debugLogEnabled != 0) {

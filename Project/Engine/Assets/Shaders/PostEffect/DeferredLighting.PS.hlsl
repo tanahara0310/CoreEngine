@@ -148,9 +148,12 @@ struct WetSurfaceConstants
     uint enabled;              // 1 = 濡れ跡を描く
     float bottomHeight;        // 表の下端（今の水面の高さ）[m]
     float samplesPerMeter;     // 1 m あたりの標本の数
-    float wetSurfacePad;
+    uint swashEnabled;         // 1 = 浜を上がった膜の濡れ跡（gSwashWetness）を読む
     float2 regionCenterXZ;     // 水面の範囲
     float2 regionHalfExtentXZ;
+    float2 swashOriginXZ;      // 浜を上がった膜の濡れ跡のテクセル (0, 0) のワールド XZ [m]
+    float swashTexelsPerMeter; // 浜を上がった膜の濡れ跡の 1 m あたりのテクセル数
+    float swashRestHeight;     // 今の静水面の高さ [m]
     float4 wetness[kWetSurfaceTableVectorCount]; // 下端から上へ並べた濡れ具合（4 つずつ詰める）
 };
 ConstantBuffer<WetSurfaceConstants> gWetSurface : register(b9);
@@ -160,7 +163,35 @@ float LoadWetSurfaceSample(uint n)
     return gWetSurface.wetness[n >> 2][n & 3u];
 }
 
+// 浜を上がった膜の濡れ跡（岸の格子の頂点ごとの値。WaterShoreMeshDisplacement.CS）。
+// x = 砂の暗さ・y = 砂のつや [0,1]、z = 今の静水面からの砂の高さ [m]
+Texture2D<float4> gSwashWetness : register(t26);
+
+/// @brief 砂の高さからこの高さまで上の面は、浜を上がった膜の濡れ跡をそのまま付け、その倍の高さで 0 にする [m]
+static const float kSwashWetSurfaceMargin = 0.25f;
+
 SamplerState gSampler : register(s0);
+
+/// @brief 浜を上がった膜の濡れ跡（x = 暗さ・y = つや [0,1]）
+/// @details 岸の格子の頂点の値を位置で補間する。砂の高さより上の面ほど弱める。水面の範囲と格子の外は 0
+float2 SampleSwashWetness(float3 worldPos)
+{
+    if (any(abs(worldPos.xz - gWetSurface.regionCenterXZ) > gWetSurface.regionHalfExtentXZ))
+    {
+        return float2(0.0f, 0.0f);
+    }
+    uint width;
+    uint height;
+    gSwashWetness.GetDimensions(width, height);
+    const float2 texel = (worldPos.xz - gWetSurface.swashOriginXZ) * gWetSurface.swashTexelsPerMeter;
+    if (any(texel < 0.0f) || any(texel > float2(width - 1u, height - 1u)))
+    {
+        return float2(0.0f, 0.0f);
+    }
+    const float4 wet = gSwashWetness.SampleLevel(gSampler, (texel + 0.5f) / float2(width, height), 0.0f);
+    const float aboveSand = worldPos.y - (gWetSurface.swashRestHeight + wet.z);
+    return saturate(wet.xy) * (1.0f - smoothstep(kSwashWetSurfaceMargin, 2.0f * kSwashWetSurfaceMargin, aboveSand));
+}
 
 // ============================================================
 // 入出力
@@ -305,16 +336,25 @@ PixelShaderOutput main(PixelShaderInput input)
     const float underwaterFactor = underwater.factor;
     const float3 underwaterAmbientT = underwater.ambientTransmittance;
 
-    // 濡れ跡（水が引いたあとの濡れた面）。動く物には付けない
+    // 濡れ跡（水が引いたあとの濡れた面）。動く物には付けない。
+    // 潮の濡れ跡は暗さとつやに同じ値、浜を上がった膜の濡れ跡は暗さとつやに別の値を使い、大きい方を取る
     float wetness = 0.0f;
+    float glossWetness = 0.0f;
     if (gWetSurface.enabled != 0 && gGBufferMotion.Load(loadCoord).a < 0.5f)
     {
         wetness = SampleWetSurface(
             worldPos, gWetSurface.bottomHeight, gWetSurface.samplesPerMeter,
             gWetSurface.regionCenterXZ, gWetSurface.regionHalfExtentXZ);
+        glossWetness = wetness;
+        if (gWetSurface.swashEnabled != 0)
+        {
+            const float2 swashWetness = SampleSwashWetness(worldPos);
+            wetness = max(wetness, swashWetness.x);
+            glossWetness = max(glossWetness, swashWetness.y);
+        }
     }
     // 水中の面の粗さは変えない（水中の照らし方に任せる）
-    roughness = ApplyWetRoughness(roughness, wetness * (1.0f - underwaterFactor));
+    roughness = ApplyWetRoughness(roughness, glossWetness * (1.0f - underwaterFactor));
 
     // 濡れ暗色化（★F0 計算の後・albedo を使うすべてのライティングの前★）
     albedo = ApplyWetDarkening(albedo, max(underwaterFactor, wetness));

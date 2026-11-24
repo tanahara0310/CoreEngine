@@ -17,6 +17,12 @@
 /// @brief 沖から寄せる波の面の傾きの二乗に掛けて、泡を薄くする強さ（泡 × 1 / (1 + 強さ × 傾き²)）
 static const float kShoreWaveFaceFoamFade = 4.0f;
 
+/// @brief 浜を上がる膜の先端で、水面の反射・泡・屈折の弱まりを 0 から満量へ上げる鉛直水深 [m]
+static const float kSwashFilmEdgeDepth = 0.01f;
+
+/// @brief 浜を上がる膜で、透過を真後ろの面の色と鉛直水深から求める鉛直水深 [m]（その倍の深さで元の透過へ戻す）
+static const float kSwashThinFilmDepth = 0.15f;
+
 /// @brief 水面専用フォワードパス処理（ForwardMain の discard 処理を削除したバージョン）
 /// 水面は常に描画され、alpha 値で透明度を制御する
 VertexShaderOutput ToVertexShaderOutput(WaterPSInput input)
@@ -162,17 +168,38 @@ WaterPixelOutput main(WaterPSInput input)
         surfaceNormal, sunVisibility, input.shoreBreakFoam);
     // 沖から寄せる波の急な面は泡を薄くする
     const float shoreWaveFaceFoamScale = 1.0f / (1.0f + kShoreWaveFaceFoamFade * dot(input.shoreWaveSlope, input.shoreWaveSlope));
-    foam.surfaceFoam *= shoreWaveFaceFoamScale;
-    foam.bubbleHaze *= shoreWaveFaceFoamScale;
-    reflectanceWeight *= (1.0f - foam.surfaceFoam);
+    // 浜を上がる膜は、先端の薄い所ほど水面としての見え方（反射・泡・屈折の弱まり）を減らし、下の濡れた砂へつなぐ
+    const float swashFilmEdge = lerp(1.0f,
+        saturate(waterColumnResult.viewRayVerticalDepth / kSwashFilmEdgeDepth), saturate(input.shoreBreakFoam.y));
+    foam.surfaceFoam *= shoreWaveFaceFoamScale * swashFilmEdge;
+    foam.bubbleHaze *= shoreWaveFaceFoamScale * swashFilmEdge;
+    reflectanceWeight *= (1.0f - foam.surfaceFoam) * swashFilmEdge;
 
     // ---- 8. 透過（水面越しに見える水中の色）----
     float3 transmissionColor = ResolveWaterTransmission(
         pixelCoord, screenUV, transmittance, sigmaS, sigmaT, sunVisibility);
+    // 浜を上がる膜の薄い所は、真後ろの面の色と鉛直水深から透過を求める
+    const float swashThinFilm = saturate(input.shoreBreakFoam.y) * (1.0f - smoothstep(
+        kSwashThinFilmDepth, 2.0f * kSwashThinFilmDepth, waterColumnResult.viewRayVerticalDepth));
+    [branch]
+    if (swashThinFilm > 0.0f)
+    {
+        const float thinColumn = waterColumnResult.viewRayVerticalDepth
+            / max(-ComputeRefractedViewDir(viewDir, surfaceNormal).y, 0.2f);
+        const float3 thinTransmission = ComputeWaterVolumetricColor(
+            gSceneColor.Sample(gLinearClamp, screenUV).rgb, exp(-sigmaT * thinColumn), sigmaS, sigmaT,
+            ComputeUnderwaterAmbientLight(sunVisibility));
+        transmissionColor = lerp(transmissionColor, thinTransmission, swashThinFilm);
+    }
     // 水の中の気泡は、その奥から透過してくる光を遮り、自分が散乱した光に置き換える
     transmissionColor = lerp(transmissionColor, foam.bubbleColor, foam.bubbleHaze);
     // 水中の放射輝度は、水面から空気へ出るときに屈折で立体角が広がって 1/n² になる
     transmissionColor *= WaterRadianceExitScale();
+    // 浜を上がる膜の先端は、真後ろの面の色へつなぐ
+    if (swashFilmEdge < 1.0f)
+    {
+        transmissionColor = lerp(gSceneColor.Sample(gLinearClamp, screenUV).rgb, transmissionColor, swashFilmEdge);
+    }
 
     // ---- 9. 反射 ----
     // 反射が有効なとき、環境反射は反射像で置き換える（フォワード PBR の色へ加算しない）
@@ -236,7 +263,7 @@ WaterPixelOutput main(WaterPSInput input)
         output.color.rgb +=
             ComputeSunGlintSpecular(
                 geomNormal, viewDir, foam.surfaceFoam, sunVisibility, unresolvedMeanSquareSlope)
-            * (1.0f - foam.surfaceFoam);
+            * (1.0f - foam.surfaceFoam) * swashFilmEdge;
     }
 
     // ---- 12. 波峰のサブサーフェス透過（逆光で波の背が緑に光る）----
@@ -244,7 +271,7 @@ WaterPixelOutput main(WaterPSInput input)
     // つまり (1 - フレネル反射率) と、水から空気へ出る 1/n² を掛けて加算する。
     output.color.rgb += ComputeWaterSubsurfaceScattering(
         surfaceNormal, viewDir, input.waveHeight, sigmaS, sigmaT, foam.surfaceFoam, sunVisibility)
-        * (1.0f - reflectanceWeight) * WaterRadianceExitScale();
+        * (1.0f - reflectanceWeight) * WaterRadianceExitScale() * swashFilmEdge;
 
     // ---- 13. 空気遠近感（Aerial Perspective）----
     // 不透明パスへの合成（AerialPerspective.CS）は水面より前に終わっているため、

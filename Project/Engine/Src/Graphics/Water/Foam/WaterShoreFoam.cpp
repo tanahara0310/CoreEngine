@@ -55,13 +55,14 @@ namespace CoreEngine
         /// @brief WaterShoreFoam.CS.hlsl の契約
         namespace ShoreFoamBind {
             enum Slot : size_t {
-                gSeabedHeight, gFFTOceanDisplacement, gShoreFoamPrev, gSwashDisplacement, gShoreFoamOutput,
+                gSeabedHeight, gFFTOceanDisplacement, gShoreFoamPrev, gSwashDisplacement, gRunupFlow, gShoreFoamOutput,
                 WaterShoreFoamConstants, Count };
             inline constexpr ShaderBindingDecl kDecls[] = {
                 { "gSeabedHeight",           ShaderBindingType::SRV, BindingUsage::Required },
                 { "gFFTOceanDisplacement",   ShaderBindingType::SRV, BindingUsage::Required },
                 { "gShoreFoamPrev",          ShaderBindingType::SRV, BindingUsage::Required },
                 { "gSwashDisplacement",      ShaderBindingType::SRV, BindingUsage::Required },
+                { "gRunupFlow",              ShaderBindingType::SRV, BindingUsage::Required },
                 { "gShoreFoamOutput",        ShaderBindingType::UAV, BindingUsage::Required },
                 { "WaterShoreFoamConstants", ShaderBindingType::CBV, BindingUsage::Required },
             };
@@ -205,6 +206,13 @@ namespace CoreEngine
         }
         prevWindowOriginXZ_[0] = input.windowOriginXZ[0];
         prevWindowOriginXZ_[1] = input.windowOriginXZ[1];
+        const bool runupFlowEnabled = input.runupFlowSRV.ptr != 0 && input.runupFlowTexelsPerMeter > 0.0f;
+        if (runupFlowEnabled) {
+            constants.runupFlowOriginXZ[0] = input.runupFlowOriginXZ[0];
+            constants.runupFlowOriginXZ[1] = input.runupFlowOriginXZ[1];
+            constants.runupFlowTexelsPerMeter = input.runupFlowTexelsPerMeter;
+            constants.runupFlowEnabled = 1u;
+        }
 
         constexpr D3D12_RESOURCE_STATES kAnyShaderResource =
             D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
@@ -269,6 +277,9 @@ namespace CoreEngine
         binder.Set(foamBindings_[ShoreFoamBind::gFFTOceanDisplacement], input.fftDisplacementSRV);
         binder.Set(foamBindings_[ShoreFoamBind::gShoreFoamPrev], readFoam.srv.gpuHandle);
         binder.Set(foamBindings_[ShoreFoamBind::gSwashDisplacement], swash_.srv.gpuHandle);
+        // 浜を上がる膜のずれが無いときは、同じ形（x, z）の寄せ・引きのずれを結ぶ（シェーダーは読まない）
+        binder.Set(foamBindings_[ShoreFoamBind::gRunupFlow],
+            runupFlowEnabled ? input.runupFlowSRV : swash_.srv.gpuHandle);
         binder.Set(foamBindings_[ShoreFoamBind::gShoreFoamOutput], writeFoam.uav.gpuHandle);
         binder.Set(foamBindings_[ShoreFoamBind::WaterShoreFoamConstants],
             dxCommon_->GetUploadRing().AllocateConstants(constants));

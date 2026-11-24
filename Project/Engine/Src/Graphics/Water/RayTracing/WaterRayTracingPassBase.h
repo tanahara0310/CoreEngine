@@ -78,7 +78,7 @@ namespace CoreEngine
             float shoreMeshCellSize = 0.0f;
             float shoreMeshBlendWidth = 0.0f;
             uint32_t shoreMeshDisplacementSrvIndex = 0;
-            float shoreRunupHeight = 0.0f;                ///< 水際が上がる高さの平均 [m]（0 = 遡上なし。時刻は time）
+            float shoreRunupHeight = 0.0f;                ///< 浜を駆け上がる勢いの高さの平均 [m]（急な浜で届く高さ。0 = 遡上なし。時刻は time）
             // ---- 海の範囲マップ（WaterSeaMapBinding の同名の値）----
             float seaMapOriginXZ[2] = { 0.0f, 0.0f };
             float seaMapTexelsPerMeter = 0.0f;

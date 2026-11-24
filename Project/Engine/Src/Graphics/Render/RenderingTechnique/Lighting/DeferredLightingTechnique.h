@@ -52,14 +52,18 @@ namespace CoreEngine
         };
 
         /// @brief 濡れ跡（水が引いたあとの濡れた面）の定数（HLSL 側 WetSurfaceConstants と一致させること）
-        /// @details 今の水面から上へ等間隔に並べた濡れ具合を、面の高さで引く（WetSurface.hlsli）
+        /// @details 今の水面から上へ等間隔に並べた濡れ具合を、面の高さで引く（WetSurface.hlsli）。
+        ///          swashEnabled が 1 のときは、岸の格子の浜を上がった膜の濡れ跡（SetSwashWetnessHandle）も面のワールド XZ で読む
         struct WetSurfaceConstants {
             uint32_t enabled = 0;            ///< 1 = 濡れ跡を描く
             float bottomHeight = 0.0f;       ///< 表の下端（今の水面の高さ）[m]
             float samplesPerMeter = 0.0f;    ///< 1 m あたりの標本の数
-            float pad = 0.0f;
+            uint32_t swashEnabled = 0;       ///< 1 = 浜を上がった膜の濡れ跡を読む
             float regionCenterXZ[2] = {};    ///< 水面の範囲の中心
             float regionHalfExtentXZ[2] = {};///< 水面の範囲の半分の幅
+            float swashOriginXZ[2] = {};     ///< 浜を上がった膜の濡れ跡のテクセル (0, 0) のワールド XZ [m]
+            float swashTexelsPerMeter = 0.0f;///< 浜を上がった膜の濡れ跡の 1 m あたりのテクセル数
+            float swashRestHeight = 0.0f;    ///< 今の静水面の高さ [m]
             Vector4 wetness[16] = {};        ///< 下端から上へ並べた濡れ具合（4 つずつ詰める）
         };
 
@@ -124,6 +128,9 @@ namespace CoreEngine
 
         /// @brief 濡れ跡の定数を設定
         void SetWetSurfaceConstants(const WetSurfaceConstants& constants) { wetSurface_.Set(constants); }
+
+        /// @brief 浜を上がった膜の濡れ跡のテクスチャ SRV を設定（無効時は {} を渡す）
+        void SetSwashWetnessHandle(D3D12_GPU_DESCRIPTOR_HANDLE handle) { swashWetnessHandle_ = handle; }
 
         /// @brief RT シャドウマスク SRV を設定（DXR レイトレーシングシャドウ結果）
         /// @param handle  SRV ハンドル（無効時は {} を渡す）
@@ -217,14 +224,16 @@ namespace CoreEngine
         // ===== 濡れ跡 =====
         static constexpr Cb::Field kWetSurfaceConstantsFields[] = {
             CB_FIELD(WetSurfaceConstants, enabled), CB_FIELD(WetSurfaceConstants, bottomHeight),
-            CB_FIELD(WetSurfaceConstants, samplesPerMeter), CB_FIELD(WetSurfaceConstants, pad),
+            CB_FIELD(WetSurfaceConstants, samplesPerMeter), CB_FIELD(WetSurfaceConstants, swashEnabled),
             CB_FIELD(WetSurfaceConstants, regionCenterXZ), CB_FIELD(WetSurfaceConstants, regionHalfExtentXZ),
-            CB_FIELD(WetSurfaceConstants, wetness),
+            CB_FIELD(WetSurfaceConstants, swashOriginXZ), CB_FIELD(WetSurfaceConstants, swashTexelsPerMeter),
+            CB_FIELD(WetSurfaceConstants, swashRestHeight), CB_FIELD(WetSurfaceConstants, wetness),
         };
         CB_VERIFY_LAYOUT(WetSurfaceConstants, kWetSurfaceConstantsFields);
         CB_BIND_HLSL(WetSurfaceConstants, kWetSurfaceConstantsFields, "gWetSurface");
 
         PerFrameConstants<WetSurfaceConstants> wetSurface_;
+        D3D12_GPU_DESCRIPTOR_HANDLE swashWetnessHandle_{};
 
         // ===== 空アンビエント（大気散乱 SH。Sky Light 相当） =====
         // 有効フラグ・スケールは AtmosphereManager が持ち、Execute で毎フレーム UploadRing に置く

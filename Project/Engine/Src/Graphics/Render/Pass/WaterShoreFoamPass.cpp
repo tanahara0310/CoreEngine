@@ -6,6 +6,7 @@
 #include "Graphics/Water/FFT/FFTOceanManager.h"
 #include "Graphics/Water/Foam/WaterShoreFoam.h"
 #include "Graphics/Water/RayTracing/WaterSeabedRayTracingManager.h"
+#include "Graphics/Water/Surface/WaterShoreMeshDisplacement.h"
 #include "Graphics/Water/WaterSurfaceData.h"
 
 namespace CoreEngine
@@ -56,6 +57,17 @@ namespace CoreEngine
         const std::array<float, 3> waveGroupPhase = fftOcean->GetSpectrum().ComputeWaveGroupPhase(context.fftOceanSimulationTime);
         for (size_t i = 0; i < waveGroupPhase.size(); ++i) {
             input.waveGroupPhase[i] = waveGroupPhase[i];
+        }
+
+        // 浜を上がる膜が運ぶ水の粒のずれ（岸の格子の頂点の変位と同じフレームに書いたもの）
+        const WaterSurfaceData& surface = *context.waterSurfaceState;
+        const WaterShoreMeshDisplacement* displacement = context.waterShoreMeshDisplacement;
+        if (surface.shoreMeshEnabled != 0 && surface.shoreRunupHeight > 0.0f && surface.shoreMeshCellSize > 0.0f
+            && surface.fftOcean.displacementSRV.ptr != 0 && displacement && displacement->IsInitialized()) {
+            input.runupFlowSRV = displacement->GetFlowSRV();
+            input.runupFlowOriginXZ[0] = surface.shoreMeshOriginXZ[0];
+            input.runupFlowOriginXZ[1] = surface.shoreMeshOriginXZ[1];
+            input.runupFlowTexelsPerMeter = 1.0f / surface.shoreMeshCellSize;
         }
         foam->Dispatch(context.cmdList, input);
 

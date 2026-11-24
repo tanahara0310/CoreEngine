@@ -209,6 +209,7 @@ namespace CoreEngine
 
         binder.Set(bindings_[DeferredLightingBind::gWaterCausticsDebug], waterCausticsDebug_.Address());
         binder.Set(bindings_[DeferredLightingBind::gWetSurface], wetSurface_.Address());
+        binder.Set(bindings_[DeferredLightingBind::gSwashWetness], orFallback(swashWetnessHandle_));
 
         // ===== 空アンビエント（大気散乱 SH。Sky Light 相当） =====
         {
