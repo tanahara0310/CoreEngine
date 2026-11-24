@@ -18,7 +18,7 @@ namespace CoreEngine
         CVar<bool> ShoreFineMesh{ "r.Water.Shore.FineMesh", true,
             "カメラの周りの範囲（海底の高さを測る範囲）を細かい格子で描き、短い波まで形に入れる（FFTOcean 専用）" };
         CVar<float> ShoreRunupHeight{ "r.Water.Shore.RunupHeight", 0.8f,
-            "砕けた波が浜を駆け上がる高さの平均 [m]（0 = 駆け上がらない。岸の細かい格子と海の範囲マップが要る）",
+            "砕けた波が浜を駆け上がる勢いの高さの平均 [m]（急な浜で届く高さ。緩い浜は上がる時間の上限で止まり低くなる。0 = 駆け上がらない。岸の細かい格子と海の範囲マップが要る）",
             CVarRange{ 0.0f, 3.0f } };
         CVar<float> ShoreWaveHeight{ "r.Water.Shore.WaveHeight", 0.4f,
             "沖から岸へ寄せる波の、水深 12m での高さの平均 [m]（0 = 寄せる波なし。海の範囲マップが要る）",

@@ -39,6 +39,7 @@ namespace CoreEngine::DeferredLightingBind
         gCloudShadow,
         gGBufferMotion,
         gWetSurface,
+        gSwashWetness,
         Count
     };
 
@@ -90,6 +91,8 @@ namespace CoreEngine::DeferredLightingBind
         // 濡れ跡（動く物の印を読む G-Buffer のモーションベクターと、高さごとの濡れ具合の表）。毎フレーム差す
         { "gGBufferMotion",       ShaderBindingType::SRV, BindingUsage::Required    },
         { "gWetSurface",          ShaderBindingType::CBV, BindingUsage::Required    },
+        // 浜を上がった膜の濡れ跡（岸の格子が無いフレームは 1×1 の白を差し、gWetSurface.swashEnabled を 0 にする）
+        { "gSwashWetness",        ShaderBindingType::SRV, BindingUsage::Required    },
     };
 
     static_assert(std::size(kDecls) == Slot::Count,

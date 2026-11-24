@@ -20,6 +20,8 @@ static const float kShoreFoamEdgeMeters = 0.15f;
 static const float kSeabedWindowEdgeFade = 0.1f;
 // 砕けた波の泡を描く所で、WaterShoreFoamPass が進めた岸の泡に掛ける倍率
 static const float kShoreFoamWithBreakFoamScale = 0.35f;
+// 砕けた波の泡を描く所で、水の中の気泡の濁りを満量にする鉛直水深 [m]（これより薄い膜ほど濁りを減らす）
+static const float kSwashFilmBubbleDepthMeters = 0.2f;
 
 // ---- 物がかき回した所の泡 ----
 // 格子の一辺のマス数（WaterObjectFoam::kResolution と同じ値）
@@ -160,9 +162,10 @@ float ResolveShoreFoamDepth(float3 surfacePosition, float fallbackDepth)
 
 /// @brief 水深だけで決める岸際泡（shore foam）の被覆率 [0,1]（岸の泡を進める範囲の外で使う）
 /// @param verticalDepth 水面の点の真下の鉛直水深 [m]（ResolveShoreFoamDepth）
+/// @param edgeScale     汀線エッジの被覆率に掛ける倍率
 /// @details 2 段構造: 汀線エッジ（〜0.15m）は被覆率満量＝連続した白いシート、
 ///          外側（〜0.6m）は被覆率 0.9→0 のフェード＝dissolve でレース状に割れる。
-float ComputeShoreFoamMask(float verticalDepth)
+float ComputeShoreFoamMask(float verticalDepth, float edgeScale)
 {
     if (gFoamEnabled == 0 || gUseFFTOceanNormalMap == 0)
     {
@@ -172,7 +175,7 @@ float ComputeShoreFoamMask(float verticalDepth)
     // 外側の泡帯: 水深 0 → kShoreFoamDepthMeters の連続フェード
     const float band = 1.0f - smoothstep(0.0f, kShoreFoamDepthMeters, verticalDepth);
     // 汀線エッジ: ごく浅い所は満量（レースの穴が埋まり白いシートになる）
-    const float edge = ComputeShoreFoamEdge(verticalDepth);
+    const float edge = ComputeShoreFoamEdge(verticalDepth) * edgeScale;
 
     return max(band * kWaterShoreFoamStrength, edge);
 }
@@ -182,6 +185,7 @@ struct ShoreFoamResult
 {
     float coverage;      ///< 被覆率 [0,1]
     float2 patternShift; ///< 模様を評価する位置へ足すずれ [m]（今の位置 → 水の粒の静止位置）
+    float depth;         ///< 水面の点の真下の鉛直水深 [m]（ResolveShoreFoamDepth。泡を描かないときは 0）
 };
 
 /// @brief 岸の泡の状態（被覆率, 寄せ・引きのずれ x, z）を読む
@@ -194,21 +198,24 @@ float3 SampleShoreFoamState(float2 worldXZ)
 /// @param surfacePosition 水面の点（頂点変位後のワールド座標）
 /// @param fallbackDepth   範囲の外で使う水深（視線の延長で測った鉛直水深）
 /// @param simulatedScale  WaterShoreFoamPass が進めた泡に掛ける倍率
+/// @param edgeScale       水深 kShoreFoamEdgeMeters より浅い水際の満量の被覆率に掛ける倍率
 /// @details 範囲の中は WaterShoreFoamPass が進めた泡を、この点に今いる水の粒の静止位置
 ///          （静止位置＋寄せ・引きのずれ＝今の位置 を反復で解く）で読む。水深 kShoreFoamEdgeMeters より
-///          浅い水際はその瞬間の水深で満量にする。範囲の外と範囲の端は ComputeShoreFoamMask へ移す
-ShoreFoamResult ResolveShoreFoam(float3 surfacePosition, float fallbackDepth, float simulatedScale)
+///          浅い水際はその瞬間の水深で満量（× edgeScale）にする。範囲の外と範囲の端は ComputeShoreFoamMask へ移す
+ShoreFoamResult ResolveShoreFoam(float3 surfacePosition, float fallbackDepth, float simulatedScale, float edgeScale)
 {
     ShoreFoamResult result;
     result.coverage = 0.0f;
     result.patternShift = float2(0.0f, 0.0f);
+    result.depth = 0.0f;
     if (gFoamEnabled == 0 || gUseFFTOceanNormalMap == 0)
     {
         return result;
     }
 
     const float verticalDepth = ResolveShoreFoamDepth(surfacePosition, fallbackDepth);
-    const float depthOnly = ComputeShoreFoamMask(verticalDepth);
+    result.depth = verticalDepth;
+    const float depthOnly = ComputeShoreFoamMask(verticalDepth, edgeScale);
     if (gShoreFoamEnabled == 0 || gSeabedEnabled == 0)
     {
         result.coverage = depthOnly;
@@ -230,7 +237,7 @@ ShoreFoamResult ResolveShoreFoam(float3 surfacePosition, float fallbackDepth, fl
         restXZ = surfacePosition.xz - SampleShoreFoamState(restXZ).yz;
     }
     const float simulated = SampleShoreFoamState(restXZ).x * simulatedScale;
-    const float edge = ComputeShoreFoamEdge(verticalDepth);
+    const float edge = ComputeShoreFoamEdge(verticalDepth) * edgeScale;
 
     result.coverage = lerp(depthOnly, max(simulated, edge), inside);
     result.patternShift = (restXZ - surfacePosition.xz) * inside;

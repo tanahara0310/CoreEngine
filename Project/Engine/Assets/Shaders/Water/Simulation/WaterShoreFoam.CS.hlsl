@@ -10,6 +10,8 @@ Texture2D<float> gSeabedHeight : register(t0);
 Texture2DArray<float4> gFFTOceanDisplacement : register(t1);
 Texture2D<float4> gShoreFoamPrev : register(t2);
 Texture2D<float2> gSwashDisplacement : register(t3);
+// 浜を上がる膜が運ぶ水の粒のずれ（岸の格子の頂点ごと。WaterShoreMeshDisplacement.CS）
+Texture2D<float2> gRunupFlow : register(t4);
 RWTexture2D<float4> gShoreFoamOutput : register(u0);
 SamplerState gLinearClamp : register(s0);
 SamplerState gLinearWrap : register(s1);
@@ -28,6 +30,9 @@ cbuffer WaterShoreFoamConstants : register(b0)
     float gShoreFoamPad;
     float3 gWaveGroupPhase;     // 波群エンベロープの位相のずれ [rad]
     float gShoreFoamPad2;
+    float2 gRunupFlowOriginXZ;      // 岸の格子の頂点 (0, 0) のワールド XZ [m]
+    float gRunupFlowTexelsPerMeter; // 岸の格子の 1m あたりの頂点の数
+    uint gRunupFlowEnabled;         // 1 = 浜を上がる膜のずれを足す
 };
 
 /// @brief 砕け始めから泡が満量になるまでの H / h の幅
@@ -55,6 +60,24 @@ float2 SampleSwashDisplacement(float2 restXZ)
     return gSwashDisplacement.SampleLevel(gLinearClamp, (restXZ - gWindowOriginXZ) / gWindowSize, 0.0f);
 }
 
+/// @brief 静止位置の水の粒が浜を上がる膜に運ばれて今ずれている量 [m]（岸の格子の外と、膜が無いときは 0）
+float2 SampleRunupFlow(float2 restXZ)
+{
+    if (gRunupFlowEnabled == 0)
+    {
+        return float2(0.0f, 0.0f);
+    }
+    uint width;
+    uint height;
+    gRunupFlow.GetDimensions(width, height);
+    const float2 texel = (restXZ - gRunupFlowOriginXZ) * gRunupFlowTexelsPerMeter;
+    if (any(texel < 0.0f) || any(texel > float2(width - 1u, height - 1u)))
+    {
+        return float2(0.0f, 0.0f);
+    }
+    return gRunupFlow.SampleLevel(gLinearClamp, (texel + 0.5f) / float2(width, height), 0.0f);
+}
+
 /// @brief 今の位置で波が砕けている度合い [0,1]
 /// @details 波高（水面の上がりの 2 倍）が静水深の kWaterBreakingIndex 倍を超えると砕ける。
 ///          静水深がごく浅い所と静水面より上は、水が来ていれば遡上の泡にする
@@ -74,8 +97,8 @@ float ComputeBreaking(float2 worldXZ)
 }
 
 /// @brief 水の粒の静止位置（寄せ・引きでずれる前の位置）ごとに泡を 1 フレーム進める
-/// @details 粒の今の位置（静止位置＋寄せ・引きのずれ）で波が砕けていれば泡を足し、寿命で減らす。
-///          出力は (泡の被覆率, 寄せ・引きのずれ x, z, 0)
+/// @details 粒の寄せ・引きでずれた位置（静止位置＋寄せ・引きのずれ）で波が砕けていれば泡を足し、寿命で減らす。
+///          出力は (泡の被覆率, 寄せ・引きと浜を上がる膜のずれ x, z, 0)。浜を上がる膜のずれは泡を運ぶだけで、泡を足す位置には入れない
 [numthreads(8, 8, 1)]
 void main(uint3 dispatchThreadId : SV_DispatchThreadID)
 {
@@ -85,8 +108,9 @@ void main(uint3 dispatchThreadId : SV_DispatchThreadID)
     }
 
     const float2 restXZ = gWindowOriginXZ + (float2(dispatchThreadId.xy) + 0.5f) * gTexelSize;
-    const float2 swash = SampleSwashDisplacement(restXZ);
-    const float breaking = ComputeBreaking(restXZ + swash);
+    const float2 waveSwash = SampleSwashDisplacement(restXZ);
+    const float2 swash = waveSwash + SampleRunupFlow(restXZ);
+    const float breaking = ComputeBreaking(restXZ + waveSwash);
 
     // 同じ静止位置の前のフレームの泡（範囲の角はテクセルの格子に揃っている）
     float previous = 0.0f;
