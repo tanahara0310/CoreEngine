@@ -91,6 +91,9 @@
     <ClCompile Include="Engine\Src\Editor\Export\ShaderCooker.cpp">
       <Filter>Engine\Src\Editor\Export</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\Export\ThirdPartyNotices.cpp">
+      <Filter>Engine\Src\Editor\Export</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\Launcher\ProjectBrowser.cpp">
       <Filter>Engine\Src\Editor\Launcher</Filter>
     </ClCompile>
@@ -742,6 +745,9 @@
     <ClCompile Include="Engine\Src\Utility\Profiler\CpuProfiler.cpp">
       <Filter>Engine\Src\Utility\Profiler</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\Profiler\TracyClientUnit.cpp">
+      <Filter>Engine\Src\Utility\Profiler</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Shader\Cache\RecordingIncludeHandler.cpp">
       <Filter>Engine\Src\Graphics\Shader\Cache</Filter>
     </ClCompile>
@@ -767,6 +773,9 @@
       <Filter>Engine\Src\Graphics\Asset</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RHI\Debug\GpuMarker.cpp">
+      <Filter>Engine\Src\Graphics\RHI\Debug</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\RHI\Debug\GpuProfileZone.cpp">
       <Filter>Engine\Src\Graphics\RHI\Debug</Filter>
     </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RHI\Debug\GpuTimestampProfiler.cpp">
@@ -2349,6 +2358,9 @@
     <ClInclude Include="Engine\Src\Editor\Export\ShaderCooker.h">
       <Filter>Engine\Src\Editor\Export</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\Export\ThirdPartyNotices.h">
+      <Filter>Engine\Src\Editor\Export</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\Launcher\ProjectBrowser.h">
       <Filter>Engine\Src\Editor\Launcher</Filter>
     </ClInclude>
@@ -2875,6 +2887,9 @@
       <Filter>Engine\Src\Graphics\RHI\Descriptor</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RHI\Debug\GpuMarker.h">
+      <Filter>Engine\Src\Graphics\RHI\Debug</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\RHI\Debug\GpuProfileZone.h">
       <Filter>Engine\Src\Graphics\RHI\Debug</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\RHI\Debug\GpuStageScope.h">
@@ -4156,6 +4171,9 @@
       <Filter>Engine\Src\EngineSystem\Startup</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Profiler\CpuProfiler.h">
+      <Filter>Engine\Src\Utility\Profiler</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Profiler\ProfileZone.h">
       <Filter>Engine\Src\Utility\Profiler</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Shader\Cache\RecordingIncludeHandler.h">

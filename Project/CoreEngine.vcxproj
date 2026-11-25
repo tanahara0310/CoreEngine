@@ -230,6 +230,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Editor\Export\ExportScope.cpp" />
     <ClCompile Include="Engine\Src\Editor\Export\TextureCooker.cpp" />
     <ClCompile Include="Engine\Src\Editor\Export\ShaderCooker.cpp" />
+    <ClCompile Include="Engine\Src\Editor\Export\ThirdPartyNotices.cpp" />
     <ClCompile Include="Engine\Src\Editor\Launcher\ProjectBrowser.cpp" />
     <ClCompile Include="Engine\Src\Editor\Launcher\ProjectCreator.cpp" />
     <ClCompile Include="Engine\Src\Editor\Launcher\ProjectLauncher.cpp" />
@@ -450,6 +451,12 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\EngineSystem\Framework.cpp" />
     <ClCompile Include="Engine\Src\EngineSystem\Startup\SplashScreen.cpp" />
     <ClCompile Include="Engine\Src\Utility\Profiler\CpuProfiler.cpp" />
+    <ClCompile Include="Engine\Src\Utility\Profiler\TracyClientUnit.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Shader\Cache\RecordingIncludeHandler.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Shader\Cache\ShaderCacheKey.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Shader\Cache\ShaderCacheStore.cpp" />
@@ -459,6 +466,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Graphics\Asset\AssetMetadata.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Asset\AssetRef.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\Debug\GpuMarker.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\RHI\Debug\GpuProfileZone.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\Debug\GpuTimestampProfiler.cpp" />
     <ClCompile Include="Engine\Src\Diagnostics\GpuTimingStatsCollector.cpp" />
     <ClCompile Include="Engine\Src\Graphics\RHI\Barrier\BarrierBatch.cpp" />
@@ -1519,6 +1527,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Editor\Export\ExportScope.h" />
     <ClInclude Include="Engine\Src\Editor\Export\TextureCooker.h" />
     <ClInclude Include="Engine\Src\Editor\Export\ShaderCooker.h" />
+    <ClInclude Include="Engine\Src\Editor\Export\ThirdPartyNotices.h" />
     <ClInclude Include="Engine\Src\Editor\Launcher\ProjectBrowser.h" />
     <ClInclude Include="Engine\Src\Editor\Launcher\ProjectCreator.h" />
     <ClInclude Include="Engine\Src\Editor\Launcher\ProjectLauncher.h" />
@@ -1695,6 +1704,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\Asset\AssetType.h" />
     <ClInclude Include="Engine\Src\Graphics\RHI\Descriptor\DescriptorHandle.h" />
     <ClInclude Include="Engine\Src\Graphics\RHI\Debug\GpuMarker.h" />
+    <ClInclude Include="Engine\Src\Graphics\RHI\Debug\GpuProfileZone.h" />
     <ClInclude Include="Engine\Src\Graphics\RHI\Debug\GpuStageScope.h" />
     <ClInclude Include="Engine\Src\Graphics\RHI\Debug\GpuTimestampProfiler.h" />
     <ClInclude Include="Engine\Src\Diagnostics\GpuTimingStatsCollector.h" />
@@ -2122,6 +2132,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\EngineSystem\EngineSystem.h" />
     <ClInclude Include="Engine\Src\EngineSystem\Startup\IStartupTask.h" />
     <ClInclude Include="Engine\Src\Utility\Profiler\CpuProfiler.h" />
+    <ClInclude Include="Engine\Src\Utility\Profiler\ProfileZone.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\Cache\RecordingIncludeHandler.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\Cache\ShaderCacheKey.h" />
     <ClInclude Include="Engine\Src\Graphics\Shader\Cache\ShaderCacheStore.h" />

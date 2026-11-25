@@ -13,6 +13,7 @@
 #include "Graphics/Shader/Cache/ShaderBlobCache.h"
 #include "Graphics/Shader/Cache/ShaderManifest.h"
 #include "Utility/Profiler/CpuProfiler.h"
+#include "Utility/Profiler/ProfileZone.h"
 #include "Diagnostics/EngineStats.h"
 #include "EngineSystem/Relaunch.h"
 #include "EngineSystem/Settings/ProjectSettings.h"
@@ -128,6 +129,9 @@ namespace CoreEngine
         // 初回参照時に同じ結果へ落ち着くが、順序を読めるようにここで明示する
         ProjectPaths::Prime();
 
+        // デバッガやプロファイラに出るメインスレッドの名前
+        ::SetThreadDescription(::GetCurrentThread(), L"CoreEngine Main");
+
         // ──────────────────────────────────────────────────────────
         // デバッグ機能の初期化（エンジン層で自動管理）
         // ──────────────────────────────────────────────────────────
@@ -222,21 +226,36 @@ namespace CoreEngine
             }
 
             // エンジンシステムのフレーム開始処理
-            engineSystem_->BeginFrame();
+            {
+                CORE_PROFILE_ZONE("BeginFrame");
+                engineSystem_->BeginFrame();
+            }
 
             // ゲーム固有の更新処理（派生クラスで実装）
-            const auto updateStarted = std::chrono::steady_clock::now();
-            Update();
-            const std::chrono::duration<float, std::milli> updateElapsed =
-                std::chrono::steady_clock::now() - updateStarted;
-            EngineStats::GetInstance().GetFrameTimings().updateMs = updateElapsed.count();
+            {
+                CORE_PROFILE_ZONE("Update");
+                const auto updateStarted = std::chrono::steady_clock::now();
+                Update();
+                const std::chrono::duration<float, std::milli> updateElapsed =
+                    std::chrono::steady_clock::now() - updateStarted;
+                EngineStats::GetInstance().GetFrameTimings().updateMs = updateElapsed.count();
+            }
 
             // ゲーム固有の描画処理（派生クラスで実装）
-            PrepareRender();
-            engineSystem_->ExecuteRenderPipeline();
+            {
+                CORE_PROFILE_ZONE("PrepareRender");
+                PrepareRender();
+            }
+            {
+                CORE_PROFILE_ZONE("Render");
+                engineSystem_->ExecuteRenderPipeline();
+            }
 
             // エンジンシステムのフレーム終了処理
-            engineSystem_->EndFrame();
+            {
+                CORE_PROFILE_ZONE("EndFrame");
+                engineSystem_->EndFrame();
+            }
         }
 
         // ──────────────────────────────────────────────────────────

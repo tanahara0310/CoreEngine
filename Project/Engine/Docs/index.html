@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.116.0">
+<meta name="engine-version" content="0.117.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2419,6 +2419,25 @@ kbd {
   </div>
   <div class="callout tip"><p>ゲームを作るだけなら <code>Development</code> が向いています。Release と同じ最適化をかけてあるので、遊んだときの速さが書き出したゲームに近くなります。</p></div>
   <div class="callout note" data-title="Visual Studio で止めて調べるとき"><p><code>Development</code> は最適化をかけているので、ブレークポイントで止めたときに変数が「最適化で消えた」と出たり、行が飛んだりします。エンジンの C++ を 1 行ずつ追うときは <code>Debug</code> でビルドします。<code>Debug</code> は最適化が無く GPU の検証も入るぶん重くなります。</p></div>
+  <p><code>Debug</code> と <code>Development</code> には、処理の時間を時間軸で見る道具の Tracy が入っています（<a href="#profiling-tracy">Tracy で処理の時間を見る</a>）。<code>Release</code> には入っていません。</p>
+
+  <h2 id="setup-externals">外部ライブラリ</h2>
+  <p>エンジンが使う外部ライブラリは <span class="path">Project/Externals/</span> に置いてあり、エンジンと一緒にビルドします（assimp は作ってある lib、SDL3 は DLL）。どれも名前・版・取得元・ライセンスを <span class="path">Project/Externals/ThirdParty.json</span> にまとめてあり、ゲームを書き出すとこの一覧から <span class="path">THIRD_PARTY_NOTICES.txt</span> を作ります（<a href="#export-notices">外部ライブラリのライセンスの表記</a>）。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>項目</th><th>書くこと</th></tr></thead>
+    <tbody>
+      <tr><td><code>name</code></td><td>ライブラリの名前</td></tr>
+      <tr><td><code>version</code></td><td>版（分からないときは分からないと書く）</td></tr>
+      <tr><td><code>source</code></td><td>取ってきた所の URL</td></tr>
+      <tr><td><code>license</code></td><td>ライセンスの名前（<code>MIT</code>・<code>BSD-3-Clause</code>・<code>Zlib</code> など）</td></tr>
+      <tr><td><code>licenseFiles</code></td><td>ライセンスの本文のファイル。<span class="path">Project/Externals/</span> からのパス</td></tr>
+      <tr><td><code>inGame</code></td><td>Release の exe か <span class="path">Binaries/</span> の DLL に入るなら <code>true</code>（書き出したゲームの表記に入る）。エディタだけで使うなら <code>false</code></td></tr>
+      <tr><td><code>usage</code></td><td>エンジンの何に使うか</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>ライブラリを足すときや版を上げるときは、そのライブラリのフォルダにライセンスのファイル（<span class="path">LICENSE</span> など）をそのまま置き、一覧の項目も足すか直します。取ってきた物にライセンスのファイルが無ければ、取得元の同じ版から取ってきます。</p>
 
   <h2 id="setup-cmdline">コマンドラインのオプション</h2>
   <div class="table-wrap">
@@ -3619,7 +3638,7 @@ kbd {
   <p>Key Config では、割り当てのボタンを押してから新しいキーを押すと割り当てが変わります。<span class="ui">x</span> で削除、<span class="ui">追加</span> で足し、同じ場面のほかのアクションと重なると赤く表示されます。<span class="ui">初期値に戻す</span> で InputActions.json の既定に戻ります。</p>
 </article>
 
-<article class="page" id="editor-export" data-group="エディタ" data-title="ゲームを書き出す" data-nav="ゲームの書き出し" data-keywords="書き出し 書き出す export ビルド release 配布 exe 完成 build windows 全画面 フルスクリーン 終了 esc 起動シーン テクスチャ dds 変換 クック cooked シェーダ dxil コンパイル モデル cmesh 並列 スレッド 失敗 json messagepack バイナリ シーン 選ぶ 外す 除く 大きさ 容量 exportExcludedScenes">
+<article class="page" id="editor-export" data-group="エディタ" data-title="ゲームを書き出す" data-nav="ゲームの書き出し" data-keywords="書き出し 書き出す export ビルド release 配布 exe 完成 build windows 全画面 フルスクリーン 終了 esc 起動シーン テクスチャ dds 変換 クック cooked シェーダ dxil コンパイル モデル cmesh 並列 スレッド 失敗 json messagepack バイナリ シーン 選ぶ 外す 除く 大きさ 容量 exportExcludedScenes ライセンス license 表記 THIRD_PARTY_NOTICES 外部ライブラリ">
   <h1>ゲームを書き出す</h1>
   <p class="lead">完成したゲームを、エディタの無い PC でも遊べるフォルダにまとめます。できたフォルダを丸ごと渡せば、そのまま遊べます。</p>
 
@@ -3639,6 +3658,7 @@ kbd {
     ├─ Binaries/                    exe が読む DLL（SDL3.dll・dxcompiler.dll。Release のフォルダの Binaries から）
     ├─ CookManifest.json            変換したデータの一覧（これがあると、書き出したゲームとして動く）
     ├─ CookedTextureAliases.txt     中身が同じなので 1 つにまとめた DDS の一覧（まとめた物があるときだけ）
+    ├─ THIRD_PARTY_NOTICES.txt      ゲームに入っている外部ライブラリのライセンスの表記
     ├─ Engine/
     │  ├─ Assets/                   エンジンの素材（シェーダなど。画像のテクスチャとモデルのファイルは除く。JSON は MessagePack）
     │  └─ Cooked/                   エンジンの画像のテクスチャを変換した DDS・モデルの .cmesh・コンパイルしたシェーダの DXIL
@@ -3736,6 +3756,14 @@ kbd {
   </div>
   <div class="callout warn" data-title="スクリプトからゲームを終了する関数はない"><p>タイトル画面に「やめる」ボタンを置いても、スクリプトからは終了できません。終わり方は × ボタンと <kbd>Alt</kbd>+<kbd>F4</kbd>（と、オンにしたときの <kbd>Esc</kbd>）です。</p></div>
 
+  <h2 id="export-notices">外部ライブラリのライセンスの表記</h2>
+  <p>書き出す先の根に <span class="path">THIRD_PARTY_NOTICES.txt</span> を作ります。ゲームの exe と <span class="path">Binaries/</span> の DLL に入っている外部ライブラリ（assimp・DirectXTex・spdlog・SDL3・DirectX Shader Compiler など）の名前・版・取得元と、ライセンスの本文を並べたファイルです。MIT や BSD のライセンスは、ライブラリを組み込んだ物を配るときに、この表記を一緒に付けることを求めています。ゲームを配るときは、このファイルを消さずにフォルダごと渡してください。</p>
+  <ul>
+    <li>中身は外部ライブラリの一覧 <span class="path">Project/Externals/ThirdParty.json</span> のうち、<code>inGame</code> が <code>true</code> のものから作ります（<a href="#setup-externals">外部ライブラリ</a>）。エディタだけで使うもの（Dear ImGui・imnodes・ImGuizmo・Live++・PIX・Tracy）は入りません。</li>
+    <li>一覧を読めないときや、一覧に書いたライセンスのファイルが無いときは、書き出す先を消す前に書き出しを止め、窓に訳を出します。</li>
+    <li>書き出すたびに作り直すので、このファイルに書き足しても次の書き出しで消えます。フォントや画像など素材の作者が表記を求めているときは、ゲームの中のクレジットか別のファイルに書いてください。</li>
+  </ul>
+
   <h2 id="export-checklist">書き出す前のチェックリスト</h2>
   <ul>
     <li>起動シーンが、最初に見せたい画面（タイトルなど）になっている</li>
@@ -3745,6 +3773,7 @@ kbd {
     <li>Development で最初のシーンから最後まで通して遊んだ（シーンの切り替えと <a href="#api-Session">Session</a> の受け渡しを含めて）</li>
     <li>キーボードとゲームパッドの両方で操作できる。メニューはキーだけでも選べる（<a href="#ui-button">Focus</a>）</li>
     <li>エディタでしか使わないテスト用のスクリプトは <span class="path">Scripts/Editor/</span> に入れてある</li>
+    <li>自分で足したフォント・画像・音の作者が表記を求めているなら、クレジットに書いた（<a href="#export-notices">外部ライブラリのライセンスの表記</a>）</li>
   </ul>
 </article>
 
@@ -12036,6 +12065,71 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   </script>
 </article>
 
+<article class="page" id="profiling-tracy" data-group="困ったとき・資料" data-title="Tracy で処理の時間を見る" data-nav="Tracy で計測" data-keywords="tracy プロファイラ profiler 計測 処理時間 重い 遅い fps フレーム gpu cpu 時間軸 タイムライン スレッド ボトルネック tracy-capture csv">
+  <h1>Tracy で処理の時間を見る</h1>
+  <p class="lead">Tracy は、CPU と GPU の処理が「どのスレッドで・いつ・何 ms かかったか」を時間軸で見る道具です。<code>Debug</code> と <code>Development</code> のエンジンに組み込んであり、エディタを動かしたまま Tracy の画面からつなぐと記録が始まります。エディタの Profiler パネルは処理ごとの平均の時間を出し、Tracy は 1 フレームずつの並びを出します。たまにだけ重くなるフレームや、スレッドどうしの待ち合わせを調べるときに使います。</p>
+
+  <h2 id="tracy-setup">用意するもの</h2>
+  <p>Tracy の画面（<span class="path">tracy-profiler.exe</span>）は、エンジンに組み込んだのと同じ <strong>0.15.0</strong> を使います。<a href="https://github.com/wolfpld/tracy/releases/tag/v0.15.0">Tracy の配布ページ</a> の <span class="path">windows-0.15.0.zip</span> を展開すると、<span class="path">tracy-profiler.exe</span>（画面）・<span class="path">tracy-capture.exe</span>（コマンドラインで記録する）・<span class="path">tracy-csvexport.exe</span>（記録を CSV にする）が入っています。版が違うとつなげません。</p>
+
+  <h2 id="tracy-connect">つないで見る</h2>
+  <ol class="steps">
+    <li><strong>エディタを起動する</strong><code>Debug</code> か <code>Development</code> でビルドしたエディタを起動します。</li>
+    <li><strong>Tracy の画面からつなぐ</strong><span class="path">tracy-profiler.exe</span> を起動し、一覧に出る <span class="path">CoreEngine.exe</span> を選びます。一覧に出ないときは、アドレスの欄に <code>127.0.0.1</code> を入れて <span class="ui">Connect</span> を押します。</li>
+    <li><strong>見る</strong>つないだ時から記録が始まります。上のフレームの棒グラフで重いフレームを選ぶと、その間の区間が時間軸に並びます。区間を選ぶと、同じ名前の区間の回数・平均・最大が出ます。</li>
+  </ol>
+  <div class="callout note"><p>つないでいない間は記録しません。区間ごとに「つないでいるか」を確かめるだけなので、ふだんのエディタの重さはほとんど変わりません。つなげるのは同じ PC からだけです。</p></div>
+
+  <h2 id="tracy-zones">見える区間</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>行</th><th>区間</th></tr></thead>
+    <tbody>
+      <tr><td>フレーム</td><td>メインの窓の Present ごとに 1 フレーム</td></tr>
+      <tr><td>CoreEngine Main</td><td><code>BeginFrame</code>・<code>Update</code>（スクリプトとシーンの更新）・<code>PrepareRender</code>・<code>Render</code>・<code>EndFrame</code>。<code>Render</code> の中に描画のパスの名前（Profiler パネルと同じ名前）・<code>ImGui Draw</code>・<code>Present</code>・<code>Wait For Frame Slot</code>（GPU が前のフレームを終えるのを待つ時間）</td></tr>
+      <tr><td>CoreEngine … Worker N</td><td>スレッドプールの仕事 1 つずつ（読み込み・変換など。名前は仕事を頼んだ所が付けた名前）</td></tr>
+      <tr><td>Direct Queue（GPU）</td><td>描画のパスと、パスの中の細かい段（水面の FFT など）・<code>ImGui Draw</code> の GPU の時間</td></tr>
+      <tr><td>メッセージ</td><td>ログの警告とエラー（カテゴリの名前付き）</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>起動のステップ（ローディング画面の間の処理）も区間になっています。起動から測るときは、先に <span class="path">tracy-capture.exe</span> を待たせておいてからエディタを起動します（次の節）。</p>
+
+  <h2 id="tracy-capture">コマンドラインで記録する</h2>
+  <p>画面を使わずに記録をファイルへ書き、CSV にして数を比べられます。</p>
+  <script type="text/x-code" data-lang="text" data-file="ターミナル（Tracy を展開したフォルダで）">
+    tracy-capture.exe -o trace.tracy -a 127.0.0.1 -s 10
+    tracy-csvexport.exe trace.tracy > zones.csv
+  </script>
+  <p><code>-s 10</code> はつないでから 10 秒で止めます（付けなければエディタを閉じるまで）。<span class="path">tracy-capture.exe</span> はエディタが起動するまで待つので、先に走らせておけば起動のステップから記録できます。CSV は区間の名前ごとの回数・合計・平均などの表です。記録したファイルは <span class="path">tracy-profiler.exe</span> でも開けます。</p>
+
+  <h2 id="tracy-add">区間を足す（エンジンの C++）</h2>
+  <p>描画のパス（RenderGraph に登録したもの）は、足さなくても CPU と GPU の両方に出ます。それ以外の処理を測るときは、<span class="path">Utility/Profiler/ProfileZone.h</span> を読み込んで、測りたいスコープの頭に書きます。</p>
+  <script type="text/x-code" data-lang="text" data-file="C++">
+    #include "Utility/Profiler/ProfileZone.h"
+    #include "Graphics/RHI/Debug/GpuProfileZone.h"
+
+    void Foo::Update()
+    {
+        CORE_PROFILE_ZONE("Foo::Update");              // CPU。名前は文字列リテラル
+        CORE_PROFILE_ZONE_TRANSIENT(name.c_str());     // CPU。名前が実行時に決まるとき
+        GpuProfileZone gpuZone(cmdList, "Foo Draw");   // GPU。同じスコープで cmdList に積んだ分
+    }
+  </script>
+  <ul>
+    <li><code>Release</code> では、どれも何もしないものになります。<code>#ifdef</code> で囲む必要はありません。</li>
+    <li>1 つのスコープに <code>CORE_PROFILE_ZONE</code> は 1 つだけです。分けたいときは <code>{ }</code> でスコープを分けます。</li>
+    <li>水面の FFT のように 1 つのパスの中を分けて測る <code>GpuStageScope</code> は、PIX のマーカー・Profiler パネル・Tracy の GPU の区間を一緒に積みます。</li>
+  </ul>
+
+  <h2 id="tracy-notes">気をつけること</h2>
+  <ul>
+    <li>Tracy の画面を管理者として起動していないと、CPU のサンプリングとスレッドの切り替わり（どのコアでいつ動いたか）は記録されません。区間の記録には要りません。</li>
+    <li>つないでいる間は、記録の分だけエディタが少し重くなります。Profiler パネルの数字と比べるときは、つないでいないときの数字を使ってください。</li>
+    <li>書き出したゲームには入っていません。ゲームを Tracy で測りたいときは、<code>Development</code> のエディタで再生して測ります。</li>
+  </ul>
+</article>
+
 <article class="page" id="troubleshooting" data-group="困ったとき・資料" data-title="トラブルシューティング" data-keywords="トラブル 困った 動かない 出ない 表示されない 当たらない 反応しない 落ちる すり抜ける 真っ暗 エラー 直し方 原因 faq よくある質問">
   <h1>トラブルシューティング</h1>
   <p class="lead">よくある「動かない」を、症状から原因と直し方へ引けるようにまとめました。まず Console にエラーや警告が出ていないかを見るのが近道です。</p>
@@ -12491,6 +12585,17 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-117-0">v0.117.0 <span class="dim">（2026-11-25）</span></h3>
+  <p>書き出したゲームに外部ライブラリのライセンスの表記を入れるようにし、エディタのあるビルド（Debug・Development）で、CPU と GPU の処理の時間を Tracy Profiler で見られるようにした版です（<a href="#profiling-tracy">Tracy で処理の時間を見る</a>）。書き出したゲーム（Release）の動きは前の版と同じです。シーンとプロジェクトの保存の形も前の版と同じです。</p>
+  <ul>
+    <li><strong>ライセンスの表記</strong>：ゲームを書き出すと、書き出す先の根に <span class="path">THIRD_PARTY_NOTICES.txt</span> ができます。ゲームに入っている外部ライブラリ 18 本の名前・版・取得元・ライセンスの本文が入ります（<a href="#export-notices">外部ライブラリのライセンスの表記</a>）。ライセンスのファイルが 1 本でも読めないときは、書き出す先を消す前に書き出しを止めます。</li>
+    <li><strong>外部ライブラリの一覧</strong>：<span class="path">Project/Externals/ThirdParty.json</span> に、Externals の各ライブラリの版・取得元・ライセンスと、ゲームに入るかどうかを書きました（<a href="#setup-externals">外部ライブラリ</a>）。ライセンスのファイルが無かった assimp（中に入っている 7 本を含む）・DirectXTex・JSON for Modern C++・spdlog の LICENSE と、DirectX Shader Compiler のライセンスを足しました。</li>
+    <li><strong>Tracy</strong>：Tracy 0.15.0 のクライアントを <span class="path">Project/Externals/tracy</span> に入れました。同じ版の Tracy の画面（<span class="path">tracy-profiler.exe</span>）を同じ PC で開いてつなぐと、フレームの区切り・CPU の区間・GPU の区間・ログの警告とエラーが届きます。つないでいない間は区間を記録せず、GPU の時間を測るクエリも積みません。ほかの PC からはつなげません。</li>
+    <li><strong>見える区間</strong>：フレームの段（<code>BeginFrame</code>・<code>Update</code>・<code>PrepareRender</code>・<code>Render</code>・<code>EndFrame</code>）、描画のパスごとの CPU と GPU の時間、パスの中の細かい段の GPU の時間、<code>ImGui Draw</code>・<code>Present</code>・<code>Wait For Frame Slot</code>、起動のステップ、スレッドプールの仕事です。メインのスレッドは「CoreEngine Main」の名前で出ます。</li>
+    <li><strong>自分のコードを測る</strong>：<span class="path">Utility/Profiler/ProfileZone.h</span> の <code>CORE_PROFILE_ZONE</code> で CPU の区間を、<span class="path">Graphics/RHI/Debug/GpuProfileZone.h</span> の <code>GpuProfileZone</code> で GPU の区間を足せます。Release ではどちらも何もしません。</li>
+    <li><strong>Release</strong>：書き出したゲームの exe には Tracy が入らず、通信もしません。</li>
+  </ul>
 
   <h3 id="changelog-v0-116-0">v0.116.0 <span class="dim">（2026-11-24）</span></h3>
   <p>砕けた波が浜を駆け上がる水を、水面を平らに持ち上げる形から、浜を駆け上がって引く薄い水の膜に作り直した版です（<a href="#api-WaterSurface">水面</a>）。膜が引いた後の砂は濡れて暗くなり、岸の泡は膜に乗って浜を上がり、引く水と一緒に沖へ戻ります。設定は増えていませんが、<code>r.Water.Shore.RunupHeight</code> の意味が変わり、緩い浜では水の上がる距離が前の版より短くなります。シーンの保存の形は前の版と同じです。</p>

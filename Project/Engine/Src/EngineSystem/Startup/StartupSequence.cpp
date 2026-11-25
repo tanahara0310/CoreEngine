@@ -3,6 +3,7 @@
 
 #include "Utility/Logger/Logger.h"
 #include "Utility/Profiler/CpuProfiler.h"
+#include "Utility/Profiler/ProfileZone.h"
 
 #include <algorithm>
 #include <charconv>
@@ -49,6 +50,7 @@ namespace CoreEngine
         // [CpuProfile] レポートが別経路の数字になり、片方だけ直したときに食い違う。
         // 例外時に EndScope が漏れるが、起動タスクの例外＝起動失敗なので追わない。
         auto& profiler = CpuProfiler::GetInstance();
+        CORE_PROFILE_ZONE_TRANSIENT(entry.executedLabel.c_str());
         profiler.BeginScope(entry.executedLabel.c_str());
         const StartupTaskResult result = entry.task->Execute();
         const CpuProfiler::Sample measured = profiler.EndScope();

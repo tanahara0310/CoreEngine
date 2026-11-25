@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Graphics/RHI/Debug/GpuMarker.h"
+#include "Graphics/RHI/Debug/GpuProfileZone.h"
 #include "Graphics/RHI/Debug/GpuTimestampProfiler.h"
 
 #include <cstdint>
@@ -9,7 +10,7 @@ struct ID3D12GraphicsCommandList;
 
 namespace CoreEngine
 {
-    /// @brief PIX マーカーと CPU/GPU タイムスタンプを同じ範囲で積むスコープ
+    /// @brief PIX マーカーと CPU/GPU タイムスタンプと Tracy の GPU の区間を同じ範囲で積むスコープ
     /// @details 1 パスの内部を分解して計測する。名前ごとに動的スロットが割り当てられる。
     /// @note 同一スロットへ Begin/End を 1 フレームに複数回積むと最後の 1 回だけが残るため、
     ///       同じ処理を複数回走らせる場合は回ごとに別の名前を渡すこと。
@@ -23,6 +24,7 @@ namespace CoreEngine
             GpuTimingCategory category)
             : cmdList_(cmdList)
             , profiler_(profiler)
+            , gpuZone_(cmdList, name)
         {
             BeginGpuMarker(cmdList_, name);
             if (profiler_ && cmdList_) {
@@ -50,5 +52,6 @@ namespace CoreEngine
         ID3D12GraphicsCommandList* cmdList_ = nullptr;
         GpuTimestampProfiler* profiler_ = nullptr;
         uint32_t slot_ = UINT32_MAX;
+        GpuProfileZone gpuZone_;
     };
 }

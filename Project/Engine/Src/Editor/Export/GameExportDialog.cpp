@@ -118,7 +118,8 @@ namespace CoreEngine::Editor
                 ? ToUtf8(plan_.releaseExe) + "（ビルド " + plan_.releaseBuiltAt + "）"
                 : std::string("－"));
             Row("写すもの", "Release のフォルダの exe と Binaries（DLL）\nEngine\\Assets・Application\\Assets・Application\\Config\n"
-                "（外したシーンと、そのシーンだけが使うモデル・テクスチャ・音は除きます）");
+                "（外したシーンと、そのシーンだけが使うモデル・テクスチャ・音は除きます）\n"
+                "外部ライブラリのライセンスの表記を THIRD_PARTY_NOTICES.txt に書きます");
             Row("変換するもの", "画像のテクスチャ（PNG・JPG など）は写さず、DDS に変換して\nEngine\\Cooked・Application\\Cooked に書きます\n"
                 "モデル（glTF・OBJ など）も写さず、.cmesh に変換して同じ場所に書きます\n"
                 "シーン・プレハブ・マテリアル・設定などの JSON は、MessagePack（バイナリ）にして同じ名前で書きます\n"
