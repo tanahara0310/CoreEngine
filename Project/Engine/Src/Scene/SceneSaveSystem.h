@@ -180,6 +180,9 @@ namespace CoreEngine
         /// @note 対象はオブジェクトの JSON と、控えのある設定のファイル。ファイル名の順に並べる。
         static std::vector<ExternalChange> FindExternalChanges(const std::string& sceneName);
 
+        /// @brief シーンのフォルダの絶対パス（`Application/Assets/Scenes/<名前>` を開いているプロジェクトの中で解いたもの）
+        static std::filesystem::path ResolveSceneFolder(const std::string& sceneName);
+
         /// @brief 保存完了時に呼ばれる通知コールバックを設定
         void SetSaveNotificationCallback(std::function<void(const std::string&)> cb) {
             onSaveNotification_ = std::move(cb);

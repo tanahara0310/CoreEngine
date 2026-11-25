@@ -145,6 +145,9 @@
     <ClCompile Include="Engine\Src\Utility\Path\CookedPath.cpp">
       <Filter>Engine\Src\Utility\Path</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\File\FolderChangeWatch.cpp">
+      <Filter>Engine\Src\Utility\File</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Compression\CompressedFile.cpp">
       <Filter>Engine\Src\Utility\Compression</Filter>
     </ClCompile>
@@ -4390,6 +4393,9 @@
       <Filter>Engine\Src\Utility\JsonManager</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\File\ReadFileText.h">
+      <Filter>Engine\Src\Utility\File</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\File\FolderChangeWatch.h">
       <Filter>Engine\Src\Utility\File</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\JsonManager\JsonFields.h">

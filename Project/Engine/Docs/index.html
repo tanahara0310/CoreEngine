@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.117.0">
+<meta name="engine-version" content="0.117.1">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12276,7 +12276,7 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   </ol>
 
   <h3 id="team-external">エディタを開いたまま pull したとき</h3>
-  <p>エディタは、編集中は開いているシーンのフォルダを 1 秒ごとに確かめます（再生中は確かめず、止めた後に確かめます）。外でファイルが変わっていたら、次のようにします。</p>
+  <p>エディタは、編集中は開いているシーンのフォルダを見張り、中のファイルが足された・消えた・書き換わったときに、1 秒以内にフォルダを確かめます（再生中は確かめず、止めた後に確かめます）。外でファイルが変わっていたら、次のようにします。</p>
   <div class="table-wrap">
   <table>
     <thead><tr><th>自分の状態</th><th>エディタがすること</th></tr></thead>
@@ -12287,6 +12287,7 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   </table>
   </div>
   <p>スクリプト（.as）は pull で変わると自動でコンパイルし直します。</p>
+  <div class="callout note"><p>見張っている間は、開いているシーンのフォルダを中に持つ <span class="path">Scenes</span> フォルダの名前を変えたり、ほかのフォルダへ動かしたりできません。変えるときはエディタを閉じてから変えてください。</p></div>
 
   <h3 id="team-conflict-dialog">保存でほかの人の変更を消しそうなとき</h3>
   <p>自分も変えたファイルを、ほかの人も変えていたら、書く前に「<span class="ui">ほかの人の変更とぶつかります</span>」と聞きます。</p>
@@ -12585,6 +12586,15 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-117-1">v0.117.1 <span class="dim">（2026-11-26）</span></h3>
+  <p>エディタが編集中に 1 秒に 1 回、開いているシーンのフォルダのファイルを全部確かめていたため、そのフレームだけ処理が長くなっていたのを直した版です。外でファイルが変わったときにエディタがすること（<a href="#team-external">エディタを開いたまま pull したとき</a>）は前の版と同じです。書き出したゲームと、シーンの保存の形も前の版と同じです。</p>
+  <ul>
+    <li><strong>外の変更の確かめ</strong>：開いているシーンのフォルダを見張り、中のファイルが足された・消えた・書き換わったときだけ、フォルダを確かめるようにしました。ファイルが 727 個あるアラハのシーンでは、何も変わっていなくても 1 秒に 1 回、2.4ms かかっていました。今の版では、何も変わっていない間は 1 回も確かめず、更新の処理が 2ms を超えるフレームは 40 秒の間に 88 回から 7 回に減りました。外でファイルを書き換えると、0.2 秒ほどで気づいて読み直します。</li>
+    <li><strong>見張れないとき</strong>：シーンのフォルダが無いときや見張れない場所にあるときは、前の版と同じく 1 秒ごとに確かめます。</li>
+    <li><strong>Scenes フォルダ</strong>：エディタでシーンを開いている間は、<span class="path">Scenes</span> フォルダの名前を変えたり、ほかのフォルダへ動かしたりできません。</li>
+    <li><strong>Tracy</strong>：シーンのフォルダを確かめる処理が <code>SceneSaveSystem::FindExternalChanges</code> の区間として出ます（<a href="#profiling-tracy">Tracy で処理の時間を見る</a>）。</li>
+  </ul>
 
   <h3 id="changelog-v0-117-0">v0.117.0 <span class="dim">（2026-11-25）</span></h3>
   <p>書き出したゲームに外部ライブラリのライセンスの表記を入れるようにし、エディタのあるビルド（Debug・Development）で、CPU と GPU の処理の時間を Tracy Profiler で見られるようにした版です（<a href="#profiling-tracy">Tracy で処理の時間を見る</a>）。書き出したゲーム（Release）の動きは前の版と同じです。シーンとプロジェクトの保存の形も前の版と同じです。</p>

@@ -25,6 +25,7 @@
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
+#include "Utility/Profiler/ProfileZone.h"
 #include "Utility/String/FailWith.h"
 
 #include <algorithm>
@@ -1559,13 +1560,19 @@ namespace CoreEngine
             Fnv1a::Hash(normalized));
     }
 
+    std::filesystem::path SceneSaveSystem::ResolveSceneFolder(const std::string& sceneName)
+    {
+        return ProjectPaths::Resolve(MakeSceneDir(sceneName));
+    }
+
     std::vector<SceneSaveSystem::ExternalChange> SceneSaveSystem::FindExternalChanges(const std::string& sceneName)
     {
+        CORE_PROFILE_ZONE("SceneSaveSystem::FindExternalChanges");
         namespace fs = std::filesystem;
         std::vector<ExternalChange> changes;
 
         std::error_code ec;
-        const fs::path dir = ProjectPaths::Resolve(MakeSceneDir(sceneName));
+        const fs::path dir = ResolveSceneFolder(sceneName);
         if (!fs::is_directory(dir, ec)) {
             return changes;
         }
