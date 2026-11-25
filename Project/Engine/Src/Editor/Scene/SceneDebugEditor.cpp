@@ -253,6 +253,22 @@ namespace CoreEngine
             return;
         }
 
+        // フォルダは変更の知らせが来たときだけ読む（見張れないフォルダは毎回読む）
+        const std::filesystem::path sceneFolder = SceneSaveSystem::ResolveSceneFolder(sceneName);
+        std::error_code folderError;
+        if (!sceneFolderWatch_.IsWatching() || sceneFolderWatch_.GetFolder() != sceneFolder
+            || !std::filesystem::is_directory(sceneFolder, folderError)) {
+            externalScanPending_ = true;
+            sceneFolderWatch_.Start(sceneFolder);
+        }
+        if (sceneFolderWatch_.TakeChanged() || !sceneFolderWatch_.IsWatching()) {
+            externalScanPending_ = true;
+        }
+        if (!externalScanPending_) {
+            return;
+        }
+        externalScanPending_ = false;
+
         std::vector<SceneSaveSystem::ExternalChange> changes = SceneSaveSystem::FindExternalChanges(sceneName);
         const auto sameChanges = [](const std::vector<SceneSaveSystem::ExternalChange>& a,
                                     const std::vector<SceneSaveSystem::ExternalChange>& b) {
@@ -273,6 +289,7 @@ namespace CoreEngine
         // 保存していない変更が無ければ、その場で読み直す（ドラッグなどの操作の途中は待つ）
         if (!IsSceneDirty()) {
             if (ImGui::IsAnyItemActive()) {
+                externalScanPending_ = true;
                 return;
             }
             Logger::GetInstance().Logf(LogLevel::Info, LogCategory::System,

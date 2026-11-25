@@ -248,6 +248,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Editor\Panel\EditorMenuRegistry.cpp" />
     <ClCompile Include="Engine\Src\Utility\Path\ProjectPaths.cpp" />
     <ClCompile Include="Engine\Src\Utility\Path\CookedPath.cpp" />
+    <ClCompile Include="Engine\Src\Utility\File\FolderChangeWatch.cpp" />
     <ClCompile Include="Engine\Src\Utility\Compression\CompressedFile.cpp" />
     <ClCompile Include="Engine\Src\Utility\CommandLine\CommandLine.cpp" />
     <ClCompile Include="Engine\Src\Editor\Panel\EditorPanelStateSection.cpp" />
@@ -2205,6 +2206,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Utility\FrameRate\Time.h" />
     <ClInclude Include="Engine\Src\Utility\JsonManager\JsonManager.h" />
     <ClInclude Include="Engine\Src\Utility\File\ReadFileText.h" />
+    <ClInclude Include="Engine\Src\Utility\File\FolderChangeWatch.h" />
     <ClInclude Include="Engine\Src\Utility\JsonManager\JsonFields.h" />
     <ClInclude Include="Engine\Src\Utility\Lifetime\ScopedRegistration.h" />
     <ClInclude Include="Engine\Src\Utility\Macro\UniqueName.h" />

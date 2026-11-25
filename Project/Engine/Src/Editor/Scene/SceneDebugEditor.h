@@ -8,6 +8,7 @@
 #include "Editor/ImGui/Gizmo.h"
 #include "Editor/ImGui/ObjectSelector.h"
 #include "Scene/SceneSaveSystem.h"
+#include "Utility/File/FolderChangeWatch.h"
 #include "Utility/Lifetime/ScopedRegistration.h"
 #include <chrono>
 #include <cstdint>
@@ -314,6 +315,12 @@ namespace CoreEngine
 
         // 次に外の変更を調べる時刻
         std::chrono::steady_clock::time_point nextExternalCheck_{};
+
+        // 開いているシーンのフォルダの変更の知らせ
+        FolderChangeWatch sceneFolderWatch_;
+
+        // 次に外の変更を調べるときにシーンのフォルダを読むか
+        bool externalScanPending_ = true;
 
         // 非所有参照
         EngineSystem* engine_ = nullptr;
