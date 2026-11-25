@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Logger.h"
 #include "Utility/Path/ProjectPaths.h"
+#include "Utility/Profiler/ProfileZone.h"
 #include "Utility/String/Utf8.h"
 
 #include <chrono>
@@ -99,6 +100,43 @@ namespace
         std::vector<BufferedLogEntry> buffer_;
         std::mutex callback_mutex_;
     };
+
+#if CORE_TRACY_ENABLED
+    /// @brief 警告とエラーを Tracy の時間軸へ送る spdlog の Sink（Tracy がつないでいる間だけ）
+    class profiler_sink_mt : public spdlog::sinks::base_sink<std::mutex> {
+    protected:
+        void sink_it_(const spdlog::details::log_msg& msg) override
+        {
+            if (msg.level < spdlog::level::warn || !CORE_PROFILE_IS_CONNECTED()) {
+                return;
+            }
+            std::string text(msg.logger_name.begin(), msg.logger_name.end());
+            text += ": ";
+            text.append(msg.payload.begin(), msg.payload.end());
+            if (text.size() > kMaxMessageBytes) {
+                // UTF-8 の文字の途中で切らない
+                size_t size = kMaxMessageBytes;
+                while (size > 0 && (static_cast<unsigned char>(text[size]) & 0xC0) == 0x80) {
+                    --size;
+                }
+                text.resize(size);
+            }
+            CORE_PROFILE_MESSAGE(text.data(), text.size());
+        }
+
+        void flush_() override {}
+
+    private:
+        static constexpr size_t kMaxMessageBytes = 4096;
+    };
+
+    /// @brief 全ロガーで共有する Tracy 向けの Sink
+    spdlog::sink_ptr ProfilerSink()
+    {
+        static const spdlog::sink_ptr sink = std::make_shared<profiler_sink_mt>();
+        return sink;
+    }
+#endif
 }
 
 //========================================
@@ -340,7 +378,7 @@ namespace CoreEngine
         const std::filesystem::path& logFilePath,
         spdlog::level::level_enum defaultLevel)
     {
-        // シンクの作成（ローテーションファイル + Visual Studio出力 + コンソールUI転送）
+        // シンクの作成（ローテーションファイル + コンソールUI転送 + Tracy）
         std::vector<spdlog::sink_ptr> sinks;
         sinks.reserve(3);
 
@@ -357,6 +395,9 @@ namespace CoreEngine
         if (consoleSink_) {
             sinks.push_back(consoleSink_);
         }
+#if CORE_TRACY_ENABLED
+        sinks.push_back(ProfilerSink());
+#endif
 
         // ロガーを非同期モードで作成する（高頻度ログでメイン処理を止めにくくする）。
         auto logger = std::make_shared<spdlog::async_logger>(

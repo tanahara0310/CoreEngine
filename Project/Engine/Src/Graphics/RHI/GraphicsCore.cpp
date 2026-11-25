@@ -7,6 +7,7 @@
 #include "Graphics/RHI/Command/CommandContext.h"
 #include "Graphics/RHI/Command/DeferredReleaseQueue.h"
 #include "Graphics/RHI/Command/UploadContext.h"
+#include "Graphics/RHI/Debug/GpuProfileZone.h"
 #include "Graphics/RHI/Resource/UploadRing.h"
 #include "Graphics/RHI/Resource/ConstantBufferPool.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
@@ -15,6 +16,7 @@
 #include "Graphics/RHI/IResizable.h"
 
 #include "Utility/Logger/Logger.h"
+#include "Utility/Profiler/ProfileZone.h"
 
 #include <algorithm>
 #include <stdexcept>
@@ -58,6 +60,7 @@ namespace CoreEngine
 
         ID3D12Device* device = deviceManager_->GetDevice();
         commandQueue_->Initialize(device);
+        GpuProfileZone::Initialize(device, commandQueue_->Get());
         frameSync_->Initialize(device, commandQueue_->Get(), desc.framesInFlight);
         commandContext_->Initialize(device, frameSync_->FramesInFlight());
 
@@ -109,6 +112,7 @@ namespace CoreEngine
         }
         Logger::GetInstance().Infof(LogCategory::Graphics,
             "GraphicsCore::Shutdown: GPU同期完了。全マネージャーを解放します\n");
+        GpuProfileZone::Shutdown();
 
         // 破棄順序を明示する。UploadContext / DeferredReleaseQueue はキューに紐づくので先に落とす
         if (uploadContext_) {
@@ -250,7 +254,11 @@ namespace CoreEngine
 
         // Present。GPU クラッシュを最初に報告してくる場所なので戻り値を捨てない
         static constexpr UINT kPresentFlags = 0;
-        const HRESULT presentResult = swapChain_->Present(syncInterval, kPresentFlags);
+        HRESULT presentResult = S_OK;
+        {
+            CORE_PROFILE_ZONE("Present");
+            presentResult = swapChain_->Present(syncInterval, kPresentFlags);
+        }
         if (FAILED(presentResult)) {
             // 落ちる直前のメッセージを取りこぼさない（この下の throw で戻ってこない）。
             // デバイスロストの原因になった #921 などはここに出る
@@ -267,11 +275,17 @@ namespace CoreEngine
         // ── 次フレームの準備 ──────────────────────────────────
         // ここで Reset まで済ませ、フレーム外でもコマンドリストを記録可能に保つ。
         // スロット番号は FrameSync のものを使う（CurrentBackBufferIndex() は ResizeBuffers で 0 に戻る）
-        frameSync_->AdvanceToNextFrame();
+        {
+            CORE_PROFILE_ZONE("Wait For Frame Slot");
+            frameSync_->AdvanceToNextFrame();
+        }
         commandContext_->Begin(frameSync_->FrameIndex(), descriptorAllocator_->GetSRVHeap());
         // 定数リングの巻き戻しはコマンドアロケータの Reset と同じ条件（このスロットの
         // GPU 完了待ちが済んでいること）で成立する。2 つを別の場所に書くと片方だけずれる。
         uploadRing_->Reset(frameSync_->FrameIndex());
+
+        GpuProfileZone::Collect();
+        CORE_PROFILE_FRAME();
     }
 
     FrameSync& GraphicsCore::Frame() const { return *frameSync_; }

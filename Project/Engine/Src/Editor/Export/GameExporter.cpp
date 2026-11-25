@@ -7,6 +7,7 @@
 #include "Editor/Export/MeshCooker.h"
 #include "Editor/Export/ShaderCooker.h"
 #include "Editor/Export/TextureCooker.h"
+#include "Editor/Export/ThirdPartyNotices.h"
 #include "Editor/ShaderGraph/ShaderGraphAsset.h"
 #include "EngineSystem/EngineVersion.h"
 #include "EngineSystem/Settings/ProjectSettings.h"
@@ -339,6 +340,12 @@ namespace CoreEngine::Editor
             return result;
         }
 
+        // 外部ライブラリの表記は、何も消さないうちに作っておく
+        const std::string notices = ThirdPartyNotices::Build(result.error);
+        if (!result.error.empty()) {
+            return result;
+        }
+
         const std::filesystem::path& destination = plan.destination;
         const FolderItem folders[] = {
             { ProjectPaths::EngineRoot() / "Engine" / "Assets", destination / "Engine" / "Assets" },
@@ -622,6 +629,18 @@ namespace CoreEngine::Editor
             return result;
         }
         ++result.fileCount;
+
+        const std::filesystem::path noticesPath = destination / ThirdPartyNotices::kFileName;
+        {
+            std::ofstream file(noticesPath, std::ios::binary | std::ios::trunc);
+            file.write(notices.data(), static_cast<std::streamsize>(notices.size()));
+            if (!file) {
+                result.error = ToUtf8(noticesPath) + " を書けませんでした" + kLockedHint;
+                return result;
+            }
+        }
+        ++result.fileCount;
+        result.bytes += notices.size();
 
         std::vector<CookRecord> records = std::move(cookRecords);
         records.insert(records.end(), meshRecords.begin(), meshRecords.end());

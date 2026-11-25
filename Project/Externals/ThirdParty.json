@@ -1,0 +1,221 @@
+{
+  "about": "エンジンが使う外部ライブラリの一覧。licenseFiles はこのフォルダ（Project/Externals）からの相対パス。inGame が true のものは、書き出したゲームの THIRD_PARTY_NOTICES.txt に名前・版・取得元・ライセンスの本文が入る。ライブラリを足す・更新するときはここも直す。",
+  "libraries": [
+    {
+      "name": "AngelScript",
+      "version": "2.38.0",
+      "source": "https://www.angelcode.com/angelscript/",
+      "license": "Zlib",
+      "licenseFiles": [ "angelscript/LICENSE.txt" ],
+      "inGame": true,
+      "usage": "スクリプト（add_on の array・dictionary・string なども含む）"
+    },
+    {
+      "name": "Open Asset Import Library (assimp)",
+      "version": "5.3 系（ビルド済みの lib のみ。正確な版は不明）",
+      "source": "https://github.com/assimp/assimp",
+      "license": "BSD-3-Clause",
+      "licenseFiles": [ "assimp/LICENSE" ],
+      "inGame": true,
+      "usage": "モデルの読み込み"
+    },
+    {
+      "name": "RapidJSON（assimp に同梱）",
+      "version": "assimp に同梱の版",
+      "source": "https://github.com/Tencent/rapidjson",
+      "license": "MIT",
+      "licenseFiles": [ "assimp/contrib/rapidjson/license.txt" ],
+      "inGame": true,
+      "usage": "assimp の glTF の読み込み"
+    },
+    {
+      "name": "Open3DGC（assimp に同梱）",
+      "version": "assimp に同梱の版",
+      "source": "https://github.com/amd/rest3d",
+      "license": "MIT",
+      "licenseFiles": [ "assimp/contrib/Open3DGC/LICENSE.txt" ],
+      "inGame": true,
+      "usage": "assimp の glTF の圧縮メッシュ"
+    },
+    {
+      "name": "OpenDDL-Parser（assimp に同梱）",
+      "version": "assimp に同梱の版",
+      "source": "https://github.com/kimkulling/openddl-parser",
+      "license": "MIT",
+      "licenseFiles": [ "assimp/contrib/openddlparser/LICENSE" ],
+      "inGame": true,
+      "usage": "assimp の OpenGEX の読み込み"
+    },
+    {
+      "name": "poly2tri（assimp に同梱）",
+      "version": "assimp に同梱の版",
+      "source": "https://github.com/jhasse/poly2tri",
+      "license": "BSD-3-Clause",
+      "licenseFiles": [ "assimp/contrib/poly2tri/LICENSE" ],
+      "inGame": true,
+      "usage": "assimp の多角形の三角形分割"
+    },
+    {
+      "name": "Clipper（assimp に同梱）",
+      "version": "assimp に同梱の版",
+      "source": "https://sourceforge.net/projects/polyclipping/",
+      "license": "BSL-1.0",
+      "licenseFiles": [ "assimp/contrib/clipper/License.txt" ],
+      "inGame": true,
+      "usage": "assimp の多角形の演算"
+    },
+    {
+      "name": "UTF8-CPP（assimp に同梱）",
+      "version": "assimp に同梱の版",
+      "source": "https://github.com/nemtrif/utfcpp",
+      "license": "BSL-1.0",
+      "licenseFiles": [ "assimp/contrib/utf8cpp/LICENSE.txt" ],
+      "inGame": true,
+      "usage": "assimp の文字コードの変換"
+    },
+    {
+      "name": "MiniZip（assimp に同梱）",
+      "version": "assimp に同梱の版",
+      "source": "https://www.winimage.com/zLibDll/minizip.html",
+      "license": "Zlib",
+      "licenseFiles": [ "assimp/contrib/unzip/LICENSE.txt" ],
+      "inGame": true,
+      "usage": "assimp の zip の読み込み"
+    },
+    {
+      "name": "DirectXTex",
+      "version": "198（DirectXTex.h の DIRECTX_TEX_VERSION）",
+      "source": "https://github.com/microsoft/DirectXTex",
+      "license": "MIT",
+      "licenseFiles": [ "DirectXTex/LICENSE" ],
+      "inGame": true,
+      "usage": "画像の読み込みと BC 圧縮・DDS（同梱の d3dx12.h も含む）"
+    },
+    {
+      "name": "meshoptimizer",
+      "version": "0.23",
+      "source": "https://github.com/zeux/meshoptimizer",
+      "license": "MIT",
+      "licenseFiles": [ "meshoptimizer/LICENSE.md" ],
+      "inGame": true,
+      "usage": "メッシュの最適化と LOD"
+    },
+    {
+      "name": "msdfgen",
+      "version": "不明（CoreEngine が使う分だけに削った版。msdfgen/USAGE_IN_COREENGINE.md を参照）",
+      "source": "https://github.com/Chlumsky/msdfgen",
+      "license": "MIT",
+      "licenseFiles": [ "msdfgen/LICENSE.txt" ],
+      "inGame": true,
+      "usage": "文字の距離場の生成"
+    },
+    {
+      "name": "JSON for Modern C++",
+      "version": "3.12.0",
+      "source": "https://github.com/nlohmann/json",
+      "license": "MIT",
+      "licenseFiles": [ "nlohmann/LICENSE.MIT" ],
+      "inGame": true,
+      "usage": "JSON と MessagePack の読み書き"
+    },
+    {
+      "name": "spdlog",
+      "version": "1.16.0",
+      "source": "https://github.com/gabime/spdlog",
+      "license": "MIT",
+      "licenseFiles": [ "spdlog/LICENSE" ],
+      "inGame": true,
+      "usage": "ログ"
+    },
+    {
+      "name": "{fmt}（spdlog に同梱）",
+      "version": "12.0.0",
+      "source": "https://github.com/fmtlib/fmt",
+      "license": "MIT",
+      "licenseFiles": [ "spdlog/include/spdlog/fmt/bundled/fmt.license.rst" ],
+      "inGame": true,
+      "usage": "spdlog の書式"
+    },
+    {
+      "name": "Zstandard (zstd)",
+      "version": "1.5.7",
+      "source": "https://github.com/facebook/zstd",
+      "license": "BSD-3-Clause（BSD と GPL-2.0 の二重ライセンスから BSD を選ぶ）",
+      "licenseFiles": [ "zstd/LICENSE" ],
+      "inGame": true,
+      "usage": "クック済みデータの圧縮"
+    },
+    {
+      "name": "SDL3",
+      "version": "3.4.18",
+      "source": "https://github.com/libsdl-org/SDL",
+      "license": "Zlib",
+      "licenseFiles": [ "SDL3/LICENSE.txt" ],
+      "inGame": true,
+      "usage": "ゲームパッド（Binaries/SDL3.dll）"
+    },
+    {
+      "name": "DirectX Shader Compiler",
+      "version": "1.8.2502.11（Windows SDK の dxcompiler.dll）",
+      "source": "https://github.com/microsoft/DirectXShaderCompiler",
+      "license": "NCSA（LLVM Release License）と同梱物のライセンス",
+      "licenseFiles": [ "ThirdPartyLicenses/DirectXShaderCompiler/LICENSE.TXT" ],
+      "inGame": true,
+      "usage": "シェーダのコンパイル（Binaries/dxcompiler.dll。ビルドのときに Windows SDK から写す）"
+    },
+    {
+      "name": "Dear ImGui",
+      "version": "1.92.1",
+      "source": "https://github.com/ocornut/imgui",
+      "license": "MIT",
+      "licenseFiles": [ "imgui/LICENSE.txt" ],
+      "inGame": false,
+      "usage": "エディタの UI"
+    },
+    {
+      "name": "imnodes",
+      "version": "不明",
+      "source": "https://github.com/Nelarius/imnodes",
+      "license": "MIT",
+      "licenseFiles": [ "imgui/imnodes_LICENSE.md" ],
+      "inGame": false,
+      "usage": "RenderGraph とシェーダーグラフのノードエディタ"
+    },
+    {
+      "name": "ImGuizmo",
+      "version": "1.91.3 WIP",
+      "source": "https://github.com/CedricGuillemet/ImGuizmo",
+      "license": "MIT",
+      "licenseFiles": [ "imgui/ImGuizmo.h" ],
+      "inGame": false,
+      "usage": "エディタの移動・回転・拡大のハンドル（ライセンスはヘッダの先頭）"
+    },
+    {
+      "name": "Tracy Profiler",
+      "version": "0.15.0",
+      "source": "https://github.com/wolfpld/tracy",
+      "license": "BSD-3-Clause",
+      "licenseFiles": [ "tracy/LICENSE" ],
+      "inGame": false,
+      "usage": "CPU と GPU の区間の計測（Debug と Development のみ。tracy/public はクライアントの部分だけ）"
+    },
+    {
+      "name": "Live++",
+      "version": "LivePP フォルダの版",
+      "source": "https://liveplusplus.tech/",
+      "license": "商用（Live++ の利用規約）",
+      "licenseFiles": [],
+      "inGame": false,
+      "usage": "コードのホットリロード（エディタのみ）"
+    },
+    {
+      "name": "WinPixEventRuntime",
+      "version": "1.0.240308001（NuGet）",
+      "source": "https://www.nuget.org/packages/WinPixEventRuntime",
+      "license": "MIT",
+      "licenseFiles": [ "../packages/WinPixEventRuntime.1.0.240308001/license.txt" ],
+      "inGame": false,
+      "usage": "PIX のマーカー（Debug と Development のみ）"
+    }
+  ]
+}

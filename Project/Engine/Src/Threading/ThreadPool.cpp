@@ -3,6 +3,7 @@
 
 #include "ThreadBudget.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/Profiler/ProfileZone.h"
 
 #include <algorithm>
 
@@ -174,7 +175,10 @@ namespace CoreEngine
         // タスク本体はロックの外で実行する。
         // packaged_task が例外を future へ載せるのでここまで飛んでは来ないが、
         // 統計の整合性を例外に依存させないため後片付けは無条件に行う。
-        task.fn();
+        {
+            CORE_PROFILE_ZONE_TRANSIENT(task.label.c_str());
+            task.fn();
+        }
 
         const auto finishedAt = std::chrono::steady_clock::now();
         const double runMs =

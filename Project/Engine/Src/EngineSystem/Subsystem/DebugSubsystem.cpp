@@ -28,6 +28,8 @@
 #include "Graphics/Render/Pass/DeferredLightingPass.h"
 #include "Graphics/Render/Pass/GeometryPass.h"
 #include "Graphics/RHI/GraphicsCore.h"
+#include "Graphics/RHI/Debug/GpuProfileZone.h"
+#include "Utility/Profiler/ProfileZone.h"
 #include "Graphics/Texture/TextureManager.h"
 #include "Graphics/Model/ModelManager.h"
 #include "Graphics/Water/WaterSettingsMigration.h"
@@ -956,6 +958,8 @@ namespace CoreEngine
 
         {
             EngineProfileScope scope(engine_, GpuTimestampSlot::ImGuiDraw, frame.cmdList);
+            CORE_PROFILE_ZONE("ImGui Draw");
+            GpuProfileZone gpuZone(frame.cmdList, "ImGui Draw");
             if (imGui_) {
                 // PostEffectPass完了後に最新の finalDisplayHandle_ でGameビューを描画
                 auto* dx = engine_->GetService<GraphicsCore>();

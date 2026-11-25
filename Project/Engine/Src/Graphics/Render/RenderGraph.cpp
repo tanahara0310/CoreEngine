@@ -8,7 +8,9 @@
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/Barrier/BarrierBatch.h"
 #include "Graphics/RHI/Debug/GpuMarker.h"
+#include "Graphics/RHI/Debug/GpuProfileZone.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/Profiler/ProfileZone.h"
 
 namespace CoreEngine
 {
@@ -259,6 +261,8 @@ namespace CoreEngine
                 // バリア発行もパスのコストなので、マーカー範囲へ含める
                 // （タイムスタンプの範囲と一致させ、PIX と数値がずれないようにする）。
                 GpuMarkerScope marker(cmdList, passLabel.c_str());
+                CORE_PROFILE_ZONE_TRANSIENT(passLabel.c_str());
+                GpuProfileZone gpuZone(cmdList, passLabel.c_str());
 
                 ApplyTransitionsForPass(graphPass, *context.renderContext);
                 renderPass->Setup(*context.renderContext);
