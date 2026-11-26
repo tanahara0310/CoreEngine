@@ -1651,6 +1651,9 @@
     <ClCompile Include="Engine\Src\Editor\ImGui\Widgets\PassTimingTable.cpp">
       <Filter>Engine\Src\Editor\ImGui\Widgets</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\ImGui\Widgets\TimingPlots.cpp">
+      <Filter>Engine\Src\Editor\ImGui\Widgets</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Camera\Camera.cpp">
       <Filter>Engine\Src\Camera</Filter>
     </ClCompile>
@@ -1955,6 +1958,12 @@
       <Filter>Externals\imgui</Filter>
     </ClCompile>
     <ClCompile Include="Externals\imgui\imnodes.cpp">
+      <Filter>Externals\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\implot.cpp">
+      <Filter>Externals\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\implot_items.cpp">
       <Filter>Externals\imgui</Filter>
     </ClCompile>
     <ClCompile Include="Externals\meshoptimizer\src\allocator.cpp">
@@ -2575,6 +2584,9 @@
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\PassTimingTable.h">
+      <Filter>Engine\Src\Editor\ImGui\Widgets</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\TimingPlots.h">
       <Filter>Engine\Src\Editor\ImGui\Widgets</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Path\ProjectPaths.h">
@@ -4699,6 +4711,12 @@
       <Filter>Externals\imgui</Filter>
     </ClInclude>
     <ClInclude Include="Externals\imgui\imnodes_internal.h">
+      <Filter>Externals\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\imgui\implot.h">
+      <Filter>Externals\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\imgui\implot_internal.h">
       <Filter>Externals\imgui</Filter>
     </ClInclude>
     <ClInclude Include="Externals\imgui\imstb_rectpack.h">

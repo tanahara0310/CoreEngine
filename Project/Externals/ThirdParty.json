@@ -182,6 +182,15 @@
       "usage": "RenderGraph とシェーダーグラフのノードエディタ"
     },
     {
+      "name": "ImPlot",
+      "version": "1.1",
+      "source": "https://github.com/epezent/implot",
+      "license": "MIT",
+      "licenseFiles": [ "imgui/implot_LICENSE.txt" ],
+      "inGame": false,
+      "usage": "エディタのグラフ（Engine Stats のフレームの時間と GPU の内訳）"
+    },
+    {
       "name": "ImGuizmo",
       "version": "1.91.3 WIP",
       "source": "https://github.com/CedricGuillemet/ImGuizmo",

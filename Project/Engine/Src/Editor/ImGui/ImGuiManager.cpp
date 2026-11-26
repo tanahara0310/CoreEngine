@@ -15,6 +15,7 @@
 #include "Launch/AppResource.h"
 #include "WinApp/WinApp.h"
 #include <ImGuizmo.h>
+#include <implot.h>
 #include <filesystem>
 #include <format>
 #include <string>
@@ -30,6 +31,27 @@ namespace CoreEngine
 
         /// ImGui の別のウィンドウのプロシージャ（どの別ウィンドウも同じ）
         WNDPROC originalPlatformWindowProc = nullptr;
+
+        /// @brief ImPlot のグラフの面・軸・凡例の色をエディタのテーマに合わせ、系列の 8 色を既定の色の並びにする
+        void ApplyPlotTheme()
+        {
+            namespace Theme = Editor::Theme;
+
+            ImPlotStyle& style = ImPlot::GetStyle();
+            style.Colors[ImPlotCol_FrameBg] = Theme::kTransparent;
+            style.Colors[ImPlotCol_PlotBg] = Theme::kField;
+            style.Colors[ImPlotCol_PlotBorder] = Theme::kTransparent;
+            style.Colors[ImPlotCol_LegendBg] = Theme::WithAlpha(Theme::kPanel, 0.92f);
+            style.Colors[ImPlotCol_LegendBorder] = Theme::kOutline;
+            style.Colors[ImPlotCol_LegendText] = Theme::kText;
+            style.Colors[ImPlotCol_InlayText] = Theme::kText;
+            style.Colors[ImPlotCol_AxisText] = Theme::kTextDim;
+            style.Colors[ImPlotCol_AxisGrid] = Theme::kControl;
+            style.Colors[ImPlotCol_AxisTick] = Theme::kControl;
+
+            style.Colormap = ImPlot::AddColormap("CoreEngine", Theme::kSeries,
+                static_cast<int>(std::size(Theme::kSeries)));
+        }
 
         /// @brief 別のウィンドウへ出した Game ビューでも、ゲームの入力欄へ文字を渡してから ImGui へ回す
         LRESULT CALLBACK PlatformWindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
@@ -171,6 +193,9 @@ namespace CoreEngine
 
         ImGui::StyleColorsDark();
         ApplyCustomTheme();
+
+        ImPlot::CreateContext();
+        ApplyPlotTheme();
 
         // 副ウィンドウは OS ウィンドウとして描かれるため、角丸と半透明背景は見た目が崩れる
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
@@ -487,6 +512,7 @@ namespace CoreEngine
 #endif
         ImGui_ImplDX12_Shutdown();
         ImGui_ImplWin32_Shutdown();
+        ImPlot::DestroyContext();
         ImGui::DestroyContext();
     }
 
