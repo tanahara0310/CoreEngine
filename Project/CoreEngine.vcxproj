@@ -766,6 +766,10 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Camera\View\ViewBuilder.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Render\DrawViewInfo.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\CrashDump.cpp" />
+    <ClCompile Include="Engine\Src\Utility\Debug\CrashReport.cpp">
+      <PreprocessorDefinitions>CPPTRACE_STATIC_DEFINE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)Externals\cpptrace\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RHI\GraphicsCore.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\LeakChecker.cpp" />
     <ClCompile Include="Engine\Src\Utility\FrameRate\FrameRateController.cpp" />
@@ -806,6 +810,51 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\WorldTransform\WorldTransform.cpp" />
     <ClCompile Include="Engine\Src\Scene\SceneManager.cpp" />
     <ClCompile Include="Engine\Src\Input\MouseInput.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\binary\elf.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\binary\mach-o.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\binary\module_base.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\binary\object.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\binary\pe.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\binary\safe_dl.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\cpptrace.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\ctrace.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\demangle\demangle_with_cxxabi.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\demangle\demangle_with_nothing.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\demangle\demangle_with_winapi.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\exceptions.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\formatting.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\from_current.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\jit\jit_objects.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\logging.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\options.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\platform\dbghelp_utils.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\platform\memory_mapping.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\prune_symbol.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\snippets\snippet.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\symbols\dwarf\debug_map_resolver.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\symbols\dwarf\dwarf_options.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\symbols\dwarf\dwarf_resolver.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\symbols\symbols_core.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\symbols\symbols_with_addr2line.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\symbols\symbols_with_dbghelp.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\symbols\symbols_with_dl.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\symbols\symbols_with_libbacktrace.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\symbols\symbols_with_libdwarf.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\symbols\symbols_with_nothing.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\unwind\unwind_with_dbghelp.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\unwind\unwind_with_execinfo.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\unwind\unwind_with_libunwind.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\unwind\unwind_with_nothing.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\unwind\unwind_with_unwind.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\unwind\unwind_with_winapi.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\utils\error.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\utils\io\file.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\utils\io\memory_file_view.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\utils\microfmt.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\utils\replace_all.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\utils\string_view.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\utils\utils.cpp" />
+    <ClCompile Include="Externals\cpptrace\src\utils.cpp" />
     <ClCompile Include="Externals\imgui\imgui.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -2188,6 +2237,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Camera\View\ViewBuilder.h" />
     <ClInclude Include="Engine\Src\Scene\IScene.h" />
     <ClInclude Include="Engine\Src\Utility\Debug\CrashDump.h" />
+    <ClInclude Include="Engine\Src\Utility\Debug\CrashReport.h" />
     <ClInclude Include="Engine\Src\Utility\Algorithm\AssignIfChanged.h" />
     <ClInclude Include="Engine\Src\Utility\Algorithm\FindIfPtr.h" />
     <ClInclude Include="Engine\Src\Utility\Container\RingHistory.h" />
@@ -2407,6 +2457,21 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
   <ItemGroup>
     <ResourceCompile Include="Engine\Src\Launch\CoreEngine.rc" />
     <Image Include="Engine\Src\Launch\CoreEngine.ico" />
+  </ItemGroup>
+  <!-- cpptrace は外部のコードとして、プリコンパイル済みヘッダーを使わず、Windows の dbghelp で呼び出しの列と名前を取る形で作る -->
+  <ItemGroup>
+    <ClCompile Update="Externals\cpptrace\src\**\*.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>CPPTRACE_STATIC_DEFINE;CPPTRACE_UNWIND_WITH_DBGHELP;CPPTRACE_GET_SYMBOLS_WITH_DBGHELP;CPPTRACE_DEMANGLE_WITH_WINAPI;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)Externals\cpptrace\include;$(ProjectDir)Externals\cpptrace\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <ObjectFileName>$(IntDir)cpptrace_%(Filename).obj</ObjectFileName>
+    </ClCompile>
+    <ClCompile Update="Externals\cpptrace\src\utils\utils.cpp">
+      <ObjectFileName>$(IntDir)cpptrace_utils_utils.obj</ObjectFileName>
+    </ClCompile>
   </ItemGroup>
   <!-- エディタを含まない構成（CORE_EDITOR を定義しない Release）では、Editor 配下と ImGui 系の .cpp をビルドしない -->
   <ItemGroup Condition="'$(Configuration)'=='Release'">

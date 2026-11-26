@@ -1,45 +1,160 @@
 #include "pch.h"
 #include "CrashDump.h"
+#include "CrashReport.h"
+#include "EngineSystem/EngineVersion.h"
 #include "Utility/Logger/Logger.h"
+#include <atomic>
+#include <filesystem>
+#include <format>
 
 
 namespace CoreEngine
 {
-void CrashDump::Register()
+namespace
+{
+#if defined(_DEBUG)
+    constexpr const char* kBuildName = "Debug";
+#elif defined(CORE_EDITOR)
+    constexpr const char* kBuildName = "Development";
+#else
+    constexpr const char* kBuildName = "Release";
+#endif
 
-{ // SHE(構造化例外)のコールバック関数を登録
-    SetUnhandledExceptionFilter(HandleException);
+    // ダンプと記録を書くフォルダ（登録したときの作業フォルダの下の Dumps）
+    std::wstring dumpFolder = L"Dumps";
+    // 書いているスレッド（0 なら誰も書いていない）
+    std::atomic<DWORD> writingThread{ 0 };
+
+    struct CrashJob {
+        EXCEPTION_POINTERS* exception;
+        DWORD threadId;
+    };
+
+    std::string WideToUtf8(const std::wstring& text)
+    {
+        const int length = static_cast<int>(text.size());
+        const int size = ::WideCharToMultiByte(CP_UTF8, 0, text.data(), length, nullptr, 0, nullptr, nullptr);
+        std::string result(static_cast<size_t>(size > 0 ? size : 0), '\0');
+        if (size > 0) {
+            ::WideCharToMultiByte(CP_UTF8, 0, text.data(), length, result.data(), size, nullptr, nullptr);
+        }
+        return result;
+    }
+
+    /// @brief 落ちたスレッドと例外の情報を入れたミニダンプを書く
+    bool WriteMiniDump(const std::wstring& path, const CrashJob& job)
+    {
+        const HANDLE file = ::CreateFileW(path.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr,
+            CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (file == INVALID_HANDLE_VALUE) {
+            return false;
+        }
+        MINIDUMP_EXCEPTION_INFORMATION information{};
+        information.ThreadId = job.threadId;
+        information.ExceptionPointers = job.exception;
+        information.ClientPointers = FALSE;
+        const BOOL written = ::MiniDumpWriteDump(::GetCurrentProcess(), ::GetCurrentProcessId(), file, MiniDumpNormal,
+            &information, nullptr, nullptr);
+        ::CloseHandle(file);
+        return written != FALSE;
+    }
+
+    /// @brief 行を UTF-8 のテキストファイルに書く
+    void WriteTextFile(const std::wstring& path, const std::vector<std::string>& lines)
+    {
+        const HANDLE file = ::CreateFileW(path.c_str(), GENERIC_WRITE, FILE_SHARE_READ, nullptr, CREATE_ALWAYS,
+            FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (file == INVALID_HANDLE_VALUE) {
+            return;
+        }
+        for (const std::string& line : lines) {
+            const std::string text = line + "\r\n";
+            DWORD written = 0;
+            ::WriteFile(file, text.data(), static_cast<DWORD>(text.size()), &written, nullptr);
+        }
+        ::CloseHandle(file);
+    }
+
+    /// @brief ダンプ・落ちたときの記録（.txt）・ログを書く
+    void WriteCrashReport(const CrashJob& job)
+    {
+        SYSTEMTIME time{};
+        ::GetLocalTime(&time);
+        ::CreateDirectoryW(dumpFolder.c_str(), nullptr);
+        const std::wstring stem = std::format(L"{}\\{:04}-{:02}-{:02}_{:02}{:02}{:02}", dumpFolder,
+            time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute, time.wSecond);
+        const std::wstring dumpPath = stem + L".dmp";
+        const std::wstring reportPath = stem + L".txt";
+        const bool dumped = WriteMiniDump(dumpPath, job);
+
+        std::vector<std::string> lines;
+        lines.push_back(std::format("CoreEngine {}（{}）が落ちました: {:04}-{:02}-{:02} {:02}:{:02}:{:02}",
+            kEngineVersion, kBuildName, time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute, time.wSecond));
+        try {
+            lines.push_back("理由: " + CrashReport::DescribeException(*job.exception));
+            lines.push_back(dumped ? "ダンプ: " + WideToUtf8(dumpPath) : std::string("ダンプ: 書けませんでした"));
+            lines.push_back("記録: " + WideToUtf8(reportPath));
+            lines.push_back("呼び出しの列（上が落ちた場所）:");
+            for (const std::string& frame : CrashReport::DescribeCallStack(*job.exception)) {
+                lines.push_back("  " + frame);
+            }
+        }
+        catch (...) {
+            lines.push_back("呼び出しの列を作れませんでした");
+        }
+        WriteTextFile(reportPath, lines);
+
+        // ログのキューに積んでから、書き出させる
+        Logger& log = Logger::GetInstance();
+        for (const std::string& line : lines) {
+            log.Log(line, LogLevel::Critical, LogCategory::System);
+        }
+        log.Flush();
+    }
+
+    DWORD WINAPI WriteCrashReportThread(void* parameter)
+    {
+        WriteCrashReport(*static_cast<const CrashJob*>(parameter));
+        return 0;
+    }
+}
+
+void CrashDump::Register()
+{
+    std::error_code error;
+    const std::filesystem::path folder = std::filesystem::absolute(L"Dumps", error);
+    if (!error) {
+        dumpFolder = folder.wstring();
+    }
+    ::SetUnhandledExceptionFilter(HandleException);
 }
 
 LONG WINAPI CrashDump::HandleException(EXCEPTION_POINTERS* exception)
 {
-    // 時刻を取得して、時刻を名前に入れたファイルを作成。Dumpsディレクトリに以下を出力
-    SYSTEMTIME time;
-    GetLocalTime(&time);
-    wchar_t filePath[MAX_PATH] = { 0 };
-    CreateDirectory(L"./Dumps", nullptr);
-    StringCchPrintfW(filePath, MAX_PATH, L"./Dumps/%04d-%02d-%02d%02d.dmp", time.wYear, time.wMonth, time.wDay, time.wHour, time.wMinute);
-    HANDLE dumpFileHandle = CreateFile(filePath, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_READ, 0, CREATE_ALWAYS, 0, 0);
-    // processId(このexeとid)とクラッシュ(例外)の発生したthreadIdを取得
-    DWORD processId = GetCurrentProcessId();
-    DWORD threadId = GetCurrentThreadId();
-    // 設定情報を入力
-    MINIDUMP_EXCEPTION_INFORMATION minidumpInfomation;
-    minidumpInfomation.ThreadId = threadId;
-    minidumpInfomation.ExceptionPointers = exception;
-    minidumpInfomation.ClientPointers = FALSE;
-    // Dumpを出力。MiniDumpNormalは最低限の情報を出力するフラグ
-    MiniDumpWriteDump(GetCurrentProcess(), processId, dumpFileHandle, MiniDumpNormal, &minidumpInfomation, nullptr, nullptr);
-    if (dumpFileHandle != INVALID_HANDLE_VALUE) {
-        CloseHandle(dumpFileHandle);
+    const DWORD threadId = ::GetCurrentThreadId();
+    DWORD writing = 0;
+    if (!writingThread.compare_exchange_strong(writing, threadId)) {
+        // 書いている途中のスレッドがまた落ちたら、そのまま終わる
+        if (writing == threadId) {
+            return EXCEPTION_EXECUTE_HANDLER;
+        }
+        // ほかのスレッドが書いている間は、書き終えて終わるのを待つ
+        ::Sleep(INFINITE);
     }
 
-    // ★ダンプを書き終えてからログを流す。順序を逆にしてはいけない★
-    // ロガーは非同期なので、キューに残った行はこの flush が無いと消える。
-    // ただし壊れた状態から呼ぶと止まりうるので、先にダンプを確定させておく
-    Logger::GetInstance().Flush();
+    CrashJob job{ exception, threadId };
+    if (exception->ExceptionRecord->ExceptionCode == EXCEPTION_STACK_OVERFLOW) {
+        // スタックがあふれたときは、別のスレッドで書く
+        if (const HANDLE thread = ::CreateThread(nullptr, 0, WriteCrashReportThread, &job, 0, nullptr)) {
+            ::WaitForSingleObject(thread, INFINITE);
+            ::CloseHandle(thread);
+        }
+    }
+    else {
+        WriteCrashReport(job);
+    }
 
-    // 他に関連づけられているSEH例外ハンドラがあれば実行。通常はプロセスを終了
+    // プロセスを終える
     return EXCEPTION_EXECUTE_HANDLER;
 }
 }

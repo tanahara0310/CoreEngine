@@ -1675,6 +1675,9 @@
     <ClCompile Include="Engine\Src\Utility\Debug\CrashDump.cpp">
       <Filter>Engine\Src\Utility\Debug</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Utility\Debug\CrashReport.cpp">
+      <Filter>Engine\Src\Utility\Debug</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\RHI\GraphicsCore.cpp">
       <Filter>Engine\Src\Graphics\RHI</Filter>
     </ClCompile>
@@ -1794,6 +1797,141 @@
     </ClCompile>
     <ClCompile Include="Engine\Src\Input\MouseInput.cpp">
       <Filter>Engine\Src\Input</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\binary\elf.cpp">
+      <Filter>Externals\cpptrace\src\binary</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\binary\mach-o.cpp">
+      <Filter>Externals\cpptrace\src\binary</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\binary\module_base.cpp">
+      <Filter>Externals\cpptrace\src\binary</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\binary\object.cpp">
+      <Filter>Externals\cpptrace\src\binary</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\binary\pe.cpp">
+      <Filter>Externals\cpptrace\src\binary</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\binary\safe_dl.cpp">
+      <Filter>Externals\cpptrace\src\binary</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\cpptrace.cpp">
+      <Filter>Externals\cpptrace\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\ctrace.cpp">
+      <Filter>Externals\cpptrace\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\demangle\demangle_with_cxxabi.cpp">
+      <Filter>Externals\cpptrace\src\demangle</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\demangle\demangle_with_nothing.cpp">
+      <Filter>Externals\cpptrace\src\demangle</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\demangle\demangle_with_winapi.cpp">
+      <Filter>Externals\cpptrace\src\demangle</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\exceptions.cpp">
+      <Filter>Externals\cpptrace\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\formatting.cpp">
+      <Filter>Externals\cpptrace\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\from_current.cpp">
+      <Filter>Externals\cpptrace\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\jit\jit_objects.cpp">
+      <Filter>Externals\cpptrace\src\jit</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\logging.cpp">
+      <Filter>Externals\cpptrace\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\options.cpp">
+      <Filter>Externals\cpptrace\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\platform\dbghelp_utils.cpp">
+      <Filter>Externals\cpptrace\src\platform</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\platform\memory_mapping.cpp">
+      <Filter>Externals\cpptrace\src\platform</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\prune_symbol.cpp">
+      <Filter>Externals\cpptrace\src</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\snippets\snippet.cpp">
+      <Filter>Externals\cpptrace\src\snippets</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\symbols\dwarf\debug_map_resolver.cpp">
+      <Filter>Externals\cpptrace\src\symbols\dwarf</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\symbols\dwarf\dwarf_options.cpp">
+      <Filter>Externals\cpptrace\src\symbols\dwarf</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\symbols\dwarf\dwarf_resolver.cpp">
+      <Filter>Externals\cpptrace\src\symbols\dwarf</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\symbols\symbols_core.cpp">
+      <Filter>Externals\cpptrace\src\symbols</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\symbols\symbols_with_addr2line.cpp">
+      <Filter>Externals\cpptrace\src\symbols</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\symbols\symbols_with_dbghelp.cpp">
+      <Filter>Externals\cpptrace\src\symbols</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\symbols\symbols_with_dl.cpp">
+      <Filter>Externals\cpptrace\src\symbols</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\symbols\symbols_with_libbacktrace.cpp">
+      <Filter>Externals\cpptrace\src\symbols</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\symbols\symbols_with_libdwarf.cpp">
+      <Filter>Externals\cpptrace\src\symbols</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\symbols\symbols_with_nothing.cpp">
+      <Filter>Externals\cpptrace\src\symbols</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\unwind\unwind_with_dbghelp.cpp">
+      <Filter>Externals\cpptrace\src\unwind</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\unwind\unwind_with_execinfo.cpp">
+      <Filter>Externals\cpptrace\src\unwind</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\unwind\unwind_with_libunwind.cpp">
+      <Filter>Externals\cpptrace\src\unwind</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\unwind\unwind_with_nothing.cpp">
+      <Filter>Externals\cpptrace\src\unwind</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\unwind\unwind_with_unwind.cpp">
+      <Filter>Externals\cpptrace\src\unwind</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\unwind\unwind_with_winapi.cpp">
+      <Filter>Externals\cpptrace\src\unwind</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\utils\error.cpp">
+      <Filter>Externals\cpptrace\src\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\utils\io\file.cpp">
+      <Filter>Externals\cpptrace\src\utils\io</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\utils\io\memory_file_view.cpp">
+      <Filter>Externals\cpptrace\src\utils\io</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\utils\microfmt.cpp">
+      <Filter>Externals\cpptrace\src\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\utils\replace_all.cpp">
+      <Filter>Externals\cpptrace\src\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\utils\string_view.cpp">
+      <Filter>Externals\cpptrace\src\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\utils\utils.cpp">
+      <Filter>Externals\cpptrace\src\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\cpptrace\src\utils.cpp">
+      <Filter>Externals\cpptrace\src</Filter>
     </ClCompile>
     <ClCompile Include="Externals\imgui\imgui.cpp">
       <Filter>Externals\imgui</Filter>
@@ -4341,6 +4479,9 @@
     <ClInclude Include="Engine\Src\Utility\Debug\CrashDump.h">
       <Filter>Engine\Src\Utility\Debug</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Utility\Debug\CrashReport.h">
+      <Filter>Engine\Src\Utility\Debug</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Utility\Algorithm\AssignIfChanged.h">
       <Filter>Engine\Src\Utility\Algorithm</Filter>
     </ClInclude>
@@ -5647,6 +5788,42 @@
     </Filter>
     <Filter Include="Externals\angelscript\source">
       <UniqueIdentifier>{F5974DE7-BC2B-4606-8A98-16866B78A220}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\cpptrace">
+      <UniqueIdentifier>{0A19F545-01F8-405E-BB9E-4D9BED0F7E19}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\cpptrace\src">
+      <UniqueIdentifier>{69E1E20B-819D-4CF4-8DF5-FCE880C60D47}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\cpptrace\src\binary">
+      <UniqueIdentifier>{073A7A90-9B0B-4DA1-BE8E-4C3B87B026EE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\cpptrace\src\demangle">
+      <UniqueIdentifier>{792C0256-C373-403F-B6BC-370848006ED5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\cpptrace\src\jit">
+      <UniqueIdentifier>{1021BDDC-FE3C-4F5B-A996-32D5785F191F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\cpptrace\src\platform">
+      <UniqueIdentifier>{279D8247-73B1-4CB2-B448-665BDF484D78}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\cpptrace\src\snippets">
+      <UniqueIdentifier>{842709C1-AB2C-4F26-97B2-91995841D1AB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\cpptrace\src\symbols">
+      <UniqueIdentifier>{83FB6836-8C7A-4AD5-B0D2-D77E6792899B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\cpptrace\src\symbols\dwarf">
+      <UniqueIdentifier>{57E3707A-2D57-43C6-89EA-C1865BFB9FA6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\cpptrace\src\unwind">
+      <UniqueIdentifier>{3F1D057E-D079-48D7-9865-79AD9C2D89A8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\cpptrace\src\utils">
+      <UniqueIdentifier>{1C5CA186-6FFB-42C2-AF6A-37E520B314D1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\cpptrace\src\utils\io">
+      <UniqueIdentifier>{496C8791-2125-4A36-A6C6-6C115F6BB193}</UniqueIdentifier>
     </Filter>
     <Filter Include="Externals\imgui">
       <UniqueIdentifier>{31C3741B-D9E0-41B2-B9F0-1E40D59C0319}</UniqueIdentifier>
