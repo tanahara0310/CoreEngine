@@ -9,11 +9,13 @@
 #include "Editor/ImGui/ThreadProfilerUI.h"
 #include "Editor/ImGui/Widgets/EditorBars.h"
 #include "Editor/ImGui/Widgets/PassTimingTable.h"
+#include "Editor/ImGui/Widgets/TimingPlots.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/RHI/Debug/GpuTimestampProfiler.h"
 #include "Script/ScriptComponentType.h"
 #include "Script/ScriptHost.h"
 #include "Script/ScriptSubsystem.h"
+#include "Utility/FrameRate/FrameRateController.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
 
@@ -31,8 +33,8 @@ namespace CoreEngine
     {
         namespace Theme = Editor::Theme;
 
-        /// 1 フレームの予算（60FPS）
-        constexpr float kBudgetMs = 1000.0f / 60.0f;
+        /// 目標の FPS が取れないときの FPS
+        constexpr float kFallbackTargetFps = 60.0f;
 
         /// パス別の上位に出す数
         constexpr size_t kTopPassCount = 5;
@@ -47,23 +49,20 @@ namespace CoreEngine
             return script ? script->GetHost() : nullptr;
         }
 
+        /// @brief 目標の FPS（取れなければ 60）
+        float TargetFps(EngineSystem* engine)
+        {
+            const FrameRateController* const frameRate = engine ? engine->GetService<FrameRateController>() : nullptr;
+            const float fps = frameRate ? frameRate->GetTargetFPS() : 0.0f;
+            return fps > 0.0f ? fps : kFallbackTargetFps;
+        }
+
         /// @brief ラベルと値の 1 行（値は右の列にそろえる）
         void ValueRow(const char* label, const ImVec4& labelColor, const std::string& value, const ImVec4& valueColor)
         {
             ImGui::TextColored(labelColor, "%s", label);
             ImGui::SameLine((std::max)(170.0f, ImGui::CalcTextSize(label).x + 16.0f));
             ImGui::TextColored(valueColor, "%s", value.c_str());
-        }
-
-        /// @brief 系列の色の見本（小さな丸）と名前
-        void LegendItem(const char* label, const ImVec4& color)
-        {
-            const ImVec2 cursor = ImGui::GetCursorScreenPos();
-            const float y = cursor.y + ImGui::GetTextLineHeight() * 0.5f;
-            ImGui::GetWindowDrawList()->AddCircleFilled(ImVec2(cursor.x + 4.0f, y), 3.5f, ImGui::GetColorU32(color));
-            ImGui::Dummy(ImVec2(10.0f, ImGui::GetTextLineHeight()));
-            ImGui::SameLine(0.0f, 4.0f);
-            ImGui::TextColored(Theme::kTextDim, "%s", label);
         }
     }
 
@@ -174,84 +173,37 @@ namespace CoreEngine
 
     void ProfilerPanel::DrawGraph()
     {
-        const ImVec2 size(ImGui::GetContentRegionAvail().x, 110.0f);
-        if (size.x <= 1.0f) {
-            return;
+        // 値は 1 行ずつ古い順に並べる（フレーム・GPU・CPU・ゲームの更新・描画の記録・スクリプト）
+        constexpr size_t kRowCount = 6;
+        const int count = history_.Count();
+        const size_t stride = static_cast<size_t>(count);
+        std::vector<float> values(stride * kRowCount);
+        const auto row = [&](size_t index) { return values.data() + stride * index; };
+        for (int i = 0; i < count; ++i) {
+            const FrameSample& sample = history_.At(i);
+            const size_t f = static_cast<size_t>(i);
+            row(0)[f] = sample.frameMs;
+            row(1)[f] = sample.gpuMs;
+            row(2)[f] = sample.updateMs + sample.renderMs;
+            row(3)[f] = sample.updateMs;
+            row(4)[f] = sample.renderMs;
+            row(5)[f] = sample.scriptMs;
         }
-        const ImVec2 min = ImGui::GetCursorScreenPos();
-        const ImVec2 max(min.x + size.x, min.y + size.y);
-        ImGui::InvisibleButton("##frameGraph", size);
-        const bool hovered = ImGui::IsItemHovered();
 
-        ImDrawList* const draw = ImGui::GetWindowDrawList();
-        draw->AddRectFilled(min, max, ImGui::GetColorU32(Theme::kField), 4.0f);
-
-        // 縦軸の上限（予算の 2 倍か、控えの最大の 1.1 倍）
-        float top = kBudgetMs * 2.0f;
-        for (int i = 0; i < history_.Count(); ++i) {
-            top = (std::max)(top, history_.At(i).frameMs * 1.1f);
-        }
-        const auto yOf = [&](float ms) { return max.y - 2.0f - (ms / top) * (size.y - 4.0f); };
-        const auto xOf = [&](int slot) { return min.x + (static_cast<float>(slot) / (kHistorySize - 1)) * size.x; };
-        const int firstSlot = kHistorySize - history_.Count();
-
-        // 予算の線
-        const float budgetY = yOf(kBudgetMs);
-        draw->AddLine(ImVec2(min.x, budgetY), ImVec2(max.x, budgetY),
-            ImGui::GetColorU32(Theme::WithAlpha(Theme::kTextMute, 0.7f)));
-        draw->AddText(ImVec2(min.x + 6.0f, budgetY - ImGui::GetTextLineHeight() - 1.0f),
-            ImGui::GetColorU32(Theme::kTextMute), "16.7 ms（60 FPS）");
-
-        // 系列
-        std::vector<ImVec2> points;
-        points.reserve(static_cast<size_t>(history_.Count()));
-        const auto series = [&](const auto& valueOf, const ImVec4& color, float thickness) {
-            points.clear();
-            for (int i = 0; i < history_.Count(); ++i) {
-                points.emplace_back(xOf(firstSlot + i), yOf(valueOf(history_.At(i))));
-            }
-            if (points.size() >= 2) {
-                draw->AddPolyline(points.data(), static_cast<int>(points.size()),
-                    ImGui::GetColorU32(color), ImDrawFlags_None, thickness);
-            }
-            };
-
-        series([](const FrameSample& s) { return s.frameMs; }, Theme::kText, 1.5f);
-        if (showCpu_) {
-            series([](const FrameSample& s) { return s.updateMs + s.renderMs; }, Theme::kWarn, 1.2f);
-        }
+        std::vector<UI::TimeLine> lines;
+        lines.push_back({ "フレーム", row(0), Theme::kSeries[0] });
         if (showGpu_) {
-            series([](const FrameSample& s) { return s.gpuMs; }, Theme::kAccentHover, 1.2f);
+            lines.push_back({ "GPU", row(1), Theme::kSeries[1] });
+        }
+        if (showCpu_) {
+            lines.push_back({ "CPU（更新＋描画の記録）", row(2), Theme::kSeries[2] });
+            lines.push_back({ "ゲームの更新", row(3), {}, true });
+            lines.push_back({ "描画の記録", row(4), {}, true });
         }
         if (showScript_) {
-            series([](const FrameSample& s) { return s.scriptMs; }, Theme::kScript, 1.2f);
+            lines.push_back({ "スクリプト", row(5), Theme::kScript });
         }
-
-        // カーソルの位置のフレームの値
-        if (hovered && history_.Count() > 0) {
-            const float t = (ImGui::GetMousePos().x - min.x) / size.x;
-            const int slot = std::clamp(static_cast<int>(t * (kHistorySize - 1) + 0.5f), firstSlot, kHistorySize - 1);
-            const FrameSample& sample = history_.At(slot - firstSlot);
-            draw->AddLine(ImVec2(xOf(slot), min.y), ImVec2(xOf(slot), max.y), ImGui::GetColorU32(Theme::kOutline));
-
-            auto tooltip = UI::Scope::TooltipScope();
-            if (tooltip) {
-                ImGui::TextColored(Theme::kText, "フレーム     %.2f ms", sample.frameMs);
-                ImGui::TextColored(Theme::kWarn, "CPU 更新     %.2f ms", sample.updateMs);
-                ImGui::TextColored(Theme::kWarn, "CPU 描画     %.2f ms", sample.renderMs);
-                ImGui::TextColored(Theme::kAccentHover, "GPU          %.2f ms", sample.gpuMs);
-                ImGui::TextColored(Theme::kScript, "スクリプト   %.2f ms", sample.scriptMs);
-            }
-        }
-
-        // 凡例
-        LegendItem("フレーム", Theme::kText);
-        ImGui::SameLine(0.0f, 14.0f);
-        LegendItem("CPU（更新＋描画の記録）", Theme::kWarn);
-        ImGui::SameLine(0.0f, 14.0f);
-        LegendItem("GPU", Theme::kAccentHover);
-        ImGui::SameLine(0.0f, 14.0f);
-        LegendItem("スクリプト", Theme::kScript);
+        UI::DrawTimeLinesPlot("##frameGraph", lines, count, kHistorySize, TargetFps(engine_), 140.0f);
     }
 
     void ProfilerPanel::DrawFrameBreakdown()
@@ -264,7 +216,7 @@ namespace CoreEngine
 
         UI::SectionHeader("フレーム合計");
         ValueRow("フレーム", Theme::kText, std::format("{:.2f} ms", latest.frameMs),
-            latest.frameMs > kBudgetMs * 1.1f ? Theme::kWarn : Theme::kText);
+            latest.frameMs > 1000.0f / TargetFps(engine_) * 1.1f ? Theme::kWarn : Theme::kText);
 
         if (showCpu_) {
             ValueRow("CPU: ゲームの更新", Theme::kTextDim, std::format("{:.2f} ms", latest.updateMs),

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.119.0">
+<meta name="engine-version" content="0.119.1">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12065,12 +12065,12 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   </script>
 </article>
 
-<article class="page" id="profiling-stats" data-group="困ったとき・資料" data-title="Engine Stats でフレームの時間を見る" data-nav="Engine Stats" data-keywords="engine stats 統計 パフォーマンス フレーム時間 fps gpu 内訳 積み上げ グラフ 重い 遅い 60fps 16.7ms implot 計測">
+<article class="page" id="profiling-stats" data-group="困ったとき・資料" data-title="Engine Stats でフレームの時間を見る" data-nav="Engine Stats" data-keywords="engine stats 統計 パフォーマンス フレーム時間 fps gpu 内訳 積み上げ グラフ 重い 遅い 60fps 16.7ms implot 計測 profiler プロファイラ cpu スクリプト 凡例">
   <h1>Engine Stats でフレームの時間を見る</h1>
-  <p class="lead">Engine Stats の <span class="ui">パフォーマンス</span> タブには、直近 120 フレームの時間のグラフが 2 つあります。エディタを動かしたまま、いつ重くなったかと、そのとき GPU のどの処理が重かったかを見られます。1 フレームの中の処理の並びまで見たいときは Tracy を使います（<a href="#profiling-tracy">Tracy で処理の時間を見る</a>）。</p>
+  <p class="lead">Engine Stats の <span class="ui">パフォーマンス</span> タブには、直近 120 フレームの時間のグラフが 2 つあります。エディタを動かしたまま、いつ重くなったかと、そのとき GPU のどの処理が重かったかを見られます。Profiler パネルにも、CPU とスクリプトの時間まで重ねた同じ形のグラフがあります（<a href="#stats-profiler">Profiler パネルのグラフ</a>）。1 フレームの中の処理の並びまで見たいときは Tracy を使います（<a href="#profiling-tracy">Tracy で処理の時間を見る</a>）。</p>
 
   <h2 id="stats-open">開く</h2>
-  <p><span class="ui">Window ▸ Analysis ▸ Engine Stats</span> を選ぶと、インスペクタに <span class="ui">パフォーマンス</span>・<span class="ui">レンダリング</span>・<span class="ui">シーン</span>・<span class="ui">リソース</span>・<span class="ui">メモリ</span> のタブが出ます。グラフは <span class="ui">パフォーマンス</span> タブにあります。どちらのグラフも、マウスを重ねるとそのフレームの値が出ます。</p>
+  <p><span class="ui">Window ▸ Analysis ▸ Engine Stats</span> を選ぶと、インスペクタに <span class="ui">パフォーマンス</span>・<span class="ui">レンダリング</span>・<span class="ui">シーン</span>・<span class="ui">リソース</span>・<span class="ui">メモリ</span> のタブが出ます。グラフは <span class="ui">パフォーマンス</span> タブにあります。どちらのグラフも、マウスを重ねるとそのフレームの値が出ます。線のグラフは、上の凡例の名前を押すとその線を隠せます（隠した線の値は吹き出しにも出ません）。</p>
 
   <h2 id="stats-frame">フレームの時間</h2>
   <p>FPS の数字の下のグラフです。縦はミリ秒で、右端が最新のフレームです。</p>
@@ -12111,6 +12111,21 @@ python Tools/OkinawaBeach/bake_araha_walk.py
     <li>表の <span class="ui">Cloud (雲の内訳)</span> と <span class="ui">Water Sim (FFT 内訳)</span> は、ほかのパスの中の時間を分けて測ったものなので積みません。</li>
     <li>白い線が積み上げより上に出ているところは、どのパスの計測にも入っていない GPU の時間です（パスとパスの間で GPU が待っていた時間など）。</li>
   </ul>
+
+  <h2 id="stats-profiler">Profiler パネルのグラフ</h2>
+  <p><span class="ui">Window ▸ Analysis ▸ Profiler</span> の <span class="ui">フレーム内訳</span> タブの上のグラフも、フレームの時間と同じ形の線のグラフです。直近 180 フレームを出します。上の <span class="ui">CPU</span>・<span class="ui">GPU</span>・<span class="ui">スクリプト</span> のボタンで線を出し入れでき、<span class="ui">● 記録中</span> を押すと記録が止まって、そのときのグラフが残ります。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>線</th><th>中身</th></tr></thead>
+    <tbody>
+      <tr><td>フレーム（青）</td><td>1 フレームにかかった時間（Engine Stats と同じ）</td></tr>
+      <tr><td>GPU（橙）</td><td>GPU が 1 フレームを描くのにかかった時間（Engine Stats と同じ）</td></tr>
+      <tr><td>CPU（緑）</td><td>ゲームの更新と描画の記録を足した時間。吹き出しには、ゲームの更新と描画の記録の 2 つの内訳も出ます</td></tr>
+      <tr><td>スクリプト（紫）</td><td>スクリプトの <code>Update</code>・<code>LateUpdate</code> にかかった時間</td></tr>
+      <tr><td>目標（灰色の横線）</td><td>目標の FPS で 1 フレームに使える時間</td></tr>
+    </tbody>
+  </table>
+  </div>
 </article>
 
 <article class="page" id="profiling-tracy" data-group="困ったとき・資料" data-title="Tracy で処理の時間を見る" data-nav="Tracy で計測" data-keywords="tracy プロファイラ profiler 計測 処理時間 重い 遅い fps フレーム gpu cpu 時間軸 タイムライン スレッド ボトルネック tracy-capture csv">
@@ -12673,6 +12688,16 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-119-1">v0.119.1 <span class="dim">（2026-11-27）</span></h3>
+  <p>v0.119.0 で ImPlot にし忘れていた、エディタの Profiler パネルのフレームのグラフを、Engine Stats と同じ形の線のグラフにした版です（<a href="#stats-profiler">Profiler パネルのグラフ</a>）。書き出したゲームの動きと、シーンとプロジェクトの保存の形は前の版と同じです。</p>
+  <ul>
+    <li><strong>目盛り</strong>：縦にミリ秒の目盛りが付きました。前の版は、何 ms かをマウスを重ねたときの吹き出しでしか見られませんでした。</li>
+    <li><strong>目標の横線</strong>：前の版は 60 fps（16.7 ms）で決め打ちでした。Engine Stats と同じく、目標の FPS から引きます。<span class="ui">フレーム合計</span> の数字が目標を超えたときの色も、同じ目標で決めます。</li>
+    <li><strong>色</strong>：フレームと GPU の線を Engine Stats と同じ色（青と橙）にしました。CPU の線は警告の色をやめて緑にしました。スクリプトの線は、パネルの右の列と同じ紫のままです。</li>
+    <li><strong>吹き出し</strong>：Engine Stats と同じ形の表にしました。出している線の値だけが出ます。CPU の線の下には、ゲームの更新と描画の記録の内訳が出ます。</li>
+    <li><strong>凡例で隠した線</strong>：Engine Stats と Profiler の線のグラフで、凡例の名前を押して隠した線は、吹き出しにも出さないようにしました。</li>
+  </ul>
 
   <h3 id="changelog-v0-119-0">v0.119.0 <span class="dim">（2026-11-27）</span></h3>
   <p>エディタの Engine Stats のグラフを ImPlot で描き直し、フレームの時間と GPU の時間を重ねて、GPU の内訳を積み上げで見られるようにした版です（<a href="#profiling-stats">Engine Stats でフレームの時間を見る</a>）。書き出したゲームの動きと、シーンとプロジェクトの保存の形は前の版と同じです。</p>
