@@ -64,6 +64,18 @@ namespace CoreEngine::Editor::Theme
     inline const ImVec4 kOutline = FromSrgb(58, 58, 66);   ///< チップ・小ボタンの輪郭
     inline const ImVec4 kTransparent = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
 
+    // ===== グラフの系列（暗い背景で見分けられる 8 色。系列にはこの順で割り当てる） =====
+    inline const ImVec4 kSeries[8] = {
+        FromSrgb(57, 135, 229),   ///< 青
+        FromSrgb(217, 89, 38),    ///< 橙
+        FromSrgb(25, 158, 112),   ///< 水色
+        FromSrgb(201, 133, 0),    ///< 黄
+        FromSrgb(213, 81, 129),   ///< 赤紫
+        FromSrgb(12, 163, 12),    ///< 緑
+        FromSrgb(144, 133, 233),  ///< 紫
+        FromSrgb(230, 103, 103),  ///< 赤
+    };
+
     // ===== シェーダーグラフのノードの見出し（カテゴリの最上位ごと・白い文字が読める濃さ） =====
     inline const ImVec4 kGraphInput = FromSrgb(128, 58, 52);
     inline const ImVec4 kGraphMath = FromSrgb(44, 86, 136);

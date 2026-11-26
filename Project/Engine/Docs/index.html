@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.118.0">
+<meta name="engine-version" content="0.119.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -3759,7 +3759,7 @@ kbd {
   <h2 id="export-notices">外部ライブラリのライセンスの表記</h2>
   <p>書き出す先の根に <span class="path">THIRD_PARTY_NOTICES.txt</span> を作ります。ゲームの exe と <span class="path">Binaries/</span> の DLL に入っている外部ライブラリ（assimp・DirectXTex・spdlog・SDL3・DirectX Shader Compiler など）の名前・版・取得元と、ライセンスの本文を並べたファイルです。MIT や BSD のライセンスは、ライブラリを組み込んだ物を配るときに、この表記を一緒に付けることを求めています。ゲームを配るときは、このファイルを消さずにフォルダごと渡してください。</p>
   <ul>
-    <li>中身は外部ライブラリの一覧 <span class="path">Project/Externals/ThirdParty.json</span> のうち、<code>inGame</code> が <code>true</code> のものから作ります（<a href="#setup-externals">外部ライブラリ</a>）。エディタだけで使うもの（Dear ImGui・imnodes・ImGuizmo・Live++・PIX・Tracy）は入りません。</li>
+    <li>中身は外部ライブラリの一覧 <span class="path">Project/Externals/ThirdParty.json</span> のうち、<code>inGame</code> が <code>true</code> のものから作ります（<a href="#setup-externals">外部ライブラリ</a>）。エディタだけで使うもの（Dear ImGui・imnodes・ImGuizmo・ImPlot・Live++・PIX・Tracy）は入りません。</li>
     <li>一覧を読めないときや、一覧に書いたライセンスのファイルが無いときは、書き出す先を消す前に書き出しを止め、窓に訳を出します。</li>
     <li>書き出すたびに作り直すので、このファイルに書き足しても次の書き出しで消えます。フォントや画像など素材の作者が表記を求めているときは、ゲームの中のクレジットか別のファイルに書いてください。</li>
   </ul>
@@ -12065,6 +12065,54 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   </script>
 </article>
 
+<article class="page" id="profiling-stats" data-group="困ったとき・資料" data-title="Engine Stats でフレームの時間を見る" data-nav="Engine Stats" data-keywords="engine stats 統計 パフォーマンス フレーム時間 fps gpu 内訳 積み上げ グラフ 重い 遅い 60fps 16.7ms implot 計測">
+  <h1>Engine Stats でフレームの時間を見る</h1>
+  <p class="lead">Engine Stats の <span class="ui">パフォーマンス</span> タブには、直近 120 フレームの時間のグラフが 2 つあります。エディタを動かしたまま、いつ重くなったかと、そのとき GPU のどの処理が重かったかを見られます。1 フレームの中の処理の並びまで見たいときは Tracy を使います（<a href="#profiling-tracy">Tracy で処理の時間を見る</a>）。</p>
+
+  <h2 id="stats-open">開く</h2>
+  <p><span class="ui">Window ▸ Analysis ▸ Engine Stats</span> を選ぶと、インスペクタに <span class="ui">パフォーマンス</span>・<span class="ui">レンダリング</span>・<span class="ui">シーン</span>・<span class="ui">リソース</span>・<span class="ui">メモリ</span> のタブが出ます。グラフは <span class="ui">パフォーマンス</span> タブにあります。どちらのグラフも、マウスを重ねるとそのフレームの値が出ます。</p>
+
+  <h2 id="stats-frame">フレームの時間</h2>
+  <p>FPS の数字の下のグラフです。縦はミリ秒で、右端が最新のフレームです。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>線</th><th>中身</th></tr></thead>
+    <tbody>
+      <tr><td>フレーム（青）</td><td>1 フレームにかかった時間（前のフレームからの間隔）</td></tr>
+      <tr><td>GPU（橙）</td><td>GPU が 1 フレームを描くのにかかった時間</td></tr>
+      <tr><td>目標（灰色の横線）</td><td>目標の FPS で 1 フレームに使える時間（60 fps なら 16.7 ms）</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li><strong>フレームが横線より上に跳ねる</strong>：そのフレームは目標に間に合っていません。</li>
+    <li><strong>GPU も一緒に上がる</strong>：GPU の処理が重くなっています。下の <span class="ui">GPU フレーム内訳</span> のグラフで、どのまとまりが増えたかを見ます。</li>
+    <li><strong>GPU は低いままフレームだけ上がる</strong>：CPU 側（スクリプト・物理・読み込みなど）が重くなっています。Profiler パネルか Tracy で見ます。</li>
+  </ul>
+
+  <h2 id="stats-gpu">GPU の内訳</h2>
+  <p><span class="ui">GPU フレーム内訳</span> の見出しの下のグラフは、GPU の時間をまとまりごとに下から積み上げたものです。白い線は GPU の合計です。グラフの下の表と同じ計測から作っていて、表は 0.5 秒ごと、グラフは毎フレームの値です。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>まとまり</th><th>入る表のカテゴリ</th></tr></thead>
+    <tbody>
+      <tr><td>影</td><td>Shadow</td></tr>
+      <tr><td>G-Buffer</td><td>G-Buffer</td></tr>
+      <tr><td>ライティング</td><td>Pre-Lighting・Lighting・Post-Lighting</td></tr>
+      <tr><td>空・雲</td><td>Sky / Atmosphere</td></tr>
+      <tr><td>透明</td><td>Transparent</td></tr>
+      <tr><td>水面</td><td>Water</td></tr>
+      <tr><td>ポスト処理</td><td>Post Process</td></tr>
+      <tr><td>その他</td><td>Setup・Overlay・Final・Editor</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li>表の <span class="ui">Cloud (雲の内訳)</span> と <span class="ui">Water Sim (FFT 内訳)</span> は、ほかのパスの中の時間を分けて測ったものなので積みません。</li>
+    <li>白い線が積み上げより上に出ているところは、どのパスの計測にも入っていない GPU の時間です（パスとパスの間で GPU が待っていた時間など）。</li>
+  </ul>
+</article>
+
 <article class="page" id="profiling-tracy" data-group="困ったとき・資料" data-title="Tracy で処理の時間を見る" data-nav="Tracy で計測" data-keywords="tracy プロファイラ profiler 計測 処理時間 重い 遅い fps フレーム gpu cpu 時間軸 タイムライン スレッド ボトルネック tracy-capture csv">
   <h1>Tracy で処理の時間を見る</h1>
   <p class="lead">Tracy は、CPU と GPU の処理が「どのスレッドで・いつ・何 ms かかったか」を時間軸で見る道具です。<code>Debug</code> と <code>Development</code> のエンジンに組み込んであり、エディタを動かしたまま Tracy の画面からつなぐと記録が始まります。エディタの Profiler パネルは処理ごとの平均の時間を出し、Tracy は 1 フレームずつの並びを出します。たまにだけ重くなるフレームや、スレッドどうしの待ち合わせを調べるときに使います。</p>
@@ -12625,6 +12673,15 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-119-0">v0.119.0 <span class="dim">（2026-11-27）</span></h3>
+  <p>エディタの Engine Stats のグラフを ImPlot で描き直し、フレームの時間と GPU の時間を重ねて、GPU の内訳を積み上げで見られるようにした版です（<a href="#profiling-stats">Engine Stats でフレームの時間を見る</a>）。書き出したゲームの動きと、シーンとプロジェクトの保存の形は前の版と同じです。</p>
+  <ul>
+    <li><strong>フレームの時間</strong>：<span class="ui">パフォーマンス</span> タブの FPS の線を、フレームの時間と GPU の時間を重ねた線にしました。ミリ秒の目盛りと、目標のフレーム時間（60 fps なら 16.7 ms）の横線が付きます。</li>
+    <li><strong>GPU の内訳</strong>：GPU の合計の線を、影・G-Buffer・ライティングなど 8 つのまとまりの積み上げにしました。上に GPU の合計の線を重ねます。</li>
+    <li><strong>値を見る</strong>：どちらのグラフも、マウスを重ねるとそのフレームの値が出ます。</li>
+    <li><strong>ImPlot</strong>：ImPlot 1.1 を <span class="path">Project/Externals/imgui</span> に入れました。エディタだけで使うので、書き出したゲームには入りません。外部ライブラリの一覧（<a href="#setup-externals">外部ライブラリ</a>）にも足しました。</li>
+  </ul>
 
   <h3 id="changelog-v0-118-0">v0.118.0 <span class="dim">（2026-11-26）</span></h3>
   <p>エディタや書き出したゲームが落ちたときに、落ちた理由と、落ちた場所から呼び出し元へさかのぼった関数の列を、読める文で残すようにした版です（<a href="#trouble-crash">落ちたとき</a>）。落ちないときの動きと、シーンとプロジェクトの保存の形は前の版と同じです。</p>

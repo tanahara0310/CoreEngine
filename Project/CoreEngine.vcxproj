@@ -758,6 +758,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Editor\ImGui\ProfilerPanel.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\ProjectSettingsWindow.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\Widgets\PassTimingTable.cpp" />
+    <ClCompile Include="Engine\Src\Editor\ImGui\Widgets\TimingPlots.cpp" />
     <ClCompile Include="Engine\Src\Camera\Camera.cpp" />
     <ClCompile Include="Engine\Src\Camera\Control\OrbitFlyController.cpp" />
     <ClCompile Include="Engine\Src\Camera\Debug\DebugCameraState.cpp" />
@@ -877,6 +878,12 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Externals\imgui\imnodes.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\implot.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\implot_items.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Externals\meshoptimizer\src\allocator.cpp">
@@ -1603,6 +1610,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Editor\ImGui\ProfilerPanel.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\ProjectSettingsWindow.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\PassTimingTable.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\TimingPlots.h" />
     <ClInclude Include="Engine\Src\Utility\Path\ProjectPaths.h" />
     <ClInclude Include="Engine\Src\Utility\Path\CookedPath.h" />
     <ClInclude Include="Engine\Src\Utility\Compression\CompressedFile.h" />
@@ -2311,6 +2319,8 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Externals\imgui\ImGuizmo.h" />
     <ClInclude Include="Externals\imgui\imnodes.h" />
     <ClInclude Include="Externals\imgui\imnodes_internal.h" />
+    <ClInclude Include="Externals\imgui\implot.h" />
+    <ClInclude Include="Externals\imgui\implot_internal.h" />
     <ClInclude Include="Externals\imgui\imstb_rectpack.h" />
     <ClInclude Include="Externals\imgui\imstb_textedit.h" />
     <ClInclude Include="Externals\imgui\imstb_truetype.h" />

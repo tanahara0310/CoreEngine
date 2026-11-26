@@ -140,7 +140,6 @@ namespace CoreEngine
         CollectSceneStats();
         CollectMemoryStats();
 
-        // FPS 履歴更新
         if (engine_)
         {
             if (auto* fc = engine_->GetService<FrameRateController>())
@@ -148,7 +147,6 @@ namespace CoreEngine
                 snapshotFps_ = fc->GetCurrentFPS();
                 snapshotDeltaTimeMs_ = Time::UnscaledDeltaTime() * 1000.0f;
                 snapshotTargetFps_ = fc->GetTargetFPS();
-                fpsHistory_.Push(snapshotFps_);
             }
         }
 
@@ -159,12 +157,10 @@ namespace CoreEngine
         snapshotMemory_ = EngineStats::GetInstance().GetMemoryStats();
 
         // GPU タイミングスナップショット
-        if (gpuProfiler_ && gpuProfiler_->IsInitialized())
+        const bool hasGpuTimings = gpuProfiler_ && gpuProfiler_->IsInitialized();
+        if (hasGpuTimings)
         {
             snapshotGpu_ = gpuProfiler_->GetResults();
-            // フレーム合計の履歴を記録
-            const uint32_t totalSlot = static_cast<uint32_t>(GpuTimestampSlot::Total);
-            gpuTotalHistory_.Push(snapshotGpu_[totalSlot].gpuMs);
 
             // 一定間隔でパス別タイミングを更新（毎フレーム変化を抑制）
             timingAccumTime_ += snapshotDeltaTimeMs_ * 0.001f; // ms → 秒
@@ -179,6 +175,8 @@ namespace CoreEngine
 
             TickAutoCapture();
         }
+
+        timingHistory_.Push(snapshotDeltaTimeMs_, hasGpuTimings ? &snapshotGpu_ : nullptr);
     }
 
     void EngineStatsWindow::TickAutoCapture()
@@ -271,19 +269,8 @@ namespace CoreEngine
 
         ImGui::Spacing();
 
-        // FPSグラフ（直近120フレーム）
-        ImGui::PushStyleColor(ImGuiCol_PlotLines, GetFpsColor(currentFPS));
-        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.10f, 0.10f, 0.10f, 1.0f));
-        ImGui::PlotLines(
-            "##fps_graph",
-            fpsHistory_.Data(),
-            kFpsHistorySize,
-            fpsHistory_.Head(),
-            nullptr,
-            0.0f,
-            targetFPS * 1.2f,
-            ImVec2(-1.0f, 72.0f));
-        ImGui::PopStyleColor(2);
+        // フレームの時間と GPU の時間（直近のフレーム）
+        timingHistory_.DrawFrameTimePlot("##frame_time_plot", targetFPS, 150.0f);
 
         ImGui::Spacing();
         ImGui::TextColored(kHeaderColor, "  フレーム統計");
@@ -478,18 +465,9 @@ namespace CoreEngine
         ImGui::Separator();
         ImGui::Spacing();
 
-        const uint32_t totalSlot = static_cast<uint32_t>(GpuTimestampSlot::Total);
-        const float gpuTotalMs = snapshotGpu_[totalSlot].gpuMs;
-
-        // GPU フレーム合計グラフ
-        ImGui::PushStyleColor(ImGuiCol_PlotLines, ImVec4(0.3f, 0.8f, 1.0f, 1.0f));
-        ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.10f, 0.10f, 0.10f, 1.0f));
-        char gpuOverlay[32];
-        snprintf(gpuOverlay, sizeof(gpuOverlay), "%.2f ms", gpuTotalMs);
-        ImGui::PlotLines("##gpu_graph",
-            gpuTotalHistory_.Data(), kGpuHistorySize, gpuTotalHistory_.Head(),
-            gpuOverlay, 0.0f, 33.3f, ImVec2(-1.0f, 48.0f));
-        ImGui::PopStyleColor(2);
+        // まとまりごとの GPU の時間の積み上げ（直近のフレーム）
+        timingHistory_.DrawGpuStackPlot("##gpu_stack_plot", 170.0f);
+        ImGui::TextColored(kSubLabel, "雲の内訳と FFT 内訳は、ほかのパスの内側の時間なので積まない");
 
         ImGui::Spacing();
 
