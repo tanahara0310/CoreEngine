@@ -4,9 +4,11 @@
 #include "Editor/ImGui/EditorTheme.h"
 
 #include <implot.h>
+#include <implot_internal.h>
 
 #include <algorithm>
 #include <cmath>
+#include <vector>
 
 namespace CoreEngine::UI
 {
@@ -73,11 +75,11 @@ namespace CoreEngine::UI
             return (std::max)(step, std::ceil(static_cast<double>(maxMs) * 1.1 / step) * step);
         }
 
-        /// @brief 横軸と縦軸を決める（横は直近のフレーム、縦は 0 から上限まで。どちらも動かせない）
-        void SetupTimeAxes(double upperMs)
+        /// @brief 横軸と縦軸を決める（横は直近の capacity フレーム、縦は 0 から上限まで。どちらも動かせない）
+        void SetupTimeAxes(int capacity, double upperMs)
         {
             ImPlot::SetupAxes(nullptr, nullptr, kFrameAxisFlags, kTimeAxisFlags);
-            ImPlot::SetupAxisLimits(ImAxis_X1, -(kFrames - 1) - 0.5, 0.5, ImPlotCond_Always);
+            ImPlot::SetupAxisLimits(ImAxis_X1, -(capacity - 1) - 0.5, 0.5, ImPlotCond_Always);
             ImPlot::SetupAxisLimits(ImAxis_Y1, 0.0, upperMs, ImPlotCond_Always);
             ImPlot::SetupAxisFormat(ImAxis_Y1, "%g ms");
         }
@@ -128,6 +130,17 @@ namespace CoreEngine::UI
             ImGui::EndTooltip();
         }
 
+        /// @brief 吹き出しの値の列（右寄せのミリ秒）
+        void HoverValueCell(float ms, const ImVec4& color)
+        {
+            ImGui::TableSetColumnIndex(1);
+            char text[32];
+            snprintf(text, sizeof(text), "%.2f ms", ms);
+            const float textWidth = ImGui::CalcTextSize(text).x;
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (std::max)(0.0f, ImGui::GetContentRegionAvail().x - textWidth));
+            ImGui::TextColored(color, "%s", text);
+        }
+
         /// @brief 吹き出しの 1 行（系列の色の四角と名前・右寄せの値）
         void HoverRow(const ImVec4& color, const char* label, float ms)
         {
@@ -143,13 +156,102 @@ namespace CoreEngine::UI
             ImGui::SameLine();
             ImGui::TextColored(Theme::kText, "%s", label);
 
-            ImGui::TableSetColumnIndex(1);
-            char text[32];
-            snprintf(text, sizeof(text), "%.2f ms", ms);
-            const float textWidth = ImGui::CalcTextSize(text).x;
-            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (std::max)(0.0f, ImGui::GetContentRegionAvail().x - textWidth));
-            ImGui::TextColored(Theme::kText, "%s", text);
+            HoverValueCell(ms, Theme::kText);
         }
+
+        /// @brief 吹き出しの内訳の 1 行（色の四角の代わりに字下げした名前・右寄せの値）
+        void HoverDetailRow(const char* label, float ms)
+        {
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            const float lineHeight = ImGui::GetTextLineHeight();
+            ImGui::Dummy(ImVec2(lineHeight * 1.2f, lineHeight));
+            ImGui::SameLine();
+            ImGui::TextColored(Theme::kTextDim, "%s", label);
+
+            HoverValueCell(ms, Theme::kTextDim);
+        }
+    }
+
+    void DrawTimeLinesPlot(const char* id, std::span<const TimeLine> lines, int count, int capacity,
+        float targetFps, float height)
+    {
+        capacity = (std::max)(capacity, 1);
+        count = std::clamp(count, 0, capacity);
+        std::vector<float> positions(static_cast<size_t>(count));
+        FillFramePositions(count, positions.data());
+
+        const float targetMs = targetFps > 0.0f ? 1000.0f / targetFps : 0.0f;
+        float maxMs = targetMs;
+        for (const TimeLine& line : lines) {
+            if (line.tooltipOnly) {
+                continue;
+            }
+            for (int i = 0; i < count; ++i) {
+                maxMs = (std::max)(maxMs, line.values[i]);
+            }
+        }
+
+        if (!ImPlot::BeginPlot(id, ImVec2(-1.0f, height), kPlotFlags)) {
+            return;
+        }
+        SetupTimeAxes(capacity, UpperLimit(maxMs));
+        ImPlot::SetupLegend(ImPlotLocation_North, ImPlotLegendFlags_Outside | ImPlotLegendFlags_Horizontal);
+
+        for (const TimeLine& line : lines) {
+            if (line.tooltipOnly) {
+                continue;
+            }
+            ImPlotSpec spec;
+            spec.LineWeight = 2.0f;
+            spec.LineColor = line.color;
+            ImPlot::PlotLine(line.label, positions.data(), line.values, count, spec);
+        }
+
+        // 目標の横線は線の上に重ねる
+        if (targetMs > 0.0f) {
+            ImPlotSpec target;
+            target.LineColor = Theme::kTextDim;
+            target.Flags = static_cast<ImPlotItemFlags>(ImPlotInfLinesFlags_Horizontal) | ImPlotItemFlags_NoFit;
+            char label[48];
+            snprintf(label, sizeof(label), "目標 %.0f fps###target", targetFps);
+            const double targetY = targetMs;
+            ImPlot::PlotInfLines(label, &targetY, 1, target);
+        }
+
+        const int hovered = HoveredIndex(count);
+        if (hovered >= 0) {
+            const size_t i = static_cast<size_t>(hovered);
+            DrawHoverLine(positions[i]);
+
+            // 吹き出しを開く前に、凡例で隠した線とその内訳を外す行を決める
+            std::vector<bool> shown(lines.size(), false);
+            bool lineShown = false;
+            for (size_t l = 0; l < lines.size(); ++l) {
+                if (!lines[l].tooltipOnly) {
+                    const ImPlotItem* const item = ImPlot::GetItem(lines[l].label);
+                    lineShown = item == nullptr || item->Show;
+                }
+                shown[l] = lineShown;
+            }
+
+            if (BeginHoverTooltip(count - 1 - hovered)) {
+                for (size_t l = 0; l < lines.size(); ++l) {
+                    const TimeLine& line = lines[l];
+                    if (!shown[l]) {
+                        continue;
+                    }
+                    if (line.tooltipOnly) {
+                        HoverDetailRow(line.label, line.values[i]);
+                    } else {
+                        HoverRow(line.color, line.label, line.values[i]);
+                    }
+                }
+                EndHoverTooltip();
+            }
+        }
+
+        ImPlot::EndPlot();
     }
 
     void TimingHistory::Push(float frameMs, const TimingSlots* gpuSlots)
@@ -179,59 +281,16 @@ namespace CoreEngine::UI
 
     void TimingHistory::DrawFrameTimePlot(const char* id, float targetFps, float height) const
     {
-        std::array<float, kFrames> positions{};
         std::array<float, kFrames> frame{};
         std::array<float, kFrames> gpu{};
         const int count = Unroll(frameMs_, frame.data());
         Unroll(gpuMs_, gpu.data());
-        FillFramePositions(count, positions.data());
 
-        const float targetMs = targetFps > 0.0f ? 1000.0f / targetFps : 0.0f;
-        float maxMs = targetMs;
-        for (int i = 0; i < count; ++i) {
-            maxMs = (std::max)({ maxMs, frame[static_cast<size_t>(i)], hasGpu_ ? gpu[static_cast<size_t>(i)] : 0.0f });
-        }
-
-        if (!ImPlot::BeginPlot(id, ImVec2(-1.0f, height), kPlotFlags)) {
-            return;
-        }
-        SetupTimeAxes(UpperLimit(maxMs));
-        ImPlot::SetupLegend(ImPlotLocation_North, ImPlotLegendFlags_Outside | ImPlotLegendFlags_Horizontal);
-
-        ImPlotSpec line;
-        line.LineWeight = 2.0f;
-        line.LineColor = Theme::kSeries[0];
-        ImPlot::PlotLine("フレーム", positions.data(), frame.data(), count, line);
-        if (hasGpu_) {
-            line.LineColor = Theme::kSeries[1];
-            ImPlot::PlotLine("GPU", positions.data(), gpu.data(), count, line);
-        }
-
-        // 目標の横線は線の上に重ねる
-        if (targetMs > 0.0f) {
-            ImPlotSpec target;
-            target.LineColor = Theme::kTextDim;
-            target.Flags = static_cast<ImPlotItemFlags>(ImPlotInfLinesFlags_Horizontal) | ImPlotItemFlags_NoFit;
-            char label[48];
-            snprintf(label, sizeof(label), "目標 %.0f fps###target", targetFps);
-            const double targetY = targetMs;
-            ImPlot::PlotInfLines(label, &targetY, 1, target);
-        }
-
-        const int hovered = HoveredIndex(count);
-        if (hovered >= 0) {
-            const size_t i = static_cast<size_t>(hovered);
-            DrawHoverLine(positions[i]);
-            if (BeginHoverTooltip(count - 1 - hovered)) {
-                HoverRow(Theme::kSeries[0], "フレーム", frame[i]);
-                if (hasGpu_) {
-                    HoverRow(Theme::kSeries[1], "GPU", gpu[i]);
-                }
-                EndHoverTooltip();
-            }
-        }
-
-        ImPlot::EndPlot();
+        const TimeLine lines[] = {
+            { "フレーム", frame.data(), Theme::kSeries[0] },
+            { "GPU", gpu.data(), Theme::kSeries[1] },
+        };
+        DrawTimeLinesPlot(id, std::span<const TimeLine>(lines, hasGpu_ ? 2u : 1u), count, kFrames, targetFps, height);
     }
 
     void TimingHistory::DrawGpuStackPlot(const char* id, float height) const
@@ -259,7 +318,7 @@ namespace CoreEngine::UI
         if (!ImPlot::BeginPlot(id, ImVec2(-1.0f, height), kPlotFlags)) {
             return;
         }
-        SetupTimeAxes(UpperLimit(maxMs));
+        SetupTimeAxes(kFrames, UpperLimit(maxMs));
         // 凡例は上から「合計 → 上に積んだまとまり」の順にする（足した順の逆）
         ImPlot::SetupLegend(ImPlotLocation_NorthEast,
             ImPlotLegendFlags_Outside | ImPlotLegendFlags_NoButtons | ImPlotLegendFlags_Reverse);
