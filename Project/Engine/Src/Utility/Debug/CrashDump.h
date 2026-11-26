@@ -7,7 +7,7 @@
 
 namespace CoreEngine
 {
-/// @brief 未処理例外を捕まえてミニダンプを書き出す
+/// @brief 未処理例外を捕まえて、ミニダンプと、落ちた理由と呼び出しの列の記録を書き出す
 class CrashDump {
 public:
     /// <summary>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.117.1">
+<meta name="engine-version" content="0.118.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12130,7 +12130,7 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   </ul>
 </article>
 
-<article class="page" id="troubleshooting" data-group="困ったとき・資料" data-title="トラブルシューティング" data-keywords="トラブル 困った 動かない 出ない 表示されない 当たらない 反応しない 落ちる すり抜ける 真っ暗 エラー 直し方 原因 faq よくある質問">
+<article class="page" id="troubleshooting" data-group="困ったとき・資料" data-title="トラブルシューティング" data-keywords="トラブル 困った 動かない 出ない 表示されない 当たらない 反応しない 落ちる クラッシュ ダンプ dmp 呼び出しの列 スタックトレース コールスタック cpptrace PDB すり抜ける 真っ暗 エラー 直し方 原因 faq よくある質問">
   <h1>トラブルシューティング</h1>
   <p class="lead">よくある「動かない」を、症状から原因と直し方へ引けるようにまとめました。まず Console にエラーや警告が出ていないかを見るのが近道です。</p>
 
@@ -12220,6 +12220,45 @@ python Tools/OkinawaBeach/bake_araha_walk.py
     </tbody>
   </table>
   </div>
+
+  <h2 id="trouble-crash">落ちたとき</h2>
+  <p>エディタや書き出したゲームが落ちると、落ちた時刻の名前のファイルが 2 つ、<span class="path">Dumps</span> フォルダにできます。同じ文はログ（<span class="path">Intermediate/Logs/System/</span>）にも書きます。<span class="path">Dumps</span> は起動したときの作業フォルダの下にできます。exe をダブルクリックしたときは exe のあるフォルダ、Visual Studio から「デバッグなしで開始」したときは <span class="path">Project</span> です。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>ファイル</th><th>中身</th></tr></thead>
+    <tbody>
+      <tr><td class="nowrap"><span class="path">2026-11-26_122727.txt</span></td><td>落ちた理由と、落ちた場所から呼び出し元へさかのぼった関数の列（関数の名前・ファイル・行）。メモ帳で読めます</td></tr>
+      <tr><td class="nowrap"><span class="path">2026-11-26_122727.dmp</span></td><td>ミニダンプ。Visual Studio で開いて <span class="ui">ネイティブのみでデバッグ</span> を押すと、落ちたときのスレッドと変数を見られます</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>次は、わざとヌルの番地へ書いて落としたときの .txt です。</p>
+  <script type="text/x-code" data-lang="text" data-file="Dumps\2026-11-26_122727.txt">
+    CoreEngine 0.118.0（Development）が落ちました: 2026-11-26 12:27:27
+    理由: アクセス違反（0xC0000005）: 0x0000000000000000 を書こうとした
+    ダンプ: C:\CoreEngine\Project\Dumps\2026-11-26_122727.dmp
+    記録: C:\CoreEngine\Project\Dumps\2026-11-26_122727.txt
+    呼び出しの列（上が落ちた場所）:
+      #0   CrashTestTemp::WriteNull  C:\CoreEngine\Project\Engine\Src\EngineSystem\Framework.cpp:32  [CoreEngine.exe+0x2F81E0]
+      #1   CoreEngine::Framework::Run  C:\CoreEngine\Project\Engine\Src\EngineSystem\Framework.cpp:255  [CoreEngine.exe+0x2F75CF]
+      #2   WinMain  C:\CoreEngine\Project\Engine\Src\Launch\main.cpp:44  [CoreEngine.exe+0x5B816E]
+      #3   __scrt_common_main_seh  D:\a\_work\1\s\src\vctools\crt\vcstartup\src\startup\exe_common.inl:288  [CoreEngine.exe+0x918518]
+      #4   BaseThreadInitThunk  [KERNEL32.DLL+0x2DDA6]
+      #5   RtlUserThreadStart  [ntdll.dll+0xC9C5B]
+  </script>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>見る所</th><th>読み方</th></tr></thead>
+    <tbody>
+      <tr><td>理由</td><td>「0x0000000000000000 を書こうとした」「読もうとした」は、空のポインタ（<code>nullptr</code>）や消した物を通して触った。受け止められなかった C++ の例外なら、<code>what()</code> の文が「」の中に入ります</td></tr>
+      <tr><td>呼び出しの列</td><td>上ほど落ちた場所に近い。上から見て、最初に出てくる自分のコードの行が手がかりです</td></tr>
+      <tr><td>「同じ段があと 125 段続く」</td><td>同じ関数が自分を呼び続けて、スタックがあふれた。128 段で打ち切るので、呼び始めた所は .dmp で見ます</td></tr>
+      <tr><td>「（関数の名前が分からない）」</td><td>exe と同じビルドの PDB が見つからない（書き出したゲームをほかの PC で動かしたときなど）。<code>[CoreEngine.exe+0x2F75CF]</code> は exe の中の場所で、.dmp を書き出したのと同じ PC の Visual Studio で開けば名前と行が出ます。Release をビルドし直すと PDB が合わなくなるので、人に配ったゲームの .dmp を読むときのために、書き出したときの <span class="path">generated/CoreEngine/outputs/Release/CoreEngine.pdb</span> を取っておきます</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>不具合を知らせるときは .txt をそのまま貼るか添えます。.dmp は頼まれたら渡します（落ちたときのメモリの一部が入っています）。</p>
+  <div class="callout note" data-title="記録が残らないとき"><p>次のときは <span class="path">Dumps</span> に何も残りません。Visual Studio のデバッガーで動かしているとき（デバッガーが落ちた場所で止まります）。<code>noexcept</code> の関数の外へ C++ の例外が抜けたとき（<code>std::thread</code> で作ったスレッドの外へ抜けたときも同じで、その場でプロセスが終わります）。Windows がその場でプロセスを止める種類の失敗（<code>__fastfail</code>）のとき。2 つのスレッドが同時に落ちたときは、先に落ちた方だけを書きます。</p></div>
 </article>
 
 <article class="page" id="team" data-group="困ったとき・資料" data-title="チームで作る（git）" data-nav="チームで作る" data-keywords="チーム 共同 開発 git pull push commit 衝突 コンフリクト マージ 担当 共有 gitignore 名前 ぶつかる 保存し直す resave">
@@ -12586,6 +12625,18 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-118-0">v0.118.0 <span class="dim">（2026-11-26）</span></h3>
+  <p>エディタや書き出したゲームが落ちたときに、落ちた理由と、落ちた場所から呼び出し元へさかのぼった関数の列を、読める文で残すようにした版です（<a href="#trouble-crash">落ちたとき</a>）。落ちないときの動きと、シーンとプロジェクトの保存の形は前の版と同じです。</p>
+  <ul>
+    <li><strong>落ちたときの記録</strong>：<span class="path">Dumps</span> に、ミニダンプ（.dmp）と同じ名前の .txt を書くようにしました。中身は、エンジンの版とビルドの種類、落ちた理由、関数の名前・ファイル・行の列です。同じ文をログ（System）にも書きます。</li>
+    <li><strong>落ちた理由</strong>：アクセス違反なら、どの番地を読もう・書こうとしたかを出します。受け止められなかった C++ の例外なら、<code>std::exception</code> の <code>what()</code> の文も入れます。</li>
+    <li><strong>スタックがあふれたとき</strong>：別のスレッドで書き、自分を呼び続けた関数まで出します。同じ段が続くところは 1 行にまとめ、128 段で打ち切ります。</li>
+    <li><strong>名前が分からないとき</strong>：exe と同じビルドの PDB が見つからないとき（書き出したゲームをほかの PC で動かしたときなど）は、関数の名前の代わりに exe の中の場所（<code>[CoreEngine.exe+0x2F75CF]</code>）を出します。</li>
+    <li><strong>ファイルの名前</strong>：日付と時・分・秒にしました（<span class="path">2026-11-26_122727.dmp</span>）。前の版は日付と時だけで、同じ 1 時間の中で 2 回落ちると前のダンプを上書きしていました。</li>
+    <li><strong>2 つのスレッドが同時に落ちたとき</strong>：先に落ちた方だけを書きます。</li>
+    <li><strong>cpptrace</strong>：cpptrace 1.0.4 を <span class="path">Project/Externals/cpptrace</span> に入れました（<span class="path">include</span> と <span class="path">src</span> だけ。関数の名前と行は Windows の dbghelp で引きます）。外部ライブラリの一覧（<a href="#setup-externals">外部ライブラリ</a>）にも足したので、書き出したゲームの <span class="path">THIRD_PARTY_NOTICES.txt</span> にも入ります。</li>
+  </ul>
 
   <h3 id="changelog-v0-117-1">v0.117.1 <span class="dim">（2026-11-26）</span></h3>
   <p>エディタが編集中に 1 秒に 1 回、開いているシーンのフォルダのファイルを全部確かめていたため、そのフレームだけ処理が長くなっていたのを直した版です。外でファイルが変わったときにエディタがすること（<a href="#team-external">エディタを開いたまま pull したとき</a>）は前の版と同じです。書き出したゲームと、シーンの保存の形も前の版と同じです。</p>

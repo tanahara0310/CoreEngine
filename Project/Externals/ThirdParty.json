@@ -200,6 +200,15 @@
       "usage": "CPU と GPU の区間の計測（Debug と Development のみ。tracy/public はクライアントの部分だけ）"
     },
     {
+      "name": "cpptrace",
+      "version": "1.0.4",
+      "source": "https://github.com/jeremy-rifkin/cpptrace",
+      "license": "MIT",
+      "licenseFiles": [ "cpptrace/LICENSE" ],
+      "inGame": true,
+      "usage": "落ちたときの呼び出しの列と関数の名前（Windows の dbghelp を使う。include と src だけ）"
+    },
+    {
       "name": "Live++",
       "version": "LivePP フォルダの版",
       "source": "https://liveplusplus.tech/",
