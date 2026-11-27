@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.123.0">
+<meta name="engine-version" content="0.124.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12343,6 +12343,7 @@ python Tools/OkinawaBeach/bake_araha_walk.py
     <tbody>
       <tr><td>フレーム</td><td>メインの窓の Present ごとに 1 フレーム</td></tr>
       <tr><td>CoreEngine Main</td><td><code>BeginFrame</code>・<code>Update</code>（スクリプトとシーンの更新）・<code>PrepareRender</code>・<code>Render</code>・<code>EndFrame</code>。<code>Render</code> の中に描画のパスの名前（Profiler パネルと同じ名前）・<code>ImGui Draw</code>・<code>Present</code>・<code>Wait For Frame Slot</code>（GPU が前のフレームを終えるのを待つ時間）</td></tr>
+      <tr><td>CoreEngine Main の <code>Update</code> の中</td><td>シーンの更新の段（<code>FrameStart</code>・<code>PreObjectUpdate</code>・<code>BetweenObjectUpdates</code>・<code>PostObjectUpdate</code>・<code>PostLogic</code>）と、段の中の Feature ごとの区間（<code>CameraFeature</code>・<code>PhysicsFeature</code> など）。<code>PreObjectUpdate</code> の後に <code>GameObject Update</code>（コンポーネントの Start と Update）・<code>BetweenObjectUpdates</code>・<code>SyncTransforms</code>・<code>GameObject LateUpdate</code> が並びます。オブジェクトの区間の中に、スクリプトの関数の呼び出し（<code>Spinner::Update</code> のように「クラス名::関数名」）と <code>AnimatorComponent::Update</code> が出ます</td></tr>
       <tr><td>CoreEngine … Worker N</td><td>スレッドプールの仕事 1 つずつ（読み込み・変換など。名前は仕事を頼んだ所が付けた名前）</td></tr>
       <tr><td>Direct Queue（GPU）</td><td>描画のパスと、パスの中の細かい段（水面の FFT など）・<code>ImGui Draw</code> の GPU の時間</td></tr>
       <tr><td>メッセージ</td><td>ログの警告とエラー（カテゴリの名前付き）。CoreEngine Profiler ではログのタブに出ます</td></tr>
@@ -12402,6 +12403,7 @@ python Tools/OkinawaBeach/bake_araha_walk.py
     <li>元の Tracy の画面を管理者として起動していないと、CPU のサンプリングとスレッドの切り替わり（どのコアでいつ動いたか）は記録されません。区間の記録には要りません。</li>
     <li>つないでいる間は、記録の分だけエディタが少し重くなります。Profiler パネルの数字と比べるときは、つないでいないときの数字を使ってください。</li>
     <li>エディタのメニューは、エディタの exe の隣の <span class="path">CoreEngineProfiler.exe</span> を起動します。見つからないときはメニューが押せなくなり、吹き出しに探した場所が出ます。ソリューションをビルドし直してください。</li>
+    <li>Feature の区間は、Feature がその段で何もしなくても短い区間で出ます。停止中（編集中）は、ゲームを進める Feature と <code>GameObject Update</code>・<code>GameObject LateUpdate</code> は動かないので出ません。</li>
   </ul>
 </article>
 
@@ -12900,6 +12902,16 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-124-0">v0.124.0 <span class="dim">（2026-11-28）</span></h3>
+  <p>Tracy で、フレームの <code>Update</code> の中を、シーンの更新の段・Feature・オブジェクトの Update と LateUpdate・スクリプトの関数ごとに分けて見られるようにした版です（<a href="#profiling-tracy">プロファイラーで処理の時間を見る</a>）。前の版では <code>Update</code> が 1 本の帯で、どの処理が長いのかを見分けられませんでした。Tracy につないでいないときの動き、書き出したゲーム、シーンとプロジェクトの保存の形は前の版と同じです。</p>
+  <ul>
+    <li><strong>更新の段</strong>：シーンの更新の 5 つの段（<code>FrameStart</code>・<code>PreObjectUpdate</code>・<code>BetweenObjectUpdates</code>・<code>PostObjectUpdate</code>・<code>PostLogic</code>）が区間になりました。</li>
+    <li><strong>Feature</strong>：段の中に、Feature ごとの区間（<code>CameraFeature</code>・<code>PhysicsFeature</code>・<code>EnvironmentFeature</code> など）が出ます。プロジェクトで足した Feature も「名前＋Feature」の名前で出ます。</li>
+    <li><strong>オブジェクト</strong>：<code>GameObject Update</code>（コンポーネントの Start と Update）・<code>GameObject LateUpdate</code>・<code>SyncTransforms</code>（ワールド行列の転送）が区間になりました。</li>
+    <li><strong>スクリプト</strong>：スクリプトの関数の呼び出しが、1 回ずつ「クラス名::関数名」（<code>Spinner::Update</code> など）の区間になりました。Start・LateUpdate・当たりの通知・アニメーションのイベントも出ます。</li>
+    <li><strong>アニメーター</strong>：<code>AnimatorComponent::Update</code>（骨の姿勢の計算とスキンの更新）が区間になりました。</li>
+  </ul>
 
   <h3 id="changelog-v0-123-0">v0.123.0 <span class="dim">（2026-11-28）</span></h3>
   <p>エディタから CoreEngine Profiler を開けるようにし、プロファイラーに起動を待つ・ログのタブを足した版です（<a href="#profiler-open">開き方</a>）。書き出したゲームの動きと、シーンとプロジェクトの保存の形は前の版と同じです。</p>

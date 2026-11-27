@@ -26,6 +26,7 @@
 #include "UI/UILayoutPass.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/FrameRate/FrameRateController.h"
+#include "Utility/Profiler/ProfileZone.h"
 #include <algorithm>
 #include <chrono>
 #include <exception>
@@ -34,6 +35,22 @@
 
 namespace CoreEngine
 {
+    namespace
+    {
+        /// @brief 更新の段の名前（プロファイラの区間の名前）
+        [[maybe_unused]] const char* GetPhaseName(SceneUpdatePhase phase)
+        {
+            switch (phase) {
+            case SceneUpdatePhase::FrameStart:           return "FrameStart";
+            case SceneUpdatePhase::PreObjectUpdate:      return "PreObjectUpdate";
+            case SceneUpdatePhase::BetweenObjectUpdates: return "BetweenObjectUpdates";
+            case SceneUpdatePhase::PostObjectUpdate:     return "PostObjectUpdate";
+            case SceneUpdatePhase::PostLogic:            return "PostLogic";
+            }
+            return "?";
+        }
+    }
+
     Scene::Scene(std::string sceneName)
         : sceneName_(std::move(sceneName))
     {
@@ -489,6 +506,8 @@ namespace CoreEngine
         entry.feature = std::move(feature);
         entry.priority = priority;
         entry.sequence = featureSequence_++;
+        const char* const featureName = entry.feature->GetName();
+        entry.profileLabel = std::string(featureName ? featureName : "?") + "Feature";
 
         // (priority, 登録順) で決まる位置へ挿入し、features_ を常にソート済みに保つ
         // （RenderPipeline::AddPass と同じ規約）
@@ -541,12 +560,15 @@ namespace CoreEngine
         // どちらに属するかは Feature 自身が RunsWhileStopped() で答える。
         // 「止まっているか」の判断は Update() が一括で行う（停止ボタンとシーン遷移の両方）
 
+        CORE_PROFILE_ZONE_TRANSIENT(GetPhaseName(phase));
+
         // コンテキストは 1 体ごとに取り直す。先頭の CameraFeature が視点を切り替えた
         // フレームでも、後続の Feature が同じフレームで新しい視点カメラを見られるようにする。
         for (auto& entry : features_) {
             if (stopped && !entry.feature->RunsWhileStopped()) {
                 continue;
             }
+            CORE_PROFILE_ZONE_TRANSIENT(entry.profileLabel.c_str());
             RefreshFeatureContext();
             entry.feature->Update(featureContext_, phase);
         }

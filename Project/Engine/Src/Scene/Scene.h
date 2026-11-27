@@ -187,6 +187,7 @@ namespace CoreEngine
             std::unique_ptr<ISceneFeature> feature;
             int priority = 0;
             uint64_t sequence = 0; ///< 登録順（同 priority の安定ソート用）
+            std::string profileLabel; ///< プロファイラの区間の名前（「名前Feature」）
         };
 
         std::vector<FeatureEntry> features_;

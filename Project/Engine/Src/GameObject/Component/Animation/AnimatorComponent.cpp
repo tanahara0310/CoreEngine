@@ -17,6 +17,7 @@
 #include "Utility/FrameRate/Time.h"
 #include "Utility/JsonManager/JsonManager.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/Profiler/ProfileZone.h"
 
 #include <algorithm>
 #include <string_view>
@@ -373,6 +374,7 @@ namespace CoreEngine
 
     void AnimatorComponent::Update()
     {
+        CORE_PROFILE_ZONE("AnimatorComponent::Update");
         EnsureBound();
         if (drivesSprite_) {
             runtime_.Update(Time::DeltaTime() * speed_);

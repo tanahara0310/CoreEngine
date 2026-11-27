@@ -5,6 +5,7 @@
 #include "Collision/ColliderComponent.h"
 #include "GameObject/Component/Transform/TransformComponent.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/Profiler/ProfileZone.h"
 #include <algorithm>
 
 
@@ -177,19 +178,25 @@ namespace CoreEngine
         // 他オブジェクトを参照する処理（ジョイント追従など）が生成順に依存しなくなる。
         // 転送はパス1 で書き換えた座標をこのフレームの描画と当たり判定に出すためのもので、
         // パス2 より前に置くので、LateUpdate でワールド行列を上書きする処理（ソケット追従など）は残る
-        for (auto& obj : objects_) {
-            if (obj && obj->IsActive() && !obj->IsMarkedForDestroy()) {
-                obj->DispatchComponentStart();
-                obj->DispatchComponentUpdate();
+        {
+            CORE_PROFILE_ZONE("GameObject Update");
+            for (auto& obj : objects_) {
+                if (obj && obj->IsActive() && !obj->IsMarkedForDestroy()) {
+                    obj->DispatchComponentStart();
+                    obj->DispatchComponentUpdate();
+                }
             }
         }
         if (afterUpdatePass) {
             afterUpdatePass();
         }
         SyncTransforms();
-        for (auto& obj : objects_) {
-            if (obj && obj->IsActive() && !obj->IsMarkedForDestroy()) {
-                obj->DispatchComponentLateUpdate();
+        {
+            CORE_PROFILE_ZONE("GameObject LateUpdate");
+            for (auto& obj : objects_) {
+                if (obj && obj->IsActive() && !obj->IsMarkedForDestroy()) {
+                    obj->DispatchComponentLateUpdate();
+                }
             }
         }
         isUpdating_ = false;
@@ -199,6 +206,7 @@ namespace CoreEngine
     }
 
     void GameObjectManager::SyncTransforms() {
+        CORE_PROFILE_ZONE("SyncTransforms");
         // 親を先に転送しないと子が古い親行列で合成されるが、走査順は UpdateAll() と
         // 同じ登録順なので、再生中と停止中で見え方が変わることはない
         ForEachComponent<TransformComponent>([](TransformComponent& transform) {
