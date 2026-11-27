@@ -120,17 +120,30 @@
     <ClCompile Include="Tools\Profiler\Src\main.cpp" />
     <ClCompile Include="Tools\Profiler\Src\App\ProfilerApp.cpp" />
     <ClCompile Include="Tools\Profiler\Src\Capture\CaptureSession.cpp" />
+    <ClCompile Include="Tools\Profiler\Src\Capture\FrameSnapshot.cpp" />
+    <ClCompile Include="Tools\Profiler\Src\Capture\SourceInfoCache.cpp" />
     <ClCompile Include="Tools\Profiler\Src\Capture\ZoneKind.cpp" />
     <ClCompile Include="Tools\Profiler\Src\Platform\FileDialog.cpp" />
     <ClCompile Include="Tools\Profiler\Src\Text\TextFormat.cpp" />
+    <ClCompile Include="Tools\Profiler\Src\View\FrameStripView.cpp" />
+    <ClCompile Include="Tools\Profiler\Src\View\TimelineView.cpp" />
+    <ClCompile Include="Tools\Profiler\Src\View\ZoneDetailPanel.cpp" />
     <ClCompile Include="Tools\Profiler\Src\View\ZoneStatsView.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Tools\Profiler\Src\App\ProfilerApp.h" />
+    <ClInclude Include="Tools\Profiler\Src\App\ViewState.h" />
     <ClInclude Include="Tools\Profiler\Src\Capture\CaptureSession.h" />
+    <ClInclude Include="Tools\Profiler\Src\Capture\FrameSnapshot.h" />
+    <ClInclude Include="Tools\Profiler\Src\Capture\SourceInfoCache.h" />
+    <ClInclude Include="Tools\Profiler\Src\Capture\TracyAccess.h" />
     <ClInclude Include="Tools\Profiler\Src\Capture\ZoneKind.h" />
     <ClInclude Include="Tools\Profiler\Src\Platform\FileDialog.h" />
     <ClInclude Include="Tools\Profiler\Src\Text\TextFormat.h" />
+    <ClInclude Include="Tools\Profiler\Src\View\DrawHelpers.h" />
+    <ClInclude Include="Tools\Profiler\Src\View\FrameStripView.h" />
+    <ClInclude Include="Tools\Profiler\Src\View\TimelineView.h" />
+    <ClInclude Include="Tools\Profiler\Src\View\ZoneDetailPanel.h" />
     <ClInclude Include="Tools\Profiler\Src\View\ZoneStatsView.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\EditorStyle.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\EditorTheme.h" />

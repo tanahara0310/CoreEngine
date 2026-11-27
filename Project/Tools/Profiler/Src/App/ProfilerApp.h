@@ -1,6 +1,12 @@
 #pragma once
 
+#include "App/ViewState.h"
 #include "Capture/CaptureSession.h"
+#include "Capture/FrameSnapshot.h"
+#include "Capture/SourceInfoCache.h"
+#include "View/FrameStripView.h"
+#include "View/TimelineView.h"
+#include "View/ZoneDetailPanel.h"
 #include "View/ZoneStatsView.h"
 
 #include <Windows.h>
@@ -10,7 +16,7 @@
 #include <vector>
 
 /// @file ProfilerApp.h
-/// @brief 窓の中身（メニュー・接続の帯・表）と、起動の引数・ファイルの選択・終わる前の確認
+/// @brief 窓の中身（メニュー・接続の帯・フレームの帯・タブ）と、起動の引数・ファイルの選択・終わる前の確認
 
 namespace CoreEngine::Profiler
 {
@@ -59,9 +65,26 @@ namespace CoreEngine::Profiler
         void DrawConnectPopup();
         void DrawDiscardPopup();
         void HandleShortcuts();
+        void DrawCapture();
+        void DrawTimelineTab();
+
+        /// @brief 記録を差し替えたときに、選んだものと見ている範囲を初めに戻す（目標は残す）
+        void ResetView();
+
+        /// @brief 最初に選ぶフレームと、受け取りの最中に最新のフレームを選び続けるのを決める
+        void PrepareView(bool live);
+
+        /// @brief 下の段のタブを切り替える
+        void RequestTab(ViewTab tab);
 
         CaptureSession session_;
         ZoneStatsView statsView_;
+        SourceInfoCache sources_;
+        FrameSnapshot frames_;
+        ViewState view_;
+        FrameStripView frameStrip_;
+        TimelineView timeline_;
+        ZoneDetailPanel detail_;
         uint64_t seenGeneration_ = 0;
         SessionSummary summary_;
         bool hasSummary_ = false;

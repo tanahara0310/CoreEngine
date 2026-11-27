@@ -10,6 +10,12 @@
     <ClCompile Include="Tools\Profiler\Src\Capture\CaptureSession.cpp">
       <Filter>Tools\Profiler\Src\Capture</Filter>
     </ClCompile>
+    <ClCompile Include="Tools\Profiler\Src\Capture\FrameSnapshot.cpp">
+      <Filter>Tools\Profiler\Src\Capture</Filter>
+    </ClCompile>
+    <ClCompile Include="Tools\Profiler\Src\Capture\SourceInfoCache.cpp">
+      <Filter>Tools\Profiler\Src\Capture</Filter>
+    </ClCompile>
     <ClCompile Include="Tools\Profiler\Src\Capture\ZoneKind.cpp">
       <Filter>Tools\Profiler\Src\Capture</Filter>
     </ClCompile>
@@ -18,6 +24,15 @@
     </ClCompile>
     <ClCompile Include="Tools\Profiler\Src\Text\TextFormat.cpp">
       <Filter>Tools\Profiler\Src\Text</Filter>
+    </ClCompile>
+    <ClCompile Include="Tools\Profiler\Src\View\FrameStripView.cpp">
+      <Filter>Tools\Profiler\Src\View</Filter>
+    </ClCompile>
+    <ClCompile Include="Tools\Profiler\Src\View\TimelineView.cpp">
+      <Filter>Tools\Profiler\Src\View</Filter>
+    </ClCompile>
+    <ClCompile Include="Tools\Profiler\Src\View\ZoneDetailPanel.cpp">
+      <Filter>Tools\Profiler\Src\View</Filter>
     </ClCompile>
     <ClCompile Include="Tools\Profiler\Src\View\ZoneStatsView.cpp">
       <Filter>Tools\Profiler\Src\View</Filter>
@@ -174,7 +189,19 @@
     <ClInclude Include="Tools\Profiler\Src\App\ProfilerApp.h">
       <Filter>Tools\Profiler\Src\App</Filter>
     </ClInclude>
+    <ClInclude Include="Tools\Profiler\Src\App\ViewState.h">
+      <Filter>Tools\Profiler\Src\App</Filter>
+    </ClInclude>
     <ClInclude Include="Tools\Profiler\Src\Capture\CaptureSession.h">
+      <Filter>Tools\Profiler\Src\Capture</Filter>
+    </ClInclude>
+    <ClInclude Include="Tools\Profiler\Src\Capture\FrameSnapshot.h">
+      <Filter>Tools\Profiler\Src\Capture</Filter>
+    </ClInclude>
+    <ClInclude Include="Tools\Profiler\Src\Capture\SourceInfoCache.h">
+      <Filter>Tools\Profiler\Src\Capture</Filter>
+    </ClInclude>
+    <ClInclude Include="Tools\Profiler\Src\Capture\TracyAccess.h">
       <Filter>Tools\Profiler\Src\Capture</Filter>
     </ClInclude>
     <ClInclude Include="Tools\Profiler\Src\Capture\ZoneKind.h">
@@ -185,6 +212,18 @@
     </ClInclude>
     <ClInclude Include="Tools\Profiler\Src\Text\TextFormat.h">
       <Filter>Tools\Profiler\Src\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="Tools\Profiler\Src\View\DrawHelpers.h">
+      <Filter>Tools\Profiler\Src\View</Filter>
+    </ClInclude>
+    <ClInclude Include="Tools\Profiler\Src\View\FrameStripView.h">
+      <Filter>Tools\Profiler\Src\View</Filter>
+    </ClInclude>
+    <ClInclude Include="Tools\Profiler\Src\View\TimelineView.h">
+      <Filter>Tools\Profiler\Src\View</Filter>
+    </ClInclude>
+    <ClInclude Include="Tools\Profiler\Src\View\ZoneDetailPanel.h">
+      <Filter>Tools\Profiler\Src\View</Filter>
     </ClInclude>
     <ClInclude Include="Tools\Profiler\Src\View\ZoneStatsView.h">
       <Filter>Tools\Profiler\Src\View</Filter>

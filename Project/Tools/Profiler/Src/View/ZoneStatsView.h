@@ -46,6 +46,9 @@ namespace CoreEngine::Profiler
         /// @brief 表を描く
         void Draw();
 
+        /// @brief 名前で絞り込み、種類の絞り込みを外す（gpu なら GPU の表にする）
+        void ShowName(const std::string& name, bool gpu);
+
     private:
         void CopyRows(const tracy::Worker& worker, bool copyCpu, bool copyGpu);
         void SortRows(std::vector<ZoneStatRow>& rows) const;
