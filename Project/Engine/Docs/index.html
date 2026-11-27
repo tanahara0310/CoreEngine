@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.120.0">
+<meta name="engine-version" content="0.121.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12130,7 +12130,7 @@ python Tools/OkinawaBeach/bake_araha_walk.py
 
 <article class="page" id="profiling-tracy" data-group="困ったとき・資料" data-title="Tracy で処理の時間を見る" data-nav="Tracy で計測" data-keywords="tracy プロファイラ profiler 計測 処理時間 重い 遅い fps フレーム gpu cpu 時間軸 タイムライン スレッド ボトルネック tracy-capture csv coreengine profiler coreengineprofiler 日本語 区間の統計 回数 合計 平均 最大 ばらつき 標準偏差 保存 開く .tracy">
   <h1>Tracy で処理の時間を見る</h1>
-  <p class="lead">Tracy は、CPU と GPU の処理が「どのスレッドで・いつ・何 ms かかったか」を時間軸で見る道具です。<code>Debug</code> と <code>Development</code> のエンジンに組み込んであり、エディタを動かしたまま Tracy の画面からつなぐと記録が始まります。エディタの Profiler パネルは処理ごとの平均の時間を出し、Tracy は 1 フレームずつの並びを出します。たまにだけ重くなるフレームや、スレッドどうしの待ち合わせを調べるときに使います。区間ごとの回数や合計を日本語の表で見るときは、エンジンに付いている CoreEngine Profiler も使えます（<a href="#tracy-coreengine-profiler">CoreEngine Profiler で見る</a>）。</p>
+  <p class="lead">Tracy は、CPU と GPU の処理が「どのスレッドで・いつ・何 ms かかったか」を時間軸で見る道具です。<code>Debug</code> と <code>Development</code> のエンジンに組み込んであり、エディタを動かしたまま Tracy の画面からつなぐと記録が始まります。エディタの Profiler パネルは処理ごとの平均の時間を出し、Tracy は 1 フレームずつの並びを出します。たまにだけ重くなるフレームや、スレッドどうしの待ち合わせを調べるときに使います。フレームの中の時間軸や、区間ごとの回数と合計を日本語の画面で見るときは、エンジンに付いている CoreEngine Profiler も使えます（<a href="#tracy-coreengine-profiler">CoreEngine Profiler で見る</a>）。</p>
 
   <h2 id="tracy-setup">用意するもの</h2>
   <p>Tracy の画面（<span class="path">tracy-profiler.exe</span>）は、エンジンに組み込んだのと同じ <strong>0.15.0</strong> を使います。<a href="https://github.com/wolfpld/tracy/releases/tag/v0.15.0">Tracy の配布ページ</a> の <span class="path">windows-0.15.0.zip</span> を展開すると、<span class="path">tracy-profiler.exe</span>（画面）・<span class="path">tracy-capture.exe</span>（コマンドラインで記録する）・<span class="path">tracy-csvexport.exe</span>（記録を CSV にする）が入っています。版が違うとつなげません。</p>
@@ -12144,13 +12144,67 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <div class="callout note"><p>つないでいない間は記録しません。区間ごとに「つないでいるか」を確かめるだけなので、ふだんのエディタの重さはほとんど変わりません。つなげるのは同じ PC からだけです。</p></div>
 
   <h2 id="tracy-coreengine-profiler">CoreEngine Profiler で見る</h2>
-  <p>CoreEngine Profiler は、Tracy の記録を日本語の表で見るための、エンジンに付いている画面です。記録の受け取りと保存には Tracy の部品をそのまま使うので、保存したファイルは元の Tracy の画面と同じ <span class="path">.tracy</span> で、どちらの画面でも開けます。今は区間の統計の表だけです。時間軸（どのフレームで・どのスレッドで動いたか）は、元の Tracy の画面で見ます。</p>
+  <p>CoreEngine Profiler は、Tracy の記録を日本語の画面で見るための、エンジンに付いている exe です。記録の受け取りと保存には Tracy の部品をそのまま使うので、保存したファイルは元の Tracy の画面と同じ <span class="path">.tracy</span> で、どちらの画面でも開けます。窓の上にフレームの帯、下に <span class="ui">タイムライン</span> と <span class="ui">区間の統計</span> の 2 つのタブがあります（<span class="ui">表示</span> のメニューでも切り替えられます）。</p>
   <ol class="steps">
     <li><strong>起動する</strong>ソリューション（<span class="path">CoreEngine.slnx</span>）をビルドすると、エディタの隣に <span class="path">CoreEngineProfiler.exe</span> ができます（<span class="path">generated/CoreEngine/outputs/&lt;構成&gt;/</span>）。</li>
     <li><strong>つなぐ</strong><code>Debug</code> か <code>Development</code> のエディタを起動してから、<span class="ui">127.0.0.1:8086 につなぐ</span> を押します。ほかの PC やポートは <span class="ui">記録 &gt; つなぐ…</span> で入れます。<code>CoreEngineProfiler.exe --connect</code> で起動すると、起動してすぐにつなぎます。</li>
     <li><strong>止めて保存する</strong><span class="ui">記録を止める</span> で受け取りを止め、<span class="ui">保存…</span>（<kbd>Ctrl</kbd>+<kbd>S</kbd>）で <span class="path">.tracy</span> に書きます。エディタを閉じたときも受け取りは止まり、それまでの分は残ります。保存していない記録があるまま窓を閉じようとすると、確かめる窓が出ます。</li>
     <li><strong>開く</strong><span class="ui">開く…</span>（<kbd>Ctrl</kbd>+<kbd>O</kbd>）か、<span class="path">.tracy</span> を窓へドラッグします。<span class="path">tracy-capture.exe</span> で取った記録も開けます。</li>
   </ol>
+
+  <h3 id="tracy-coreengine-profiler-frames">フレームの帯</h3>
+  <p>窓の上に、記録したフレームを棒で並べます。重いフレームを見つけて選ぶための帯です。</p>
+  <ul>
+    <li><strong>全体</strong>：記録の最初から最後までを細い帯で出します。数フレームずつまとめて、その中でいちばん長いフレームの高さで描きます。白い枠が、下に並べている 300 フレームの場所です。帯をクリックかドラッグすると、枠がその場所へ動きます。</li>
+    <li><strong>300 フレームの棒</strong>：1 本が 1 フレームです。下の色の部分が仕事（CPU が動いていた時間）、上の暗い部分が待ち（<code>Wait For Frame Slot</code> と <code>Present</code> の時間。GPU や画面の切り替えを待っている間）です。棒をクリックするとそのフレームを選び、下のタイムラインに出します。ホイールで 30 フレームずつ前後へ動きます。</li>
+    <li><strong>線と色</strong>：緑の点線が目標（60 fps なら 16.7 ms）、赤の点線がその 2 倍です。目標を超えたフレームは橙、2 倍を超えたフレームは赤で塗ります。垂直同期のわずかなずれで色が変わらないよう、目標より 5 % 長いところまでは超えていないことにします。目標は右上か <span class="ui">記録 &gt; 目標</span> で 30・60・120 fps から選びます。</li>
+    <li><strong>選ぶフレーム</strong>：つないで受け取っている間は、いちばん新しいフレームを追いかけます。帯やタイムラインを触ると追いかけるのをやめ、右上の <span class="ui">最新へ</span> で戻ります。ファイルを開いたときは、最後の 300 フレームでいちばん長いフレームを選んだところから始まります。</li>
+  </ul>
+
+  <h3 id="tracy-coreengine-profiler-timeline">タイムライン</h3>
+  <p>選んだフレームの中で、何がいつ動いたかを横の時間軸に並べます。上の目盛りは、選んだフレームの始まりからの ms です。選んだフレームの間は少し青い下地になり、フレームの境目には縦の線を引きます。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>行</th><th>出るもの</th></tr></thead>
+    <tbody>
+      <tr><td>メインスレッド</td><td>エンジンのメインスレッドの区間。中の区間ほど下の段に出ます（<code>Update</code> の中の段や、<code>Render</code> の中の描画のパスなど）</td></tr>
+      <tr><td>ワーカー</td><td>スレッドプールなど、メインスレッドのほかのスレッドをまとめた 1 行。見ている範囲に仕事のあるスレッドだけが段を取ります。「×N」は区間のあるスレッドの数です</td></tr>
+      <tr><td>GPU</td><td>GPU のキュー（描画のキュー）で、描画のパスが GPU で動いた時間。CPU が命令を積んだ後に動くので、CPU の区間より右にずれます。上の <span class="ui">GPU</span> の数字は、選んだフレームの間に始まった GPU の区間の合計です</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li><strong>ホイール</strong>：マウスの所を中心に拡大・縮小します。</li>
+    <li><strong>右ドラッグ</strong>：左右へ動かします。</li>
+    <li><strong>クリック</strong>：区間を選び、右の欄に詳しく出します。ほかのフレームの区間を選ぶと、そのフレームが選ばれます。</li>
+    <li><strong>ダブルクリック</strong>：その区間がちょうど収まるまで拡大します。<span class="ui">フレーム全体</span> で、選んだフレームの全体に戻ります。</li>
+    <li><strong>吹き出し</strong>：区間にマウスを重ねると、名前・時間・フレームに占める割合・種類・場所と、同じ区間の平均と最大が出ます。</li>
+  </ul>
+  <p>色は区間の統計の種類と同じで、待ちは斜線です。細すぎて見えない区間は、となり合う何個かを薄い色の 1 つにまとめます。拡大すると分かれて見えます。名前が入りきらない区間は、色だけで描きます。</p>
+
+  <h3 id="tracy-coreengine-profiler-zone">選んだ区間の欄</h3>
+  <p>タイムラインで区間をクリックすると、右の欄に、同じ名前・同じ場所の区間の数字が出ます。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>項目</th><th>意味</th></tr></thead>
+    <tbody>
+      <tr><td>このフレーム</td><td>選んだフレームの中での時間。1 フレームに何回も通るときは、その合計です</td></tr>
+      <tr><td>平均（1 フレームあたり）</td><td>記録の全部の回の合計を、記録のフレーム数で割ったもの</td></tr>
+      <tr><td>最大（1 回）</td><td>いちばん長かった 1 回。目標を超えると橙、2 倍を超えると赤で出します</td></tr>
+      <tr><td>ばらつき（標準偏差）</td><td>1 回ごとの時間の散らばり</td></tr>
+      <tr><td>回数</td><td>記録の間に通った回数と、1 フレームあたりの回数</td></tr>
+      <tr><td>フレームに占める割合</td><td>「このフレーム」の時間が、選んだフレームの長さの何 % か</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li><strong>最大のフレーム</strong>：最大の 1 回が目標を超えていると、それがどのフレームかと、その中で時間の大半を使っていた区間を出します（中の区間のうちいちばん長いものが半分以上を占める間、中へたどります）。<span class="ui">そのフレームへ</span> でそのフレームを選び、その 1 回を選びます。</li>
+    <li><strong>中身（選んだ 1 回）</strong>：選んだ 1 回のすぐ中の区間を、名前ごとに足して長い順に並べます。上の帯はその割合です。「自分だけ」は、どの中の区間にも入らない時間です。</li>
+    <li><span class="ui">統計で見る</span> で、区間の統計のタブを、その名前で絞り込んで開きます。</li>
+    <li>フレームを選び直したとき、同じ区間がそのフレームにもあれば、それを選び直します。</li>
+  </ul>
+
+  <h3 id="tracy-coreengine-profiler-stats">区間の統計</h3>
   <p>区間の統計の表は、同じ名前・同じ場所の区間を 1 行にまとめます。見出しを押すと並べ替え、行を右クリックすると名前と場所をコピーできます。回数・合計・平均・最大は <span class="path">tracy-csvexport.exe</span> の CSV と同じ数字です。</p>
   <div class="table-wrap">
   <table>
@@ -12733,6 +12787,15 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-121-0">v0.121.0 <span class="dim">（2026-11-27）</span></h3>
+  <p>CoreEngine Profiler に、フレームの帯・タイムライン・選んだ区間の欄を足した版です（<a href="#tracy-coreengine-profiler">CoreEngine Profiler で見る</a>）。エディタと書き出したゲームの動きと、シーンとプロジェクトの保存の形は前の版と同じです。</p>
+  <ul>
+    <li><strong>フレームの帯</strong>：記録の全体の細い帯と、300 フレームの棒を出します。棒は仕事（下）と待ち（上）に塗り分け、目標の線と 2 倍の線を引きます。目標（30・60・120 fps）を超えたフレームは橙、2 倍を超えたフレームは赤です。棒をクリックすると、そのフレームを選びます。</li>
+    <li><strong>タイムライン</strong>：選んだフレームの中を、メインスレッド・ワーカー・GPU の 3 つの行で時間軸に並べます。ホイールで拡大、右ドラッグで移動、ダブルクリックでその区間いっぱいに拡大します。区間にマウスを重ねると、時間・フレームに占める割合・平均・最大・場所が出ます。</li>
+    <li><strong>選んだ区間の欄</strong>：区間をクリックすると、このフレームの時間・1 フレームあたりの平均・最大・ばらつき・回数・フレームに占める割合と、中の区間の内訳を出します。最大が目標を超えていれば、そのフレームと、その中で時間の大半を使っていた区間を出し、<span class="ui">そのフレームへ</span> で飛べます。</li>
+    <li><strong>メニュー</strong>：<span class="ui">記録 &gt; 目標</span> と、タブを切り替える <span class="ui">表示</span> のメニューを足しました。</li>
+  </ul>
 
   <h3 id="changelog-v0-120-0">v0.120.0 <span class="dim">（2026-11-27）</span></h3>
   <p>Tracy の記録を日本語の表で見る CoreEngine Profiler（エディタとは別の exe）を足した版です（<a href="#tracy-coreengine-profiler">CoreEngine Profiler で見る</a>）。エディタと書き出したゲームの動きと、シーンとプロジェクトの保存の形は前の版と同じです。</p>

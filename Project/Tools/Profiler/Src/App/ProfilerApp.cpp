@@ -221,15 +221,29 @@ namespace CoreEngine::Profiler
         if (session_.Generation() != seenGeneration_) {
             seenGeneration_ = session_.Generation();
             statsView_.Reset();
+            frames_.Reset();
+            sources_.Reset();
+            timeline_.Reset();
+            detail_.Reset();
+            ResetView();
             hasSummary_ = false;
         }
         hasSummary_ = session_.ReadSummary(summary_);
         const bool live = session_.State() == SessionState::Live;
         const double now = ImGui::GetTime();
         session_.Read([&](const tracy::Worker& worker) {
-            if (worker.HasData()) {
-                statsView_.Update(worker, live, now);
+            if (!worker.HasData()) {
+                return;
             }
+            statsView_.Update(worker, live, now);
+            frames_.UpdateFrames(worker, live);
+            PrepareView(live);
+            frames_.UpdateWaits(worker, sources_, view_.stripFirst, view_.stripFirst + kStripFrames);
+            if (view_.hasSelectedFrame) {
+                frames_.UpdateWaits(worker, sources_, view_.selectedFrame, view_.selectedFrame + 1);
+            }
+            timeline_.Update(worker, frames_, sources_, view_);
+            detail_.Update(worker, frames_, sources_, view_, live, now);
         });
 
         HandleShortcuts();
@@ -239,7 +253,7 @@ namespace CoreEngine::Profiler
         ImGui::SetNextWindowSize(viewport->WorkSize);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-        const ImGuiWindowFlags rootFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove
+        const ImGuiWindowFlags rootFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollWithMouse
             | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoBringToFrontOnFocus;
         ImGui::Begin("##root", nullptr, rootFlags);
         ImGui::PopStyleVar(2);
@@ -258,7 +272,7 @@ namespace CoreEngine::Profiler
             DrawWaiting();
             break;
         default:
-            statsView_.Draw();
+            DrawCapture();
             break;
         }
 
@@ -309,6 +323,25 @@ namespace CoreEngine::Profiler
             if (ImGui::MenuItem(connecting ? "探すのをやめる" : "記録を止める", nullptr, false,
                 connecting || state == SessionState::Live)) {
                 session_.Stop();
+            }
+            ImGui::Separator();
+            if (ImGui::BeginMenu("目標")) {
+                for (const int fps : { 30, 60, 120 }) {
+                    const std::string label = std::format("{} fps（{:.1f} ms）", fps, 1000.0 / fps);
+                    if (ImGui::MenuItem(label.c_str(), nullptr, view_.targetFps == fps)) {
+                        view_.targetFps = fps;
+                    }
+                }
+                ImGui::EndMenu();
+            }
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("表示")) {
+            if (ImGui::MenuItem("タイムライン", nullptr, view_.tab == ViewTab::Timeline)) {
+                RequestTab(ViewTab::Timeline);
+            }
+            if (ImGui::MenuItem("区間の統計", nullptr, view_.tab == ViewTab::Stats)) {
+                RequestTab(ViewTab::Stats);
             }
             ImGui::EndMenu();
         }
@@ -403,6 +436,105 @@ namespace CoreEngine::Profiler
         }
         ImGui::EndDisabled();
 
+        ImGui::EndChild();
+        ImGui::PopStyleColor();
+    }
+
+    void ProfilerApp::ResetView()
+    {
+        const int targetFps = view_.targetFps;
+        view_ = ViewState{};
+        view_.targetFps = targetFps;
+    }
+
+    void ProfilerApp::PrepareView(bool live)
+    {
+        const size_t count = frames_.Count();
+        if (count == 0) {
+            return;
+        }
+        if (!view_.initialized) {
+            view_.initialized = true;
+            view_.followLatest = live;
+            view_.stripFirst = MaxStripFirst(frames_);
+            if (!live) {
+                // 開いた記録は、最後の 300 フレームでいちばん長いフレームを選ぶ
+                size_t longest = view_.stripFirst;
+                for (size_t i = view_.stripFirst; i < count; ++i) {
+                    if (frames_.At(i).Duration() > frames_.At(longest).Duration()) {
+                        longest = i;
+                    }
+                }
+                SelectFrame(view_, frames_, longest);
+            }
+        }
+        if (live && view_.followLatest) {
+            view_.stripFirst = MaxStripFirst(frames_);
+            const size_t latest = frames_.LastComplete();
+            if (!view_.hasSelectedFrame || view_.selectedFrame != latest) {
+                SelectFrame(view_, frames_, latest);
+            }
+        }
+        view_.stripFirst = std::min(view_.stripFirst, MaxStripFirst(frames_));
+    }
+
+    void ProfilerApp::RequestTab(ViewTab tab)
+    {
+        view_.tab = tab;
+        view_.tabRequested = true;
+    }
+
+    void ProfilerApp::DrawCapture()
+    {
+        frameStrip_.Draw(frames_, view_, session_.State() == SessionState::Live);
+        ImGui::Spacing();
+
+        if (view_.statsFilterRequested) {
+            view_.statsFilterRequested = false;
+            statsView_.ShowName(view_.statsFilter, view_.statsFilterGpu);
+        }
+        if (!ImGui::BeginTabBar("##tabs")) {
+            return;
+        }
+        const bool requested = view_.tabRequested;
+        view_.tabRequested = false;
+        const ViewTab wanted = view_.tab;
+        const auto flagsFor = [&](ViewTab tab) {
+            return (requested && wanted == tab) ? ImGuiTabItemFlags_SetSelected : ImGuiTabItemFlags_None;
+        };
+        if (ImGui::BeginTabItem("タイムライン", nullptr, flagsFor(ViewTab::Timeline))) {
+            if (!requested) {
+                view_.tab = ViewTab::Timeline;
+            }
+            DrawTimelineTab();
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("区間の統計", nullptr, flagsFor(ViewTab::Stats))) {
+            if (!requested) {
+                view_.tab = ViewTab::Stats;
+            }
+            statsView_.Draw();
+            ImGui::EndTabItem();
+        }
+        ImGui::EndTabBar();
+    }
+
+    void ProfilerApp::DrawTimelineTab()
+    {
+        const ImGuiStyle& style = ImGui::GetStyle();
+        const float lineHeight = ImGui::GetTextLineHeight();
+        const float available = ImGui::GetContentRegionAvail().x;
+        const float panelWidth = std::clamp(available * 0.3f, lineHeight * 20.0f, lineHeight * 28.0f);
+
+        ImGui::BeginChild("##timelineSide", ImVec2(std::max(1.0f, available - panelWidth - style.ItemSpacing.x), 0.0f),
+            ImGuiChildFlags_None, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+        timeline_.Draw(frames_, sources_, view_);
+        ImGui::EndChild();
+
+        ImGui::SameLine();
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, Theme::kWindow);
+        ImGui::BeginChild("##detail", ImVec2(0.0f, 0.0f), ImGuiChildFlags_AlwaysUseWindowPadding);
+        detail_.Draw(frames_, view_);
         ImGui::EndChild();
         ImGui::PopStyleColor();
     }

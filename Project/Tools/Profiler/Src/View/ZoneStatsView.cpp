@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <format>
 
 namespace CoreEngine::Profiler
@@ -233,6 +234,14 @@ namespace CoreEngine::Profiler
         DrawToolbar();
         ImGui::Spacing();
         DrawTable();
+    }
+
+    void ZoneStatsView::ShowName(const std::string& name, bool gpu)
+    {
+        std::snprintf(nameFilter_, sizeof(nameFilter_), "%s", name.c_str());
+        kindFilter_ = -1;
+        showGpu_ = gpu;
+        needsVisible_ = true;
     }
 
     void ZoneStatsView::DrawToolbar()
