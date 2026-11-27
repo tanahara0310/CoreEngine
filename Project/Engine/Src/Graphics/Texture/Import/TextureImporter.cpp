@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "TextureImporter.h"
+#include "Graphics/Texture/Import/TextureBlockEncoder.h"
 #include "Graphics/Texture/Load/TextureImageProcessor.h"
 #include "Utility/Enum/EnumNames.h"
 #include "Utility/Logger/Logger.h"
@@ -21,6 +22,62 @@ namespace CoreEngine
             { TextureCompression::BC5,  "bc5" },
             { TextureCompression::None, "none" },
         };
+
+        /// @brief 圧縮の形式に合う DXGI の形式（BC5 は常に BC5_UNORM）
+        DXGI_FORMAT CompressedFormat(TextureCompression compression, bool linear)
+        {
+            switch (compression) {
+            case TextureCompression::BC1: return linear ? DXGI_FORMAT_BC1_UNORM : DXGI_FORMAT_BC1_UNORM_SRGB;
+            case TextureCompression::BC3: return linear ? DXGI_FORMAT_BC3_UNORM : DXGI_FORMAT_BC3_UNORM_SRGB;
+            case TextureCompression::BC5: return DXGI_FORMAT_BC5_UNORM;
+            default: break;
+            }
+            return linear ? DXGI_FORMAT_BC7_UNORM : DXGI_FORMAT_BC7_UNORM_SRGB;
+        }
+
+        /// @brief ミップの画像を全部圧縮する（BC5 は DirectXTex、BC1・BC3・BC7 は RGBA 各 8 ビットへ直してから TextureBlockEncoder）
+        HRESULT CompressImages(const DirectX::ScratchImage& source, TextureCompression compression, bool linear,
+            DirectX::ScratchImage& result)
+        {
+            const DXGI_FORMAT compressedFormat = CompressedFormat(compression, linear);
+            if (compression == TextureCompression::BC5) {
+                return DirectX::Compress(source.GetImages(), source.GetImageCount(), source.GetMetadata(), compressedFormat,
+                    DirectX::TEX_COMPRESS_DEFAULT, DirectX::TEX_THRESHOLD_DEFAULT, result);
+            }
+            TextureBlockEncoder::Format format = TextureBlockEncoder::Format::BC7;
+            if (compression == TextureCompression::BC1) {
+                format = TextureBlockEncoder::Format::BC1;
+            } else if (compression == TextureCompression::BC3) {
+                format = TextureBlockEncoder::Format::BC3;
+            }
+
+            // 圧縮先が sRGB の形式なら sRGB のまま、そうでなければリニアの値の 8 ビットで画素を並べる
+            const DXGI_FORMAT rgbaFormat = DirectX::IsSRGB(compressedFormat) ? DXGI_FORMAT_R8G8B8A8_UNORM_SRGB : DXGI_FORMAT_R8G8B8A8_UNORM;
+            const DirectX::ScratchImage* rgba = &source;
+            DirectX::ScratchImage converted;
+            if (source.GetMetadata().format != rgbaFormat) {
+                const HRESULT hr = DirectX::Convert(source.GetImages(), source.GetImageCount(), source.GetMetadata(), rgbaFormat,
+                    DirectX::TEX_FILTER_DEFAULT | DirectX::TEX_FILTER_FORCE_NON_WIC, DirectX::TEX_THRESHOLD_DEFAULT, converted);
+                if (FAILED(hr)) {
+                    return hr;
+                }
+                rgba = &converted;
+            }
+
+            DirectX::TexMetadata metadata = rgba->GetMetadata();
+            metadata.format = compressedFormat;
+            const HRESULT hr = result.Initialize(metadata);
+            if (FAILED(hr)) {
+                return hr;
+            }
+            for (size_t i = 0; i < rgba->GetImageCount(); ++i) {
+                const DirectX::Image& from = rgba->GetImages()[i];
+                const DirectX::Image& to = result.GetImages()[i];
+                TextureBlockEncoder::Encode(from.pixels, from.rowPitch, static_cast<uint32_t>(from.width), static_cast<uint32_t>(from.height),
+                    format, to.pixels, to.rowPitch);
+            }
+            return S_OK;
+        }
     }
 
     TextureCompression TextureImporter::ParseCompression(std::string_view setting)
@@ -61,7 +118,7 @@ namespace CoreEngine
             }
 
             // 形式と色空間に合わせて圧縮する。1 枚の圧縮は 1 スレッドで行い、画像ごとの並列は呼ぶ側のスレッドプールに任せる。
-            // 圧縮できない大きさ（4x4 未満など）は非圧縮のまま書く
+            // 圧縮できない画像（8 ビットへ直せない画素の形式など）は圧縮せずに書く
             // 自動は、法線マップなら赤と緑だけの BC5、全画素が不透明なら透明を持たない BC1、そうでなければ BC3 にする
             if (compression == TextureCompression::Auto) {
                 if (colorSpace == TextureColorSpace::Normal) {
@@ -73,27 +130,7 @@ namespace CoreEngine
             DirectX::ScratchImage compressedImage;
             hr = E_FAIL;
             if (compression != TextureCompression::None) {
-                const bool linear = IsLinearData(colorSpace);
-                DXGI_FORMAT compressFormat = linear ? DXGI_FORMAT_BC7_UNORM : DXGI_FORMAT_BC7_UNORM_SRGB;
-                DirectX::TEX_COMPRESS_FLAGS flags = DirectX::TEX_COMPRESS_BC7_QUICK;
-                if (compression == TextureCompression::BC3) {
-                    compressFormat = linear ? DXGI_FORMAT_BC3_UNORM : DXGI_FORMAT_BC3_UNORM_SRGB;
-                    flags = DirectX::TEX_COMPRESS_DEFAULT;
-                } else if (compression == TextureCompression::BC1) {
-                    compressFormat = linear ? DXGI_FORMAT_BC1_UNORM : DXGI_FORMAT_BC1_UNORM_SRGB;
-                    flags = DirectX::TEX_COMPRESS_DEFAULT;
-                } else if (compression == TextureCompression::BC5) {
-                    compressFormat = DXGI_FORMAT_BC5_UNORM;
-                    flags = DirectX::TEX_COMPRESS_DEFAULT;
-                }
-                hr = DirectX::Compress(
-                    mipChain.GetImages(),
-                    mipChain.GetImageCount(),
-                    mipChain.GetMetadata(),
-                    compressFormat,
-                    flags,
-                    DirectX::TEX_THRESHOLD_DEFAULT,
-                    compressedImage);
+                hr = CompressImages(mipChain, compression, IsLinearData(colorSpace), compressedImage);
                 if (FAILED(hr)) {
                     log.Logf(LogLevel::WARNING, LogCategory::Resource, "圧縮できないので非圧縮の DDS にします: {}", sourceForDisplay);
                 }

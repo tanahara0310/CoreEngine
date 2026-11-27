@@ -13,7 +13,7 @@ namespace CoreEngine
     enum class TextureCompression
     {
         Auto, ///< 法線マップは BC5、透明のある画像は BC3、全部不透明な画像は BC1
-        BC7,  ///< BC7（モード 6 だけを使う速い圧縮）
+        BC7,  ///< BC7（モード 1・5・6・7 を使う圧縮）
         BC3,  ///< BC3（DXT5）
         BC1,  ///< BC1（DXT1。透明を持たない。BC3 の半分の大きさ）
         BC5,  ///< BC5（赤と緑の 2 チャンネルだけ。法線マップ向け。BC3 と同じ大きさ）
@@ -25,7 +25,7 @@ namespace CoreEngine
     namespace TextureImporter
     {
         /// @brief 変換の中身を変えたら上げる版（派生データのキーに入り、古い DDS を作り直させる）
-        inline constexpr uint32_t kVersion = 1;
+        inline constexpr uint32_t kVersion = 2;
 
         /// @brief 取り込み設定で形式を決めていない画像の形式
         inline constexpr TextureCompression kDefaultCompression = TextureCompression::Auto;

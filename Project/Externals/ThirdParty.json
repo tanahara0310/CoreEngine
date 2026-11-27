@@ -89,7 +89,16 @@
       "license": "MIT",
       "licenseFiles": [ "DirectXTex/LICENSE" ],
       "inGame": true,
-      "usage": "画像の読み込みと BC 圧縮・DDS（同梱の d3dx12.h も含む）"
+      "usage": "画像の読み込み・ミップ・BC5 の圧縮・DDS（同梱の d3dx12.h も含む）"
+    },
+    {
+      "name": "bc7enc_rdo",
+      "version": "版の番号なし（コミット b9438627。rgbcx と bc7enc だけ）",
+      "source": "https://github.com/richgel999/bc7enc_rdo",
+      "license": "MIT（MIT と Unlicense の二重ライセンスから MIT を選ぶ）",
+      "licenseFiles": [ "bc7enc_rdo/LICENSE" ],
+      "inGame": true,
+      "usage": "画像の BC1・BC3・BC7 の圧縮"
     },
     {
       "name": "meshoptimizer",

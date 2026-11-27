@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.119.1">
+<meta name="engine-version" content="0.120.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -3191,7 +3191,7 @@ kbd {
       <tr><td><code>"bc3"</code></td><td>BC3（1 画素 1 バイト）。透明を持てる</td></tr>
       <tr><td><code>"bc1"</code></td><td>BC1（1 画素 0.5 バイト）。色の画質は BC3 と同じで、大きさは半分。透明は持てない（透明の部分は不透明になる）</td></tr>
       <tr><td><code>"bc5"</code></td><td>BC5（1 画素 1 バイト）。赤と緑の 2 つだけを、それぞれ BC3 の透明と同じ細かさで持つ。法線マップ向け（青はシェーダが赤と緑から作る）。色の画像には使えない</td></tr>
-      <tr><td><code>"bc7"</code></td><td>BC7。BC3 より色の段差やにじみが少なく、大きさは同じ。ただし変換が BC3 の 100 倍以上かかる（2048 四方で 1 枚 45 秒ほど）ので、UI やロゴなど、圧縮の汚れが目立つ画像に絞って使う</td></tr>
+      <tr><td><code>"bc7"</code></td><td>BC7。BC3 より色の段差やにじみが少なく、DDS の大きさは同じ。ただし書き出したゲームの中では縮みにくく、BC3 のおよそ 2 倍の大きさになる。変換も BC3 の 6 倍ほどかかる（2048 四方で 1 枚 6 秒ほど）ので、UI やロゴなど、圧縮の汚れが目立つ画像に絞って使う</td></tr>
       <tr><td><code>"none"</code></td><td>圧縮しない（1 画素 4 バイト）。ドット絵など、圧縮でにじませたくない画像に使う。大きさは BC3 の 4 倍</td></tr>
     </tbody>
   </table>
@@ -12688,6 +12688,18 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-120-0">v0.120.0 <span class="dim">（2026-11-27）</span></h3>
+  <p>テクスチャの圧縮を、法線マップのほかは bc7enc_rdo で行い、圧縮した画像を元の画像に近づけた版です（<a href="#project-texture-color">画像の取り込み設定</a>）。シーンとプロジェクトの保存の形は前の版と同じです。数字は Sandbox の画像 999 枚で測りました。</p>
+  <ul>
+    <li><strong>色の画像とデータの画像（BC1）</strong>：元の画像との近さ（PSNR）が平均 3.0 dB 上がりました。元とのずれが、およそ半分になります。663 枚のうち、前の版より悪くなった画像はありません。2048 四方 1 枚の変換は 0.4 秒から 1.5 秒になります。</li>
+    <li><strong>透明のある画像（BC3）</strong>：平均 2.1 dB 上がりました。35 枚のうち 1 枚だけ 0.3 dB 下がりました。</li>
+    <li><strong>BC7</strong>：<code>"bc7"</code> を選んだ画像の変換が、2048 四方 1 枚で 56 秒ほどから 6 秒ほどになり、元の画像との近さも 5 dB ほど上がりました。前の版は BC7 の 8 つの形のうち 1 つだけを使っていました。この版は 4 つを使います。</li>
+    <li><strong>法線マップ（BC5）</strong>：前の版と同じく DirectXTex で圧縮するので、変わりません。</li>
+    <li><strong>書き出したゲームの大きさ</strong>：Sandbox では 0.8% 小さくなりました。</li>
+    <li><strong>bc7enc_rdo</strong>：bc7enc_rdo の rgbcx と bc7enc を <span class="path">Project/Externals/bc7enc_rdo</span> に入れました。外部ライブラリの一覧（<a href="#setup-externals">外部ライブラリ</a>）にも足したので、書き出したゲームの <span class="path">THIRD_PARTY_NOTICES.txt</span> にも入ります。</li>
+  </ul>
+  <div class="callout warn" data-title="取り込んだ後の最初の起動"><p>変換の版が上がるので、取り込んだ後に初めてプロジェクトを開くときと、初めて書き出すときに、テクスチャを全部変換し直します。画像の多いプロジェクトでは、いつもより時間がかかります。変換は前の版より遅く、Sandbox のアラハ（705 枚）では、変換し直して開くまでが 37 秒から 59 秒になりました。2 回目からは、変換した物を読むだけなので前の版と同じです。</p></div>
 
   <h3 id="changelog-v0-119-1">v0.119.1 <span class="dim">（2026-11-27）</span></h3>
   <p>v0.119.0 で ImPlot にし忘れていた、エディタの Profiler パネルのフレームのグラフを、Engine Stats と同じ形の線のグラフにした版です（<a href="#stats-profiler">Profiler パネルのグラフ</a>）。書き出したゲームの動きと、シーンとプロジェクトの保存の形は前の版と同じです。</p>

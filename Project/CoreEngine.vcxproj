@@ -577,6 +577,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Graphics\Texture\Cache\TextureCacheStore.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Texture\Generate\TextureCubemapGenerator.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Texture\Import\TextureImporter.cpp" />
+    <ClCompile Include="Engine\Src\Graphics\Texture\Import\TextureBlockEncoder.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Import\CmeshFile.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Import\MeshImporter.cpp" />
     <ClCompile Include="Engine\Src\Graphics\Model\Derived\ModelDerivedData.cpp" />
@@ -1055,6 +1056,18 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
       <SDLCheck>false</SDLCheck>
     </ClCompile>
     <ClCompile Include="Externals\zstd\lib\decompress\zstd_decompress_block.c">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+    </ClCompile>
+    <ClCompile Include="Externals\bc7enc_rdo\bc7enc.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+    </ClCompile>
+    <ClCompile Include="Externals\bc7enc_rdo\rgbcx.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <TreatWarningAsError>false</TreatWarningAsError>
@@ -1964,6 +1977,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\Texture\Cache\TextureCacheStore.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Generate\TextureCubemapGenerator.h" />
     <ClInclude Include="Engine\Src\Graphics\Texture\Import\TextureImporter.h" />
+    <ClInclude Include="Engine\Src\Graphics\Texture\Import\TextureBlockEncoder.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Import\MeshAsset.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Import\CmeshFile.h" />
     <ClInclude Include="Engine\Src\Graphics\Model\Import\MeshImporter.h" />
@@ -2326,6 +2340,8 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Externals\imgui\imstb_truetype.h" />
     <ClInclude Include="Externals\meshoptimizer\src\meshoptimizer.h" />
     <ClInclude Include="Externals\zstd\lib\zstd.h" />
+    <ClInclude Include="Externals\bc7enc_rdo\bc7enc.h" />
+    <ClInclude Include="Externals\bc7enc_rdo\rgbcx.h" />
     <ClInclude Include="Externals\angelscript\add_on\autowrapper\aswrappedcall.h" />
     <ClInclude Include="Externals\angelscript\add_on\scriptarray\scriptarray.h" />
     <ClInclude Include="Externals\angelscript\add_on\scriptbuilder\scriptbuilder.h" />

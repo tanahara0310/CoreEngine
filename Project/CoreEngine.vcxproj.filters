@@ -1108,6 +1108,9 @@
     <ClCompile Include="Engine\Src\Graphics\Texture\Import\TextureImporter.cpp">
       <Filter>Engine\Src\Graphics\Texture\Import</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Graphics\Texture\Import\TextureBlockEncoder.cpp">
+      <Filter>Engine\Src\Graphics\Texture\Import</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Graphics\Model\Import\CmeshFile.cpp">
       <Filter>Engine\Src\Graphics\Model\Import</Filter>
     </ClCompile>
@@ -2061,6 +2064,12 @@
     </ClCompile>
     <ClCompile Include="Externals\zstd\lib\decompress\zstd_decompress_block.c">
       <Filter>Externals\zstd\lib\decompress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\bc7enc_rdo\bc7enc.cpp">
+      <Filter>Externals\bc7enc_rdo</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\bc7enc_rdo\rgbcx.cpp">
+      <Filter>Externals\bc7enc_rdo</Filter>
     </ClCompile>
     <ClCompile Include="Externals\msdfgen\core\Contour.cpp">
       <Filter>Externals\msdfgen\core</Filter>
@@ -3648,6 +3657,9 @@
     <ClInclude Include="Engine\Src\Graphics\Texture\Import\TextureImporter.h">
       <Filter>Engine\Src\Graphics\Texture\Import</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Graphics\Texture\Import\TextureBlockEncoder.h">
+      <Filter>Engine\Src\Graphics\Texture\Import</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Graphics\Model\Import\MeshAsset.h">
       <Filter>Engine\Src\Graphics\Model\Import</Filter>
     </ClInclude>
@@ -4734,6 +4746,12 @@
     <ClInclude Include="Externals\zstd\lib\zstd.h">
       <Filter>Externals\zstd\lib</Filter>
     </ClInclude>
+    <ClInclude Include="Externals\bc7enc_rdo\bc7enc.h">
+      <Filter>Externals\bc7enc_rdo</Filter>
+    </ClInclude>
+    <ClInclude Include="Externals\bc7enc_rdo\rgbcx.h">
+      <Filter>Externals\bc7enc_rdo</Filter>
+    </ClInclude>
     <ClInclude Include="Externals\angelscript\add_on\autowrapper\aswrappedcall.h">
       <Filter>Externals\angelscript\add_on\autowrapper</Filter>
     </ClInclude>
@@ -5806,6 +5824,9 @@
     </Filter>
     <Filter Include="Externals\angelscript\source">
       <UniqueIdentifier>{F5974DE7-BC2B-4606-8A98-16866B78A220}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\bc7enc_rdo">
+      <UniqueIdentifier>{6B3C9288-2E05-45E2-91B8-552B9C2A1334}</UniqueIdentifier>
     </Filter>
     <Filter Include="Externals\cpptrace">
       <UniqueIdentifier>{0A19F545-01F8-405E-BB9E-4D9BED0F7E19}</UniqueIdentifier>
