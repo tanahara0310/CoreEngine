@@ -6,6 +6,7 @@
 #include "Capture/SourceInfoCache.h"
 #include "Capture/UpdateTree.h"
 #include "View/FrameStripView.h"
+#include "View/LogView.h"
 #include "View/TimelineView.h"
 #include "View/UpdateTreeView.h"
 #include "View/ZoneDetailPanel.h"
@@ -14,6 +15,7 @@
 #include <Windows.h>
 
 #include <cstdint>
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -40,6 +42,10 @@ namespace CoreEngine::Profiler
         /// @brief 窓へ落とされたファイルを開く（path は UTF-8）
         void RequestOpen(const std::string& path);
 
+        /// @brief 2 つ目に起動したプロファイラーから渡された引数を受ける
+        /// @details --open はそのファイルを開く。--connect は記録が無いときだけつなぐ（記録があればそのまま見せる）
+        void ApplyForwardedArguments(const std::vector<std::wstring>& arguments);
+
         bool ShouldQuit() const { return quit_; }
 
         /// @brief 窓の題（記録を開いていればファイル名を足す）
@@ -51,10 +57,16 @@ namespace CoreEngine::Profiler
         {
             None,
             Connect,
+            WaitForLaunch,
             OpenDialog,
             OpenPath,
             Quit,
         };
+
+        /// @brief 起動の引数を読む。つなぐ先は connectAddress_ と connectPort_ へ入れる
+        /// @param openPath 開くファイル（UTF-8）。無ければ空のまま
+        /// @return --connect があれば true
+        bool ParseArguments(const std::vector<std::wstring>& arguments, std::string& openPath);
 
         void Request(PendingAction action);
         void Run(PendingAction action);
@@ -89,18 +101,22 @@ namespace CoreEngine::Profiler
         ZoneDetailPanel detail_;
         UpdateTree updateTree_;
         UpdateTreeView updateTreeView_;
+        LogView logView_;
         uint64_t seenGeneration_ = 0;
         SessionSummary summary_;
         bool hasSummary_ = false;
 
         std::string connectAddress_ = "127.0.0.1";
         int connectPort_ = 8086;
+        bool waitingForLaunch_ = false; ///< 「起動を待つ」で探している
         char addressBuffer_[128] = {};
         bool openConnectPopup_ = false;
 
         PendingAction pending_ = PendingAction::None;
         bool openDiscardPopup_ = false;
         std::string pendingPath_;
+
+        std::filesystem::path documentation_; ///< エンジンのドキュメント（見つからなければ空）
 
         bool openDialogRequested_ = false;
         bool saveDialogRequested_ = false;

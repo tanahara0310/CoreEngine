@@ -22,7 +22,7 @@ namespace CoreEngine::Profiler
         const char* file = "";   ///< 場所のファイル（フルパス）
         uint32_t line = 0;
         ZoneKind kind = ZoneKind::Other;
-        bool filled = false;
+        bool resolved = false;   ///< 名前とファイルが届き終えて控えた（届く前は引くたびに引き直す）
     };
 
     class SourceInfoCache
@@ -33,7 +33,7 @@ namespace CoreEngine::Profiler
         /// @brief 控えを全部捨てる（記録を差し替えたとき）
         void Reset();
 
-        /// @brief 鍵をかけた受け取り役から引く。初めての場所なら控える
+        /// @brief 鍵をかけた受け取り役から引く。名前が届き終えるまでは引くたびに控え直す
         const SourceInfo& Get(const tracy::Worker& worker, int16_t srcloc);
 
         /// @brief 控えた分だけを引く（鍵の外で使う。控えていなければ空）

@@ -3,6 +3,7 @@
 
 #ifdef CORE_EDITOR
 #include "Editor/Command/EditorCommandStack.h"
+#include "Editor/External/ProfilerLauncher.h"
 #include "Editor/ImGui/DockingUI.h"
 #include "Editor/ImGui/EditorTheme.h"
 #include "Editor/ImGui/ImGuiManager.h"
@@ -33,6 +34,7 @@
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
 #include "Utility/Path/ProjectPaths.h"
+#include "Utility/Profiler/ProfileZone.h"
 #include "WinApp/WinApp.h"
 #include <imgui.h>
 #include <algorithm>
@@ -149,6 +151,7 @@ namespace CoreEngine
         // 前フレームでリクエストされたキャプチャを処理
         screenCapture_.ProcessPendingCapture();
         pixCapture_.ProcessPendingCapture();
+        traceFilePicker_.Update();
 
         if (!ImGui::BeginMainMenuBar()) {
             return;
@@ -558,8 +561,10 @@ namespace CoreEngine
                             }
                             };
                     case Editor::PanelGroup::Analysis:
-                        return [&tabMenu]() {
+                        return [this, &tabMenu]() {
                             tabMenu(Editor::PanelGroup::Analysis, "Engine Stats");
+                            ImGui::Separator();
+                            DrawProfilerMenuItems();
                             };
                     case Editor::PanelGroup::Editor:
                         return [this]() {
@@ -623,6 +628,48 @@ namespace CoreEngine
         }
     }
 
+    void GameDebugUI::DrawProfilerMenuItems()
+    {
+        std::error_code error;
+        const std::filesystem::path profiler = Editor::ProfilerExecutablePath();
+        const bool available = std::filesystem::is_regular_file(profiler, error);
+        const auto missingTooltip = [&profiler]() {
+            ImGui::SetTooltip("CoreEngine Profiler が見つかりません（CoreEngineProfiler をビルドしてください）\n%s",
+                Logger::GetInstance().PathToUtf8(profiler).c_str());
+        };
+
+#if CORE_TRACY_ENABLED
+        const bool canConnect = available;
+        const char* const connectTooltip = "CoreEngine Profiler を開いて、このエディタへつなぎます（もう開いていれば前へ出します）";
+#else
+        const bool canConnect = false;
+        const char* const connectTooltip = "このビルドは Tracy を外しているので、つなげません（CORE_NO_TRACY）";
+#endif
+        if (ImGui::MenuItem("プロファイラーを開く", "Ctrl+7", false, canConnect)) {
+            Editor::OpenProfiler();
+        }
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            if (!available) {
+                missingTooltip();
+            } else {
+                ImGui::SetTooltip("%s", connectTooltip);
+            }
+        }
+
+        if (ImGui::MenuItem("記録を開く…", nullptr, false, available && !traceFilePicker_.IsOpen())) {
+            DebugSubsystem* const debug = engine_ ? engine_->GetDebugSubsystem() : nullptr;
+            ImGuiManager* const imGui = debug ? debug->GetImGuiManager() : nullptr;
+            traceFilePicker_.Open(imGui ? imGui->GetHwnd() : nullptr);
+        }
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            if (!available) {
+                missingTooltip();
+            } else {
+                ImGui::SetTooltip("保存した記録（.tracy）を選んで、CoreEngine Profiler で開きます");
+            }
+        }
+    }
+
     ProjectView* GameDebugUI::FindProjectView() const
     {
         DebugSubsystem* const debug = engine_ ? engine_->GetDebugSubsystem() : nullptr;
@@ -665,6 +712,11 @@ namespace CoreEngine
         if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_O, ImGuiInputFlags_RouteGlobal)) {
             OpenSceneQuickOpen();
         }
+#if CORE_TRACY_ENABLED
+        if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_7, ImGuiInputFlags_RouteGlobal)) {
+            Editor::OpenProfiler();
+        }
+#endif
     }
 
     void GameDebugUI::OpenSceneQuickOpen()

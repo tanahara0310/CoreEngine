@@ -4,6 +4,7 @@
 #ifdef CORE_EDITOR
 
 #include "Diagnostics/EngineStats.h"
+#include "Editor/External/ProfilerLauncher.h"
 #include "Editor/ImGui/EditorTheme.h"
 #include "Editor/ImGui/ImGuiAll.h"
 #include "Editor/ImGui/ThreadProfilerUI.h"
@@ -18,6 +19,7 @@
 #include "Utility/FrameRate/FrameRateController.h"
 #include "Utility/FrameRate/Time.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/Profiler/ProfileZone.h"
 
 #include <algorithm>
 #include <chrono>
@@ -154,6 +156,13 @@ namespace CoreEngine
         if (UI::Bar::Button("スクリプト", showScript_)) { showScript_ = !showScript_; }
         ImGui::SameLine(0.0f, 4.0f);
         if (UI::Bar::Button("メモリ", showMemory_)) { showMemory_ = !showMemory_; }
+
+#if CORE_TRACY_ENABLED
+        UI::Bar::Separator();
+        if (UI::Bar::Button("詳しく見る", false, "CoreEngine Profiler を開いて、このエディタへつなぐ（Ctrl+7）")) {
+            Editor::OpenProfiler();
+        }
+#endif
 
         UI::Bar::Separator();
         if (UI::Bar::Button("CSV 書き出し", false, "控えている履歴を Captures/Profiling へ書き出す")) {

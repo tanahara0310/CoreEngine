@@ -13,9 +13,9 @@ namespace CoreEngine::Profiler
         /// @brief 待ちを探して辿る区間の深さの上限
         constexpr int kMaxWaitDepth = 16;
 
-        /// @brief [begin, end) に入る待ちの区間の時間を足す。待ちの区間の中へは入らない
+        /// @brief [begin, end) に入る待ちの区間の時間を足す。待ちの区間の中へは入らない。名前の届いていない区間があれば arrived を false にする
         int64_t SumWaits(const tracy::Worker& worker, SourceInfoCache& sources,
-            const tracy::Vector<tracy::short_ptr<tracy::ZoneEvent>>& events, int64_t begin, int64_t end, int depth)
+            const tracy::Vector<tracy::short_ptr<tracy::ZoneEvent>>& events, int64_t begin, int64_t end, int depth, bool& arrived)
         {
             int64_t sum = 0;
             for (size_t i = Access::FirstEndingAfter(worker, events, begin); i < events.size(); ++i) {
@@ -24,10 +24,12 @@ namespace CoreEngine::Profiler
                 if (start >= end) {
                     break;
                 }
-                if (sources.Get(worker, zone.SrcLoc()).kind == ZoneKind::Wait) {
+                const SourceInfo& info = sources.Get(worker, zone.SrcLoc());
+                arrived = arrived && info.resolved;
+                if (info.kind == ZoneKind::Wait) {
                     sum += std::min(worker.GetZoneEnd(zone), end) - std::max(start, begin);
                 } else if (zone.HasChildren() && depth < kMaxWaitDepth) {
-                    sum += SumWaits(worker, sources, worker.GetZoneChildren(zone.Child()), begin, end, depth + 1);
+                    sum += SumWaits(worker, sources, worker.GetZoneChildren(zone.Child()), begin, end, depth + 1, arrived);
                 }
             }
             return sum;
@@ -78,7 +80,9 @@ namespace CoreEngine::Profiler
             if (frame.wait >= 0 && IsComplete(i)) {
                 continue;
             }
-            frame.wait = SumWaits(worker, sources, mainThread_->timeline, frame.begin, frame.end, 0);
+            bool arrived = true;
+            const int64_t wait = SumWaits(worker, sources, mainThread_->timeline, frame.begin, frame.end, 0, arrived);
+            frame.wait = arrived ? wait : -1;
         }
     }
 

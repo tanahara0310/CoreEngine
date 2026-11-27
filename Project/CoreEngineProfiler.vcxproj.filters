@@ -34,6 +34,9 @@
     <ClCompile Include="Tools\Profiler\Src\View\FrameStripView.cpp">
       <Filter>Tools\Profiler\Src\View</Filter>
     </ClCompile>
+    <ClCompile Include="Tools\Profiler\Src\View\LogView.cpp">
+      <Filter>Tools\Profiler\Src\View</Filter>
+    </ClCompile>
     <ClCompile Include="Tools\Profiler\Src\View\TimelineView.cpp">
       <Filter>Tools\Profiler\Src\View</Filter>
     </ClCompile>
@@ -232,6 +235,9 @@
       <Filter>Tools\Profiler\Src\View</Filter>
     </ClInclude>
     <ClInclude Include="Tools\Profiler\Src\View\FrameStripView.h">
+      <Filter>Tools\Profiler\Src\View</Filter>
+    </ClInclude>
+    <ClInclude Include="Tools\Profiler\Src\View\LogView.h">
       <Filter>Tools\Profiler\Src\View</Filter>
     </ClInclude>
     <ClInclude Include="Tools\Profiler\Src\View\TimelineView.h">

@@ -167,6 +167,9 @@ namespace CoreEngine::Profiler
             bool touched = false;
         };
 
+        /// @brief [begin, end) のフレームで数える区間（根を探す区間と根の下の区間）の場所が全部届き終えたか
+        bool FrameArrived(const tracy::Worker& worker, SourceInfoCache& sources, const tracy::ThreadData& thread,
+            int64_t begin, int64_t end) const;
         const tracy::ZoneEvent* FindRoot(const tracy::Worker& worker, SourceInfoCache& sources, const tracy::ThreadData& thread,
             int64_t begin, int64_t end);
         uint32_t AddNode(const tracy::Worker& worker, SourceInfoCache& sources, uint32_t parent, int16_t srcloc);
