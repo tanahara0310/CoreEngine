@@ -17,6 +17,7 @@
 #include "Script/Binding/PhysicsBinding.h"
 #include "Script/ScriptHost.h"
 #include "Utility/Logger/Logger.h"
+#include "Utility/Profiler/ProfileZone.h"
 
 #include <angelscript.h>
 #include <chrono>
@@ -168,6 +169,7 @@ namespace CoreEngine
             ApplyObjectRefs();
         }
 
+        CORE_PROFILE_ZONE_TRANSIENT(type_->GetProfileLabel(ScriptComponentType::Method::OnAnimationEvent));
         const auto started = std::chrono::steady_clock::now();
         Script::ScriptAnimationEvent* const argument = Script::ScriptAnimationEvent::Create(event);
         const bool finished = host_->CallMethod(function, object_,
@@ -445,6 +447,8 @@ namespace CoreEngine
             return;
         }
 
+        CORE_PROFILE_ZONE_TRANSIENT(type_->GetProfileLabel(method));
+
         // 毎フレーム呼ばれる関数だけ、型ごとの実行時間として数える
         const bool perFrame = method == ScriptComponentType::Method::Update
             || method == ScriptComponentType::Method::LateUpdate;
@@ -508,6 +512,7 @@ namespace CoreEngine
             ApplyObjectRefs();
         }
 
+        CORE_PROFILE_ZONE_TRANSIENT(type_->GetProfileLabel(method));
         const auto started = std::chrono::steady_clock::now();
         Script::ScriptCollision* const collision = Script::ScriptCollision::Create(info, trigger);
         const bool finished = host_->CallMethod(function, object_,

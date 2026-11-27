@@ -163,6 +163,10 @@ namespace CoreEngine
         BuildProperties(base, builder);
         FindMethods(base);
         FindOwnerProperty();
+
+        for (std::size_t i = 0; i < profileLabels_.size(); ++i) {
+            profileLabels_[i] = name_ + "::" + GetMethodName(static_cast<Method>(i));
+        }
     }
 
     ScriptComponentType::~ScriptComponentType()

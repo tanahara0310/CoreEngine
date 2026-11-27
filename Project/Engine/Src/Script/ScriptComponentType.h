@@ -78,6 +78,12 @@ namespace CoreEngine
         /// @brief ライフサイクルの関数の名前（ログ用）
         static const char* GetMethodName(Method method);
 
+        /// @brief プロファイラの区間の名前（「クラス名::関数名」）
+        const char* GetProfileLabel(Method method) const
+        {
+            return profileLabels_[static_cast<std::size_t>(method)].c_str();
+        }
+
         /// @brief 基底クラスの `owner_`（持ち主のハンドル）のプロパティの添え字
         /// @return 見つからなければ -1
         int GetOwnerPropertyIndex() const { return ownerPropertyIndex_; }
@@ -129,6 +135,7 @@ namespace CoreEngine
         std::string displayName_;
         Reflection::TypeDescriptor descriptor_;
         std::array<asIScriptFunction*, static_cast<std::size_t>(Method::Count)> methods_{};
+        std::array<std::string, static_cast<std::size_t>(Method::Count)> profileLabels_;
         int ownerPropertyIndex_ = -1;
 
         /// 記述子の文字列の置き場（足しても要素のアドレスが変わらない入れ物）
