@@ -1,5 +1,6 @@
 #pragma once
 
+#include "App/ViewState.h"
 #include "Capture/ZoneKind.h"
 
 #include <cstdint>
@@ -12,13 +13,16 @@ namespace tracy
 }
 
 /// @file ZoneStatsView.h
-/// @brief 区間の統計の表（区間の種類ごとの回数・合計・平均・最大・ばらつき）
+/// @brief 区間の統計の表（区間の種類ごとの回数・合計・平均・最大・ばらつき）と、選んだ行の 1 回ごとの時間の分布
 
 namespace CoreEngine::Profiler
 {
+    class FrameSnapshot;
+
     /// @brief 表の 1 行（区間の種類 1 つ分）
     struct ZoneStatRow
     {
+        int16_t srcloc = 0;    ///< 区間の場所の番号
         std::string name;      ///< 区間の名前
         std::string file;      ///< 場所のファイル（フルパス）
         std::string location;  ///< 場所（ファイル名:行）
@@ -43,18 +47,45 @@ namespace CoreEngine::Profiler
         /// @param now 秒の時計（ImGui::GetTime）
         void Update(const tracy::Worker& worker, bool live, double now);
 
-        /// @brief 表を描く
-        void Draw();
+        /// @brief 鍵をかけた受け取り役から、選んだ行の 1 回ごとの時間を写して分布にする
+        void UpdateSelection(const tracy::Worker& worker, const FrameSnapshot& frames, const ViewState& view, bool live, double now);
+
+        /// @brief 表と、選んだ行の分布を描く。「最大のフレームを開く」は view へ書く
+        void Draw(const FrameSnapshot& frames, ViewState& view);
 
         /// @brief 名前で絞り込み、種類の絞り込みを外す（gpu なら GPU の表にする）
         void ShowName(const std::string& name, bool gpu);
 
     private:
+        /// @brief 選んだ行の分布（時間はナノ秒）
+        struct Distribution
+        {
+            bool valid = false;
+            bool gpu = false;
+            int16_t srcloc = 0;
+            std::string name;
+            std::string description;
+            std::string location;
+            uint64_t count = 0;
+            int64_t min = 0;
+            int64_t max = 0;
+            int64_t median = 0;
+            int64_t target = 0;        ///< 数えたときの目標
+            uint64_t overTarget = 0;   ///< 目標を超えた回
+            int firstDecade = 0;       ///< 横の左端（ナノ秒の 10 の累乗の指数）
+            int decades = 1;
+            std::vector<uint32_t> bins;
+            ZoneRef maxRef;            ///< いちばん長かった 1 回
+            size_t maxFrame = 0;
+        };
+
         void CopyRows(const tracy::Worker& worker, bool copyCpu, bool copyGpu);
         void SortRows(std::vector<ZoneStatRow>& rows) const;
         void RebuildVisible();
         void DrawToolbar();
-        void DrawTable();
+        void DrawTable(float panelHeight);
+        void DrawDistribution(const FrameSnapshot& frames, ViewState& view);
+        void DrawHistogram();
 
         std::vector<ZoneStatRow> cpuRows_;
         std::vector<ZoneStatRow> gpuRows_;
@@ -74,5 +105,12 @@ namespace CoreEngine::Profiler
         bool needsVisible_ = true;
         int sortColumn_ = 3;       ///< 並べている列（既定は合計）
         bool sortAscending_ = false;
+
+        bool hasSelection_ = false;
+        bool selectionGpu_ = false;
+        int16_t selectionSrcloc_ = 0;
+        Distribution distribution_;
+        double lastDistribution_ = -1.0;
+        float infoHeight_ = 0.0f; ///< 分布の欄の左側の中身の高さ（前のフレームで測った値）
     };
 }

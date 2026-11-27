@@ -5,9 +5,11 @@
 #include <imgui.h>
 
 #include <algorithm>
+#include <cmath>
+#include <string>
 
 /// @file DrawHelpers.h
-/// @brief フレームの帯・タイムライン・選んだ区間の欄で共通の描き方
+/// @brief 画面の部品（フレームの帯・タイムライン・選んだ区間の欄・表）で共通の描き方
 
 namespace CoreEngine::Profiler::Draw
 {
@@ -76,5 +78,70 @@ namespace CoreEngine::Profiler::Draw
         ImGui::PushStyleColor(ImGuiCol_Text, Theme::kTextDim);
         ImGui::TextUnformatted(label);
         ImGui::PopStyleColor();
+    }
+
+    /// @brief 押した状態を下地の色で見せるボタン。swatch があれば文字の前に色の四角を描く
+    inline bool ToggleButton(const char* label, bool selected, const ImVec4* swatch = nullptr)
+    {
+        ImGui::PushStyleColor(ImGuiCol_Button, selected ? Theme::kAccentMuted : Theme::kControl);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, selected ? Theme::kAccentMuted : Theme::kHover);
+        ImGui::PushStyleColor(ImGuiCol_Text, selected ? Theme::kText : Theme::kTextDim);
+
+        std::string text = label;
+        float swatchSize = 0.0f;
+        if (swatch) {
+            swatchSize = ImGui::GetTextLineHeight() * 0.55f;
+            const float spaceWidth = ImGui::CalcTextSize(" ").x;
+            const int spaces = static_cast<int>(std::ceil((swatchSize + ImGui::GetStyle().ItemInnerSpacing.x) / spaceWidth));
+            text.insert(0, static_cast<size_t>(spaces), ' ');
+        }
+        const bool pressed = ImGui::Button(text.c_str());
+        if (swatch) {
+            const ImVec2 min = ImGui::GetItemRectMin();
+            const ImVec2 max = ImGui::GetItemRectMax();
+            const float left = min.x + ImGui::GetStyle().FramePadding.x;
+            const float top = (min.y + max.y - swatchSize) * 0.5f;
+            ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(left, top), ImVec2(left + swatchSize, top + swatchSize),
+                ImGui::GetColorU32(*swatch), 1.5f);
+        }
+        ImGui::PopStyleColor(3);
+        return pressed;
+    }
+
+    /// @brief 強調したボタン（青の地）
+    inline bool AccentButton(const char* label)
+    {
+        ImGui::PushStyleColor(ImGuiCol_Button, Theme::kAccent);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Theme::kAccentHover);
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, Theme::kAccentHover);
+        ImGui::PushStyleColor(ImGuiCol_Text, Theme::FromSrgb(255, 255, 255));
+        const bool pressed = ImGui::Button(label);
+        ImGui::PopStyleColor(4);
+        return pressed;
+    }
+
+    /// @brief セルの右端に寄せて文字を出す
+    inline void TextRight(const char* text, const ImVec4& color)
+    {
+        const float width = ImGui::CalcTextSize(text).x;
+        const float space = ImGui::GetContentRegionAvail().x - width;
+        if (space > 0.0f) {
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + space);
+        }
+        ImGui::PushStyleColor(ImGuiCol_Text, color);
+        ImGui::TextUnformatted(text);
+        ImGui::PopStyleColor();
+    }
+
+    /// @brief value 以上で、1・2・5 に 10 の累乗を掛けた最小の値（グラフの縦の上限）
+    inline double NiceCeil(double value)
+    {
+        if (value <= 0.0) {
+            return 1.0;
+        }
+        const double base = std::pow(10.0, std::floor(std::log10(value)));
+        const double scaled = value / base;
+        const double nice = scaled <= 1.0 ? 1.0 : (scaled <= 2.0 ? 2.0 : (scaled <= 5.0 ? 5.0 : 10.0));
+        return nice * base;
     }
 }

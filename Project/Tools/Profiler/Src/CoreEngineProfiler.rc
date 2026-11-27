@@ -4,3 +4,6 @@
 
 // exe とウィンドウのアイコン（エディタと同じもの）
 IDI_APP_ICON ICON "../../../Engine/Src/Launch/CoreEngine.ico"
+
+// 区間の説明の辞書（ZoneDescriptions が読む）
+ZONE_DESCRIPTIONS RCDATA "../Data/ZoneDescriptions.json"

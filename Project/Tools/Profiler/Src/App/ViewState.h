@@ -36,6 +36,7 @@ namespace CoreEngine::Profiler
     enum class ViewTab
     {
         Timeline,
+        UpdateTree,
         Stats,
     };
 

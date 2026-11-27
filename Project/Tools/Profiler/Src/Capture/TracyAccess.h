@@ -59,6 +59,56 @@ namespace CoreEngine::Profiler::Access
         return low;
     }
 
+    /// @brief 区間を探して辿る深さの上限
+    inline constexpr int kMaxSearchDepth = 16;
+
+    /// @brief [begin, end) に始まる、場所が srcloc の最初の CPU の区間（子の区間の中も探す）
+    inline const tracy::ZoneEvent* FindCpu(const tracy::Worker& worker, const tracy::Vector<tracy::short_ptr<tracy::ZoneEvent>>& events,
+        int16_t srcloc, int64_t begin, int64_t end, int depth = 0)
+    {
+        for (size_t i = FirstEndingAfter(worker, events, begin); i < events.size(); ++i) {
+            const tracy::ZoneEvent& event = At(events, i);
+            const int64_t start = event.Start();
+            if (start >= end) {
+                break;
+            }
+            if (event.SrcLoc() == srcloc && start >= begin) {
+                return &event;
+            }
+            if (event.HasChildren() && depth < kMaxSearchDepth) {
+                if (const tracy::ZoneEvent* found = FindCpu(worker, worker.GetZoneChildren(event.Child()), srcloc, begin, end, depth + 1)) {
+                    return found;
+                }
+            }
+        }
+        return nullptr;
+    }
+
+    /// @brief [begin, end) に始まる、場所が srcloc の最初の GPU の区間（子の区間の中も探す）
+    inline const tracy::GpuEvent* FindGpu(const tracy::Worker& worker, const tracy::Vector<tracy::short_ptr<tracy::GpuEvent>>& events,
+        int16_t srcloc, int64_t begin, int64_t end, int depth = 0)
+    {
+        for (size_t i = FirstGpuEndingAfter(events, begin); i < events.size(); ++i) {
+            const tracy::GpuEvent& event = At(events, i);
+            const int64_t start = event.GpuStart();
+            if (start < 0) {
+                continue;
+            }
+            if (start >= end) {
+                break;
+            }
+            if (event.SrcLoc() == srcloc && start >= begin) {
+                return &event;
+            }
+            if (event.Child() >= 0 && depth < kMaxSearchDepth) {
+                if (const tracy::GpuEvent* found = FindGpu(worker, worker.GetGpuChildren(event.Child()), srcloc, begin, end, depth + 1)) {
+                    return found;
+                }
+            }
+        }
+        return nullptr;
+    }
+
     /// @brief 区間の名前（場所に名前が無ければ関数の名前）
     inline const char* SourceName(const tracy::Worker& worker, int16_t srcloc)
     {

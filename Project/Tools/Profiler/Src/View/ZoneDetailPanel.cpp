@@ -4,6 +4,7 @@
 #include "Capture/SourceInfoCache.h"
 #include "Capture/TracyAccess.h"
 #include "Text/TextFormat.h"
+#include "Text/ZoneDescriptions.h"
 #include "View/DrawHelpers.h"
 
 #include <imgui.h>
@@ -21,9 +22,6 @@ namespace CoreEngine::Profiler
         /// @brief 受け取りの最中に数字を写し直す間隔（秒）
         constexpr double kLiveCopyInterval = 0.5;
 
-        /// @brief 区間を探して辿る深さの上限
-        constexpr int kMaxSearchDepth = 16;
-
         /// @brief 中身の一覧に名前を出す子の数（残りは「ほか」にまとめる）
         constexpr size_t kShownChildren = 8;
 
@@ -37,53 +35,6 @@ namespace CoreEngine::Profiler
             const double mean = static_cast<double>(total) / n;
             const double squares = sumSq - 2.0 * static_cast<double>(total) * mean + mean * mean * n;
             return std::sqrt(std::max(0.0, squares / (n - 1.0)));
-        }
-
-        /// @brief [begin, end) に始まる、場所が srcloc の最初の CPU の区間
-        const tracy::ZoneEvent* FindCpu(const tracy::Worker& worker, const tracy::Vector<tracy::short_ptr<tracy::ZoneEvent>>& events,
-            int16_t srcloc, int64_t begin, int64_t end, int depth)
-        {
-            for (size_t i = Access::FirstEndingAfter(worker, events, begin); i < events.size(); ++i) {
-                const tracy::ZoneEvent& event = Access::At(events, i);
-                const int64_t start = event.Start();
-                if (start >= end) {
-                    break;
-                }
-                if (event.SrcLoc() == srcloc && start >= begin) {
-                    return &event;
-                }
-                if (event.HasChildren() && depth < kMaxSearchDepth) {
-                    if (const tracy::ZoneEvent* found = FindCpu(worker, worker.GetZoneChildren(event.Child()), srcloc, begin, end, depth + 1)) {
-                        return found;
-                    }
-                }
-            }
-            return nullptr;
-        }
-
-        /// @brief [begin, end) に始まる、場所が srcloc の最初の GPU の区間
-        const tracy::GpuEvent* FindGpu(const tracy::Worker& worker, const tracy::Vector<tracy::short_ptr<tracy::GpuEvent>>& events,
-            int16_t srcloc, int64_t begin, int64_t end, int depth)
-        {
-            for (size_t i = Access::FirstGpuEndingAfter(events, begin); i < events.size(); ++i) {
-                const tracy::GpuEvent& event = Access::At(events, i);
-                const int64_t start = event.GpuStart();
-                if (start < 0) {
-                    continue;
-                }
-                if (start >= end) {
-                    break;
-                }
-                if (event.SrcLoc() == srcloc && start >= begin) {
-                    return &event;
-                }
-                if (event.Child() >= 0 && depth < kMaxSearchDepth) {
-                    if (const tracy::GpuEvent* found = FindGpu(worker, worker.GetGpuChildren(event.Child()), srcloc, begin, end, depth + 1)) {
-                        return found;
-                    }
-                }
-            }
-            return nullptr;
         }
 
         /// @brief 子の時間を場所ごとにまとめる
@@ -184,7 +135,7 @@ namespace CoreEngine::Profiler
                 return;
             }
             if (const tracy::ThreadData* thread = worker.GetThreadData(ref.thread)) {
-                if (const tracy::ZoneEvent* found = FindCpu(worker, thread->timeline, ref.cpu->SrcLoc(), frame.begin, frame.end, 0)) {
+                if (const tracy::ZoneEvent* found = Access::FindCpu(worker, thread->timeline, ref.cpu->SrcLoc(), frame.begin, frame.end, 0)) {
                     ref.cpu = found;
                 }
             }
@@ -196,7 +147,7 @@ namespace CoreEngine::Profiler
         const auto& contexts = worker.GetGpuData();
         if (ref.thread < contexts.size()) {
             for (const auto& entry : contexts[ref.thread]->threadData) {
-                if (const tracy::GpuEvent* found = FindGpu(worker, entry.second.timeline, ref.gpu->SrcLoc(), frame.begin, frame.end, 0)) {
+                if (const tracy::GpuEvent* found = Access::FindGpu(worker, entry.second.timeline, ref.gpu->SrcLoc(), frame.begin, frame.end, 0)) {
                     ref.gpu = found;
                     return;
                 }
@@ -212,6 +163,7 @@ namespace CoreEngine::Profiler
         const SourceInfo& info = sources.Get(worker, srcloc);
         detail.valid = true;
         detail.name = info.name;
+        detail.description = ZoneDescriptions::Instance().Describe(detail.name, info.file);
         detail.location = std::format("{}:{}", Text::FileName(info.file), info.line);
         detail.kind = info.kind;
         const tracy::ThreadData* mainThread = frames.MainThread();
@@ -253,7 +205,7 @@ namespace CoreEngine::Profiler
                 if (longestEvent) {
                     detail.maxFrame = frames.FindFrame(longestEvent->Start());
                     const tracy::ZoneEvent* current = longestEvent;
-                    for (int depth = 0; depth < kMaxSearchDepth && current->HasChildren(); ++depth) {
+                    for (int depth = 0; depth < Access::kMaxSearchDepth && current->HasChildren(); ++depth) {
                         const auto& children = worker.GetZoneChildren(current->Child());
                         const tracy::ZoneEvent* heaviest = nullptr;
                         int64_t heaviestTime = 0;
@@ -305,6 +257,7 @@ namespace CoreEngine::Profiler
         detail.valid = true;
         detail.gpu = true;
         detail.name = info.name;
+        detail.description = ZoneDescriptions::Instance().Describe(detail.name, info.file);
         detail.location = std::format("{}:{}", Text::FileName(info.file), info.line);
         detail.kind = ZoneKind::Render;
         const auto& contexts = worker.GetGpuData();
@@ -391,6 +344,11 @@ namespace CoreEngine::Profiler
         ImGui::TextUnformatted(detail_.name.c_str());
         ImGui::PopTextWrapPos();
         ImGui::PopFont();
+        if (!detail_.description.empty()) {
+            ImGui::PushTextWrapPos(0.0f);
+            ImGui::TextUnformatted(detail_.description.c_str());
+            ImGui::PopTextWrapPos();
+        }
         Chip(detail_.place);
         ImGui::SameLine(0.0f, lineHeight * 0.6f);
         ImGui::PushStyleColor(ImGuiCol_Text, Theme::kTextDim);

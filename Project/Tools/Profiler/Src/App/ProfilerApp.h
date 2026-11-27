@@ -4,8 +4,10 @@
 #include "Capture/CaptureSession.h"
 #include "Capture/FrameSnapshot.h"
 #include "Capture/SourceInfoCache.h"
+#include "Capture/UpdateTree.h"
 #include "View/FrameStripView.h"
 #include "View/TimelineView.h"
+#include "View/UpdateTreeView.h"
 #include "View/ZoneDetailPanel.h"
 #include "View/ZoneStatsView.h"
 
@@ -85,6 +87,8 @@ namespace CoreEngine::Profiler
         FrameStripView frameStrip_;
         TimelineView timeline_;
         ZoneDetailPanel detail_;
+        UpdateTree updateTree_;
+        UpdateTreeView updateTreeView_;
         uint64_t seenGeneration_ = 0;
         SessionSummary summary_;
         bool hasSummary_ = false;

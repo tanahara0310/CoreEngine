@@ -47,6 +47,7 @@ namespace CoreEngine::Profiler
             bool gpu = false;
             bool statsReady = false;
             std::string name;
+            std::string description;  ///< 説明の辞書の「何をしているか」
             std::string location;     ///< ファイル名:行
             std::string place;        ///< メインスレッド・ワーカー・GPU
             ZoneKind kind = ZoneKind::Other;
