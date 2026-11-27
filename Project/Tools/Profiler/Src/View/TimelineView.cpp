@@ -4,6 +4,7 @@
 #include "Capture/SourceInfoCache.h"
 #include "Capture/TracyAccess.h"
 #include "Text/TextFormat.h"
+#include "Text/ZoneDescriptions.h"
 #include "View/DrawHelpers.h"
 
 #include <imgui.h>
@@ -595,6 +596,10 @@ namespace CoreEngine::Profiler
                     ImGui::Text("このフレームの %.1f %%", 100.0 * static_cast<double>(duration) / static_cast<double>(frameDuration));
                     ImGui::PopStyleColor();
                 }
+            }
+            const std::string description = ZoneDescriptions::Instance().Describe(info.name, info.file);
+            if (!description.empty()) {
+                ImGui::TextUnformatted(description.c_str());
             }
             ImGui::PushStyleColor(ImGuiCol_Text, Theme::kTextDim);
             ImGui::Text("%s・%s:%u", gpu ? "GPU" : ZoneKindLabel(info.kind), std::string(Text::FileName(info.file)).c_str(), info.line);

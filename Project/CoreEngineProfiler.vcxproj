@@ -53,7 +53,7 @@
     <OutDir>$(MSBuildThisFileDirectory)..\generated\CoreEngine\outputs\$(Configuration)\</OutDir>
     <IntDir>$(MSBuildThisFileDirectory)..\generated\$(ProjectName)\obj\$(Configuration)\</IntDir>
     <IncludePath>$(MSBuildThisFileDirectory)Tools\Profiler\Src;$(MSBuildThisFileDirectory)Engine\Src;$(IncludePath)</IncludePath>
-    <ExternalIncludePath>$(MSBuildThisFileDirectory)Externals\imgui;$(MSBuildThisFileDirectory)Externals\tracy\server;$(MSBuildThisFileDirectory)Externals\tracy\public\common;$(MSBuildThisFileDirectory)Externals\zstd\lib;$(MSBuildThisFileDirectory)Externals\ppqsort\include;$(ExternalIncludePath)</ExternalIncludePath>
+    <ExternalIncludePath>$(MSBuildThisFileDirectory)Externals\imgui;$(MSBuildThisFileDirectory)Externals\tracy\server;$(MSBuildThisFileDirectory)Externals\tracy\public\common;$(MSBuildThisFileDirectory)Externals\zstd\lib;$(MSBuildThisFileDirectory)Externals\ppqsort\include;$(MSBuildThisFileDirectory)Externals\nlohmann\single_include;$(ExternalIncludePath)</ExternalIncludePath>
     <LocalDebuggerWorkingDirectory>$(OutDir)</LocalDebuggerWorkingDirectory>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
@@ -122,11 +122,14 @@
     <ClCompile Include="Tools\Profiler\Src\Capture\CaptureSession.cpp" />
     <ClCompile Include="Tools\Profiler\Src\Capture\FrameSnapshot.cpp" />
     <ClCompile Include="Tools\Profiler\Src\Capture\SourceInfoCache.cpp" />
+    <ClCompile Include="Tools\Profiler\Src\Capture\UpdateTree.cpp" />
     <ClCompile Include="Tools\Profiler\Src\Capture\ZoneKind.cpp" />
     <ClCompile Include="Tools\Profiler\Src\Platform\FileDialog.cpp" />
     <ClCompile Include="Tools\Profiler\Src\Text\TextFormat.cpp" />
+    <ClCompile Include="Tools\Profiler\Src\Text\ZoneDescriptions.cpp" />
     <ClCompile Include="Tools\Profiler\Src\View\FrameStripView.cpp" />
     <ClCompile Include="Tools\Profiler\Src\View\TimelineView.cpp" />
+    <ClCompile Include="Tools\Profiler\Src\View\UpdateTreeView.cpp" />
     <ClCompile Include="Tools\Profiler\Src\View\ZoneDetailPanel.cpp" />
     <ClCompile Include="Tools\Profiler\Src\View\ZoneStatsView.cpp" />
   </ItemGroup>
@@ -137,12 +140,15 @@
     <ClInclude Include="Tools\Profiler\Src\Capture\FrameSnapshot.h" />
     <ClInclude Include="Tools\Profiler\Src\Capture\SourceInfoCache.h" />
     <ClInclude Include="Tools\Profiler\Src\Capture\TracyAccess.h" />
+    <ClInclude Include="Tools\Profiler\Src\Capture\UpdateTree.h" />
     <ClInclude Include="Tools\Profiler\Src\Capture\ZoneKind.h" />
     <ClInclude Include="Tools\Profiler\Src\Platform\FileDialog.h" />
     <ClInclude Include="Tools\Profiler\Src\Text\TextFormat.h" />
+    <ClInclude Include="Tools\Profiler\Src\Text\ZoneDescriptions.h" />
     <ClInclude Include="Tools\Profiler\Src\View\DrawHelpers.h" />
     <ClInclude Include="Tools\Profiler\Src\View\FrameStripView.h" />
     <ClInclude Include="Tools\Profiler\Src\View\TimelineView.h" />
+    <ClInclude Include="Tools\Profiler\Src\View\UpdateTreeView.h" />
     <ClInclude Include="Tools\Profiler\Src\View\ZoneDetailPanel.h" />
     <ClInclude Include="Tools\Profiler\Src\View\ZoneStatsView.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\EditorStyle.h" />
@@ -154,6 +160,9 @@
   </ItemGroup>
   <ItemGroup>
     <Manifest Include="Tools\Profiler\Src\CoreEngineProfiler.manifest" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Tools\Profiler\Data\ZoneDescriptions.json" />
   </ItemGroup>
   <!-- 外部のコード（ImGui・ImPlot・Tracy の受け取り役・zstd） -->
   <ItemGroup>

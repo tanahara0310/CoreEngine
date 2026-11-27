@@ -3,6 +3,7 @@
 #include "Editor/ImGui/EditorTheme.h"
 #include "Platform/FileDialog.h"
 #include "Text/TextFormat.h"
+#include "View/DrawHelpers.h"
 
 #include <imgui.h>
 #include <shellapi.h>
@@ -85,18 +86,6 @@ namespace CoreEngine::Profiler
         float ButtonWidth(const char* label)
         {
             return ImGui::CalcTextSize(label, nullptr, true).x + ImGui::GetStyle().FramePadding.x * 2.0f;
-        }
-
-        /// @brief 強調したボタン（青の地）
-        bool AccentButton(const char* label)
-        {
-            ImGui::PushStyleColor(ImGuiCol_Button, Theme::kAccent);
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, Theme::kAccentHover);
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, Theme::kAccentHover);
-            ImGui::PushStyleColor(ImGuiCol_Text, Theme::FromSrgb(255, 255, 255));
-            const bool pressed = ImGui::Button(label);
-            ImGui::PopStyleColor(4);
-            return pressed;
         }
 
         /// @brief 保存の窓に最初に入れる名前（相手の exe の名前と今の日時）
@@ -225,6 +214,8 @@ namespace CoreEngine::Profiler
             sources_.Reset();
             timeline_.Reset();
             detail_.Reset();
+            updateTree_.Reset();
+            updateTreeView_.Reset();
             ResetView();
             hasSummary_ = false;
         }
@@ -244,6 +235,8 @@ namespace CoreEngine::Profiler
             }
             timeline_.Update(worker, frames_, sources_, view_);
             detail_.Update(worker, frames_, sources_, view_, live, now);
+            updateTree_.Update(worker, frames_, sources_, view_);
+            statsView_.UpdateSelection(worker, frames_, view_, live, now);
         });
 
         HandleShortcuts();
@@ -340,6 +333,9 @@ namespace CoreEngine::Profiler
             if (ImGui::MenuItem("タイムライン", nullptr, view_.tab == ViewTab::Timeline)) {
                 RequestTab(ViewTab::Timeline);
             }
+            if (ImGui::MenuItem("Update の内訳", nullptr, view_.tab == ViewTab::UpdateTree)) {
+                RequestTab(ViewTab::UpdateTree);
+            }
             if (ImGui::MenuItem("区間の統計", nullptr, view_.tab == ViewTab::Stats)) {
                 RequestTab(ViewTab::Stats);
             }
@@ -424,7 +420,7 @@ namespace CoreEngine::Profiler
         if (showSave) {
             ImGui::BeginDisabled(!session_.CanSave());
             const bool emphasize = session_.HasUnsavedData();
-            if (emphasize ? AccentButton("保存…") : ImGui::Button("保存…")) {
+            if (emphasize ? Draw::AccentButton("保存…") : ImGui::Button("保存…")) {
                 saveDialogRequested_ = true;
             }
             ImGui::EndDisabled();
@@ -509,11 +505,18 @@ namespace CoreEngine::Profiler
             DrawTimelineTab();
             ImGui::EndTabItem();
         }
+        if (ImGui::BeginTabItem("Update の内訳", nullptr, flagsFor(ViewTab::UpdateTree))) {
+            if (!requested) {
+                view_.tab = ViewTab::UpdateTree;
+            }
+            updateTreeView_.Draw(updateTree_, frames_, view_);
+            ImGui::EndTabItem();
+        }
         if (ImGui::BeginTabItem("区間の統計", nullptr, flagsFor(ViewTab::Stats))) {
             if (!requested) {
                 view_.tab = ViewTab::Stats;
             }
-            statsView_.Draw();
+            statsView_.Draw(frames_, view_);
             ImGui::EndTabItem();
         }
         ImGui::EndTabBar();
@@ -578,7 +581,7 @@ namespace CoreEngine::Profiler
         ImGui::Spacing();
 
         const std::string connectLabel = std::format("{}:{} につなぐ", connectAddress_, connectPort_);
-        if (AccentButton(connectLabel.c_str())) {
+        if (Draw::AccentButton(connectLabel.c_str())) {
             Request(PendingAction::Connect);
         }
         ImGui::SameLine();
@@ -623,7 +626,7 @@ namespace CoreEngine::Profiler
             connectPort_ = std::clamp(connectPort_, 1, 65535);
         }
         ImGui::Spacing();
-        if (AccentButton("つなぐ")) {
+        if (Draw::AccentButton("つなぐ")) {
             connectAddress_ = addressBuffer_;
             ImGui::CloseCurrentPopup();
             Request(PendingAction::Connect);

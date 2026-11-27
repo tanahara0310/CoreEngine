@@ -16,6 +16,9 @@
     <ClCompile Include="Tools\Profiler\Src\Capture\SourceInfoCache.cpp">
       <Filter>Tools\Profiler\Src\Capture</Filter>
     </ClCompile>
+    <ClCompile Include="Tools\Profiler\Src\Capture\UpdateTree.cpp">
+      <Filter>Tools\Profiler\Src\Capture</Filter>
+    </ClCompile>
     <ClCompile Include="Tools\Profiler\Src\Capture\ZoneKind.cpp">
       <Filter>Tools\Profiler\Src\Capture</Filter>
     </ClCompile>
@@ -25,10 +28,16 @@
     <ClCompile Include="Tools\Profiler\Src\Text\TextFormat.cpp">
       <Filter>Tools\Profiler\Src\Text</Filter>
     </ClCompile>
+    <ClCompile Include="Tools\Profiler\Src\Text\ZoneDescriptions.cpp">
+      <Filter>Tools\Profiler\Src\Text</Filter>
+    </ClCompile>
     <ClCompile Include="Tools\Profiler\Src\View\FrameStripView.cpp">
       <Filter>Tools\Profiler\Src\View</Filter>
     </ClCompile>
     <ClCompile Include="Tools\Profiler\Src\View\TimelineView.cpp">
+      <Filter>Tools\Profiler\Src\View</Filter>
+    </ClCompile>
+    <ClCompile Include="Tools\Profiler\Src\View\UpdateTreeView.cpp">
       <Filter>Tools\Profiler\Src\View</Filter>
     </ClCompile>
     <ClCompile Include="Tools\Profiler\Src\View\ZoneDetailPanel.cpp">
@@ -204,6 +213,9 @@
     <ClInclude Include="Tools\Profiler\Src\Capture\TracyAccess.h">
       <Filter>Tools\Profiler\Src\Capture</Filter>
     </ClInclude>
+    <ClInclude Include="Tools\Profiler\Src\Capture\UpdateTree.h">
+      <Filter>Tools\Profiler\Src\Capture</Filter>
+    </ClInclude>
     <ClInclude Include="Tools\Profiler\Src\Capture\ZoneKind.h">
       <Filter>Tools\Profiler\Src\Capture</Filter>
     </ClInclude>
@@ -213,6 +225,9 @@
     <ClInclude Include="Tools\Profiler\Src\Text\TextFormat.h">
       <Filter>Tools\Profiler\Src\Text</Filter>
     </ClInclude>
+    <ClInclude Include="Tools\Profiler\Src\Text\ZoneDescriptions.h">
+      <Filter>Tools\Profiler\Src\Text</Filter>
+    </ClInclude>
     <ClInclude Include="Tools\Profiler\Src\View\DrawHelpers.h">
       <Filter>Tools\Profiler\Src\View</Filter>
     </ClInclude>
@@ -220,6 +235,9 @@
       <Filter>Tools\Profiler\Src\View</Filter>
     </ClInclude>
     <ClInclude Include="Tools\Profiler\Src\View\TimelineView.h">
+      <Filter>Tools\Profiler\Src\View</Filter>
+    </ClInclude>
+    <ClInclude Include="Tools\Profiler\Src\View\UpdateTreeView.h">
       <Filter>Tools\Profiler\Src\View</Filter>
     </ClInclude>
     <ClInclude Include="Tools\Profiler\Src\View\ZoneDetailPanel.h">
@@ -242,6 +260,11 @@
     <ResourceCompile Include="Tools\Profiler\Src\CoreEngineProfiler.rc">
       <Filter>Tools\Profiler\Src</Filter>
     </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Tools\Profiler\Data\ZoneDescriptions.json">
+      <Filter>Tools\Profiler\Data</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Engine">
@@ -297,6 +320,9 @@
     </Filter>
     <Filter Include="Tools\Profiler">
       <UniqueIdentifier>{66471B8E-6711-4B14-B231-DF74048AFDEF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tools\Profiler\Data">
+      <UniqueIdentifier>{257AC111-F4DB-4CE1-B3EB-CFFE7A29084F}</UniqueIdentifier>
     </Filter>
     <Filter Include="Tools\Profiler\Src">
       <UniqueIdentifier>{A7FEC0A3-F8B3-422E-9444-E50D9A1359D5}</UniqueIdentifier>

@@ -2,6 +2,7 @@
 
 #include "Editor/ImGui/EditorTheme.h"
 #include "Text/TextFormat.h"
+#include "Text/ZoneDescriptions.h"
 
 #include <array>
 
@@ -28,7 +29,7 @@ namespace CoreEngine::Profiler
 
     ZoneKind ClassifyZone(std::string_view name, std::string_view file)
     {
-        if (name == "Wait For Frame Slot" || name == "Present") {
+        if (ZoneDescriptions::Instance().IsWait(name)) {
             return ZoneKind::Wait;
         }
 

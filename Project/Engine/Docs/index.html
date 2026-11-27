@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.121.0">
+<meta name="engine-version" content="0.122.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12128,7 +12128,7 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   </div>
 </article>
 
-<article class="page" id="profiling-tracy" data-group="困ったとき・資料" data-title="Tracy で処理の時間を見る" data-nav="Tracy で計測" data-keywords="tracy プロファイラ profiler 計測 処理時間 重い 遅い fps フレーム gpu cpu 時間軸 タイムライン スレッド ボトルネック tracy-capture csv coreengine profiler coreengineprofiler 日本語 区間の統計 回数 合計 平均 最大 ばらつき 標準偏差 保存 開く .tracy">
+<article class="page" id="profiling-tracy" data-group="困ったとき・資料" data-title="Tracy で処理の時間を見る" data-nav="Tracy で計測" data-keywords="tracy プロファイラ profiler 計測 処理時間 重い 遅い fps フレーム gpu cpu 時間軸 タイムライン スレッド ボトルネック tracy-capture csv coreengine profiler coreengineprofiler 日本語 区間の統計 回数 合計 平均 最大 ばらつき 標準偏差 保存 開く .tracy update の内訳 内訳 段 feature 再生中 停止中 推移 分布 中央値 区間の説明 zonedescriptions">
   <h1>Tracy で処理の時間を見る</h1>
   <p class="lead">Tracy は、CPU と GPU の処理が「どのスレッドで・いつ・何 ms かかったか」を時間軸で見る道具です。<code>Debug</code> と <code>Development</code> のエンジンに組み込んであり、エディタを動かしたまま Tracy の画面からつなぐと記録が始まります。エディタの Profiler パネルは処理ごとの平均の時間を出し、Tracy は 1 フレームずつの並びを出します。たまにだけ重くなるフレームや、スレッドどうしの待ち合わせを調べるときに使います。フレームの中の時間軸や、区間ごとの回数と合計を日本語の画面で見るときは、エンジンに付いている CoreEngine Profiler も使えます（<a href="#tracy-coreengine-profiler">CoreEngine Profiler で見る</a>）。</p>
 
@@ -12144,7 +12144,7 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <div class="callout note"><p>つないでいない間は記録しません。区間ごとに「つないでいるか」を確かめるだけなので、ふだんのエディタの重さはほとんど変わりません。つなげるのは同じ PC からだけです。</p></div>
 
   <h2 id="tracy-coreengine-profiler">CoreEngine Profiler で見る</h2>
-  <p>CoreEngine Profiler は、Tracy の記録を日本語の画面で見るための、エンジンに付いている exe です。記録の受け取りと保存には Tracy の部品をそのまま使うので、保存したファイルは元の Tracy の画面と同じ <span class="path">.tracy</span> で、どちらの画面でも開けます。窓の上にフレームの帯、下に <span class="ui">タイムライン</span> と <span class="ui">区間の統計</span> の 2 つのタブがあります（<span class="ui">表示</span> のメニューでも切り替えられます）。</p>
+  <p>CoreEngine Profiler は、Tracy の記録を日本語の画面で見るための、エンジンに付いている exe です。記録の受け取りと保存には Tracy の部品をそのまま使うので、保存したファイルは元の Tracy の画面と同じ <span class="path">.tracy</span> で、どちらの画面でも開けます。窓の上にフレームの帯、下に <span class="ui">タイムライン</span>・<span class="ui">Update の内訳</span>・<span class="ui">区間の統計</span> の 3 つのタブがあります（<span class="ui">表示</span> のメニューでも切り替えられます）。</p>
   <ol class="steps">
     <li><strong>起動する</strong>ソリューション（<span class="path">CoreEngine.slnx</span>）をビルドすると、エディタの隣に <span class="path">CoreEngineProfiler.exe</span> ができます（<span class="path">generated/CoreEngine/outputs/&lt;構成&gt;/</span>）。</li>
     <li><strong>つなぐ</strong><code>Debug</code> か <code>Development</code> のエディタを起動してから、<span class="ui">127.0.0.1:8086 につなぐ</span> を押します。ほかの PC やポートは <span class="ui">記録 &gt; つなぐ…</span> で入れます。<code>CoreEngineProfiler.exe --connect</code> で起動すると、起動してすぐにつなぎます。</li>
@@ -12178,12 +12178,12 @@ python Tools/OkinawaBeach/bake_araha_walk.py
     <li><strong>右ドラッグ</strong>：左右へ動かします。</li>
     <li><strong>クリック</strong>：区間を選び、右の欄に詳しく出します。ほかのフレームの区間を選ぶと、そのフレームが選ばれます。</li>
     <li><strong>ダブルクリック</strong>：その区間がちょうど収まるまで拡大します。<span class="ui">フレーム全体</span> で、選んだフレームの全体に戻ります。</li>
-    <li><strong>吹き出し</strong>：区間にマウスを重ねると、名前・時間・フレームに占める割合・種類・場所と、同じ区間の平均と最大が出ます。</li>
+    <li><strong>吹き出し</strong>：区間にマウスを重ねると、名前・何をしているか（区間の説明）・時間・フレームに占める割合・種類・場所と、同じ区間の平均と最大が出ます。</li>
   </ul>
   <p>色は区間の統計の種類と同じで、待ちは斜線です。細すぎて見えない区間は、となり合う何個かを薄い色の 1 つにまとめます。拡大すると分かれて見えます。名前が入りきらない区間は、色だけで描きます。</p>
 
   <h3 id="tracy-coreengine-profiler-zone">選んだ区間の欄</h3>
-  <p>タイムラインで区間をクリックすると、右の欄に、同じ名前・同じ場所の区間の数字が出ます。</p>
+  <p>タイムラインで区間をクリックすると、右の欄に、同じ名前・同じ場所の区間の数字が出ます。名前の下には、その区間が何をしているか（区間の説明）を出します。</p>
   <div class="table-wrap">
   <table>
     <thead><tr><th>項目</th><th>意味</th></tr></thead>
@@ -12202,6 +12202,36 @@ python Tools/OkinawaBeach/bake_araha_walk.py
     <li><strong>中身（選んだ 1 回）</strong>：選んだ 1 回のすぐ中の区間を、名前ごとに足して長い順に並べます。上の帯はその割合です。「自分だけ」は、どの中の区間にも入らない時間です。</li>
     <li><span class="ui">統計で見る</span> で、区間の統計のタブを、その名前で絞り込んで開きます。</li>
     <li>フレームを選び直したとき、同じ区間がそのフレームにもあれば、それを選び直します。</li>
+  </ul>
+
+  <h3 id="tracy-coreengine-profiler-update">Update の内訳</h3>
+  <p>メインスレッドの <code>Update</code> の中を、段・Feature・オブジェクト・スクリプトの木にして、1 フレームあたりの時間を出します。どこが毎フレーム重いのかと、たまにだけ重くなるのはどこかを見るためのタブです。木の段は、エンジンが <code>Update</code> の中に置いた区間で決まります。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>列</th><th>意味</th></tr></thead>
+    <tbody>
+      <tr><td>区間</td><td>区間の名前。中の区間は一段下げて並べ、左の三角で開け閉めします。色は段（緑）・Feature（青）・オブジェクトの更新（黄）・スクリプト（紫）です</td></tr>
+      <tr><td>何をしているか</td><td>区間の説明（下の「区間の説明」）</td></tr>
+      <tr><td>平均</td><td>1 フレームあたりの時間。数えるフレームの合計を、そのフレームの数で割ったもの</td></tr>
+      <tr><td>フレーム N</td><td>上の帯で選んだフレームでの時間</td></tr>
+      <tr><td>最大（1 回）</td><td>いちばん長かった 1 回。1 ms 以上は橙、目標を超えると赤で出します</td></tr>
+      <tr><td>回／フレーム</td><td>1 フレームに通る回数。再生の最初のフレームにだけ通った区間は「1 回だけ」と出し、平均は「—」です</td></tr>
+      <tr><td>Update に占める割合</td><td>平均が、<code>Update</code> の平均の何 % か</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <ul>
+    <li><strong>数えるフレーム</strong>：<code>GameObject Update</code> の区間があるフレームを再生中とみなし、再生中のフレームだけで平均を出します。停止から再生へ切り替わった最初のフレーム（<code>Start</code> や読み込みが重なる）は平均に入れず、最大にだけ入れます。そのフレームは上の行に出し、<span class="ui">そのフレームを開く</span> で選べます。<span class="ui">停止中のフレームも含める</span> を入れると、停止中のフレームも平均に入れます。再生中のフレームが 1 つも無い記録では、全部のフレームを数えます。</li>
+    <li><strong>自分だけ</strong>：中の区間のどれにも入らない時間です。中の区間を全部足して「自分だけ」を足すと、親の時間になります。</li>
+    <li><strong>まとめる</strong>：<span class="ui">0.01 ms 未満の区間はまとめる</span> が入っていると、平均が 0.01 ms 未満で最大も 1 ms 未満の区間を、同じ親ごとに「ほか n 個」の 1 行にまとめます（<code>Update</code> のすぐ中の段と、1 個だけのときはまとめません）。開くと中が見えます。</li>
+    <li><strong>並べ方</strong>：<span class="ui">段の順</span> は動く順（親の始まりから始まるまでの時間の順）です。<span class="ui">平均の重い順</span> と <span class="ui">最大の重い順</span> は、木を開いて全部の区間を 1 列に並べます。右の欄に文字を入れると、名前か説明にその文字を含む区間と、その親だけになります。</li>
+    <li><strong>開き方</strong>：最初は、<code>Update</code> に占める割合が 5 % 以上の区間だけを開いています。</li>
+  </ul>
+  <p>行をクリックすると、下の欄にその行の説明と、平均と最大を 1 つの文にしたものが出ます。<span class="ui">最大のフレームを開く</span> で、いちばん長かったフレームを選び、タイムラインでその 1 回を選びます。<span class="ui">統計で見る</span> で、区間の統計をその名前で絞り込んで開きます。右の棒は、上の帯で見ている 300 フレームでの、その行のフレームごとの時間です。</p>
+  <ul>
+    <li>縦の目盛りは、表示中の棒の大半が収まる高さに合わせます。それより長い棒は赤で上を切り、いちばん長いものに数字を出します。点線は平均です。</li>
+    <li>薄い棒は、平均に入れていないフレーム（停止中と再生の最初）です。</li>
+    <li>棒をクリックすると、そのフレームを選びます。上の帯で見る範囲を動かすと、ここも動きます。</li>
   </ul>
 
   <h3 id="tracy-coreengine-profiler-stats">区間の統計</h3>
@@ -12241,6 +12271,21 @@ python Tools/OkinawaBeach/bake_araha_walk.py
     <li>1 つのエディタにつなげる画面は 1 つだけです。元の Tracy の画面とは同時につなげません。</li>
     <li>書き出したゲームには入りません。</li>
   </ul>
+  <p>行をクリックすると、下の欄にその区間の 1 回ごとの時間の分布が出ます。横は 0.01 ms・0.1 ms・1 ms… と 10 倍ずつの目盛りで、縦は回数です（多い所が飛び出さないよう、平方根で縮めています）。目標の時間に橙の点線を引き、左には「何回のうち半分はどこまでに収まり、いちばん長い 1 回は何 ms か」と、目標を超えた回数を出します。<span class="ui">最大のフレームを開く</span> で、いちばん長い 1 回のフレームを選び、タイムラインでその 1 回を選びます。</p>
+
+  <h3 id="tracy-coreengine-profiler-descriptions">区間の説明</h3>
+  <p>タイムラインの吹き出し・選んだ区間の欄・Update の内訳に出す「何をしているか」は、<span class="path">Project/Tools/Profiler/Data/ZoneDescriptions.json</span> に書いてあります。この JSON はビルドのときに exe へ埋め込むので、直したら CoreEngine Profiler をビルドし直します。説明の無い区間も、説明が空になるだけで表には出ます。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>キー</th><th>中身</th></tr></thead>
+    <tbody>
+      <tr><td><code>names</code></td><td>区間の名前と説明の組。名前がそのまま同じ区間に使います。エンジンに区間を足したら、ここに 1 行足します</td></tr>
+      <tr><td><code>patterns</code></td><td><code>names</code> に無いときに、上から順に見る形。<code>match</code> の <code>*</code> は何文字にも当たり、当たった中身を <code>text</code> の <code>{1}</code>・<code>{2}</code> に入れます（<code>"*::Update"</code> → 「スクリプト {1} の Update」など）。<code>file</code> を書くと、場所のファイル名も同じときだけ当たります</td></tr>
+      <tr><td><code>self</code>・<code>selfDefault</code></td><td>Update の内訳の「自分だけ」の行の説明。区間の名前ごとに書き、無ければ <code>selfDefault</code></td></tr>
+      <tr><td><code>waits</code></td><td>フレームの帯で「待ち」に数え、区間の統計で種類を「待ち」にする区間の名前</td></tr>
+    </tbody>
+  </table>
+  </div>
 
   <h2 id="tracy-zones">見える区間</h2>
   <div class="table-wrap">
@@ -12787,6 +12832,14 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-122-0">v0.122.0 <span class="dim">（2026-11-27）</span></h3>
+  <p>CoreEngine Profiler に、Update の内訳のタブ・区間の説明・区間の統計の分布を足した版です（<a href="#tracy-coreengine-profiler">CoreEngine Profiler で見る</a>）。エディタと書き出したゲームの動きと、シーンとプロジェクトの保存の形は前の版と同じです。</p>
+  <ul>
+    <li><strong>Update の内訳</strong>：メインスレッドの <code>Update</code> の中を木にして、1 フレームあたりの平均・選んだフレームでの時間・最大・回数・<code>Update</code> に占める割合を出します。再生中のフレームと停止中のフレームを分け、再生の最初のフレームは平均に入れず最大にだけ入れます。小さい区間は「ほか n 個」にまとめます。行を選ぶと、表示中の 300 フレームでの推移と、いちばん長かったフレームを開くボタンが出ます。</li>
+    <li><strong>区間の説明</strong>：区間ごとの「何をしているか」を、タイムラインの吹き出し・選んだ区間の欄・Update の内訳に出します。説明は <span class="path">Project/Tools/Profiler/Data/ZoneDescriptions.json</span> に書きます。</li>
+    <li><strong>区間の統計の分布</strong>：行をクリックすると、1 回ごとの時間の分布（横は対数）と、半分の回が収まる時間・最大・目標を超えた回数を出します。<span class="ui">最大のフレームを開く</span> で、いちばん長い 1 回をタイムラインで開きます。</li>
+  </ul>
 
   <h3 id="changelog-v0-121-0">v0.121.0 <span class="dim">（2026-11-27）</span></h3>
   <p>CoreEngine Profiler に、フレームの帯・タイムライン・選んだ区間の欄を足した版です（<a href="#tracy-coreengine-profiler">CoreEngine Profiler で見る</a>）。エディタと書き出したゲームの動きと、シーンとプロジェクトの保存の形は前の版と同じです。</p>
