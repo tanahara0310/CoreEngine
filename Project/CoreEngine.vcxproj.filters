@@ -2562,6 +2562,9 @@
     <ClInclude Include="Engine\Src\Editor\Panel\EditorDockArea.h">
       <Filter>Engine\Src\Editor\Panel</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ImGui\EditorStyle.h">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\EditorTheme.h">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>

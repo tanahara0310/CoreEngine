@@ -2,7 +2,7 @@
 #include "UI/UIPointer.h"
 #include "Graphics/RHI/Descriptor/DescriptorAllocator.h"
 #include "ImGuiManager.h"
-#include "Editor/ImGui/EditorTheme.h"
+#include "Editor/ImGui/EditorStyle.h"
 #include "Graphics/RHI/GraphicsCore.h"
 #include "Graphics/RHI/SwapChain/SwapChain.h"
 #include "Graphics/PostEffect/Effect/PostEffectManager.h"
@@ -16,14 +16,11 @@
 #include "WinApp/WinApp.h"
 #include <ImGuizmo.h>
 #include <implot.h>
-#include <filesystem>
 #include <format>
 #include <string>
 
 namespace CoreEngine
 {
-
-    namespace fs = std::filesystem;
 
     namespace
     {
@@ -31,27 +28,6 @@ namespace CoreEngine
 
         /// ImGui の別のウィンドウのプロシージャ（どの別ウィンドウも同じ）
         WNDPROC originalPlatformWindowProc = nullptr;
-
-        /// @brief ImPlot のグラフの面・軸・凡例の色をエディタのテーマに合わせ、系列の 8 色を既定の色の並びにする
-        void ApplyPlotTheme()
-        {
-            namespace Theme = Editor::Theme;
-
-            ImPlotStyle& style = ImPlot::GetStyle();
-            style.Colors[ImPlotCol_FrameBg] = Theme::kTransparent;
-            style.Colors[ImPlotCol_PlotBg] = Theme::kField;
-            style.Colors[ImPlotCol_PlotBorder] = Theme::kTransparent;
-            style.Colors[ImPlotCol_LegendBg] = Theme::WithAlpha(Theme::kPanel, 0.92f);
-            style.Colors[ImPlotCol_LegendBorder] = Theme::kOutline;
-            style.Colors[ImPlotCol_LegendText] = Theme::kText;
-            style.Colors[ImPlotCol_InlayText] = Theme::kText;
-            style.Colors[ImPlotCol_AxisText] = Theme::kTextDim;
-            style.Colors[ImPlotCol_AxisGrid] = Theme::kControl;
-            style.Colors[ImPlotCol_AxisTick] = Theme::kControl;
-
-            style.Colormap = ImPlot::AddColormap("CoreEngine", Theme::kSeries,
-                static_cast<int>(std::size(Theme::kSeries)));
-        }
 
         /// @brief 別のウィンドウへ出した Game ビューでも、ゲームの入力欄へ文字を渡してから ImGui へ回す
         LRESULT CALLBACK PlatformWindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
@@ -195,7 +171,7 @@ namespace CoreEngine
         ApplyCustomTheme();
 
         ImPlot::CreateContext();
-        ApplyPlotTheme();
+        Editor::Theme::ApplyPlotStyle();
 
         // 副ウィンドウは OS ウィンドウとして描かれるため、角丸と半透明背景は見た目が崩れる
         if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
@@ -238,69 +214,8 @@ namespace CoreEngine
 
     void ImGuiManager::LoadFonts(float dpiScale)
     {
-        ImGuiIO& io = ImGui::GetIO();
-        float baseFontSize = 12.0f;
-
-        ImFontConfig config = {};
-        config.SizePixels = baseFontSize * dpiScale;
-
-        // 日本語グリフ範囲に加え、罫線文字・記号を追加
-        static const ImWchar kExtraRanges[] = {
-            0x2022, 0x2022, // Bullet •
-            0x2500, 0x257F, // Box Drawing
-            0x2580, 0x259F, // Block Elements
-            0x25A0, 0x25FF, // Geometric Shapes
-            0x2713, 0x2713, // Check mark
-            0,
-        };
-
-        // UI の記号（矢印・再生記号・幾何学図形）。Yu Gothic は大半を持たないため、
-        // これらだけを記号フォントから重ねて読む
-        static const ImWchar kSymbolRanges[] = {
-            0x2190, 0x21FF, // Arrows
-            0x2200, 0x22FF, // Mathematical Operators
-            0x23E9, 0x23FA, // Media Control Symbols
-            0x25A0, 0x25FF, // Geometric Shapes
-            0x2600, 0x26FF, // Miscellaneous Symbols
-            0x2700, 0x27BF, // Dingbats
-            0x27F0, 0x27FF, // Supplemental Arrows-A
-            0x2900, 0x297F, // Supplemental Arrows-B
-            0,
-        };
-
-        ImFontGlyphRangesBuilder rangesBuilder;
-        rangesBuilder.AddRanges(io.Fonts->GetGlyphRangesJapanese());
-        rangesBuilder.AddRanges(kExtraRanges);
-        static ImVector<ImWchar> fontRanges;
-        fontRanges.clear();
-        rangesBuilder.BuildRanges(&fontRanges);
-
-        const char* fontPath = "C:/Windows/Fonts/YuGothB.ttc";
-        const char* symbolFontPath = "C:/Windows/Fonts/seguisym.ttf";
-
-        if (fs::exists(fontPath)) {
-            ImFont* font = io.Fonts->AddFontFromFileTTF(
-                fontPath,
-                config.SizePixels,
-                &config,
-                fontRanges.Data);
-
-            // 本文フォントに無い記号だけを同じフォントへ足す
-            if (font && fs::exists(symbolFontPath)) {
-                ImFontConfig symbolConfig = config;
-                symbolConfig.MergeMode = true;
-                io.Fonts->AddFontFromFileTTF(
-                    symbolFontPath,
-                    config.SizePixels,
-                    &symbolConfig,
-                    kSymbolRanges);
-            }
-
-            if (font) {
-                io.FontDefault = font;
-                io.FontGlobalScale = 1.0f;
-                io.Fonts->Build();
-            }
+        if (Editor::Theme::LoadFonts(dpiScale)) {
+            ImGui::GetIO().Fonts->Build();
         } else {
             OutputDebugStringA("フォントファイルが存在しません: YuGothB.ttc\n");
         }
@@ -518,166 +433,7 @@ namespace CoreEngine
 
     void ImGuiManager::ApplyCustomTheme()
     {
-        ImGuiStyle& style = ImGui::GetStyle();
-        ImVec4* colors = style.Colors;
-
-        // ===== 配色 =====
-        // 方針: ①背景に明度の段差を作る ②アクセント色は「選択・操作中」だけに使う
-        //       ③面の区切りは枠線ではなく明度差で行う（FrameBorderSize = 0）
-        //
-        // 配色の実体は Editor::Theme が持つ（sRGB の 0-255 値をリニアへ逆変換したもの）。
-        // ここでは ImGui の色スロットへ割り当てるだけにする。
-        namespace Theme = Editor::Theme;
-
-        // 背景の階調（暗 → 明）
-        const ImVec4 bgDeepest = Theme::kDeepest;    // 最奥（スクロールバー溝など）
-        const ImVec4 bgField = Theme::kField;      // 入力欄（一段沈める）
-        const ImVec4 bgChild = Theme::kChild;      // 子パネル（少し沈める）
-        const ImVec4 bgWindow = Theme::kWindow;     // ウィンドウ
-        const ImVec4 bgPanel = Theme::kPanel;      // メニューバー・タイトル・ポップアップ
-        const ImVec4 bgControl = Theme::kControl;    // ボタン・タブ選択
-        const ImVec4 bgHover = Theme::kHover;      // ホバー
-        const ImVec4 bgActive = Theme::kActive;     // 押下
-
-        // アクセント（青。選択・操作中の要素だけに使う）
-        const ImVec4 accent = Theme::kAccent;
-        const ImVec4 accentHover = Theme::kAccentHover;
-        const ImVec4 accentMuted = Theme::kAccentMuted; // 選択行の下地
-        const ImVec4 accentWarm = Theme::kWarm;         // 差し色（少量だけ使う）
-
-        // テキスト
-        const ImVec4 textPrimary = Theme::kText;
-        const ImVec4 textDisabled = Theme::kTextMute;
-
-        const ImVec4 borderColor = Theme::kBorder;
-        const ImVec4 transparent = Theme::kTransparent;
-
-        // ===== 面 =====
-        colors[ImGuiCol_WindowBg] = bgWindow;
-        colors[ImGuiCol_ChildBg] = bgChild;
-        colors[ImGuiCol_PopupBg] = bgPanel;
-        colors[ImGuiCol_MenuBarBg] = bgPanel;
-        colors[ImGuiCol_Border] = borderColor;
-        colors[ImGuiCol_BorderShadow] = transparent;
-
-        // ===== 文字 =====
-        colors[ImGuiCol_Text] = textPrimary;
-        colors[ImGuiCol_TextDisabled] = textDisabled;
-        colors[ImGuiCol_TextSelectedBg] = ImVec4(accent.x, accent.y, accent.z, 0.45f);
-        colors[ImGuiCol_TextLink] = accentHover;
-        colors[ImGuiCol_InputTextCursor] = textPrimary;
-
-        // ===== タイトルバー =====
-        colors[ImGuiCol_TitleBg] = bgPanel;
-        colors[ImGuiCol_TitleBgActive] = bgPanel;
-        colors[ImGuiCol_TitleBgCollapsed] = bgWindow;
-
-        // ===== タブ =====
-        // 選択タブは「明るい面 ＋ 上端の細いアクセント線」で示す。
-        // 面全体をアクセント色で塗り潰さないのが現代的なエディタの作法。
-        colors[ImGuiCol_Tab] = bgPanel;
-        colors[ImGuiCol_TabHovered] = bgHover;
-        colors[ImGuiCol_TabSelected] = bgControl;
-        colors[ImGuiCol_TabSelectedOverline] = accentHover;
-        colors[ImGuiCol_TabDimmed] = bgChild;
-        colors[ImGuiCol_TabDimmedSelected] = bgPanel;
-        colors[ImGuiCol_TabDimmedSelectedOverline] = accentMuted;
-
-        // ===== ヘッダ（Selectable / TreeNode / CollapsingHeader 共用） =====
-        // 選択行としても折りたたみ見出しとしても破綻しないよう、
-        // 彩度を落とした青灰色を使う。
-        colors[ImGuiCol_Header] = accentMuted;
-        colors[ImGuiCol_HeaderHovered] = bgHover;
-        colors[ImGuiCol_HeaderActive] = accent;
-
-        // ===== 入力欄 =====
-        colors[ImGuiCol_FrameBg] = bgField;
-        colors[ImGuiCol_FrameBgHovered] = Theme::kFieldHover;
-        colors[ImGuiCol_FrameBgActive] = Theme::kFieldActive;
-
-        // ===== ボタン =====
-        colors[ImGuiCol_Button] = bgControl;
-        colors[ImGuiCol_ButtonHovered] = bgHover;
-        colors[ImGuiCol_ButtonActive] = bgActive;
-
-        // ===== 操作子 =====
-        colors[ImGuiCol_CheckMark] = accentHover;
-        colors[ImGuiCol_SliderGrab] = accent;
-        colors[ImGuiCol_SliderGrabActive] = accentHover;
-
-        colors[ImGuiCol_ScrollbarBg] = bgDeepest;
-        colors[ImGuiCol_ScrollbarGrab] = Theme::FromSrgb(63, 63, 70);
-        colors[ImGuiCol_ScrollbarGrabHovered] = bgHover;
-        colors[ImGuiCol_ScrollbarGrabActive] = bgActive;
-
-        colors[ImGuiCol_Separator] = Theme::FromSrgb(56, 56, 62);
-        colors[ImGuiCol_SeparatorHovered] = accent;
-        colors[ImGuiCol_SeparatorActive] = accentHover;
-
-        // リサイズグリップは掴むまで見せない
-        colors[ImGuiCol_ResizeGrip] = transparent;
-        colors[ImGuiCol_ResizeGripHovered] = ImVec4(accent.x, accent.y, accent.z, 0.50f);
-        colors[ImGuiCol_ResizeGripActive] = accent;
-
-        // ===== グラフ =====
-        colors[ImGuiCol_PlotLines] = accentHover;
-        colors[ImGuiCol_PlotLinesHovered] = accentWarm;
-        colors[ImGuiCol_PlotHistogram] = accentWarm;
-        colors[ImGuiCol_PlotHistogramHovered] = Theme::FromSrgb(255, 204, 120);
-
-        // ===== テーブル =====
-        colors[ImGuiCol_TableHeaderBg] = bgPanel;
-        colors[ImGuiCol_TableBorderStrong] = Theme::FromSrgb(60, 60, 66);
-        colors[ImGuiCol_TableBorderLight] = Theme::FromSrgb(42, 42, 47);
-        colors[ImGuiCol_TableRowBg] = transparent;
-        colors[ImGuiCol_TableRowBgAlt] = ImVec4(1.0f, 1.0f, 1.0f, 0.022f);
-
-        // ===== その他 =====
-        colors[ImGuiCol_DragDropTarget] = accentWarm;
-        colors[ImGuiCol_NavCursor] = accentHover;
-        colors[ImGuiCol_NavWindowingHighlight] = accentHover;
-        colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.0f, 0.0f, 0.0f, 0.45f);
-        colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.0f, 0.0f, 0.0f, 0.60f);
-        colors[ImGuiCol_DockingPreview] = ImVec4(accent.x, accent.y, accent.z, 0.55f);
-        colors[ImGuiCol_DockingEmptyBg] = bgDeepest;
-
-        // ===== 形状・余白 =====
-        // 余白を広げるのが「安っぽさ」を消す一番効く調整。
-        // 以前は FramePadding(4,3) / ItemSpacing(4,4) で要素が詰まりすぎていた。
-        style.WindowPadding = ImVec2(10.0f, 8.0f);
-        style.FramePadding = ImVec2(8.0f, 4.0f);
-        style.ItemSpacing = ImVec2(8.0f, 5.0f);
-        style.ItemInnerSpacing = ImVec2(6.0f, 4.0f);
-        style.CellPadding = ImVec2(6.0f, 4.0f);
-        style.IndentSpacing = 18.0f;
-        style.ScrollbarSize = 12.0f;
-        style.GrabMinSize = 10.0f;
-
-        style.WindowRounding = 4.0f;
-        style.ChildRounding = 4.0f;
-        style.FrameRounding = 3.0f;
-        style.PopupRounding = 4.0f;
-        style.GrabRounding = 3.0f;
-        style.TabRounding = 4.0f;
-        style.ScrollbarRounding = 6.0f;
-
-        style.WindowBorderSize = 1.0f;
-        style.ChildBorderSize = 1.0f;
-        style.PopupBorderSize = 1.0f;
-        style.FrameBorderSize = 0.0f;  // 全ウィジェットの黒枠をやめる
-        style.TabBarBorderSize = 1.0f;
-        style.TabBarOverlineSize = 2.0f;
-        style.DockingSeparatorSize = 2.0f;
-
-        // 見出し（SeparatorText）を左寄せの太線にして、セクションの区切りを読みやすくする
-        style.SeparatorTextBorderSize = 2.0f;
-        style.SeparatorTextAlign = ImVec2(0.0f, 0.5f);
-        style.SeparatorTextPadding = ImVec2(16.0f, 6.0f);
-
-        style.WindowTitleAlign = ImVec2(0.0f, 0.5f);
-        style.WindowMenuButtonPosition = ImGuiDir_None; // タイトル左の折りたたみ矢印を消す
-
-        style.Alpha = 1.0f;
+        Editor::Theme::ApplyImGuiStyle();
     }
 
     void ImGuiManager::StartNewFrame()

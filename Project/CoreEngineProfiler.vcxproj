@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Development|x64">
+      <Configuration>Development</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{d60be835-d3fc-42c1-a180-ce502dcadc76}</ProjectGuid>
+    <RootNamespace>CoreEngineProfiler</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>CoreEngineProfiler</ProjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="Shared" />
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <!-- エディタ（CoreEngine.exe）と同じフォルダへ出す -->
+    <OutDir>$(MSBuildThisFileDirectory)..\generated\CoreEngine\outputs\$(Configuration)\</OutDir>
+    <IntDir>$(MSBuildThisFileDirectory)..\generated\$(ProjectName)\obj\$(Configuration)\</IntDir>
+    <IncludePath>$(MSBuildThisFileDirectory)Tools\Profiler\Src;$(MSBuildThisFileDirectory)Engine\Src;$(IncludePath)</IncludePath>
+    <ExternalIncludePath>$(MSBuildThisFileDirectory)Externals\imgui;$(MSBuildThisFileDirectory)Externals\tracy\server;$(MSBuildThisFileDirectory)Externals\tracy\public\common;$(MSBuildThisFileDirectory)Externals\zstd\lib;$(MSBuildThisFileDirectory)Externals\ppqsort\include;$(ExternalIncludePath)</ExternalIncludePath>
+    <LocalDebuggerWorkingDirectory>$(OutDir)</LocalDebuggerWorkingDirectory>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level4</WarningLevel>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <SDLCheck>true</SDLCheck>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <!-- CORE_TRACY_SERVER_MINIMAL：Tracy の受け取り役から capstone（逆アセンブル）と画面の写真の辞書の学習を外す -->
+      <PreprocessorDefinitions>NOMINMAX;WIN32_LEAN_AND_MEAN;_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR;_CRT_SECURE_NO_WARNINGS;CORE_TRACY_SERVER_MINIMAL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalOptions>/utf-8 /bigobj %(AdditionalOptions)</AdditionalOptions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
+      <TreatAngleIncludeAsExternal>true</TreatAngleIncludeAsExternal>
+      <ExternalWarningLevel>TurnOffAllWarnings</ExternalWarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>d3d11.lib;dxgi.lib;dwmapi.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <ResourceCompile>
+      <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory)Engine\Src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ResourceCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Optimization>Disabled</Optimization>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Development|x64'">
+    <ClCompile>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="Tools\Profiler\Src\main.cpp" />
+    <ClCompile Include="Tools\Profiler\Src\App\ProfilerApp.cpp" />
+    <ClCompile Include="Tools\Profiler\Src\Capture\CaptureSession.cpp" />
+    <ClCompile Include="Tools\Profiler\Src\Capture\ZoneKind.cpp" />
+    <ClCompile Include="Tools\Profiler\Src\Platform\FileDialog.cpp" />
+    <ClCompile Include="Tools\Profiler\Src\Text\TextFormat.cpp" />
+    <ClCompile Include="Tools\Profiler\Src\View\ZoneStatsView.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Tools\Profiler\Src\App\ProfilerApp.h" />
+    <ClInclude Include="Tools\Profiler\Src\Capture\CaptureSession.h" />
+    <ClInclude Include="Tools\Profiler\Src\Capture\ZoneKind.h" />
+    <ClInclude Include="Tools\Profiler\Src\Platform\FileDialog.h" />
+    <ClInclude Include="Tools\Profiler\Src\Text\TextFormat.h" />
+    <ClInclude Include="Tools\Profiler\Src\View\ZoneStatsView.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\EditorStyle.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\EditorTheme.h" />
+    <ClInclude Include="Engine\Src\Launch\AppResource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Tools\Profiler\Src\CoreEngineProfiler.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Manifest Include="Tools\Profiler\Src\CoreEngineProfiler.manifest" />
+  </ItemGroup>
+  <!-- 外部のコード（ImGui・ImPlot・Tracy の受け取り役・zstd） -->
+  <ItemGroup>
+    <ClCompile Include="Externals\imgui\imgui.cpp" />
+    <ClCompile Include="Externals\imgui\imgui_draw.cpp" />
+    <ClCompile Include="Externals\imgui\imgui_tables.cpp" />
+    <ClCompile Include="Externals\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="Externals\imgui\imgui_impl_dx11.cpp" />
+    <ClCompile Include="Externals\imgui\imgui_impl_win32.cpp" />
+    <ClCompile Include="Externals\imgui\implot.cpp" />
+    <ClCompile Include="Externals\imgui\implot_items.cpp" />
+    <ClCompile Include="Externals\tracy\public\common\tracy_lz4.cpp" />
+    <ClCompile Include="Externals\tracy\public\common\tracy_lz4hc.cpp" />
+    <ClCompile Include="Externals\tracy\public\common\TracySocket.cpp" />
+    <ClCompile Include="Externals\tracy\public\common\TracyStackFrames.cpp" />
+    <ClCompile Include="Externals\tracy\public\common\TracySystem.cpp" />
+    <ClCompile Include="Externals\tracy\server\TracyBroadcast.cpp" />
+    <ClCompile Include="Externals\tracy\server\TracyLocks.cpp" />
+    <ClCompile Include="Externals\tracy\server\TracyMemory.cpp" />
+    <ClCompile Include="Externals\tracy\server\TracyMmap.cpp" />
+    <ClCompile Include="Externals\tracy\server\TracyPrint.cpp" />
+    <ClCompile Include="Externals\tracy\server\TracySysUtil.cpp" />
+    <ClCompile Include="Externals\tracy\server\TracyTaskDispatch.cpp" />
+    <ClCompile Include="Externals\tracy\server\TracyTextureCompression.cpp" />
+    <ClCompile Include="Externals\tracy\server\TracyThreadCompress.cpp" />
+    <ClCompile Include="Externals\tracy\server\TracyWorker.cpp" />
+    <ClCompile Include="Externals\zstd\lib\common\debug.c" />
+    <ClCompile Include="Externals\zstd\lib\common\entropy_common.c" />
+    <ClCompile Include="Externals\zstd\lib\common\error_private.c" />
+    <ClCompile Include="Externals\zstd\lib\common\fse_decompress.c" />
+    <ClCompile Include="Externals\zstd\lib\common\pool.c" />
+    <ClCompile Include="Externals\zstd\lib\common\threading.c" />
+    <ClCompile Include="Externals\zstd\lib\common\xxhash.c" />
+    <ClCompile Include="Externals\zstd\lib\common\zstd_common.c" />
+    <ClCompile Include="Externals\zstd\lib\compress\fse_compress.c" />
+    <ClCompile Include="Externals\zstd\lib\compress\hist.c" />
+    <ClCompile Include="Externals\zstd\lib\compress\huf_compress.c" />
+    <ClCompile Include="Externals\zstd\lib\compress\zstd_compress.c" />
+    <ClCompile Include="Externals\zstd\lib\compress\zstd_compress_literals.c" />
+    <ClCompile Include="Externals\zstd\lib\compress\zstd_compress_sequences.c" />
+    <ClCompile Include="Externals\zstd\lib\compress\zstd_compress_superblock.c" />
+    <ClCompile Include="Externals\zstd\lib\compress\zstd_double_fast.c" />
+    <ClCompile Include="Externals\zstd\lib\compress\zstd_fast.c" />
+    <ClCompile Include="Externals\zstd\lib\compress\zstd_lazy.c" />
+    <ClCompile Include="Externals\zstd\lib\compress\zstd_ldm.c" />
+    <ClCompile Include="Externals\zstd\lib\compress\zstd_opt.c" />
+    <ClCompile Include="Externals\zstd\lib\compress\zstd_preSplit.c" />
+    <ClCompile Include="Externals\zstd\lib\compress\zstdmt_compress.c" />
+    <ClCompile Include="Externals\zstd\lib\decompress\huf_decompress.c" />
+    <ClCompile Include="Externals\zstd\lib\decompress\zstd_ddict.c" />
+    <ClCompile Include="Externals\zstd\lib\decompress\zstd_decompress.c" />
+    <ClCompile Include="Externals\zstd\lib\decompress\zstd_decompress_block.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- 外部のコードは警告を出さず、/sdl も付けない -->
+    <ClCompile Update="Externals\**\*.cpp;Externals\**\*.c">
+      <WarningLevel>TurnOffAllWarnings</WarningLevel>
+      <TreatWarningAsError>false</TreatWarningAsError>
+      <SDLCheck>false</SDLCheck>
+    </ClCompile>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets" />
+  <Target Name="SyncVCXProjFilters" BeforeTargets="Build" Condition="Exists('$(ProjectDir)Build\Scripts\SyncFilters.ps1')">
+    <Exec Command="powershell -ExecutionPolicy Bypass -NoProfile -File &quot;$(ProjectDir)Build\Scripts\SyncFilters.ps1&quot; -ProjectFile &quot;$(MSBuildProjectFullPath)&quot;" />
+  </Target>
+</Project>

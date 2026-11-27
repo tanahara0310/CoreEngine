@@ -1602,6 +1602,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Editor\Panel\EditorPanelRegistry.h" />
     <ClInclude Include="Engine\Src\Editor\Panel\EditorMenuRegistry.h" />
     <ClInclude Include="Engine\Src\Editor\Panel\EditorDockArea.h" />
+    <ClInclude Include="Engine\Src\Editor\ImGui\EditorStyle.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\EditorTheme.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\EditorBars.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\DragDropPayload.h" />

@@ -143,7 +143,7 @@
       "license": "BSD-3-Clause（BSD と GPL-2.0 の二重ライセンスから BSD を選ぶ）",
       "licenseFiles": [ "zstd/LICENSE" ],
       "inGame": true,
-      "usage": "クック済みデータの圧縮"
+      "usage": "クック済みデータの圧縮・CoreEngine Profiler の記録（.tracy）の圧縮"
     },
     {
       "name": "SDL3",
@@ -170,7 +170,7 @@
       "license": "MIT",
       "licenseFiles": [ "imgui/LICENSE.txt" ],
       "inGame": false,
-      "usage": "エディタの UI"
+      "usage": "エディタと CoreEngine Profiler の UI（CoreEngine Profiler は imgui_impl_dx11 で描く）"
     },
     {
       "name": "imnodes",
@@ -206,7 +206,16 @@
       "license": "BSD-3-Clause",
       "licenseFiles": [ "tracy/LICENSE" ],
       "inGame": false,
-      "usage": "CPU と GPU の区間の計測（Debug と Development のみ。tracy/public はクライアントの部分だけ）"
+      "usage": "CPU と GPU の区間の計測（Debug と Development のみ。tracy/public はクライアントの部分だけ）と、CoreEngine Profiler の受け取り役（tracy/server。逆アセンブルと辞書の学習は CORE_TRACY_SERVER_MINIMAL で外す）"
+    },
+    {
+      "name": "PPQSort",
+      "version": "1.0.6",
+      "source": "https://github.com/GabTux/PPQSort",
+      "license": "MIT",
+      "licenseFiles": [ "ppqsort/LICENSE" ],
+      "inGame": false,
+      "usage": "CoreEngine Profiler の受け取り役（Tracy）の並べ替え（Tracy が当てている 2 か所の手直しを同じように入れてある）"
     },
     {
       "name": "cpptrace",
