@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <cstring>
 #include <format>
+#include <limits>
 #include <string>
 
 /// @file TracyAccess.h
@@ -116,11 +117,27 @@ namespace CoreEngine::Profiler::Access
         return worker.GetString(location.name.active ? location.name : location.function);
     }
 
+    /// @brief 区間の場所の名前・関数・ファイルの文字が受け取り役へ届き終えたか（届く前の文字は「???」）
+    inline bool SourceArrived(const tracy::Worker& worker, int16_t srcloc)
+    {
+        if (srcloc < 0 || srcloc == std::numeric_limits<int16_t>::max()) {
+            return true;
+        }
+        const tracy::SourceLocation& location = worker.GetSourceLocation(srcloc);
+        if (!location.function.active) {
+            return false;
+        }
+        const auto arrived = [&worker](const tracy::StringRef& ref) {
+            return !ref.active || ref.isidx || ref.str == 0 || std::strcmp(worker.GetString(ref), "???") != 0;
+        };
+        return arrived(location.name) && arrived(location.function) && arrived(location.file);
+    }
+
     /// @brief スレッドの札（受け取り役が知っている名前と番号）
     inline std::string ThreadLabel(const tracy::Worker& worker, uint64_t id)
     {
         const char* name = worker.GetThreadName(id);
-        if (std::strcmp(name, "Main thread") == 0 || std::strcmp(name, "???") == 0) {
+        if (name[0] == '\0' || std::strcmp(name, "Main thread") == 0 || std::strcmp(name, "???") == 0) {
             return std::format("スレッド {}", id);
         }
         return std::format("{}（{}）", name, id);

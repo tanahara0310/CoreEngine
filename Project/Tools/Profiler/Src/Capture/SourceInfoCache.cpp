@@ -17,13 +17,13 @@ namespace CoreEngine::Profiler
     const SourceInfo& SourceInfoCache::Get(const tracy::Worker& worker, int16_t srcloc)
     {
         SourceInfo& entry = entries_[static_cast<uint16_t>(srcloc)];
-        if (!entry.filled) {
+        if (!entry.resolved) {
             const tracy::SourceLocation& location = worker.GetSourceLocation(srcloc);
             entry.name = Access::SourceName(worker, srcloc);
             entry.file = worker.GetString(location.file);
             entry.line = location.line;
             entry.kind = ClassifyZone(entry.name, entry.file);
-            entry.filled = true;
+            entry.resolved = Access::SourceArrived(worker, srcloc);
         }
         return entry;
     }

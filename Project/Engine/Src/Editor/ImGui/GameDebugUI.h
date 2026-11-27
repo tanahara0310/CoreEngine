@@ -7,6 +7,7 @@
 #include "WinApp/ScreenCapture.h"
 #include "Editor/ImGui/ProjectSettingsWindow.h"
 #include "Editor/Export/GameExportDialog.h"
+#include "Editor/External/ProfilerLauncher.h"
 #include "Editor/Launcher/ProjectBrowser.h"
 #include "Editor/Launcher/ProjectThumbnails.h"
 #include "Editor/Scene/SceneFileDialogs.h"
@@ -159,6 +160,7 @@ namespace CoreEngine
         Editor::SceneFileDialogs sceneFileDialogs_;              ///< シーンのファイルが外で変わったときの窓
         Editor::SceneOpenMenu sceneOpenMenu_;                    ///< File > シーンを開く の中身
         Editor::SceneQuickOpen sceneQuickOpen_;                  ///< 名前を打ってシーンを開く欄（Ctrl+O）
+        Editor::TraceFilePicker traceFilePicker_;                ///< 「記録を開く…」の .tracy を選ぶ窓
 #endif
 
         static constexpr const char* consoleWindow = "Console";
@@ -178,8 +180,11 @@ namespace CoreEngine
         /// @brief メニューバー右端の再生モード・プロジェクト名・シーン名・ビルド構成
         void DrawMenuBarChips();
 
-        /// @brief グローバルなショートカット（再生・一時停止・コマ送り・レイアウト・シーンを開く欄）
+        /// @brief グローバルなショートカット（再生・一時停止・コマ送り・レイアウト・シーンを開く欄・プロファイラー）
         void HandleShortcuts();
+
+        /// @brief Window > Analysis の「プロファイラーを開く」と「記録を開く…」
+        void DrawProfilerMenuItems();
 
         /// @brief バージョン情報のウィンドウ
         void DrawAboutWindow();

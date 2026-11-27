@@ -43,7 +43,7 @@ namespace CoreEngine::Profiler
         }
 
         /// @brief 状態の言葉と印の色
-        void StateLabel(SessionState state, bool saving, const char*& label, ImVec4& color)
+        void StateLabel(SessionState state, bool saving, bool waitingForLaunch, const char*& label, ImVec4& color)
         {
             if (saving) {
                 label = "保存しています…";
@@ -51,7 +51,7 @@ namespace CoreEngine::Profiler
                 return;
             }
             switch (state) {
-            case SessionState::Connecting: label = "つないでいます…"; color = Theme::kWarm; break;
+            case SessionState::Connecting: label = waitingForLaunch ? "起動を待っています…" : "つないでいます…"; color = Theme::kWarm; break;
             case SessionState::Live: label = "接続中"; color = Theme::kOk; break;
             case SessionState::Stopped: label = "止めた"; color = Theme::kTextDim; break;
             case SessionState::Loading: label = "読み込んでいます…"; color = Theme::kWarm; break;
@@ -88,6 +88,36 @@ namespace CoreEngine::Profiler
             return ImGui::CalcTextSize(label, nullptr, true).x + ImGui::GetStyle().FramePadding.x * 2.0f;
         }
 
+        /// @brief exe の場所から上へ辿って、エンジンのドキュメント（Project/Engine/Docs/index.html）を探す。無ければ空
+        std::filesystem::path FindDocumentation()
+        {
+            std::wstring modulePath(MAX_PATH, L'\0');
+            for (;;) {
+                const DWORD length = ::GetModuleFileNameW(nullptr, modulePath.data(), static_cast<DWORD>(modulePath.size()));
+                if (length == 0) {
+                    return {};
+                }
+                if (length < modulePath.size()) {
+                    modulePath.resize(length);
+                    break;
+                }
+                modulePath.resize(modulePath.size() * 2);
+            }
+            std::error_code error;
+            for (std::filesystem::path dir = std::filesystem::path(modulePath).parent_path(); !dir.empty(); dir = dir.parent_path()) {
+                for (const std::filesystem::path& candidate : { dir / L"Engine" / L"Docs" / L"index.html",
+                         dir / L"Project" / L"Engine" / L"Docs" / L"index.html" }) {
+                    if (std::filesystem::is_regular_file(candidate, error)) {
+                        return candidate;
+                    }
+                }
+                if (dir == dir.root_path()) {
+                    break;
+                }
+            }
+            return {};
+        }
+
         /// @brief 保存の窓に最初に入れる名前（相手の exe の名前と今の日時）
         std::wstring DefaultSaveName(const SessionSummary& summary, bool hasSummary)
         {
@@ -107,13 +137,24 @@ namespace CoreEngine::Profiler
     }
 
     ProfilerApp::ProfilerApp(const std::vector<std::wstring>& arguments)
+        : documentation_(FindDocumentation())
     {
-        bool connectOnStart = false;
         std::string openPath;
+        const bool connectOnStart = ParseArguments(arguments, openPath);
+        if (!openPath.empty()) {
+            session_.Open(openPath);
+        } else if (connectOnStart) {
+            session_.Connect(connectAddress_, static_cast<uint16_t>(connectPort_));
+        }
+    }
+
+    bool ProfilerApp::ParseArguments(const std::vector<std::wstring>& arguments, std::string& openPath)
+    {
+        bool connect = false;
         for (size_t i = 0; i < arguments.size(); ++i) {
             const std::wstring& argument = arguments[i];
             if (argument == L"--connect") {
-                connectOnStart = true;
+                connect = true;
                 if (i + 1 < arguments.size() && !arguments[i + 1].starts_with(L"--")) {
                     ParseEndpoint(Text::ToUtf8(arguments[++i]), connectAddress_, connectPort_);
                 }
@@ -125,11 +166,17 @@ namespace CoreEngine::Profiler
                 openPath = Text::ToUtf8(argument);
             }
         }
+        return connect;
+    }
 
+    void ProfilerApp::ApplyForwardedArguments(const std::vector<std::wstring>& arguments)
+    {
+        std::string openPath;
+        const bool connect = ParseArguments(arguments, openPath);
         if (!openPath.empty()) {
-            session_.Open(openPath);
-        } else if (connectOnStart) {
-            session_.Connect(connectAddress_, static_cast<uint16_t>(connectPort_));
+            RequestOpen(openPath);
+        } else if (connect && session_.State() == SessionState::Empty) {
+            Request(PendingAction::Connect);
         }
     }
 
@@ -172,7 +219,9 @@ namespace CoreEngine::Profiler
     {
         switch (action) {
         case PendingAction::Connect:
+        case PendingAction::WaitForLaunch:
             session_.Connect(connectAddress_, static_cast<uint16_t>(connectPort_));
+            waitingForLaunch_ = action == PendingAction::WaitForLaunch;
             break;
         case PendingAction::OpenDialog:
             openDialogRequested_ = true;
@@ -216,6 +265,7 @@ namespace CoreEngine::Profiler
             detail_.Reset();
             updateTree_.Reset();
             updateTreeView_.Reset();
+            logView_.Reset();
             ResetView();
             hasSummary_ = false;
         }
@@ -228,6 +278,7 @@ namespace CoreEngine::Profiler
             }
             statsView_.Update(worker, live, now);
             frames_.UpdateFrames(worker, live);
+            logView_.Update(worker, frames_);
             PrepareView(live);
             frames_.UpdateWaits(worker, sources_, view_.stripFirst, view_.stripFirst + kStripFrames);
             if (view_.hasSelectedFrame) {
@@ -309,10 +360,16 @@ namespace CoreEngine::Profiler
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("記録")) {
+            const bool connecting = state == SessionState::Connecting;
             if (ImGui::MenuItem("つなぐ…", nullptr, false, !busy)) {
                 openConnectPopup_ = true;
             }
-            const bool connecting = state == SessionState::Connecting;
+            if (ImGui::MenuItem("起動を待つ", nullptr, false, !busy && !connecting && state != SessionState::Live)) {
+                Request(PendingAction::WaitForLaunch);
+            }
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled | ImGuiHoveredFlags_DelayNormal)) {
+                ImGui::SetTooltip("%s:%d のエディタが起動するまで待ち、起動の直後から受け取ります。", connectAddress_.c_str(), connectPort_);
+            }
             if (ImGui::MenuItem(connecting ? "探すのをやめる" : "記録を止める", nullptr, false,
                 connecting || state == SessionState::Live)) {
                 session_.Stop();
@@ -339,9 +396,19 @@ namespace CoreEngine::Profiler
             if (ImGui::MenuItem("区間の統計", nullptr, view_.tab == ViewTab::Stats)) {
                 RequestTab(ViewTab::Stats);
             }
+            if (ImGui::MenuItem("ログ", nullptr, view_.tab == ViewTab::Log)) {
+                RequestTab(ViewTab::Log);
+            }
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("ヘルプ")) {
+            if (ImGui::MenuItem("ドキュメントを開く", nullptr, false, !documentation_.empty())) {
+                ::ShellExecuteW(nullptr, L"open", documentation_.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+            }
+            if (documentation_.empty() && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                ImGui::SetTooltip("エンジンのドキュメント（Project/Engine/Docs/index.html）が見つかりません。");
+            }
+            ImGui::Separator();
             ImGui::BeginDisabled();
             ImGui::MenuItem("保存した .tracy は元の Tracy（0.15.0）でも開けます");
             ImGui::EndDisabled();
@@ -364,7 +431,7 @@ namespace CoreEngine::Profiler
         const SessionState state = session_.State();
         const char* label = nullptr;
         ImVec4 color;
-        StateLabel(state, session_.IsSaving(), label, color);
+        StateLabel(state, session_.IsSaving(), waitingForLaunch_, label, color);
         StatusDot(color);
         ImGui::AlignTextToFramePadding();
         ImGui::PushStyleColor(ImGuiCol_Text, color);
@@ -519,6 +586,14 @@ namespace CoreEngine::Profiler
             statsView_.Draw(frames_, view_);
             ImGui::EndTabItem();
         }
+        const std::string logLabel = logView_.TabLabel();
+        if (ImGui::BeginTabItem(logLabel.c_str(), nullptr, flagsFor(ViewTab::Log))) {
+            if (!requested) {
+                view_.tab = ViewTab::Log;
+            }
+            logView_.Draw(frames_, view_, session_.State() == SessionState::Live);
+            ImGui::EndTabItem();
+        }
         ImGui::EndTabBar();
     }
 
@@ -574,7 +649,8 @@ namespace CoreEngine::Profiler
         ImGui::PopFont();
         ImGui::PushStyleColor(ImGuiCol_Text, Theme::kTextDim);
         ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + ImGui::GetTextLineHeight() * 60.0f);
-        ImGui::TextUnformatted("エディタやゲームを Debug か Development で起動してから「つなぐ」を押すと、その記録を受け取ります。");
+        ImGui::TextUnformatted("Debug か Development のエディタを起動してから「つなぐ」を押すと、その記録を受け取ります。");
+        ImGui::TextUnformatted("起動の重さを取るときは、先に「起動を待つ」を押してからエディタを起動します。");
         ImGui::TextUnformatted("保存した記録（.tracy）は「開く…」か、この窓へドラッグして開けます。");
         ImGui::PopTextWrapPos();
         ImGui::PopStyleColor();
@@ -583,6 +659,10 @@ namespace CoreEngine::Profiler
         const std::string connectLabel = std::format("{}:{} につなぐ", connectAddress_, connectPort_);
         if (Draw::AccentButton(connectLabel.c_str())) {
             Request(PendingAction::Connect);
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("起動を待つ")) {
+            Request(PendingAction::WaitForLaunch);
         }
         ImGui::SameLine();
         if (ImGui::Button("記録を開く…")) {
@@ -596,9 +676,12 @@ namespace CoreEngine::Profiler
         ImGui::Dummy(ImVec2(0.0f, ImGui::GetTextLineHeight() * 2.0f));
         ImGui::Indent(ImGui::GetTextLineHeight());
         ImGui::PushStyleColor(ImGuiCol_Text, Theme::kTextDim);
-        if (session_.State() == SessionState::Connecting) {
+        if (session_.State() == SessionState::Connecting && waitingForLaunch_) {
+            ImGui::Text("%s:%d のエディタの起動を待っています。", session_.Address().c_str(), session_.Port());
+            ImGui::TextUnformatted("Debug か Development のエディタを起動すると、起動の直後から受け取ります。もう動いているエディタがあれば、すぐにつながってそこから受け取ります。");
+        } else if (session_.State() == SessionState::Connecting) {
             ImGui::Text("%s:%d の相手を探しています。", session_.Address().c_str(), session_.Port());
-            ImGui::TextUnformatted("エディタやゲームを Debug か Development で起動すると、自動でつながります。");
+            ImGui::TextUnformatted("Debug か Development のエディタを起動すると、自動でつながります。");
         } else {
             ImGui::TextUnformatted("記録を読み込んでいます…");
         }

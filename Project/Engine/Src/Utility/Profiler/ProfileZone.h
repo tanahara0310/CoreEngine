@@ -49,6 +49,9 @@
 /// @brief Tracy の時間軸へ文字列を残す（text は size バイト）
 #define CORE_PROFILE_MESSAGE(text, size) TracyMessage((text), (size))
 
+/// @brief Tracy の時間軸へ重さつきの文字列を残す（severity は tracy::MessageSeverity の名前: Warning・Error など。text は size バイト）
+#define CORE_PROFILE_LOG(severity, text, size) TracyLogString(tracy::MessageSeverity::severity, 0, 0, (size), (text))
+
 /// @brief Tracy の画面がつないでいるか
 #define CORE_PROFILE_IS_CONNECTED() (TracyIsConnected)
 
@@ -58,6 +61,7 @@
 #define CORE_PROFILE_ZONE_TRANSIENT(name) ((void)0)
 #define CORE_PROFILE_FRAME() ((void)0)
 #define CORE_PROFILE_MESSAGE(text, size) ((void)0)
+#define CORE_PROFILE_LOG(severity, text, size) ((void)0)
 #define CORE_PROFILE_IS_CONNECTED() (false)
 
 #endif

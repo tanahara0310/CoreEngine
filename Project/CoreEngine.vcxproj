@@ -755,6 +755,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Editor\ImGui\DockingUI.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\EditorLayoutSection.cpp" />
     <ClCompile Include="Engine\Src\Editor\External\ExternalCodeEditor.cpp" />
+    <ClCompile Include="Engine\Src\Editor\External\ProfilerLauncher.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\ProfilerPanel.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\ProjectSettingsWindow.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\Widgets\PassTimingTable.cpp" />
@@ -1608,6 +1609,7 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\DragDropPayload.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\ModalDialog.h" />
     <ClInclude Include="Engine\Src\Editor\External\ExternalCodeEditor.h" />
+    <ClInclude Include="Engine\Src\Editor\External\ProfilerLauncher.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\ProfilerPanel.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\ProjectSettingsWindow.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\PassTimingTable.h" />

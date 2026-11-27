@@ -85,6 +85,22 @@ namespace CoreEngine::Profiler
             }
             return sum;
         }
+
+        /// @brief 並びの区間と、その下の区間の場所が全部届き終えたか（depth は並びの区間の深さ）
+        bool SubtreeArrived(const tracy::Worker& worker, SourceInfoCache& sources,
+            const tracy::Vector<tracy::short_ptr<tracy::ZoneEvent>>& events, uint32_t depth)
+        {
+            for (size_t i = 0; i < events.size(); ++i) {
+                const tracy::ZoneEvent& zone = Access::At(events, i);
+                if (!sources.Get(worker, zone.SrcLoc()).resolved) {
+                    return false;
+                }
+                if (zone.HasChildren() && depth < kMaxDepth && !SubtreeArrived(worker, sources, worker.GetZoneChildren(zone.Child()), depth + 1)) {
+                    return false;
+                }
+            }
+            return true;
+        }
     }
 
     void UpdateTree::Reset()
@@ -112,6 +128,10 @@ namespace CoreEngine::Profiler
         const size_t stop = std::min(available, frameClass_.size() + kFramesPerUpdate);
         for (size_t i = frameClass_.size(); i < stop; ++i) {
             const FrameTime& frame = frames.At(i);
+            // 受け取りの最中は、区間の名前が届き終えたフレームまでを数え、残りは次の回に数える
+            if (frames.IsLive() && !FrameArrived(worker, sources, *thread, frame.begin, frame.end)) {
+                break;
+            }
             ProcessFrame(worker, sources, *thread, i, frame.begin, frame.end);
         }
         if (orderDirty_) {
@@ -121,6 +141,32 @@ namespace CoreEngine::Profiler
 
         UpdateSelected(worker, view);
         UpdateTrend(worker, frames, view);
+    }
+
+    bool UpdateTree::FrameArrived(const tracy::Worker& worker, SourceInfoCache& sources, const tracy::ThreadData& thread,
+        int64_t begin, int64_t end) const
+    {
+        const auto& timeline = thread.timeline;
+        for (size_t i = Access::FirstEndingAfter(worker, timeline, begin); i < timeline.size(); ++i) {
+            const tracy::ZoneEvent& zone = Access::At(timeline, i);
+            const int64_t start = zone.Start();
+            if (start >= end) {
+                break;
+            }
+            if (start < begin) {
+                continue;
+            }
+            const int16_t srcloc = zone.SrcLoc();
+            const SourceInfo& info = sources.Get(worker, srcloc);
+            if (!info.resolved) {
+                return false;
+            }
+            const bool root = hasRootSrcloc_ ? srcloc == rootSrcloc_ : (info.kind == ZoneKind::Update && kRootName == info.name);
+            if (root) {
+                return !zone.HasChildren() || SubtreeArrived(worker, sources, worker.GetZoneChildren(zone.Child()), 1);
+            }
+        }
+        return true;
     }
 
     const tracy::ZoneEvent* UpdateTree::FindRoot(const tracy::Worker& worker, SourceInfoCache& sources, const tracy::ThreadData& thread,

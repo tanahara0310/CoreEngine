@@ -53,6 +53,9 @@ namespace CoreEngine::Profiler
         /// @brief 終わったフレームか（受け取りの最中の最後のフレームは終わっていない）
         bool IsComplete(size_t index) const { return !live_ || index + 1 < frames_.size(); }
 
+        /// @brief 受け取りの最中か
+        bool IsLive() const { return live_; }
+
         /// @brief 最後の終わったフレームの番号（フレームが無ければ 0）
         size_t LastComplete() const;
 

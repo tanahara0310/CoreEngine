@@ -38,6 +38,7 @@ namespace CoreEngine::Profiler
         Timeline,
         UpdateTree,
         Stats,
+        Log,
     };
 
     /// @brief フレームの時間と目標の比べ方

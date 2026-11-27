@@ -27,6 +27,16 @@ namespace
 
     constexpr wchar_t kWindowClassName[] = L"CoreEngineProfilerWindow";
 
+    /// @brief プロファイラーを 1 つに保つための名前付きミューテックス
+    constexpr wchar_t kSingleInstanceMutexName[] = L"Local\\CoreEngineProfiler.SingleInstance";
+
+    /// @brief 2 つ目の起動が引数を渡す WM_COPYDATA の印
+    constexpr ULONG_PTR kForwardArgumentsTag = 0x43455046;
+
+    /// @brief 先に開いている窓が見つかるまで待つ長さ（ミリ秒）と、問い合わせの間隔
+    constexpr DWORD kFindWindowTimeout = 3000;
+    constexpr DWORD kFindWindowInterval = 50;
+
     /// @brief 窓の大きさ（拡大率 100% のとき）
     constexpr int kBaseWidth = 1440;
     constexpr int kBaseHeight = 900;
@@ -85,6 +95,65 @@ namespace
         g_device.Reset();
     }
 
+    /// @brief 引数を '\0' で区切って 1 つの文字列にする
+    std::wstring JoinArguments(const std::vector<std::wstring>& arguments)
+    {
+        std::wstring joined;
+        for (const std::wstring& argument : arguments) {
+            joined += argument;
+            joined += L'\0';
+        }
+        return joined;
+    }
+
+    /// @brief JoinArguments で作った文字列（length 文字）を引数の並びへ戻す
+    std::vector<std::wstring> SplitArguments(const wchar_t* data, size_t length)
+    {
+        std::vector<std::wstring> arguments;
+        size_t begin = 0;
+        for (size_t i = 0; i < length; ++i) {
+            if (data[i] == L'\0') {
+                if (i > begin) {
+                    arguments.emplace_back(data + begin, i - begin);
+                }
+                begin = i + 1;
+            }
+        }
+        if (begin < length) {
+            arguments.emplace_back(data + begin, length - begin);
+        }
+        return arguments;
+    }
+
+    /// @brief 先に開いているプロファイラーの窓へ引数を渡して前へ出す
+    /// @return 窓が見つからなければ false
+    bool ForwardToRunningInstance(const std::vector<std::wstring>& arguments)
+    {
+        HWND target = nullptr;
+        for (DWORD waited = 0; ; waited += kFindWindowInterval) {
+            target = ::FindWindowW(kWindowClassName, nullptr);
+            if (target || waited >= kFindWindowTimeout) {
+                break;
+            }
+            ::Sleep(kFindWindowInterval);
+        }
+        if (!target) {
+            return false;
+        }
+        const std::wstring joined = JoinArguments(arguments);
+        COPYDATASTRUCT data = {};
+        data.dwData = kForwardArgumentsTag;
+        data.cbData = static_cast<DWORD>(joined.size() * sizeof(wchar_t));
+        data.lpData = const_cast<wchar_t*>(joined.data());
+        DWORD_PTR result = 0;
+        ::SendMessageTimeoutW(target, WM_COPYDATA, 0, reinterpret_cast<LPARAM>(&data), SMTO_ABORTIFHUNG, 5000, &result);
+        if (::IsIconic(target)) {
+            ::ShowWindow(target, SW_RESTORE);
+        }
+        ::SetForegroundWindow(target);
+        return true;
+    }
+
     LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     {
         if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam)) {
@@ -120,6 +189,17 @@ namespace
             }
             ::DragFinish(drop);
             return 0;
+        }
+        case WM_COPYDATA:
+        {
+            const COPYDATASTRUCT* data = reinterpret_cast<const COPYDATASTRUCT*>(lParam);
+            if (data && data->dwData == kForwardArgumentsTag) {
+                if (g_app && data->lpData) {
+                    g_app->ApplyForwardedArguments(SplitArguments(static_cast<const wchar_t*>(data->lpData), data->cbData / sizeof(wchar_t)));
+                }
+                return TRUE;
+            }
+            break;
         }
         case WM_DPICHANGED:
         {
@@ -195,6 +275,15 @@ namespace
 
 int WINAPI wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE, _In_ PWSTR, _In_ int)
 {
+    const std::vector<std::wstring> arguments = CommandLineArguments();
+
+    // 先に開いているプロファイラーがあれば、引数を渡して前へ出し、こちらは終わる
+    const HANDLE instanceMutex = ::CreateMutexW(nullptr, FALSE, kSingleInstanceMutexName);
+    if (instanceMutex && ::GetLastError() == ERROR_ALREADY_EXISTS && ForwardToRunningInstance(arguments)) {
+        ::CloseHandle(instanceMutex);
+        return 0;
+    }
+
     const HRESULT comResult = ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
 
     const HWND hwnd = CreateMainWindow(instance);
@@ -207,6 +296,9 @@ int WINAPI wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE, _In_ PWSTR, _In
         ::UnregisterClassW(kWindowClassName, instance);
         if (SUCCEEDED(comResult)) {
             ::CoUninitialize();
+        }
+        if (instanceMutex) {
+            ::CloseHandle(instanceMutex);
         }
         return 1;
     }
@@ -229,7 +321,7 @@ int WINAPI wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE, _In_ PWSTR, _In
     ImGui_ImplDX11_Init(g_device.Get(), g_context.Get());
 
     {
-        ProfilerApp app(CommandLineArguments());
+        ProfilerApp app(arguments);
         g_app = &app;
         std::wstring shownTitle;
 
@@ -298,6 +390,9 @@ int WINAPI wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE, _In_ PWSTR, _In
     ::UnregisterClassW(kWindowClassName, instance);
     if (SUCCEEDED(comResult)) {
         ::CoUninitialize();
+    }
+    if (instanceMutex) {
+        ::CloseHandle(instanceMutex);
     }
     return 0;
 }

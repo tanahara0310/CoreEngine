@@ -121,7 +121,11 @@ namespace
                 }
                 text.resize(size);
             }
-            CORE_PROFILE_MESSAGE(text.data(), text.size());
+            if (msg.level >= spdlog::level::err) {
+                CORE_PROFILE_LOG(Error, text.data(), text.size());
+            } else {
+                CORE_PROFILE_LOG(Warning, text.data(), text.size());
+            }
         }
 
         void flush_() override {}

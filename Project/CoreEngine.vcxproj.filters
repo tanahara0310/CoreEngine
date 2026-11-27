@@ -1642,6 +1642,9 @@
     <ClCompile Include="Engine\Src\Editor\External\ExternalCodeEditor.cpp">
       <Filter>Engine\Src\Editor\External</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\Src\Editor\External\ProfilerLauncher.cpp">
+      <Filter>Engine\Src\Editor\External</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\Src\Editor\ImGui\ProfilerPanel.cpp">
       <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClCompile>
@@ -2578,6 +2581,9 @@
       <Filter>Engine\Src\Editor\ImGui\Widgets</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\External\ExternalCodeEditor.h">
+      <Filter>Engine\Src\Editor\External</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\External\ProfilerLauncher.h">
       <Filter>Engine\Src\Editor\External</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\ProfilerPanel.h">
