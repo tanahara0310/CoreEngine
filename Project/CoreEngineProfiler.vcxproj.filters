@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="Tools\Profiler\Src\main.cpp">
+      <Filter>Tools\Profiler\Src</Filter>
+    </ClCompile>
+    <ClCompile Include="Tools\Profiler\Src\App\ProfilerApp.cpp">
+      <Filter>Tools\Profiler\Src\App</Filter>
+    </ClCompile>
+    <ClCompile Include="Tools\Profiler\Src\Capture\CaptureSession.cpp">
+      <Filter>Tools\Profiler\Src\Capture</Filter>
+    </ClCompile>
+    <ClCompile Include="Tools\Profiler\Src\Capture\ZoneKind.cpp">
+      <Filter>Tools\Profiler\Src\Capture</Filter>
+    </ClCompile>
+    <ClCompile Include="Tools\Profiler\Src\Platform\FileDialog.cpp">
+      <Filter>Tools\Profiler\Src\Platform</Filter>
+    </ClCompile>
+    <ClCompile Include="Tools\Profiler\Src\Text\TextFormat.cpp">
+      <Filter>Tools\Profiler\Src\Text</Filter>
+    </ClCompile>
+    <ClCompile Include="Tools\Profiler\Src\View\ZoneStatsView.cpp">
+      <Filter>Tools\Profiler\Src\View</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\imgui.cpp">
+      <Filter>Externals\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\imgui_draw.cpp">
+      <Filter>Externals\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\imgui_tables.cpp">
+      <Filter>Externals\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\imgui_widgets.cpp">
+      <Filter>Externals\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\imgui_impl_dx11.cpp">
+      <Filter>Externals\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\imgui_impl_win32.cpp">
+      <Filter>Externals\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\implot.cpp">
+      <Filter>Externals\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\imgui\implot_items.cpp">
+      <Filter>Externals\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\tracy\public\common\tracy_lz4.cpp">
+      <Filter>Externals\tracy\public\common</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\tracy\public\common\tracy_lz4hc.cpp">
+      <Filter>Externals\tracy\public\common</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\tracy\public\common\TracySocket.cpp">
+      <Filter>Externals\tracy\public\common</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\tracy\public\common\TracyStackFrames.cpp">
+      <Filter>Externals\tracy\public\common</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\tracy\public\common\TracySystem.cpp">
+      <Filter>Externals\tracy\public\common</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\tracy\server\TracyBroadcast.cpp">
+      <Filter>Externals\tracy\server</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\tracy\server\TracyLocks.cpp">
+      <Filter>Externals\tracy\server</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\tracy\server\TracyMemory.cpp">
+      <Filter>Externals\tracy\server</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\tracy\server\TracyMmap.cpp">
+      <Filter>Externals\tracy\server</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\tracy\server\TracyPrint.cpp">
+      <Filter>Externals\tracy\server</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\tracy\server\TracySysUtil.cpp">
+      <Filter>Externals\tracy\server</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\tracy\server\TracyTaskDispatch.cpp">
+      <Filter>Externals\tracy\server</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\tracy\server\TracyTextureCompression.cpp">
+      <Filter>Externals\tracy\server</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\tracy\server\TracyThreadCompress.cpp">
+      <Filter>Externals\tracy\server</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\tracy\server\TracyWorker.cpp">
+      <Filter>Externals\tracy\server</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\common\debug.c">
+      <Filter>Externals\zstd\lib\common</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\common\entropy_common.c">
+      <Filter>Externals\zstd\lib\common</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\common\error_private.c">
+      <Filter>Externals\zstd\lib\common</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\common\fse_decompress.c">
+      <Filter>Externals\zstd\lib\common</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\common\pool.c">
+      <Filter>Externals\zstd\lib\common</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\common\threading.c">
+      <Filter>Externals\zstd\lib\common</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\common\xxhash.c">
+      <Filter>Externals\zstd\lib\common</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\common\zstd_common.c">
+      <Filter>Externals\zstd\lib\common</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\compress\fse_compress.c">
+      <Filter>Externals\zstd\lib\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\compress\hist.c">
+      <Filter>Externals\zstd\lib\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\compress\huf_compress.c">
+      <Filter>Externals\zstd\lib\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\compress\zstd_compress.c">
+      <Filter>Externals\zstd\lib\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\compress\zstd_compress_literals.c">
+      <Filter>Externals\zstd\lib\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\compress\zstd_compress_sequences.c">
+      <Filter>Externals\zstd\lib\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\compress\zstd_compress_superblock.c">
+      <Filter>Externals\zstd\lib\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\compress\zstd_double_fast.c">
+      <Filter>Externals\zstd\lib\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\compress\zstd_fast.c">
+      <Filter>Externals\zstd\lib\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\compress\zstd_lazy.c">
+      <Filter>Externals\zstd\lib\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\compress\zstd_ldm.c">
+      <Filter>Externals\zstd\lib\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\compress\zstd_opt.c">
+      <Filter>Externals\zstd\lib\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\compress\zstd_preSplit.c">
+      <Filter>Externals\zstd\lib\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\compress\zstdmt_compress.c">
+      <Filter>Externals\zstd\lib\compress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\decompress\huf_decompress.c">
+      <Filter>Externals\zstd\lib\decompress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\decompress\zstd_ddict.c">
+      <Filter>Externals\zstd\lib\decompress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\decompress\zstd_decompress.c">
+      <Filter>Externals\zstd\lib\decompress</Filter>
+    </ClCompile>
+    <ClCompile Include="Externals\zstd\lib\decompress\zstd_decompress_block.c">
+      <Filter>Externals\zstd\lib\decompress</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Tools\Profiler\Src\App\ProfilerApp.h">
+      <Filter>Tools\Profiler\Src\App</Filter>
+    </ClInclude>
+    <ClInclude Include="Tools\Profiler\Src\Capture\CaptureSession.h">
+      <Filter>Tools\Profiler\Src\Capture</Filter>
+    </ClInclude>
+    <ClInclude Include="Tools\Profiler\Src\Capture\ZoneKind.h">
+      <Filter>Tools\Profiler\Src\Capture</Filter>
+    </ClInclude>
+    <ClInclude Include="Tools\Profiler\Src\Platform\FileDialog.h">
+      <Filter>Tools\Profiler\Src\Platform</Filter>
+    </ClInclude>
+    <ClInclude Include="Tools\Profiler\Src\Text\TextFormat.h">
+      <Filter>Tools\Profiler\Src\Text</Filter>
+    </ClInclude>
+    <ClInclude Include="Tools\Profiler\Src\View\ZoneStatsView.h">
+      <Filter>Tools\Profiler\Src\View</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ImGui\EditorStyle.h">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Editor\ImGui\EditorTheme.h">
+      <Filter>Engine\Src\Editor\ImGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Src\Launch\AppResource.h">
+      <Filter>Engine\Src\Launch</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Tools\Profiler\Src\CoreEngineProfiler.rc">
+      <Filter>Tools\Profiler\Src</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Engine">
+      <UniqueIdentifier>{38EA84B6-D4F1-4081-8321-88DEAE8A6D1A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src">
+      <UniqueIdentifier>{9753965D-A0E5-4B03-A8FD-476D488B73A1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Editor">
+      <UniqueIdentifier>{11505B8F-D119-432C-9401-C91AA7D58A5F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Editor\ImGui">
+      <UniqueIdentifier>{2A646B03-6B22-4C02-9F26-8C6E8A3F7D59}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Engine\Src\Launch">
+      <UniqueIdentifier>{A614B9A3-3F93-4FD5-B921-93D795873BFE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals">
+      <UniqueIdentifier>{5EB61CC0-EB6C-4EA7-95F7-7591D74B9B36}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\imgui">
+      <UniqueIdentifier>{199D9591-81D5-4F9F-929F-F907013F7343}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\tracy">
+      <UniqueIdentifier>{52845AFB-D31A-49CD-9E53-7BC01491FF76}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\tracy\public">
+      <UniqueIdentifier>{40335B9D-EBF9-40CC-9D54-B5F1CEAD8A65}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\tracy\public\common">
+      <UniqueIdentifier>{E283F7AF-5E24-4F68-B54B-ABCEAD2B95DC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\tracy\server">
+      <UniqueIdentifier>{04492106-B7D6-4A17-B4BE-AC04F6B363B8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\zstd">
+      <UniqueIdentifier>{C67BE4EC-24FD-45F2-87F2-7A095779190D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\zstd\lib">
+      <UniqueIdentifier>{CAA0470E-246F-4B96-8C80-324A65FFEDC0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\zstd\lib\common">
+      <UniqueIdentifier>{CB987CAC-833D-45A9-BEB3-B1DA94A6C3B4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\zstd\lib\compress">
+      <UniqueIdentifier>{9164DAE6-C925-4672-A183-5B2796C2CC1F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Externals\zstd\lib\decompress">
+      <UniqueIdentifier>{C89F6C48-57CB-4749-9B85-958360A700AA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tools">
+      <UniqueIdentifier>{610BBE0F-066F-435D-AC46-B1B0F8EA3EB6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tools\Profiler">
+      <UniqueIdentifier>{66471B8E-6711-4B14-B231-DF74048AFDEF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tools\Profiler\Src">
+      <UniqueIdentifier>{A7FEC0A3-F8B3-422E-9444-E50D9A1359D5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tools\Profiler\Src\App">
+      <UniqueIdentifier>{4753BD20-F9CC-44A7-9402-31564B68E739}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tools\Profiler\Src\Capture">
+      <UniqueIdentifier>{C55FEA3A-8D39-4CEB-8203-EF638754C971}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tools\Profiler\Src\Platform">
+      <UniqueIdentifier>{67878555-D0AA-413D-B0AA-B9FB01DB98E3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tools\Profiler\Src\Text">
+      <UniqueIdentifier>{265D1082-05D6-465F-8E92-337FE047436E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Tools\Profiler\Src\View">
+      <UniqueIdentifier>{B98509D2-47C7-499F-9B52-C853CD0F91FB}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
