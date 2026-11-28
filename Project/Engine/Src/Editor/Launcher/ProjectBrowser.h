@@ -8,8 +8,10 @@
 #include <Windows.h>
 #include <imgui.h>
 
+#include <cstdint>
 #include <filesystem>
 #include <future>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -50,12 +52,23 @@ namespace CoreEngine::Editor
         /// @brief 左の列の上に出すロゴ（無ければ名前の文字を出す）
         void SetLogo(EditorLogo* logo) { logo_ = logo; }
 
+        /// @brief 削除の確認窓を出しているか、ごみ箱へ移している途中か（その間は画面を閉じない）
+        bool IsBusy() const;
+
     private:
         /// @brief 右側に出している画面
         enum class View { Projects, NewProject };
 
         /// @brief 押された操作（描き終えてから行う）
-        enum class Action { None, Open, ShowInExplorer, Remove, Add, Create, BrowseLocation };
+        enum class Action { None, Open, ShowInExplorer, Remove, Delete, Add, Create, BrowseLocation };
+
+        /// @brief 削除の確認窓で消そうとしているプロジェクト
+        struct DeleteTarget
+        {
+            ProjectEntry entry;
+            std::uintmax_t fileCount = 0; ///< フォルダの中のファイルの数
+            std::uintmax_t totalBytes = 0; ///< フォルダの中のファイルの大きさの合計
+        };
 
         void Refresh(const std::filesystem::path& select = {});
         std::vector<int> VisibleIndices() const;
@@ -70,6 +83,7 @@ namespace CoreEngine::Editor
         void DrawTemplates(const ImVec2& size);
         void DrawCreateForm(const ImVec2& size);
         void DrawStatus();
+        void DrawDeleteDialog();
         void Request(Action action, const std::filesystem::path& folder);
         void RunPendingAction();
 
@@ -78,6 +92,18 @@ namespace CoreEngine::Editor
         void Remove(const std::filesystem::path& folder);
         void AddExisting(const std::filesystem::path& folder);
         void CreateProject();
+
+        /// @brief 削除できないときの訳（削除できれば空）
+        std::string DeleteBlocker(const ProjectEntry& entry) const;
+
+        /// @brief 削除の確認窓を開く
+        void ConfirmDelete(const std::filesystem::path& folder);
+
+        /// @brief 確かめが済んだプロジェクトを、別のスレッドでごみ箱へ移し始める
+        void StartDeleting();
+
+        /// @brief ごみ箱へ移し終えていれば、一覧と下端の一言に結果を出す
+        void FinishDeleting();
 
         /// @brief フォルダを選ぶ窓を出す（選んだフォルダは FinishPicking で受け取る）
         void StartPicking(Action purpose, const wchar_t* title);
@@ -105,6 +131,11 @@ namespace CoreEngine::Editor
         std::filesystem::path pendingFolder_;
         std::future<std::filesystem::path> picking_; ///< フォルダを選ぶ窓（開いている間だけ有効）
         Action pickingFor_ = Action::None;            ///< 選んだフォルダを何に使うか
+        std::optional<DeleteTarget> deleteTarget_;    ///< 削除の確認窓で消そうとしているもの（窓を出している間だけある）
+        bool openDeleteDialog_ = false;               ///< 次に描くときに削除の確認窓を開く
+        char deleteConfirm_[128] = {};                ///< 確かめのために打ち込んだ名前
+        std::future<bool> deleting_;                  ///< ごみ箱へ移す処理（移している間だけ有効。途中でやめたら true）
+        ImVec2 dialogCenter_{};                       ///< 確認窓を置く位置（画面の真ん中）
         std::filesystem::path chosen_;
     };
 }
