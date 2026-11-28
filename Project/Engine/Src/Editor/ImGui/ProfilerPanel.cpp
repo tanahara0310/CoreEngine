@@ -7,13 +7,10 @@
 #include "Editor/External/ProfilerLauncher.h"
 #include "Editor/ImGui/EditorTheme.h"
 #include "Editor/ImGui/ImGuiAll.h"
-#include "Editor/ImGui/ThreadProfilerUI.h"
 #include "Editor/ImGui/Widgets/EditorBars.h"
-#include "Editor/ImGui/Widgets/PassTimingTable.h"
 #include "Editor/ImGui/Widgets/TimingPlots.h"
 #include "EngineSystem/EngineSystem.h"
 #include "Graphics/RHI/Debug/GpuTimestampProfiler.h"
-#include "Script/ScriptComponentType.h"
 #include "Script/ScriptHost.h"
 #include "Script/ScriptSubsystem.h"
 #include "Utility/FrameRate/FrameRateController.h"
@@ -68,11 +65,10 @@ namespace CoreEngine
         }
     }
 
-    void ProfilerPanel::Initialize(EngineSystem* engine, GpuTimestampProfiler* gpuProfiler, ThreadProfilerUI* threadProfiler)
+    void ProfilerPanel::Initialize(EngineSystem* engine, GpuTimestampProfiler* gpuProfiler)
     {
         engine_ = engine;
         gpuProfiler_ = gpuProfiler;
-        threadProfiler_ = threadProfiler;
     }
 
     void ProfilerPanel::Collect()
@@ -100,41 +96,10 @@ namespace CoreEngine
     {
         DrawHeader();
         ImGui::Spacing();
-
-        // 左：内訳のタブ（伸びる）／右：スクリプト（固定幅）
-        constexpr float kRightWidth = 300.0f;
-        const float leftWidth = (std::max)(200.0f, ImGui::GetContentRegionAvail().x - kRightWidth - 8.0f);
-
-        if (auto left = UI::Scope::ChildScope("##profilerLeft", ImVec2(leftWidth, 0.0f))) {
-            if (auto tabs = UI::Scope::TabBarScope("##profilerTabs")) {
-                // 初めて描くときはフレーム内訳を開いておく
-                const ImGuiTabItemFlags firstFlags = firstDraw_ ? ImGuiTabItemFlags_SetSelected : 0;
-                firstDraw_ = false;
-                if (auto tab = UI::Scope::TabItemScope("フレーム内訳", nullptr, firstFlags)) {
-                    DrawGraph();
-                    ImGui::Spacing();
-                    DrawFrameBreakdown();
-                }
-                if (auto tab = UI::Scope::TabItemScope("パス別")) {
-                    if (gpuProfiler_ && gpuProfiler_->IsInitialized()) {
-                        UI::PassTimingTable("##profilerPasses", gpuProfiler_->GetResults(), true);
-                    } else {
-                        UI::Hint("GPU の計測が初期化されていません");
-                    }
-                }
-                if (auto tab = UI::Scope::TabItemScope("スレッド")) {
-                    if (threadProfiler_) {
-                        threadProfiler_->Draw();
-                    } else {
-                        UI::Hint("スレッドプールの計測がありません");
-                    }
-                }
-            }
-        }
-
-        ImGui::SameLine(0.0f, 8.0f);
-        if (auto right = UI::Scope::ChildScope("##profilerRight", ImVec2(0.0f, 0.0f), ImGuiChildFlags_Borders)) {
-            DrawScriptColumn();
+        DrawGraph();
+        ImGui::Spacing();
+        if (auto breakdown = UI::Scope::ChildScope("##profilerBreakdown", ImVec2(0.0f, 0.0f))) {
+            DrawFrameBreakdown();
         }
     }
 
@@ -234,12 +199,18 @@ namespace CoreEngine
                 UI::CpuTimeColor(latest.renderMs));
         }
         if (showScript_) {
+            const ScriptHost* const host = FindScriptHost(engine_);
             std::string scriptText = std::format("{:.2f} ms", latest.scriptMs);
-            if (const ScriptHost* const host = FindScriptHost(engine_)) {
+            if (host) {
                 scriptText += std::format("（{} 型 / {} 実体）",
                     host->GetTypes().size(), host->GetFrameStats().liveComponents);
             }
             ValueRow("CPU: スクリプト", Theme::kTextDim, scriptText, Theme::kScript);
+            if (host) {
+                const ScriptHost::FrameStats& stats = host->GetFrameStats();
+                ValueRow("スクリプト: GC のオブジェクト", Theme::kTextDim, std::to_string(stats.gcObjects), Theme::kText);
+                ValueRow("スクリプト: 待機中のコンテキスト", Theme::kTextDim, std::to_string(stats.pooledContexts), Theme::kText);
+            }
         }
         if (showGpu_) {
             ValueRow("GPU: 合計", Theme::kTextDim, std::format("{:.2f} ms", latest.gpuMs),
@@ -285,45 +256,6 @@ namespace CoreEngine
                     static_cast<double>(memory.gpuMemoryBudgetBytes) / kMiB),
                 Theme::kText);
         }
-    }
-
-    void ProfilerPanel::DrawScriptColumn()
-    {
-        ImGui::TextColored(Theme::kScript, "スクリプト");
-        ImGui::Separator();
-
-        const ScriptHost* const host = FindScriptHost(engine_);
-        if (!host) {
-            UI::Hint("スクリプトの実行環境がありません");
-            return;
-        }
-
-        UI::SectionHeader("型別の Update コスト");
-        std::vector<const ScriptComponentType*> types;
-        for (const std::unique_ptr<ScriptComponentType>& type : host->GetTypes()) {
-            types.push_back(type.get());
-        }
-        std::sort(types.begin(), types.end(), [](const ScriptComponentType* a, const ScriptComponentType* b) {
-            return a->GetLastFrameCostMs() > b->GetLastFrameCostMs();
-            });
-
-        if (types.empty()) {
-            UI::Hint("コンポーネントの型がありません");
-        }
-        for (const ScriptComponentType* const type : types) {
-            ImGui::TextColored(Theme::kText, "%s", type->GetDisplayName().c_str());
-            ImGui::SameLine(160.0f);
-            ImGui::TextColored(Theme::kScript, "%.3f ms", type->GetLastFrameCostMs());
-            ImGui::SameLine(0.0f, 6.0f);
-            ImGui::TextColored(Theme::kTextMute, "×%u", type->GetLastFrameInstances());
-        }
-
-        ImGui::Spacing();
-        UI::SectionHeader("VM");
-        const ScriptHost::FrameStats& stats = host->GetFrameStats();
-        ValueRow("生きているコンポーネント", Theme::kTextDim, std::to_string(stats.liveComponents), Theme::kText);
-        ValueRow("待機中のコンテキスト", Theme::kTextDim, std::to_string(stats.pooledContexts), Theme::kText);
-        ValueRow("GC のオブジェクト", Theme::kTextDim, std::to_string(stats.gcObjects), Theme::kText);
     }
 
     bool ProfilerPanel::ExportCsv(std::string& outPath) const

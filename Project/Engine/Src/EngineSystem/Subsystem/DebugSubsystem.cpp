@@ -516,24 +516,9 @@ namespace CoreEngine
                 });
         }
 
-        // スレッドプールプロファイラーの初期化
-        threadProfilerUI_ = std::make_unique<ThreadProfilerUI>();
-        threadProfilerUI_->RegisterPool("TextureLoader",
-            []() { return TextureManager::GetInstance().GetThreadPool(); });
-        threadProfilerUI_->RegisterPool("ModelLoader", [this]() -> ThreadPool* {
-            if (auto* mm = engine_->GetService<ModelManager>()) { return mm->GetThreadPool(); }
-            return nullptr;
-            });
-        AddPanel({
-            .id = "Thread Profiler",
-            .placement = Editor::PanelPlacement::Window,
-            .group = Editor::PanelGroup::Analysis,
-            .draw = [this]() { threadProfilerUI_->Draw(); },
-            });
-
-        // CPU・GPU・スクリプト・スレッドをまとめたプロファイラ（下段で Console と並べる）
+        // CPU・GPU・スクリプトの時間をまとめたプロファイラ（下段で Console と並べる）
         profilerPanel_ = std::make_unique<ProfilerPanel>();
-        profilerPanel_->Initialize(engine_, &gpuProfiler_, threadProfilerUI_.get());
+        profilerPanel_->Initialize(engine_, &gpuProfiler_);
         AddPanel({
             .id = "Profiler",
             .placement = Editor::PanelPlacement::Window,
@@ -808,6 +793,26 @@ namespace CoreEngine
         registrations_.push_back(Editor::EditorPanelRegistry::Get().Register(std::move(desc)));
     }
 
+    void DebugSubsystem::PlotThreadPools() const
+    {
+#if CORE_TRACY_ENABLED
+        if (!CORE_PROFILE_IS_CONNECTED()) {
+            return;
+        }
+        if (const ThreadPool* const pool = TextureManager::GetInstance().GetThreadPool()) {
+            const ThreadPool::Stats stats = pool->GetStats();
+            CORE_PROFILE_PLOT("TextureLoader: 待ち", static_cast<int64_t>(stats.pendingTasks));
+            CORE_PROFILE_PLOT("TextureLoader: 実行中", static_cast<int64_t>(stats.activeTasks));
+        }
+        const ModelManager* const models = engine_ ? engine_->GetService<ModelManager>() : nullptr;
+        if (const ThreadPool* const pool = models ? models->GetThreadPool() : nullptr) {
+            const ThreadPool::Stats stats = pool->GetStats();
+            CORE_PROFILE_PLOT("ModelLoader: 待ち", static_cast<int64_t>(stats.pendingTasks));
+            CORE_PROFILE_PLOT("ModelLoader: 実行中", static_cast<int64_t>(stats.activeTasks));
+        }
+#endif
+    }
+
     void DebugSubsystem::Finalize()
     {
         // 閉じる前のゲーム画面を、プロジェクトのサムネイルとして撮っておく
@@ -955,6 +960,7 @@ namespace CoreEngine
         if (profilerPanel_) {
             profilerPanel_->Collect();
         }
+        PlotThreadPools();
 
         {
             EngineProfileScope scope(engine_, GpuTimestampSlot::ImGuiDraw, frame.cmdList);

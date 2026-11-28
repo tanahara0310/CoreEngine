@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.124.0">
+<meta name="engine-version" content="0.125.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2794,7 +2794,7 @@ kbd {
       <tr><td>Window ▸ Editor</td><td>Project Settings</td><td>プロジェクトとシーンの設定（CVar、当たり判定のレイヤー、起動シーンなど）。<a href="#editor-settings">詳しく</a></td></tr>
       <tr><td>Window ▸ Editor</td><td>Key Config</td><td>入力アクションのキー割り当て。<a href="#editor-settings-keyconfig">詳しく</a></td></tr>
       <tr><td>Window ▸ Editor</td><td>Camera Editor</td><td>カメラの一覧・追従・キーフレーム・シェイクの調整、エディタ視点の操作設定。</td></tr>
-      <tr><td>Window ▸ Analysis</td><td>Profiler ／ Engine Stats ／ Thread Profiler ／ Event Bus ／ Tween</td><td>処理時間、描画の統計、スレッド、イベント、動いている Tween の一覧。</td></tr>
+      <tr><td>Window ▸ Analysis</td><td>Profiler ／ Engine Stats ／ Event Bus ／ Tween</td><td>処理時間、描画の統計、イベント、動いている Tween の一覧。<a href="#profiling-stats">詳しく</a></td></tr>
       <tr><td>Window ▸ Analysis</td><td>プロファイラーを開く ／ 記録を開く…</td><td>CoreEngine Profiler（別の exe）を開いてこのエディタへつなぐ（<kbd>Ctrl</kbd>+<kbd>7</kbd>）・保存した <span class="path">.tracy</span> を開く。<a href="#profiling-tracy">詳しく</a></td></tr>
       <tr><td>Window ▸ Rendering</td><td>Render Pass ／ Render Graph ／ Ray Tracing</td><td>描画の中間結果やパスのつながりを調べます（主にエンジンの調整向け）。</td></tr>
       <tr><td>Window ▸ Rendering</td><td>Shader Graph</td><td>ノードでスプライト・UI 画像・ポストエフェクト・3D モデルのシェーダを作ります。<a href="#shader-graph-guide">使い方</a>・<a href="#shader-graph">詳しく</a></td></tr>
@@ -2881,7 +2881,7 @@ kbd {
     <tbody>
       <tr><td><span class="ui">General</span></td><td>Hierarchy・Inspector・Console・Project の表示切り替え</td></tr>
       <tr><td><span class="ui">Rendering</span></td><td>Render Pass・Render Graph・Ray Tracing・Shader Graph</td></tr>
-      <tr><td><span class="ui">Analysis</span></td><td>Engine Stats（パフォーマンス・レンダリング・シーン・リソース・メモリ）・プロファイラーを開く（<kbd>Ctrl</kbd>+<kbd>7</kbd>）・記録を開く…・Thread Profiler・Profiler・Event Bus・Tween</td></tr>
+      <tr><td><span class="ui">Analysis</span></td><td>Engine Stats（パフォーマンス・レンダリング・シーン・リソース・メモリ）・プロファイラーを開く（<kbd>Ctrl</kbd>+<kbd>7</kbd>）・記録を開く…・Profiler・Event Bus・Tween</td></tr>
       <tr><td><span class="ui">Editor</span></td><td>Project Settings・Key Config・Camera Editor</td></tr>
       <tr><td><span class="ui">Layout</span></td><td>全画面表示（<kbd>Alt</kbd>+<kbd>Enter</kbd>）・エディタUIを隠す（<kbd>F11</kbd>）・ゲーム画面のみのウィンドウ・レイアウトを初期化</td></tr>
     </tbody>
@@ -12067,33 +12067,49 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   </script>
 </article>
 
-<article class="page" id="profiling-stats" data-group="困ったとき・資料" data-title="Engine Stats でフレームの時間を見る" data-nav="Engine Stats" data-keywords="engine stats 統計 パフォーマンス フレーム時間 fps gpu 内訳 積み上げ グラフ 重い 遅い 60fps 16.7ms implot 計測 profiler プロファイラ cpu スクリプト 凡例">
-  <h1>Engine Stats でフレームの時間を見る</h1>
-  <p class="lead">Engine Stats の <span class="ui">パフォーマンス</span> タブには、直近 120 フレームの時間のグラフが 2 つあります。エディタを動かしたまま、いつ重くなったかと、そのとき GPU のどの処理が重かったかを見られます。Profiler パネルにも、CPU とスクリプトの時間まで重ねた同じ形のグラフがあります（<a href="#stats-profiler">Profiler パネルのグラフ</a>）。1 フレームの中の処理の並びまで見たいときはプロファイラーを使います（<a href="#profiling-tracy">プロファイラーで処理の時間を見る</a>）。</p>
+<article class="page" id="profiling-stats" data-group="困ったとき・資料" data-title="Profiler パネルと Engine Stats で時間を見る" data-nav="Profiler パネル" data-keywords="engine stats 統計 パフォーマンス フレーム時間 fps gpu 内訳 積み上げ グラフ 重い 遅い 60fps 16.7ms implot 計測 profiler パネル プロファイラ cpu スクリプト 凡例 gc コンテキスト メモリ csv 書き出し">
+  <h1>Profiler パネルと Engine Stats で時間を見る</h1>
+  <p class="lead">エディタの下の Profiler パネルには、直近 180 フレームの時間のグラフと、いちばん新しいフレームの大まかな内訳が出ます。エディタを動かしたまま、いつ重くなったかと、CPU と GPU のどちらが重いかを見られます。GPU のどの処理が重いかは、Engine Stats の <span class="ui">パフォーマンス</span> タブで見ます。1 フレームの中の処理の並びや、どのスクリプトの関数が長いかまで見たいときはプロファイラーを使います（<a href="#profiling-tracy">プロファイラーで処理の時間を見る</a>）。</p>
 
   <h2 id="stats-open">開く</h2>
-  <p><span class="ui">Window ▸ Analysis ▸ Engine Stats</span> を選ぶと、インスペクタに <span class="ui">パフォーマンス</span>・<span class="ui">レンダリング</span>・<span class="ui">シーン</span>・<span class="ui">リソース</span>・<span class="ui">メモリ</span> のタブが出ます。グラフは <span class="ui">パフォーマンス</span> タブにあります。どちらのグラフも、マウスを重ねるとそのフレームの値が出ます。線のグラフは、上の凡例の名前を押すとその線を隠せます（隠した線の値は吹き出しにも出ません）。</p>
+  <p>Profiler パネルは、はじめから Console と並んでエディタの下にあります。閉じたときは <span class="ui">Window ▸ Analysis ▸ Profiler</span> で開きます。<span class="ui">Window ▸ Analysis ▸ Engine Stats</span> を選ぶと、インスペクタに <span class="ui">パフォーマンス</span>・<span class="ui">レンダリング</span>・<span class="ui">シーン</span>・<span class="ui">リソース</span>・<span class="ui">メモリ</span> のタブが出ます。どのグラフも、マウスを重ねるとそのフレームの値が出ます。線のグラフは、上の凡例の名前を押すとその線を隠せます（隠した線の値は吹き出しにも出ません）。</p>
 
   <h2 id="stats-frame">フレームの時間</h2>
-  <p>FPS の数字の下のグラフです。縦はミリ秒で、右端が最新のフレームです。</p>
+  <p>Profiler パネルの上のグラフです。縦はミリ秒で、右端が最新のフレームです。上の <span class="ui">CPU</span>・<span class="ui">GPU</span>・<span class="ui">スクリプト</span> のボタンで線を出し入れでき、<span class="ui">● 記録中</span> を押すと記録が止まって、そのときのグラフが残ります。</p>
   <div class="table-wrap">
   <table>
     <thead><tr><th>線</th><th>中身</th></tr></thead>
     <tbody>
       <tr><td>フレーム（青）</td><td>1 フレームにかかった時間（前のフレームからの間隔）</td></tr>
       <tr><td>GPU（橙）</td><td>GPU が 1 フレームを描くのにかかった時間</td></tr>
+      <tr><td>CPU（緑）</td><td>ゲームの更新と描画の記録を足した時間。吹き出しには、ゲームの更新と描画の記録の 2 つの内訳も出ます</td></tr>
+      <tr><td>スクリプト（紫）</td><td>スクリプトの <code>Update</code>・<code>LateUpdate</code> にかかった時間</td></tr>
       <tr><td>目標（灰色の横線）</td><td>目標の FPS で 1 フレームに使える時間（60 fps なら 16.7 ms）</td></tr>
     </tbody>
   </table>
   </div>
   <ul>
     <li><strong>フレームが横線より上に跳ねる</strong>：そのフレームは目標に間に合っていません。</li>
-    <li><strong>GPU も一緒に上がる</strong>：GPU の処理が重くなっています。下の <span class="ui">GPU フレーム内訳</span> のグラフで、どのまとまりが増えたかを見ます。</li>
-    <li><strong>GPU は低いままフレームだけ上がる</strong>：CPU 側（スクリプト・物理・読み込みなど）が重くなっています。Profiler パネルか Tracy で見ます。</li>
+    <li><strong>GPU も一緒に上がる</strong>：GPU の処理が重くなっています。Engine Stats の <span class="ui">GPU フレーム内訳</span> のグラフで、どのまとまりが増えたかを見ます（<a href="#stats-gpu">GPU の内訳</a>）。</li>
+    <li><strong>GPU は低いままフレームだけ上がる</strong>：CPU 側（スクリプト・物理・読み込みなど）が重くなっています。CPU とスクリプトのどちらの線が上がったかを見て、中身はプロファイラーで見ます。</li>
   </ul>
 
+  <h2 id="stats-profiler">Profiler パネルの数字</h2>
+  <p>グラフの下には、いちばん新しいフレームの数字が出ます。</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>見出し</th><th>中身</th></tr></thead>
+    <tbody>
+      <tr><td>フレーム合計</td><td>フレーム・CPU のゲームの更新・CPU の描画の記録・スクリプト・GPU の合計の時間。スクリプトの行には、スクリプトの型の数と実体の数も出ます。その下に、スクリプトの GC のオブジェクトの数と、待機中のコンテキストの数が出ます</td></tr>
+      <tr><td>GPU パス別（上位）</td><td>GPU の時間が長いパスの上位 5 つ（フレームの合計とエディタの描画は除く）。全部のパスは Engine Stats の表で見ます</td></tr>
+      <tr><td>メモリ</td><td>CPU のワーキングセットとプライベート、GPU の使用と予算（<span class="ui">メモリ</span> のボタンを押したときだけ）</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p><span class="ui">詳しく見る</span> で、CoreEngine Profiler を開いてこのエディタへつなぎます（<a href="#profiler-open">開き方</a>）。<span class="ui">CSV 書き出し</span> は、控えている時間を <span class="path">Captures/Profiling</span> へ書き出します。</p>
+
   <h2 id="stats-gpu">GPU の内訳</h2>
-  <p><span class="ui">GPU フレーム内訳</span> の見出しの下のグラフは、GPU の時間をまとまりごとに下から積み上げたものです。白い線は GPU の合計です。グラフの下の表と同じ計測から作っていて、表は 0.5 秒ごと、グラフは毎フレームの値です。</p>
+  <p>Engine Stats の <span class="ui">パフォーマンス</span> タブの <span class="ui">GPU フレーム内訳</span> の見出しの下のグラフは、GPU の時間をまとまりごとに下から積み上げたものです。白い線は GPU の合計です。グラフの下の表と同じ計測から作っていて、表は 0.5 秒ごと、グラフは毎フレームの値です。</p>
   <div class="table-wrap">
   <table>
     <thead><tr><th>まとまり</th><th>入る表のカテゴリ</th></tr></thead>
@@ -12113,30 +12129,15 @@ python Tools/OkinawaBeach/bake_araha_walk.py
     <li>表の <span class="ui">Cloud (雲の内訳)</span> と <span class="ui">Water Sim (FFT 内訳)</span> は、ほかのパスの中の時間を分けて測ったものなので積みません。</li>
     <li>白い線が積み上げより上に出ているところは、どのパスの計測にも入っていない GPU の時間です（パスとパスの間で GPU が待っていた時間など）。</li>
   </ul>
-
-  <h2 id="stats-profiler">Profiler パネルのグラフ</h2>
-  <p><span class="ui">Window ▸ Analysis ▸ Profiler</span> の <span class="ui">フレーム内訳</span> タブの上のグラフも、フレームの時間と同じ形の線のグラフです。直近 180 フレームを出します。上の <span class="ui">CPU</span>・<span class="ui">GPU</span>・<span class="ui">スクリプト</span> のボタンで線を出し入れでき、<span class="ui">● 記録中</span> を押すと記録が止まって、そのときのグラフが残ります。<span class="ui">詳しく見る</span> で、CoreEngine Profiler を開いてこのエディタへつなぎます（<a href="#profiler-open">開き方</a>）。</p>
-  <div class="table-wrap">
-  <table>
-    <thead><tr><th>線</th><th>中身</th></tr></thead>
-    <tbody>
-      <tr><td>フレーム（青）</td><td>1 フレームにかかった時間（Engine Stats と同じ）</td></tr>
-      <tr><td>GPU（橙）</td><td>GPU が 1 フレームを描くのにかかった時間（Engine Stats と同じ）</td></tr>
-      <tr><td>CPU（緑）</td><td>ゲームの更新と描画の記録を足した時間。吹き出しには、ゲームの更新と描画の記録の 2 つの内訳も出ます</td></tr>
-      <tr><td>スクリプト（紫）</td><td>スクリプトの <code>Update</code>・<code>LateUpdate</code> にかかった時間</td></tr>
-      <tr><td>目標（灰色の横線）</td><td>目標の FPS で 1 フレームに使える時間</td></tr>
-    </tbody>
-  </table>
-  </div>
 </article>
 
 <article class="page" id="profiling-tracy" data-group="困ったとき・資料" data-title="プロファイラーで処理の時間を見る" data-nav="プロファイラー" data-keywords="tracy プロファイラ プロファイラー profiler 計測 処理時間 重い 遅い fps フレーム gpu cpu 時間軸 タイムライン スレッド ボトルネック tracy-capture csv coreengine profiler coreengineprofiler 日本語 区間の統計 回数 合計 平均 最大 ばらつき 標準偏差 保存 開く .tracy update の内訳 内訳 段 feature 再生中 停止中 推移 分布 中央値 区間の説明 zonedescriptions 開き方 ctrl+7 詳しく見る 記録を開く 起動を待つ 起動 ログ 警告 エラー 平均の数え方 元の tracy サンプリング">
   <h1>プロファイラーで処理の時間を見る</h1>
-  <p class="lead">CoreEngine Profiler は、CPU と GPU の処理が「どのスレッドで・いつ・何 ms かかったか」を見る、エンジンに付いている道具です。エディタとは別の exe で、<code>Debug</code> と <code>Development</code> のエディタにつないで記録を受け取ります。エディタの Profiler パネルが処理ごとの平均の時間を出すのに対して、こちらは 1 フレームずつの中身と、記録の全体の数字を出します。たまにだけ重くなるフレームや、スレッドどうしの待ち合わせを調べるときに使います。記録の受け取りと保存には Tracy の部品を使っているので、保存した <span class="path">.tracy</span> は元の Tracy の画面（英語）でも開けます。</p>
+  <p class="lead">CoreEngine Profiler は、CPU と GPU の処理が「どのスレッドで・いつ・何 ms かかったか」を見る、エンジンに付いている道具です。エディタとは別の exe で、<code>Debug</code> と <code>Development</code> のエディタにつないで記録を受け取ります。エディタの Profiler パネルが直近のフレームの大まかな時間を出すのに対して、こちらは 1 フレームずつの中身と、記録の全体の数字を出します。たまにだけ重くなるフレームや、スレッドどうしの待ち合わせを調べるときに使います。記録の受け取りと保存には Tracy の部品を使っているので、保存した <span class="path">.tracy</span> は元の Tracy の画面（英語）でも開けます。</p>
 
   <h2 id="profiler-open">開き方</h2>
   <ol class="steps">
-    <li><strong>エディタから開く</strong><span class="ui">Window ▸ Analysis ▸ プロファイラーを開く</span>（<kbd>Ctrl</kbd>+<kbd>7</kbd>）を選びます。Engine Stats の Profiler タブの <span class="ui">詳しく見る</span> でも同じです。エディタの隣の <span class="path">CoreEngineProfiler.exe</span> が起動して、そのエディタ（<code>127.0.0.1:8086</code>）へつなぎます。</li>
+    <li><strong>エディタから開く</strong>：<span class="ui">Window ▸ Analysis ▸ プロファイラーを開く</span>（<kbd>Ctrl</kbd>+<kbd>7</kbd>）を選びます。エディタの下の Profiler パネルの <span class="ui">詳しく見る</span> でも同じです。エディタの隣の <span class="path">CoreEngineProfiler.exe</span> が起動して、そのエディタ（<code>127.0.0.1:8086</code>）へつなぎます。</li>
     <li><strong>見る</strong>つながると上の帯が <span class="ui">接続中</span> になり、そこから記録が始まります。受け取りながら、下の 4 つのタブを見られます（<a href="#tracy-coreengine-profiler">画面の見方</a>）。</li>
     <li><strong>止めて保存する</strong><span class="ui">記録を止める</span> で受け取りを止め、<span class="ui">保存…</span>（<kbd>Ctrl</kbd>+<kbd>S</kbd>）で <span class="path">.tracy</span> に書きます。エディタを閉じたときも受け取りは止まり、それまでの分はプロファイラーに残ります。保存していない記録があるまま窓を閉じようとすると、確かめる窓が出ます。</li>
   </ol>
@@ -12347,6 +12348,7 @@ python Tools/OkinawaBeach/bake_araha_walk.py
       <tr><td>CoreEngine … Worker N</td><td>スレッドプールの仕事 1 つずつ（読み込み・変換など。名前は仕事を頼んだ所が付けた名前）</td></tr>
       <tr><td>Direct Queue（GPU）</td><td>描画のパスと、パスの中の細かい段（水面の FFT など）・<code>ImGui Draw</code> の GPU の時間</td></tr>
       <tr><td>メッセージ</td><td>ログの警告とエラー（カテゴリの名前付き）。CoreEngine Profiler ではログのタブに出ます</td></tr>
+      <tr><td>グラフ</td><td><code>TextureLoader: 待ち</code>・<code>TextureLoader: 実行中</code>・<code>ModelLoader: 待ち</code>・<code>ModelLoader: 実行中</code>（読み込みのスレッドプールの、待っている仕事と動いている仕事の数）。元の Tracy の画面だけに出ます</td></tr>
     </tbody>
   </table>
   </div>
@@ -12902,6 +12904,15 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-125-0">v0.125.0 <span class="dim">（2026-11-28）</span></h3>
+  <p>エディタの中で時間を見るパネルを、CoreEngine Profiler と重ならないように整理した版です（<a href="#profiling-stats">Profiler パネルと Engine Stats で時間を見る</a>）。書き出したゲームの見た目と動き、シーンとプロジェクトの保存の形は前の版と同じです。</p>
+  <ul>
+    <li><strong>Thread Profiler をなくしました</strong>：スレッドプールのワーカーが何をしているかは、CoreEngine Profiler のタイムラインのワーカーの行で見ます。読み込みのスレッドプールの待っている仕事と動いている仕事の数は、Tracy のグラフとして送ります（元の Tracy の画面だけに出ます）。仕事ごとの待ち時間と、ワーカーの占有率は見られなくなりました。</li>
+    <li><strong>Profiler パネル</strong>：タブをやめて 1 画面にし、グラフと、フレーム合計・GPU のパスの上位 5 つ・メモリの数字だけにしました。<span class="ui">パス別</span> のタブは Engine Stats の <span class="ui">パフォーマンス</span> タブと同じ表だったのでなくしました。右の列のスクリプトの型ごとの時間は、CoreEngine Profiler の区間（「クラス名::関数名」）で見ます。スクリプトの GC のオブジェクトと待機中のコンテキストの数は、スクリプトの行の下へ移しました。</li>
+    <li><strong>Engine Stats</strong>：<span class="ui">パフォーマンス</span> タブのフレームの時間のグラフをなくしました。Profiler パネルのグラフと同じ線だったためです。GPU の内訳の積み上げのグラフと表は残っています。</li>
+    <li><strong>スレッドプール</strong>：Thread Profiler のためだけに取っていた記録（直近 256 件の仕事・ワーカーごとの状態・待ち時間）をやめました。仕事を始めるときと終えるときに取っていた、記録のためのロックが無くなりました。</li>
+  </ul>
 
   <h3 id="changelog-v0-124-0">v0.124.0 <span class="dim">（2026-11-28）</span></h3>
   <p>Tracy で、フレームの <code>Update</code> の中を、シーンの更新の段・Feature・オブジェクトの Update と LateUpdate・スクリプトの関数ごとに分けて見られるようにした版です（<a href="#profiling-tracy">プロファイラーで処理の時間を見る</a>）。前の版では <code>Update</code> が 1 本の帯で、どの処理が長いのかを見分けられませんでした。Tracy につないでいないときの動き、書き出したゲーム、シーンとプロジェクトの保存の形は前の版と同じです。</p>

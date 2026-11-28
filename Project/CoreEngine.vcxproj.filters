@@ -1528,9 +1528,6 @@
     <ClCompile Include="Engine\Src\WinApp\ScreenCapture.cpp">
       <Filter>Engine\Src\WinApp</Filter>
     </ClCompile>
-    <ClCompile Include="Engine\Src\Editor\ImGui\ThreadProfilerUI.cpp">
-      <Filter>Engine\Src\Editor\ImGui</Filter>
-    </ClCompile>
     <ClCompile Include="Engine\Src\Utility\Debug\LivePPAgent.cpp">
       <Filter>Engine\Src\Utility\Debug</Filter>
     </ClCompile>
@@ -4298,9 +4295,6 @@
     </ClInclude>
     <ClInclude Include="Engine\Src\WinApp\ScreenCapture.h">
       <Filter>Engine\Src\WinApp</Filter>
-    </ClInclude>
-    <ClInclude Include="Engine\Src\Editor\ImGui\ThreadProfilerUI.h">
-      <Filter>Engine\Src\Editor\ImGui</Filter>
     </ClInclude>
     <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\ImGuiWidgets.h">
       <Filter>Engine\Src\Editor\ImGui\Widgets</Filter>

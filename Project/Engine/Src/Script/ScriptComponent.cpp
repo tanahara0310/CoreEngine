@@ -178,7 +178,7 @@ namespace CoreEngine
         argument->Release();
 
         const std::chrono::duration<double, std::milli> elapsed = std::chrono::steady_clock::now() - started;
-        type_->AddFrameCost(elapsed.count(), false);
+        type_->AddFrameCost(elapsed.count());
 
         if (!finished) {
             SetEnabled(false);
@@ -459,7 +459,7 @@ namespace CoreEngine
 
         if (perFrame) {
             const std::chrono::duration<double, std::milli> elapsed = std::chrono::steady_clock::now() - started;
-            type_->AddFrameCost(elapsed.count(), method == ScriptComponentType::Method::Update);
+            type_->AddFrameCost(elapsed.count());
         }
         if (!finished) {
             SetEnabled(false);
@@ -520,9 +520,9 @@ namespace CoreEngine
             [this, method]() { return DescribeMethod(method); });
         collision->Release();
 
-        // 触れている間は毎フレーム呼ばれるので、型ごとの実行時間に数える（実体の数には数えない）
+        // 触れている間は毎フレーム呼ばれるので、型ごとの実行時間に数える
         const std::chrono::duration<double, std::milli> elapsed = std::chrono::steady_clock::now() - started;
-        type_->AddFrameCost(elapsed.count(), false);
+        type_->AddFrameCost(elapsed.count());
 
         if (!finished) {
             SetEnabled(false);

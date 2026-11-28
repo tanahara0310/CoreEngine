@@ -1,6 +1,5 @@
 #pragma once
 
-#include <array>
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -49,11 +48,8 @@ namespace CoreEngine
     class ThreadPool
     {
     public:
-        /// @brief ワーカー数の上限（統計用の固定長配列サイズ）
+        /// @brief ワーカー数の上限
         static constexpr uint32_t kMaxWorkers = 32;
-
-        /// @brief 直近のタスク実行履歴を保持する件数
-        static constexpr size_t kRecentTaskCapacity = 256;
 
         explicit ThreadPool(const ThreadPoolDesc& desc);
 
@@ -98,29 +94,6 @@ namespace CoreEngine
         uint32_t GetThreadCount() const { return static_cast<uint32_t>(workers_.size()); }
         const std::string& GetName() const { return name_; }
 
-        /// @brief ワーカー 1 本ぶんの状態
-        struct WorkerState
-        {
-            bool        busy = false;             ///< 現在タスクを実行中か
-            std::string currentTask;              ///< 実行中タスクのラベル（待機中は空）
-            double      currentElapsedMs = 0.0;   ///< 実行中タスクの経過時間
-            uint64_t    completedTasks = 0;       ///< このワーカーが完了させた総数
-            double      busyMs = 0.0;             ///< このワーカーの累計実行時間
-        };
-
-        /// @brief 完了したタスク 1 件の記録
-        struct TaskRecord
-        {
-            std::string label;
-
-            /// @brief 実行したワーカー番号。kMaxWorkers なら
-            ///        「プール外のスレッドが Wait() 経由で手伝ったぶん」
-            uint32_t    workerIndex = 0;
-            double      waitMs = 0.0;   ///< 投入されてから実行開始までの待ち時間
-            double      runMs = 0.0;    ///< 実行時間
-            double      startMs = 0.0;  ///< 計測開始（リセット時点）からの経過
-        };
-
         /// @brief プールの統計スナップショット
         struct Stats
         {
@@ -128,61 +101,29 @@ namespace CoreEngine
             uint32_t workerCount = 0;
             uint32_t activeTasks = 0;      ///< 実行中タスク数（= ビジーなワーカー数）
             size_t   pendingTasks = 0;     ///< キューで待っているタスク数
-            uint64_t totalSubmitted = 0;   ///< 計測開始以降の総投入数
-            uint64_t totalCompleted = 0;   ///< 計測開始以降の総完了数
-            double   elapsedMs = 0.0;      ///< 計測開始からの壁時計
-            double   activeSpanMs = 0.0;   ///< 最初のタスク開始から最後のタスク終了までの幅
+            uint64_t totalSubmitted = 0;   ///< 作ってからの総投入数
+            uint64_t totalCompleted = 0;   ///< 作ってからの総完了数
             double   totalBusyMs = 0.0;    ///< 全ワーカーの実行時間の合計
-            double   totalWaitMs = 0.0;    ///< 全タスクの待ち時間の合計
-            double   maxWaitMs = 0.0;      ///< 最も長かった待ち時間
-            double   maxRunMs = 0.0;       ///< 最も長かった実行時間
-            uint32_t peakActiveTasks = 0;  ///< 同時実行数のピーク
-
-            std::array<WorkerState, kMaxWorkers> workers{};
-
-            /// @brief 占有率 = 全ワーカー実行時間 / (稼働区間 × ワーカー数)
-            /// @note 分母は「計測開始からの経過」ではなく「稼働区間」。経過で割ると常に 0% 近くになる。
-            double GetOccupancy() const
-            {
-                const double denominator = activeSpanMs * static_cast<double>(workerCount);
-                return denominator > 0.0 ? totalBusyMs / denominator : 0.0;
-            }
-
-            /// @brief 直列実行との比 = 全ワーカー実行時間 / 稼働区間
-            /// @warning フルロード時はスループット低下ぶん大きく出る。最終評価は壁時計の A/B で。
-            double GetParallelSpeedup() const
-            {
-                return activeSpanMs > 0.0 ? totalBusyMs / activeSpanMs : 0.0;
-            }
         };
 
         /// @brief 現在の統計を取得
         Stats GetStats() const;
 
-        /// @brief 直近に完了したタスクの記録を古い順に取得
-        std::vector<TaskRecord> GetRecentTasks() const;
-
-        /// @brief 統計と履歴をリセットし、計測開始時点を今にする
-        /// @note 「起動中の集計」と「ゲーム中の集計」を混ぜないために必要。
-        ///       混ざると起動時の巨大な値に引きずられて現在の状態が読めない。
-        void ResetStats();
-
     private:
-        /// @brief キューに積まれたタスク 1 件（本体・ラベル・投入時刻）
+        /// @brief キューに積まれたタスク 1 件（本体とラベル）
         struct Task
         {
             std::function<void()> fn;
             std::string           label;
-            std::chrono::steady_clock::time_point enqueuedAt;
         };
 
-        void WorkerLoop(uint32_t workerIndex);
+        void WorkerLoop();
 
         /// @brief ワーカーを起動する（両コンストラクタの共通処理）
         void Launch(const ThreadPoolDesc& desc);
 
         /// @brief タスク 1 件を実行し、統計を記録する
-        void RunTask(Task&& task, uint32_t workerIndex);
+        void RunTask(Task&& task);
 
         /// @brief キューから 1 件取り出す（取れなければ false）
         bool PopTask(Task& outTask);
@@ -197,37 +138,12 @@ namespace CoreEngine
         std::condition_variable   condition_;
         bool                      stopping_ = false;
 
-        // pendingTasks を atomic で持つことで GetStats が queueMutex_ を取らずに済む。
-        // UI は毎フレーム GetStats を呼ぶので、ここでワーカーと競合させたくない。
+        // 統計は atomic で持ち、GetStats が queueMutex_ を取らずに読めるようにする
         std::atomic<size_t>   pendingCount_{ 0 };
         std::atomic<uint32_t> activeTasks_{ 0 };
         std::atomic<uint64_t> totalSubmitted_{ 0 };
         std::atomic<uint64_t> totalCompleted_{ 0 };
-
-        // ─── 統計（statsMutex_ が守る）────────────────────────────
-        // ワーカーはタスクの開始と終了で 2 回だけこのロックを取る。
-        // タスク本体はロックの外で走るので、粒度が ms 級なら競合は無視できる。
-        mutable std::mutex statsMutex_;
-        std::chrono::steady_clock::time_point epoch_;
-        std::array<WorkerState, kMaxWorkers>  workerStates_{};
-
-        // 実行中タスクの開始時刻。WorkerState に持たせず内部に隔離してあるのは、
-        // 公開構造体に time_point を晒すと利用側が epoch_ を知らずに差を取れないため。
-        // 経過時間の計算は GetStats が行い、外へは ms だけを渡す。
-        std::array<std::chrono::steady_clock::time_point, kMaxWorkers> workerTaskStart_{};
-        std::vector<TaskRecord> recentTasks_;
-        size_t   recentHead_ = 0;
-        double   totalBusyMs_ = 0.0;
-        double   totalWaitMs_ = 0.0;
-
-        // 稼働区間（最初のタスク開始 〜 最後のタスク終了）。epoch_ からの相対 ms。
-        // 占有率と直列比の分母。詳細は Stats::GetOccupancy の note を参照
-        bool     hasActivity_ = false;
-        double   firstTaskStartMs_ = 0.0;
-        double   lastTaskEndMs_ = 0.0;
-        double   maxWaitMs_ = 0.0;
-        double   maxRunMs_ = 0.0;
-        uint32_t peakActiveTasks_ = 0;
+        std::atomic<int64_t>  totalBusyNs_{ 0 };   ///< 全ワーカーの実行時間の合計（ナノ秒）
     };
 
     // ─────────────────────────────────────────────────────────────
@@ -248,7 +164,6 @@ namespace CoreEngine
         Task task;
         task.fn = [packaged]() { (*packaged)(); };
         task.label = std::string(label);
-        task.enqueuedAt = std::chrono::steady_clock::now();
 
         bool runInline = false;
         {
