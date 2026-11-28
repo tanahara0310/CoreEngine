@@ -181,6 +181,16 @@ namespace CoreEngine
         /// @brief 項目 1 件の右クリックメニュー（コピー・切り取り・名前の変更・削除）
         void DrawEntryContextMenu(const Entry& entry);
 
+        /// @brief 左のフォルダの木の右クリックメニュー（作成・名前の変更・削除）
+        /// @param folder 右クリックしたフォルダ
+        void DrawFolderContextMenu(const std::filesystem::path& folder);
+
+        /// @brief 今のフォルダが無くなっていたら、残っている一番近い親へ移る
+        void LeaveMissingFolder();
+
+        /// @brief 名前を変えたフォルダの中にいたら、新しい名前の側へ付いていく
+        void FollowRenamedFolder(const std::filesystem::path& before, const std::filesystem::path& after);
+
         /// @brief 選ばれているか
         bool IsSelected(const std::filesystem::path& path) const;
 
@@ -194,7 +204,8 @@ namespace CoreEngine
         void DrawNewFolderDialog();
 
         /// @brief 新しいフォルダを作る窓を開く
-        void OpenNewFolderDialog();
+        /// @param parent 作る場所
+        void OpenNewFolderDialog(const std::filesystem::path& parent);
 
         /// @brief 名前を変える窓
         void DrawRenameDialog();
@@ -277,6 +288,7 @@ namespace CoreEngine
         int selectionAnchor_ = -1;            ///< Shift での範囲選択の起点
         std::uint64_t selectionClickCount_ = 0; ///< 項目をクリックして選び直した回数
         std::vector<Entry> shownEntries_;     ///< このフレームに並べたもの（範囲選択が使う）
+        bool entryHoveredThisFrame_ = false;  ///< このフレームに項目の上にマウスがあったか（空きの右クリックと分ける）
 
         // 名前を変える窓
         bool showRenameDialog_ = false;
@@ -288,9 +300,13 @@ namespace CoreEngine
         bool showDeleteDialog_ = false;
         std::vector<std::filesystem::path> deleteTargets_;
         std::string deleteError_;
+        bool deleteHasFolder_ = false;        ///< 消すものにフォルダが入っているか
+        std::size_t deleteFileCount_ = 0;     ///< 消すフォルダの中のファイルの数（.meta は数えない）
+        bool deleteHasEngineAsset_ = false;   ///< 消すものにエンジンのアセットが入っているか
 
         // 新しいフォルダを作る窓
         bool showNewFolderDialog_ = false;
+        std::filesystem::path newFolderParent_;
         char newFolderName_[128] = {};
         std::string newFolderError_;
 

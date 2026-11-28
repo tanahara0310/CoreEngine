@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.126.0">
+<meta name="engine-version" content="0.127.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -3071,13 +3071,14 @@ kbd {
       <tr><td>選ぶ</td><td>行をクリック（矢印のクリックは開閉だけ）</td></tr>
       <tr><td>作る</td><td><span class="ui">GameObject</span> メニュー、または Project からモデル・プレハブを Game ビューへドラッグ</td></tr>
       <tr><td>名前を変える</td><td><strong>Inspector の一番上の名前欄</strong>で変えます</td></tr>
-      <tr><td>複製</td><td><kbd>Ctrl</kbd>+<kbd>D</kbd>（Hierarchy か Game を選んでいるとき）。子と孫も一緒に複製し、複製の中で互いを指す欄は複製どうしへ付け替えます</td></tr>
-      <tr><td>削除</td><td><kbd>Delete</kbd>、または <span class="ui">GameObject<span class="arrow">▸</span>削除</span>。子と孫も一緒に消え、<kbd>Ctrl</kbd>+<kbd>Z</kbd> 1 回でまとめて戻ります。置いた物の中のプレハブの子は消せません</td></tr>
+      <tr><td>複製</td><td>行を右クリック <span class="ui">複製</span>、または <kbd>Ctrl</kbd>+<kbd>D</kbd>（Hierarchy か Game を選んでいるとき）。子と孫も一緒に複製し、複製の中で互いを指す欄は複製どうしへ付け替えます</td></tr>
+      <tr><td>削除</td><td>行を右クリック <span class="ui">削除</span>、<kbd>Delete</kbd>、または <span class="ui">GameObject<span class="arrow">▸</span>削除</span>。子と孫も一緒に消え、<kbd>Ctrl</kbd>+<kbd>Z</kbd> 1 回でまとめて戻ります。消すと画面の上に「〜を削除しました」と出ます。置いた物の中のプレハブの子は消せません</td></tr>
       <tr><td>親子にする</td><td>子にしたいものを選び、Inspector の <span class="ui">トランスフォーム</span> の <span class="ui">親</span> 欄で親を選ぶ（Hierarchy の行を <span class="ui">親</span> 欄へドラッグしても設定できます）。UI は、子にしたい行を親の行へドラッグしても親子にでき、シーンの名前の行へ落とすと親を外します（<a href="#ui-parent">UI の親子</a>）</td></tr>
       <tr><td>プレハブにする</td><td>行を右クリック <span class="ui">プレハブとして保存</span>。<a href="#editor-prefab">詳しく</a></td></tr>
     </tbody>
   </table>
   </div>
+  <div class="callout note"><p>コードが作ったオブジェクト（大気や既定の床など、Feature やスクリプトが作るもの）と、シーンに保存しないオブジェクトは、エディタから複製・削除できません。右クリックのメニューでは <span class="ui">複製</span> と <span class="ui">削除</span> が灰色になり、マウスを載せると訳が出ます。消すときは、作っているコードの側で止めます。</p></div>
   <div class="callout note"><p>Hierarchy の中でのドラッグによる親子付けは UI だけで、3D のオブジェクトの親子は Inspector の <span class="ui">親</span> 欄で決めます。名前での絞り込みはありません。</p></div>
   <div class="callout warn"><p><kbd>Ctrl</kbd>+<kbd>C</kbd> も、文字を入力しているとき以外は<strong>選んでいるオブジェクトの複製</strong>になります。コピーのつもりで押すと複製が増えるので注意してください。</p></div>
 </article>
@@ -3220,19 +3221,20 @@ kbd {
   <table>
     <thead><tr><th>操作</th><th>やり方</th></tr></thead>
     <tbody>
-      <tr><td>フォルダを作る</td><td>空いている所を右クリック <span class="ui">フォルダを作成...</span></td></tr>
+      <tr><td>フォルダを作る</td><td>右の一覧の空いている所を右クリック <span class="ui">フォルダを作成...</span>（今開いているフォルダの中に作ります）。左のフォルダの木でフォルダを右クリックして <span class="ui">フォルダを作成...</span> を選ぶと、そのフォルダの中に作ります</td></tr>
       <tr><td>スクリプトを作る</td><td><span class="ui">＋ 作成</span>、または右クリック <span class="ui">スクリプトを作成...</span>。<a href="#script-first">詳しく</a></td></tr>
       <tr><td>マテリアルを作る</td><td>右クリック <span class="ui">マテリアルを作成...</span>（シェーダの雛形も作れます）。選ぶとインスペクタで値を変えられます。<a href="#script-material">詳しく</a></td></tr>
       <tr><td>シェーダーグラフを作る</td><td>右クリック <span class="ui">シェーダーグラフを作成...</span>（目標を選び、グラフ・シェーダ・マテリアルを作って開きます）。部品にするサブグラフは <span class="ui">シェーダーサブグラフを作成...</span>。.shadergraph と .shadersubgraph はダブルクリックで開きます。<a href="#shader-graph">詳しく</a></td></tr>
-      <tr><td>名前を変える</td><td><kbd>F2</kbd>、または右クリック <span class="ui">名前を変更</span>（.meta も一緒に変わり、GUID は保たれます）</td></tr>
-      <tr><td>コピー・切り取り・貼り付け</td><td><kbd>Ctrl</kbd>+<kbd>C</kbd> ／ <kbd>X</kbd> ／ <kbd>V</kbd>（コピーには新しい GUID が付きます）</td></tr>
-      <tr><td>削除</td><td><kbd>Delete</kbd>（ごみ箱へ送るので、エクスプローラのごみ箱から戻せます）</td></tr>
+      <tr><td>名前を変える</td><td><kbd>F2</kbd>、または右クリック <span class="ui">名前を変更</span>（.meta も一緒に変わり、GUID は保たれます）。左のフォルダの木のフォルダも、右クリックで変えられます</td></tr>
+      <tr><td>コピー・切り取り・貼り付け</td><td><kbd>Ctrl</kbd>+<kbd>C</kbd> ／ <kbd>X</kbd> ／ <kbd>V</kbd>、または右クリック（コピーには新しい GUID が付きます）</td></tr>
+      <tr><td>削除</td><td>右クリック <span class="ui">削除</span> か <kbd>Delete</kbd>。確認の窓に、消すものの名前と、フォルダなら中のファイルの数が出ます。<span class="ui">ごみ箱へ移す</span> を押すと Windows のごみ箱へ移るので、間違えたらエクスプローラのごみ箱から戻せます。左のフォルダの木のフォルダも、右クリックで削除できます</td></tr>
       <tr><td>選択</td><td>クリック、<kbd>Ctrl</kbd>+クリックで追加、<kbd>Shift</kbd>+クリックで範囲、<kbd>Ctrl</kbd>+<kbd>A</kbd> で全部</td></tr>
       <tr><td>エクスプローラで開く</td><td>右クリック <span class="ui">エクスプローラで開く</span></td></tr>
       <tr><td>ダブルクリック</td><td>フォルダなら中へ。ファイルは Windows に関連付けたアプリで開きます</td></tr>
     </tbody>
   </table>
   </div>
+  <div class="callout warn" data-title="変えられないフォルダとエンジンのアセット"><p>Assets の一番上のフォルダ（<span class="path">Application</span> と <span class="path">Engine</span>）は、名前の変更・切り取り・削除ができません（メニューが灰色になり、マウスを載せると訳が出ます）。<span class="path">Engine</span> の中のものはエンジンのアセットで、このエンジンを使うどのプロジェクトからも見えます。消すと全部のプロジェクトから無くなるので、確認の窓にも注意が出ます。</p></div>
   <div class="callout tip"><p>ファイルの移動や名前の変更は、<strong>エクスプローラではなく Project で行う</strong>と .meta が一緒に動き、参照が切れません。スクリプトのファイル名を変えたときは、中のクラス名も同じ名前に変えてください。</p></div>
   <div class="callout note"><p>シーンは File メニューの <span class="ui">シーンを開く</span> か <kbd>Ctrl</kbd>+<kbd>O</kbd> で開きます（Project のダブルクリックでは開きません）。スクリプトを VS Code で開くには、Inspector の <span class="ui">スクリプトを開く</span> か Console のリンクを使います。</p></div>
 </article>
@@ -12919,6 +12921,16 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-127-0">v0.127.0 <span class="dim">（2026-11-28）</span></h3>
+  <p>Hierarchy のオブジェクトと、Project のファイルとフォルダを、右クリックのメニューから消せるようにした版です（<a href="#hierarchy-ops">Hierarchy の操作</a>・<a href="#project-ops">Project のファイルの操作</a>）。書き出したゲームの見た目と動き、シーンとプロジェクトの保存の形は前の版と同じです。</p>
+  <ul>
+    <li><strong>Hierarchy の右クリック</strong>：<span class="ui">複製</span> と <span class="ui">削除</span> を足しました。右クリックした行を選んでから働きます。コードが作ったオブジェクトなど消せないものは灰色になり、マウスを載せると訳が出ます。消すと「〜を削除しました（Ctrl+Z で戻せます）」と出ます。</li>
+    <li><strong>Project の一覧の右クリック</strong>：グリッド表示でファイルやフォルダを右クリックしても作成のメニューが出ていたのを直し、その項目のメニュー（コピー・切り取り・貼り付け・名前を変更・削除・エクスプローラで開く）が出るようにしました。</li>
+    <li><strong>Project のフォルダの木の右クリック</strong>：左のフォルダの木で、フォルダの作成・名前の変更・削除・エクスプローラで開くができるようになりました。開いているフォルダを消したときは残っている親へ、名前を変えたときは新しい名前のフォルダへ移ります。<span class="path">Application</span> や <span class="path">Engine</span> そのものを開いたときに、木のその根が閉じてしまっていたのも直しました。</li>
+    <li><strong>削除の確認の窓</strong>：フォルダなら中のファイルの数を、エンジンのアセットならどのプロジェクトからも消えることを出します。押すボタンは <span class="ui">ごみ箱へ移す</span> になりました。</li>
+    <li><strong>変えられないもの</strong>：Assets の一番上のフォルダ（<span class="path">Application</span> と <span class="path">Engine</span>）は、名前の変更・切り取り・削除ができなくなりました。前の版では、Assets の一覧から選ぶとフォルダごと消せました。</li>
+  </ul>
 
   <h3 id="changelog-v0-126-0">v0.126.0 <span class="dim">（2026-11-28）</span></h3>
   <p>プロジェクトを選ぶ画面から、プロジェクトをフォルダごと削除できるようにした版です（<a href="#first-project-delete">プロジェクトを削除する</a>）。書き出したゲームの見た目と動き、シーンとプロジェクトの保存の形は前の版と同じです。</p>

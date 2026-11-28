@@ -52,6 +52,15 @@ namespace CoreEngine::Editor
         /// @brief 触ってよい場所か（プロジェクトの Assets の中だけを許す）
         bool IsEditableLocation(const std::filesystem::path& target, std::string* outError = nullptr);
 
+        /// @brief Assets の一番上のフォルダ（Application/Assets・Engine/Assets）そのものか
+        bool IsAssetRoot(const std::filesystem::path& target);
+
+        /// @brief エンジンの Assets（Engine/Assets）の中のものか
+        bool IsEngineAsset(const std::filesystem::path& target);
+
+        /// @brief 名前を変える・移す・消す対象にしてよいか（Assets の中で、一番上のフォルダそのものではない）
+        bool CanChange(const std::filesystem::path& target, std::string* outError = nullptr);
+
         /// @brief 同じ名前があれば「名前 (2)」のように空いている名前を作る
         std::filesystem::path MakeUniquePath(const std::filesystem::path& desired);
     }

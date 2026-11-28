@@ -47,6 +47,25 @@ namespace CoreEngine
             return !relative.empty() && *relative.begin() != "..";
         }
 
+        /// @brief 無効にした項目の上にマウスがあるとき、使えない訳を出す
+        void ExplainDisabled(bool enabled, const std::string& reason)
+        {
+            if (!enabled && !reason.empty() && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                ImGui::SetTooltip("%s", reason.c_str());
+            }
+        }
+
+        /// @brief 全部を名前の変更・移動・削除の対象にできるか（できなければ最初に引っかかった訳を返す）
+        bool CanChangeAll(const std::vector<std::filesystem::path>& targets, std::string* outReason)
+        {
+            for (const std::filesystem::path& target : targets) {
+                if (!Editor::AssetFileOperations::CanChange(target, outReason)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         /// @brief 種類ごとの記号と色
         struct KindStyle
         {
@@ -213,6 +232,7 @@ namespace CoreEngine
         const uint64_t assetRevision = AssetDatabase::GetInstance().GetRevision();
         if (assetRevision != seenAssetRevision_) {
             seenAssetRevision_ = assetRevision;
+            LeaveMissingFolder();
             currentEntries_ = GetCurrentDirectoryContents();
             hasSubdirCache_.clear();
             treeDirCache_.clear();
@@ -246,6 +266,7 @@ namespace CoreEngine
             {
                 const std::vector<Entry> shown = FilterEntries(currentEntries_);
                 shownEntries_ = shown;
+                entryHoveredThisFrame_ = false;
                 if (useListView_) {
                     DrawListLayout(shown);
                 } else {
@@ -414,6 +435,34 @@ namespace CoreEngine
         selectedIndex_ = -1;
         hasSubdirCache_.clear();
         treeDirCache_.clear();
+    }
+
+    void ProjectView::LeaveMissingFolder()
+    {
+        std::error_code ec;
+        std::filesystem::path folder = currentPath_;
+        while (folder != rootPath_ && !std::filesystem::is_directory(folder, ec)) {
+            // Assets の一番上より外へは出ず、仮想ルートへ戻る
+            if (folder == appAssetsPath_ || folder == engineAssetsPath_ || folder.parent_path() == folder) {
+                folder = rootPath_;
+                break;
+            }
+            folder = folder.parent_path();
+        }
+        if (folder == currentPath_) {
+            return;
+        }
+        currentPath_ = folder;
+        selectedIndex_ = -1;
+    }
+
+    void ProjectView::FollowRenamedFolder(const std::filesystem::path& before, const std::filesystem::path& after)
+    {
+        if (!IsWithin(currentPath_, before)) {
+            return;
+        }
+        const std::filesystem::path inside = currentPath_.lexically_normal().lexically_relative(before.lexically_normal());
+        currentPath_ = (inside == ".") ? after : after / inside;
     }
 
     void ProjectView::NavigateUp()
@@ -685,6 +734,10 @@ namespace CoreEngine
 
     void ProjectView::HandleEntryInteraction(const Entry& entry, int index)
     {
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
+            entryHoveredThisFrame_ = true;
+        }
+
         // 押して離したら選択（ドラッグしたときは選択を変えない）、ダブルクリックで潜る / 開く
         if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(0)) {
             const double now = ImGui::GetTime();
@@ -857,11 +910,6 @@ namespace CoreEngine
             return result;
         };
 
-        auto isUnderPath = [](const std::filesystem::path& child, const std::filesystem::path& parent) {
-            auto rel = std::filesystem::relative(child, parent);
-            return !rel.empty() && rel.native()[0] != '.';
-        };
-
         auto drawFolderNode = [&](const std::filesystem::path& nodePath, const std::string& nodeLabel, bool defaultOpen) {
             bool hasChildren = hasSubdirectories(nodePath);
             ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
@@ -904,6 +952,7 @@ namespace CoreEngine
             if (ImGui::IsItemClicked()) {
                 NavigateToDirectory(nodePath);
             }
+            DrawFolderContextMenu(nodePath);
 
             bool pendingClose = false;
             auto pendingIt = treePendingClose_.find(nodeKey);
@@ -936,11 +985,12 @@ namespace CoreEngine
 
         try {
             if (path == rootPath_) {
+                // 開いているフォルダを含む根（その根そのものを開いているときも）は開いておく
                 if (std::filesystem::exists(appAssetsPath_)) {
-                    drawFolderNode(appAssetsPath_, "Application", isUnderPath(currentPath_, appAssetsPath_));
+                    drawFolderNode(appAssetsPath_, "Application", IsWithin(currentPath_, appAssetsPath_));
                 }
                 if (std::filesystem::exists(engineAssetsPath_)) {
-                    drawFolderNode(engineAssetsPath_, "Engine", isUnderPath(currentPath_, engineAssetsPath_));
+                    drawFolderNode(engineAssetsPath_, "Engine", IsWithin(currentPath_, engineAssetsPath_));
                 }
                 return;
             }
@@ -1116,9 +1166,10 @@ namespace CoreEngine
         ++selectionClickCount_;
     }
 
-    void ProjectView::OpenNewFolderDialog()
+    void ProjectView::OpenNewFolderDialog(const std::filesystem::path& parent)
     {
         showNewFolderDialog_ = true;
+        newFolderParent_ = parent;
         newFolderError_.clear();
         newFolderName_[0] = '\0';
     }
@@ -1129,20 +1180,27 @@ namespace CoreEngine
         UI::DrawModalDialog({ .title = "新しいフォルダ", .width = 420.0f, .commitLabel = "作成",
                               .show = &showNewFolderDialog_, .error = &newFolderError_ },
             [this] {
-                ImGui::Text("%s の中に作ります", GetRelativePath(currentPath_).c_str());
+                ImGui::Text("%s の中に作ります", GetRelativePath(newFolderParent_).c_str());
                 UI::Separator();
 
                 return UI::InputText("名前", newFolderName_, sizeof(newFolderName_),
                     ImGuiInputTextFlags_EnterReturnsTrue);
             },
             [this, &created] {
-                return Editor::AssetFileOperations::CreateFolder(currentPath_, newFolderName_,
+                return Editor::AssetFileOperations::CreateFolder(newFolderParent_, newFolderName_,
                     &created, &newFolderError_);
             },
             [this, &created] {
+                // 作った場所を開いて、新しいフォルダを選んだ状態にする
                 selection_.assign(1, created);
                 selectedPath_ = created;
-                currentEntries_ = GetCurrentDirectoryContents();
+                hasSubdirCache_.clear();
+                treeDirCache_.clear();
+                if (newFolderParent_ == currentPath_) {
+                    currentEntries_ = GetCurrentDirectoryContents();
+                } else {
+                    NavigateToDirectory(newFolderParent_);
+                }
             });
     }
 
@@ -1168,32 +1226,73 @@ namespace CoreEngine
         }
         ImGui::Separator();
 
+        // Assets の一番上のフォルダは、切り取り・名前の変更・削除の対象にしない
+        std::string changeError;
+        const bool changeable = CanChangeAll(targets, &changeError);
+        const bool canPaste = !clipboardPaths_.empty() && currentPath_ != rootPath_;
+
         if (ImGui::MenuItem("コピー", "Ctrl+C")) {
             clipboardPaths_ = targets;
             clipboardIsCut_ = false;
         }
-        if (ImGui::MenuItem("切り取り", "Ctrl+X")) {
+        if (ImGui::MenuItem("切り取り", "Ctrl+X", false, changeable)) {
             clipboardPaths_ = targets;
             clipboardIsCut_ = true;
         }
-        if (ImGui::MenuItem("貼り付け", "Ctrl+V", false, !clipboardPaths_.empty())) {
+        ExplainDisabled(changeable, changeError);
+        if (ImGui::MenuItem("貼り付け", "Ctrl+V", false, canPaste)) {
             PasteIntoCurrentFolder();
         }
         ImGui::Separator();
-        if (ImGui::MenuItem("名前を変更", "F2", false, single)) {
+        const bool renamable = single && changeable;
+        if (ImGui::MenuItem("名前を変更", "F2", false, renamable)) {
             OpenRenameDialog(targets.front());
         }
-        if (!single && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-            ImGui::SetTooltip("名前を変えられるのは 1 件だけです");
-        }
-        if (ImGui::MenuItem("削除", "Delete")) {
+        ExplainDisabled(renamable, single ? changeError : std::string("名前を変えられるのは 1 件だけです"));
+        if (ImGui::MenuItem("削除", "Delete", false, changeable)) {
             OpenDeleteDialog(targets);
         }
+        ExplainDisabled(changeable, changeError);
         ImGui::Separator();
         if (ImGui::MenuItem("エクスプローラで開く")) {
             const std::wstring folder = entry.isDirectory
                 ? entry.path.wstring() : entry.path.parent_path().wstring();
             ShellExecuteW(nullptr, L"open", folder.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+        }
+
+        ImGui::EndPopup();
+    }
+
+    void ProjectView::DrawFolderContextMenu(const std::filesystem::path& folder)
+    {
+        if (!ImGui::BeginPopupContextItem()) {
+            return;
+        }
+
+        std::string changeError;
+        const bool changeable = Editor::AssetFileOperations::CanChange(folder, &changeError);
+
+        const std::string label = folder == appAssetsPath_ ? std::string("Application")
+            : folder == engineAssetsPath_ ? std::string("Engine")
+            : Logger::GetInstance().PathToUtf8(folder.filename());
+        ImGui::TextDisabled("%s", label.c_str());
+        ImGui::Separator();
+
+        if (ImGui::MenuItem("フォルダを作成...")) {
+            OpenNewFolderDialog(folder);
+        }
+        ImGui::Separator();
+        if (ImGui::MenuItem("名前を変更", nullptr, false, changeable)) {
+            OpenRenameDialog(folder);
+        }
+        ExplainDisabled(changeable, changeError);
+        if (ImGui::MenuItem("削除", nullptr, false, changeable)) {
+            OpenDeleteDialog({ folder });
+        }
+        ExplainDisabled(changeable, changeError);
+        ImGui::Separator();
+        if (ImGui::MenuItem("エクスプローラで開く")) {
+            ShellExecuteW(nullptr, L"open", folder.wstring().c_str(), nullptr, nullptr, SW_SHOWNORMAL);
         }
 
         ImGui::EndPopup();
@@ -1212,11 +1311,22 @@ namespace CoreEngine
 
         const bool ctrl = ImGui::GetIO().KeyCtrl;
         const std::vector<std::filesystem::path> targets = SelectedPaths();
+
+        // 切り取り・名前の変更・削除は、対象にできないものが混ざっていたら訳をログへ出して止める
+        const auto changeable = [&targets] {
+            std::string reason;
+            if (CanChangeAll(targets, &reason)) {
+                return true;
+            }
+            Logger::GetInstance().Logf(LogLevel::Warn, LogCategory::System, "{}", reason);
+            return false;
+            };
+
         if (ctrl && ImGui::IsKeyPressed(ImGuiKey_C) && !targets.empty()) {
             clipboardPaths_ = targets;
             clipboardIsCut_ = false;
         }
-        if (ctrl && ImGui::IsKeyPressed(ImGuiKey_X) && !targets.empty()) {
+        if (ctrl && ImGui::IsKeyPressed(ImGuiKey_X) && !targets.empty() && changeable()) {
             clipboardPaths_ = targets;
             clipboardIsCut_ = true;
         }
@@ -1230,10 +1340,10 @@ namespace CoreEngine
             }
             selectedPath_ = selection_.back();
         }
-        if (ImGui::IsKeyPressed(ImGuiKey_F2) && targets.size() == 1) {
+        if (ImGui::IsKeyPressed(ImGuiKey_F2) && targets.size() == 1 && changeable()) {
             OpenRenameDialog(targets.front());
         }
-        if (ImGui::IsKeyPressed(ImGuiKey_Delete) && !targets.empty()) {
+        if (ImGui::IsKeyPressed(ImGuiKey_Delete) && !targets.empty() && changeable()) {
             OpenDeleteDialog(targets);
         }
     }
@@ -1303,8 +1413,12 @@ namespace CoreEngine
                 return Editor::AssetFileOperations::Rename(renameTarget_, renameBuffer_, &result, &renameError_);
             },
             [this, &result] {
+                // 開いているフォルダかその親の名前を変えたら、新しい名前の側を開き直す
+                FollowRenamedFolder(renameTarget_, result);
                 selection_.assign(1, result);
                 selectedPath_ = result;
+                hasSubdirCache_.clear();
+                treeDirCache_.clear();
                 currentEntries_ = GetCurrentDirectoryContents();
             });
     }
@@ -1317,19 +1431,36 @@ namespace CoreEngine
         showDeleteDialog_ = true;
         deleteTargets_ = std::move(targets);
         deleteError_.clear();
+
+        // 窓に出す注意（フォルダの中のファイルの数・エンジンのアセットか）を開いたときに数えておく
+        deleteHasFolder_ = false;
+        deleteFileCount_ = 0;
+        deleteHasEngineAsset_ = false;
+        for (const std::filesystem::path& target : deleteTargets_) {
+            deleteHasEngineAsset_ = deleteHasEngineAsset_ || Editor::AssetFileOperations::IsEngineAsset(target);
+
+            std::error_code ec;
+            if (!std::filesystem::is_directory(target, ec)) {
+                continue;
+            }
+            deleteHasFolder_ = true;
+            auto it = std::filesystem::recursive_directory_iterator(target,
+                std::filesystem::directory_options::skip_permission_denied, ec);
+            for (const auto end = std::filesystem::recursive_directory_iterator(); !ec && it != end; it.increment(ec)) {
+                std::error_code fileEc;
+                if (it->is_regular_file(fileEc) && it->path().extension() != ".meta") {
+                    ++deleteFileCount_;
+                }
+            }
+        }
     }
 
     void ProjectView::DrawDeleteDialog()
     {
-        UI::DrawModalDialog({ .title = "削除", .width = 440.0f, .commitLabel = "削除",
+        UI::DrawModalDialog({ .title = "削除", .width = 460.0f, .commitLabel = "ごみ箱へ移す",
                               .show = &showDeleteDialog_, .error = &deleteError_ },
             [this] {
                 Logger& logger = Logger::GetInstance();
-                std::error_code ec;
-                bool anyDirectory = false;
-                for (const std::filesystem::path& target : deleteTargets_) {
-                    anyDirectory = anyDirectory || std::filesystem::is_directory(target, ec);
-                }
 
                 if (deleteTargets_.size() == 1) {
                     ImGui::Text("%s を削除しますか？",
@@ -1345,8 +1476,15 @@ namespace CoreEngine
                         ImGui::BulletText("ほか %zu 件", deleteTargets_.size() - kShowAtMost);
                     }
                 }
-                if (anyDirectory) {
-                    ImGui::TextColored(Theme::kError, "フォルダの中身もまとめて消えます。");
+                if (deleteHasFolder_) {
+                    if (deleteFileCount_ > 0) {
+                        ImGui::TextColored(Theme::kError, "フォルダの中のファイル %zu 個もまとめて消えます。", deleteFileCount_);
+                    } else {
+                        ImGui::TextColored(Theme::kError, "フォルダの中身もまとめて消えます。");
+                    }
+                }
+                if (deleteHasEngineAsset_) {
+                    ImGui::TextColored(Theme::kWarn, "エンジンのアセットです。このエンジンを使うどのプロジェクトからも消えます。");
                 }
                 UI::Hint("ごみ箱へ送るので、間違えたらエクスプローラのごみ箱から戻せます。");
                 return false;
@@ -1365,6 +1503,10 @@ namespace CoreEngine
                         lastError = error;
                     }
                 }
+                // 開いていたフォルダごと消したときは、残っている親へ移る
+                LeaveMissingFolder();
+                hasSubdirCache_.clear();
+                treeDirCache_.clear();
                 currentEntries_ = GetCurrentDirectoryContents();
                 if (left.empty()) {
                     return true;
@@ -1378,32 +1520,49 @@ namespace CoreEngine
 
     void ProjectView::DrawCreateContextMenu()
     {
-        if (!ImGui::BeginPopupContextWindow("##projectCreate",
-                ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems)) {
+        // 項目の上の右クリックは項目のメニューに任せ、空きを右クリックしたときだけ開く
+        if (!entryHoveredThisFrame_ && !ImGui::IsAnyItemHovered()
+            && ImGui::IsMouseReleased(ImGuiMouseButton_Right)
+            && ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByPopup)) {
+            ImGui::OpenPopup("##projectCreate");
+        }
+        if (!ImGui::BeginPopup("##projectCreate")) {
             return;
         }
-        if (ImGui::MenuItem("フォルダを作成...")) {
-            OpenNewFolderDialog();
+
+        // 仮想ルート（Application と Engine を並べた所）では、スクリプト以外の作成と貼り付けを止める
+        const bool atRoot = currentPath_ == rootPath_;
+        const std::string rootReason = "Application か Engine のフォルダを開いてから作ってください";
+
+        if (ImGui::MenuItem("フォルダを作成...", nullptr, false, !atRoot)) {
+            OpenNewFolderDialog(currentPath_);
         }
+        ExplainDisabled(!atRoot, rootReason);
         if (ImGui::MenuItem("スクリプトを作成...")) {
             OpenNewScriptDialog();
         }
-        if (ImGui::MenuItem("マテリアルを作成...")) {
+        if (ImGui::MenuItem("マテリアルを作成...", nullptr, false, !atRoot)) {
             OpenNewMaterialDialog();
         }
-        if (ImGui::MenuItem("シェーダーグラフを作成...")) {
+        ExplainDisabled(!atRoot, rootReason);
+        if (ImGui::MenuItem("シェーダーグラフを作成...", nullptr, false, !atRoot)) {
             OpenNewShaderGraphDialog(false);
         }
-        if (ImGui::MenuItem("シェーダーサブグラフを作成...")) {
+        ExplainDisabled(!atRoot, rootReason);
+        if (ImGui::MenuItem("シェーダーサブグラフを作成...", nullptr, false, !atRoot)) {
             OpenNewShaderGraphDialog(true);
         }
-        if (ImGui::MenuItem("アニメーター設定を作成...")) {
+        ExplainDisabled(!atRoot, rootReason);
+        if (ImGui::MenuItem("アニメーター設定を作成...", nullptr, false, !atRoot)) {
             OpenNewAnimatorDialog();
         }
+        ExplainDisabled(!atRoot, rootReason);
         ImGui::Separator();
-        if (ImGui::MenuItem("貼り付け", "Ctrl+V", false, !clipboardPaths_.empty())) {
+        const bool canPaste = !clipboardPaths_.empty() && !atRoot;
+        if (ImGui::MenuItem("貼り付け", "Ctrl+V", false, canPaste)) {
             PasteIntoCurrentFolder();
         }
+        ExplainDisabled(canPaste || clipboardPaths_.empty(), rootReason);
         ImGui::EndPopup();
     }
 
