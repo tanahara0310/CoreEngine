@@ -717,7 +717,6 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClCompile Include="Engine\Src\Graphics\Render\GameOutputWindow.cpp" />
     <ClCompile Include="Engine\Src\Editor\ImGui\RenderPassDebugPanel.cpp" />
     <ClCompile Include="Engine\Src\WinApp\ScreenCapture.cpp" />
-    <ClCompile Include="Engine\Src\Editor\ImGui\ThreadProfilerUI.cpp" />
     <ClCompile Include="Engine\Src\Utility\Debug\LivePPAgent.cpp" />
     <ClCompile Include="Engine\Src\Utility\Random\RandomGenerator.cpp" />
     <ClCompile Include="Engine\Src\Utility\Session\SessionValues.cpp" />
@@ -2181,7 +2180,6 @@ if exist "$(TargetDir)SDL3.dll" del "$(TargetDir)SDL3.dll"</Command>
     <ClInclude Include="Engine\Src\Graphics\Render\GameOutputWindow.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\RenderPassDebugPanel.h" />
     <ClInclude Include="Engine\Src\WinApp\ScreenCapture.h" />
-    <ClInclude Include="Engine\Src\Editor\ImGui\ThreadProfilerUI.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\Widgets\ImGuiWidgets.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\Wrappers\ImGuiInput.h" />
     <ClInclude Include="Engine\Src\Editor\ImGui\Wrappers\ImGuiLayout.h" />

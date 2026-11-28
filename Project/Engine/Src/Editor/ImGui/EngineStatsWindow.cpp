@@ -176,7 +176,7 @@ namespace CoreEngine
             TickAutoCapture();
         }
 
-        timingHistory_.Push(snapshotDeltaTimeMs_, hasGpuTimings ? &snapshotGpu_ : nullptr);
+        timingHistory_.Push(hasGpuTimings ? &snapshotGpu_ : nullptr);
     }
 
     void EngineStatsWindow::TickAutoCapture()
@@ -267,10 +267,7 @@ namespace CoreEngine
         ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 4.0f);
         ImGui::TextColored(kLabelColor, "/ %.0f  |  %.3f ms", targetFPS, deltaTimeMs);
 
-        ImGui::Spacing();
-
-        // フレームの時間と GPU の時間（直近のフレーム）
-        timingHistory_.DrawFrameTimePlot("##frame_time_plot", targetFPS, 150.0f);
+        ImGui::TextColored(kLabelColor, "フレームの時間のグラフは Window ▸ Analysis ▸ Profiler にあります");
 
         ImGui::Spacing();
         ImGui::TextColored(kHeaderColor, "  フレーム統計");

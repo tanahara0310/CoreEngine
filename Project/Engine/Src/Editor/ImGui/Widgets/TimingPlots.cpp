@@ -254,12 +254,11 @@ namespace CoreEngine::UI
         ImPlot::EndPlot();
     }
 
-    void TimingHistory::Push(float frameMs, const TimingSlots* gpuSlots)
+    void TimingHistory::Push(const TimingSlots* gpuSlots)
     {
         std::array<float, kGroupCount> groups{};
         float totalMs = 0.0f;
         if (gpuSlots) {
-            hasGpu_ = true;
             for (const GpuTimingResult& slot : *gpuSlots) {
                 if (slot.category == GpuTimingCategory::Frame) {
                     totalMs = slot.gpuMs;
@@ -272,25 +271,10 @@ namespace CoreEngine::UI
             }
         }
 
-        frameMs_.Push(frameMs);
         gpuMs_.Push(totalMs);
         for (int i = 0; i < kGroupCount; ++i) {
             groupMs_[static_cast<size_t>(i)].Push(groups[static_cast<size_t>(i)]);
         }
-    }
-
-    void TimingHistory::DrawFrameTimePlot(const char* id, float targetFps, float height) const
-    {
-        std::array<float, kFrames> frame{};
-        std::array<float, kFrames> gpu{};
-        const int count = Unroll(frameMs_, frame.data());
-        Unroll(gpuMs_, gpu.data());
-
-        const TimeLine lines[] = {
-            { "フレーム", frame.data(), Theme::kSeries[0] },
-            { "GPU", gpu.data(), Theme::kSeries[1] },
-        };
-        DrawTimeLinesPlot(id, std::span<const TimeLine>(lines, hasGpu_ ? 2u : 1u), count, kFrames, targetFps, height);
     }
 
     void TimingHistory::DrawGpuStackPlot(const char* id, float height) const

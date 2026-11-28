@@ -9,7 +9,7 @@
 #include <span>
 
 /// @file
-/// @brief フレームの時間と GPU の時間の履歴と、その線・積み上げのグラフ（ImPlot）
+/// @brief フレームの時間の線のグラフと、GPU の時間の履歴の積み上げのグラフ（ImPlot）
 
 namespace CoreEngine::UI
 {
@@ -30,7 +30,7 @@ namespace CoreEngine::UI
     void DrawTimeLinesPlot(const char* id, std::span<const TimeLine> lines, int count, int capacity,
         float targetFps, float height);
 
-    /// @brief 直近のフレームの時間と GPU の時間の履歴
+    /// @brief 直近のフレームの GPU の時間の履歴
     /// @details GPU の時間はカテゴリを 8 つのまとまりへ寄せて持つ。
     ///          雲の内訳と FFT 内訳（ほかのパスの内側を分けて測った時間）は、まとまりへ足さない。
     class TimingHistory
@@ -43,21 +43,14 @@ namespace CoreEngine::UI
         static constexpr int kGroupCount = 8;
 
         /// @brief 1 フレーム分を足す
-        /// @param frameMs そのフレームにかかった時間（ミリ秒）
         /// @param gpuSlots そのフレームの GPU の計測（計測していないときは nullptr）
-        void Push(float frameMs, const TimingSlots* gpuSlots);
-
-        /// @brief フレームの時間と GPU の合計を重ねた線のグラフ（目標のフレーム時間に横線を引く）
-        /// @param targetFps 目標の FPS（0 以下なら横線を引かない）
-        void DrawFrameTimePlot(const char* id, float targetFps, float height) const;
+        void Push(const TimingSlots* gpuSlots);
 
         /// @brief まとまりごとの GPU の時間を下から積み上げた面のグラフ（上に GPU の合計の線を重ねる）
         void DrawGpuStackPlot(const char* id, float height) const;
 
     private:
-        RingHistory<float, kFrames> frameMs_;
         RingHistory<float, kFrames> gpuMs_;
         std::array<RingHistory<float, kFrames>, kGroupCount> groupMs_;
-        bool hasGpu_ = false;
     };
 }

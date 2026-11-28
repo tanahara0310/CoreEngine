@@ -89,27 +89,20 @@ namespace CoreEngine
         int GetOwnerPropertyIndex() const { return ownerPropertyIndex_; }
 
         /// @brief このフレームの Update / LateUpdate にかかった時間を足す
-        /// @param countInstance Update の呼び出しなら true（実体の数として数える）
-        void AddFrameCost(double milliseconds, bool countInstance) const
+        void AddFrameCost(double milliseconds) const
         {
             frameCostMs_ += milliseconds;
-            frameInstances_ += countInstance ? 1u : 0u;
         }
 
         /// @brief このフレームの集計を「直前のフレーム」へ移し、次のフレームのために空にする
         void RollFrameCost() const
         {
             lastCostMs_ = frameCostMs_;
-            lastInstances_ = frameInstances_;
             frameCostMs_ = 0.0;
-            frameInstances_ = 0;
         }
 
         /// @brief 直前のフレームの Update / LateUpdate にかかった時間（ミリ秒）
         double GetLastFrameCostMs() const { return lastCostMs_; }
-
-        /// @brief 直前のフレームに Update を呼んだ実体の数
-        std::uint32_t GetLastFrameInstances() const { return lastInstances_; }
 
         /// @brief クラスを書いたファイル（スクリプトのフォルダからの相対パス。分からなければ空）
         const std::string& GetSourceSection() const { return sourceSection_; }
@@ -146,8 +139,6 @@ namespace CoreEngine
 
         /// 実行時間の集計（このフレームの分と、直前のフレームの分）
         mutable double frameCostMs_ = 0.0;
-        mutable std::uint32_t frameInstances_ = 0;
         mutable double lastCostMs_ = 0.0;
-        mutable std::uint32_t lastInstances_ = 0;
     };
 }

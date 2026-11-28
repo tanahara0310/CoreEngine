@@ -15,7 +15,6 @@
 #include "Editor/ImGui/ImGuiManager.h"
 #include "Editor/ImGui/GameDebugUI.h"
 #include "Graphics/RHI/Debug/GpuTimestampProfiler.h"
-#include "Editor/ImGui/ThreadProfilerUI.h"
 #include "Editor/ImGui/KeyConfigUI.h"
 #include "Editor/ImGui/EngineStatsWindow.h"
 #include "Editor/ImGui/ProfilerPanel.h"
@@ -94,6 +93,9 @@ namespace CoreEngine
         /// @brief パネルを登録し、登録をこのサブシステムの寿命に結びつける
         void AddPanel(Editor::EditorPanelDesc desc);
 
+        /// @brief 読み込みのスレッドプールの待ちと実行中の仕事の数を Tracy のグラフへ送る
+        void PlotThreadPools() const;
+
         EngineSystem* engine_ = nullptr;
 
         std::unique_ptr<ImGuiManager> imGui_;
@@ -103,7 +105,6 @@ namespace CoreEngine
         std::unique_ptr<Editor::PlayModeController> playModeController_;
 
         GpuTimestampProfiler gpuProfiler_;
-        std::unique_ptr<ThreadProfilerUI> threadProfilerUI_;
         std::unique_ptr<EngineStatsWindow> engineStatsWindow_;
         std::unique_ptr<ProfilerPanel> profilerPanel_;
         KeyConfigUI keyConfigUI_;

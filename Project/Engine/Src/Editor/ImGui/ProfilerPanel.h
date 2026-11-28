@@ -10,17 +10,15 @@ namespace CoreEngine
 {
     class EngineSystem;
     class GpuTimestampProfiler;
-    class ThreadProfilerUI;
 
-    /// @brief CPU・GPU・スクリプト・スレッドの時間を 1 画面にまとめたプロファイラ
-    /// @details 直近 180 フレームの時間を控え、グラフと内訳を出す。
+    /// @brief CPU・GPU・スクリプトの時間を 1 画面にまとめたプロファイラ
+    /// @details 直近 180 フレームの時間を控え、グラフと大まかな内訳を出す。
     class ProfilerPanel
     {
     public:
         /// @param engine 計測値を引くエンジン
         /// @param gpuProfiler パス別の CPU / GPU 時間
-        /// @param threadProfiler スレッドプールの表示（無ければ nullptr）
-        void Initialize(EngineSystem* engine, GpuTimestampProfiler* gpuProfiler, ThreadProfilerUI* threadProfiler);
+        void Initialize(EngineSystem* engine, GpuTimestampProfiler* gpuProfiler);
 
         /// @brief 1 フレーム分の値を控える（描画が終わった後に 1 回呼ぶ）
         void Collect();
@@ -44,7 +42,6 @@ namespace CoreEngine
         void DrawHeader();
         void DrawGraph();
         void DrawFrameBreakdown();
-        void DrawScriptColumn();
 
         /// @brief 控えた履歴を CSV へ書く
         /// @return 書けたら true（`outPath` に書いた先）
@@ -52,11 +49,9 @@ namespace CoreEngine
 
         EngineSystem* engine_ = nullptr;
         GpuTimestampProfiler* gpuProfiler_ = nullptr;
-        ThreadProfilerUI* threadProfiler_ = nullptr;
 
         RingHistory<FrameSample, kHistorySize> history_;
 
-        bool firstDraw_ = true;
         bool recording_ = true;
         bool showCpu_ = true;
         bool showGpu_ = true;
