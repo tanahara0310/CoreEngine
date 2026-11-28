@@ -71,6 +71,31 @@ namespace CoreEngine::Editor::AssetFileOperations
         {
             AssetDatabase::GetInstance().Refresh();
         }
+
+        /// @brief 比べるための絶対パス（実在しない部分は字面のまま正規化する）
+        std::filesystem::path ComparablePath(const std::filesystem::path& path)
+        {
+            std::error_code ec;
+            const std::filesystem::path absolute = std::filesystem::weakly_canonical(path, ec);
+            return ec ? path.lexically_normal() : absolute;
+        }
+
+        /// @brief 触ってよい場所の根のうち、target を含むもの（どれにも入らなければ空）
+        std::filesystem::path ContainingRoot(const std::filesystem::path& target)
+        {
+            const std::filesystem::path base = ComparablePath(target);
+            for (const std::string_view root : kEditableRoots) {
+                std::error_code ec;
+                const std::filesystem::path rootPath =
+                    std::filesystem::weakly_canonical(ProjectPaths::Resolve(root), ec);
+                if (ec) { continue; }
+                const std::filesystem::path relative = base.lexically_relative(rootPath);
+                if (!relative.empty() && *relative.begin() != "..") {
+                    return rootPath;
+                }
+            }
+            return {};
+        }
     }
 
     bool IsValidName(const std::string& name, std::string* outError)
@@ -97,21 +122,36 @@ namespace CoreEngine::Editor::AssetFileOperations
 
     bool IsEditableLocation(const std::filesystem::path& target, std::string* outError)
     {
-        std::error_code ec;
-        const std::filesystem::path absolute = std::filesystem::weakly_canonical(target, ec);
-        const std::filesystem::path base = ec ? target.lexically_normal() : absolute;
-
-        for (const std::string_view root : kEditableRoots) {
-            const std::filesystem::path rootPath =
-                std::filesystem::weakly_canonical(ProjectPaths::Resolve(root), ec);
-            if (ec) { continue; }
-            const std::filesystem::path relative = base.lexically_relative(rootPath);
-            if (!relative.empty() && *relative.begin() != "..") {
-                if (outError) { outError->clear(); }
-                return true;
-            }
+        if (ContainingRoot(target).empty()) {
+            return FailWith(outError, "Assets の中のものだけ操作できます");
         }
-        return FailWith(outError, "Assets の中のものだけ操作できます");
+        if (outError) { outError->clear(); }
+        return true;
+    }
+
+    bool IsAssetRoot(const std::filesystem::path& target)
+    {
+        const std::filesystem::path root = ContainingRoot(target);
+        return !root.empty() && ComparablePath(target) == root;
+    }
+
+    bool IsEngineAsset(const std::filesystem::path& target)
+    {
+        std::error_code ec;
+        const std::filesystem::path engineRoot =
+            std::filesystem::weakly_canonical(ProjectPaths::Resolve("Engine/Assets"), ec);
+        return !ec && ContainingRoot(target) == engineRoot;
+    }
+
+    bool CanChange(const std::filesystem::path& target, std::string* outError)
+    {
+        if (!IsEditableLocation(target, outError)) {
+            return false;
+        }
+        if (IsAssetRoot(target)) {
+            return FailWith(outError, "Assets の一番上のフォルダ（Application・Engine）は変えられません");
+        }
+        return true;
     }
 
     std::filesystem::path MakeUniquePath(const std::filesystem::path& desired)
@@ -173,7 +213,7 @@ namespace CoreEngine::Editor::AssetFileOperations
     bool Rename(const std::filesystem::path& target, const std::string& newName,
                 std::filesystem::path* outPath, std::string* outError)
     {
-        if (!IsValidName(newName, outError) || !IsEditableLocation(target, outError)) {
+        if (!IsValidName(newName, outError) || !CanChange(target, outError)) {
             return false;
         }
 
@@ -277,7 +317,7 @@ namespace CoreEngine::Editor::AssetFileOperations
     bool Move(const std::filesystem::path& source, const std::filesystem::path& destinationFolder,
               std::filesystem::path* outPath, std::string* outError)
     {
-        if (!IsEditableLocation(source, outError) || !IsEditableLocation(destinationFolder, outError)) {
+        if (!CanChange(source, outError) || !IsEditableLocation(destinationFolder, outError)) {
             return false;
         }
 
@@ -328,7 +368,7 @@ namespace CoreEngine::Editor::AssetFileOperations
 
     bool MoveToRecycleBin(const std::filesystem::path& target, std::string* outError)
     {
-        if (!IsEditableLocation(target, outError)) {
+        if (!CanChange(target, outError)) {
             return false;
         }
 

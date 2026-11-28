@@ -1116,7 +1116,12 @@ namespace CoreEngine
             ShowSaveNotification(reason);
             return false;
         }
-        return ObjectEditing::DeleteWithDescendants(MakeObjectEditingContext(), *selected);
+        const std::string name = selected->GetDisplayName();
+        if (!ObjectEditing::DeleteWithDescendants(MakeObjectEditingContext(), *selected)) {
+            return false;
+        }
+        ShowSaveNotification(name + " を削除しました（Ctrl+Z で戻せます）");
+        return true;
     }
 
     void SceneDebugEditor::HandleSelectionShortcuts()
@@ -1339,6 +1344,30 @@ namespace CoreEngine
                 }
             }
         }
+
+        // 開いたときに右クリックしたものを選ぶ（下の複製・削除は選んでいるものに働く）
+        if (ImGui::IsWindowAppearing() && objectSelector_.GetSelectedObject() != &object) {
+            objectSelector_.SelectObject(&object);
+        }
+        const auto explainDisabled = [](bool enabled, const std::string& reason) {
+            if (!enabled && !reason.empty() && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                ImGui::SetTooltip("%s", reason.c_str());
+            }
+            };
+
+        ImGui::Separator();
+        std::string duplicateReason;
+        const bool canDuplicate = ObjectEditing::CanDuplicateOrDelete(object, &duplicateReason);
+        if (ImGui::MenuItem("複製", "Ctrl+D", false, canDuplicate)) {
+            DuplicateSelectedObject();
+        }
+        explainDisabled(canDuplicate, duplicateReason);
+        std::string deleteReason;
+        const bool canDelete = ObjectEditing::CanDelete(object, &deleteReason);
+        if (ImGui::MenuItem("削除", "Delete", false, canDelete)) {
+            DeleteSelectedObject();
+        }
+        explainDisabled(canDelete, deleteReason);
         ImGui::EndPopup();
     }
 }
