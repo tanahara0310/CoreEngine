@@ -17,10 +17,12 @@
 #include <algorithm>
 #include <cfloat>
 #include <chrono>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <format>
 #include <string_view>
+#include <system_error>
 #include <utility>
 
 namespace CoreEngine::Editor
@@ -171,17 +173,67 @@ namespace CoreEngine::Editor
             return result;
         }
 
-        /// @brief フォルダを選ぶ窓を別のスレッドで出す（そのスレッドで COM をシングルスレッドとして用意する）
-        std::future<std::filesystem::path> PickFolderAsync(HWND owner, std::wstring title)
+        /// @brief COM をシングルスレッドとして用意した別のスレッドで work を行う
+        template <class Work>
+        auto RunOnStaThread(Work work)
         {
-            return std::async(std::launch::async, [owner, title = std::move(title)]() {
+            return std::async(std::launch::async, [work = std::move(work)]() mutable {
                 const HRESULT result = ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
-                std::filesystem::path folder = PickFolder(owner, title.c_str());
+                auto value = work();
                 if (SUCCEEDED(result)) {
                     ::CoUninitialize();
                 }
-                return folder;
+                return value;
                 });
+        }
+
+        /// @brief フォルダを中身ごとごみ箱へ移す（ごみ箱に入らないものは、完全に消す前に Windows が確かめる）
+        /// @return 途中でやめたら true
+        bool RecycleFolder(const std::filesystem::path& folder)
+        {
+            // SHFileOperation は終端が 2 個の null の文字列を要求する
+            std::wstring from = folder.wstring();
+            from.push_back(L'\0');
+            from.push_back(L'\0');
+
+            SHFILEOPSTRUCTW operation{};
+            operation.wFunc = FO_DELETE;
+            operation.pFrom = from.c_str();
+            operation.fFlags = FOF_ALLOWUNDO | FOF_NOCONFIRMATION | FOF_WANTNUKEWARNING;
+            ::SHFileOperationW(&operation);
+            return operation.fAnyOperationsAborted != FALSE;
+        }
+
+        /// @brief フォルダの中のファイルの数と大きさの合計を数える
+        void CountFiles(const std::filesystem::path& folder, std::uintmax_t& count, std::uintmax_t& bytes)
+        {
+            std::error_code ec;
+            std::filesystem::recursive_directory_iterator it(folder,
+                std::filesystem::directory_options::skip_permission_denied, ec);
+            for (; !ec && it != std::filesystem::recursive_directory_iterator(); it.increment(ec)) {
+                std::error_code fileEc;
+                if (!it->is_regular_file(fileEc)) {
+                    continue;
+                }
+                ++count;
+                const std::uintmax_t size = it->file_size(fileEc);
+                if (!fileEc) {
+                    bytes += size;
+                }
+            }
+        }
+
+        /// @brief バイト数を「12.3 MB」の形にする
+        std::string FormatBytes(std::uintmax_t bytes)
+        {
+            constexpr const char* kUnits[] = { "B", "KB", "MB", "GB", "TB" };
+            double value = static_cast<double>(bytes);
+            size_t unit = 0;
+            while (value >= 1024.0 && unit + 1 < std::size(kUnits)) {
+                value /= 1024.0;
+                ++unit;
+            }
+            return unit == 0 ? std::format("{} B", bytes) : std::format("{:.1f} {}", value, kUnits[unit]);
         }
 
         /// 一覧の画面の一言
@@ -189,6 +241,14 @@ namespace CoreEngine::Editor
 
         /// 新規作成の画面の一言
         constexpr const char* kNewProjectHint = "テンプレートを選び、名前と保存先を決めて「作成して開く」を押してください";
+
+        /// 削除の確認窓の題（ポップアップの ID も兼ねる）
+        constexpr const char* kDeleteTitle = "プロジェクトを削除";
+
+        /// 削除を決めるボタンの色
+        const ImVec4 kDangerButton = Theme::FromSrgb(158, 50, 44);
+        const ImVec4 kDangerButtonHover = Theme::FromSrgb(188, 64, 56);
+        const ImVec4 kDangerButtonActive = Theme::FromSrgb(128, 40, 36);
     }
 
     ProjectBrowser::ProjectBrowser(ProjectList& list, HWND owner, std::filesystem::path current)
@@ -201,6 +261,11 @@ namespace CoreEngine::Editor
     std::filesystem::path ProjectBrowser::TakeChosen()
     {
         return std::exchange(chosen_, {});
+    }
+
+    bool ProjectBrowser::IsBusy() const
+    {
+        return deleteTarget_.has_value() || deleting_.valid();
     }
 
     bool ProjectBrowser::IsCurrent(const ProjectEntry& entry) const
@@ -250,6 +315,12 @@ namespace CoreEngine::Editor
     void ProjectBrowser::Draw()
     {
         FinishPicking();
+        FinishDeleting();
+
+        // 確認窓は、この画面を描く窓の真ん中に出す
+        const ImVec2 windowPos = ImGui::GetWindowPos();
+        const ImVec2 windowSize = ImGui::GetWindowSize();
+        dialogCenter_ = ImVec2(windowPos.x + windowSize.x * 0.5f, windowPos.y + windowSize.y * 0.5f);
 
         DrawNav();
         ImGui::SameLine(0.0f, 0.0f);
@@ -263,12 +334,14 @@ namespace CoreEngine::Editor
         ImGui::PopStyleColor();
 
         // 一覧で選んだものを Enter で開く
-        if (view_ == View::Projects && !ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_Enter, false) &&
+        if (view_ == View::Projects && !IsBusy() && !ImGui::GetIO().WantTextInput &&
+            ImGui::IsKeyPressed(ImGuiKey_Enter, false) &&
             selected_ >= 0 && selected_ < static_cast<int>(entries_.size())) {
             Request(Action::Open, entries_[selected_].folder);
         }
 
         RunPendingAction();
+        DrawDeleteDialog();
     }
 
     void ProjectBrowser::DrawNav()
@@ -574,11 +647,26 @@ namespace CoreEngine::Editor
         }
         ImGui::EndDisabled();
 
+        // フォルダごとごみ箱へ移す（確認窓で名前を打ち込んでから）
+        ImGui::Spacing();
+        const std::string deleteBlocker = DeleteBlocker(entry);
+        ImGui::BeginDisabled(!deleteBlocker.empty());
+        ImGui::PushStyleColor(ImGuiCol_Text, Theme::kError);
+        if (ImGui::Button("プロジェクトを削除…", buttonSize)) {
+            Request(Action::Delete, entry.folder);
+        }
+        ImGui::PopStyleColor();
+        ImGui::EndDisabled();
+        if (!deleteBlocker.empty()) {
+            ImGui::SetItemTooltip("%s", deleteBlocker.c_str());
+        }
+
         ImGui::PushStyleColor(ImGuiCol_Text, Theme::kTextMute);
         ImGui::PushTextWrapPos(0.0f);
         ImGui::TextUnformatted(entry.bundled
             ? "リポジトリの中のプロジェクトは、開くたびに数え直すので一覧から外せません。"
             : "一覧から外しても、フォルダは消しません。");
+        ImGui::TextUnformatted("削除はフォルダごとごみ箱へ移します。");
         ImGui::PopTextWrapPos();
         ImGui::PopStyleColor();
 
@@ -793,6 +881,129 @@ namespace CoreEngine::Editor
         ImGui::EndChild();
     }
 
+    void ProjectBrowser::DrawDeleteDialog()
+    {
+        if (std::exchange(openDeleteDialog_, false)) {
+            ImGui::OpenPopup(kDeleteTitle);
+        }
+        if (!ImGui::IsPopupOpen(kDeleteTitle)) {
+            return;
+        }
+
+        const float fontSize = ImGui::GetFontSize();
+        const ImGuiStyle& style = ImGui::GetStyle();
+        ImGui::SetNextWindowPos(dialogCenter_, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+        ImGui::SetNextWindowSize(ImVec2(fontSize * 35.0f, 0.0f));
+        ImGui::PushStyleColor(ImGuiCol_PopupBg, Theme::kWindow);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(fontSize, fontSize));
+        const bool visible = ImGui::BeginPopupModal(kDeleteTitle, nullptr,
+            ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoScrollbar);
+        ImGui::PopStyleVar();
+        ImGui::PopStyleColor();
+        if (!visible) {
+            return;
+        }
+        if (!deleteTarget_) {
+            ImGui::CloseCurrentPopup();
+            ImGui::EndPopup();
+            return;
+        }
+        const DeleteTarget& target = *deleteTarget_;
+        const ProjectEntry& entry = target.entry;
+        const bool deleting = deleting_.valid();
+
+        ImGui::PushTextWrapPos(0.0f);
+        ImGui::TextColored(Theme::kError, "%s", "このプロジェクトのフォルダを、中身ごとごみ箱へ移します。");
+        ImGui::PopTextWrapPos();
+        ImGui::Spacing();
+
+        // 消すもののサムネイル・名前・場所・中身
+        const float thumbHeight = fontSize * 3.4f;
+        const ImVec2 thumbSize(thumbHeight * 16.0f / 9.0f, thumbHeight);
+        DrawThumbnail(ImGui::GetWindowDrawList(), ImGui::GetCursorScreenPos(), thumbSize, entry, ThumbnailOf(entry), 1.6f);
+        ImGui::Dummy(thumbSize);
+        ImGui::SameLine();
+        ImGui::BeginGroup();
+        ImGui::TextUnformatted(entry.name.c_str());
+        ImGui::PushTextWrapPos(0.0f);
+        ImGui::PushStyleColor(ImGuiCol_Text, Theme::kTextMute);
+        ImGui::TextUnformatted(ToDisplay(entry.folder).c_str());
+        ImGui::PopStyleColor();
+        ImGui::TextUnformatted(std::format("シーン {} ・ スクリプト {} ・ ファイル {} 個（{}）",
+            entry.sceneCount, entry.scriptCount, target.fileCount, FormatBytes(target.totalBytes)).c_str());
+        ImGui::PopTextWrapPos();
+        ImGui::EndGroup();
+        ImGui::Spacing();
+
+        ImGui::PushTextWrapPos(0.0f);
+        if (entry.bundled) {
+            ImGui::TextColored(Theme::kWarn, "%s", "リポジトリの Projects フォルダの中のプロジェクトです。");
+            ImGui::TextColored(Theme::kWarn, "%s", "git で管理しているファイルは、消した変更として git に出ます。");
+        }
+        ImGui::TextColored(Theme::kTextDim, "%s",
+            "ごみ箱から元に戻せます。大きすぎてごみ箱に入らないときは、完全に消す前に Windows が確かめます。");
+        ImGui::PopTextWrapPos();
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // 名前を打ち込んで確かめる
+        ImGui::TextUnformatted("確かめのため、プロジェクトの名前を下の欄に入力してください。");
+        ImGui::TextColored(Theme::kAccentHover, "%s", entry.name.c_str());
+        ImGui::BeginDisabled(deleting);
+        if (ImGui::IsWindowAppearing()) {
+            ImGui::SetKeyboardFocusHere();
+        }
+        ImGui::SetNextItemWidth(-FLT_MIN);
+        ImGui::InputText("##Confirm", deleteConfirm_, sizeof(deleteConfirm_));
+        ImGui::EndDisabled();
+        const bool matched = entry.name == deleteConfirm_;
+        if (deleting) {
+            ImGui::TextColored(Theme::kTextDim, "%s", "ごみ箱へ移しています…");
+        } else if (matched) {
+            ImGui::TextColored(Theme::kError, "%s", "「ごみ箱へ移す」を押すと削除します");
+        } else {
+            ImGui::TextColored(Theme::kTextMute, "%s", deleteConfirm_[0] == '\0' ? "" : "名前が一致しません");
+        }
+        ImGui::Spacing();
+
+        // 右寄せのボタン
+        const char* cancelLabel = "キャンセル";
+        const char* deleteLabel = "ごみ箱へ移す";
+        const float buttonsWidth = ImGui::CalcTextSize(cancelLabel).x + ImGui::CalcTextSize(deleteLabel).x +
+                                   style.FramePadding.x * 4.0f + style.ItemSpacing.x;
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + std::max(0.0f, ImGui::GetContentRegionAvail().x - buttonsWidth));
+        ImGui::BeginDisabled(deleting);
+        bool cancel = ImGui::Button(cancelLabel);
+        ImGui::SameLine();
+        // 名前が一致するまでは、ふつうの色の押せないボタンにする
+        ImGui::BeginDisabled(!matched);
+        if (matched) {
+            ImGui::PushStyleColor(ImGuiCol_Button, kDangerButton);
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, kDangerButtonHover);
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, kDangerButtonActive);
+        }
+        const bool confirm = ImGui::Button(deleteLabel);
+        if (matched) {
+            ImGui::PopStyleColor(3);
+        }
+        ImGui::EndDisabled();
+        ImGui::EndDisabled();
+        if (!deleting && ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
+            cancel = true;
+        }
+
+        if (cancel) {
+            deleteTarget_.reset();
+        } else if (confirm) {
+            StartDeleting();
+        }
+        if (!deleteTarget_) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+
     void ProjectBrowser::ShowProjects()
     {
         view_ = View::Projects;
@@ -851,7 +1062,8 @@ namespace CoreEngine::Editor
         case Action::Open:           Open(folder); break;
         case Action::ShowInExplorer: ShowInExplorer(folder); break;
         case Action::Remove:         Remove(folder); break;
-        case Action::Add:            StartPicking(Action::Add, L"プロジェクトのフォルダを選ぶ"); break;
+        case Action::Delete:         ConfirmDelete(folder); break;
+        case Action::Add:          StartPicking(Action::Add, L"プロジェクトのフォルダを選ぶ"); break;
         case Action::Create:         CreateProject(); break;
         case Action::BrowseLocation: StartPicking(Action::BrowseLocation, L"新しいプロジェクトを作る場所を選ぶ"); break;
         default: break;
@@ -907,13 +1119,108 @@ namespace CoreEngine::Editor
         SetStatus(ProjectList::Inspect(folder).name + " を一覧に足しました");
     }
 
+    std::string ProjectBrowser::DeleteBlocker(const ProjectEntry& entry) const
+    {
+        if (entry.missing) {
+            return "フォルダが見つからないので削除できません（「一覧から外す」で一覧からだけ外せます）";
+        }
+        if (IsCurrent(entry)) {
+            return "開いているプロジェクトは削除できません。ほかのプロジェクトに切り替えてから削除してください";
+        }
+        if (!entry.folder.is_absolute()) {
+            return "場所が絶対パスではないので削除できません";
+        }
+        // エンジンのフォルダとそれを含むフォルダ、同梱プロジェクトの置き場そのものは消さない
+        if (ProjectList::IsSameFolder(entry.folder, ProjectPaths::BundledProjectsDirectory())) {
+            return "同梱プロジェクトの置き場そのものは削除できません";
+        }
+        std::filesystem::path folder = ProjectPaths::EngineRoot();
+        while (true) {
+            if (ProjectList::IsSameFolder(entry.folder, folder)) {
+                return "エンジンのフォルダを含むので削除できません";
+            }
+            std::filesystem::path parent = folder.parent_path();
+            if (parent.empty() || parent == folder) {
+                break;
+            }
+            folder = std::move(parent);
+        }
+        return {};
+    }
+
+    void ProjectBrowser::ConfirmDelete(const std::filesystem::path& folder)
+    {
+        const auto found = std::find_if(entries_.begin(), entries_.end(), [&folder](const ProjectEntry& entry) {
+            return ProjectList::IsSameFolder(entry.folder, folder);
+            });
+        if (found == entries_.end()) {
+            return;
+        }
+        if (const std::string blocker = DeleteBlocker(*found); !blocker.empty()) {
+            SetStatus(blocker, true);
+            return;
+        }
+
+        DeleteTarget target{ *found };
+        CountFiles(target.entry.folder, target.fileCount, target.totalBytes);
+        deleteTarget_ = std::move(target);
+        deleteConfirm_[0] = '\0';
+        openDeleteDialog_ = true;
+    }
+
+    void ProjectBrowser::StartDeleting()
+    {
+        if (!deleteTarget_ || deleting_.valid()) {
+            return;
+        }
+        // 消す直前に、フォルダを調べ直して確かめる
+        const ProjectEntry latest = ProjectList::Inspect(deleteTarget_->entry.folder);
+        if (const std::string blocker = DeleteBlocker(latest); !blocker.empty()) {
+            SetStatus(blocker, true);
+            deleteTarget_.reset();
+            return;
+        }
+        deleting_ = RunOnStaThread([folder = latest.folder]() { return RecycleFolder(folder); });
+        SetStatus(deleteTarget_->entry.name + " をごみ箱へ移しています…");
+    }
+
+    void ProjectBrowser::FinishDeleting()
+    {
+        if (!deleting_.valid() || deleting_.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
+            return;
+        }
+        const bool aborted = deleting_.get();
+        const std::optional<DeleteTarget> target = std::exchange(deleteTarget_, std::nullopt);
+        if (!target) {
+            return;
+        }
+
+        const std::string& name = target->entry.name;
+        std::error_code ec;
+        if (!std::filesystem::exists(target->entry.folder, ec)) {
+            list_.Remove(target->entry.folder);
+            if (list_.Save()) {
+                SetStatus(name + " をごみ箱へ移しました（ごみ箱から元に戻せます）");
+            } else {
+                SetStatus(name + " をごみ箱へ移しましたが、一覧を保存できませんでした", true);
+            }
+        } else if (aborted) {
+            SetStatus(name + " の削除を途中でやめました。移した分はごみ箱にあり、残りはフォルダに残っています", true);
+        } else {
+            SetStatus(name + " の一部を消せませんでした。ほかのアプリでファイルを開いていないか確かめてください", true);
+        }
+        Refresh();
+    }
+
     void ProjectBrowser::StartPicking(Action purpose, const wchar_t* title)
     {
         if (picking_.valid()) {
             return;
         }
         pickingFor_ = purpose;
-        picking_ = PickFolderAsync(owner_, title);
+        picking_ = RunOnStaThread([owner = owner_, title = std::wstring(title)]() {
+            return PickFolder(owner, title.c_str());
+            });
     }
 
     void ProjectBrowser::FinishPicking()

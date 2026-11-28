@@ -1019,8 +1019,10 @@ namespace CoreEngine
         ImGui::SetNextWindowSize(size, ImGuiCond_Appearing);
         ImGui::PushStyleColor(ImGuiCol_PopupBg, Editor::Theme::kWindow);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+        // 削除の確認窓を出している間と、ごみ箱へ移している間は × も Esc も効かない
+        const bool busy = projectBrowser_->IsBusy();
         bool open = true;
-        const bool visible = ImGui::BeginPopupModal(kTitle, &open,
+        const bool visible = ImGui::BeginPopupModal(kTitle, busy ? nullptr : &open,
             ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings);
         ImGui::PopStyleVar();
         ImGui::PopStyleColor();
@@ -1036,7 +1038,7 @@ namespace CoreEngine
 
         // 開くプロジェクトが決まるか、Esc で閉じる
         const std::filesystem::path chosen = projectBrowser_->TakeChosen();
-        const bool escape = !ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_Escape, false);
+        const bool escape = !busy && !ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_Escape, false);
         const bool close = !chosen.empty() || escape;
         if (close) {
             ImGui::CloseCurrentPopup();

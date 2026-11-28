@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="engine-version" content="0.125.0">
+<meta name="engine-version" content="0.126.0">
 <title>CoreEngine ドキュメント</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 120'><rect width='120' height='120' rx='26' fill='%230B1118'/><g transform='translate(60 60) scale(0.8) translate(-60 -60)'><defs><clipPath id='u'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' transform='translate(-2 3.5)'/></clipPath></defs><g transform='translate(5 0)'><path d='M93.71 31.72 A44 44 0 0 0 16 60 L32 60 A28 28 0 0 1 81.45 42 Z' fill='%23F2F5F7' transform='translate(-5 -3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%235B7CFF' transform='translate(-2 3.5)'/><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%236FD3E0' transform='translate(9 3.5)'/><g clip-path='url(%23u)'><path d='M16 60 A44 44 0 0 0 93.71 88.28 L81.45 78 A28 28 0 0 1 32 60 Z' fill='%23A2E8FF' transform='translate(9 3.5)'/></g></g></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2551,7 +2551,7 @@ kbd {
   </ul>
 </article>
 
-<article class="page" id="first-project" data-group="はじめに" data-title="最初のプロジェクトを作る" data-nav="最初のプロジェクト" data-keywords="新規 プロジェクト 作成 作る 開く ランチャー テンプレート 3d の基本 空のプロジェクト">
+<article class="page" id="first-project" data-group="はじめに" data-title="最初のプロジェクトを作る" data-nav="最初のプロジェクト" data-keywords="新規 プロジェクト 作成 作る 開く ランチャー テンプレート 3d の基本 空のプロジェクト 削除 消す ごみ箱">
   <h1>最初のプロジェクトを作る</h1>
   <p class="lead">エディタを起動すると、プロジェクトを選ぶ画面（「CoreEngine — プロジェクトを開く」）が出ます。ここでテンプレートから新しいプロジェクトを作り、開いて動かしてみます。</p>
 
@@ -2609,6 +2609,21 @@ kbd {
     <li>ほかの場所のプロジェクトは <span class="ui">追加…</span> でフォルダを選んで一覧に足します（<span class="path">Application/Config/EngineSettings/Project.json</span> があるフォルダがプロジェクトです）。</li>
     <li>左下の <span class="ui">次から前回のプロジェクトを自動で開く</span> を入れると、次からこの画面を飛ばします（戻すには <code>--launcher</code> を付けて起動）。</li>
     <li>エディタの中からは <span class="ui">File<span class="arrow">▸</span>プロジェクトを開く…</span> ／ <span class="ui">新しいプロジェクト…</span> ／ <span class="ui">最近のプロジェクト</span> で切り替えます（エディタが起動し直します）。</li>
+  </ul>
+
+  <h2 id="first-project-delete">プロジェクトを削除する</h2>
+  <p>選ぶ画面（ランチャー、またはエディタの <span class="ui">File<span class="arrow">▸</span>プロジェクトを開く…</span>）で消したいプロジェクトを選び、右の欄の <span class="ui">プロジェクトを削除…</span> を押します。</p>
+  <ol class="steps">
+    <li><strong>中身を確かめる</strong>確認の窓に、消すプロジェクトの名前・場所と、シーン・スクリプト・ファイルの数とフォルダの大きさが出ます。</li>
+    <li><strong>名前を打ち込む</strong>誤って消さないように、窓の欄にプロジェクトの名前を打ち込むまで <span class="ui">ごみ箱へ移す</span> は押せません。大文字と小文字も区別します。</li>
+    <li><strong>ごみ箱へ移す</strong>押すと、フォルダを中身ごと Windows のごみ箱へ移し、一覧からも外します。やめるときは <span class="ui">キャンセル</span> か <kbd>Esc</kbd> です。</li>
+  </ol>
+  <div class="callout warn" data-title="フォルダの中身がすべて消えます"><p>シーン・スクリプト・モデルなど、プロジェクトのフォルダの中のものはすべてごみ箱へ移ります。ごみ箱から元に戻せますが、大きすぎてごみ箱に入らないときは、完全に消す前に Windows が確かめます。そこで続けると元に戻せません。</p></div>
+  <ul>
+    <li>ごみ箱から戻したプロジェクトは、リポジトリの <span class="path">Projects</span> の中ならそのまま一覧に出ます。ほかの場所なら <span class="ui">追加…</span> で足し直します。</li>
+    <li>エディタで開いているプロジェクトと、フォルダが見つからないプロジェクトは削除できません。見つからないものは <span class="ui">一覧から外す</span> で一覧から外します。</li>
+    <li>リポジトリの <span class="path">Projects</span> の中のプロジェクトを消すと、git で管理しているファイルは消した変更として git に出ます。</li>
+    <li><span class="ui">一覧から外す</span> は一覧から外すだけで、フォルダは消しません。</li>
   </ul>
 </article>
 
@@ -12904,6 +12919,14 @@ python Tools/OkinawaBeach/bake_araha_walk.py
   <p class="lead">CoreEngine の版ごとの変更点と、バージョン番号の付け方です。このドキュメントは、画面の上に出ている版のエンジンについて書いています。</p>
 
   <h2 id="changelog-history">更新履歴</h2>
+
+  <h3 id="changelog-v0-126-0">v0.126.0 <span class="dim">（2026-11-28）</span></h3>
+  <p>プロジェクトを選ぶ画面から、プロジェクトをフォルダごと削除できるようにした版です（<a href="#first-project-delete">プロジェクトを削除する</a>）。書き出したゲームの見た目と動き、シーンとプロジェクトの保存の形は前の版と同じです。</p>
+  <ul>
+    <li><strong>プロジェクトを削除…</strong>：ランチャーとエディタの <span class="ui">File<span class="arrow">▸</span>プロジェクトを開く…</span> の右の欄にボタンを足しました。押すと確認の窓が出て、消すプロジェクトの名前・場所・ファイルの数と大きさを見せます。名前を打ち込むまで削除できません。</li>
+    <li><strong>ごみ箱へ移す</strong>：フォルダは中身ごと Windows のごみ箱へ移すので、ごみ箱から元に戻せます。ごみ箱に入らない大きさのときは、完全に消す前に Windows が確かめます。消したプロジェクトは最近のプロジェクトの一覧からも外れます。</li>
+    <li><strong>削除できないもの</strong>：エディタで開いているプロジェクト、フォルダが見つからないプロジェクト、エンジンのフォルダを含むフォルダは削除できません。</li>
+  </ul>
 
   <h3 id="changelog-v0-125-0">v0.125.0 <span class="dim">（2026-11-28）</span></h3>
   <p>エディタの中で時間を見るパネルを、CoreEngine Profiler と重ならないように整理した版です（<a href="#profiling-stats">Profiler パネルと Engine Stats で時間を見る</a>）。書き出したゲームの見た目と動き、シーンとプロジェクトの保存の形は前の版と同じです。</p>
